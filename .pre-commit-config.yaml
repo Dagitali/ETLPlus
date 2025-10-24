@@ -1,0 +1,140 @@
+# .pre-commit-config.yaml
+# ETLPlus
+#
+# Copyright © 2025 Dagitali LLC. All rights reserved.
+#
+# The pre-commit (multi-language package manager configuration file for Git
+# pre-commit hook scripts -- i.e., hooks) configuration file. Specifies which
+# pre-commit plugins (each by Git repository and hook set) are installed and
+# set for identifying simple issues (missing semicolons, trailing whitespace,
+# debug statements, etc.) before submission to code review. Allows code
+# reviewers to focus on the architecture of a change while not wasting time
+# with trivial style nitpicks.
+#
+# See:
+# 1. https://pre-commit.com
+# 2. https://pre-commit.com/hooks.html
+# 3. https://pre-commit.com/index.html#plugins
+
+# All commands by default will run on every commit
+default_install_hook_types:
+  - pre-commit
+
+default_language_version:
+  python: python3
+
+default_stages:
+  - pre-commit
+  - pre-push
+
+# Some configs are only available after v2.16
+minimum_pre_commit_version: "2.16"
+
+# Check for issues or automatically fix issues.
+repos:
+
+  ### Pre-commit ###
+
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
+  ### Git ###
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.9.1
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+      - id: commitizen-branch
+        stages:
+          - post-commit
+          - post-rewrite
+          - pre-push
+
+  ### Git, Polyglot ###
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-docstring-first
+      # - id: check-executables-have-shebangs
+      #   exclude_types: [batch]
+      # - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      # - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      # - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      - id: destroyed-symlinks
+      - id: detect-aws-credentials
+      - id: detect-private-key
+      - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      # - id: file-contents-sorter
+      - id: fix-byte-order-marker
+      # - id: forbid-new-submodules
+      - id: mixed-line-ending
+      - id: name-tests-test
+        args: [--pytest-test-first]
+      - id: no-commit-to-branch
+      # - id: pretty-format-json
+      #   args: [--autofix, --no-sort-keys]
+      # - id: requirements-txt-fixer
+      # - id: sort-simple-yaml
+      - id: trailing-whitespace
+
+  ### Markdown ###
+
+  - repo: https://github.com/frnmst/md-toc
+    rev: 9.0.0
+    hooks:
+      - id: md-toc
+
+  ### Python ###
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v4.0.0
+    hooks:
+      - id: add-trailing-comma
+        args: [--py36-plus]
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.0
+    hooks:
+      - id: pyupgrade
+        args: [--py37-plus]
+
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v3.16.0
+    hooks:
+      - id: reorder-python-imports
+        args: [--py3-plus]
+
+  # - repo: https://github.com/asottile/setup-cfg-fmt
+  #   rev: v2.8.0
+  #   hooks:
+  #     - id: setup-cfg-fmt
+
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.2
+    hooks:
+      - id: autopep8
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --install-types, --non-interactive]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
