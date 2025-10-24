@@ -2,13 +2,35 @@
 
 A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
 
+- [ETLPlus](#etlplus)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Command Line Interface](#command-line-interface)
+      - [Extract Data](#extract-data)
+      - [Validate Data](#validate-data)
+      - [Transform Data](#transform-data)
+      - [Load Data](#load-data)
+    - [Python API](#python-api)
+    - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
+  - [Transformation Operations](#transformation-operations)
+    - [Filter Operations](#filter-operations)
+    - [Aggregation Functions](#aggregation-functions)
+  - [Validation Rules](#validation-rules)
+  - [Development](#development)
+    - [Running Tests](#running-tests)
+    - [Code Coverage](#code-coverage)
+    - [Linting](#linting)
+  - [License](#license)
+  - [Contributing](#contributing)
+
 ## Features
 
 - **Extract** data from multiple sources:
   - Files (JSON, CSV, XML)
   - Databases (connection string support)
   - REST APIs
-  
+
 - **Validate** data with flexible rules:
   - Type checking
   - Required fields
