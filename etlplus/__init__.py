@@ -7,12 +7,12 @@ This package provides tools for:
 - Loading data to files, databases, and REST APIs
 """
 
-__version__ = "0.1.0"
-__author__ = "ETLPlus Team"
+__version__ = '0.1.0'
+__author__ = 'ETLPlus Team'
 
 from etlplus.extract import extract
 from etlplus.validate import validate
 from etlplus.transform import transform
 from etlplus.load import load
 
-__all__ = ["extract", "validate", "transform", "load"]
+__all__ = ['extract', 'validate', 'transform', 'load']
