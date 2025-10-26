@@ -1,4 +1,13 @@
-"""Tests for extract module."""
+"""
+ETLPlus Extract Tests
+=====================
+
+Unit tests for the ETLPlus extraction utilities.
+
+Notes
+-----
+Covers JSON, CSV, and XML helpers as well as the extract() orchestrator.
+"""
 import csv
 import json
 import tempfile
@@ -11,7 +20,13 @@ from etlplus.extract import extract_from_file
 
 
 def test_extract_from_json_file():
-    """Test extracting data from JSON file."""
+    """
+    Extract from a JSON file.
+
+    Notes
+    -----
+    Writes a temporary JSON file and verifies round‑trip parsing.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -27,7 +42,13 @@ def test_extract_from_json_file():
 
 
 def test_extract_from_csv_file():
-    """Test extracting data from CSV file."""
+    """
+    Extract from a CSV file.
+
+    Notes
+    -----
+    Writes two rows and verifies field parsing and row count.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.csv', delete=False, newline='',
     ) as f:
@@ -47,7 +68,13 @@ def test_extract_from_csv_file():
 
 
 def test_extract_from_xml_file():
-    """Test extracting data from XML file."""
+    """
+    Extract from an XML file.
+
+    Notes
+    -----
+    Writes a small XML document and checks nested text extraction.
+    """
     xml_content = """<?xml version="1.0"?>
     <person>
         <name>John</name>
@@ -69,13 +96,27 @@ def test_extract_from_xml_file():
 
 
 def test_extract_file_not_found():
-    """Test extracting from non-existent file."""
+    """
+    Extracting a non‑existent file raises.
+
+    Raises
+    ------
+    FileNotFoundError
+        When the file path does not exist.
+    """
     with pytest.raises(FileNotFoundError):
         extract_from_file('/nonexistent/file.json', 'json')
 
 
 def test_extract_unsupported_format():
-    """Test extracting with unsupported format."""
+    """
+    Unsupported format raises.
+
+    Raises
+    ------
+    ValueError
+        If the file format is not supported by the extractor.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.txt', delete=False,
     ) as f:
@@ -90,7 +131,13 @@ def test_extract_unsupported_format():
 
 
 def test_extract_wrapper_file():
-    """Test extract wrapper with file type."""
+    """
+    Orchestrator path for files.
+
+    Notes
+    -----
+    Ensures the top‑level extract() dispatches to file extraction.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -106,6 +153,13 @@ def test_extract_wrapper_file():
 
 
 def test_extract_invalid_source_type():
-    """Test extract with invalid source type."""
+    """
+    Invalid source type raises.
+
+    Raises
+    ------
+    ValueError
+        When an unsupported ``source_type`` is provided.
+    """
     with pytest.raises(ValueError, match='Invalid source type'):
         extract('invalid', 'source')

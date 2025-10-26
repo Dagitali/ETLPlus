@@ -1,6 +1,9 @@
-"""Data transformation module for ETLPlus.
+"""
+ETLPlus Data Transformation
+===========================
 
-This module provides functionality to transform data.
+Utilities to filter, map/rename, select, sort, aggregate, and otherwise
+transform JSON-like records (dicts and lists of dicts).
 """
 from __future__ import annotations
 
@@ -19,13 +22,25 @@ Data: TypeAlias = JSONDict | JSONList
 def load_data(
     source: str | Data,
 ) -> Data:
-    """Load data from source (file path, JSON string, or direct data).
+    """
+    Load data from a file path, JSON string, or direct object.
 
-    Args:
-        source: Data source (file path, JSON string, or direct data)
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source. If a path exists, JSON is read from the file. If a
+        string that is not a path, it is parsed as JSON. Dicts or lists are
+        returned as-is.
 
-    Returns:
-        Loaded data (dict or list of dicts)
+    Returns
+    -------
+    dict[str, Any] or list[dict[str, Any]]
+        Parsed object or list of objects.
+
+    Raises
+    ------
+    ValueError
+        If the input cannot be interpreted as a JSON object or array.
     """
     if isinstance(source, (dict, list)):
         return source
@@ -39,7 +54,8 @@ def load_data(
                 if isinstance(loaded, (dict, list)):
                     return loaded
                 raise ValueError(
-                    'JSON root must be an object or array when loading file',
+                    'JSON root must be an object or array when '
+                    'loading file',
                 )
     except (OSError, json.JSONDecodeError):
         pass
@@ -60,15 +76,22 @@ def apply_filter(
     data: JSONList,
     condition: Mapping[str, Any],
 ) -> JSONList:
-    """Filter data based on conditions.
+    """
+    Filter a list of records by a simple condition.
 
-    Args:
-        data: List of dictionaries to filter
-        condition: Filter condition (e.g.,
-            {"field": "age", "op": "gt", "value": 18})
+    Parameters
+    ----------
+    data : list[dict[str, Any]]
+        Records to filter.
+    condition : Mapping[str, Any]
+        Condition object with keys ``field``, ``op``, and ``value``. The
+        ``op`` can be one of ``'eq'``, ``'ne'``, ``'gt'``, ``'gte'``,
+        ``'lt'``, ``'lte'``, ``'in'``, or ``'contains'``.
 
-    Returns:
-        Filtered data
+    Returns
+    -------
+    list[dict[str, Any]]
+        Filtered records.
     """
     field = condition.get('field')
     op = condition.get('op')
@@ -117,14 +140,20 @@ def apply_map(
     data: JSONList,
     mapping: Mapping[str, str],
 ) -> JSONList:
-    """Map/rename fields in data.
+    """
+    Map/rename fields in each record.
 
-    Args:
-        data: List of dictionaries to map
-        mapping: Field mapping (e.g., {"old_name": "new_name"})
+    Parameters
+    ----------
+    data : list[dict[str, Any]]
+        Records to transform.
+    mapping : Mapping[str, str]
+        Mapping of old field names to new field names.
 
-    Returns:
-        Mapped data
+    Returns
+    -------
+    list[dict[str, Any]]
+        New records with keys renamed. Unmapped fields are preserved.
     """
     result: JSONList = []
     for item in data:
@@ -144,14 +173,20 @@ def apply_select(
     data: JSONList,
     fields: list[str],
 ) -> JSONList:
-    """Select specific fields from data.
+    """
+    Keep only the requested fields in each record.
 
-    Args:
-        data: List of dictionaries
-        fields: List of fields to select
+    Parameters
+    ----------
+    data : list[dict[str, Any]]
+        Records to project.
+    fields : list[str]
+        Field names to retain.
 
-    Returns:
-        Data with only selected fields
+    Returns
+    -------
+    list[dict[str, Any]]
+        Records containing the requested fields; missing fields are ``None``.
     """
     return [{field: item.get(field) for field in fields} for item in data]
 
@@ -159,9 +194,18 @@ def apply_select(
 def _sort_key(
     value: Any,
 ) -> tuple[int, Any]:
-    """Coerce mixed-type values into a sortable key.
+    """
+    Coerce mixed-type values into a sortable tuple key.
 
-    Missing values sort last.
+    Parameters
+    ----------
+    value : Any
+        Value to normalize for sorting.
+
+    Returns
+    -------
+    tuple[int, Any]
+        A key that sorts numbers before strings; ``None`` sorts last.
     """
     if value is None:
         return (1, '')
@@ -175,39 +219,58 @@ def apply_sort(
     field: str | None,
     reverse: bool = False,
 ) -> JSONList:
-    """Sort data by a field.
-
-    Args:
-        data: List of dictionaries to sort
-        field: Field to sort by; if None, returns input unchanged
-        reverse: Sort in descending order if True
-
-    Returns:
-        Sorted data
     """
-    if field:
-        return sorted(
-            data,
-            key=lambda x: _sort_key(x.get(field)),
-            reverse=reverse,
-        )
+    Sort records by a field.
 
-    return data
+    Parameters
+    ----------
+    data : list[dict[str, Any]]
+        Records to sort.
+    field : str or None
+        Field name to sort by. If ``None``, input is returned unchanged.
+    reverse : bool, optional
+        Sort descending if ``True``. Default is ``False``.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Sorted records.
+    """
+    if not field:
+        return data
+
+    key_field: str = field
+    return sorted(
+        data,
+        key=lambda x: _sort_key(x.get(key_field)),
+        reverse=reverse,
+    )
 
 
 def apply_aggregate(
     data: JSONList,
     operation: Mapping[str, Any],
 ) -> JSONDict:
-    """Aggregate data.
+    """
+    Aggregate a numeric field or count presence.
 
-    Args:
-        data: List of dictionaries to aggregate
-        operation: Aggregation operation (e.g.,
-            {"field": "age", "func": "sum"})
+    Parameters
+    ----------
+    data : list[dict[str, Any]]
+        Records to aggregate.
+    operation : Mapping[str, Any]
+        Dict with keys ``field`` and ``func``. ``func`` is one of
+        ``'sum'``, ``'avg'``, ``'min'``, ``'max'``, or ``'count'``.
 
-    Returns:
-        Aggregated result
+    Returns
+    -------
+    dict[str, Any]
+        A single-row result like ``{"sum_age": 42}``.
+
+    Notes
+    -----
+    Numeric operations ignore non-numeric values but count their presence
+    for ``'count'``.
     """
     field = operation.get('field')
     func = operation.get('func')
@@ -241,24 +304,36 @@ def apply_aggregate(
 def transform(
     source: str | Data,
     operations: Mapping[str, Any] | None = None,
-) -> Data:  # noqa: E501
-    """Transform data based on operations.
+) -> Data:
+    """
+    Transform data using optional filter/map/select/sort/aggregate steps.
 
-    Args:
-        source: Data source to transform
-        operations: Transformation operations
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source to transform.
+    operations : Mapping[str, Any] or None, optional
+        Operation dictionary that may contain the keys ``filter``, ``map``,
+        ``select``, ``sort``, and ``aggregate`` with their respective
+        configs.
 
-    Returns:
-        Transformed data
+    Returns
+    -------
+    dict[str, Any] or list[dict[str, Any]]
+        Transformed data.
 
-    Example operations:
-        {
-            "filter": {"field": "age", "op": "gt", "value": 18},
-            "map": {"old_name": "new_name"},
-            "select": ["name", "age"],
-            "sort": {"field": "name", "reverse": False},
-            "aggregate": {"field": "age", "func": "avg"}
+    Examples
+    --------
+    Minimal example with multiple steps::
+
+        ops = {
+            'filter': {'field': 'age', 'op': 'gt', 'value': 18},
+            'map': {'old_name': 'new_name'},
+            'select': ['name', 'age'],
+            'sort': {'field': 'name', 'reverse': False},
+            'aggregate': {'field': 'age', 'func': 'avg'},
         }
+        result = transform(data, ops)
     """
     data = load_data(source)
 

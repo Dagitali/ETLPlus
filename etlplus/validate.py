@@ -1,7 +1,8 @@
-"""Data validation module for ETLPlus.
+"""
+ETLPlus Data Validation
+=======================
 
-This module provides functionality to validate data from various
-sources.
+Validate dicts and lists of dicts using simple, schema-like rules.
 """
 from __future__ import annotations
 
@@ -65,11 +66,25 @@ class Validation(TypedDict):
 def load_data(
     source: str | JSONData,
 ) -> JSONData:
-    """Load data from a file path, JSON string, or a direct object.
+    """
+    Load data from a file path, JSON string, or a direct object.
 
-    Returns either a dict or a list of dicts.
-    Raises ``ValueError`` if the input cannot be interpreted as a JSON
-    object or array.
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source. If a path exists, JSON is read from the file. If a
+        non-path string is given, it is parsed as JSON. Dicts or lists are
+        returned unchanged.
+
+    Returns
+    -------
+    dict[str, Any] or list[dict[str, Any]]
+        Parsed object or list of objects.
+
+    Raises
+    ------
+    ValueError
+        If the input cannot be interpreted as a JSON object or array.
     """
     if isinstance(source, (dict, list)):
         return source
@@ -110,6 +125,21 @@ def _type_matches(
     value: Any,
     expected: str,
 ) -> bool:
+    """
+    Check if a value matches an expected JSON-like type.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+    expected : {'string', 'number', 'integer', 'boolean', 'array', 'object'}
+        Expected logical type name.
+
+    Returns
+    -------
+    bool
+        ``True`` if the value matches the expected type, else ``False``.
+    """
     type_map: dict[str, type | tuple[type, ...]] = {
         'string': str,
         'number': (int, float),
@@ -128,9 +158,27 @@ def validate_field(
     value: Any,
     rules: Mapping[str, Any] | FieldRules,
 ) -> FieldValidation:
-    """Validate a single value against ``rules``.
+    """
+    Validate a single value against field rules.
 
-    Returns a dict containing ``valid`` and ``errors`` (list of strings).
+    Parameters
+    ----------
+    value : Any
+        The value to validate. ``None`` is treated as missing.
+    rules : Mapping[str, Any] or FieldRules
+        Rule dictionary. Supported keys include ``required``, ``type``,
+        ``min``, ``max``, ``minLength``, ``maxLength``, ``pattern``, and
+        ``enum``.
+
+    Returns
+    -------
+    FieldValidation
+        Result with ``valid`` and a list of ``errors``.
+
+    Notes
+    -----
+    If ``required`` is ``False`` or absent and the value is ``None``, the
+    field is considered valid without further checks.
     """
     errors: list[str] = []
 
@@ -228,10 +276,23 @@ def validate(
     source: str | JSONDict | JSONList,
     rules: Mapping[str, FieldRules] | None = None,
 ) -> Validation:
-    """Validate data against ``rules``.
+    """
+    Validate data against rules.
 
-    The returned dict always includes keys: ``valid``, ``errors``,
-    ``field_errors``, and ``data``.
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source to validate.
+    rules : Mapping[str, FieldRules] or None, optional
+        Field rules keyed by field name. If ``None``, data is considered
+        valid and returned unchanged.
+
+    Returns
+    -------
+    Validation
+        Structured result with keys ``valid``, ``errors``, ``field_errors``,
+        and ``data``. If loading fails, ``data`` is ``None`` and an error is
+        reported in ``errors``.
     """
     try:
         data = load_data(source)

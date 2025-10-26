@@ -1,4 +1,15 @@
-"""Tests for CLI module."""
+"""
+ETLPlus CLI Tests
+=================
+
+Unit tests for the ETLPlus command-line interface.
+
+Notes
+-----
+These tests cover parser creation, subcommand parsing, and runtime
+behavior of the ``main()`` entry point, including success and error
+paths.
+"""
 import json
 import sys
 import tempfile
@@ -11,14 +22,28 @@ from etlplus.__main__ import main
 
 
 def test_create_parser():
-    """Test parser creation."""
+    """
+    Validate parser creation.
+
+    Notes
+    -----
+    Asserts that the parser is constructed and the program name is
+    ``etlplus``.
+    """
     parser = create_parser()
     assert parser is not None
     assert parser.prog == 'etlplus'
 
 
 def test_parser_version(capsys):
-    """Test version argument."""
+    """
+    Validate ``--version`` handling.
+
+    Parameters
+    ----------
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout/stderr for assertions.
+    """
     parser = create_parser()
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(['--version'])
@@ -26,14 +51,26 @@ def test_parser_version(capsys):
 
 
 def test_parser_no_command():
-    """Test parser with no command."""
+    """
+    Parse with no subcommand.
+
+    Notes
+    -----
+    The resulting namespace should have ``command`` set to ``None``.
+    """
     parser = create_parser()
     args = parser.parse_args([])
     assert args.command is None
 
 
 def test_parser_extract_command():
-    """Test extract command parsing."""
+    """
+    Parse the ``extract`` subcommand.
+
+    Notes
+    -----
+    Ensures positional and optional args are parsed as expected.
+    """
     parser = create_parser()
     args = parser.parse_args(
         ['extract', 'file', '/path/to/file.json'],
@@ -45,7 +82,9 @@ def test_parser_extract_command():
 
 
 def test_parser_validate_command():
-    """Test validate command parsing."""
+    """
+    Parse the ``validate`` subcommand.
+    """
     parser = create_parser()
     args = parser.parse_args(['validate', '/path/to/file.json'])
     assert args.command == 'validate'
@@ -53,7 +92,9 @@ def test_parser_validate_command():
 
 
 def test_parser_transform_command():
-    """Test transform command parsing."""
+    """
+    Parse the ``transform`` subcommand.
+    """
     parser = create_parser()
     args = parser.parse_args(['transform', '/path/to/file.json'])
     assert args.command == 'transform'
@@ -61,7 +102,9 @@ def test_parser_transform_command():
 
 
 def test_parser_load_command():
-    """Test load command parsing."""
+    """
+    Parse the ``load`` subcommand.
+    """
     parser = create_parser()
     args = parser.parse_args(
         [
@@ -78,7 +121,16 @@ def test_parser_load_command():
 
 
 def test_main_no_command(monkeypatch, capsys):
-    """Test main with no command."""
+    """
+    Run ``main()`` with no subcommand.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv`` for the test run.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout/stderr for assertions.
+    """
     monkeypatch.setattr(sys, 'argv', ['etlplus'])
     result = main()
     assert result == 0
@@ -87,7 +139,16 @@ def test_main_no_command(monkeypatch, capsys):
 
 
 def test_main_extract_file(monkeypatch, capsys):
-    """Test main with extract file command."""
+    """
+    Extract from a JSON file and print contents.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv``.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout for result parsing.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -109,7 +170,16 @@ def test_main_extract_file(monkeypatch, capsys):
 
 
 def test_main_validate_data(monkeypatch, capsys):
-    """Test main with validate command."""
+    """
+    Validate a JSON string via ``main()``.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv``.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout for result parsing.
+    """
     json_data = '{"name": "John", "age": 30}'
     monkeypatch.setattr(sys, 'argv', ['etlplus', 'validate', json_data])
     result = main()
@@ -120,7 +190,16 @@ def test_main_validate_data(monkeypatch, capsys):
 
 
 def test_main_transform_data(monkeypatch, capsys):
-    """Test main with transform command."""
+    """
+    Transform a JSON array via ``main()`` with operations provided.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv``.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout for result parsing.
+    """
     json_data = '[{"name": "John", "age": 30}]'
     operations = '{"select": ["name"]}'
     monkeypatch.setattr(
@@ -138,7 +217,16 @@ def test_main_transform_data(monkeypatch, capsys):
 
 
 def test_main_load_file(monkeypatch, capsys):
-    """Test main with load file command."""
+    """
+    Load JSON to a file via ``main()``.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv``.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout/stderr for assertions.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / 'output.json'
         json_data = '{"name": "John", "age": 30}'
@@ -154,7 +242,16 @@ def test_main_load_file(monkeypatch, capsys):
 
 
 def test_main_extract_with_output(monkeypatch, capsys):
-    """Test main with extract and output file."""
+    """
+    Extract from a file and write to an output path.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv``.
+    capsys : pytest.CaptureFixture[str]
+        Captures stdout/stderr for assertions.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -185,7 +282,16 @@ def test_main_extract_with_output(monkeypatch, capsys):
 
 
 def test_main_error_handling(monkeypatch, capsys):
-    """Test main with error."""
+    """
+    Exercise error handling path.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``sys.argv`` to an invalid path.
+    capsys : pytest.CaptureFixture[str]
+        Captures stderr to assert presence of an error message.
+    """
     monkeypatch.setattr(
         sys, 'argv', ['etlplus', 'extract', 'file', '/nonexistent/file.json'],
     )
