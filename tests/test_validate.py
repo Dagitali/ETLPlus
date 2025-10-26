@@ -20,6 +20,9 @@ from etlplus.validate import validate
 from etlplus.validate import validate_field
 
 
+# SECTION: TESTS =========================================================== #
+
+
 def test_validate_field_required():
     """
     Validate the ``required`` rule.

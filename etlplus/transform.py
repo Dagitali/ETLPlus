@@ -13,10 +13,16 @@ from typing import Any
 from typing import Mapping
 from typing import TypeAlias
 
-# Type aliases for clarity
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
 JSONDict: TypeAlias = dict[str, Any]
 JSONList: TypeAlias = list[JSONDict]
 Data: TypeAlias = JSONDict | JSONList
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def load_data(

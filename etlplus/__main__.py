@@ -26,6 +26,9 @@ from etlplus.transform import transform
 from etlplus.validate import validate
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def create_parser() -> argparse.ArgumentParser:
     """
     Create the argument parser for the CLI.
@@ -217,6 +220,9 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"Error: {str(e)}", file=sys.stderr)
         return 1
+
+
+# SECTION: MAIN EXECUTION =================================================== #
 
 
 if __name__ == '__main__':

@@ -15,12 +15,16 @@ from typing import Mapping
 from typing import TypeAlias
 from typing import TypedDict
 
-# -----------------------------
-# Type aliases and TypedDicts
-# -----------------------------
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
 JSONDict: TypeAlias = dict[str, Any]
 JSONList: TypeAlias = list[JSONDict]
 JSONData: TypeAlias = JSONDict | JSONList
+
+
+# SECTION: CLASSES ========================================================== #
 
 
 class FieldRules(TypedDict, total=False):
@@ -58,9 +62,10 @@ class Validation(TypedDict):
     data: JSONData | None
 
 
-# -----------------------------
-# Data loading helpers
-# -----------------------------
+# SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Data loading helpers -- #
 
 
 def load_data(
@@ -116,9 +121,7 @@ def load_data(
         raise ValueError(f"Invalid data source: {source}") from exc
 
 
-# -----------------------------
-# Validation primitives
-# -----------------------------
+# -- Validation primitives -- #
 
 
 def _type_matches(
@@ -267,9 +270,7 @@ def validate_field(
     return {'valid': len(errors) == 0, 'errors': errors}
 
 
-# -----------------------------
-# Top-level validation API
-# -----------------------------
+# -- Top-level validation API -- #
 
 
 def validate(

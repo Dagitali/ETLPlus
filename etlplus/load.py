@@ -15,17 +15,20 @@ from typing import TypeAlias
 
 import requests
 
-# -----------------------------
-# Type aliases
-# -----------------------------
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
 JSONDict: TypeAlias = dict[str, Any]
 JSONList: TypeAlias = list[JSONDict]
 JSONData: TypeAlias = JSONDict | JSONList
 
 
-# -----------------------------
-# Data loading helper
-# -----------------------------
+# SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Data loading helper -- #
+
 
 def load_data(
     source: str | JSONData,
@@ -79,9 +82,8 @@ def load_data(
         raise ValueError(f"Invalid data source: {source}") from exc
 
 
-# -----------------------------
-# File target
-# -----------------------------
+# -- File target -- #
+
 
 def load_to_file(
     data: JSONData,
@@ -158,9 +160,8 @@ def load_to_file(
     raise ValueError(f"Unsupported format: {fmt}")
 
 
-# -----------------------------
-# Database target (placeholder)
-# -----------------------------
+# -- Database target (placeholder) -- #
+
 
 def load_to_database(
     data: JSONData,
@@ -196,9 +197,8 @@ def load_to_database(
     }
 
 
-# -----------------------------
-# REST API target
-# -----------------------------
+# -- REST API target -- #
+
 
 def load_to_api(
     data: JSONData,
@@ -259,9 +259,8 @@ def load_to_api(
     }
 
 
-# -----------------------------
-# Orchestrator
-# -----------------------------
+# -- Orchestrator -- #
+
 
 def load(
     source: str | JSONDict | JSONList,

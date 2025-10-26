@@ -21,6 +21,9 @@ from etlplus.load import load_data
 from etlplus.load import load_to_file
 
 
+# SECTION: TESTS =========================================================== #
+
+
 def test_load_data_from_dict():
     """
     Load from a dictionary.

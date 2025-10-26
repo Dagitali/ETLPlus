@@ -16,17 +16,20 @@ from typing import TypeAlias
 
 import requests
 
-# -----------------------------
-# Type aliases
-# -----------------------------
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
 JSONDict: TypeAlias = dict[str, Any]
 JSONList: TypeAlias = list[JSONDict]
 JSONData: TypeAlias = JSONDict | JSONList
 
 
-# -----------------------------
-# File extraction
-# -----------------------------
+# SECTION: FUNCTIONS ======================================================== #
+
+
+# -- File extraction -- #
+
 
 def extract_from_file(
     file_path: str,
@@ -125,9 +128,8 @@ def extract_from_file(
     raise ValueError(f"Unsupported format: {file_format}")
 
 
-# -----------------------------
-# Database extraction (placeholder)
-# -----------------------------
+# -- Database extraction (placeholder) -- #
+
 
 def extract_from_database(
     connection_string: str,
@@ -161,9 +163,8 @@ def extract_from_database(
     ]
 
 
-# -----------------------------
-# API extraction
-# -----------------------------
+# -- API extraction -- #
+
 
 def extract_from_api(
     url: str,
@@ -215,9 +216,8 @@ def extract_from_api(
     return {'content': response.text, 'content_type': content_type}
 
 
-# -----------------------------
-# Orchestrator
-# -----------------------------
+# -- Orchestrator -- #
+
 
 def extract(
     source_type: Literal['file', 'database', 'api'],

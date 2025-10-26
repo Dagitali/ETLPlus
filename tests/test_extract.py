@@ -19,6 +19,9 @@ from etlplus.extract import extract
 from etlplus.extract import extract_from_file
 
 
+# SECTION: TESTS =========================================================== #
+
+
 def test_extract_from_json_file():
     """
     Extract from a JSON file.

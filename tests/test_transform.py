@@ -21,6 +21,9 @@ from etlplus.transform import apply_sort
 from etlplus.transform import transform
 
 
+# SECTION: TESTS =========================================================== #
+
+
 def test_apply_filter_equal():
     """
     Filter with the ``eq`` operator.
