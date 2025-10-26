@@ -1,41 +1,83 @@
-"""Tests for load module."""
+"""
+ETLPlus Load Tests
+==================
 
-import json
+Unit tests for the ETLPlus loading utilities.
+
+Notes
+-----
+Covers file writers (JSON, CSV), directory creation, wrapper dispatch,
+and error paths.
+"""
 import csv
+import json
 import tempfile
-import pytest
 from pathlib import Path
-from etlplus.load import load, load_to_file, load_data
+
+import pytest
+
+from etlplus.load import load
+from etlplus.load import load_data
+from etlplus.load import load_to_file
+
+
+# SECTION: TESTS =========================================================== #
 
 
 def test_load_data_from_dict():
-    """Test loading data from dictionary."""
-    data = {"test": "data"}
+    """
+    Load from a dictionary.
+
+    Notes
+    -----
+    Ensures that objects passed directly are returned unchanged.
+    """
+    data = {'test': 'data'}
     result = load_data(data)
     assert result == data
 
 
 def test_load_data_from_list():
-    """Test loading data from list."""
-    data = [{"test": "data"}]
+    """
+    Load from a list of dictionaries.
+
+    Notes
+    -----
+    Ensures that lists passed directly are returned unchanged.
+    """
+    data = [{'test': 'data'}]
     result = load_data(data)
     assert result == data
 
 
 def test_load_data_from_json_string():
-    """Test loading data from JSON string."""
+    """
+    Load from a JSON string.
+
+    Notes
+    -----
+    Parses the JSON string and returns a mapping.
+    """
     json_str = '{"test": "data"}'
     result = load_data(json_str)
-    assert result["test"] == "data"
+    assert result['test'] == 'data'
 
 
 def test_load_data_from_file():
-    """Test loading data from file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        test_data = {"test": "data"}
+    """
+    Load from a JSON file path.
+
+    Notes
+    -----
+    Writes a temporary JSON file and verifies round-trip parsing.
+    """
+    with tempfile.NamedTemporaryFile(
+        mode='w', suffix='.json', delete=False,
+    ) as f:
+        test_data = {'test': 'data'}
         json.dump(test_data, f)
         temp_path = f.name
-    
+
     try:
         result = load_data(temp_path)
         assert result == test_data
@@ -44,108 +86,167 @@ def test_load_data_from_file():
 
 
 def test_load_to_json_file():
-    """Test loading data to JSON file."""
+    """
+    Write data to a JSON file.
+
+    Notes
+    -----
+    Verifies file creation and content round-trip.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.json"
-        test_data = {"name": "John", "age": 30}
-        
-        result = load_to_file(test_data, str(output_path), "json")
-        assert result["status"] == "success"
+        output_path = Path(tmpdir) / 'output.json'
+        test_data = {'name': 'John', 'age': 30}
+
+        result = load_to_file(test_data, str(output_path), 'json')
+        assert result['status'] == 'success'
         assert output_path.exists()
-        
+
         with open(output_path) as f:
             loaded_data = json.load(f)
         assert loaded_data == test_data
 
 
 def test_load_to_csv_file():
-    """Test loading data to CSV file."""
+    """
+    Write a list of mappings to a CSV file.
+
+    Notes
+    -----
+    Ensures header union and row writing are correct.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.csv"
+        output_path = Path(tmpdir) / 'output.csv'
         test_data = [
-            {"name": "John", "age": 30},
-            {"name": "Jane", "age": 25}
+            {'name': 'John', 'age': 30},
+            {'name': 'Jane', 'age': 25},
         ]
-        
-        result = load_to_file(test_data, str(output_path), "csv")
-        assert result["status"] == "success"
+
+        result = load_to_file(test_data, str(output_path), 'csv')
+        assert result['status'] == 'success'
         assert output_path.exists()
-        
-        with open(output_path, newline="") as f:
+
+        with open(output_path, newline='') as f:
             reader = csv.DictReader(f)
             loaded_data = list(reader)
         assert len(loaded_data) == 2
-        assert loaded_data[0]["name"] == "John"
+        assert loaded_data[0]['name'] == 'John'
 
 
 def test_load_to_csv_file_single_dict():
-    """Test loading single dictionary to CSV file."""
+    """
+    Write a single mapping to a CSV file.
+
+    Notes
+    -----
+    The writer should promote a mapping to a single-row CSV.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.csv"
-        test_data = {"name": "John", "age": 30}
-        
-        result = load_to_file(test_data, str(output_path), "csv")
-        assert result["status"] == "success"
+        output_path = Path(tmpdir) / 'output.csv'
+        test_data = {'name': 'John', 'age': 30}
+
+        result = load_to_file(test_data, str(output_path), 'csv')
+        assert result['status'] == 'success'
         assert output_path.exists()
 
 
 def test_load_to_csv_file_empty_list():
-    """Test loading empty list to CSV file."""
+    """
+    Write an empty list to a CSV file.
+
+    Notes
+    -----
+    Should succeed and report zero records written.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.csv"
+        output_path = Path(tmpdir) / 'output.csv'
         test_data = []
-        
-        result = load_to_file(test_data, str(output_path), "csv")
-        assert result["status"] == "success"
-        assert result["records"] == 0
+
+        result = load_to_file(test_data, str(output_path), 'csv')
+        assert result['status'] == 'success'
+        assert result['records'] == 0
 
 
 def test_load_to_file_creates_directory():
-    """Test that load_to_file creates parent directories."""
+    """
+    Ensure parent directories are created for file targets.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "subdir" / "output.json"
-        test_data = {"test": "data"}
-        
-        result = load_to_file(test_data, str(output_path), "json")
-        assert result["status"] == "success"
+        output_path = Path(tmpdir) / 'subdir' / 'output.json'
+        test_data = {'test': 'data'}
+
+        result = load_to_file(test_data, str(output_path), 'json')
+        assert result['status'] == 'success'
         assert output_path.exists()
 
 
 def test_load_to_file_unsupported_format():
-    """Test loading with unsupported format."""
+    """
+    Unsupported format raises ``ValueError``.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported format name is provided.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.txt"
-        test_data = {"test": "data"}
-        
-        with pytest.raises(ValueError, match="Unsupported format"):
-            load_to_file(test_data, str(output_path), "unsupported")
+        output_path = Path(tmpdir) / 'output.txt'
+        test_data = {'test': 'data'}
+
+        with pytest.raises(ValueError, match='Unsupported format'):
+            load_to_file(test_data, str(output_path), 'unsupported')
 
 
 def test_load_wrapper_file():
-    """Test load wrapper with file type."""
+    """
+    Use the top-level ``load()`` to write a JSON file.
+
+    Notes
+    -----
+    Verifies wrapper dispatch and file creation.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.json"
-        test_data = {"test": "data"}
-        
-        result = load(test_data, "file", str(output_path), format="json")
-        assert result["status"] == "success"
+        output_path = Path(tmpdir) / 'output.json'
+        test_data = {'test': 'data'}
+
+        result = load(test_data, 'file', str(output_path), format='json')
+        assert result['status'] == 'success'
         assert output_path.exists()
 
 
 def test_load_wrapper_database():
-    """Test load wrapper with database type."""
-    test_data = {"test": "data"}
-    result = load(test_data, "database", "postgresql://localhost/testdb")
-    assert result["status"] == "not_implemented"
+    """
+    Use the top-level ``load()`` with the database target.
+
+    Notes
+    -----
+    Placeholder implementation should return ``not_implemented``.
+    """
+    test_data = {'test': 'data'}
+    result = load(test_data, 'database', 'postgresql://localhost/testdb')
+    assert result['status'] == 'not_implemented'
 
 
 def test_load_invalid_target_type():
-    """Test load with invalid target type."""
-    with pytest.raises(ValueError, match="Invalid target type"):
-        load({"test": "data"}, "invalid", "target")
+    """
+    Invalid target type raises ``ValueError``.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported ``target_type`` is provided.
+    """
+    with pytest.raises(ValueError, match='Invalid target type'):
+        load({'test': 'data'}, 'invalid', 'target')
 
 
 def test_load_data_invalid_source():
-    """Test loading data from invalid source."""
-    with pytest.raises(ValueError, match="Invalid data source"):
-        load_data("not a valid json string")
+    """
+    Invalid JSON string raises ``ValueError`` when loading.
+
+    Raises
+    ------
+    ValueError
+        If the input string is not valid JSON.
+    """
+    with pytest.raises(ValueError, match='Invalid data source'):
+        load_data('not a valid json string')

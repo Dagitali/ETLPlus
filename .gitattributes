@@ -1,0 +1,13 @@
+# .gitattributes
+# ETLPlus
+#
+# Copyright © 2025 Dagitali LLC. All rights reserved.
+#
+# An optional Git configuration file. Defines attributes per pathname.
+#
+# See:
+# 1. https://fileinfo.com/extension/gitattributes
+# 2. https://git-scm.com/docs/gitattributes
+
+# Auto detect text files and perform LF normalization
+* text=auto
