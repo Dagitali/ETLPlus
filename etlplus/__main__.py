@@ -1,4 +1,18 @@
-"""Command-line interface for ETLPlus."""
+"""
+ETLPlus Command-Line Interface
+==============================
+
+Entry point for the ``etlplus`` CLI.
+
+Notes
+-----
+Provides subcommands:
+
+- ``extract``: extract data from files, databases, or REST APIs
+- ``validate``: validate data against rules
+- ``transform``: transform records
+- ``load``: load data to files, databases, or REST APIs
+"""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +27,14 @@ from etlplus.validate import validate
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create the argument parser for the CLI."""
+    """
+    Create the argument parser for the CLI.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Configured parser with subcommands for the CLI.
+    """
     parser = argparse.ArgumentParser(
         prog='etlplus',
         description=(
@@ -132,7 +153,18 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    """Main entry point for the CLI."""
+    """
+    Main entry point for the CLI.
+
+    Returns
+    -------
+    int
+        Zero on success, non-zero on error.
+
+    Notes
+    -----
+    This function prints results to stdout and errors to stderr.
+    """
     parser = create_parser()
     args = parser.parse_args()
 

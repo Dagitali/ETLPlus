@@ -1,4 +1,14 @@
-"""Tests for validate module."""
+"""
+ETLPlus Validate Tests
+======================
+
+Unit tests for the ETLPlus validation utilities.
+
+Notes
+-----
+Covers field rules, dict/list validation, and loading from strings and
+files.
+"""
 import json
 import tempfile
 from pathlib import Path
@@ -11,14 +21,26 @@ from etlplus.validate import validate_field
 
 
 def test_validate_field_required():
-    """Test field required validation."""
+    """
+    Validate the ``required`` rule.
+
+    Notes
+    -----
+    A ``None`` value with ``required=True`` should yield an error.
+    """
     result = validate_field(None, {'required': True})
     assert not result['valid']
     assert 'required' in result['errors'][0].lower()
 
 
 def test_validate_field_type_string():
-    """Test field type validation for string."""
+    """
+    Validate the ``type='string'`` rule.
+
+    Notes
+    -----
+    Strings pass; numbers fail.
+    """
     result = validate_field('test', {'type': 'string'})
     assert result['valid']
 
@@ -27,7 +49,13 @@ def test_validate_field_type_string():
 
 
 def test_validate_field_type_number():
-    """Test field type validation for number."""
+    """
+    Validate the ``type='number'`` rule.
+
+    Notes
+    -----
+    Integers and floats pass; strings fail.
+    """
     result = validate_field(123, {'type': 'number'})
     assert result['valid']
 
@@ -39,7 +67,13 @@ def test_validate_field_type_number():
 
 
 def test_validate_field_min_max():
-    """Test min/max validation for numbers."""
+    """
+    Validate ``min`` and ``max`` numeric bounds.
+
+    Notes
+    -----
+    Values outside the range should fail.
+    """
     result = validate_field(5, {'min': 1, 'max': 10})
     assert result['valid']
 
@@ -51,7 +85,13 @@ def test_validate_field_min_max():
 
 
 def test_validate_field_length():
-    """Test length validation for strings."""
+    """
+    Validate string length using ``minLength`` and ``maxLength``.
+
+    Notes
+    -----
+    Shorter or longer strings should fail accordingly.
+    """
     result = validate_field('hello', {'minLength': 3, 'maxLength': 10})
     assert result['valid']
 
@@ -63,7 +103,13 @@ def test_validate_field_length():
 
 
 def test_validate_field_enum():
-    """Test enum validation."""
+    """
+    Validate the ``enum`` rule.
+
+    Notes
+    -----
+    Only values present in ``enum`` are accepted.
+    """
     result = validate_field('red', {'enum': ['red', 'green', 'blue']})
     assert result['valid']
 
@@ -72,7 +118,9 @@ def test_validate_field_enum():
 
 
 def test_validate_dict_data():
-    """Test validating dictionary data."""
+    """
+    Validate a mapping against rules.
+    """
     data = {'name': 'John', 'age': 30}
     rules = {
         'name': {'type': 'string', 'required': True},
@@ -85,7 +133,9 @@ def test_validate_dict_data():
 
 
 def test_validate_dict_data_with_errors():
-    """Test validating dictionary data with errors."""
+    """
+    Validate a mapping and expect rule violations.
+    """
     data = {'name': 123, 'age': 200}
     rules = {
         'name': {'type': 'string', 'required': True},
@@ -98,7 +148,9 @@ def test_validate_dict_data_with_errors():
 
 
 def test_validate_list_data():
-    """Test validating list data."""
+    """
+    Validate a list of mappings against rules.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -113,7 +165,9 @@ def test_validate_list_data():
 
 
 def test_validate_no_rules():
-    """Test validation without rules."""
+    """
+    Validate without rules returns the data unchanged.
+    """
     data = {'test': 'data'}
     result = validate(data)
     assert result['valid']
@@ -121,7 +175,13 @@ def test_validate_no_rules():
 
 
 def test_validate_from_json_string():
-    """Test validation from JSON string."""
+    """
+    Validate from a JSON string.
+
+    Notes
+    -----
+    The JSON is parsed and considered valid by default.
+    """
     json_str = '{"name": "John", "age": 30}'
     result = validate(json_str)
     assert result['valid']
@@ -129,7 +189,13 @@ def test_validate_from_json_string():
 
 
 def test_validate_from_file():
-    """Test validation from file."""
+    """
+    Validate from a JSON file path.
+
+    Notes
+    -----
+    Writes a temporary file and verifies the parsed output.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -146,6 +212,13 @@ def test_validate_from_file():
 
 
 def test_load_data_invalid_source():
-    """Test loading data from invalid source."""
+    """
+    Invalid input string raises ``ValueError`` during loading.
+
+    Raises
+    ------
+    ValueError
+        If the input string is not valid JSON.
+    """
     with pytest.raises(ValueError, match='Invalid data source'):
         load_data('not a valid json string')

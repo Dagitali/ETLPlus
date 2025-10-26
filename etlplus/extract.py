@@ -1,9 +1,7 @@
-"""Data extraction module for ETLPlus.
+"""ETLPlus Data Extraction
+=======================
 
-This module provides functionality to extract data from various sources:
-- Files (JSON, CSV, XML)
-- Databases (via connection strings)
-- REST APIs
+Tools to extract data from files, databases, and REST APIs.
 """
 from __future__ import annotations
 
@@ -34,19 +32,29 @@ def extract_from_file(
     file_path: str,
     file_format: Literal['json', 'csv', 'xml'] = 'json',
 ) -> JSONData:
-    """Extract data from a file.
+    """
+    Extract data from a file.
 
-    Args:
-        file_path: Path to the file
-        file_format: File format (json, csv, xml)
+    Parameters
+    ----------
+    file_path : str
+        Path to the file to read.
+    file_format : {'json', 'csv', 'xml'}, optional
+        File format to parse. Defaults to ``'json'``.
 
-    Returns:
-        Extracted data as dictionary or list of dictionaries
+    Returns
+    -------
+    dict[str, Any] | list[dict[str, Any]]
+        Parsed data as a mapping or a list of mappings.
 
-    Raises:
-        FileNotFoundError: If file doesn't exist
-        ValueError: If format is unsupported
-        TypeError: If parsed content isn't a dict or a list of dicts
+    Raises
+    ------
+    FileNotFoundError
+        If ``file_path`` does not exist.
+    ValueError
+        If ``file_format`` is not supported.
+    TypeError
+        If parsed JSON is not an object or an array of objects.
     """
     path = Path(file_path)
     if not path.exists():
@@ -80,7 +88,20 @@ def extract_from_file(
         root = tree.getroot()
 
         def element_to_dict(element: ET.Element) -> JSONDict:
-            """Convert XML element to a dictionary."""
+            """
+            Convert an XML element to a dictionary.
+
+            Parameters
+            ----------
+            element : xml.etree.ElementTree.Element
+                Root element to convert.
+
+            Returns
+            -------
+            dict[str, Any]
+                A dictionary representing the element, its attributes,
+                children, and text.
+            """
             result: JSONDict = {}
             text = (element.text or '').strip()
             if text:
@@ -111,7 +132,24 @@ def extract_from_file(
 def extract_from_database(
     connection_string: str,
 ) -> JSONList:
-    """Extract data from a database (placeholder implementation)."""
+    """
+    Extract data from a database.
+
+    Notes
+    -----
+    Placeholder implementation. To enable database extraction, install and
+    configure database-specific drivers and query logic.
+
+    Parameters
+    ----------
+    connection_string : str
+        Database connection string.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Informational message payload.
+    """
     return [
         {
             'message': 'Database extraction not yet implemented',
@@ -131,14 +169,25 @@ def extract_from_api(
     url: str,
     **kwargs: Any,
 ) -> JSONData:
-    """Extract data from a REST API.
+    """
+    Extract data from a REST API.
 
-    Args:
-        url: API endpoint URL
-        **kwargs: Additional args forwarded to ``requests.get``
+    Parameters
+    ----------
+    url : str
+        API endpoint URL.
+    **kwargs : Any
+        Extra arguments forwarded to ``requests.get`` (e.g., ``timeout``).
 
-    Returns:
-        Extracted data from API response.
+    Returns
+    -------
+    dict[str, Any] | list[dict[str, Any]]
+        Parsed JSON payload, or a fallback object with raw text.
+
+    Raises
+    ------
+    requests.RequestException
+        If the HTTP request fails or a non-2xx status is returned.
     """
     response = requests.get(url, **kwargs)
     response.raise_for_status()
@@ -175,15 +224,27 @@ def extract(
     source: str,
     **kwargs: Any,
 ) -> JSONData:
-    """Extract data from a source.
+    """
+    Extract data from a source.
 
-    Args:
-        source_type: Type of source (file, database, api)
-        source: Source location
-        **kwargs: Additional arguments (e.g., format for files)
+    Parameters
+    ----------
+    source_type : {'file', 'database', 'api'}
+        Type of source to extract from.
+    source : str
+        Source location (file path, connection string, or API URL).
+    **kwargs : Any
+        Additional arguments; for files, ``format`` may be provided.
 
-    Returns:
-        Extracted data
+    Returns
+    -------
+    dict[str, Any] | list[dict[str, Any]]
+        Extracted data.
+
+    Raises
+    ------
+    ValueError
+        If ``source_type`` is not one of the supported values.
     """
     if source_type == 'file':
         file_format = cast(

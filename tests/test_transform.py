@@ -1,4 +1,14 @@
-"""Tests for transform module."""
+"""
+ETLPlus Transform Tests
+=======================
+
+Unit tests for the ETLPlus transform utilities.
+
+Notes
+-----
+Covers filter, map, select, sort, aggregate, and the ``transform()``
+wrapper.
+"""
 import json
 import tempfile
 from pathlib import Path
@@ -12,7 +22,13 @@ from etlplus.transform import transform
 
 
 def test_apply_filter_equal():
-    """Test filtering with equal operator."""
+    """
+    Filter with the ``eq`` operator.
+
+    Notes
+    -----
+    Ensures two records with ``age == 30`` are returned.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -24,7 +40,13 @@ def test_apply_filter_equal():
 
 
 def test_apply_filter_greater_than():
-    """Test filtering with greater than operator."""
+    """
+    Filter with the ``gt`` operator.
+
+    Notes
+    -----
+    Ensures values greater than 28 are kept.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -35,7 +57,13 @@ def test_apply_filter_greater_than():
 
 
 def test_apply_filter_in():
-    """Test filtering with in operator."""
+    """
+    Filter with the ``in`` operator.
+
+    Notes
+    -----
+    Keeps records whose ``status`` is in the provided list.
+    """
     data = [
         {'name': 'John', 'status': 'active'},
         {'name': 'Jane', 'status': 'inactive'},
@@ -53,7 +81,13 @@ def test_apply_filter_in():
 
 
 def test_apply_map():
-    """Test mapping/renaming fields."""
+    """
+    Map/rename fields in each record.
+
+    Notes
+    -----
+    Renames ``old_name`` to ``new_name`` and preserves other fields.
+    """
     data = [
         {'old_name': 'John', 'age': 30},
         {'old_name': 'Jane', 'age': 25},
@@ -65,7 +99,13 @@ def test_apply_map():
 
 
 def test_apply_select():
-    """Test selecting specific fields."""
+    """
+    Select a subset of fields from each record.
+
+    Notes
+    -----
+    Retains only ``name`` and ``age``.
+    """
     data = [
         {'name': 'John', 'age': 30, 'city': 'NYC'},
         {'name': 'Jane', 'age': 25, 'city': 'LA'},
@@ -75,7 +115,13 @@ def test_apply_select():
 
 
 def test_apply_sort():
-    """Test sorting data."""
+    """
+    Sort records by a field.
+
+    Notes
+    -----
+    Checks ascending and descending sort by ``age``.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -91,7 +137,13 @@ def test_apply_sort():
 
 
 def test_apply_aggregate_sum():
-    """Test sum aggregation."""
+    """
+    Aggregate with ``sum``.
+
+    Notes
+    -----
+    Sums the ``value`` field.
+    """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
@@ -102,7 +154,13 @@ def test_apply_aggregate_sum():
 
 
 def test_apply_aggregate_avg():
-    """Test average aggregation."""
+    """
+    Aggregate with ``avg``.
+
+    Notes
+    -----
+    Averages the ``value`` field.
+    """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
@@ -113,7 +171,13 @@ def test_apply_aggregate_avg():
 
 
 def test_apply_aggregate_min_max():
-    """Test min/max aggregation."""
+    """
+    Aggregate with ``min`` and ``max``.
+
+    Notes
+    -----
+    Computes the minimum and maximum over ``value``.
+    """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
@@ -127,7 +191,13 @@ def test_apply_aggregate_min_max():
 
 
 def test_apply_aggregate_count():
-    """Test count aggregation."""
+    """
+    Aggregate with ``count``.
+
+    Notes
+    -----
+    Counts the number of records with the field present.
+    """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
@@ -138,7 +208,13 @@ def test_apply_aggregate_count():
 
 
 def test_transform_with_filter():
-    """Test transform with filter operation."""
+    """
+    Transform using a filter operation.
+
+    Notes
+    -----
+    Filters for ``age > 26``.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -158,21 +234,39 @@ def test_transform_with_filter():
 
 
 def test_transform_with_map():
-    """Test transform with map operation."""
+    """
+    Transform using a map operation.
+
+    Notes
+    -----
+    Renames ``old_field`` to ``new_field``.
+    """
     data = [{'old_field': 'value'}]
     result = transform(data, {'map': {'old_field': 'new_field'}})
     assert 'new_field' in result[0]
 
 
 def test_transform_with_select():
-    """Test transform with select operation."""
+    """
+    Transform using a select operation.
+
+    Notes
+    -----
+    Keeps only ``name`` and ``age`` fields.
+    """
     data = [{'name': 'John', 'age': 30, 'city': 'NYC'}]
     result = transform(data, {'select': ['name', 'age']})
     assert set(result[0].keys()) == {'name', 'age'}
 
 
 def test_transform_with_sort():
-    """Test transform with sort operation."""
+    """
+    Transform using a sort operation.
+
+    Notes
+    -----
+    Sorts by ``age`` ascending.
+    """
     data = [
         {'name': 'John', 'age': 30},
         {'name': 'Jane', 'age': 25},
@@ -182,7 +276,13 @@ def test_transform_with_sort():
 
 
 def test_transform_with_aggregate():
-    """Test transform with aggregate operation."""
+    """
+    Transform using an aggregate operation.
+
+    Notes
+    -----
+    Sums the ``value`` field across records.
+    """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
@@ -195,7 +295,13 @@ def test_transform_with_aggregate():
 
 
 def test_transform_from_json_string():
-    """Test transform from JSON string."""
+    """
+    Transform from a JSON string.
+
+    Notes
+    -----
+    Selects only ``name`` from the provided JSON array string.
+    """
     json_str = '[{"name": "John", "age": 30}]'
     result = transform(json_str, {'select': ['name']})
     assert len(result) == 1
@@ -203,7 +309,13 @@ def test_transform_from_json_string():
 
 
 def test_transform_from_file():
-    """Test transform from file."""
+    """
+    Transform from a JSON file.
+
+    Notes
+    -----
+    Writes a temporary JSON file and selects only ``name``.
+    """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False,
     ) as f:
@@ -220,7 +332,9 @@ def test_transform_from_file():
 
 
 def test_transform_no_operations():
-    """Test transform without operations."""
+    """
+    Transform without operations returns input unchanged.
+    """
     data = [{'name': 'John'}]
     result = transform(data)
     assert result == data

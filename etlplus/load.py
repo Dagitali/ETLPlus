@@ -1,9 +1,8 @@
-"""Data loading module for ETLPlus.
+"""
+ETLPlus Data Loading
+====================
 
-This module provides functionality to load data to various targets:
-- Files (JSON, CSV)
-- Databases (via connection strings)
-- REST APIs
+Helpers to load data into files, databases, and REST APIs.
 """
 from __future__ import annotations
 
@@ -31,10 +30,24 @@ JSONData: TypeAlias = JSONDict | JSONList
 def load_data(
     source: str | JSONData,
 ) -> JSONData:
-    """Load data from a file path, JSON string, or direct object.
+    """
+    Load data from a file path, JSON string, or direct object.
 
-    Returns either a dict or a list of dicts. Raises ``ValueError`` if the
-    input cannot be interpreted as a JSON object/array.
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source to load. If a path is provided and exists, JSON will be
+        read from it. Otherwise, a JSON string will be parsed.
+
+    Returns
+    -------
+    dict[str, Any] or list[dict[str, Any]]
+        Parsed object or list of objects.
+
+    Raises
+    ------
+    ValueError
+        If the input cannot be interpreted as a JSON object or array.
     """
     if isinstance(source, (dict, list)):
         return source
@@ -75,18 +88,27 @@ def load_to_file(
     file_path: str,
     fmt: Literal['json', 'csv'] = 'json',
 ) -> dict[str, Any]:
-    """Persist data to a local file.
+    """
+    Persist data to a local file.
 
-    Args:
-        data: Data to write (dict or list of dicts)
-        file_path: Target path
-        fmt: File format ("json" or "csv")
+    Parameters
+    ----------
+    data : dict[str, Any] or list[dict[str, Any]]
+        Data to write.
+    file_path : str
+        Destination file path.
+    fmt : {'json', 'csv'}, optional
+        Output format. Default is ``'json'``.
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Result dictionary with status and record count.
 
-    Raises:
-        ValueError: If format is unsupported
+    Raises
+    ------
+    ValueError
+        If ``fmt`` is not one of the supported formats.
     """
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -144,7 +166,26 @@ def load_to_database(
     data: JSONData,
     connection_string: str,
 ) -> dict[str, Any]:
-    """Load data to a database (placeholder implementation)."""
+    """
+    Load data to a database.
+
+    Notes
+    -----
+    Placeholder implementation. To enable database loading, install and
+    configure database-specific drivers.
+
+    Parameters
+    ----------
+    data : dict[str, Any] or list[dict[str, Any]]
+        Data to load.
+    connection_string : str
+        Database connection string.
+
+    Returns
+    -------
+    dict[str, Any]
+        Result object describing the operation.
+    """
     records = len(data) if isinstance(data, list) else 1
     return {
         'status': 'not_implemented',
@@ -165,16 +206,31 @@ def load_to_api(
     method: str,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Send data to a REST API.
+    """
+    Send data to a REST API.
 
-    Args:
-        data: Dict or list of dicts to send as JSON
-        url: API endpoint URL
-        method: HTTP method (POST, PUT, PATCH)
-        **kwargs: Extra arguments forwarded to ``requests``
+    Parameters
+    ----------
+    data : dict[str, Any] or list[dict[str, Any]]
+        Data to send as JSON.
+    url : str
+        API endpoint URL.
+    method : {'POST', 'PUT', 'PATCH'}
+        HTTP method to use.
+    **kwargs : Any
+        Extra arguments forwarded to ``requests`` (e.g., ``timeout``).
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Result dictionary including response payload or text.
+
+    Raises
+    ------
+    requests.RequestException
+        If the HTTP request fails or returns an error status.
+    ValueError
+        If ``method`` is not supported.
     """
     match method.upper():
         case 'POST':
@@ -213,16 +269,29 @@ def load(
     target: str,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Load data to a target.
+    """
+    Load data to a target.
 
-    Args:
-        source: Data source to load
-        target_type: One of "file", "database", or "api"
-        target: Target location (file path, connection string, or URL)
-        **kwargs: Additional args (e.g., fmt for files, method for APIs)
+    Parameters
+    ----------
+    source : str or dict[str, Any] or list[dict[str, Any]]
+        Data source to load.
+    target_type : {'file', 'database', 'api'}
+        Type of target to load to.
+    target : str
+        Target location (file path, connection string, or URL).
+    **kwargs : Any
+        Additional arguments; e.g., ``format`` for files, ``method`` for APIs.
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Result dictionary with status.
+
+    Raises
+    ------
+    ValueError
+        If ``target_type`` or options are invalid.
     """
     data = load_data(source)
 
