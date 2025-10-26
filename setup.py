@@ -1,6 +1,22 @@
-"""Setup configuration for etlplus package."""
+"""
+ETLPlus Packaging
+=================
+
+Setuptools configuration for the ``etlplus`` package.
+
+Notes
+-----
+- Reads the project README as the long description.
+- Declares console entry point ``etlplus`` -> ``etlplus.__main__:main``.
+- Requires Python >= 3.8 (see ``python_requires``).
+- Development extras are provided under ``extras_require['dev']``.
+"""
 from setuptools import find_packages
 from setuptools import setup
+
+
+# SECTION: SETUP ============================================================ #
+
 
 with open('README.md', encoding='utf-8') as fh:
     long_description = fh.read()
