@@ -21,6 +21,9 @@ from etlplus.__main__ import create_parser
 from etlplus.__main__ import main
 
 
+# SECTION: TESTS =========================================================== #
+
+
 def test_create_parser():
     """
     Validate parser creation.
