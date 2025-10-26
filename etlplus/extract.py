@@ -165,7 +165,7 @@ def _coerce_file_format(
     try:
         return FileFormat(str(file_format).lower())
     except ValueError as e:
-        raise ValueError(f"Unsupported format: {file_format}") from e
+        raise ValueError(f'Unsupported format: {file_format}') from e
 
 
 def _coerce_source_type(
@@ -195,7 +195,7 @@ def _coerce_source_type(
     try:
         return SourceType(str(source_type).lower())
     except ValueError as e:
-        raise ValueError(f"Invalid source type: {source_type}") from e
+        raise ValueError(f'Invalid source type: {source_type}') from e
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -234,7 +234,7 @@ def extract_from_file(
     """
     path = Path(file_path)
     if not path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+        raise FileNotFoundError(f'File not found: {path}')
 
     fmt = _coerce_file_format(file_format)
     match fmt:
@@ -246,7 +246,7 @@ def extract_from_file(
             return _read_xml(path)
 
     # The `match` statement is exhaustive, but mypy/pyright expect a return.
-    raise ValueError(f"Unsupported format: {file_format}")
+    raise ValueError(f'Unsupported format: {file_format}')
 
 
 # -- Database Extraction (Placeholder) -- #
@@ -389,4 +389,4 @@ def extract(
         return extract_from_api(source, **kwargs)
 
     # `_coerce_source_type` covers invalid entries, but keep explicit guard.
-    raise ValueError(f"Invalid source type: {source_type}")
+    raise ValueError(f'Invalid source type: {source_type}')
