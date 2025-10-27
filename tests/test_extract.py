@@ -164,5 +164,5 @@ def test_extract_invalid_source_type():
     ValueError
         When an unsupported ``source_type`` is provided.
     """
-    with pytest.raises(ValueError, match='Invalid source type'):
+    with pytest.raises(ValueError, match='Invalid data connector type'):
         extract('invalid', 'source')
