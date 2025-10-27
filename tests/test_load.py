@@ -235,7 +235,7 @@ def test_load_invalid_target_type():
     ValueError
         If an unsupported ``target_type`` is provided.
     """
-    with pytest.raises(ValueError, match='Invalid target type'):
+    with pytest.raises(ValueError, match='Invalid data connector type'):
         load({'test': 'data'}, 'invalid', 'target')
 
 
