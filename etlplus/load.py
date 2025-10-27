@@ -7,7 +7,6 @@ Helpers to load data into files, databases, and REST APIs.
 from __future__ import annotations
 
 import csv
-import enum
 import json
 from pathlib import Path
 from typing import Any
@@ -15,46 +14,13 @@ from typing import cast
 
 import requests
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrPath = str | Path
-type JSONDict = dict[str, Any]
-type JSONList = list[JSONDict]
-type JSONData = JSONDict | JSONList
-
-
-# SECTION: CLASSES ========================================================== #
-
-
-class FileFormat(enum.StrEnum):
-    """
-    Supported file formats for persistence.
-    """
-
-    JSON = 'json'
-    CSV = 'csv'
-
-
-class HttpMethod(enum.StrEnum):
-    """
-    HTTP verbs that accept JSON payloads.
-    """
-
-    POST = 'post'
-    PUT = 'put'
-    PATCH = 'patch'
-
-
-class TargetType(enum.StrEnum):
-    """
-    Supported data target types.
-    """
-
-    FILE = 'file'
-    DATABASE = 'database'
-    API = 'api'
+from .enums import DataConnectorType
+from .enums import FileFormat
+from .enums import HttpMethod
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
+from .types import StrPath
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -154,16 +120,16 @@ def _coerce_http_method(
 
 
 def _coerce_target_type(
-    target_type: TargetType | str,
-) -> TargetType:
+    target_type: DataConnectorType | str,
+) -> DataConnectorType:
     """
-    Normalize target identifiers to `TargetType` values.
+    Normalize target identifiers to `DataConnectorType` values.
     """
 
-    if isinstance(target_type, TargetType):
+    if isinstance(target_type, DataConnectorType):
         return target_type
     try:
-        return TargetType(str(target_type).lower())
+        return DataConnectorType(str(target_type).lower())
     except ValueError as e:
         raise ValueError(f'Invalid target type: {target_type}') from e
 
@@ -378,7 +344,7 @@ def load_to_api(
 
     Parameters
     ----------
-    data : dict[str, Any] or list[dict[str, Any]]
+    data : JSONData
         Data to send as JSON.
     url : str
         API endpoint URL.
@@ -437,7 +403,7 @@ def load_to_api(
 
 def load(
     source: StrPath | JSONData,
-    target_type: TargetType | str,
+    target_type: DataConnectorType | str,
     target: StrPath,
     **kwargs: Any,
 ) -> JSONData:
@@ -469,16 +435,16 @@ def load(
     data = load_data(source)
     ttype = _coerce_target_type(target_type)
 
-    if ttype is TargetType.FILE:
+    if ttype is DataConnectorType.FILE:
         file_format = kwargs.pop(
             'format', kwargs.pop('file_format', FileFormat.JSON),
         )
         return load_to_file(data, target, file_format)
 
-    if ttype is TargetType.DATABASE:
+    if ttype is DataConnectorType.DATABASE:
         return load_to_database(data, str(target))
 
-    if ttype is TargetType.API:
+    if ttype is DataConnectorType.API:
         method = kwargs.pop('method', HttpMethod.POST)
         return load_to_api(data, str(target), method, **kwargs)
 
