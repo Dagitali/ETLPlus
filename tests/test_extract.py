@@ -127,7 +127,7 @@ def test_extract_unsupported_format():
         temp_path = f.name
 
     try:
-        with pytest.raises(ValueError, match='Unsupported format'):
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
             extract_from_file(temp_path, 'unsupported')
     finally:
         Path(temp_path).unlink()
@@ -164,5 +164,5 @@ def test_extract_invalid_source_type():
     ValueError
         When an unsupported ``source_type`` is provided.
     """
-    with pytest.raises(ValueError, match='Invalid data connector type'):
+    with pytest.raises(ValueError, match='Invalid DataConnectorType'):
         extract('invalid', 'source')
