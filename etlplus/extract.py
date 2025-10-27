@@ -6,173 +6,21 @@ Helpers to extract data from files, databases, and REST APIs.
 """
 from __future__ import annotations
 
-import csv
-import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from typing import cast
 
 import requests
 
+from .enums import coerce_data_connector_type
+from .enums import coerce_file_format
 from .enums import DataConnectorType
 from .enums import FileFormat
+from .file import read_structured_file
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import StrPath
-
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
-
-
-# -- File Extraction -- #
-
-
-def _element_to_dict(
-    element: ET.Element,
-) -> JSONDict:
-    """
-    Convert an XML element (and its children) to `JSONDict`.
-    """
-
-    result: JSONDict = {}
-    text = (element.text or '').strip()
-    if text:
-        result['text'] = text
-
-    for child in element:
-        child_data = _element_to_dict(child)
-        tag = child.tag
-        if tag in result:
-            existing = result[tag]
-            if isinstance(existing, list):
-                existing.append(child_data)
-            else:
-                result[tag] = [existing, child_data]
-        else:
-            result[tag] = child_data
-
-    for key, value in element.attrib.items():
-        if key in result:
-            result[f'@{key}'] = value
-        else:
-            result[key] = value
-    return result
-
-
-def _read_csv(
-    path: Path,
-) -> JSONList:
-    """
-    Load CSV content as a list of dictionaries.
-    """
-
-    with path.open('r', encoding='utf-8', newline='') as handle:
-        reader: csv.DictReader[str] = csv.DictReader(handle)
-        rows: JSONList = []
-        for row in reader:
-            if not any(row.values()):
-                continue
-            rows.append(cast(JSONDict, dict(row)))
-    return rows
-
-
-def _read_json(
-    path: Path,
-) -> JSONData:
-    """
-    Load and validate JSON payloads from `path`.
-    """
-
-    with path.open('r', encoding='utf-8') as handle:
-        loaded = json.load(handle)
-
-    if isinstance(loaded, dict):
-        return cast(JSONDict, loaded)
-    if isinstance(loaded, list):
-        if all(isinstance(item, dict) for item in loaded):
-            return cast(JSONList, loaded)
-        raise TypeError('JSON array must contain only objects (dicts)')
-    raise TypeError('JSON root must be an object or an array of objects')
-
-
-def _read_xml(
-    path: Path,
-) -> JSONDict:
-    """
-    Parse XML documents into nested dictionaries.
-    """
-
-    tree = ET.parse(path)
-    root = tree.getroot()
-
-    return {root.tag: _element_to_dict(root)}
-
-
-# -- File Normalization -- #
-
-
-def _coerce_file_format(
-    file_format: FileFormat | str,
-) -> FileFormat:
-    """
-    Normalize textual file format values to `FileFormat` members.
-
-    Parameters
-    ----------
-    file_format : FileFormat | str
-        File format to normalize.
-
-    Returns
-    -------
-    FileFormat
-        Normalized file format.
-
-    Raises
-    ------
-    ValueError
-        If the file format is not supported.
-    """
-
-    if isinstance(file_format, FileFormat):
-        return file_format
-    try:
-        return FileFormat(str(file_format).lower())
-    except ValueError as e:
-        raise ValueError(f'Unsupported format: {file_format}') from e
-
-
-def _coerce_data_connector_type(
-    data_connector_type: DataConnectorType | str,
-) -> DataConnectorType:
-    """
-    Normalize data connector identifiers to `DataConnectorType` members.
-
-    Parameters
-    ----------
-    data_connector_type : DataConnectorType | str
-        Source type to normalize.
-
-    Returns
-    -------
-    DataConnectorType
-        Normalized source type.
-
-    Raises
-    ------
-    ValueError
-        If the source type is not supported.
-    """
-
-    if isinstance(data_connector_type, DataConnectorType):
-        return data_connector_type
-    try:
-        return DataConnectorType(str(data_connector_type).lower())
-    except ValueError as e:
-        raise ValueError(
-            f'Invalid data connector type: {data_connector_type}',
-        ) from e
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -214,17 +62,9 @@ def extract_from_file(
     if not path.exists():
         raise FileNotFoundError(f'File not found: {path}')
 
-    fmt = _coerce_file_format(file_format)
-    match fmt:
-        case FileFormat.JSON:
-            return _read_json(path)
-        case FileFormat.CSV:
-            return _read_csv(path)
-        case FileFormat.XML:
-            return _read_xml(path)
+    fmt = coerce_file_format(file_format)
 
-    # The `match` statement is exhaustive, but mypy/pyright expect a return.
-    raise ValueError(f'Unsupported format: {file_format}')
+    return read_structured_file(path, fmt)
 
 
 # -- Database Extraction (Placeholder) -- #
@@ -289,7 +129,9 @@ def extract_from_api(
     Raises
     ------
     requests.RequestException
-        If the HTTP request fails or a non-2xx status is returned.
+        If the HTTP request fails or returns an error (i.e., non-2xx) status.
+    ValueError
+        If the HTTP response content is not valid JSON.
     """
 
     # Apply a conservative timeout to guard against hanging requests.
@@ -298,7 +140,9 @@ def extract_from_api(
     if session is not None:
         get_method = getattr(session, 'get', None)
         if not callable(get_method):
-            raise TypeError("session must expose a callable 'get' method")
+            raise TypeError(
+                'Session must expose a callable "get" method',
+            )
         response = get_method(url, timeout=timeout, **kwargs)
     else:
         response = requests.get(url, timeout=timeout, **kwargs)
@@ -345,7 +189,7 @@ def extract(
     source : StrPath
         Source location (file path, connection string, or API URL).
     **kwargs : Any
-        Additional arguments; for files, `format` may be provided.
+        Additional arguments (e.g., `format` for files, `method` for APIs).
 
     Returns
     -------
@@ -358,7 +202,7 @@ def extract(
         If `source_type` is not one of the supported values.
     """
 
-    stype = _coerce_data_connector_type(source_type)
+    stype = coerce_data_connector_type(source_type)
 
     if stype is DataConnectorType.FILE:
         file_format = kwargs.pop(
@@ -372,6 +216,6 @@ def extract(
     if stype is DataConnectorType.API:
         return extract_from_api(str(source), **kwargs)
 
-    # `_coerce_data_connector_type` covers invalid entries, but keep explicit
+    # `coerce_data_connector_type` covers invalid entries, but keep explicit
     # guard.
     raise ValueError(f'Invalid source type: {source_type}')

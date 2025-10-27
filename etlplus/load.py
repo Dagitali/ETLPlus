@@ -6,18 +6,21 @@ Helpers to load data into files, databases, and REST APIs.
 """
 from __future__ import annotations
 
-import csv
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from typing import cast
 
 import requests
 
+from .enums import coerce_data_connector_type
+from .enums import coerce_file_format
+from .enums import coerce_http_method
 from .enums import DataConnectorType
 from .enums import FileFormat
 from .enums import HttpMethod
+from .file import read_json
+from .file import write_structured_file
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -27,223 +30,17 @@ from .types import StrPath
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-# -- File Loading -- #
-
-
-def _dict_to_element(
-    name: str,
-    payload: Any,
-) -> ET.Element:
-    """
-    Convert JSON-like structures into XML elements.
-    """
-
-    element = ET.Element(name)
-
-    if isinstance(payload, dict):
-        text = payload.get('text')
-        if text is not None:
-            element.text = str(text)
-
-        for key, value in payload.items():
-            if key == 'text':
-                continue
-            if key.startswith('@'):
-                element.set(key[1:], str(value))
-                continue
-            if isinstance(value, list):
-                for item in value:
-                    element.append(_dict_to_element(key, item))
-            else:
-                element.append(_dict_to_element(key, value))
-    elif isinstance(payload, list):
-        for item in payload:
-            element.append(_dict_to_element('item', item))
-    elif payload is not None:
-        element.text = str(payload)
-
-    return element
-
-
-def _write_csv(
-    path: Path,
-    data: JSONData,
-) -> int:
-    """
-    Write `data` to `path` as CSV and return the number of rows.
-    """
-
-    rows: list[JSONDict]
-    if isinstance(data, list):
-        rows = [row for row in data if isinstance(row, dict)]
-    else:
-        rows = [data]
-
-    if not rows:
-        return 0
-
-    fieldnames = sorted({key for row in rows for key in row})
-    with path.open('w', encoding='utf-8', newline='') as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field) for field in fieldnames})
-
-    return len(rows)
-
-
-def _write_json(
-    path: Path,
-    data: JSONData,
-) -> int:
-    """
-    Write `data` to `path` as formatted JSON and return record count.
-    """
-
-    with path.open('w', encoding='utf-8') as handle:
-        json.dump(data, handle, indent=2, ensure_ascii=False)
-        handle.write('\n')
-
-    return len(data) if isinstance(data, list) else 1
-
-
-def _write_xml(
-    path: Path,
-    data: JSONData,
-) -> int:
-    """
-    Write `data` to `path` as XML and return record count.
-    """
-
-    if isinstance(data, dict) and len(data) == 1:
-        root_name, payload = next(iter(data.items()))
-        root_element = _dict_to_element(str(root_name), payload)
-    else:
-        root_element = _dict_to_element('root', data)
-
-    tree = ET.ElementTree(root_element)
-    tree.write(path, encoding='utf-8', xml_declaration=True)
-
-    return len(data) if isinstance(data, list) else 1
-
-
-# -- File Normalization -- #
-
-
-def _coerce_file_format(
-    file_format: FileFormat | str,
-) -> FileFormat:
-    """
-    Normalize textual file format values to `FileFormat` members.
-
-    Parameters
-    ----------
-    file_format : FileFormat | str
-        File format to normalize.
-
-    Returns
-    -------
-    FileFormat
-        Normalized file format.
-
-    Raises
-    ------
-    ValueError
-        If the file format is not supported.
-    """
-
-    if isinstance(file_format, FileFormat):
-        return file_format
-    try:
-        return FileFormat(str(file_format).lower())
-    except ValueError as e:
-        raise ValueError(f'Unsupported format: {file_format}') from e
-
-
-def _coerce_http_method(
-    method: HttpMethod | str,
-) -> HttpMethod:
-    """
-    Normalize HTTP method input to ``HttpMethod`` values.
-    """
-
-    if isinstance(method, HttpMethod):
-        return method
-    try:
-        return HttpMethod(str(method).lower())
-    except ValueError as e:
-        raise ValueError(f'Unsupported HTTP method: {method}') from e
-
-
-def _coerce_data_connector_type(
-    data_connector_type: DataConnectorType | str,
-) -> DataConnectorType:
-    """
-    Normalize data connector identifiers to `DataConnectorType` members.
-
-    Parameters
-    ----------
-    data_connector_type : DataConnectorType | str
-        Source type to normalize.
-
-    Returns
-    -------
-    DataConnectorType
-        Normalized source type.
-
-    Raises
-    ------
-    ValueError
-        If the source type is not supported.
-    """
-
-    if isinstance(data_connector_type, DataConnectorType):
-        return data_connector_type
-    try:
-        return DataConnectorType(str(data_connector_type).lower())
-    except ValueError as e:
-        raise ValueError(
-            f'Invalid data connector type: {data_connector_type}',
-        ) from e
-
-
-def _load_json_from_path(
-    path: Path,
-) -> JSONData:
-    """
-    Read JSON content from `path` and validate the structure.
-    """
-
-    if not path.exists():
-        raise FileNotFoundError(f'File not found: {path}')
-
-    with path.open('r', encoding='utf-8') as handle:
-        loaded = json.load(handle)
-
-    if isinstance(loaded, dict):
-        return cast(JSONDict, loaded)
-    if isinstance(loaded, list):
-        if all(isinstance(item, dict) for item in loaded):
-            return cast(JSONList, loaded)
-        raise ValueError(
-            'JSON array must contain only objects (dicts) when loading file',
-        )
-    raise ValueError(
-        'JSON root must be an object or array when loading from file',
-    )
-
-
 def _parse_json_string(
     raw: str,
 ) -> JSONData:
     """
-    Parse JSON data from `raw` text.
+    Parse JSON data from ``raw`` text.
     """
 
     try:
         loaded = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise ValueError(f'Invalid data source: {raw}') from e
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid data source: {raw}") from exc
 
     if isinstance(loaded, dict):
         return cast(JSONDict, loaded)
@@ -291,13 +88,13 @@ def load_data(
         return cast(JSONData, source)
 
     if isinstance(source, Path):
-        return _load_json_from_path(source)
+        return read_json(source)
 
     if isinstance(source, str):
         candidate = Path(source)
         if candidate.exists():
             try:
-                return _load_json_from_path(candidate)
+                return read_json(candidate)
             except (OSError, json.JSONDecodeError, ValueError):
                 # Fall back to treating the string as raw JSON content.
                 pass
@@ -308,7 +105,7 @@ def load_data(
     )
 
 
-# -- File Target -- #
+# -- File Loading -- #
 
 
 def load_to_file(
@@ -342,24 +139,12 @@ def load_to_file(
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    fmt = _coerce_file_format(file_format)
-    match fmt:
-        case FileFormat.JSON:
-            records = _write_json(path, data)
-            message = f'Data loaded to {path}'
-        case FileFormat.CSV:
-            records = _write_csv(path, data)
-            message = (
-                'No data to write'
-                if records == 0
-                else f'Data loaded to {path}'
-            )
-        case FileFormat.XML:
-            records = _write_xml(path, data)
-            message = f'Data loaded to {path}'
-        case _:
-            # Ensure exhaustive handling in case new enum members are added.
-            raise ValueError(f'Unsupported format: {file_format}')
+    fmt = coerce_file_format(file_format)
+    records = write_structured_file(path, data, fmt)
+    if fmt is FileFormat.CSV and records == 0:
+        message = 'No data to write'
+    else:
+        message = f'Data loaded to {path}'
 
     return {
         'status': 'success',
@@ -368,7 +153,7 @@ def load_to_file(
     }
 
 
-# -- Database Target (Placeholder) -- #
+# -- Database Loading (Placeholder) -- #
 
 
 def load_to_database(
@@ -381,7 +166,7 @@ def load_to_database(
     Notes
     -----
     Placeholder implementation. To enable database loading, install and
-    configure database-specific drivers.
+    configure database-specific drivers and query logic.
 
     Parameters
     ----------
@@ -437,11 +222,12 @@ def load_to_api(
     Raises
     ------
     requests.RequestException
-        If the HTTP request fails or returns an error status.
+        If the HTTP request fails or returns an error (i.e., non-2xx) status.
     ValueError
         If ``method`` is not supported.
     """
-    http_method = _coerce_http_method(method)
+
+    http_method = coerce_http_method(method)
 
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
@@ -490,12 +276,12 @@ def load(
     ----------
     source : StrPath | JSONData
         Data source to load.
-    target_type : {'file', 'database', 'api'}
+    target_type : DataConnectorType | str
         Type of target to load to.
     target : StrPath
-        Target location (file path, connection string, or URL).
+        Target location (file path, connection string, or API URL).
     **kwargs : Any
-        Additional arguments; e.g., `format` for files, `method` for APIs.
+        Additional arguments (e.g., `format` for files, `method` for APIs).
 
     Returns
     -------
@@ -509,7 +295,7 @@ def load(
     """
 
     data = load_data(source)
-    ttype = _coerce_data_connector_type(target_type)
+    ttype = coerce_data_connector_type(target_type)
 
     if ttype is DataConnectorType.FILE:
         file_format = kwargs.pop(
@@ -524,5 +310,6 @@ def load(
         method = kwargs.pop('method', HttpMethod.POST)
         return load_to_api(data, str(target), method, **kwargs)
 
-    # `_coerce_target_type` covers invalid entries, but keep explicit guard.
+    # `coerce_data_connector_type` covers invalid entries, but keep explicit
+    # guard.
     raise ValueError(f'Invalid target type: {target_type}')

@@ -21,6 +21,7 @@ __all__ = (
     'HttpMethod',
     'coerce_data_connector_type',
     'coerce_file_format',
+    'coerce_http_method',
 )
 
 
@@ -211,3 +212,16 @@ def coerce_file_format(
     """
 
     return FileFormat.coerce(file_format)
+
+
+def coerce_http_method(
+    http_method: HttpMethod | str,
+) -> HttpMethod:
+    """
+    Normalize textual HTTP method values to :class:`HttpMethod`.
+
+    This thin wrapper is kept for backward compatibility; prefer
+    :meth:`HttpMethod.coerce` going forward.
+    """
+
+    return HttpMethod.coerce(http_method)
