@@ -7,28 +7,113 @@ transform JSON-like records (dicts and lists of dicts).
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import operator
 from typing import Any
 from typing import Mapping
 
+from .load import load_data as _load_data
+from .types import AggregateFunc
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
+from .types import OperatorFunc
+from .types import StrPath
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _contains(
+    container: Any,
+    member: Any,
+) -> bool:
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+def _has(
+    member: Any,
+    container: Any,
+) -> bool:
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+def _agg_avg(
+    nums: list[float],
+    _: int,
+) -> float:
+    return (sum(nums) / len(nums)) if nums else 0.0
+
+
+def _agg_count(
+    _: list[float],
+    present: int,
+) -> int:
+    return present
+
+
+def _agg_max(
+    nums: list[float],
+    _: int,
+) -> float | None:
+    return max(nums) if nums else None
+
+
+def _agg_min(
+    nums: list[float],
+    _: int,
+) -> float | None:
+    return min(nums) if nums else None
+
+
+def _agg_sum(
+    nums: list[float],
+    _: int,
+) -> float:
+    return sum(nums)
+
+
+# SECTION: PROTECTED CONSTANTS ============================================== #
+
+
+_OPERATORS: dict[str, OperatorFunc] = {
+    'eq': operator.eq,
+    'ne': operator.ne,
+    'gt': operator.gt,
+    'gte': operator.ge,
+    'lt': operator.lt,
+    'lte': operator.le,
+    'in': _has,
+    'contains': _contains,
+}
+
+
+_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
+    'sum': _agg_sum,
+    'avg': _agg_avg,
+    'min': _agg_min,
+    'max': _agg_max,
+    'count': _agg_count,
+}
 
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def load_data(
-    source: str | JSONData,
+    source: StrPath | JSONData,
 ) -> JSONData:
     """
     Load data from a file path, JSON string, or direct object.
 
     Parameters
     ----------
-    source : str | JSONData
+    source : StrPath | JSONData
         Data source. If a path exists, JSON is read from the file. If a
         string that is not a path, it is parsed as JSON. Dicts or lists are
         returned as-is.
@@ -44,34 +129,7 @@ def load_data(
         If the input cannot be interpreted as a JSON object or array.
     """
 
-    if isinstance(source, (dict, list)):
-        return source
-
-    # Try to load from file.
-    try:
-        path = Path(source)
-        if path.exists():
-            with path.open(encoding='utf-8') as f:
-                loaded = json.load(f)
-                if isinstance(loaded, (dict, list)):
-                    return loaded
-                raise ValueError(
-                    'JSON root must be an object or array when '
-                    'loading file',
-                )
-    except (OSError, json.JSONDecodeError):
-        pass
-
-    # Try to parse as JSON string.
-    try:
-        loaded = json.loads(source)
-        if isinstance(loaded, (dict, list)):
-            return loaded
-        raise ValueError(
-            'JSON root must be an object or array when parsing string',
-        )
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid data source: {source}") from exc
+    return _load_data(source)
 
 
 def apply_filter(
@@ -96,46 +154,27 @@ def apply_filter(
         Filtered records.
     """
 
-    field = condition.get('field')
-    op = condition.get('op')
+    field_name = condition.get('field')
+    op_name = condition.get('op')
     value = condition.get('value')
 
-    if not (field and op and (value is not None)):
+    if not field_name or op_name is None or value is None:
         return data
 
-    def _contains(container: Any, member: Any) -> bool:
-        try:
-            return member in container  # type: ignore[operator]
-        except TypeError:
-            return False
-
-    def _has(member: Any, container: Any) -> bool:
-        try:
-            return member in container  # type: ignore[operator]
-        except TypeError:
-            return False
-
-    operators: dict[str, Any] = {
-        'eq': lambda x, y: x == y,
-        'ne': lambda x, y: x != y,
-        'gt': lambda x, y: x > y,
-        'gte': lambda x, y: x >= y,
-        'lt': lambda x, y: x < y,
-        'lte': lambda x, y: x <= y,
-        # x must be in y (e.g., value list contains field value)
-        'in': lambda x, y: _has(x, y),
-        # x contains y (strings/lists only)
-        'contains': lambda x, y: _contains(x, y),
-    }
-
-    op_func = operators.get(str(op))
+    op_func = _OPERATORS.get(str(op_name).lower())
     if not op_func:
         return data
 
     result: JSONList = []
     for item in data:
-        if field in item and op_func(item[field], value):
-            result.append(item)
+        if field_name not in item:
+            continue
+        try:
+            if op_func(item[field_name], value):
+                result.append(item)
+        except TypeError:
+            # Skip records where the comparison is not supported.
+            continue
 
     return result
 
@@ -160,17 +199,21 @@ def apply_map(
         New records with keys renamed. Unmapped fields are preserved.
     """
 
+    rename_map = dict(mapping)
     result: JSONList = []
+
     for item in data:
-        new_item: JSONDict = {}
-        for old_key, new_key in mapping.items():
-            if old_key in item:
-                new_item[new_key] = item[old_key]
-        # Keep fields not in mapping
-        for key, value in item.items():
-            if key not in mapping:
-                new_item[key] = value
-        result.append(new_item)
+        renamed = {
+            new_key: item[old_key]
+            for old_key, new_key in rename_map.items()
+            if old_key in item
+        }
+        renamed.update({
+            key: value
+            for key, value in item.items()
+            if key not in rename_map
+        })
+        result.append(renamed)
 
     return result
 
@@ -285,11 +328,16 @@ def apply_aggregate(
     field = operation.get('field')
     func = operation.get('func')
 
-    if not field or not func:
+    if not field or func is None:
         return {'error': 'Invalid aggregation operation'}
 
+    func_key = str(func).lower()
+    aggregator = _AGGREGATE_FUNCS.get(func_key)
+    if aggregator is None:
+        return {'error': f"Unknown aggregation function: {func}"}
+
     nums: list[float] = []
-    present: int = 0
+    present = 0
     for item in data:
         if field in item:
             present += 1
@@ -297,22 +345,12 @@ def apply_aggregate(
             if isinstance(v, (int, float)):
                 nums.append(float(v))
 
-    if func == 'sum':
-        return {f"{func}_{field}": sum(nums)}
-    if func == 'avg':
-        return {f"{func}_{field}": (sum(nums) / len(nums)) if nums else 0.0}
-    if func == 'min':
-        return {f"{func}_{field}": min(nums) if nums else None}
-    if func == 'max':
-        return {f"{func}_{field}": max(nums) if nums else None}
-    if func == 'count':
-        return {f"{func}_{field}": present}
-
-    return {'error': f"Unknown aggregation function: {func}"}
+    field_name = str(field)
+    return {f"{func_key}_{field_name}": aggregator(nums, present)}
 
 
 def transform(
-    source: str | JSONData,
+    source: StrPath | JSONData,
     operations: Mapping[str, Any] | None = None,
 ) -> JSONData:
     """
@@ -320,7 +358,7 @@ def transform(
 
     Parameters
     ----------
-    source : str | JSONData
+    source : StrPath | JSONData
         Data source to transform.
     operations : Mapping[str, Any] or None, optional
         Operation dictionary that may contain the keys ``filter``, ``map``,
