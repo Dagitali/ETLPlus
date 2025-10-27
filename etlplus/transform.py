@@ -2,7 +2,7 @@
 ETLPlus Data Transformation
 ===========================
 
-Utilities to filter, map/rename, select, sort, aggregate, and otherwise
+Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
 """
 from __future__ import annotations
@@ -11,36 +11,31 @@ import json
 from pathlib import Path
 from typing import Any
 from typing import Mapping
-from typing import TypeAlias
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-JSONDict: TypeAlias = dict[str, Any]
-JSONList: TypeAlias = list[JSONDict]
-Data: TypeAlias = JSONDict | JSONList
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
 
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def load_data(
-    source: str | Data,
-) -> Data:
+    source: str | JSONData,
+) -> JSONData:
     """
     Load data from a file path, JSON string, or direct object.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
+    source : str | JSONData
         Data source. If a path exists, JSON is read from the file. If a
         string that is not a path, it is parsed as JSON. Dicts or lists are
         returned as-is.
 
     Returns
     -------
-    dict[str, Any] or list[dict[str, Any]]
+    JSONData
         Parsed object or list of objects.
 
     Raises
@@ -48,10 +43,11 @@ def load_data(
     ValueError
         If the input cannot be interpreted as a JSON object or array.
     """
+
     if isinstance(source, (dict, list)):
         return source
 
-    # Try to load from file
+    # Try to load from file.
     try:
         path = Path(source)
         if path.exists():
@@ -66,7 +62,7 @@ def load_data(
     except (OSError, json.JSONDecodeError):
         pass
 
-    # Try to parse as JSON string
+    # Try to parse as JSON string.
     try:
         loaded = json.loads(source)
         if isinstance(loaded, (dict, list)):
@@ -87,7 +83,7 @@ def apply_filter(
 
     Parameters
     ----------
-    data : list[dict[str, Any]]
+    data : JSONList
         Records to filter.
     condition : Mapping[str, Any]
         Condition object with keys ``field``, ``op``, and ``value``. The
@@ -96,9 +92,10 @@ def apply_filter(
 
     Returns
     -------
-    list[dict[str, Any]]
+    JSONList
         Filtered records.
     """
+
     field = condition.get('field')
     op = condition.get('op')
     value = condition.get('value')
@@ -139,6 +136,7 @@ def apply_filter(
     for item in data:
         if field in item and op_func(item[field], value):
             result.append(item)
+
     return result
 
 
@@ -151,16 +149,17 @@ def apply_map(
 
     Parameters
     ----------
-    data : list[dict[str, Any]]
+    data : JSONList
         Records to transform.
     mapping : Mapping[str, str]
         Mapping of old field names to new field names.
 
     Returns
     -------
-    list[dict[str, Any]]
+    JSONList
         New records with keys renamed. Unmapped fields are preserved.
     """
+
     result: JSONList = []
     for item in data:
         new_item: JSONDict = {}
@@ -172,6 +171,7 @@ def apply_map(
             if key not in mapping:
                 new_item[key] = value
         result.append(new_item)
+
     return result
 
 
@@ -184,16 +184,17 @@ def apply_select(
 
     Parameters
     ----------
-    data : list[dict[str, Any]]
+    data : JSONList
         Records to project.
     fields : list[str]
         Field names to retain.
 
     Returns
     -------
-    list[dict[str, Any]]
+    JSONList
         Records containing the requested fields; missing fields are ``None``.
     """
+
     return [{field: item.get(field) for field in fields} for item in data]
 
 
@@ -212,11 +213,13 @@ def _sort_key(
     -------
     tuple[int, Any]
         A key that sorts numbers before strings; ``None`` sorts last.
+
     """
     if value is None:
         return (1, '')
     if isinstance(value, (int, float)):
         return (0, value)
+
     return (0, str(value))
 
 
@@ -230,18 +233,19 @@ def apply_sort(
 
     Parameters
     ----------
-    data : list[dict[str, Any]]
+    data : JSONList
         Records to sort.
-    field : str or None
+    field : str | None
         Field name to sort by. If ``None``, input is returned unchanged.
     reverse : bool, optional
         Sort descending if ``True``. Default is ``False``.
 
     Returns
     -------
-    list[dict[str, Any]]
+    JSONList
         Sorted records.
     """
+
     if not field:
         return data
 
@@ -262,7 +266,7 @@ def apply_aggregate(
 
     Parameters
     ----------
-    data : list[dict[str, Any]]
+    data : JSONList
         Records to aggregate.
     operation : Mapping[str, Any]
         Dict with keys ``field`` and ``func``. ``func`` is one of
@@ -270,7 +274,7 @@ def apply_aggregate(
 
     Returns
     -------
-    dict[str, Any]
+    JSONDict
         A single-row result like ``{"sum_age": 42}``.
 
     Notes
@@ -308,15 +312,15 @@ def apply_aggregate(
 
 
 def transform(
-    source: str | Data,
+    source: str | JSONData,
     operations: Mapping[str, Any] | None = None,
-) -> Data:
+) -> JSONData:
     """
     Transform data using optional filter/map/select/sort/aggregate steps.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
+    source : str | JSONData
         Data source to transform.
     operations : Mapping[str, Any] or None, optional
         Operation dictionary that may contain the keys ``filter``, ``map``,
@@ -325,7 +329,7 @@ def transform(
 
     Returns
     -------
-    dict[str, Any] or list[dict[str, Any]]
+    JSONData
         Transformed data.
 
     Examples
@@ -341,6 +345,7 @@ def transform(
         }
         result = transform(data, ops)
     """
+
     data = load_data(source)
 
     if not operations:
