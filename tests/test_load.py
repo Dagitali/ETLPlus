@@ -192,7 +192,7 @@ def test_load_to_file_unsupported_format():
         output_path = Path(tmpdir) / 'output.txt'
         test_data = {'test': 'data'}
 
-        with pytest.raises(ValueError, match='Unsupported format'):
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
             load_to_file(test_data, str(output_path), 'unsupported')
 
 
@@ -235,7 +235,7 @@ def test_load_invalid_target_type():
     ValueError
         If an unsupported ``target_type`` is provided.
     """
-    with pytest.raises(ValueError, match='Invalid data connector type'):
+    with pytest.raises(ValueError, match='Invalid DataConnectorType'):
         load({'test': 'data'}, 'invalid', 'target')
 
 
