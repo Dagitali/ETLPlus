@@ -7,11 +7,11 @@ Helpers to load data into files, databases, and REST APIs.
 from __future__ import annotations
 
 import csv
+import enum
 import json
 from pathlib import Path
 from typing import Any
-from typing import Literal
-from typing import TypeAlias
+from typing import cast
 
 import requests
 
@@ -19,32 +19,227 @@ import requests
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-JSONDict: TypeAlias = dict[str, Any]
-JSONList: TypeAlias = list[JSONDict]
-JSONData: TypeAlias = JSONDict | JSONList
+type StrPath = str | Path
+type JSONDict = dict[str, Any]
+type JSONList = list[JSONDict]
+type JSONData = JSONDict | JSONList
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class FileFormat(enum.StrEnum):
+    """
+    Supported file formats for persistence.
+    """
+
+    JSON = 'json'
+    CSV = 'csv'
+
+
+class HttpMethod(enum.StrEnum):
+    """
+    HTTP verbs that accept JSON payloads.
+    """
+
+    POST = 'post'
+    PUT = 'put'
+    PATCH = 'patch'
+
+
+class TargetType(enum.StrEnum):
+    """
+    Supported data target types.
+    """
+
+    FILE = 'file'
+    DATABASE = 'database'
+    API = 'api'
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+# -- File Loading -- #
+
+
+def _write_csv(
+    path: Path,
+    data: JSONData,
+) -> int:
+    """
+    Write `data` to `path` as CSV and return the number of rows.
+    """
+
+    rows: list[JSONDict]
+    if isinstance(data, list):
+        rows = [row for row in data if isinstance(row, dict)]
+    else:
+        rows = [data]
+
+    if not rows:
+        return 0
+
+    fieldnames = sorted({key for row in rows for key in row})
+    with path.open('w', encoding='utf-8', newline='') as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field) for field in fieldnames})
+
+    return len(rows)
+
+
+def _write_json(
+    path: Path,
+    data: JSONData,
+) -> int:
+    """
+    Write `data` to `path` as formatted JSON and return record count.
+    """
+
+    with path.open('w', encoding='utf-8') as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write('\n')
+
+    return len(data) if isinstance(data, list) else 1
+
+
+# -- File Normalization -- #
+
+
+def _coerce_file_format(
+    file_format: FileFormat | str,
+) -> FileFormat:
+    """
+    Normalize textual file format values to `FileFormat` members.
+
+    Parameters
+    ----------
+    file_format : FileFormat | str
+        File format to normalize.
+
+    Returns
+    -------
+    FileFormat
+        Normalized file format.
+
+    Raises
+    ------
+    ValueError
+        If the file format is not supported.
+    """
+
+    if isinstance(file_format, FileFormat):
+        return file_format
+    try:
+        return FileFormat(str(file_format).lower())
+    except ValueError as e:
+        raise ValueError(f'Unsupported format: {file_format}') from e
+
+
+def _coerce_http_method(
+    method: HttpMethod | str,
+) -> HttpMethod:
+    """
+    Normalize HTTP method input to ``HttpMethod`` values.
+    """
+
+    if isinstance(method, HttpMethod):
+        return method
+    try:
+        return HttpMethod(str(method).lower())
+    except ValueError as e:
+        raise ValueError(f'Unsupported HTTP method: {method}') from e
+
+
+def _coerce_target_type(
+    target_type: TargetType | str,
+) -> TargetType:
+    """
+    Normalize target identifiers to `TargetType` values.
+    """
+
+    if isinstance(target_type, TargetType):
+        return target_type
+    try:
+        return TargetType(str(target_type).lower())
+    except ValueError as e:
+        raise ValueError(f'Invalid target type: {target_type}') from e
+
+
+def _load_json_from_path(
+    path: Path,
+) -> JSONData:
+    """
+    Read JSON content from `path` and validate the structure.
+    """
+
+    if not path.exists():
+        raise FileNotFoundError(f'File not found: {path}')
+
+    with path.open('r', encoding='utf-8') as handle:
+        loaded = json.load(handle)
+
+    if isinstance(loaded, dict):
+        return cast(JSONDict, loaded)
+    if isinstance(loaded, list):
+        if all(isinstance(item, dict) for item in loaded):
+            return cast(JSONList, loaded)
+        raise ValueError(
+            'JSON array must contain only objects (dicts) when loading file',
+        )
+    raise ValueError(
+        'JSON root must be an object or array when loading from file',
+    )
+
+
+def _parse_json_string(
+    raw: str,
+) -> JSONData:
+    """
+    Parse JSON data from `raw` text.
+    """
+
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f'Invalid data source: {raw}') from e
+
+    if isinstance(loaded, dict):
+        return cast(JSONDict, loaded)
+    if isinstance(loaded, list):
+        if all(isinstance(item, dict) for item in loaded):
+            return cast(JSONList, loaded)
+        raise ValueError(
+            'JSON array must contain only objects (dicts) when parsing string',
+        )
+    raise ValueError(
+        'JSON root must be an object or array when parsing string',
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# -- Data loading helper -- #
+# -- Data Loading -- #
 
 
 def load_data(
-    source: str | JSONData,
+    source: StrPath | JSONData,
 ) -> JSONData:
     """
     Load data from a file path, JSON string, or direct object.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
+    source : StrPath | JSONData
         Data source to load. If a path is provided and exists, JSON will be
         read from it. Otherwise, a JSON string will be parsed.
 
     Returns
     -------
-    dict[str, Any] or list[dict[str, Any]]
+    JSONData
         Parsed object or list of objects.
 
     Raises
@@ -52,121 +247,92 @@ def load_data(
     ValueError
         If the input cannot be interpreted as a JSON object or array.
     """
+
     if isinstance(source, (dict, list)):
-        return source
+        return cast(JSONData, source)
 
-    # Try to load from file
-    try:
-        path = Path(source)
-        if path.exists():
-            with path.open('r', encoding='utf-8') as f:
-                loaded = json.load(f)
-            if isinstance(loaded, (dict, list)):
-                return loaded
-            raise ValueError(
-                'JSON root must be an object or array when loading file',
-            )
-    except (OSError, json.JSONDecodeError):
-        # Fall through and try to parse as a JSON string
-        pass
+    if isinstance(source, Path):
+        return _load_json_from_path(source)
 
-    # Try to parse as JSON string
-    try:
-        loaded = json.loads(source)
-        if isinstance(loaded, (dict, list)):
-            return loaded
-        raise ValueError(
-            'JSON root must be an object or array when parsing string',
-        )
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid data source: {source}") from exc
+    if isinstance(source, str):
+        candidate = Path(source)
+        if candidate.exists():
+            try:
+                return _load_json_from_path(candidate)
+            except (OSError, json.JSONDecodeError, ValueError):
+                # Fall back to treating the string as raw JSON content.
+                pass
+        return _parse_json_string(source)
+
+    raise TypeError(
+        'source must be a mapping, sequence of mappings, path, or JSON string',
+    )
 
 
-# -- File target -- #
+# -- File Target -- #
 
 
 def load_to_file(
     data: JSONData,
-    file_path: str,
-    fmt: Literal['json', 'csv'] = 'json',
-) -> dict[str, Any]:
+    file_path: StrPath,
+    file_format: FileFormat | str = FileFormat.JSON,
+) -> JSONDict:
     """
     Persist data to a local file.
 
     Parameters
     ----------
-    data : dict[str, Any] or list[dict[str, Any]]
+    data : JSONData
         Data to write.
-    file_path : str
-        Destination file path.
-    fmt : {'json', 'csv'}, optional
-        Output format. Default is ``'json'``.
+    file_path : StrPath
+        Target file path.
+    file_format : {'json', 'csv'}, optional
+        Output format. Default is 'json'.
 
     Returns
     -------
-    dict[str, Any]
+    JSONDict
         Result dictionary with status and record count.
 
     Raises
     ------
     ValueError
-        If ``fmt`` is not one of the supported formats.
+        If `file_format` is not one of the supported formats.
     """
+
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if fmt == 'json':
-        with path.open('w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        records = len(data) if isinstance(data, list) else 1
-        return {
-            'status': 'success',
-            'message': f"Data loaded to {file_path}",
-            'records': records,
-        }
+    fmt = _coerce_file_format(file_format)
+    match fmt:
+        case FileFormat.JSON:
+            records = _write_json(path, data)
+            message = f'Data loaded to {path}'
+        case FileFormat.CSV:
+            records = _write_csv(path, data)
+            message = (
+                'No data to write'
+                if records == 0
+                else f'Data loaded to {path}'
+            )
+        case _:
+            # Ensure exhaustive handling in case new enum members are added.
+            raise ValueError(f'Unsupported format: {file_format}')
 
-    if fmt == 'csv':
-        rows: JSONList
-        if isinstance(data, list):
-            rows = [x for x in data if isinstance(x, dict)]
-        else:
-            rows = [data]
-
-        if not rows:
-            return {
-                'status': 'success',
-                'message': 'No data to write',
-                'records': 0,
-            }
-
-        # Collect all unique field names across rows
-        fieldnames_set: set[str] = set()
-        for item in rows:
-            fieldnames_set.update(item.keys())
-        fieldnames: list[str] = sorted(fieldnames_set)
-
-        with path.open('w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for item in rows:
-                writer.writerow(item)
-
-        return {
-            'status': 'success',
-            'message': f"Data loaded to {file_path}",
-            'records': len(rows),
-        }
-
-    raise ValueError(f"Unsupported format: {fmt}")
+    return {
+        'status': 'success',
+        'message': message,
+        'records': records,
+    }
 
 
-# -- Database target (placeholder) -- #
+# -- Database Target (Placeholder) -- #
 
 
 def load_to_database(
     data: JSONData,
     connection_string: str,
-) -> dict[str, Any]:
+) -> JSONData:
     """
     Load data to a database.
 
@@ -177,16 +343,17 @@ def load_to_database(
 
     Parameters
     ----------
-    data : dict[str, Any] or list[dict[str, Any]]
+    data : JSONData
         Data to load.
     connection_string : str
         Database connection string.
 
     Returns
     -------
-    dict[str, Any]
+    JSONDict
         Result object describing the operation.
     """
+
     records = len(data) if isinstance(data, list) else 1
     return {
         'status': 'not_implemented',
@@ -197,7 +364,7 @@ def load_to_database(
     }
 
 
-# -- REST API target -- #
+# -- REST API Loading -- #
 
 
 def load_to_api(
@@ -205,9 +372,9 @@ def load_to_api(
     url: str,
     method: str,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> JSONDict:
     """
-    Send data to a REST API.
+    Load data to a REST API.
 
     Parameters
     ----------
@@ -222,7 +389,7 @@ def load_to_api(
 
     Returns
     -------
-    dict[str, Any]
+    JSONDict
         Result dictionary including response payload or text.
 
     Raises
@@ -232,19 +399,24 @@ def load_to_api(
     ValueError
         If ``method`` is not supported.
     """
-    match method.upper():
-        case 'POST':
-            response = requests.post(url, json=data, **kwargs)
-        case 'PUT':
-            response = requests.put(url, json=data, **kwargs)
-        case 'PATCH':
-            response = requests.patch(url, json=data, **kwargs)
-        case _:
-            raise ValueError(f"Unsupported HTTP method: {method}")
+    http_method = _coerce_http_method(method)
 
+    # Apply a conservative timeout to guard against hanging requests.
+    timeout = kwargs.pop('timeout', 10.0)
+    session = kwargs.pop('session', None)
+    requester = session or requests
+
+    request_callable = getattr(requester, http_method.value, None)
+    if not callable(request_callable):
+        raise TypeError(
+            'Session object must supply a callable '
+            f'"{http_method.value}" method',
+        )
+
+    response = request_callable(url, json=data, timeout=timeout, **kwargs)
     response.raise_for_status()
 
-    # Try JSON first, fall back to text
+    # Try JSON first, fall back to text.
     try:
         payload: Any = response.json()
     except ValueError:
@@ -253,58 +425,62 @@ def load_to_api(
     return {
         'status': 'success',
         'status_code': response.status_code,
-        'message': f"Data loaded to {url}",
+        'message': f'Data loaded to {url}',
         'response': payload,
         'records': len(data) if isinstance(data, list) else 1,
+        'method': http_method.value.upper(),
     }
 
 
-# -- Orchestrator -- #
+# -- Orchestration -- #
 
 
 def load(
-    source: str | JSONDict | JSONList,
-    target_type: Literal['file', 'database', 'api'],
-    target: str,
+    source: StrPath | JSONData,
+    target_type: TargetType | str,
+    target: StrPath,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> JSONData:
     """
     Load data to a target.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
+    source : StrPath | JSONData
         Data source to load.
     target_type : {'file', 'database', 'api'}
         Type of target to load to.
-    target : str
+    target : StrPath
         Target location (file path, connection string, or URL).
     **kwargs : Any
-        Additional arguments; e.g., ``format`` for files, ``method`` for APIs.
+        Additional arguments; e.g., `format` for files, `method` for APIs.
 
     Returns
     -------
-    dict[str, Any]
+    JSONData
         Result dictionary with status.
 
     Raises
     ------
     ValueError
-        If ``target_type`` or options are invalid.
+        If `target_type` or options are invalid.
     """
+
     data = load_data(source)
+    ttype = _coerce_target_type(target_type)
 
-    if target_type == 'file':
-        fmt = str(kwargs.pop('format', 'json')).lower()
-        if fmt not in ('json', 'csv'):
-            raise ValueError(f"Unsupported format: {fmt}")
-        return load_to_file(data, target, fmt)  # type: ignore[arg-type]
+    if ttype is TargetType.FILE:
+        file_format = kwargs.pop(
+            'format', kwargs.pop('file_format', FileFormat.JSON),
+        )
+        return load_to_file(data, target, file_format)
 
-    if target_type == 'database':
-        return load_to_database(data, target)
+    if ttype is TargetType.DATABASE:
+        return load_to_database(data, str(target))
 
-    if target_type == 'api':
-        method = str(kwargs.pop('method', 'POST'))
-        return load_to_api(data, target, method, **kwargs)
+    if ttype is TargetType.API:
+        method = kwargs.pop('method', HttpMethod.POST)
+        return load_to_api(data, str(target), method, **kwargs)
 
-    raise ValueError(f"Invalid target type: {target_type}")
+    # `_coerce_target_type` covers invalid entries, but keep explicit guard.
+    raise ValueError(f'Invalid target type: {target_type}')
