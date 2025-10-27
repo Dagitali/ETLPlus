@@ -78,6 +78,31 @@ def _agg_sum(
     return sum(nums)
 
 
+def _sort_key(
+    value: Any,
+) -> tuple[int, Any]:
+    """
+    Coerce mixed-type values into a sortable tuple key.
+
+    Parameters
+    ----------
+    value : Any
+        Value to normalize for sorting.
+
+    Returns
+    -------
+    tuple[int, Any]
+        A key that sorts numbers before strings; ``None`` sorts last.
+
+    """
+    if value is None:
+        return (1, '')
+    if isinstance(value, (int, float)):
+        return (0, value)
+
+    return (0, str(value))
+
+
 # SECTION: PROTECTED CONSTANTS ============================================== #
 
 
@@ -239,31 +264,6 @@ def apply_select(
     """
 
     return [{field: item.get(field) for field in fields} for item in data]
-
-
-def _sort_key(
-    value: Any,
-) -> tuple[int, Any]:
-    """
-    Coerce mixed-type values into a sortable tuple key.
-
-    Parameters
-    ----------
-    value : Any
-        Value to normalize for sorting.
-
-    Returns
-    -------
-    tuple[int, Any]
-        A key that sorts numbers before strings; ``None`` sorts last.
-
-    """
-    if value is None:
-        return (1, '')
-    if isinstance(value, (int, float)):
-        return (0, value)
-
-    return (0, str(value))
 
 
 def apply_sort(
