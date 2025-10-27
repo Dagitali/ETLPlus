@@ -2,7 +2,7 @@
 ETLPlus Data Extraction
 =======================
 
-Tools to extract data from files, databases, and REST APIs.
+Helpers to extract data from files, databases, and REST APIs.
 """
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from typing import cast
-from typing import TypeAlias
 
 import requests
 
@@ -21,9 +20,9 @@ import requests
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-JSONDict: TypeAlias = dict[str, Any]
-JSONList: TypeAlias = list[JSONDict]
-JSONData: TypeAlias = JSONDict | JSONList
+type JSONDict = dict[str, Any]
+type JSONList = list[JSONDict]
+type JSONData = JSONDict | JSONList
 
 
 # SECTION: CLASSES ========================================================== #
@@ -209,12 +208,12 @@ def extract_from_file(
     file_format: FileFormat | str = FileFormat.JSON,
 ) -> JSONData:
     """
-    Extract (semi-)structured data from a file.
+    Extract (semi-)structured data from a local file.
 
     Parameters
     ----------
     file_path : str
-        Path to the file to read.
+        Source file path.
     file_format : {'json', 'csv', 'xml'}, optional
         File format to parse. Defaults to `'json'`.
 
@@ -228,10 +227,11 @@ def extract_from_file(
     FileNotFoundError
         If `file_path` does not exist.
     ValueError
-        If `file_format` is not supported.
+        If `file_format` is not one of the supported formats.
     TypeError
         If parsed JSON is not an object or an array of objects.
     """
+
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f'File not found: {path}')
@@ -273,6 +273,7 @@ def extract_from_database(
     JSONList
         Informational message payload.
     """
+
     return [
         {
             'message': 'Database extraction not yet implemented',
@@ -284,7 +285,7 @@ def extract_from_database(
     ]
 
 
-# -- API Extraction -- #
+# -- REST API Extraction -- #
 
 
 def extract_from_api(
@@ -312,6 +313,7 @@ def extract_from_api(
     requests.RequestException
         If the HTTP request fails or a non-2xx status is returned.
     """
+
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
     session = kwargs.pop('session', None)
@@ -347,7 +349,7 @@ def extract_from_api(
     return {'content': response.text, 'content_type': content_type}
 
 
-# -- Orchestrator -- #
+# -- Orchestration -- #
 
 
 def extract(
@@ -377,14 +379,18 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
+
     stype = _coerce_source_type(source_type)
+
     if stype is SourceType.FILE:
         file_format = kwargs.pop(
             'format', kwargs.pop('file_format', FileFormat.JSON),
         )
         return extract_from_file(source, file_format)
+
     if stype is SourceType.DATABASE:
         return extract_from_database(source)
+
     if stype is SourceType.API:
         return extract_from_api(source, **kwargs)
 
