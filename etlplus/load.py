@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -27,6 +28,41 @@ from .types import StrPath
 
 
 # -- File Loading -- #
+
+
+def _dict_to_element(
+    name: str,
+    payload: Any,
+) -> ET.Element:
+    """
+    Convert JSON-like structures into XML elements.
+    """
+
+    element = ET.Element(name)
+
+    if isinstance(payload, dict):
+        text = payload.get('text')
+        if text is not None:
+            element.text = str(text)
+
+        for key, value in payload.items():
+            if key == 'text':
+                continue
+            if key.startswith('@'):
+                element.set(key[1:], str(value))
+                continue
+            if isinstance(value, list):
+                for item in value:
+                    element.append(_dict_to_element(key, item))
+            else:
+                element.append(_dict_to_element(key, value))
+    elif isinstance(payload, list):
+        for item in payload:
+            element.append(_dict_to_element('item', item))
+    elif payload is not None:
+        element.text = str(payload)
+
+    return element
 
 
 def _write_csv(
@@ -67,6 +103,26 @@ def _write_json(
     with path.open('w', encoding='utf-8') as handle:
         json.dump(data, handle, indent=2, ensure_ascii=False)
         handle.write('\n')
+
+    return len(data) if isinstance(data, list) else 1
+
+
+def _write_xml(
+    path: Path,
+    data: JSONData,
+) -> int:
+    """
+    Write `data` to `path` as XML and return record count.
+    """
+
+    if isinstance(data, dict) and len(data) == 1:
+        root_name, payload = next(iter(data.items()))
+        root_element = _dict_to_element(str(root_name), payload)
+    else:
+        root_element = _dict_to_element('root', data)
+
+    tree = ET.ElementTree(root_element)
+    tree.write(path, encoding='utf-8', xml_declaration=True)
 
     return len(data) if isinstance(data, list) else 1
 
@@ -119,19 +175,36 @@ def _coerce_http_method(
         raise ValueError(f'Unsupported HTTP method: {method}') from e
 
 
-def _coerce_target_type(
-    target_type: DataConnectorType | str,
+def _coerce_data_connector_type(
+    data_connector_type: DataConnectorType | str,
 ) -> DataConnectorType:
     """
-    Normalize target identifiers to `DataConnectorType` values.
+    Normalize data connector identifiers to `DataConnectorType` members.
+
+    Parameters
+    ----------
+    data_connector_type : DataConnectorType | str
+        Source type to normalize.
+
+    Returns
+    -------
+    DataConnectorType
+        Normalized source type.
+
+    Raises
+    ------
+    ValueError
+        If the source type is not supported.
     """
 
-    if isinstance(target_type, DataConnectorType):
-        return target_type
+    if isinstance(data_connector_type, DataConnectorType):
+        return data_connector_type
     try:
-        return DataConnectorType(str(target_type).lower())
+        return DataConnectorType(str(data_connector_type).lower())
     except ValueError as e:
-        raise ValueError(f'Invalid target type: {target_type}') from e
+        raise ValueError(
+            f'Invalid data connector type: {data_connector_type}',
+        ) from e
 
 
 def _load_json_from_path(
@@ -252,7 +325,7 @@ def load_to_file(
         Data to write.
     file_path : StrPath
         Target file path.
-    file_format : {'json', 'csv'}, optional
+    file_format : {'json', 'csv', 'xml'}, optional
         Output format. Default is 'json'.
 
     Returns
@@ -281,6 +354,9 @@ def load_to_file(
                 if records == 0
                 else f'Data loaded to {path}'
             )
+        case FileFormat.XML:
+            records = _write_xml(path, data)
+            message = f'Data loaded to {path}'
         case _:
             # Ensure exhaustive handling in case new enum members are added.
             raise ValueError(f'Unsupported format: {file_format}')
@@ -433,7 +509,7 @@ def load(
     """
 
     data = load_data(source)
-    ttype = _coerce_target_type(target_type)
+    ttype = _coerce_data_connector_type(target_type)
 
     if ttype is DataConnectorType.FILE:
         file_format = kwargs.pop(
