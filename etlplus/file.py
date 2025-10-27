@@ -192,6 +192,9 @@ def read_csv(
         The list of dictionaries read from the CSV file.
     """
 
+    if not path.exists():
+        raise FileNotFoundError(f'File not found: {path}')
+
     with path.open('r', encoding='utf-8', newline='') as handle:
         reader: csv.DictReader[str] = csv.DictReader(handle)
         rows: JSONList = []
@@ -261,6 +264,9 @@ def read_json(
         The structured data read from the JSON file.
     """
 
+    if not path.exists():
+        raise FileNotFoundError(f'File not found: {path}')
+
     with path.open('r', encoding='utf-8') as handle:
         loaded = json.load(handle)
 
@@ -269,8 +275,12 @@ def read_json(
     if isinstance(loaded, list):
         if all(isinstance(item, dict) for item in loaded):
             return cast(JSONList, loaded)
-        raise TypeError('JSON array must contain only objects (dicts)')
-    raise TypeError('JSON root must be an object or an array of objects')
+        raise TypeError(
+            'JSON array must contain only objects (dicts) when loading file',
+        )
+    raise TypeError(
+        'JSON root must be an object or an array of objects when loading file',
+    )
 
 
 def write_json(
@@ -319,6 +329,9 @@ def read_xml(
     JSONDict
         The nested dictionary representation of the XML document.
     """
+
+    if not path.exists():
+        raise FileNotFoundError(f'File not found: {path}')
 
     tree = ET.parse(path)
     root = tree.getroot()
