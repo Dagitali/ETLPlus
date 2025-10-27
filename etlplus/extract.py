@@ -7,7 +7,6 @@ Helpers to extract data from files, databases, and REST APIs.
 from __future__ import annotations
 
 import csv
-import enum
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -16,36 +15,11 @@ from typing import cast
 
 import requests
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type JSONDict = dict[str, Any]
-type JSONList = list[JSONDict]
-type JSONData = JSONDict | JSONList
-
-
-# SECTION: CLASSES ========================================================== #
-
-
-class FileFormat(enum.StrEnum):
-    """
-    Supported file formats for extraction.
-    """
-
-    JSON = 'json'
-    CSV = 'csv'
-    XML = 'xml'
-
-
-class SourceType(enum.StrEnum):
-    """
-    Supported data source types.
-    """
-
-    FILE = 'file'
-    DATABASE = 'database'
-    API = 'api'
+from .enums import DataConnectorType
+from .enums import FileFormat
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -131,6 +105,7 @@ def _read_xml(
 
     tree = ET.parse(path)
     root = tree.getroot()
+
     return {root.tag: _element_to_dict(root)}
 
 
@@ -168,19 +143,19 @@ def _coerce_file_format(
 
 
 def _coerce_source_type(
-    source_type: SourceType | str,
-) -> SourceType:
+    source_type: DataConnectorType | str,
+) -> DataConnectorType:
     """
-    Normalize textual source type inputs to `SourceType` members.
+    Normalize textual source type inputs to `DataConnectorType` members.
 
     Parameters
     ----------
-    source_type : SourceType | str
+    source_type : DataConnectorType | str
         Source type to normalize.
 
     Returns
     -------
-    SourceType
+    DataConnectorType
         Normalized source type.
 
     Raises
@@ -189,10 +164,10 @@ def _coerce_source_type(
         If the source type is not supported.
     """
 
-    if isinstance(source_type, SourceType):
+    if isinstance(source_type, DataConnectorType):
         return source_type
     try:
-        return SourceType(str(source_type).lower())
+        return DataConnectorType(str(source_type).lower())
     except ValueError as e:
         raise ValueError(f'Invalid source type: {source_type}') from e
 
@@ -353,7 +328,7 @@ def extract_from_api(
 
 
 def extract(
-    source_type: SourceType | str,
+    source_type: DataConnectorType | str,
     source: str,
     **kwargs: Any,
 ) -> JSONData:
@@ -362,7 +337,7 @@ def extract(
 
     Parameters
     ----------
-    source_type : SourceType | str
+    source_type : DataConnectorType | str
         Type of source to extract from.
     source : str
         Source location (file path, connection string, or API URL).
@@ -382,16 +357,16 @@ def extract(
 
     stype = _coerce_source_type(source_type)
 
-    if stype is SourceType.FILE:
+    if stype is DataConnectorType.FILE:
         file_format = kwargs.pop(
             'format', kwargs.pop('file_format', FileFormat.JSON),
         )
         return extract_from_file(source, file_format)
 
-    if stype is SourceType.DATABASE:
+    if stype is DataConnectorType.DATABASE:
         return extract_from_database(source)
 
-    if stype is SourceType.API:
+    if stype is DataConnectorType.API:
         return extract_from_api(source, **kwargs)
 
     # `_coerce_source_type` covers invalid entries, but keep explicit guard.
