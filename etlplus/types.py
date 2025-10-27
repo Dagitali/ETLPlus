@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-# __all__ = ['JSONDict', 'JSONList', 'JSONData', 'StrPath']
 
 # SECTION: TYPE ALIASES ===================================================== #
 
