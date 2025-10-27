@@ -20,6 +20,7 @@ from .enums import FileFormat
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
+from .types import StrPath
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -142,15 +143,15 @@ def _coerce_file_format(
         raise ValueError(f'Unsupported format: {file_format}') from e
 
 
-def _coerce_source_type(
-    source_type: DataConnectorType | str,
+def _coerce_data_connector_type(
+    data_connector_type: DataConnectorType | str,
 ) -> DataConnectorType:
     """
-    Normalize textual source type inputs to `DataConnectorType` members.
+    Normalize data connector identifiers to `DataConnectorType` members.
 
     Parameters
     ----------
-    source_type : DataConnectorType | str
+    data_connector_type : DataConnectorType | str
         Source type to normalize.
 
     Returns
@@ -164,12 +165,14 @@ def _coerce_source_type(
         If the source type is not supported.
     """
 
-    if isinstance(source_type, DataConnectorType):
-        return source_type
+    if isinstance(data_connector_type, DataConnectorType):
+        return data_connector_type
     try:
-        return DataConnectorType(str(source_type).lower())
+        return DataConnectorType(str(data_connector_type).lower())
     except ValueError as e:
-        raise ValueError(f'Invalid source type: {source_type}') from e
+        raise ValueError(
+            f'Invalid data connector type: {data_connector_type}',
+        ) from e
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -179,7 +182,7 @@ def _coerce_source_type(
 
 
 def extract_from_file(
-    file_path: str,
+    file_path: StrPath,
     file_format: FileFormat | str = FileFormat.JSON,
 ) -> JSONData:
     """
@@ -187,7 +190,7 @@ def extract_from_file(
 
     Parameters
     ----------
-    file_path : str
+    file_path : StrPath
         Source file path.
     file_format : {'json', 'csv', 'xml'}, optional
         File format to parse. Defaults to `'json'`.
@@ -329,7 +332,7 @@ def extract_from_api(
 
 def extract(
     source_type: DataConnectorType | str,
-    source: str,
+    source: StrPath,
     **kwargs: Any,
 ) -> JSONData:
     """
@@ -339,7 +342,7 @@ def extract(
     ----------
     source_type : DataConnectorType | str
         Type of source to extract from.
-    source : str
+    source : StrPath
         Source location (file path, connection string, or API URL).
     **kwargs : Any
         Additional arguments; for files, `format` may be provided.
@@ -355,7 +358,7 @@ def extract(
         If `source_type` is not one of the supported values.
     """
 
-    stype = _coerce_source_type(source_type)
+    stype = _coerce_data_connector_type(source_type)
 
     if stype is DataConnectorType.FILE:
         file_format = kwargs.pop(
@@ -364,10 +367,11 @@ def extract(
         return extract_from_file(source, file_format)
 
     if stype is DataConnectorType.DATABASE:
-        return extract_from_database(source)
+        return extract_from_database(str(source))
 
     if stype is DataConnectorType.API:
-        return extract_from_api(source, **kwargs)
+        return extract_from_api(str(source), **kwargs)
 
-    # `_coerce_source_type` covers invalid entries, but keep explicit guard.
+    # `_coerce_data_connector_type` covers invalid entries, but keep explicit
+    # guard.
     raise ValueError(f'Invalid source type: {source_type}')
