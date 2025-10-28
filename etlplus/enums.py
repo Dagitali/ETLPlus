@@ -7,6 +7,10 @@ Shared enumeration types used across ETLPlus modules.
 from __future__ import annotations
 
 import enum
+import operator as _op
+from statistics import fmean
+from typing import Any
+from typing import Callable
 from typing import Mapping
 from typing import Self
 
@@ -19,13 +23,16 @@ __all__ = (
     'DataConnectorType',
     'FileFormat',
     'HttpMethod',
+    'OperatorName',
+    'AggregateName',
+    'PipelineStep',
     'coerce_data_connector_type',
     'coerce_file_format',
     'coerce_http_method',
 )
 
 
-# SECTION: ENUMS ============================================================ #
+# SECTION: CLASSES ========================================================== #
 
 
 class CoercibleStrEnum(enum.StrEnum):
@@ -105,6 +112,36 @@ class CoercibleStrEnum(enum.StrEnum):
 # SECTION: ENUMS ============================================================ #
 
 
+class AggregateName(CoercibleStrEnum):
+    """
+    Supported aggregations with helpers.
+    """
+
+    # -- Constants -- #
+
+    AVG = 'avg'
+    COUNT = 'count'
+    MAX = 'max'
+    MIN = 'min'
+    SUM = 'sum'
+
+    # -- Class Methods -- #
+
+    @property
+    def func(self) -> Callable[[list[float], int], Any]:
+        if self is AggregateName.COUNT:
+            return lambda xs, n: n
+        if self is AggregateName.MAX:
+            return lambda xs, n: (max(xs) if xs else None)
+        if self is AggregateName.MIN:
+            return lambda xs, n: (min(xs) if xs else None)
+        if self is AggregateName.SUM:
+            return lambda xs, n: sum(xs)
+
+        # AVG
+        return lambda xs, n: (fmean(xs) if xs else 0.0)
+
+
 class DataConnectorType(CoercibleStrEnum):
     """
     Supported data connector types.
@@ -112,21 +149,21 @@ class DataConnectorType(CoercibleStrEnum):
 
     # -- Constants -- #
 
-    FILE = 'file'
-    DATABASE = 'database'
     API = 'api'
+    DATABASE = 'database'
+    FILE = 'file'
 
     # -- Class Methods -- #
 
     @classmethod
     def aliases(cls) -> Mapping[str, str]:
         return {
-            'db': 'database',
-            'fs': 'file',
-            'filesystem': 'file',
-            'rest': 'api',
             'http': 'api',
             'https': 'api',
+            'rest': 'api',
+            'db': 'database',
+            'filesystem': 'file',
+            'fs': 'file',
         }
 
 
@@ -149,24 +186,25 @@ class FileFormat(CoercibleStrEnum):
 
     @classmethod
     def aliases(cls) -> Mapping[str, str]:
+
         return {
-            'yml': 'yaml',
             'text/csv': 'csv',
             'application/json': 'json',
             'application/xml': 'xml',
+            'yml': 'yaml',
         }
 
 
 class HttpMethod(CoercibleStrEnum):
     """
-    HTTP verbs that accept JSON payloads.
+    Supported HTTP verbs that accept JSON payloads.
     """
 
     # -- Constants -- #
 
+    PATCH = 'patch'
     POST = 'post'
     PUT = 'put'
-    PATCH = 'patch'
 
     # -- Getters -- #
 
@@ -183,6 +221,75 @@ class HttpMethod(CoercibleStrEnum):
         """
 
         return self in {HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH}
+
+
+class OperatorName(CoercibleStrEnum):
+    """
+    Supported comparison operators with helpers.
+    """
+
+    # -- Constants -- #
+
+    EQ = 'eq'
+    NE = 'ne'
+    GT = 'gt'
+    GTE = 'gte'
+    LT = 'lt'
+    LTE = 'lte'
+    IN = 'in'
+    CONTAINS = 'contains'
+
+    # -- Getters -- #
+
+    @property
+    def func(self) -> Callable[[Any, Any], bool]:
+        match self:
+            case OperatorName.EQ:
+                return _op.eq
+            case OperatorName.NE:
+                return _op.ne
+            case OperatorName.GT:
+                return _op.gt
+            case OperatorName.GTE:
+                return _op.ge
+            case OperatorName.LT:
+                return _op.lt
+            case OperatorName.LTE:
+                return _op.le
+            case OperatorName.IN:
+                return lambda a, b: a in b
+            case OperatorName.CONTAINS:
+                return lambda a, b: b in a
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def aliases(cls) -> Mapping[str, str]:
+        return {
+            '==': 'eq', '=': 'eq', '!=': 'ne', '<>': 'ne',
+            '>=': 'gte', '≥': 'gte', '<=': 'lte', '≤': 'lte',
+            '>': 'gt', '<': 'lt',
+        }
+
+
+class PipelineStep(CoercibleStrEnum):
+    """Pipeline step names as an enum for internal orchestration."""
+
+    # -- Constants -- #
+
+    FILTER = 'filter'
+    MAP = 'map'
+    SELECT = 'select'
+    SORT = 'sort'
+    AGGREGATE = 'aggregate'
+
+    # -- Getters -- #
+
+    @property
+    def order(self) -> int:
+        sequence = ('filter', 'map', 'select', 'sort', 'aggregate')
+
+        return sequence.index(self.value)
 
 
 # SECTION: FUNCTIONS ======================================================== #
