@@ -158,17 +158,11 @@ def _apply_select_step(
     fields: Sequence[Any]
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
-        # if not _is_plain_fields_list(maybe_fields):
-        if not isinstance(maybe_fields, Sequence) or isinstance(
-            maybe_fields, (str, bytes, bytearray),
-        ):
+        if not _is_plain_fields_list(maybe_fields):
             return data
-        fields = maybe_fields
-    # elif _is_plain_fields_list(spec):
-    elif isinstance(spec, Sequence) and not isinstance(
-        spec, (str, bytes, bytearray),
-    ):
-        fields = spec
+        fields = cast(Sequence[Any], maybe_fields)
+    elif _is_plain_fields_list(spec):
+        fields = cast(Sequence[Any], spec)
     else:
         return data
 
