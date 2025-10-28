@@ -8,7 +8,10 @@ transform JSON-like records (dicts and lists of dicts).
 from __future__ import annotations
 
 import operator
+from collections.abc import Sequence
 from typing import Any
+from typing import Callable
+from typing import cast
 from typing import Mapping
 
 from .load import load_data as _load_data
@@ -103,7 +106,84 @@ def _sort_key(
     return (0, str(value))
 
 
+def _normalize_specs(
+    config: Any,
+) -> list[Any]:
+    if config is None:
+        return []
+    if isinstance(config, Sequence) and not isinstance(
+        config, (str, bytes, bytearray),
+    ):
+        return list(config)
+    return [config]
+
+
+def _apply_filter_step(
+    data: JSONList,
+    spec: Any,
+) -> JSONList:
+    if isinstance(spec, Mapping):
+        return apply_filter(data, spec)
+    return data
+
+
+def _apply_map_step(
+    data: JSONList,
+    spec: Any,
+) -> JSONList:
+    if isinstance(spec, Mapping):
+        return apply_map(data, spec)
+    return data
+
+
+def _apply_select_step(
+    data: JSONList,
+    spec: Any,
+) -> JSONList:
+    fields: Sequence[Any]
+    if isinstance(spec, Mapping):
+        maybe_fields = spec.get('fields')
+        if not isinstance(maybe_fields, Sequence) or isinstance(
+            maybe_fields, (str, bytes, bytearray),
+        ):
+            return data
+        fields = maybe_fields
+    elif isinstance(spec, Sequence) and not isinstance(
+        spec, (str, bytes, bytearray),
+    ):
+        fields = spec
+    else:
+        return data
+
+    return apply_select(data, [str(field) for field in fields])
+
+
+def _apply_sort_step(
+    data: JSONList,
+    spec: Any,
+) -> JSONList:
+    if isinstance(spec, Mapping):
+        field_value = spec.get('field')
+        field = str(field_value) if field_value is not None else None
+        reverse = bool(spec.get('reverse', False))
+        return apply_sort(data, field, reverse)
+
+    if spec is None:
+        return data
+
+    return apply_sort(data, str(spec), False)
+
+
 # SECTION: PROTECTED CONSTANTS ============================================== #
+
+
+_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
+    'sum': _agg_sum,
+    'avg': _agg_avg,
+    'min': _agg_min,
+    'max': _agg_max,
+    'count': _agg_count,
+}
 
 
 _OPERATORS: dict[str, OperatorFunc] = {
@@ -118,12 +198,20 @@ _OPERATORS: dict[str, OperatorFunc] = {
 }
 
 
-_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
-    'sum': _agg_sum,
-    'avg': _agg_avg,
-    'min': _agg_min,
-    'max': _agg_max,
-    'count': _agg_count,
+_PIPELINE_STEPS: tuple[str, ...] = (
+    'filter',
+    'map',
+    'select',
+    'sort',
+    'aggregate',
+)
+
+
+_STEP_APPLIERS: dict[str, Callable[[JSONList, Any], JSONList]] = {
+    'filter': _apply_filter_step,
+    'map': _apply_map_step,
+    'select': _apply_select_step,
+    'sort': _apply_sort_step,
 }
 
 
@@ -171,7 +259,8 @@ def apply_filter(
     condition : Mapping[str, Any]
         Condition object with keys ``field``, ``op``, and ``value``. The
         ``op`` can be one of ``'eq'``, ``'ne'``, ``'gt'``, ``'gte'``,
-        ``'lt'``, ``'lte'``, ``'in'``, or ``'contains'``.
+        ``'lt'``, ``'lte'``, ``'in'``, or ``'contains'``. Custom comparison
+        logic can be provided by supplying a callable for ``op``.
 
     Returns
     -------
@@ -186,7 +275,12 @@ def apply_filter(
     if not field_name or op_name is None or value is None:
         return data
 
-    op_func = _OPERATORS.get(str(op_name).lower())
+    op_func: OperatorFunc | None
+    if callable(op_name):
+        op_func = cast(OperatorFunc, op_name)
+    else:
+        op_func = _OPERATORS.get(str(op_name).lower())
+
     if not op_func:
         return data
 
@@ -314,6 +408,8 @@ def apply_aggregate(
     operation : Mapping[str, Any]
         Dict with keys ``field`` and ``func``. ``func`` is one of
         ``'sum'``, ``'avg'``, ``'min'``, ``'max'``, or ``'count'``.
+        A callable may also be supplied for ``func``. Optionally, set
+        ``alias`` to control the output key name.
 
     Returns
     -------
@@ -325,14 +421,24 @@ def apply_aggregate(
     Numeric operations ignore non-numeric values but count their presence
     for ``'count'``.
     """
+
     field = operation.get('field')
     func = operation.get('func')
+    alias = operation.get('alias')
 
     if not field or func is None:
         return {'error': 'Invalid aggregation operation'}
 
-    func_key = str(func).lower()
-    aggregator = _AGGREGATE_FUNCS.get(func_key)
+    aggregator: AggregateFunc | None
+    func_label: str
+
+    if callable(func):
+        aggregator = cast(AggregateFunc, func)
+        func_label = getattr(func, '__name__', 'custom')
+    else:
+        func_label = str(func).lower()
+        aggregator = _AGGREGATE_FUNCS.get(func_label)
+
     if aggregator is None:
         return {'error': f"Unknown aggregation function: {func}"}
 
@@ -346,7 +452,11 @@ def apply_aggregate(
                 nums.append(float(v))
 
     field_name = str(field)
-    return {f"{func_key}_{field_name}": aggregator(nums, present)}
+    key_name = (
+        str(alias) if alias is not None else f"{func_label}_{field_name}"
+    )
+
+    return {key_name: aggregator(nums, present)}
 
 
 def transform(
@@ -363,7 +473,9 @@ def transform(
     operations : Mapping[str, Any] or None, optional
         Operation dictionary that may contain the keys ``filter``, ``map``,
         ``select``, ``sort``, and ``aggregate`` with their respective
-        configs.
+        configs. Each value may be a single config or a sequence of configs
+        to apply in order. Aggregations accept multiple configs and merge
+        the results.
 
     Returns
     -------
@@ -396,39 +508,34 @@ def transform(
 
     # All record-wise ops require a list of dicts
     if isinstance(data, list):
-        if 'filter' in operations:
-            data = apply_filter(
-                data, operations['filter'],  # type: ignore[arg-type]
-            )
+        for step in _PIPELINE_STEPS:
+            raw_spec = operations.get(step)
+            if raw_spec is None:
+                continue
 
-        if 'map' in operations:
-            data = apply_map(
-                data, operations['map'],  # type: ignore[arg-type]
-            )
+            specs = _normalize_specs(raw_spec)
+            if not specs:
+                continue
 
-        if 'select' in operations:
-            data = apply_select(
-                data, operations['select'],  # type: ignore[arg-type]
-            )
+            if step == 'aggregate':
+                combined: JSONDict = {}
+                for spec in specs:
+                    if not isinstance(spec, Mapping):
+                        continue
+                    result = apply_aggregate(data, spec)
+                    if 'error' in result:
+                        return result
+                    combined.update(result)
+                if combined:
+                    return combined
+                continue
 
-        if 'sort' in operations:
-            sort_cfg = operations['sort']
-            if isinstance(sort_cfg, Mapping):
-                data = apply_sort(
-                    data,
-                    str(sort_cfg.get('field'))
-                    if sort_cfg.get('field') is not None
-                    else None,
-                    bool(sort_cfg.get('reverse', False)),
-                )
-            else:
-                # allow shorthand: "name" -> sort by field name
-                data = apply_sort(data, str(sort_cfg))
+            applier = _STEP_APPLIERS.get(step)
+            if applier is None:
+                continue
 
-        if 'aggregate' in operations:
-            return apply_aggregate(
-                data, operations['aggregate'],  # type: ignore[arg-type]
-            )
+            for spec in specs:
+                data = applier(data, spec)
 
     # Convert back to single dict if input was single dict
     if is_single_dict and isinstance(data, list) and len(data) == 1:
