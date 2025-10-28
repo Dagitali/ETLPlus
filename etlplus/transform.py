@@ -71,66 +71,7 @@ from .types import StrPath
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-# -- Predicates & Aggregators -- #
-
-
-def _contains(
-    container: Any,
-    member: Any,
-) -> bool:
-    """
-    Return ``True`` if *member* is contained in *container*.
-
-    Parameters
-    ----------
-    container : Any
-        Potential container object.
-    member : Any
-        Candidate member to check for containment.
-
-    Returns
-    -------
-    bool
-        ``True`` if ``member in container`` succeeds; ``False`` on
-        ``TypeError`` or when containment fails.
-    """
-
-    try:
-        return member in container  # type: ignore[operator]
-    except TypeError:
-        return False
-
-
-def _has(
-    member: Any,
-    container: Any,
-) -> bool:
-    """
-    Return ``True`` if *container* contains *member*.
-
-    Parameters
-    ----------
-    member : Any
-        Candidate member to check for containment.
-    container : Any
-        Potential container object.
-
-    Returns
-    -------
-    bool
-        ``True`` if ``member in container`` succeeds; ``False`` on
-        ``TypeError`` or when containment fails.
-
-    Notes
-    -----
-    This is the dual form of :func:`_contains` for readability in certain
-    operator contexts (``in`` vs. ``contains``).
-    """
-
-    try:
-        return member in container  # type: ignore[operator]
-    except TypeError:
-        return False
+# -- Aggregators -- #
 
 
 def _agg_avg(
@@ -248,40 +189,6 @@ def _agg_sum(
     return sum(nums)
 
 
-# -- Sorting -- #
-
-
-def _sort_key(
-    value: Any,
-) -> SortKey:
-    """
-    Coerce mixed-type values into a sortable tuple key.
-
-    Ordering policy
-    ---------------
-    1) Numbers
-    2) Non-numeric values (stringified)
-    3) ``None`` (last)
-
-    Parameters
-    ----------
-    value : Any
-        Value to normalize for sorting.
-
-    Returns
-    -------
-    SortKey
-        A key with a type tag to avoid cross-type comparisons.
-    """
-
-    if value is None:
-        return (2, '')
-    if isinstance(value, (int, float)):
-        return (0, float(value))
-
-    return (1, str(value))
-
-
 # -- Normalization -- #
 
 
@@ -344,6 +251,169 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
             if isinstance(name, str):
                 normalized[name] = v
     return normalized
+
+
+# -- Predicates -- #
+
+
+def _contains(
+    container: Any,
+    member: Any,
+) -> bool:
+    """
+    Return ``True`` if *member* is contained in *container*.
+
+    Parameters
+    ----------
+    container : Any
+        Potential container object.
+    member : Any
+        Candidate member to check for containment.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+    """
+
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+def _has(
+    member: Any,
+    container: Any,
+) -> bool:
+    """
+    Return ``True`` if *container* contains *member*.
+
+    Parameters
+    ----------
+    member : Any
+        Candidate member to check for containment.
+    container : Any
+        Potential container object.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+
+    Notes
+    -----
+    This is the dual form of :func:`_contains` for readability in certain
+    operator contexts (``in`` vs. ``contains``).
+    """
+
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+# -- Resolvers -- #
+
+
+def _resolve_aggregator(
+    func: Aggregator | str,
+) -> Callable:
+    """
+    Resolve an aggregate specifier to a callable.
+
+    Parameters
+    ----------
+    func : Aggregator | str
+        An :class:`AggregateName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(xs: list[float], n: int) -> Any``.
+
+    Raises
+    ------
+    TypeError
+        If *func* cannot be interpreted as an aggregator.
+    """
+
+    if isinstance(func, AggregateName):
+        return func.func
+    if isinstance(func, str):
+        return AggregateName.coerce(func).func
+    if callable(func):
+        return func
+
+    raise TypeError(f'Invalid aggregate func: {func!r}')
+
+
+def _resolve_operator(
+    op: Operator | str,
+) -> Callable:
+    """
+    Resolve an operator specifier to a binary predicate.
+
+    Parameters
+    ----------
+    op : Operator | str
+        An :class:`OperatorName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(a: Any, b: Any) -> bool``.
+
+    Raises
+    ------
+    TypeError
+        If *op* cannot be interpreted as an operator.
+    """
+
+    if isinstance(op, OperatorName):
+        return op.func
+    if isinstance(op, str):
+        return OperatorName.coerce(op).func
+    if callable(op):
+        return op
+
+    raise TypeError(f'Invalid operator: {op!r}')
+
+
+# -- Sorting -- #
+
+
+def _sort_key(
+    value: Any,
+) -> SortKey:
+    """
+    Coerce mixed-type values into a sortable tuple key.
+
+    Ordering policy
+    ---------------
+    1) Numbers
+    2) Non-numeric values (stringified)
+    3) ``None`` (last)
+
+    Parameters
+    ----------
+    value : Any
+        Value to normalize for sorting.
+
+    Returns
+    -------
+    SortKey
+        A key with a type tag to avoid cross-type comparisons.
+    """
+
+    if value is None:
+        return (2, '')
+    if isinstance(value, (int, float)):
+        return (0, float(value))
+
+    return (1, str(value))
 
 
 # -- Step Appliers -- #
@@ -538,6 +608,9 @@ def _apply_sort_step(
     return apply_sort(records, str(spec), False)
 
 
+# -- Helpers -- #
+
+
 def _is_plain_fields_list(obj: Any) -> bool:
     """
     Return True if obj is a non-text sequence of non-mapping items.
@@ -559,73 +632,6 @@ def _is_plain_fields_list(obj: Any) -> bool:
     return isinstance(obj, Sequence) \
         and not isinstance(obj, (str, bytes, bytearray)) \
         and not any(isinstance(x, Mapping) for x in obj)
-
-
-# -- Resolvers -- #
-
-
-def _resolve_aggregator(
-    func: Aggregator | str,
-) -> Callable:
-    """
-    Resolve an aggregate specifier to a callable.
-
-    Parameters
-    ----------
-    func : Aggregator | str
-        An :class:`AggregateName`, a string (with aliases), or a callable.
-
-    Returns
-    -------
-    Callable
-        Function of signature ``(xs: list[float], n: int) -> Any``.
-
-    Raises
-    ------
-    TypeError
-        If *func* cannot be interpreted as an aggregator.
-    """
-
-    if isinstance(func, AggregateName):
-        return func.func
-    if isinstance(func, str):
-        return AggregateName.coerce(func).func
-    if callable(func):
-        return func
-
-    raise TypeError(f'Invalid aggregate func: {func!r}')
-
-
-def _resolve_operator(
-    op: Operator | str,
-) -> Callable:
-    """
-    Resolve an operator specifier to a binary predicate.
-
-    Parameters
-    ----------
-    op : Operator | str
-        An :class:`OperatorName`, a string (with aliases), or a callable.
-
-    Returns
-    -------
-    Callable
-        Function of signature ``(a: Any, b: Any) -> bool``.
-
-    Raises
-    ------
-    TypeError
-        If *op* cannot be interpreted as an operator.
-    """
-
-    if isinstance(op, OperatorName):
-        return op.func
-    if isinstance(op, str):
-        return OperatorName.coerce(op).func
-    if callable(op):
-        return op
-
-    raise TypeError(f'Invalid operator: {op!r}')
 
 
 # SECTION: PROTECTED CONSTANTS ============================================== #
