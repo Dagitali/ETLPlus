@@ -252,6 +252,12 @@ def _sort_key(
     """
     Coerce mixed-type values into a sortable tuple key.
 
+    Ordering policy
+    ---------------
+    1) Numbers
+    2) Non-numeric values (stringified)
+    3) ``None`` (last)
+
     Parameters
     ----------
     value : Any
@@ -260,14 +266,15 @@ def _sort_key(
     Returns
     -------
     SortKey
-        A key that sorts numbers before strings; ``None`` sorts last.
+        A key with a type tag to avoid cross-type comparisons.
     """
-    if value is None:
-        return (1, '')
-    if isinstance(value, (int, float)):
-        return (0, value)
 
-    return (0, str(value))
+    if value is None:
+        return (2, '')
+    if isinstance(value, (int, float)):
+        return (0, float(value))
+
+    return (1, str(value))
 
 
 def _normalize_specs(
@@ -384,7 +391,7 @@ def _apply_aggregate_step(
 
 
 def _apply_filter_step(
-    rows: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
     """
@@ -392,8 +399,8 @@ def _apply_filter_step(
 
     Parameters
     ----------
-    rows : JSONList
-        Input records.
+    records : JSONList
+        Input records to filter.
     spec : Any
         Mapping with keys ``field``, ``op``, and ``value``. ``op`` may be a
         string, :class:`OperatorName`, or a callable.
@@ -405,13 +412,13 @@ def _apply_filter_step(
     """
 
     field: FieldName = spec.get('field')  # type: ignore[assignment]
-    op_raw = spec.get('op')
+    op = spec.get('op')
     value = spec.get('value')
 
     if not field:
-        return rows  # or raise, depending on your policy
+        return records  # Or raise, depending on your policy.
 
-    op_func = _resolve_operator(op_raw)
+    op_func = _resolve_operator(op)
 
     def _pred(r: JSONDict) -> bool:
         try:
@@ -424,11 +431,11 @@ def _apply_filter_step(
             # Silent fail keeps behavior lenient; switch to raise if desired.
             return False
 
-    return [r for r in rows if _pred(r)]
+    return [r for r in records if _pred(r)]
 
 
 def _apply_map_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
     """
@@ -436,24 +443,25 @@ def _apply_map_step(
 
     Parameters
     ----------
-    data : JSONList
-        Input data to transform.
+    records : JSONList
+        Input records to transform.
     spec : Any
-        Mapping of field names to new names or transformations.
+        Mapping of **old field names** to **new field names**.
 
     Returns
     -------
     JSONList
-        Transformed data.
+        Transformed records.
     """
 
     if isinstance(spec, Mapping):
-        return apply_map(data, spec)
-    return data
+        return apply_map(records, spec)
+
+    return records
 
 
 def _apply_select_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
     """
@@ -461,10 +469,11 @@ def _apply_select_step(
 
     Parameters
     ----------
-    data : JSONList
-        Input data to transform.
+    records : JSONList
+        Input records to transform.
     spec : Any
-        Mapping of field names to new names or transformations.
+        Either a mapping with key ``'fields'`` whose value is a sequence of
+        field names, or a plain sequence of field names.
 
     Returns
     -------
@@ -476,18 +485,18 @@ def _apply_select_step(
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
         if not _is_plain_fields_list(maybe_fields):
-            return data
+            return records
         fields = cast(Sequence[Any], maybe_fields)
     elif _is_plain_fields_list(spec):
         fields = cast(Sequence[Any], spec)
     else:
-        return data
+        return records
 
-    return apply_select(data, [str(field) for field in fields])
+    return apply_select(records, [str(field) for field in fields])
 
 
 def _apply_sort_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
     """
@@ -495,27 +504,28 @@ def _apply_sort_step(
 
     Parameters
     ----------
-    data : JSONList
-        Input data to transform.
+    records : JSONList
+        Input records to sort.
     spec : Any
-        Mapping of field names to new names or transformations.
+        Either a mapping with keys ``'field'`` and optional ``'reverse'``, or
+        a plain field name.
 
     Returns
     -------
     JSONList
-        Transformed data.
+        Sorted records.
     """
 
     if isinstance(spec, Mapping):
         field_value = spec.get('field')
         field = str(field_value) if field_value is not None else None
         reverse = bool(spec.get('reverse', False))
-        return apply_sort(data, field, reverse)
+        return apply_sort(records, field, reverse)
 
     if spec is None:
-        return data
+        return records
 
-    return apply_sort(data, str(spec), False)
+    return apply_sort(records, str(spec), False)
 
 
 def _is_plain_fields_list(obj: Any) -> bool:
@@ -670,7 +680,7 @@ def load_data(
 
 
 def apply_filter(
-    data: JSONList,
+    records: JSONList,
     condition: FilterSpec,
 ) -> JSONList:
     """
@@ -678,7 +688,7 @@ def apply_filter(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to filter.
     condition : FilterSpec
         Condition object with keys ``field``, ``op``, and ``value``. The
@@ -692,25 +702,25 @@ def apply_filter(
         Filtered records.
     """
 
-    field_name = condition.get('field')
+    field = condition.get('field')
     op_raw = condition.get('op')
     value = condition.get('value')
 
-    if not field_name or op_raw is None or value is None:
-        return data
+    if not field or op_raw is None or value is None:
+        return records
 
     try:
         op_func = cast(OperatorFunc, _resolve_operator(op_raw))
     except TypeError:
-        return data
+        return records
 
     result: JSONList = []
-    for item in data:
-        if field_name not in item:
+    for record in records:
+        if field not in record:
             continue
         try:
-            if op_func(item[field_name], value):
-                result.append(item)
+            if op_func(record[field], value):
+                result.append(record)
         except TypeError:
             # Skip records where the comparison is not supported.
             continue
@@ -719,7 +729,7 @@ def apply_filter(
 
 
 def apply_map(
-    data: JSONList,
+    records: JSONList,
     mapping: MapSpec,
 ) -> JSONList:
     """
@@ -727,7 +737,7 @@ def apply_map(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to transform.
     mapping : MapSpec
         Mapping of old field names to new field names.
@@ -741,15 +751,15 @@ def apply_map(
     rename_map = dict(mapping)
     result: JSONList = []
 
-    for item in data:
+    for record in records:
         renamed = {
-            new_key: item[old_key]
+            new_key: record[old_key]
             for old_key, new_key in rename_map.items()
-            if old_key in item
+            if old_key in record
         }
         renamed.update({
             key: value
-            for key, value in item.items()
+            for key, value in record.items()
             if key not in rename_map
         })
         result.append(renamed)
@@ -758,7 +768,7 @@ def apply_map(
 
 
 def apply_select(
-    data: JSONList,
+    records: JSONList,
     fields: Fields,
 ) -> JSONList:
     """
@@ -766,7 +776,7 @@ def apply_select(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to project.
     fields : Fields
         Field names to retain.
@@ -777,11 +787,13 @@ def apply_select(
         Records containing the requested fields; missing fields are ``None``.
     """
 
-    return [{field: item.get(field) for field in fields} for item in data]
+    return [
+        {field: record.get(field) for field in fields} for record in records
+    ]
 
 
 def apply_sort(
-    data: JSONList,
+    records: JSONList,
     field: FieldName | None,
     reverse: bool = False,
 ) -> JSONList:
@@ -790,7 +802,7 @@ def apply_sort(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to sort.
     field : FieldName | None
         Field name to sort by. If ``None``, input is returned unchanged.
@@ -804,18 +816,18 @@ def apply_sort(
     """
 
     if not field:
-        return data
+        return records
 
     key_field: FieldName = field
     return sorted(
-        data,
+        records,
         key=lambda x: _sort_key(x.get(key_field)),
         reverse=reverse,
     )
 
 
 def apply_aggregate(
-    data: JSONList,
+    records: JSONList,
     operation: AggregateSpec,
 ) -> JSONDict:
     """
@@ -823,7 +835,7 @@ def apply_aggregate(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to aggregate.
     operation : AggregateSpec
         Dict with keys ``field`` and ``func``. ``func`` is one of
@@ -866,10 +878,10 @@ def apply_aggregate(
 
     nums: list[float] = []
     present = 0
-    for item in data:
-        if field in item:
+    for record in records:
+        if field in record:
             present += 1
-            v = item.get(field)
+            v = record.get(field)
             if isinstance(v, (int, float)):
                 nums.append(float(v))
 
