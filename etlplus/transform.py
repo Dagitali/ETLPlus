@@ -7,16 +7,19 @@ transform JSON-like records (dicts and lists of dicts).
 """
 from __future__ import annotations
 
-import operator
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
+from typing import Callable
 from typing import cast
 
+from .enums import AggregateName
+from .enums import OperatorName
+from .enums import PipelineStep
 from .load import load_data as _load_data
 from .types import AggregateFunc
-from .types import AggregateName
 from .types import AggregateSpec
+from .types import Aggregator
 from .types import FieldName
 from .types import Fields
 from .types import FilterSpec
@@ -24,8 +27,8 @@ from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import MapSpec
+from .types import Operator
 from .types import OperatorFunc
-from .types import OperatorName
 from .types import PipelineConfig
 from .types import PipelineStepName
 from .types import SortKey
@@ -133,13 +136,96 @@ def _normalize_specs(
     return [config]
 
 
+# New helper to normalize operation keys to plain strings.
+def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
+    """Normalize pipeline operation keys to plain strings.
+
+    Accepts both string keys (e.g., 'filter') and enum keys
+    (PipelineStep.FILTER), returning a str->spec mapping.
+    """
+
+    normalized: dict[str, Any] = {}
+    for k, v in ops.items():
+        if isinstance(k, str):
+            normalized[k] = v
+        elif isinstance(k, PipelineStep):
+            normalized[k.value] = v
+        else:
+            # Fallback: try `.value`, else use string form
+            name = getattr(k, 'value', str(k))
+            if isinstance(name, str):
+                normalized[name] = v
+    return normalized
+
+
+def _apply_aggregate_step(
+    rows: JSONList, spec: AggregateSpec,
+) -> JSONList:
+    """
+    Expects spec like: {'field': 'amount', 'func': 'sum', 'alias': 'total'}
+    Returns a single-row list with the aggregate result keyed by alias.
+    """
+
+    field: FieldName | None = spec.get('field')  # type: ignore[assignment]
+    func_raw = spec.get('func', 'count')
+    alias = spec.get('alias')
+
+    agg_func = _resolve_aggregator(func_raw)
+
+    # Gather numeric values if a field is provided; COUNT may ignore xs.
+    if field:
+        xs = []
+        for r in rows:
+            v = r.get(field)
+            if isinstance(v, (int, float)):
+                xs.append(float(v))
+        n = len(rows)
+    else:
+        # Aggregates like COUNT still work without a field.
+        xs = []
+        n = len(rows)
+
+    result = agg_func(xs, n)
+
+    # Default alias if not provided, e.g., "sum_amount" or "count"
+    if not alias:
+        alias = (
+            f"{AggregateName.coerce(func_raw).value}"
+            + (f"_{field}" if field else '')
+        )
+
+    return [{alias: result}]
+
+
 def _apply_filter_step(
-    data: JSONList,
+    rows: JSONList,
     spec: Any,
 ) -> JSONList:
-    if isinstance(spec, Mapping):
-        return apply_filter(data, spec)
-    return data
+    """
+    Expects spec like: {'field': 'price', 'op': 'gte', 'value': 10}.
+    """
+
+    field: FieldName = spec.get('field')  # type: ignore[assignment]
+    op_raw = spec.get('op')
+    value = spec.get('value')
+
+    if not field:
+        return rows  # or raise, depending on your policy
+
+    op_func = _resolve_operator(op_raw)
+
+    def _pred(r: JSONDict) -> bool:
+        try:
+            lhs = r[field]
+        except KeyError:
+            return False
+        try:
+            return op_func(lhs, value)
+        except Exception:
+            # Silent fail keeps behavior lenient; switch to raise if desired.
+            return False
+
+    return [r for r in rows if _pred(r)]
 
 
 def _apply_map_step(
@@ -195,27 +281,56 @@ def _is_plain_fields_list(obj: Any) -> bool:
         and not any(isinstance(x, Mapping) for x in obj)
 
 
+def _resolve_aggregator(
+    func: Aggregator | str,
+) -> Callable:
+    """
+    Accepts an Aggregate enum/callable/string and returns a callable
+    (xs, n)->Any.
+    """
+
+    if isinstance(func, AggregateName):
+        return func.func
+    if isinstance(func, str):
+        return AggregateName.coerce(func).func
+    if callable(func):
+        return func
+
+    raise TypeError(f'Invalid aggregate func: {func!r}')
+
+
+def _resolve_operator(
+    op: Operator | str,
+) -> Callable:
+    """
+    Accepts an Operator enum/callable/string and returns a callable
+    (a,b)->bool.
+    """
+
+    if isinstance(op, OperatorName):
+        return op.func
+    if isinstance(op, str):
+        return OperatorName.coerce(op).func
+    if callable(op):
+        return op
+
+    raise TypeError(f'Invalid operator: {op!r}')
+
+
 # SECTION: PROTECTED CONSTANTS ============================================== #
 
 
-_AGGREGATE_FUNCS: dict[AggregateName, AggregateFunc] = {
-    'sum': _agg_sum,
-    'avg': _agg_avg,
-    'min': _agg_min,
-    'max': _agg_max,
-    'count': _agg_count,
+# Thin, enum-derived compatibility maps retained for backward compatibility
+# with external code that may import these names. Prefer using
+# `_resolve_operator` and `_resolve_aggregator` directly.
+_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
+    m.value: m.func  # type: ignore[dict-item]
+    for m in AggregateName
 }
 
-
-_OPERATORS: dict[OperatorName, OperatorFunc] = {
-    'eq': operator.eq,
-    'ne': operator.ne,
-    'gt': operator.gt,
-    'gte': operator.ge,
-    'lt': operator.lt,
-    'lte': operator.le,
-    'in': _has,
-    'contains': _contains,
+_OPERATORS: dict[str, OperatorFunc] = {
+    m.value: m.func  # type: ignore[dict-item]
+    for m in OperatorName
 }
 
 
@@ -296,15 +411,9 @@ def apply_filter(
     if not field_name or op_raw is None or value is None:
         return data
 
-    op_func: OperatorFunc | None
-    if callable(op_raw):
-        op_func = cast(OperatorFunc, op_raw)
-    else:
-        # Normalize and look up by declared OperatorName set
-        name = str(op_raw).lower()
-        op_func = _OPERATORS.get(cast(OperatorName, name))
-
-    if not op_func:
+    try:
+        op_func = cast(OperatorFunc, _resolve_operator(op_raw))
+    except TypeError:
         return data
 
     result: JSONList = []
@@ -452,18 +561,20 @@ def apply_aggregate(
     if not field or func is None:
         return {'error': 'Invalid aggregation operation'}
 
-    aggregator: AggregateFunc | None
     func_label: str
+    try:
+        aggregator = _resolve_aggregator(func)
+    except TypeError:
+        return {'error': f"Unknown aggregation function: {func}"}
 
-    if callable(func):
-        aggregator = cast(AggregateFunc, func)
+    if isinstance(func, AggregateName):
+        func_label = func.value
+    elif isinstance(func, str):
+        func_label = AggregateName.coerce(func).value
+    elif callable(func):
         func_label = getattr(func, '__name__', 'custom')
     else:
-        func_label = str(func).lower()
-        aggregator = _AGGREGATE_FUNCS.get(cast(AggregateName, func_label))
-
-    if aggregator is None:
-        return {'error': f"Unknown aggregation function: {func}"}
+        func_label = str(func)
 
     nums: list[float] = []
     present = 0
@@ -524,6 +635,8 @@ def transform(
     if not operations:
         return data
 
+    ops = _normalize_operation_keys(operations)
+
     # Convert single dict to list for uniform processing.
     is_single_dict = isinstance(data, dict)
     if is_single_dict:
@@ -532,7 +645,7 @@ def transform(
     # All record-wise ops require a list of dicts.
     if isinstance(data, list):
         for step in _PIPELINE_STEPS:
-            raw_spec = operations.get(step)
+            raw_spec = ops.get(step)
             if raw_spec is None:
                 continue
 
@@ -545,10 +658,11 @@ def transform(
                 for spec in specs:
                     if not isinstance(spec, Mapping):
                         continue
-                    result = apply_aggregate(data, spec)
-                    if 'error' in result:
-                        return result
-                    combined.update(result)
+                    # Use enum-based applier that returns a single-row list
+                    # like: [{alias: value}]
+                    out_rows = _apply_aggregate_step(data, spec)
+                    if out_rows and isinstance(out_rows[0], Mapping):
+                        combined.update(cast(JSONDict, out_rows[0]))
                 if combined:
                     return combined
                 continue
