@@ -513,12 +513,12 @@ def transform(
     if not operations:
         return data
 
-    # Convert single dict to list for uniform processing
+    # Convert single dict to list for uniform processing.
     is_single_dict = isinstance(data, dict)
     if is_single_dict:
         data = [data]  # type: ignore[list-item]
 
-    # All record-wise ops require a list of dicts
+    # All record-wise ops require a list of dicts.
     if isinstance(data, list):
         for step in _PIPELINE_STEPS:
             raw_spec = operations.get(step)
@@ -542,6 +542,12 @@ def transform(
                     return combined
                 continue
 
+            # Special-case: plain list/tuple of field names for 'select'.
+            if step == 'select' and isinstance(raw_spec, Sequence) \
+                and not isinstance(raw_spec, (str, bytes, bytearray)) \
+                    and not any(isinstance(x, Mapping) for x in raw_spec):
+                specs = [raw_spec]  # Keep whole fields list as single spec
+
             applier: StepApplier | None = _STEP_APPLIERS.get(step)
             if applier is None:
                 continue
@@ -549,7 +555,7 @@ def transform(
             for spec in specs:
                 data = applier(data, spec)
 
-    # Convert back to single dict if input was single dict
+    # Convert back to single dict if input was single dict.
     if is_single_dict and isinstance(data, list) and len(data) == 1:
         return data[0]
 
