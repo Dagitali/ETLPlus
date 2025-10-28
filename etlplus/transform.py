@@ -4,6 +4,37 @@ ETLPlus Data Transformation
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
+
+The pipeline accepts both **string** names (e.g., ``"filter"``) and the
+enum ``PipelineStep`` for operation keys. For operators and aggregates,
+specs may provide **strings** (with aliases), the corresponding **enums**
+``OperatorName`` / ``AggregateName``, or **callables**.
+
+Examples
+--------
+Basic pipeline with strings::
+
+    ops = {
+        'filter': {'field': 'age', 'op': 'gte', 'value': 18},
+        'map': {'first_name': 'name'},
+        'select': ['name', 'age'],
+        'sort': {'field': 'name'},
+        'aggregate': {'field': 'age', 'func': 'avg', 'alias': 'avg_age'},
+    }
+    result = transform(data, ops)
+
+Using enums for keys and functions::
+
+    from .enums import PipelineStep, OperatorName, AggregateName
+    ops = {
+        PipelineStep.FILTER: {
+            'field': 'age', 'op': OperatorName.GTE, 'value': 18
+        },
+        PipelineStep.AGGREGATE: {
+            'field': 'age', 'func': AggregateName.AVG
+        },
+    }
+    result = transform(data, ops)
 """
 from __future__ import annotations
 
@@ -17,7 +48,6 @@ from .enums import AggregateName
 from .enums import OperatorName
 from .enums import PipelineStep
 from .load import load_data as _load_data
-from .types import AggregateFunc
 from .types import AggregateSpec
 from .types import Aggregator
 from .types import FieldName
@@ -41,30 +71,29 @@ from .types import StrPath
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-def _contains(
-    container: Any,
-    member: Any,
-) -> bool:
-    try:
-        return member in container  # type: ignore[operator]
-    except TypeError:
-        return False
-
-
-def _has(
-    member: Any,
-    container: Any,
-) -> bool:
-    try:
-        return member in container  # type: ignore[operator]
-    except TypeError:
-        return False
+# -- Aggregators -- #
 
 
 def _agg_avg(
     nums: list[float],
     _: int,
 ) -> float:
+    """
+    Average of *nums* or ``0.0`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to average.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float
+        The average of the input numbers or ``0.0`` if empty.
+    """
+
     return (sum(nums) / len(nums)) if nums else 0.0
 
 
@@ -72,6 +101,22 @@ def _agg_count(
     _: list[float],
     present: int,
 ) -> int:
+    """
+    Return the provided presence count ``present``.
+
+    Parameters
+    ----------
+    _ : list[float]
+        Unused list of numeric values.
+    present : int
+        Count of present values.
+
+    Returns
+    -------
+    int
+        The provided presence count ``present``.
+    """
+
     return present
 
 
@@ -79,6 +124,22 @@ def _agg_max(
     nums: list[float],
     _: int,
 ) -> float | None:
+    """
+    Maximum of *nums* or ``None`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to consider.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float | None
+        The maximum of the input numbers or ``None`` if empty.
+    """
+
     return max(nums) if nums else None
 
 
@@ -86,6 +147,22 @@ def _agg_min(
     nums: list[float],
     _: int,
 ) -> float | None:
+    """
+    Minimum of *nums* or ``None`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to consider.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float | None
+        The minimum of the input numbers or ``None`` if empty.
+    """
+
     return min(nums) if nums else None
 
 
@@ -93,37 +170,45 @@ def _agg_sum(
     nums: list[float],
     _: int,
 ) -> float:
-    return sum(nums)
-
-
-def _sort_key(
-    value: Any,
-) -> SortKey:
     """
-    Coerce mixed-type values into a sortable tuple key.
+    Sum of *nums* (``0.0`` for empty).
 
     Parameters
     ----------
-    value : Any
-        Value to normalize for sorting.
+    nums : list[float]
+        Numeric values to sum.
+    _ : int
+        Unused count parameter for signature compatibility.
 
     Returns
     -------
-    SortKey
-        A key that sorts numbers before strings; ``None`` sorts last.
-
+    float
+        The sum of the input numbers or ``0.0`` if empty.
     """
-    if value is None:
-        return (1, '')
-    if isinstance(value, (int, float)):
-        return (0, value)
 
-    return (0, str(value))
+    return sum(nums)
+
+
+# -- Normalization -- #
 
 
 def _normalize_specs(
     config: StepOrSteps | None,
 ) -> list[StepSpec]:
+    """
+    Normalize a step config into a list of step specs.
+
+    Parameters
+    ----------
+    config : StepOrSteps | None
+        ``None``, a single mapping, or a sequence of mappings.
+
+    Returns
+    -------
+    list[StepSpec]
+        An empty list for ``None``, otherwise a list form of *config*.
+    """
+
     if config is None:
         return []
     if isinstance(config, Sequence) and not isinstance(
@@ -136,12 +221,22 @@ def _normalize_specs(
     return [config]
 
 
-# New helper to normalize operation keys to plain strings.
 def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
-    """Normalize pipeline operation keys to plain strings.
+    """
+    Normalize pipeline operation keys to plain strings.
 
     Accepts both string keys (e.g., 'filter') and enum keys
     (PipelineStep.FILTER), returning a str->spec mapping.
+
+    Parameters
+    ----------
+    ops : Mapping[Any, Any]
+        Pipeline operations to normalize.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary whose keys are normalized step names.
     """
 
     normalized: dict[str, Any] = {}
@@ -158,12 +253,190 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
     return normalized
 
 
+# -- Predicates -- #
+
+
+def _contains(
+    container: Any,
+    member: Any,
+) -> bool:
+    """
+    Return ``True`` if *member* is contained in *container*.
+
+    Parameters
+    ----------
+    container : Any
+        Potential container object.
+    member : Any
+        Candidate member to check for containment.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+    """
+
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+def _has(
+    member: Any,
+    container: Any,
+) -> bool:
+    """
+    Return ``True`` if *container* contains *member*.
+
+    Parameters
+    ----------
+    member : Any
+        Candidate member to check for containment.
+    container : Any
+        Potential container object.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+
+    Notes
+    -----
+    This is the dual form of :func:`_contains` for readability in certain
+    operator contexts (``in`` vs. ``contains``).
+    """
+
+    try:
+        return member in container  # type: ignore[operator]
+    except TypeError:
+        return False
+
+
+# -- Resolvers -- #
+
+
+def _resolve_aggregator(
+    func: Aggregator | str,
+) -> Callable:
+    """
+    Resolve an aggregate specifier to a callable.
+
+    Parameters
+    ----------
+    func : Aggregator | str
+        An :class:`AggregateName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(xs: list[float], n: int) -> Any``.
+
+    Raises
+    ------
+    TypeError
+        If *func* cannot be interpreted as an aggregator.
+    """
+
+    if isinstance(func, AggregateName):
+        return func.func
+    if isinstance(func, str):
+        return AggregateName.coerce(func).func
+    if callable(func):
+        return func
+
+    raise TypeError(f'Invalid aggregate func: {func!r}')
+
+
+def _resolve_operator(
+    op: Operator | str,
+) -> Callable:
+    """
+    Resolve an operator specifier to a binary predicate.
+
+    Parameters
+    ----------
+    op : Operator | str
+        An :class:`OperatorName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(a: Any, b: Any) -> bool``.
+
+    Raises
+    ------
+    TypeError
+        If *op* cannot be interpreted as an operator.
+    """
+
+    if isinstance(op, OperatorName):
+        return op.func
+    if isinstance(op, str):
+        return OperatorName.coerce(op).func
+    if callable(op):
+        return op
+
+    raise TypeError(f'Invalid operator: {op!r}')
+
+
+# -- Sorting -- #
+
+
+def _sort_key(
+    value: Any,
+) -> SortKey:
+    """
+    Coerce mixed-type values into a sortable tuple key.
+
+    Ordering policy
+    ---------------
+    1) Numbers
+    2) Non-numeric values (stringified)
+    3) ``None`` (last)
+
+    Parameters
+    ----------
+    value : Any
+        Value to normalize for sorting.
+
+    Returns
+    -------
+    SortKey
+        A key with a type tag to avoid cross-type comparisons.
+    """
+
+    if value is None:
+        return (2, '')
+    if isinstance(value, (int, float)):
+        return (0, float(value))
+
+    return (1, str(value))
+
+
+# -- Step Appliers -- #
+
+
 def _apply_aggregate_step(
     rows: JSONList, spec: AggregateSpec,
 ) -> JSONList:
     """
-    Expects spec like: {'field': 'amount', 'func': 'sum', 'alias': 'total'}
-    Returns a single-row list with the aggregate result keyed by alias.
+    Apply a single aggregate spec and return a one-row result list.
+
+    Parameters
+    ----------
+    rows : JSONList
+        Input records.
+    spec : AggregateSpec
+        Mapping with keys like ``{'field': 'amount', 'func': 'sum', 'alias':
+        'total'}``.
+
+    Returns
+    -------
+    JSONList
+        A list containing one mapping ``[{alias: value}]``.
     """
 
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
@@ -198,21 +471,34 @@ def _apply_aggregate_step(
 
 
 def _apply_filter_step(
-    rows: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
     """
-    Expects spec like: {'field': 'price', 'op': 'gte', 'value': 10}.
+    Functional filter applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to filter.
+    spec : Any
+        Mapping with keys ``field``, ``op``, and ``value``. ``op`` may be a
+        string, :class:`OperatorName`, or a callable.
+
+    Returns
+    -------
+    JSONList
+        Filtered records.
     """
 
     field: FieldName = spec.get('field')  # type: ignore[assignment]
-    op_raw = spec.get('op')
+    op = spec.get('op')
     value = spec.get('value')
 
     if not field:
-        return rows  # or raise, depending on your policy
+        return records  # Or raise, depending on your policy.
 
-    op_func = _resolve_operator(op_raw)
+    op_func = _resolve_operator(op)
 
     def _pred(r: JSONDict) -> bool:
         try:
@@ -225,113 +511,130 @@ def _apply_filter_step(
             # Silent fail keeps behavior lenient; switch to raise if desired.
             return False
 
-    return [r for r in rows if _pred(r)]
+    return [r for r in records if _pred(r)]
 
 
 def _apply_map_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional map/rename applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to transform.
+    spec : Any
+        Mapping of **old field names** to **new field names**.
+
+    Returns
+    -------
+    JSONList
+        Transformed records.
+    """
+
     if isinstance(spec, Mapping):
-        return apply_map(data, spec)
-    return data
+        return apply_map(records, spec)
+
+    return records
 
 
 def _apply_select_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional select/project applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to transform.
+    spec : Any
+        Either a mapping with key ``'fields'`` whose value is a sequence of
+        field names, or a plain sequence of field names.
+
+    Returns
+    -------
+    JSONList
+        Transformed data.
+    """
+
     fields: Sequence[Any]
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
         if not _is_plain_fields_list(maybe_fields):
-            return data
+            return records
         fields = cast(Sequence[Any], maybe_fields)
     elif _is_plain_fields_list(spec):
         fields = cast(Sequence[Any], spec)
     else:
-        return data
+        return records
 
-    return apply_select(data, [str(field) for field in fields])
+    return apply_select(records, [str(field) for field in fields])
 
 
 def _apply_sort_step(
-    data: JSONList,
+    records: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional sort applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to sort.
+    spec : Any
+        Either a mapping with keys ``'field'`` and optional ``'reverse'``, or
+        a plain field name.
+
+    Returns
+    -------
+    JSONList
+        Sorted records.
+    """
+
     if isinstance(spec, Mapping):
         field_value = spec.get('field')
         field = str(field_value) if field_value is not None else None
         reverse = bool(spec.get('reverse', False))
-        return apply_sort(data, field, reverse)
+        return apply_sort(records, field, reverse)
 
     if spec is None:
-        return data
+        return records
 
-    return apply_sort(data, str(spec), False)
+    return apply_sort(records, str(spec), False)
+
+
+# -- Helpers -- #
 
 
 def _is_plain_fields_list(obj: Any) -> bool:
-    """Return True if obj is a non-text sequence of non-mapping items.
+    """
+    Return True if obj is a non-text sequence of non-mapping items.
 
     Used to detect a list/tuple of field names like ['name', 'age'].
+
+    Parameters
+    ----------
+    obj : Any
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if obj is a non-text sequence of non-mapping items, False
+        otherwise.
     """
+
     return isinstance(obj, Sequence) \
         and not isinstance(obj, (str, bytes, bytearray)) \
         and not any(isinstance(x, Mapping) for x in obj)
 
 
-def _resolve_aggregator(
-    func: Aggregator | str,
-) -> Callable:
-    """
-    Accepts an Aggregate enum/callable/string and returns a callable
-    (xs, n)->Any.
-    """
-
-    if isinstance(func, AggregateName):
-        return func.func
-    if isinstance(func, str):
-        return AggregateName.coerce(func).func
-    if callable(func):
-        return func
-
-    raise TypeError(f'Invalid aggregate func: {func!r}')
-
-
-def _resolve_operator(
-    op: Operator | str,
-) -> Callable:
-    """
-    Accepts an Operator enum/callable/string and returns a callable
-    (a,b)->bool.
-    """
-
-    if isinstance(op, OperatorName):
-        return op.func
-    if isinstance(op, str):
-        return OperatorName.coerce(op).func
-    if callable(op):
-        return op
-
-    raise TypeError(f'Invalid operator: {op!r}')
-
-
 # SECTION: PROTECTED CONSTANTS ============================================== #
-
-
-# Thin, enum-derived compatibility maps retained for backward compatibility
-# with external code that may import these names. Prefer using
-# `_resolve_operator` and `_resolve_aggregator` directly.
-_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
-    m.value: m.func  # type: ignore[dict-item]
-    for m in AggregateName
-}
-
-_OPERATORS: dict[str, OperatorFunc] = {
-    m.value: m.func  # type: ignore[dict-item]
-    for m in OperatorName
-}
 
 
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (
@@ -351,7 +654,7 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: PUBLIC API ======================================================= #
 
 
 def load_data(
@@ -382,7 +685,7 @@ def load_data(
 
 
 def apply_filter(
-    data: JSONList,
+    records: JSONList,
     condition: FilterSpec,
 ) -> JSONList:
     """
@@ -390,7 +693,7 @@ def apply_filter(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to filter.
     condition : FilterSpec
         Condition object with keys ``field``, ``op``, and ``value``. The
@@ -404,25 +707,25 @@ def apply_filter(
         Filtered records.
     """
 
-    field_name = condition.get('field')
+    field = condition.get('field')
     op_raw = condition.get('op')
     value = condition.get('value')
 
-    if not field_name or op_raw is None or value is None:
-        return data
+    if not field or op_raw is None or value is None:
+        return records
 
     try:
         op_func = cast(OperatorFunc, _resolve_operator(op_raw))
     except TypeError:
-        return data
+        return records
 
     result: JSONList = []
-    for item in data:
-        if field_name not in item:
+    for record in records:
+        if field not in record:
             continue
         try:
-            if op_func(item[field_name], value):
-                result.append(item)
+            if op_func(record[field], value):
+                result.append(record)
         except TypeError:
             # Skip records where the comparison is not supported.
             continue
@@ -431,7 +734,7 @@ def apply_filter(
 
 
 def apply_map(
-    data: JSONList,
+    records: JSONList,
     mapping: MapSpec,
 ) -> JSONList:
     """
@@ -439,7 +742,7 @@ def apply_map(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to transform.
     mapping : MapSpec
         Mapping of old field names to new field names.
@@ -453,15 +756,15 @@ def apply_map(
     rename_map = dict(mapping)
     result: JSONList = []
 
-    for item in data:
+    for record in records:
         renamed = {
-            new_key: item[old_key]
+            new_key: record[old_key]
             for old_key, new_key in rename_map.items()
-            if old_key in item
+            if old_key in record
         }
         renamed.update({
             key: value
-            for key, value in item.items()
+            for key, value in record.items()
             if key not in rename_map
         })
         result.append(renamed)
@@ -470,7 +773,7 @@ def apply_map(
 
 
 def apply_select(
-    data: JSONList,
+    records: JSONList,
     fields: Fields,
 ) -> JSONList:
     """
@@ -478,7 +781,7 @@ def apply_select(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to project.
     fields : Fields
         Field names to retain.
@@ -489,11 +792,13 @@ def apply_select(
         Records containing the requested fields; missing fields are ``None``.
     """
 
-    return [{field: item.get(field) for field in fields} for item in data]
+    return [
+        {field: record.get(field) for field in fields} for record in records
+    ]
 
 
 def apply_sort(
-    data: JSONList,
+    records: JSONList,
     field: FieldName | None,
     reverse: bool = False,
 ) -> JSONList:
@@ -502,7 +807,7 @@ def apply_sort(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to sort.
     field : FieldName | None
         Field name to sort by. If ``None``, input is returned unchanged.
@@ -516,18 +821,18 @@ def apply_sort(
     """
 
     if not field:
-        return data
+        return records
 
     key_field: FieldName = field
     return sorted(
-        data,
+        records,
         key=lambda x: _sort_key(x.get(key_field)),
         reverse=reverse,
     )
 
 
 def apply_aggregate(
-    data: JSONList,
+    records: JSONList,
     operation: AggregateSpec,
 ) -> JSONDict:
     """
@@ -535,7 +840,7 @@ def apply_aggregate(
 
     Parameters
     ----------
-    data : JSONList
+    records : JSONList
         Records to aggregate.
     operation : AggregateSpec
         Dict with keys ``field`` and ``func``. ``func`` is one of
@@ -578,10 +883,10 @@ def apply_aggregate(
 
     nums: list[float] = []
     present = 0
-    for item in data:
-        if field in item:
+    for record in records:
+        if field in record:
             present += 1
-            v = item.get(field)
+            v = record.get(field)
             if isinstance(v, (int, float)):
                 nums.append(float(v))
 
@@ -616,6 +921,12 @@ def transform(
     JSONData
         Transformed data.
 
+    Notes
+    -----
+    Operation keys may be provided as strings (e.g., ``"filter"``) or as
+    :class:`PipelineStep` enum members. The aggregate step returns a **single
+    mapping** with merged aggregate results when present.
+
     Examples
     --------
     Minimal example with multiple steps::
@@ -626,6 +937,19 @@ def transform(
             'select': ['name', 'age'],
             'sort': {'field': 'name', 'reverse': False},
             'aggregate': {'field': 'age', 'func': 'avg'},
+        }
+        result = transform(data, ops)
+
+    Using enums for keys and functions::
+
+        from .enums import PipelineStep, OperatorName, AggregateName
+        ops = {
+            PipelineStep.FILTER: {
+                'field': 'age', 'op': OperatorName.GTE, 'value': 18
+            },
+            PipelineStep.AGGREGATE: {
+                'field': 'age', 'func': AggregateName.AVG
+            },
         }
         result = transform(data, ops)
     """
