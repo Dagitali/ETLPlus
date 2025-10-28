@@ -48,7 +48,6 @@ from .enums import AggregateName
 from .enums import OperatorName
 from .enums import PipelineStep
 from .load import load_data as _load_data
-from .types import AggregateFunc
 from .types import AggregateSpec
 from .types import Aggregator
 from .types import FieldName
@@ -70,6 +69,9 @@ from .types import StrPath
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+# -- Predicates & Aggregators -- #
 
 
 def _contains(
@@ -246,6 +248,9 @@ def _agg_sum(
     return sum(nums)
 
 
+# -- Sorting -- #
+
+
 def _sort_key(
     value: Any,
 ) -> SortKey:
@@ -277,6 +282,9 @@ def _sort_key(
     return (1, str(value))
 
 
+# -- Normalization -- #
+
+
 def _normalize_specs(
     config: StepOrSteps | None,
 ) -> list[StepSpec]:
@@ -306,7 +314,6 @@ def _normalize_specs(
     return [config]
 
 
-# New helper to normalize operation keys to plain strings.
 def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
     """
     Normalize pipeline operation keys to plain strings.
@@ -337,6 +344,9 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
             if isinstance(name, str):
                 normalized[name] = v
     return normalized
+
+
+# -- Step Appliers -- #
 
 
 def _apply_aggregate_step(
@@ -551,6 +561,9 @@ def _is_plain_fields_list(obj: Any) -> bool:
         and not any(isinstance(x, Mapping) for x in obj)
 
 
+# -- Resolvers -- #
+
+
 def _resolve_aggregator(
     func: Aggregator | str,
 ) -> Callable:
@@ -618,20 +631,6 @@ def _resolve_operator(
 # SECTION: PROTECTED CONSTANTS ============================================== #
 
 
-# Thin, enum-derived compatibility maps retained for backward compatibility
-# with external code that may import these names. Prefer using
-# `_resolve_operator` and `_resolve_aggregator` directly.
-_AGGREGATE_FUNCS: dict[str, AggregateFunc] = {
-    m.value: m.func  # type: ignore[dict-item]
-    for m in AggregateName
-}
-
-_OPERATORS: dict[str, OperatorFunc] = {
-    m.value: m.func  # type: ignore[dict-item]
-    for m in OperatorName
-}
-
-
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (
     'filter',
     'map',
@@ -649,7 +648,7 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: PUBLIC API ======================================================= #
 
 
 def load_data(
