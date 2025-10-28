@@ -143,6 +143,7 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
     Accepts both string keys (e.g., 'filter') and enum keys
     (PipelineStep.FILTER), returning a str->spec mapping.
     """
+
     normalized: dict[str, Any] = {}
     for k, v in ops.items():
         if isinstance(k, str):
@@ -164,6 +165,7 @@ def _apply_aggregate_step(
     Expects spec like: {'field': 'amount', 'func': 'sum', 'alias': 'total'}
     Returns a single-row list with the aggregate result keyed by alias.
     """
+
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
     func_raw = spec.get('func', 'count')
     alias = spec.get('alias')
@@ -224,10 +226,6 @@ def _apply_filter_step(
             return False
 
     return [r for r in rows if _pred(r)]
-
-    # if isinstance(spec, Mapping):
-    #     return apply_filter(data, spec)
-    # return data
 
 
 def _apply_map_step(
@@ -290,6 +288,7 @@ def _resolve_aggregator(
     Accepts an Aggregate enum/callable/string and returns a callable
     (xs, n)->Any.
     """
+
     if isinstance(func, AggregateName):
         return func.func
     if isinstance(func, str):
@@ -307,6 +306,7 @@ def _resolve_operator(
     Accepts an Operator enum/callable/string and returns a callable
     (a,b)->bool.
     """
+
     if isinstance(op, OperatorName):
         return op.func
     if isinstance(op, str):
