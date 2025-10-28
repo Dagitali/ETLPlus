@@ -14,6 +14,10 @@ from typing import Any
 from typing import Callable
 from typing import Literal
 
+from .enums import AggregateName
+from .enums import OperatorName
+from .enums import PipelineStep
+
 
 # SECTION: PUBLIC API ======================================================= #
 
@@ -28,7 +32,7 @@ __all__ = [
     'StrAnyMap', 'StrStrMap', 'StrSeqMap',
     'FilterSpec', 'MapSpec', 'SelectSpec', 'SortSpec', 'AggregateSpec',
     'StepSpec', 'StepSeq', 'StepOrSteps',
-    'PipelineStepName', 'PipelineConfig',
+    'PipelineStepName', 'PipelineConfig', 'PipelinePlan',
     'StepApplier', 'SortKey',
 ]
 
@@ -61,12 +65,8 @@ type AggregateFunc = Callable[[list[float], int], Any]
 
 # -- Operator / Aggregator Names -- #
 
-type OperatorName = \
-    Literal['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'contains']
-type Operator = OperatorName | OperatorFunc
-
-type AggregateName = Literal['sum', 'avg', 'min', 'max', 'count']
 type Aggregator = AggregateName | AggregateFunc
+type Operator = OperatorName | OperatorFunc
 
 # -- Records & Fields -- #
 
@@ -98,6 +98,8 @@ type StepOrSteps = StepSpec | StepSeq
 
 type PipelineStepName = Literal['filter', 'map', 'select', 'sort', 'aggregate']
 type PipelineConfig = Mapping[PipelineStepName, StepOrSteps]
+# Enum-keyed plan (internal use)
+type PipelinePlan = Mapping[PipelineStep, StepOrSteps]
 
 # -- Helpers -- #
 
