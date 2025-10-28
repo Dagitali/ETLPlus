@@ -4,6 +4,37 @@ ETLPlus Data Transformation
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
+
+The pipeline accepts both **string** names (e.g., ``"filter"``) and the
+enum ``PipelineStep`` for operation keys. For operators and aggregates,
+specs may provide **strings** (with aliases), the corresponding **enums**
+``OperatorName`` / ``AggregateName``, or **callables**.
+
+Examples
+--------
+Basic pipeline with strings::
+
+    ops = {
+        'filter': {'field': 'age', 'op': 'gte', 'value': 18},
+        'map': {'first_name': 'name'},
+        'select': ['name', 'age'],
+        'sort': {'field': 'name'},
+        'aggregate': {'field': 'age', 'func': 'avg', 'alias': 'avg_age'},
+    }
+    result = transform(data, ops)
+
+Using enums for keys and functions::
+
+    from .enums import PipelineStep, OperatorName, AggregateName
+    ops = {
+        PipelineStep.FILTER: {
+            'field': 'age', 'op': OperatorName.GTE, 'value': 18
+        },
+        PipelineStep.AGGREGATE: {
+            'field': 'age', 'func': AggregateName.AVG
+        },
+    }
+    result = transform(data, ops)
 """
 from __future__ import annotations
 
@@ -45,6 +76,23 @@ def _contains(
     container: Any,
     member: Any,
 ) -> bool:
+    """
+    Return ``True`` if *member* is contained in *container*.
+
+    Parameters
+    ----------
+    container : Any
+        Potential container object.
+    member : Any
+        Candidate member to check for containment.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+    """
+
     try:
         return member in container  # type: ignore[operator]
     except TypeError:
@@ -55,6 +103,28 @@ def _has(
     member: Any,
     container: Any,
 ) -> bool:
+    """
+    Return ``True`` if *container* contains *member*.
+
+    Parameters
+    ----------
+    member : Any
+        Candidate member to check for containment.
+    container : Any
+        Potential container object.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``member in container`` succeeds; ``False`` on
+        ``TypeError`` or when containment fails.
+
+    Notes
+    -----
+    This is the dual form of :func:`_contains` for readability in certain
+    operator contexts (``in`` vs. ``contains``).
+    """
+
     try:
         return member in container  # type: ignore[operator]
     except TypeError:
@@ -65,6 +135,22 @@ def _agg_avg(
     nums: list[float],
     _: int,
 ) -> float:
+    """
+    Average of *nums* or ``0.0`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to average.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float
+        The average of the input numbers or ``0.0`` if empty.
+    """
+
     return (sum(nums) / len(nums)) if nums else 0.0
 
 
@@ -72,6 +158,22 @@ def _agg_count(
     _: list[float],
     present: int,
 ) -> int:
+    """
+    Return the provided presence count ``present``.
+
+    Parameters
+    ----------
+    _ : list[float]
+        Unused list of numeric values.
+    present : int
+        Count of present values.
+
+    Returns
+    -------
+    int
+        The provided presence count ``present``.
+    """
+
     return present
 
 
@@ -79,6 +181,22 @@ def _agg_max(
     nums: list[float],
     _: int,
 ) -> float | None:
+    """
+    Maximum of *nums* or ``None`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to consider.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float | None
+        The maximum of the input numbers or ``None`` if empty.
+    """
+
     return max(nums) if nums else None
 
 
@@ -86,6 +204,22 @@ def _agg_min(
     nums: list[float],
     _: int,
 ) -> float | None:
+    """
+    Minimum of *nums* or ``None`` if empty.
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to consider.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float | None
+        The minimum of the input numbers or ``None`` if empty.
+    """
+
     return min(nums) if nums else None
 
 
@@ -93,6 +227,22 @@ def _agg_sum(
     nums: list[float],
     _: int,
 ) -> float:
+    """
+    Sum of *nums* (``0.0`` for empty).
+
+    Parameters
+    ----------
+    nums : list[float]
+        Numeric values to sum.
+    _ : int
+        Unused count parameter for signature compatibility.
+
+    Returns
+    -------
+    float
+        The sum of the input numbers or ``0.0`` if empty.
+    """
+
     return sum(nums)
 
 
@@ -111,7 +261,6 @@ def _sort_key(
     -------
     SortKey
         A key that sorts numbers before strings; ``None`` sorts last.
-
     """
     if value is None:
         return (1, '')
@@ -124,6 +273,20 @@ def _sort_key(
 def _normalize_specs(
     config: StepOrSteps | None,
 ) -> list[StepSpec]:
+    """
+    Normalize a step config into a list of step specs.
+
+    Parameters
+    ----------
+    config : StepOrSteps | None
+        ``None``, a single mapping, or a sequence of mappings.
+
+    Returns
+    -------
+    list[StepSpec]
+        An empty list for ``None``, otherwise a list form of *config*.
+    """
+
     if config is None:
         return []
     if isinstance(config, Sequence) and not isinstance(
@@ -138,10 +301,21 @@ def _normalize_specs(
 
 # New helper to normalize operation keys to plain strings.
 def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
-    """Normalize pipeline operation keys to plain strings.
+    """
+    Normalize pipeline operation keys to plain strings.
 
     Accepts both string keys (e.g., 'filter') and enum keys
     (PipelineStep.FILTER), returning a str->spec mapping.
+
+    Parameters
+    ----------
+    ops : Mapping[Any, Any]
+        Pipeline operations to normalize.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary whose keys are normalized step names.
     """
 
     normalized: dict[str, Any] = {}
@@ -162,8 +336,20 @@ def _apply_aggregate_step(
     rows: JSONList, spec: AggregateSpec,
 ) -> JSONList:
     """
-    Expects spec like: {'field': 'amount', 'func': 'sum', 'alias': 'total'}
-    Returns a single-row list with the aggregate result keyed by alias.
+    Apply a single aggregate spec and return a one-row result list.
+
+    Parameters
+    ----------
+    rows : JSONList
+        Input records.
+    spec : AggregateSpec
+        Mapping with keys like ``{'field': 'amount', 'func': 'sum', 'alias':
+        'total'}``.
+
+    Returns
+    -------
+    JSONList
+        A list containing one mapping ``[{alias: value}]``.
     """
 
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
@@ -202,7 +388,20 @@ def _apply_filter_step(
     spec: Any,
 ) -> JSONList:
     """
-    Expects spec like: {'field': 'price', 'op': 'gte', 'value': 10}.
+    Functional filter applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    rows : JSONList
+        Input records.
+    spec : Any
+        Mapping with keys ``field``, ``op``, and ``value``. ``op`` may be a
+        string, :class:`OperatorName`, or a callable.
+
+    Returns
+    -------
+    JSONList
+        Filtered records.
     """
 
     field: FieldName = spec.get('field')  # type: ignore[assignment]
@@ -232,6 +431,22 @@ def _apply_map_step(
     data: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional map/rename applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    data : JSONList
+        Input data to transform.
+    spec : Any
+        Mapping of field names to new names or transformations.
+
+    Returns
+    -------
+    JSONList
+        Transformed data.
+    """
+
     if isinstance(spec, Mapping):
         return apply_map(data, spec)
     return data
@@ -241,6 +456,22 @@ def _apply_select_step(
     data: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional select/project applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    data : JSONList
+        Input data to transform.
+    spec : Any
+        Mapping of field names to new names or transformations.
+
+    Returns
+    -------
+    JSONList
+        Transformed data.
+    """
+
     fields: Sequence[Any]
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
@@ -259,6 +490,22 @@ def _apply_sort_step(
     data: JSONList,
     spec: Any,
 ) -> JSONList:
+    """
+    Functional sort applier used by the pipeline engine.
+
+    Parameters
+    ----------
+    data : JSONList
+        Input data to transform.
+    spec : Any
+        Mapping of field names to new names or transformations.
+
+    Returns
+    -------
+    JSONList
+        Transformed data.
+    """
+
     if isinstance(spec, Mapping):
         field_value = spec.get('field')
         field = str(field_value) if field_value is not None else None
@@ -272,10 +519,23 @@ def _apply_sort_step(
 
 
 def _is_plain_fields_list(obj: Any) -> bool:
-    """Return True if obj is a non-text sequence of non-mapping items.
+    """
+    Return True if obj is a non-text sequence of non-mapping items.
 
     Used to detect a list/tuple of field names like ['name', 'age'].
+
+    Parameters
+    ----------
+    obj : Any
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if obj is a non-text sequence of non-mapping items, False
+        otherwise.
     """
+
     return isinstance(obj, Sequence) \
         and not isinstance(obj, (str, bytes, bytearray)) \
         and not any(isinstance(x, Mapping) for x in obj)
@@ -285,8 +545,22 @@ def _resolve_aggregator(
     func: Aggregator | str,
 ) -> Callable:
     """
-    Accepts an Aggregate enum/callable/string and returns a callable
-    (xs, n)->Any.
+    Resolve an aggregate specifier to a callable.
+
+    Parameters
+    ----------
+    func : Aggregator | str
+        An :class:`AggregateName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(xs: list[float], n: int) -> Any``.
+
+    Raises
+    ------
+    TypeError
+        If *func* cannot be interpreted as an aggregator.
     """
 
     if isinstance(func, AggregateName):
@@ -303,8 +577,22 @@ def _resolve_operator(
     op: Operator | str,
 ) -> Callable:
     """
-    Accepts an Operator enum/callable/string and returns a callable
-    (a,b)->bool.
+    Resolve an operator specifier to a binary predicate.
+
+    Parameters
+    ----------
+    op : Operator | str
+        An :class:`OperatorName`, a string (with aliases), or a callable.
+
+    Returns
+    -------
+    Callable
+        Function of signature ``(a: Any, b: Any) -> bool``.
+
+    Raises
+    ------
+    TypeError
+        If *op* cannot be interpreted as an operator.
     """
 
     if isinstance(op, OperatorName):
@@ -616,6 +904,12 @@ def transform(
     JSONData
         Transformed data.
 
+    Notes
+    -----
+    Operation keys may be provided as strings (e.g., ``"filter"``) or as
+    :class:`PipelineStep` enum members. The aggregate step returns a **single
+    mapping** with merged aggregate results when present.
+
     Examples
     --------
     Minimal example with multiple steps::
@@ -626,6 +920,19 @@ def transform(
             'select': ['name', 'age'],
             'sort': {'field': 'name', 'reverse': False},
             'aggregate': {'field': 'age', 'func': 'avg'},
+        }
+        result = transform(data, ops)
+
+    Using enums for keys and functions::
+
+        from .enums import PipelineStep, OperatorName, AggregateName
+        ops = {
+            PipelineStep.FILTER: {
+                'field': 'age', 'op': OperatorName.GTE, 'value': 18
+            },
+            PipelineStep.AGGREGATE: {
+                'field': 'age', 'func': AggregateName.AVG
+            },
         }
         result = transform(data, ops)
     """
