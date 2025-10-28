@@ -12,23 +12,19 @@ from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import Mapping
-from typing import TypeAlias
 from typing import TypedDict
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-JSONDict: TypeAlias = dict[str, Any]
-JSONList: TypeAlias = list[JSONDict]
-JSONData: TypeAlias = JSONDict | JSONList
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
 
 
 # SECTION: CLASSES ========================================================== #
 
 
 class FieldRules(TypedDict, total=False):
-    """Validation rules for a single field.
+    """
+    Validation rules for a single field.
 
     Keys are optional; absent keys imply no constraint.
     """
@@ -91,10 +87,11 @@ def load_data(
     ValueError
         If the input cannot be interpreted as a JSON object or array.
     """
+
     if isinstance(source, (dict, list)):
         return source
 
-    # Try to load from file
+    # Try to load from file.
     try:
         path = Path(source)
         if path.exists():
@@ -109,7 +106,7 @@ def load_data(
         # Fall through and try to parse as a JSON string
         pass
 
-    # Try to parse as JSON string
+    # Try to parse as JSON string.
     try:
         loaded = json.loads(source)
         if isinstance(loaded, (dict, list)):
@@ -117,8 +114,8 @@ def load_data(
         raise ValueError(
             'JSON root must be an object or array when parsing string',
         )
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid data source: {source}") from exc
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid data source: {source}") from e
 
 
 # -- Validation primitives -- #
@@ -143,6 +140,7 @@ def _type_matches(
     bool
         ``True`` if the value matches the expected type, else ``False``.
     """
+
     type_map: dict[str, type | tuple[type, ...]] = {
         'string': str,
         'number': (int, float),
@@ -185,12 +183,12 @@ def validate_field(
     """
     errors: list[str] = []
 
-    # Required check (None is treated as missing)
+    # Required check (None is treated as missing).
     if bool(rules.get('required', False)) and value is None:
         errors.append('Field is required')
         return {'valid': False, 'errors': errors}
 
-    # If optional and missing, it's valid
+    # If optional and missing, it's valid.
     if value is None:
         return {'valid': True, 'errors': []}
 
@@ -203,7 +201,7 @@ def validate_field(
                 f"{type(value).__name__}",
             )
 
-    # Numeric range checks
+    # Numeric range checks.
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if 'min' in rules:
             try:
@@ -226,7 +224,7 @@ def validate_field(
             except (TypeError, ValueError):
                 errors.append("Rule 'max' must be numeric")
 
-    # String checks
+    # String checks.
     if isinstance(value, str):
         if 'minLength' in rules:
             try:
@@ -256,7 +254,7 @@ def validate_field(
             else:
                 errors.append("Rule 'pattern' must be a string")
 
-    # Enum check
+    # Enum check.
     if 'enum' in rules:
         enum_vals = rules.get('enum')
         if isinstance(enum_vals, list):
@@ -297,10 +295,10 @@ def validate(
     """
     try:
         data = load_data(source)
-    except Exception as exc:  # noqa: BLE001 - return structured error
+    except Exception as e:  # noqa: BLE001 - return structured error
         return {
             'valid': False,
-            'errors': [f"Failed to load data: {exc}"],
+            'errors': [f"Failed to load data: {e}"],
             'field_errors': {},
             'data': None,
         }
