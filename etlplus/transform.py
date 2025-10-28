@@ -30,6 +30,8 @@ from .types import PipelineConfig
 from .types import PipelineStepName
 from .types import SortKey
 from .types import StepApplier
+from .types import StepOrSteps
+from .types import StepSpec
 from .types import StrPath
 
 
@@ -117,14 +119,17 @@ def _sort_key(
 
 
 def _normalize_specs(
-    config: Any,
-) -> list[Any]:
+    config: StepOrSteps | None,
+) -> list[StepSpec]:
     if config is None:
         return []
     if isinstance(config, Sequence) and not isinstance(
         config, (str, bytes, bytearray),
     ):
-        return list(config)
+        # Already a sequence of step specs; normalize to a list.
+        return list(config)  # type: ignore[list-item]
+
+    # Single spec
     return [config]
 
 
@@ -153,11 +158,13 @@ def _apply_select_step(
     fields: Sequence[Any]
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
+        # if not _is_plain_fields_list(maybe_fields):
         if not isinstance(maybe_fields, Sequence) or isinstance(
             maybe_fields, (str, bytes, bytearray),
         ):
             return data
         fields = maybe_fields
+    # elif _is_plain_fields_list(spec):
     elif isinstance(spec, Sequence) and not isinstance(
         spec, (str, bytes, bytearray),
     ):
@@ -182,6 +189,16 @@ def _apply_sort_step(
         return data
 
     return apply_sort(data, str(spec), False)
+
+
+def _is_plain_fields_list(obj: Any) -> bool:
+    """Return True if obj is a non-text sequence of non-mapping items.
+
+    Used to detect a list/tuple of field names like ['name', 'age'].
+    """
+    return isinstance(obj, Sequence) \
+        and not isinstance(obj, (str, bytes, bytearray)) \
+        and not any(isinstance(x, Mapping) for x in obj)
 
 
 # SECTION: PROTECTED CONSTANTS ============================================== #
@@ -543,10 +560,9 @@ def transform(
                 continue
 
             # Special-case: plain list/tuple of field names for 'select'.
-            if step == 'select' and isinstance(raw_spec, Sequence) \
-                and not isinstance(raw_spec, (str, bytes, bytearray)) \
-                    and not any(isinstance(x, Mapping) for x in raw_spec):
-                specs = [raw_spec]  # Keep whole fields list as single spec
+            if step == 'select' and _is_plain_fields_list(raw_spec):
+                # Keep the whole fields list as a single spec.
+                specs = [cast(StepSpec, raw_spec)]
 
             applier: StepApplier | None = _STEP_APPLIERS.get(step)
             if applier is None:
