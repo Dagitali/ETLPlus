@@ -83,6 +83,31 @@ def test_apply_filter_in():
     assert len(result) == 2
 
 
+def test_apply_filter_callable_operator():
+    """
+    Filter with a custom callable operator.
+
+    Notes
+    -----
+    Keeps records whose ``name`` contains the letter ``'a'``.
+    """
+
+    data = [
+        {'name': 'John'},
+        {'name': 'Jane'},
+        {'name': 'Bob'},
+    ]
+    result = apply_filter(
+        data,
+        {
+            'field': 'name',
+            'op': lambda value, needle: needle in value.lower(),
+            'value': 'a',
+        },
+    )
+    assert [item['name'] for item in result] == ['Jane']
+
+
 def test_apply_map():
     """
     Map/rename fields in each record.
@@ -210,6 +235,34 @@ def test_apply_aggregate_count():
     assert result['count_value'] == 3
 
 
+def test_apply_aggregate_callable_with_alias():
+    """
+    Aggregate with a callable and custom alias.
+
+    Notes
+    -----
+    Computes the sum plus count and stores it under ``'score'``.
+    """
+
+    def score(nums: list[float], present: int) -> float:
+        return sum(nums) + present
+
+    data = [
+        {'value': 10},
+        {'value': 20},
+        {'value': 15},
+    ]
+    result = apply_aggregate(
+        data,
+        {
+            'field': 'value',
+            'func': score,
+            'alias': 'score',
+        },
+    )
+    assert result == {'score': 48}
+
+
 def test_transform_with_filter():
     """
     Transform using a filter operation.
@@ -234,6 +287,37 @@ def test_transform_with_filter():
     )
     assert len(result) == 1
     assert result[0]['name'] == 'John'
+
+
+def test_transform_with_multiple_filters_and_select():
+    """
+    Transform using multiple filters and a select sequence.
+
+    Notes
+    -----
+    Filters twice before selecting fields.
+    """
+
+    data = [
+        {'name': 'John', 'age': 30, 'city': 'New York'},
+        {'name': 'Jane', 'age': 25, 'city': 'Newark'},
+        {'name': 'Bob', 'age': 35, 'city': 'Boston'},
+    ]
+    result = transform(
+        data,
+        {
+            'filter': [
+                {'field': 'age', 'op': 'gte', 'value': 26},
+                {
+                    'field': 'city',
+                    'op': lambda value, prefix: str(value).startswith(prefix),
+                    'value': 'New',
+                },
+            ],
+            'select': [{'fields': ['name']}],
+        },
+    )
+    assert result == [{'name': 'John'}]
 
 
 def test_transform_with_map():
@@ -295,6 +379,32 @@ def test_transform_with_aggregate():
         {'aggregate': {'field': 'value', 'func': 'sum'}},
     )
     assert result['sum_value'] == 30
+
+
+def test_transform_with_multiple_aggregates():
+    """
+    Transform with multiple aggregations.
+
+    Notes
+    -----
+    Produces both sum and count results.
+    """
+
+    data = [
+        {'value': 1},
+        {'value': 2},
+        {'value': 3},
+    ]
+    result = transform(
+        data,
+        {
+            'aggregate': [
+                {'field': 'value', 'func': 'sum'},
+                {'field': 'value', 'func': 'count', 'alias': 'count'},
+            ],
+        },
+    )
+    assert result == {'sum_value': 6, 'count': 3}
 
 
 def test_transform_from_json_string():
