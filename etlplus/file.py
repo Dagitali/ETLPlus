@@ -134,10 +134,29 @@ class File:
         extension (``.csv``, ``.json``, or ``.xml``).
     """
 
+    # -- Attributes -- #
+
     path: Path
     file_format: FileFormat | None = None
 
-    # -- Constructors -- #
+    # -- Magic Methods (Constructors) -- #
+
+    def __post_init__(self) -> None:
+        """
+        Auto-detect and set the file format on initialization.
+
+        If no explicit ``file_format`` is provided, attempt to infer it from
+        the file path's extension and update :attr:`file_format`. If the
+        extension is unknown, the attribute is left as ``None`` and will be
+        validated later by :meth:`_ensure_format`.
+        """
+
+        if self.file_format is None:
+            try:
+                self.file_format = self._guess_format()
+            except ValueError:
+                # Leave as None; _ensure_format() will raise on use if needed.
+                pass
 
     # -- Protected Instance Methods -- #
 
