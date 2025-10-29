@@ -148,7 +148,7 @@ def create_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument(
         '--rules',
         type=_json_type,
-        # default={},
+        default={},
         help='Validation rules as JSON string',
     )
 
@@ -165,7 +165,7 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser.add_argument(
         '--operations',
         type=_json_type,
-        # default={},
+        default={},
         help='Transformation operations as JSON string',
     )
     transform_parser.add_argument(
