@@ -78,6 +78,7 @@ def create_parser() -> argparse.ArgumentParser:
         help=(
             'Extract data from sources (files, databases, REST APIs)'
         ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     extract_parser.add_argument(
         'source_type',
@@ -106,6 +107,7 @@ def create_parser() -> argparse.ArgumentParser:
     validate_parser = subparsers.add_parser(
         'validate',
         help='Validate data from sources',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     validate_parser.add_argument(
         'source',
@@ -113,6 +115,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument(
         '--rules',
+        # type=_json_type,
+        # default={},
         help='Validation rules as JSON string',
     )
 
@@ -120,6 +124,7 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser = subparsers.add_parser(
         'transform',
         help='Transform data',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     transform_parser.add_argument(
         'source',
@@ -127,6 +132,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
     transform_parser.add_argument(
         '--operations',
+        # type=_json_type,
+        # default={},
         help='Transformation operations as JSON string',
     )
     transform_parser.add_argument(
@@ -138,6 +145,7 @@ def create_parser() -> argparse.ArgumentParser:
     load_parser = subparsers.add_parser(
         'load',
         help='Load data to targets (files, databases, REST APIs)',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     load_parser.add_argument(
         'source',
@@ -159,10 +167,13 @@ def create_parser() -> argparse.ArgumentParser:
         '--format',
         choices=['json', 'csv'],
         default='json',
-        help='Format of the target file to load (default: json)',
+        help='Format for the target file to load (default: json)',
     )
 
     return parser
+
+
+# -- Main -- #
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -232,6 +243,9 @@ def main(argv: list[str] | None = None) -> int:
 
         return 0
 
+    except KeyboardInterrupt:
+        # Conventional exit code for SIGINT
+        return 130
     except Exception as e:  # noqa: BLE001
         print(f'Error: {e}', file=sys.stderr)
         return 1
