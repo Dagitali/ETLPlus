@@ -37,8 +37,10 @@ from typing import Mapping
 from typing import TypedDict
 
 from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
+from .types import Record
+from .types import Records
+from .types import StrAnyMap
+from .types import StrPath
 
 
 # SECTION: PUBLIC API ======================================================= #
@@ -129,6 +131,12 @@ class Validation(TypedDict):
     data: JSONData | None
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type RulesMap = Mapping[str, FieldRules]
+
+
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
@@ -177,21 +185,21 @@ def _type_matches(value: Any, expected: str) -> bool:
 
 
 def load_data(
-    source: str | JSONData,
+    source: StrPath | JSONData,
 ) -> JSONData:
     """
     Load data from a file path, JSON string, or a direct object.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
-        Data source. If a path exists, JSON is read from the file. If a
-        non-path string is given, it is parsed as JSON. Dicts or lists are
-        returned unchanged.
+    source : StrPath | JSONData
+        Data source. If a path exists (str/Path/PathLike), JSON is read from
+        the file. If a non-path string is given, it is parsed as JSON. Dicts or
+        lists are returned unchanged.
 
     Returns
     -------
-    dict[str, Any] or list[dict[str, Any]]
+    JSONData
         Parsed object or list of objects.
 
     Raises
@@ -220,7 +228,9 @@ def load_data(
 
     # Try to parse as JSON string.
     try:
-        loaded = json.loads(source)
+        text = source if isinstance(source, (str, bytes, bytearray)) \
+            else str(source)
+        loaded = json.loads(text)
         if isinstance(loaded, (dict, list)):
             return loaded
         raise ValueError(
@@ -232,7 +242,7 @@ def load_data(
 
 def validate_field(
     value: Any,
-    rules: Mapping[str, Any] | FieldRules,
+    rules: StrAnyMap | FieldRules,
 ) -> FieldValidation:
     """
     Validate a single value against field rules.
@@ -241,7 +251,7 @@ def validate_field(
     ----------
     value : Any
         The value to validate. ``None`` is treated as missing.
-    rules : Mapping[str, Any] or FieldRules
+    rules : StrAnyMap | FieldRules
         Rule dictionary. Supported keys include ``required``, ``type``,
         ``min``, ``max``, ``minLength``, ``maxLength``, ``pattern``, and
         ``enum``.
@@ -352,17 +362,16 @@ def validate_field(
 
 
 def validate(
-    source: str | JSONDict | JSONList,
-    rules: Mapping[str, FieldRules] | None = None,
+    source: StrPath | Record | Records,
+    rules: RulesMap | None = None,
 ) -> Validation:
     """
     Validate data against rules.
 
     Parameters
     ----------
-    source : str or dict[str, Any] or list[dict[str, Any]]
-        Data source to validate.
-    rules : Mapping[str, FieldRules] or None, optional
+    source : StrPath | Record | Records        Data source to validate.
+    rules : RulesMap | None, optional
         Field rules keyed by field name. If ``None``, data is considered
         valid and returned unchanged.
 
