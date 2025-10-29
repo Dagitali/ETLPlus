@@ -4,10 +4,11 @@ ETLPlus Command-Line Interface
 
 Entry point for the ``etlplus`` CLI.
 
-Notes
------
-Provides subcommands:
+This module wires subcommands via ``argparse`` using
+``set_defaults(func=...)`` so dispatch is clean and extensible.
 
+Subcommands
+-----------
 - ``extract``: extract data from files, databases, or REST APIs
 - ``validate``: validate data against rules
 - ``transform``: transform records
@@ -18,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from textwrap import dedent
 
 from etlplus import __version__
 from etlplus.extract import extract
@@ -27,6 +29,9 @@ from etlplus.validate import validate
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Parser -- #
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -40,17 +45,26 @@ def create_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog='etlplus',
-        description=(
-            'ETLPlus - A Swiss Army knife for enabling simple ETL '
-            'operations'
-        ),
+        description=dedent(
+            """
+            ETLPlus — A Swiss Army knife for simple ETL operations.
+
+            Provide a subcommand and options. Examples:
+
+              etlplus extract file data.csv --format csv -o out.json
+              etlplus validate data.json --rules '{"required": ["id"]}'
+              etlplus transform data.json --operations '{"select": ["id"]}'
+              etlplus load data.json file output.json --format json
+            """,
+        ).strip(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(
-        '--version',
+        '-V', '--version',
         action='version',
-        version=f"%(prog)s {__version__}",
+        version=f'%(prog)s {__version__}',
     )
 
     subparsers = parser.add_subparsers(
@@ -78,15 +92,14 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     extract_parser.add_argument(
-        '-o',
-        '--output',
+        '-o', '--output',
         help='Output file to save extracted data (JSON format)',
     )
     extract_parser.add_argument(
         '--format',
         choices=['json', 'csv', 'xml'],
         default='json',
-        help='Format of the file to extract (default: json)',
+        help='Format of the source file to extract (default: json)',
     )
 
     # Validate command
@@ -117,17 +130,14 @@ def create_parser() -> argparse.ArgumentParser:
         help='Transformation operations as JSON string',
     )
     transform_parser.add_argument(
-        '-o',
-        '--output',
+        '-o', '--output',
         help='Output file to save transformed data',
     )
 
     # Load command
     load_parser = subparsers.add_parser(
         'load',
-        help=(
-            'Load data to targets (files, databases, REST APIs)'
-        ),
+        help='Load data to targets (files, databases, REST APIs)',
     )
     load_parser.add_argument(
         'source',
@@ -149,15 +159,20 @@ def create_parser() -> argparse.ArgumentParser:
         '--format',
         choices=['json', 'csv'],
         default='json',
-        help='Format for file output (default: json)',
+        help='Format of the target file to load (default: json)',
     )
 
     return parser
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """
     Main entry point for the CLI.
+
+    Parameters
+    ----------
+    argv : list[str] | None, optional
+        List of command-line arguments. If ``None``, uses ``sys.argv``.
 
     Returns
     -------
@@ -169,7 +184,7 @@ def main() -> int:
     This function prints results to stdout and errors to stderr.
     """
     parser = create_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if not args.command:
         parser.print_help()
@@ -218,7 +233,7 @@ def main() -> int:
         return 0
 
     except Exception as e:  # noqa: BLE001
-        print(f"Error: {str(e)}", file=sys.stderr)
+        print(f'Error: {e}', file=sys.stderr)
         return 1
 
 
