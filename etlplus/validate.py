@@ -3,6 +3,27 @@ ETLPlus Data Validation
 =======================
 
 Validate dicts and lists of dicts using simple, schema-like rules.
+
+This module provides a very small validation primitive that is intentionally
+runtime-friendly (no heavy schema engines) and pairs with ETLPlus' JSON-like
+types. It focuses on clear error messages and predictable behavior.
+
+Highlights
+----------
+- Centralized type map and helpers for clarity and reuse.
+- Consistent error wording; field and item paths like ``[2].email``.
+- Small, focused public API with ``load_data``, ``validate_field``,
+  ``validate``.
+
+Examples
+--------
+>>> rules = {
+...     'name': {'required': True, 'type': 'string', 'minLength': 1},
+...     'age': {'type': 'integer', 'min': 0},
+... }
+>>> data = {'name': 'Ada', 'age': 28}
+>>> validate(data, rules)['valid']
+True
 """
 from __future__ import annotations
 
@@ -10,6 +31,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from typing import Final
 from typing import Literal
 from typing import Mapping
 from typing import TypedDict
@@ -17,6 +39,29 @@ from typing import TypedDict
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
+
+
+# SECTION: PUBLIC API ======================================================= #
+
+
+__all__ = [
+    'FieldRules', 'FieldValidation', 'Validation',
+    'load_data', 'validate_field', 'validate',
+]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+# Map the logical JSON-like type names to Python runtime types.
+TYPE_MAP: Final[dict[str, type | tuple[type, ...]]] = {
+    'string': str,
+    'number': (int, float),
+    'integer': int,
+    'boolean': bool,
+    'array': list,
+    'object': dict,
+}
 
 
 # SECTION: CLASSES ========================================================== #
@@ -47,21 +92,88 @@ class FieldRules(TypedDict, total=False):
 
 
 class FieldValidation(TypedDict):
+    """
+    Validation result for a single field.
+
+    Attributes
+    ----------
+    valid : bool
+        Whether the field is valid.
+    errors : list[str]
+        List of error messages, if any.
+    """
+
     valid: bool
     errors: list[str]
 
 
 class Validation(TypedDict):
+    """
+    Validation result for a complete data structure.
+
+    Attributes
+    ----------
+    valid : bool
+        Whether the entire data structure is valid.
+    errors : list[str]
+        List of error messages, if any.
+    field_errors : dict[str, list[str]]
+        Mapping of field names to their error messages.
+    data : JSONData | None
+        The validated data, if valid.
+    """
+
     valid: bool
     errors: list[str]
     field_errors: dict[str, list[str]]
     data: JSONData | None
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-# -- Data loading helpers -- #
+def _is_number(value: Any) -> bool:
+    """
+    Return True if value is an int/float but not a bool.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+
+    Returns
+    -------
+    bool
+        ``True`` if value is a number, else ``False``.
+    """
+
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _type_matches(value: Any, expected: str) -> bool:
+    """
+    Check if a value matches an expected JSON-like type.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+    expected : {'string', 'number', 'integer', 'boolean', 'array', 'object'}
+        Expected logical type name.
+
+    Returns
+    -------
+    bool
+        ``True`` if the value matches the expected type; ``False`` if not.
+    """
+
+    py_type = TYPE_MAP.get(expected)
+    if py_type:
+        return isinstance(value, py_type)
+    return False
+
+
+# SECTION: DATA LOADING ===================================================== #
 
 
 def load_data(
@@ -91,11 +203,11 @@ def load_data(
     if isinstance(source, (dict, list)):
         return source
 
-    # Try to load from file.
+    # Try to load from file path if it exists.
     try:
         path = Path(source)
         if path.exists():
-            with path.open() as f:
+            with path.open(encoding='utf-8') as f:
                 loaded = json.load(f)
             if isinstance(loaded, (dict, list)):
                 return loaded
@@ -103,7 +215,7 @@ def load_data(
                 'JSON root must be an object or array when loading file',
             )
     except (OSError, json.JSONDecodeError):
-        # Fall through and try to parse as a JSON string
+        # Fall through and try to parse as a JSON string.
         pass
 
     # Try to parse as JSON string.
@@ -114,45 +226,8 @@ def load_data(
         raise ValueError(
             'JSON root must be an object or array when parsing string',
         )
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid data source: {source}") from e
-
-
-# -- Validation primitives -- #
-
-
-def _type_matches(
-    value: Any,
-    expected: str,
-) -> bool:
-    """
-    Check if a value matches an expected JSON-like type.
-
-    Parameters
-    ----------
-    value : Any
-        Value to test.
-    expected : {'string', 'number', 'integer', 'boolean', 'array', 'object'}
-        Expected logical type name.
-
-    Returns
-    -------
-    bool
-        ``True`` if the value matches the expected type, else ``False``.
-    """
-
-    type_map: dict[str, type | tuple[type, ...]] = {
-        'string': str,
-        'number': (int, float),
-        'integer': int,
-        'boolean': bool,
-        'array': list,
-        'object': dict,
-    }
-    py_type = type_map.get(expected)
-    if py_type:
-        return isinstance(value, py_type)
-    return False
+    except json.JSONDecodeError as e:  # pragma: no cover
+        raise ValueError(f'Invalid data source: {source}') from e
 
 
 def validate_field(
@@ -181,6 +256,7 @@ def validate_field(
     If ``required`` is ``False`` or absent and the value is ``None``, the
     field is considered valid without further checks.
     """
+
     errors: list[str] = []
 
     # Required check (None is treated as missing).
@@ -192,65 +268,72 @@ def validate_field(
     if value is None:
         return {'valid': True, 'errors': []}
 
-    # Type check
+    # Type check.
     expected_type = rules.get('type')
     if isinstance(expected_type, str):
         if not _type_matches(value, expected_type):
             errors.append(
-                f"Expected type {expected_type}, got "
-                f"{type(value).__name__}",
+                f'Expected type {expected_type}, got {type(value).__name__}',
             )
 
     # Numeric range checks.
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
+    if _is_number(value):
         if 'min' in rules:
             try:
                 min_v = float(rules['min'])  # type: ignore[assignment]
-                if value < min_v:
-                    errors.append(
-                        f"Value {value} is less than minimum "
-                        f"{min_v}",
-                    )
             except (TypeError, ValueError):
                 errors.append("Rule 'min' must be numeric")
+            else:
+                if float(value) < min_v:
+                    errors.append(
+                        f'Value {value} is less than minimum {min_v}',
+                    )
         if 'max' in rules:
             try:
                 max_v = float(rules['max'])  # type: ignore[assignment]
-                if value > max_v:
-                    errors.append(
-                        f"Value {value} is greater than maximum "
-                        f"{max_v}",
-                    )
             except (TypeError, ValueError):
                 errors.append("Rule 'max' must be numeric")
+            else:
+                if float(value) > max_v:
+                    errors.append(
+                        f'Value {value} is greater than maximum {max_v}',
+                    )
 
     # String checks.
     if isinstance(value, str):
         if 'minLength' in rules:
             try:
                 min_len = int(rules['minLength'])  # type: ignore[assignment]
-                if len(value) < min_len:
-                    errors.append(
-                        f"Length {len(value)} is less than minimum "
-                        f"{min_len}",
-                    )
             except (TypeError, ValueError):
                 errors.append("Rule 'minLength' must be an integer")
+            else:
+                if len(value) < min_len:
+                    errors.append(
+                        f'Length {len(value)} is less than minimum {min_len}',
+                    )
         if 'maxLength' in rules:
             try:
                 max_len = int(rules['maxLength'])  # type: ignore[assignment]
-                if len(value) > max_len:
-                    errors.append(
-                        f"Length {len(value)} is greater than maximum "
-                        f"{max_len}",
-                    )
             except (TypeError, ValueError):
                 errors.append("Rule 'maxLength' must be an integer")
+            else:
+                if len(value) > max_len:
+                    errors.append(
+                        f'Length {len(value)} is greater than maximum '
+                        f'{max_len}',
+                    )
         if 'pattern' in rules:
             pattern = rules.get('pattern')
             if isinstance(pattern, str):
-                if not re.search(pattern, value):
-                    errors.append(f"Value does not match pattern {pattern}")
+                try:
+                    regex = re.compile(pattern)
+                except re.error as e:
+                    errors.append(f'Rule "pattern" is not a valid regex: {e}')
+                else:
+                    if not regex.search(value):
+                        errors.append(
+                            f'Value does not match pattern {pattern}',
+                        )
             else:
                 errors.append("Rule 'pattern' must be a string")
 
@@ -260,15 +343,12 @@ def validate_field(
         if isinstance(enum_vals, list):
             if value not in enum_vals:
                 errors.append(
-                    f"Value {value} not in allowed values {enum_vals}",
+                    f'Value {value} not in allowed values {enum_vals}',
                 )
         else:
             errors.append("Rule 'enum' must be a list")
 
     return {'valid': len(errors) == 0, 'errors': errors}
-
-
-# -- Top-level validation API -- #
 
 
 def validate(
@@ -293,12 +373,13 @@ def validate(
         and ``data``. If loading fails, ``data`` is ``None`` and an error is
         reported in ``errors``.
     """
+
     try:
         data = load_data(source)
     except Exception as e:  # noqa: BLE001 - return structured error
         return {
             'valid': False,
-            'errors': [f"Failed to load data: {e}"],
+            'errors': [f'Failed to load data: {e}'],
             'field_errors': {},
             'data': None,
         }
@@ -320,25 +401,25 @@ def validate(
             result = validate_field(value, field_rules)
             if not result['valid']:
                 field_errors[field] = result['errors']
-                for err in result['errors']:
-                    errors.append(f"{field}: {err}")
+                errors.extend(f'{field}: {err}' for err in result['errors'])
 
     elif isinstance(data, list):
         for i, item in enumerate(data):
             if not isinstance(item, dict):
-                key = f"[{i}]"
+                key = f'[{i}]'
                 msg = 'Item is not an object (expected dict)'
-                errors.append(f"{key}: {msg}")
+                errors.append(f'{key}: {msg}')
                 field_errors.setdefault(key, []).append(msg)
                 continue
             for field, field_rules in rules.items():
                 value = item.get(field)
                 result = validate_field(value, field_rules)
                 if not result['valid']:
-                    field_key = f"[{i}].{field}"
+                    field_key = f'[{i}].{field}'
                     field_errors[field_key] = result['errors']
-                    for err in result['errors']:
-                        errors.append(f"{field_key}: {err}")
+                    errors.extend(
+                        f'{field_key}: {err}' for err in result['errors']
+                    )
 
     return {
         'valid': len(errors) == 0,
