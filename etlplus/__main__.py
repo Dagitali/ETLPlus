@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from textwrap import dedent
 from typing import Any
 
@@ -56,11 +57,146 @@ def _json_type(option: str) -> Any:
         return json.loads(option)
     except json.JSONDecodeError as e:  # pragma: no cover - argparse path
         raise argparse.ArgumentTypeError(
-            f'invalid JSON: {e.msg} (pos {e.pos})',
+            f'Invalid JSON: {e.msg} (pos {e.pos})',
         ) from e
 
 
+def _print_json(obj: Any) -> None:
+    """
+    Pretty-print JSON to stdout using UTF-8 without ASCII escaping.
+
+    Parameters
+    ----------
+    obj
+        Object to serialize as JSON.
+    """
+
+    print(json.dumps(obj, indent=2, ensure_ascii=False))
+
+
+def _write_json(obj: Any, out: str | Path) -> None:
+    """
+    Write JSON to ``out``, creating parent dirs as needed.
+
+    Parameters
+    ----------
+    obj
+        Object to serialize as JSON.
+    out : str | Path
+        Output file path.
+    """
+
+    path = Path(out)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(obj, indent=2, ensure_ascii=False),
+        encoding='utf-8',
+    )
+
+
 # SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Command Handlers -- #
+
+
+def cmd_extract(args: argparse.Namespace) -> int:
+    """
+    Extract data from a source.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    data = extract(args.source_type, args.source, format=args.format)
+    if args.output:
+        _write_json(data, args.output)
+        print(f'Data extracted and saved to {args.output}')
+    else:
+        _print_json(data)
+
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    """
+    Validate data from a source.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    # ``args.rules`` already parsed by ``_json_type`` (defaults to {}).
+    result = validate(args.source, args.rules)
+    _print_json(result)
+
+    return 0
+
+
+def cmd_transform(args: argparse.Namespace) -> int:
+    """
+    Transform data from a source.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    # ``args.operations`` already parsed by ``_json_type`` (defaults to {}).
+    data = transform(args.source, args.operations)
+    if args.output:
+        _write_json(data, args.output)
+        print(f'Data transformed and saved to {args.output}')
+    else:
+        _print_json(data)
+
+    return 0
+
+
+def cmd_load(args: argparse.Namespace) -> int:
+    """
+    Load data into a target.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    result = load(
+        args.source,
+        args.target_type,
+        args.target,
+        format=args.format,
+    )
+    _print_json(result)
+
+    return 0
 
 
 # -- Parser -- #
@@ -104,7 +240,7 @@ def create_parser() -> argparse.ArgumentParser:
         help='Available commands',
     )
 
-    # Extract command
+    # Define "extract" command.
     extract_parser = subparsers.add_parser(
         'extract',
         help=(
@@ -134,8 +270,9 @@ def create_parser() -> argparse.ArgumentParser:
         default='json',
         help='Format of the source file to extract (default: json)',
     )
+    extract_parser.set_defaults(func=cmd_extract)
 
-    # Validate command
+    # Define "validate" command.
     validate_parser = subparsers.add_parser(
         'validate',
         help='Validate data from sources',
@@ -151,8 +288,9 @@ def create_parser() -> argparse.ArgumentParser:
         default={},
         help='Validation rules as JSON string',
     )
+    validate_parser.set_defaults(func=cmd_validate)
 
-    # Transform command
+    # Define "transform" command.
     transform_parser = subparsers.add_parser(
         'transform',
         help='Transform data',
@@ -172,8 +310,9 @@ def create_parser() -> argparse.ArgumentParser:
         '-o', '--output',
         help='Output file to save transformed data',
     )
+    transform_parser.set_defaults(func=cmd_transform)
 
-    # Load command
+    # Define "load" command.
     load_parser = subparsers.add_parser(
         'load',
         help='Load data to targets (files, databases, REST APIs)',
@@ -201,6 +340,7 @@ def create_parser() -> argparse.ArgumentParser:
         default='json',
         help='Format for the target file to load (default: json)',
     )
+    load_parser.set_defaults(func=cmd_load)
 
     return parser
 
