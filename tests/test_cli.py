@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.__main__ import create_parser
-from etlplus.__main__ import main
+from etlplus.cli import create_parser
+from etlplus.cli import main
 
 
 # SECTION: TESTS =========================================================== #
