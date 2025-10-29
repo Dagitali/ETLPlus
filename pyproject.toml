@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -43,3 +43,8 @@ etlplus = "etlplus.cli:main"
 [project.urls]
 Homepage = "https://github.com/Dagitali/ETLPlus"
 Repository = "https://github.com/Dagitali/ETLPlus"
+
+[tool.setuptools.packages.find]
+where = [".", "src"]
+include = ["etlplus*"]
+exclude = ["tests*", "docs*", "examples*"]
