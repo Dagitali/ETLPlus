@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-etlplus = "etlplus.__main__:main"
+etlplus = "etlplus.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Dagitali/ETLPlus"
