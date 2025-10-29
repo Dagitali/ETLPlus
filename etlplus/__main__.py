@@ -20,12 +20,44 @@ import argparse
 import json
 import sys
 from textwrap import dedent
+from typing import Any
 
 from etlplus import __version__
 from etlplus.extract import extract
 from etlplus.load import load
 from etlplus.transform import transform
 from etlplus.validate import validate
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _json_type(option: str) -> Any:
+    """
+    Argparse ``type=`` hook that parses a JSON string.
+
+    Parameters
+    ----------
+    option
+        Raw CLI string to parse as JSON.
+
+    Returns
+    -------
+    Any
+        Parsed JSON value.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the input cannot be parsed as JSON.
+    """
+
+    try:
+        return json.loads(option)
+    except json.JSONDecodeError as e:  # pragma: no cover - argparse path
+        raise argparse.ArgumentTypeError(
+            f'invalid JSON: {e.msg} (pos {e.pos})',
+        ) from e
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -115,7 +147,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument(
         '--rules',
-        # type=_json_type,
+        type=_json_type,
         # default={},
         help='Validation rules as JSON string',
     )
@@ -132,7 +164,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     transform_parser.add_argument(
         '--operations',
-        # type=_json_type,
+        type=_json_type,
         # default={},
         help='Transformation operations as JSON string',
     )
@@ -211,24 +243,22 @@ def main(argv: list[str] | None = None) -> int:
             if args.output:
                 with open(args.output, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2)
-                print(f"Data extracted and saved to {args.output}")
+                print(f'Data extracted and saved to {args.output}')
             else:
                 print(json.dumps(data, indent=2))
 
         elif args.command == 'validate':
-            rules = json.loads(args.rules) if args.rules else {}
+            rules = args.rules or {}
             validate_result = validate(args.source, rules)
             print(json.dumps(validate_result, indent=2))
 
         elif args.command == 'transform':
-            operations = (
-                json.loads(args.operations) if args.operations else {}
-            )
+            operations = args.operations or {}
             data = transform(args.source, operations)
             if args.output:
                 with open(args.output, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2)
-                print(f"Data transformed and saved to {args.output}")
+                print(f'Data transformed and saved to {args.output}')
             else:
                 print(json.dumps(data, indent=2))
 
