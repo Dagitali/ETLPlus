@@ -1,0 +1,29 @@
+# .ruff.toml
+# ETLPlus
+#
+# Copyright © 2025 Dagitali LLC. All rights reserved.
+#
+# Ruff configuration.
+#
+# Target Python 3.13, keep it fast and opinionated but not overbearing.
+
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "B",   # flake8-bugbear
+  "I",   # isort
+  "UP",  # pyupgrade
+]
+ignore = [
+  # Allow module-level variable use for caches/helpers, if needed
+]
+
+[format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
