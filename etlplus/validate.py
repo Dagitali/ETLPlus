@@ -27,15 +27,14 @@ True
 """
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 from typing import Final
 from typing import Literal
 from typing import Mapping
 from typing import TypedDict
 
+from .load import load_data
 from .types import JSONData
 from .types import Record
 from .types import Records
@@ -48,7 +47,7 @@ from .types import StrPath
 
 __all__ = [
     'FieldRules', 'FieldValidation', 'Validation',
-    'load_data', 'validate_field', 'validate',
+    'validate_field', 'validate',
 ]
 
 
@@ -140,8 +139,53 @@ type RulesMap = Mapping[str, FieldRules]
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
+def _coerce_rule(
+    rules: StrAnyMap,
+    key: str,
+    coercer: type[int] | type[float],
+    type_desc: str,
+    errors: list[str],
+) -> int | float | None:
+    """
+    Generic helper to extract and coerce a rule value, recording an error.
+
+    Returns None when the key is absent.
+
+    Parameters
+    ----------
+    rules : StrAnyMap
+        The rules dictionary.
+    key : str
+        The key to extract.
+    coercer : type[int] | type[float]
+        The type to coerce to (int or float).
+    type_desc : str
+        Description of the expected type for error messages.
+    errors : list[str]
+        List to append error messages to.
+
+    Returns
+    -------
+    int | float | None
+        The coerced value, or None if the key is absent.
+    """
+
+    if key not in rules:
+        return None
+
+    try:
+        val = rules.get(key)
+        if val is None:
+            return None
+    # Calling the type as a coercer is fine at runtime
+        return coercer(val)  # type: ignore[call-arg]
+    except (TypeError, ValueError):
+        errors.append(f"Rule '{key}' must be {type_desc}")
+        return None
+
+
 def _get_int_rule(
-    rules: Mapping[str, Any],
+    rules: StrAnyMap,
     key: str,
     errors: list[str],
 ) -> int | None:
@@ -149,19 +193,29 @@ def _get_int_rule(
     Extract and coerce an integer rule value, recording an error if invalid.
 
     Returns None when the key is absent.
+
+    Parameters
+    ----------
+    rules : StrAnyMap
+        The rules dictionary.
+    key : str
+        The key to extract.
+    errors : list[str]
+        List to append error messages to.
+
+    Returns
+    -------
+    int | None
+        The coerced integer value, or None if the key is absent.
     """
 
-    if key in rules:
-        try:
-            val = rules.get(key)
-            return int(val) if val is not None else None
-        except (TypeError, ValueError):
-            errors.append(f"Rule '{key}' must be an integer")
-    return None
+    coerced = _coerce_rule(rules, key, int, 'an integer', errors)
+
+    return int(coerced) if coerced is not None else None
 
 
 def _get_numeric_rule(
-    rules: Mapping[str, Any],
+    rules: StrAnyMap,
     key: str,
     errors: list[str],
 ) -> float | None:
@@ -169,15 +223,25 @@ def _get_numeric_rule(
     Extract and coerce a numeric rule value, recording an error if invalid.
 
     Returns None when the key is absent.
+
+    Parameters
+    ----------
+    rules : StrAnyMap
+        The rules dictionary.
+    key : str
+        The key to extract.
+    errors : list[str]
+        List to append error messages to.
+
+    Returns
+    -------
+    float | None
+        The coerced float value, or None if the key is absent.
     """
 
-    if key in rules:
-        try:
-            val = rules.get(key)
-            return float(val) if val is not None else None
-        except (TypeError, ValueError):
-            errors.append(f"Rule '{key}' must be numeric")
-    return None
+    coerced = _coerce_rule(rules, key, float, 'numeric', errors)
+
+    return float(coerced) if coerced is not None else None
 
 
 def _is_number(value: Any) -> bool:
@@ -218,66 +282,52 @@ def _type_matches(value: Any, expected: str) -> bool:
     py_type = TYPE_MAP.get(expected)
     if py_type:
         return isinstance(value, py_type)
+
     return False
 
 
-# SECTION: DATA LOADING ===================================================== #
-
-
-def load_data(
-    source: StrPath | JSONData,
-) -> JSONData:
+def _validate_record(
+    record: Record,
+    rules: RulesMap,
+    idx: int | None = None,
+) -> tuple[list[str], dict[str, list[str]]]:
     """
-    Load data from a file path, JSON string, or a direct object.
+    Validate a single record against rules and return aggregated errors.
+
+    Returns a tuple of (errors, field_errors) where errors are the flattened
+    messages with field prefixes and field_errors maps field keys to messages.
+    If idx is provided, the field keys are prefixed like ``"[i].field"``.
 
     Parameters
     ----------
-    source : StrPath | JSONData
-        Data source. If a path exists (str/Path/PathLike), JSON is read from
-        the file. If a non-path string is given, it is parsed as JSON. Dicts or
-        lists are returned unchanged.
-
+    record : Record
+        The record to validate.
+    rules : RulesMap
+        The field rules.
+    idx : int | None, optional
+        Optional index for prefixing field keys.
     Returns
     -------
-    JSONData
-        Parsed object or list of objects.
-
-    Raises
-    ------
-    ValueError
-        If the input cannot be interpreted as a JSON object or array.
+    tuple[list[str], dict[str, list[str]]]
+        A tuple of (errors, field_errors).
     """
 
-    if isinstance(source, (dict, list)):
-        return source
+    errors: list[str] = []
+    field_errors: dict[str, list[str]] = {}
 
-    # Try to load from file path if it exists.
-    try:
-        path = Path(source)
-        if path.exists():
-            with path.open(encoding='utf-8') as f:
-                loaded = json.load(f)
-            if isinstance(loaded, (dict, list)):
-                return loaded
-            raise ValueError(
-                'JSON root must be an object or array when loading file',
-            )
-    except (OSError, json.JSONDecodeError):
-        # Fall through and try to parse as a JSON string.
-        pass
+    for field, field_rules in rules.items():
+        value = record.get(field)
+        result = validate_field(value, field_rules)
+        if result['valid']:
+            continue
+        field_key = field if idx is None else f'[{idx}].{field}'
+        field_errors[field_key] = result['errors']
+        errors.extend(f'{field_key}: {err}' for err in result['errors'])
 
-    # Try to parse as JSON string.
-    try:
-        text = source if isinstance(source, (str, bytes, bytearray)) \
-            else str(source)
-        loaded = json.loads(text)
-        if isinstance(loaded, (dict, list)):
-            return loaded
-        raise ValueError(
-            'JSON root must be an object or array when parsing string',
-        )
-    except json.JSONDecodeError as e:  # pragma: no cover
-        raise ValueError(f'Invalid data source: {source}') from e
+    return errors, field_errors
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def validate_field(
@@ -420,12 +470,9 @@ def validate(
     field_errors: dict[str, list[str]] = {}
 
     if isinstance(data, dict):
-        for field, field_rules in rules.items():
-            value = data.get(field)
-            result = validate_field(value, field_rules)
-            if not result['valid']:
-                field_errors[field] = result['errors']
-                errors.extend(f'{field}: {err}' for err in result['errors'])
+        rec_errors, rec_field_errors = _validate_record(data, rules)
+        errors.extend(rec_errors)
+        field_errors.update(rec_field_errors)
 
     elif isinstance(data, list):
         for i, item in enumerate(data):
@@ -435,15 +482,9 @@ def validate(
                 errors.append(f'{key}: {msg}')
                 field_errors.setdefault(key, []).append(msg)
                 continue
-            for field, field_rules in rules.items():
-                value = item.get(field)
-                result = validate_field(value, field_rules)
-                if not result['valid']:
-                    field_key = f'[{i}].{field}'
-                    field_errors[field_key] = result['errors']
-                    errors.extend(
-                        f'{field_key}: {err}' for err in result['errors']
-                    )
+            rec_errors, rec_field_errors = _validate_record(item, rules, i)
+            errors.extend(rec_errors)
+            field_errors.update(rec_field_errors)
 
     return {
         'valid': len(errors) == 0,
