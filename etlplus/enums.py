@@ -20,12 +20,12 @@ from .types import StrStrMap
 
 
 __all__ = (
+    'AggregateName',
     'CoercibleStrEnum',
     'DataConnectorType',
     'FileFormat',
     'HttpMethod',
     'OperatorName',
-    'AggregateName',
     'PipelineStep',
     'coerce_data_connector_type',
     'coerce_file_format',
