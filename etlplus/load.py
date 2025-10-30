@@ -25,6 +25,7 @@ from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import StrPath
+from .utils import count_records
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -181,7 +182,7 @@ def load_to_database(
         Result object describing the operation.
     """
 
-    records = len(data) if isinstance(data, list) else 1
+    records = count_records(data)
     return {
         'status': 'not_implemented',
         'message': 'Database loading not yet implemented',
@@ -197,7 +198,7 @@ def load_to_database(
 def load_to_api(
     data: JSONData,
     url: str,
-    method: str,
+    method: HttpMethod | str,
     **kwargs: Any,
 ) -> JSONDict:
     """
@@ -255,7 +256,7 @@ def load_to_api(
         'status_code': response.status_code,
         'message': f'Data loaded to {url}',
         'response': payload,
-        'records': len(data) if isinstance(data, list) else 1,
+        'records': count_records(data),
         'method': http_method.value.upper(),
     }
 
