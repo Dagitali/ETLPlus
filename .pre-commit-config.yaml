@@ -16,6 +16,8 @@
 # 2. https://pre-commit.com/hooks.html
 # 3. https://pre-commit.com/index.html#plugins
 
+---
+
 # All commands by default will run on every commit
 default_install_hook_types:
   - pre-commit
@@ -137,3 +139,10 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
