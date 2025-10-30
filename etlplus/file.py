@@ -32,10 +32,12 @@ __all__ = [
     'read_json',
     'read_structured_file',
     'read_xml',
+    'read_yaml',
     'write_csv',
     'write_json',
     'write_structured_file',
     'write_xml',
+    'write_yaml',
 ]
 
 
@@ -49,8 +51,14 @@ _EXT_TO_FORMAT: dict[str, FileFormat] = {
     'csv': FileFormat.CSV,
     'json': FileFormat.JSON,
     'xml': FileFormat.XML,
+    'yaml': FileFormat.YAML,
+    'yml': FileFormat.YAML,
     # NOTE: YAML is defined in FileFormat but not implemented in this module.
 }
+
+# Optional YAML support (lazy-loaded to avoid hard dependency)
+# Cached access function to avoid global statements.
+_YAML_CACHE: dict[str, Any] = {}
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -142,6 +150,28 @@ def _element_to_dict(
         else:
             result[key] = value
     return result
+
+
+def _get_yaml() -> Any:
+    """
+    Return the PyYAML module, importing it on first use.
+
+    Raises an informative ImportError if the optional dependency is missing.
+    """
+
+    mod = _YAML_CACHE.get('mod')
+    if mod is not None:  # pragma: no cover - tiny branch
+        return mod
+    try:
+        _yaml_mod = __import__('yaml')  # type: ignore[assignment]
+    except ImportError as e:  # pragma: no cover
+        raise ImportError(
+            'YAML support requires optional dependency "PyYAML".\n'
+            'Install with: pip install PyYAML',
+        ) from e
+    _YAML_CACHE['mod'] = _yaml_mod
+
+    return _yaml_mod
 
 
 # SECTION: CLASS ============================================================ #
@@ -243,6 +273,8 @@ class File:
                 return self.read_csv()
             case FileFormat.XML:
                 return self.read_xml()
+            case FileFormat.YAML:
+                return self.read_yaml()
         raise ValueError(f'Unsupported format: {fmt}')
 
     def write(
@@ -271,6 +303,8 @@ class File:
                 return self.write_csv(data)
             case FileFormat.XML:
                 return self.write_xml(data, root_tag=root_tag)
+            case FileFormat.YAML:
+                return self.write_yaml(data)
         raise ValueError(f'Unsupported format: {fmt}')
 
     # -- Instance Methods (CSV) -- #
@@ -394,6 +428,35 @@ class File:
 
         return {root.tag: _element_to_dict(root)}
 
+    # -- Instance Methods (YAML) -- #
+
+    def _require_yaml(self) -> None:
+        """Ensure PyYAML is available or raise an informative error."""
+        _get_yaml()
+
+    def read_yaml(self) -> JSONData:
+        """
+        Load and validate YAML payloads from :attr:`path`.
+        """
+
+        self._require_yaml()
+        self._assert_exists()
+
+        with self.path.open('r', encoding='utf-8') as handle:
+            loaded = _get_yaml().safe_load(handle)
+
+        if isinstance(loaded, dict):
+            return cast(JSONDict, loaded)
+        if isinstance(loaded, list):
+            if all(isinstance(item, dict) for item in loaded):
+                return cast(JSONList, loaded)
+            raise TypeError(
+                'YAML array must contain only objects (dicts) when loading',
+            )
+        raise TypeError(
+            'YAML root must be an object or an array of objects when loading',
+        )
+
     def write_xml(
         self,
         data: JSONData,
@@ -426,6 +489,25 @@ class File:
         tree = ET.ElementTree(root_element)
         tree.write(self.path, encoding='utf-8', xml_declaration=True)
 
+        return count_records(data)
+
+    def write_yaml(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Write ``data`` as YAML to :attr:`path` and return record count.
+        """
+
+        self._require_yaml()
+        with self.path.open('w', encoding='utf-8') as handle:
+            _get_yaml().safe_dump(
+                data,
+                handle,
+                sort_keys=False,
+                allow_unicode=True,
+                default_flow_style=False,
+            )
         return count_records(data)
 
     # -- Class Methods -- #
@@ -594,3 +676,19 @@ def write_xml(
     root_tag: str = _DEFAULT_XML_ROOT,
 ) -> int:
     return File(path, FileFormat.XML).write_xml(data, root_tag=root_tag)
+
+
+# -- YAML Files -- #
+
+
+def read_yaml(
+    path: Path,
+) -> JSONData:
+    return File(path, FileFormat.YAML).read_yaml()
+
+
+def write_yaml(
+    path: Path,
+    data: JSONData,
+) -> int:
+    return File(path, FileFormat.YAML).write_yaml(data)
