@@ -47,7 +47,7 @@ from typing import cast
 from .enums import AggregateName
 from .enums import OperatorName
 from .enums import PipelineStep
-from .load import load_data as _load_data
+from .load import load_data
 from .types import AggregateFunc
 from .types import AggregateSpec
 from .types import FieldName
@@ -289,29 +289,11 @@ def _has(
     """
     Return ``True`` if *container* contains *member*.
 
-    Parameters
-    ----------
-    member : Any
-        Candidate member to check for containment.
-    container : Any
-        Potential container object.
-
-    Returns
-    -------
-    bool
-        ``True`` if ``member in container`` succeeds; ``False`` on
-        ``TypeError`` or when containment fails.
-
-    Notes
-    -----
     This is the dual form of :func:`_contains` for readability in certain
     operator contexts (``in`` vs. ``contains``).
     """
 
-    try:
-        return member in container  # type: ignore[operator]
-    except TypeError:
-        return False
+    return _contains(container, member)
 
 
 # -- Resolvers -- #
@@ -415,6 +397,131 @@ def _sort_key(
     return (1, str(value))
 
 
+# -- Aggregation and filtering -- #
+
+
+def _collect_numeric_and_presence(
+    rows: JSONList,
+    field: FieldName | None,
+) -> tuple[list[float], int]:
+    """
+    Collect numeric values and count presence of field in rows.
+
+    If field is None, returns ([], len(rows)).
+
+    Parameters
+    ----------
+    rows : JSONList
+        Input records.
+    field : FieldName | None
+        Field name to check for presence.
+
+    Returns
+    -------
+    tuple[list[float], int]
+        A tuple containing a list of numeric values and the count of present
+        fields.
+    """
+
+    if not field:
+        return [], len(rows)
+
+    nums: list[float] = []
+    present = 0
+    for r in rows:
+        if field in r:
+            present += 1
+            v = r.get(field)
+            if isinstance(v, (int, float)):
+                nums.append(float(v))
+    return nums, present
+
+
+def _derive_agg_key(
+    func_raw: AggregateName | AggregateFunc | str,
+    field: FieldName | None,
+    alias: Any,
+) -> str:
+    """
+    Derive the output key name for an aggregate.
+
+    Uses alias when provided; otherwise builds like "sum_amount" or "count".
+
+    Parameters
+    ----------
+    func_raw : AggregateName | AggregateFunc | str
+        The raw function specifier.
+    field : FieldName | None
+        The field being aggregated.
+    alias : Any
+        Optional alias for the output key.
+
+    Returns
+    -------
+    str
+        The derived output key name.
+    """
+
+    if alias is not None:
+        return str(alias)
+
+    if isinstance(func_raw, AggregateName):
+        label = func_raw.value
+    elif isinstance(func_raw, str):
+        label = AggregateName.coerce(func_raw).value
+    elif callable(func_raw):
+        label = getattr(func_raw, '__name__', 'custom')
+    else:
+        label = str(func_raw)
+
+    return label if not field else f"{label}_{field}"
+
+
+def _eval_condition(
+    record: JSONDict,
+    field: FieldName,
+    op_func: OperatorFunc,
+    value: Any,
+    catch_all: bool,
+) -> bool:
+    """
+    Evaluate a filter condition on a record.
+
+    Returns False if the field is missing or if the operator raises.
+
+    Parameters
+    ----------
+    record : JSONDict
+        The input record.
+    field : FieldName
+        The field name to check.
+    op_func : OperatorFunc
+        The binary operator function.
+    value : Any
+        The value to compare against.
+    catch_all : bool
+        If True, catch all exceptions and return; if False, propagate
+        exceptions.
+
+    Returns
+    -------
+    bool
+        True if the condition is met; False if not.
+    """
+
+    try:
+        lhs = record[field]
+    except KeyError:
+        return False
+
+    try:
+        return bool(op_func(lhs, value))
+    except Exception:  # noqa: BLE001 - controlled by flag
+        if catch_all:
+            return False
+        raise
+
+
 # -- Step Appliers -- #
 
 
@@ -443,30 +550,10 @@ def _apply_aggregate_step(
     alias = spec.get('alias')
 
     agg_func = _resolve_aggregator(func_raw)
-
-    # Gather numeric values if a field is provided; COUNT may ignore xs.
-    if field:
-        xs = []
-        for r in rows:
-            v = r.get(field)
-            if isinstance(v, (int, float)):
-                xs.append(float(v))
-        n = len(rows)
-    else:
-        # Aggregates like COUNT still work without a field.
-        xs = []
-        n = len(rows)
-
-    result = agg_func(xs, n)
-
-    # Default alias if not provided, e.g., "sum_amount" or "count"
-    if not alias:
-        alias = (
-            f"{AggregateName.coerce(func_raw).value}"
-            + (f"_{field}" if field else '')
-        )
-
-    return [{alias: result}]
+    xs, present = _collect_numeric_and_presence(rows, field)
+    key = _derive_agg_key(func_raw, field, alias)
+    result = agg_func(xs, present)
+    return [{key: result}]
 
 
 def _apply_filter_step(
@@ -499,18 +586,10 @@ def _apply_filter_step(
 
     op_func = _resolve_operator(op)
 
-    def _pred(r: JSONDict) -> bool:
-        try:
-            lhs = r[field]
-        except KeyError:
-            return False
-        try:
-            return op_func(lhs, value)
-        except Exception:
-            # Silent fail keeps behavior lenient; switch to raise if desired.
-            return False
-
-    return [r for r in records if _pred(r)]
+    return [
+        r for r in records
+        if _eval_condition(r, field, op_func, value, catch_all=True)
+    ]
 
 
 def _apply_map_step(
@@ -656,33 +735,6 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 # SECTION: PUBLIC API ======================================================= #
 
 
-def load_data(
-    source: StrPath | JSONData,
-) -> JSONData:
-    """
-    Load data from a file path, JSON string, or direct object.
-
-    Parameters
-    ----------
-    source : StrPath | JSONData
-        Data source. If a path exists, JSON is read from the file. If a
-        string that is not a path, it is parsed as JSON. Dicts or lists are
-        returned as-is.
-
-    Returns
-    -------
-    JSONData
-        Parsed object or list of objects.
-
-    Raises
-    ------
-    ValueError
-        If the input cannot be interpreted as a JSON object or array.
-    """
-
-    return _load_data(source)
-
-
 def apply_filter(
     records: JSONList,
     condition: FilterSpec,
@@ -723,7 +775,7 @@ def apply_filter(
         if field not in record:
             continue
         try:
-            if op_func(record[field], value):
+            if _eval_condition(record, field, op_func, value, catch_all=False):
                 result.append(record)
         except TypeError:
             # Skip records where the comparison is not supported.
@@ -865,35 +917,13 @@ def apply_aggregate(
     if not field or func is None:
         return {'error': 'Invalid aggregation operation'}
 
-    func_label: str
     try:
         aggregator = _resolve_aggregator(func)
     except TypeError:
         return {'error': f"Unknown aggregation function: {func}"}
 
-    if isinstance(func, AggregateName):
-        func_label = func.value
-    elif isinstance(func, str):
-        func_label = AggregateName.coerce(func).value
-    elif callable(func):
-        func_label = getattr(func, '__name__', 'custom')
-    else:
-        func_label = str(func)
-
-    nums: list[float] = []
-    present = 0
-    for record in records:
-        if field in record:
-            present += 1
-            v = record.get(field)
-            if isinstance(v, (int, float)):
-                nums.append(float(v))
-
-    field_name = str(field)
-    key_name = (
-        str(alias) if alias is not None else f"{func_label}_{field_name}"
-    )
-
+    nums, present = _collect_numeric_and_presence(records, field)
+    key_name = _derive_agg_key(func, field, alias)
     return {key_name: aggregator(nums, present)}
 
 
