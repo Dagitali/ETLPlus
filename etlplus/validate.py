@@ -140,6 +140,46 @@ type RulesMap = Mapping[str, FieldRules]
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
+def _get_int_rule(
+    rules: Mapping[str, Any],
+    key: str,
+    errors: list[str],
+) -> int | None:
+    """
+    Extract and coerce an integer rule value, recording an error if invalid.
+
+    Returns None when the key is absent.
+    """
+
+    if key in rules:
+        try:
+            val = rules.get(key)
+            return int(val) if val is not None else None
+        except (TypeError, ValueError):
+            errors.append(f"Rule '{key}' must be an integer")
+    return None
+
+
+def _get_numeric_rule(
+    rules: Mapping[str, Any],
+    key: str,
+    errors: list[str],
+) -> float | None:
+    """
+    Extract and coerce a numeric rule value, recording an error if invalid.
+
+    Returns None when the key is absent.
+    """
+
+    if key in rules:
+        try:
+            val = rules.get(key)
+            return float(val) if val is not None else None
+        except (TypeError, ValueError):
+            errors.append(f"Rule '{key}' must be numeric")
+    return None
+
+
 def _is_number(value: Any) -> bool:
     """
     Return True if value is an int/float but not a bool.
@@ -288,50 +328,25 @@ def validate_field(
 
     # Numeric range checks.
     if _is_number(value):
-        if 'min' in rules:
-            try:
-                min_v = float(rules['min'])  # type: ignore[assignment]
-            except (TypeError, ValueError):
-                errors.append("Rule 'min' must be numeric")
-            else:
-                if float(value) < min_v:
-                    errors.append(
-                        f'Value {value} is less than minimum {min_v}',
-                    )
-        if 'max' in rules:
-            try:
-                max_v = float(rules['max'])  # type: ignore[assignment]
-            except (TypeError, ValueError):
-                errors.append("Rule 'max' must be numeric")
-            else:
-                if float(value) > max_v:
-                    errors.append(
-                        f'Value {value} is greater than maximum {max_v}',
-                    )
+        min_v = _get_numeric_rule(rules, 'min', errors)
+        if min_v is not None and float(value) < min_v:
+            errors.append(f'Value {value} is less than minimum {min_v}')
+        max_v = _get_numeric_rule(rules, 'max', errors)
+        if max_v is not None and float(value) > max_v:
+            errors.append(f'Value {value} is greater than maximum {max_v}')
 
     # String checks.
     if isinstance(value, str):
-        if 'minLength' in rules:
-            try:
-                min_len = int(rules['minLength'])  # type: ignore[assignment]
-            except (TypeError, ValueError):
-                errors.append("Rule 'minLength' must be an integer")
-            else:
-                if len(value) < min_len:
-                    errors.append(
-                        f'Length {len(value)} is less than minimum {min_len}',
-                    )
-        if 'maxLength' in rules:
-            try:
-                max_len = int(rules['maxLength'])  # type: ignore[assignment]
-            except (TypeError, ValueError):
-                errors.append("Rule 'maxLength' must be an integer")
-            else:
-                if len(value) > max_len:
-                    errors.append(
-                        f'Length {len(value)} is greater than maximum '
-                        f'{max_len}',
-                    )
+        min_len = _get_int_rule(rules, 'minLength', errors)
+        if min_len is not None and len(value) < min_len:
+            errors.append(
+                f'Length {len(value)} is less than minimum {min_len}',
+            )
+        max_len = _get_int_rule(rules, 'maxLength', errors)
+        if max_len is not None and len(value) > max_len:
+            errors.append(
+                f'Length {len(value)} is greater than maximum {max_len}',
+            )
         if 'pattern' in rules:
             pattern = rules.get('pattern')
             if isinstance(pattern, str):
@@ -385,7 +400,7 @@ def validate(
 
     try:
         data = load_data(source)
-    except Exception as e:  # noqa: BLE001 - return structured error
+    except ValueError as e:
         return {
             'valid': False,
             'errors': [f'Failed to load data: {e}'],

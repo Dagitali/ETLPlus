@@ -48,8 +48,8 @@ from .enums import AggregateName
 from .enums import OperatorName
 from .enums import PipelineStep
 from .load import load_data as _load_data
+from .types import AggregateFunc
 from .types import AggregateSpec
-from .types import Aggregator
 from .types import FieldName
 from .types import Fields
 from .types import FilterSpec
@@ -57,7 +57,6 @@ from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import MapSpec
-from .types import Operator
 from .types import OperatorFunc
 from .types import PipelineConfig
 from .types import PipelineStepName
@@ -319,14 +318,14 @@ def _has(
 
 
 def _resolve_aggregator(
-    func: Aggregator | str,
+    func: AggregateName | AggregateFunc | str,
 ) -> Callable:
     """
     Resolve an aggregate specifier to a callable.
 
     Parameters
     ----------
-    func : Aggregator | str
+    func : AggregateName | AggregateFunc | str
         An :class:`AggregateName`, a string (with aliases), or a callable.
 
     Returns
@@ -351,14 +350,14 @@ def _resolve_aggregator(
 
 
 def _resolve_operator(
-    op: Operator | str,
+    op: OperatorName | OperatorFunc | str,
 ) -> Callable:
     """
     Resolve an operator specifier to a binary predicate.
 
     Parameters
     ----------
-    op : Operator | str
+    op : OperatorName | OperatorFunc | str
         An :class:`OperatorName`, a string (with aliases), or a callable.
 
     Returns

@@ -14,26 +14,21 @@ from typing import Any
 from typing import Callable
 from typing import Literal
 
-from .enums import AggregateName
-from .enums import OperatorName
-from .enums import PipelineStep
-
 
 # SECTION: PUBLIC API ======================================================= #
 
 
 __all__ = [
+    'AggregateFunc',
+    'FieldName', 'Fields',
     'JSONDict', 'JSONList', 'JSONData', 'JSONScalar', 'JSONValue',
     'Record', 'Records',
-    'StrPath',
-    'OperatorFunc', 'AggregateFunc',
-    'OperatorName', 'Operator', 'AggregateName', 'Aggregator',
-    'FieldName', 'Fields',
-    'StrAnyMap', 'StrStrMap', 'StrSeqMap',
-    'FilterSpec', 'MapSpec', 'SelectSpec', 'SortSpec', 'AggregateSpec',
-    'StepSpec', 'StepSeq', 'StepOrSteps',
-    'PipelineStepName', 'PipelineConfig', 'PipelinePlan',
-    'StepApplier', 'SortKey',
+    'OperatorFunc',
+    'PipelineStepName', 'PipelineConfig',
+    'SortKey',
+    'StepApplier', 'StepOrSteps', 'StepSeq', 'StepSpec',
+    'StrAnyMap', 'StrPath', 'StrStrMap', 'StrSeqMap',
+    'AggregateSpec', 'FilterSpec', 'MapSpec', 'SelectSpec', 'SortSpec',
 ]
 
 
@@ -60,13 +55,8 @@ type StrPath = str | Path | PathLike[str]
 
 # -- Functions -- #
 
-type OperatorFunc = Callable[[Any, Any], bool]
 type AggregateFunc = Callable[[list[float], int], Any]
-
-# -- Operator / Aggregator Names -- #
-
-type Aggregator = AggregateName | AggregateFunc
-type Operator = OperatorName | OperatorFunc
+type OperatorFunc = Callable[[Any, Any], bool]
 
 # -- Records & Fields -- #
 
@@ -98,8 +88,6 @@ type StepOrSteps = StepSpec | StepSeq
 
 type PipelineStepName = Literal['filter', 'map', 'select', 'sort', 'aggregate']
 type PipelineConfig = Mapping[PipelineStepName, StepOrSteps]
-# Enum-keyed plan (internal use)
-type PipelinePlan = Mapping[PipelineStep, StepOrSteps]
 
 # -- Helpers -- #
 

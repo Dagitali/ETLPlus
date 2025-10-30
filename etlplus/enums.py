@@ -9,22 +9,23 @@ from __future__ import annotations
 import enum
 import operator as _op
 from statistics import fmean
-from typing import Any
-from typing import Callable
-from typing import Mapping
 from typing import Self
+
+from .types import AggregateFunc
+from .types import OperatorFunc
+from .types import StrStrMap
 
 
 # SECTION: PUBLIC API ======================================================= #
 
 
 __all__ = (
+    'AggregateName',
     'CoercibleStrEnum',
     'DataConnectorType',
     'FileFormat',
     'HttpMethod',
     'OperatorName',
-    'AggregateName',
     'PipelineStep',
     'coerce_data_connector_type',
     'coerce_file_format',
@@ -52,8 +53,17 @@ class CoercibleStrEnum(enum.StrEnum):
     # -- Class Methods -- #
 
     @classmethod
-    def aliases(cls) -> Mapping[str, str]:
-        """Return the alias map for this enum (subclasses may override)."""
+    def aliases(cls) -> StrStrMap:
+        """
+        Return a mapping of common aliases for each enum member (Subclasses may
+        override).
+
+        Returns
+        -------
+        StrStrMap
+            A mapping of alias names to their corresponding enum member names.
+        """
+
         return {}
 
     @classmethod
@@ -91,7 +101,7 @@ class CoercibleStrEnum(enum.StrEnum):
             normalized = str(value).strip().casefold()
             resolved = cls.aliases().get(normalized, normalized)
             return cls(resolved)  # type: ignore[arg-type]
-        except Exception as e:  # ValueError or TypeError
+        except (ValueError, TypeError) as e:
             allowed = ', '.join(cls.choices())
             raise ValueError(
                 f'Invalid {cls.__name__} value: {value!r}. Allowed: {allowed}',
@@ -101,6 +111,11 @@ class CoercibleStrEnum(enum.StrEnum):
     def try_coerce(cls, value: object) -> Self | None:
         """
         Best-effort parse; return ``None`` on failure instead of raising.
+
+        Parameters
+        ----------
+        value : object
+            An existing enum member or a text value to normalize.
         """
 
         try:
@@ -128,7 +143,16 @@ class AggregateName(CoercibleStrEnum):
     # -- Class Methods -- #
 
     @property
-    def func(self) -> Callable[[list[float], int], Any]:
+    def func(self) -> AggregateFunc:
+        """
+        Get the aggregation function for this aggregation type.
+
+        Returns
+        -------
+        AggregateFunc
+            The aggregation function corresponding to this aggregation type.
+        """
+
         if self is AggregateName.COUNT:
             return lambda xs, n: n
         if self is AggregateName.MAX:
@@ -156,7 +180,16 @@ class DataConnectorType(CoercibleStrEnum):
     # -- Class Methods -- #
 
     @classmethod
-    def aliases(cls) -> Mapping[str, str]:
+    def aliases(cls) -> StrStrMap:
+        """
+        Return a mapping of common aliases for each enum member.
+
+        Returns
+        -------
+        StrStrMap
+            A mapping of alias names to their corresponding enum member names.
+        """
+
         return {
             'http': 'api',
             'https': 'api',
@@ -185,7 +218,15 @@ class FileFormat(CoercibleStrEnum):
     # -- Class Methods -- #
 
     @classmethod
-    def aliases(cls) -> Mapping[str, str]:
+    def aliases(cls) -> StrStrMap:
+        """
+        Return a mapping of common aliases for each enum member.
+
+        Returns
+        -------
+        StrStrMap
+            A mapping of alias names to their corresponding enum member names.
+        """
 
         return {
             'text/csv': 'csv',
@@ -242,7 +283,16 @@ class OperatorName(CoercibleStrEnum):
     # -- Getters -- #
 
     @property
-    def func(self) -> Callable[[Any, Any], bool]:
+    def func(self) -> OperatorFunc:
+        """
+        Get the comparison function for this operator.
+
+        Returns
+        -------
+        OperatorFunc
+            The comparison function corresponding to this operator.
+        """
+
         match self:
             case OperatorName.EQ:
                 return _op.eq
@@ -264,7 +314,16 @@ class OperatorName(CoercibleStrEnum):
     # -- Class Methods -- #
 
     @classmethod
-    def aliases(cls) -> Mapping[str, str]:
+    def aliases(cls) -> StrStrMap:
+        """
+        Return a mapping of common aliases for each enum member.
+
+        Returns
+        -------
+        StrStrMap
+            A mapping of alias names to their corresponding enum member names.
+        """
+
         return {
             '==': 'eq', '=': 'eq', '!=': 'ne', '<>': 'ne',
             '>=': 'gte', '≥': 'gte', '<=': 'lte', '≤': 'lte',
@@ -273,7 +332,9 @@ class OperatorName(CoercibleStrEnum):
 
 
 class PipelineStep(CoercibleStrEnum):
-    """Pipeline step names as an enum for internal orchestration."""
+    """
+    Pipeline step names as an enum for internal orchestration.
+    """
 
     # -- Constants -- #
 
@@ -287,9 +348,29 @@ class PipelineStep(CoercibleStrEnum):
 
     @property
     def order(self) -> int:
-        sequence = ('filter', 'map', 'select', 'sort', 'aggregate')
+        """
+        Get the execution order of this pipeline step.
 
-        return sequence.index(self.value)
+        Returns
+        -------
+        int
+            The execution order of this pipeline step.
+        """
+
+        return _PIPELINE_ORDER_INDEX[self]
+
+
+# SECTION: PROTECTED CONSTANTS ============================================== #
+
+
+# Precomputed order index for PipelineStep; avoids recomputing on each access.
+_PIPELINE_ORDER_INDEX: dict[PipelineStep, int] = {
+    PipelineStep.FILTER: 0,
+    PipelineStep.MAP: 1,
+    PipelineStep.SELECT: 2,
+    PipelineStep.SORT: 3,
+    PipelineStep.AGGREGATE: 4,
+}
 
 
 # SECTION: FUNCTIONS ======================================================== #

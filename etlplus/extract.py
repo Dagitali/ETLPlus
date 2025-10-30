@@ -59,11 +59,9 @@ def extract_from_file(
     """
 
     path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f'File not found: {path}')
-
     fmt = coerce_file_format(file_format)
 
+    # Let file module perform existence and format validation.
     return read_structured_file(path, fmt)
 
 
