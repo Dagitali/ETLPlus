@@ -53,7 +53,6 @@ _EXT_TO_FORMAT: dict[str, FileFormat] = {
     'xml': FileFormat.XML,
     'yaml': FileFormat.YAML,
     'yml': FileFormat.YAML,
-    # NOTE: YAML is defined in FileFormat but not implemented in this module.
 }
 
 # Optional YAML support (lazy-loaded to avoid hard dependency)

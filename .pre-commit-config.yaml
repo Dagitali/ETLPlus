@@ -18,7 +18,7 @@
 
 ---
 
-# All commands by default will run on every commit
+# All commands by default will run on every commit.
 default_install_hook_types:
   - pre-commit
 
@@ -37,6 +37,7 @@ repos:
 
   ### Pre-commit ###
 
+  # Internal meta checks
   - repo: meta
     hooks:
       - id: check-hooks-apply
@@ -44,6 +45,7 @@ repos:
 
   ### Git ###
 
+  # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.9.1
     hooks:
@@ -57,6 +59,7 @@ repos:
 
   ### Git, Polyglot ###
 
+  # General hygiene checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -95,6 +98,7 @@ repos:
 
   ### Markdown ###
 
+  # Table of Contents updates
   - repo: https://github.com/frnmst/md-toc
     rev: 9.0.0
     hooks:
@@ -119,11 +123,33 @@ repos:
       - id: reorder-python-imports
         args: [--py3-plus]
 
+  # Formatting (authoritative)
+  # - repo: https://github.com/psf/black
+  #   rev: 25.1.0
+  #   hooks:
+  #     - id: black
+  #       args: [--target-version=py313]
+
   # - repo: https://github.com/asottile/setup-cfg-fmt
   #   rev: v2.8.0
   #   hooks:
   #     - id: setup-cfg-fmt
 
+  # Linting, import ordering, pyupgrade-like rules
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   rev: v0.14.2
+  #   hooks:
+  #     - id: ruff
+  #       args:
+  #         - --fix
+  #         - --exit-non-zero-on-fix
+  #       # Ruff will:
+  #       # - enforce E/F/W/B/I/UP as configured in .ruff.toml
+  #       # - sort imports (isort-like)
+  #       # - apply pyupgrade-like rules for py313
+  #     # - id: ruff-format
+
+  # Type checking
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.2
     hooks:
@@ -139,10 +165,3 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
