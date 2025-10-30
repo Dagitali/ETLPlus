@@ -20,6 +20,7 @@ from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import StrPath
+from .utils import count_records
 
 
 # SECTION: PUBLIC API ======================================================= #
@@ -42,6 +43,7 @@ __all__ = [
 
 
 _DEFAULT_XML_ROOT = 'root'
+
 # Map common filename extensions to FileFormat (used for inference)
 _EXT_TO_FORMAT: dict[str, FileFormat] = {
     'csv': FileFormat.CSV,
@@ -52,16 +54,6 @@ _EXT_TO_FORMAT: dict[str, FileFormat] = {
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
-
-
-def _count_records(data: JSONData) -> int:
-    """Return a consistent record count for JSON-like data payloads.
-
-    Lists are treated as multiple records; dicts as a single record.
-    """
-
-    return len(data) if isinstance(data, list) else 1
-
 
 def _dict_to_element(
     name: str,
@@ -386,7 +378,7 @@ class File:
             json.dump(data, handle, indent=2, ensure_ascii=False)
             handle.write('\n')
 
-        return _count_records(data)
+        return count_records(data)
 
     # -- Instance Methods (XML) -- #
 
@@ -434,7 +426,7 @@ class File:
         tree = ET.ElementTree(root_element)
         tree.write(self.path, encoding='utf-8', xml_declaration=True)
 
-        return _count_records(data)
+        return count_records(data)
 
     # -- Class Methods -- #
 
