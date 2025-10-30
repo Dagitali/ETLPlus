@@ -54,38 +54,35 @@ _EXT_TO_FORMAT: dict[str, FileFormat] = {
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-def _element_to_dict(
-    element: ET.Element,
-) -> JSONDict:
-    result: JSONDict = {}
-    text = (element.text or '').strip()
-    if text:
-        result['text'] = text
+def _count_records(data: JSONData) -> int:
+    """Return a consistent record count for JSON-like data payloads.
 
-    for child in element:
-        child_data = _element_to_dict(child)
-        tag = child.tag
-        if tag in result:
-            existing = result[tag]
-            if isinstance(existing, list):
-                existing.append(child_data)
-            else:
-                result[tag] = [existing, child_data]
-        else:
-            result[tag] = child_data
+    Lists are treated as multiple records; dicts as a single record.
+    """
 
-    for key, value in element.attrib.items():
-        if key in result:
-            result[f'@{key}'] = value
-        else:
-            result[key] = value
-    return result
+    return len(data) if isinstance(data, list) else 1
 
 
 def _dict_to_element(
     name: str,
     payload: Any,
 ) -> ET.Element:
+    """
+    Convert a dictionary-like payload into an XML element.
+
+    Parameters
+    ----------
+    name : str
+        Name of the XML element.
+    payload : Any
+        The data to include in the XML element.
+
+    Returns
+    -------
+    ET.Element
+        The constructed XML element.
+    """
+
     element = ET.Element(name)
 
     if isinstance(payload, dict):
@@ -111,6 +108,48 @@ def _dict_to_element(
         element.text = str(payload)
 
     return element
+
+
+def _element_to_dict(
+    element: ET.Element,
+) -> JSONDict:
+    """
+    Convert an XML element into a nested dictionary.
+
+    Parameters
+    ----------
+    element : ET.Element
+        XML element to convert.
+
+    Returns
+    -------
+    JSONDict
+        Nested dictionary representation of the XML element.
+    """
+
+    result: JSONDict = {}
+    text = (element.text or '').strip()
+    if text:
+        result['text'] = text
+
+    for child in element:
+        child_data = _element_to_dict(child)
+        tag = child.tag
+        if tag in result:
+            existing = result[tag]
+            if isinstance(existing, list):
+                existing.append(child_data)
+            else:
+                result[tag] = [existing, child_data]
+        else:
+            result[tag] = child_data
+
+    for key, value in element.attrib.items():
+        if key in result:
+            result[f'@{key}'] = value
+        else:
+            result[key] = value
+    return result
 
 
 # SECTION: CLASS ============================================================ #
@@ -159,6 +198,16 @@ class File:
                 pass
 
     # -- Protected Instance Methods -- #
+
+    def _assert_exists(self) -> None:
+        """
+        Raise FileNotFoundError if :attr:`path` does not exist.
+
+        This centralizes existence checks across multiple read methods.
+        """
+
+        if not self.path.exists():
+            raise FileNotFoundError(f'File not found: {self.path}')
 
     def _ensure_format(self) -> FileFormat:
         """
@@ -212,6 +261,14 @@ class File:
     ) -> int:
         """
         Write ``data`` to :attr:`path` using :attr:`file_format`.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data to write to the file.
+        root_tag : str, optional
+            Root tag name to use when writing XML files. Defaults to
+            ``'root'``.
         """
 
         fmt = self._ensure_format()
@@ -231,11 +288,9 @@ class File:
         Load CSV content as a list of dictionaries from :attr:`path`.
         """
 
-        path = self.path
-        if not path.exists():
-            raise FileNotFoundError(f'File not found: {path}')
+        self._assert_exists()
 
-        with path.open('r', encoding='utf-8', newline='') as handle:
+        with self.path.open('r', encoding='utf-8', newline='') as handle:
             reader: csv.DictReader[str] = csv.DictReader(handle)
             rows: JSONList = []
             for row in reader:
@@ -250,6 +305,17 @@ class File:
     ) -> int:
         """
         Write CSV rows to :attr:`path` and return the number of rows.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data to write as CSV. Should be a list of dictionaries or a
+            single dictionary.
+
+        Returns
+        -------
+        int
+            The number of rows written to the CSV file.
         """
 
         rows: list[JSONDict]
@@ -279,11 +345,9 @@ class File:
         Load and validate JSON payloads from :attr:`path`.
         """
 
-        path = self.path
-        if not path.exists():
-            raise FileNotFoundError(f'File not found: {path}')
+        self._assert_exists()
 
-        with path.open('r', encoding='utf-8') as handle:
+        with self.path.open('r', encoding='utf-8') as handle:
             loaded = json.load(handle)
 
         if isinstance(loaded, dict):
@@ -306,13 +370,23 @@ class File:
     ) -> int:
         """
         Write ``data`` as formatted JSON to :attr:`path`.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data to serialize as JSON.
+
+        Returns
+        -------
+        int
+            The number of records written to the JSON file.
         """
 
         with self.path.open('w', encoding='utf-8') as handle:
             json.dump(data, handle, indent=2, ensure_ascii=False)
             handle.write('\n')
 
-        return len(data) if isinstance(data, list) else 1
+        return _count_records(data)
 
     # -- Instance Methods (XML) -- #
 
@@ -321,11 +395,9 @@ class File:
         Parse XML document at :attr:`path` into a nested dictionary.
         """
 
-        path = self.path
-        if not path.exists():
-            raise FileNotFoundError(f'File not found: {path}')
+        self._assert_exists()
 
-        tree = ET.parse(path)
+        tree = ET.parse(self.path)
         root = tree.getroot()
 
         return {root.tag: _element_to_dict(root)}
@@ -338,6 +410,19 @@ class File:
     ) -> int:
         """
         Write ``data`` as XML to :attr:`path` and return record count.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data to write as XML.
+        root_tag : str, optional
+            Root tag name to use when writing XML files. Defaults to
+            ``'root'``.
+
+        Returns
+        -------
+        int
+            The number of records written to the XML file.
         """
 
         if isinstance(data, dict) and len(data) == 1:
@@ -349,7 +434,7 @@ class File:
         tree = ET.ElementTree(root_element)
         tree.write(self.path, encoding='utf-8', xml_declaration=True)
 
-        return len(data) if isinstance(data, list) else 1
+        return _count_records(data)
 
     # -- Class Methods -- #
 
@@ -362,6 +447,19 @@ class File:
     ) -> File:
         """
         Create a :class:`File` from any path-like and optional format.
+
+        Parameters
+        ----------
+        path : StrPath
+            Path to the file on disk.
+        file_format : FileFormat | str | None, optional
+            Explicit format. If omitted, the format is inferred from the file
+            extension (``.csv``, ``.json``, or ``.xml``).
+
+        Returns
+        -------
+        File
+            The constructed :class:`File` instance.
         """
 
         resolved = Path(path)
@@ -381,6 +479,19 @@ class File:
     ) -> JSONData:
         """
         Convenience: ``File.read_file(path, fmt)`` → read structured data.
+
+        Parameters
+        ----------
+        path : StrPath
+            Path to the file on disk.
+        file_format : FileFormat | str | None, optional
+            Explicit format. If omitted, the format is inferred from the file
+            extension (``.csv``, ``.json``, or ``.xml``).
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the file.
         """
 
         return cls.from_path(path, file_format=file_format).read()
@@ -396,6 +507,24 @@ class File:
     ) -> int:
         """
         Convenience: ``File.write_file(path, data, fmt)`` → write and count.
+
+        Parameters
+        ----------
+        path : StrPath
+            Path to the file on disk.
+        data : JSONData
+            Data to write to the file.
+        file_format : FileFormat | str | None, optional
+            Explicit format. If omitted, the format is inferred from the file
+            extension (``.csv``, ``.json``, or ``.xml``).
+        root_tag : str, optional
+            Root tag name to use when writing XML files. Defaults to
+            ``'root'``.
+
+        Returns
+        -------
+        int
+            The number of records written to the file.
         """
 
         return cls.from_path(path, file_format=file_format).write(
