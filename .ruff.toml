@@ -7,7 +7,7 @@
 #
 # Target Python 3.13, keep it fast and opinionated but not overbearing.
 
-line-length = 100
+line-length = 88
 target-version = "py313"
 
 [lint]
@@ -22,6 +22,10 @@ select = [
 ignore = [
   # Allow module-level variable use for caches/helpers, if needed
 ]
+
+[lint.isort]
+combine-as-imports = false
+force-single-line = true
 
 [format]
 quote-style = "single"
