@@ -9,11 +9,11 @@ time.sleep to avoid delays. We drive the CLI entrypoint to exercise the same
 code paths as real usage without network calls.
 
 Maintainer note:
-- Pagination logic was modularized into ``etlplus.api.pagination.paginate``
-  which calls an internal ``_extract`` on each page fetch.
-- The CLI may still call ``etlplus.cli.extract`` on some code paths.
-- To keep tests hermetic after modularization, we patch both targets:
-  ``cli_mod.extract`` and ``pmod._extract``.
+- Pagination logic now lives on `EndpointClient.paginate_url`. The public
+  `etlplus.api.pagination.paginate` remains as a deprecated shim delegating to
+  the client. Therefore, patching the client's internal `_extract` is
+  sufficient to intercept page fetches. We also patch `cli_mod.extract` for
+  historical code paths.
 """
 from __future__ import annotations
 
@@ -23,7 +23,6 @@ import time
 from typing import Any
 
 import etlplus.api.client as cmod
-import etlplus.api.pagination as pmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
 
@@ -84,14 +83,11 @@ jobs:
             return [{'id': 3}]  # smaller than page_size -> stop
         return []
 
-    # Patch both extract targets:
-    # - cli_mod.extract: CLI may call extract directly for non-paginated paths
-    #   and for historical consistency.
-    # - pmod._extract: paginate() calls an internal _extract on each page;
-    #   after modularization, mocking only cli_mod.extract won't intercept page
-    #   fetches.
+    # Patch extract targets:
+    # - cli_mod.extract: CLI may call extract directly for some paths.
+    # - cmod._extract: paginate now delegates to EndpointClient, which uses
+    #   the client's internal extractor per page.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-    monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
@@ -163,11 +159,8 @@ jobs:
             return {'data': [{'id': 'c'}], 'next': None}
         return {'data': [], 'next': None}
 
-    # Patch both extract targets for the same reason as the page/offset test:
-    # paginate() uses pmod._extract internally, while the CLI may use
-    # cli_mod.extract in other code paths.
+    # Patch extract targets consistent with the page/offset test.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-    monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
@@ -234,11 +227,8 @@ jobs:
             return [{'id': 4}]
         return []
 
-    # Patch both extract targets to ensure pagination calls are intercepted
-    # regardless of whether they go through the CLI entry point or the
-    # pagination module's internal fetch function.
+    # Patch extract targets to ensure pagination calls are intercepted.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-    monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
