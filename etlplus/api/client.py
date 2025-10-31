@@ -6,13 +6,14 @@ REST API helpers for client interactions.
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
-
 
 # SECTION: CLASSES ========================================================= #
 
@@ -134,6 +135,7 @@ class EndpointClient:
         >>> ep.url('search', query_parameters={'q': 'Jane Doe', 'page': '2'})
         'https://api.example.com/v1/users?q=Jane+Doe&page=2'
         """
+
         if endpoint_key not in self.endpoints:
             raise KeyError(f'Unknown endpoint_key: {endpoint_key!r}')
 
@@ -175,3 +177,117 @@ class EndpointClient:
         return urlunsplit(
             (parts.scheme, parts.netloc, path, qs, parts.fragment),
         )
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def apply_sleep(
+        sleep_seconds: float,
+        *,
+        sleeper=None,
+    ) -> None:
+        """
+        Sleep for the specified seconds if positive.
+
+        The optional ``sleeper`` is useful for tests (e.g., pass
+        ``lambda s: None``). Defaults to using time.sleep when not provided.
+
+        Parameters
+        ----------
+        sleep_seconds : float
+            Number of seconds to sleep; no-op if non-positive.
+        sleeper : Callable[[float], None] | None, optional
+            Optional sleeper function taking seconds as input.
+        """
+
+        if sleep_seconds and sleep_seconds > 0:
+            if sleeper is None:
+                time.sleep(sleep_seconds)
+            else:
+                sleeper(sleep_seconds)
+
+    @staticmethod
+    def build_request_kwargs(
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        timeout: float | int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Build kwargs for requests.get.
+
+        Only include keys that have non-empty values to keep kwargs tidy.
+
+        Parameters
+        ----------
+        params : dict[str, Any] | None, optional
+            Query parameters to include in the request.
+        headers : dict[str, Any] | None, optional
+            Headers to include in the request.
+        timeout : float | int | None, optional
+            Timeout for the request in seconds.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary of keyword arguments for requests.get.
+        """
+
+        kw: dict[str, Any] = {}
+        if params:
+            kw['params'] = params
+        if headers:
+            kw['headers'] = headers
+        if timeout is not None:
+            kw['timeout'] = timeout
+        return kw
+
+    @staticmethod
+    def coalesce_records(x: Any, records_path: str | None) -> list[dict]:
+        """
+        Coalesce JSON page payloads into a list of dicts.
+
+        Supports dotted path extraction via ``records_path`` and handles lists,
+        maps, and scalars by coercing non-dict items into ``{'value': x}``.
+
+        Parameters
+        ----------
+        x : Any
+            The JSON payload from an API response.
+        records_path : str | None
+            Dotted path to the records within the payload.
+
+        Returns
+        -------
+        list[dict]
+            List of record dicts extracted from the payload.
+        """
+
+        def _get_path(obj: Any, path: str) -> Any:
+            cur = obj
+            for part in path.split('.'):
+                if isinstance(cur, dict):
+                    cur = cur.get(part)
+                else:
+                    return None
+            return cur
+
+        data = x
+        if isinstance(records_path, str) and records_path:
+            data = _get_path(x, records_path)
+
+        if isinstance(data, list):
+            out: list[dict] = []
+            for item in data:
+                if isinstance(item, dict):
+                    out.append(item)
+                else:
+                    out.append({'value': item})
+            return out
+        if isinstance(data, dict):
+            items = data.get('items')
+            if isinstance(items, list):
+                return EndpointClient.coalesce_records(items, None)
+            return [data]
+
+        return [{'value': data}]
