@@ -24,6 +24,7 @@ from textwrap import dedent
 from typing import Any
 
 from etlplus import __version__
+from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
 from etlplus.load import load
 from etlplus.transform import transform
@@ -122,6 +123,29 @@ def cmd_extract(args: argparse.Namespace) -> int:
     else:
         _print_json(data)
 
+    return 0
+
+
+def cmd_pipeline(args: argparse.Namespace) -> int:
+    """
+    Inspect a pipeline YAML configuration.
+
+    Currently supports listing job names via --list.
+    """
+    cfg = load_pipeline_config(args.config, substitute=True)
+    if getattr(args, 'list', False):
+        jobs = [j.name for j in cfg.jobs if j.name]
+        _print_json({'jobs': jobs})
+        return 0
+    # Default: print a brief summary
+    summary = {
+        'name': cfg.name,
+        'version': cfg.version,
+        'sources': [getattr(s, 'name', None) for s in cfg.sources],
+        'targets': [getattr(t, 'name', None) for t in cfg.targets],
+        'jobs': [j.name for j in cfg.jobs if j.name],
+    }
+    _print_json(summary)
     return 0
 
 
@@ -342,6 +366,24 @@ def create_parser() -> argparse.ArgumentParser:
     )
     load_parser.set_defaults(func=cmd_load)
 
+    # Define "pipeline" command (reads YAML config).
+    pipe_parser = subparsers.add_parser(
+        'pipeline',
+        help='Inspect pipeline YAML (list jobs)',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    pipe_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    pipe_parser.add_argument(
+        '--list',
+        action='store_true',
+        help='List available job names and exit',
+    )
+    pipe_parser.set_defaults(func=cmd_pipeline)
+
     return parser
 
 
@@ -411,11 +453,17 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(load_result, indent=2))
 
+        elif args.command == 'pipeline':
+            # Read pipeline YAML and list jobs.
+            cfg = load_pipeline_config(args.config, substitute=True)
+            jobs = [j.name for j in cfg.jobs if j.name]
+            print(json.dumps({'jobs': jobs}, indent=2))
+
         return 0
 
     except KeyboardInterrupt:
         # Conventional exit code for SIGINT
         return 130
-    except Exception as e:  # noqa: BLE001
+    except (OSError, TypeError, ValueError) as e:
         print(f'Error: {e}', file=sys.stderr)
         return 1
