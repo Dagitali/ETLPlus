@@ -9,6 +9,9 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from typing import Any
+from typing import cast
+from typing import Literal
+from typing import TypedDict
 from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
@@ -16,6 +19,81 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..extract import extract as _extract
+
+
+# SECTION: TYPES ============================================================ #
+
+
+class PagePaginationConfig(TypedDict, total=False):
+    """
+    Pagination config for 'page' and 'offset' types.
+
+    Attributes
+    ----------
+    type : Literal['page', 'offset']
+        Pagination type.
+    records_path : str
+        Dotted path to records in the payload.
+    max_pages : int
+        Maximum number of pages to fetch.
+    max_records : int
+        Maximum number of records to fetch.
+    page_param : str
+        Query parameter name for the page number.
+    size_param : str
+        Query parameter name for the page size.
+    start_page : int
+        Starting page number (1-based).
+    page_size : int
+        Number of records per page.
+    """
+
+    type: Literal['page', 'offset']
+    records_path: str
+    max_pages: int
+    max_records: int
+    page_param: str
+    size_param: str
+    start_page: int
+    page_size: int
+
+
+class CursorPaginationConfig(TypedDict, total=False):
+    """
+    Pagination config for cursor-based pagination.
+
+    Attributes
+    ----------
+    type : Literal['cursor']
+        Pagination type.
+    records_path : str
+        Dotted path to records in the payload.
+    max_pages : int
+        Maximum number of pages to fetch.
+    max_records : int
+        Maximum number of records to fetch.
+    cursor_param : str
+        Query parameter name for the cursor.
+    cursor_path : str
+        Dotted path to extract the next cursor from the payload.
+    start_cursor : str | int
+        Initial cursor value to start pagination.
+    page_size : int
+        Number of records per page.
+    """
+
+    type: Literal['cursor']
+    records_path: str
+    max_pages: int
+    max_records: int
+    cursor_param: str
+    cursor_path: str
+    start_cursor: str | int
+    page_size: int
+
+
+type PaginationConfig = PagePaginationConfig | CursorPaginationConfig
+
 
 # SECTION: CLASSES ========================================================= #
 
@@ -300,7 +378,7 @@ class EndpointClient:
         params: dict[str, Any] | None,
         headers: dict[str, Any] | None,
         timeout: float | int | None,
-        pagination: dict[str, Any] | None,
+        pagination: PaginationConfig | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> Any:
@@ -332,10 +410,40 @@ class EndpointClient:
         recs = 0
 
         if ptype in {'page', 'offset'}:
-            page_param = (pagination or {}).get('page_param') or 'page'
-            size_param = (pagination or {}).get('size_param') or 'per_page'
-            start_page = int((pagination or {}).get('start_page') or 1)
-            page_size = int((pagination or {}).get('page_size') or 100)
+            page_param = (pagination or {}).get('page_param', 'page')
+            size_param = (pagination or {}).get('size_param', 'per_page')
+            # Defensive guards against invalid values
+            # raw_start_page = (pagination or {}).get('start_page', 1)
+            start_page = int(
+                cast(
+                    int | float | str,
+                    (pagination or {}).get('start_page', 1),
+                ),
+            )
+            # try:
+            #     if raw_start_page is None:
+            #         start_page = 1
+            #     else:
+            #         start_page = int(cast(int | float | str, raw_start_page))
+            # except (TypeError, ValueError):
+            #     start_page = 1
+
+            # raw_page_size = (pagination or {}).get('page_size')
+            page_size = int(
+                cast(
+                    int | float | str,
+                    (pagination or {}).get('page_size', 100),
+                ),
+            )
+            # try:
+            #     if raw_page_size is None:
+            #         page_size = 100
+            #     else:
+            #         page_size = int(cast(int | float | str, raw_page_size))
+            # except (TypeError, ValueError):
+            #     page_size = 100
+            start_page = 1 if start_page < 1 else start_page
+            page_size = 1 if page_size < 1 else page_size
 
             current = start_page
             while True:
@@ -365,8 +473,15 @@ class EndpointClient:
 
         if ptype == 'cursor':
             cursor_param = (pagination or {}).get('cursor_param') or 'cursor'
-            cursor_path = (pagination or {}).get('cursor_path')
-            page_size = int((pagination or {}).get('page_size') or 100)
+            cursor_path = cast(
+                str | None,
+                (pagination or {}).get('cursor_path'),
+            )
+            try:
+                page_size = int((pagination or {}).get('page_size') or 100)
+            except (TypeError, ValueError):
+                page_size = 100
+            page_size = 1 if page_size < 1 else page_size
             cursor_value = (pagination or {}).get('start_cursor')
 
             def _next_cursor_from(data_obj: Any, path: str | None) -> Any:
@@ -418,3 +533,34 @@ class EndpointClient:
             params=params, headers=headers, timeout=timeout,
         )
         return _extract('api', url, **kw)
+
+    def paginate(
+        self,
+        endpoint_key: str,
+        *,
+        path_parameters: dict[str, str] | None = None,
+        query_parameters: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        timeout: float | int | None = None,
+        pagination: PaginationConfig | None = None,
+        sleep_seconds: float = 0.0,
+    ) -> Any:
+        """
+        Convenience wrapper to paginate by endpoint key.
+
+        Builds the URL via `self.url(...)` and delegates to `paginate_url`.
+        """
+        url = self.url(
+            endpoint_key,
+            path_parameters=path_parameters,
+            query_parameters=query_parameters,
+        )
+        return self.paginate_url(
+            url=url,
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            pagination=pagination,
+            sleep_seconds=sleep_seconds,
+        )
