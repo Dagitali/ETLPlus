@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .pagination import paginate
 from .request import compute_sleep_seconds
 
 
@@ -19,5 +18,4 @@ __all__ = [
     'EndpointCredentialsBearer',
     'EndpointClient',
     'compute_sleep_seconds',
-    'paginate',
 ]
