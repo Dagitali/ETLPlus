@@ -219,13 +219,41 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     """
 
     cfg = load_pipeline_config(args.config, substitute=True)
-    # -- List mode -------------------------------------------------------- #
+
+    def _merge(
+        a: dict[str, Any] | None,
+        b: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Shallow merge two dicts, later values override earlier."""
+        out: dict[str, Any] = {}
+        if a:
+            out.update(a)
+        if b:
+            out.update(b)
+        return out
+
+    def _build_req_kwargs(
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        timeout: float | int | None = None,
+    ) -> dict[str, Any]:
+        kw: dict[str, Any] = {}
+        if params:
+            kw['params'] = params
+        if headers:
+            kw['headers'] = headers
+        if timeout is not None:
+            kw['timeout'] = timeout
+        return kw
+
+    # List mode
     if getattr(args, 'list', False) and not getattr(args, 'run', None):
         jobs = [j.name for j in cfg.jobs if j.name]
         _print_json({'jobs': jobs})
         return 0
 
-    # -- Run mode --------------------------------------------------------- #
+    # Run mode
     run_job = getattr(args, 'run', None)
     if run_job:
         # Lookup job by name
@@ -237,7 +265,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         sources_by_name = {getattr(s, 'name', None): s for s in cfg.sources}
         targets_by_name = {getattr(t, 'name', None): t for t in cfg.targets}
 
-        # Helper: coalesce records into list[dict]
+        # Helper: coalesce records into list[dict].
         def _coalesce_records(x: Any, records_path: str | None) -> list[dict]:
             def _get_path(obj: Any, path: str) -> Any:
                 cur = obj
@@ -267,7 +295,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 return [data]
             return [{'value': data}]
 
-        # Extract
+        # Extract.
         if not job.extract:
             raise ValueError("Job missing 'extract' section")
         source_name = job.extract.source
@@ -322,14 +350,14 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 pagination = pagination or ep.pagination
                 rate_limit = rate_limit or ep.rate_limit
 
-            # Apply overrides from job.extract.options
-            params = {**params, **(ex_opts.get('params') or {})}
-            headers = {**headers, **(ex_opts.get('headers') or {})}
+            # Apply overrides from job.extract.options.
+            params = _merge(params, ex_opts.get('params'))
+            headers = _merge(headers, ex_opts.get('headers'))
             timeout = ex_opts.get('timeout')
             pag_ov = ex_opts.get('pagination') or {}
             rl_ov = ex_opts.get('rate_limit') or {}
 
-            # Compute rate limit sleep
+            # Compute rate limit sleep.
             sleep_s: float = 0.0
             if rate_limit and rate_limit.sleep_seconds:
                 sleep_s = float(rate_limit.sleep_seconds)
@@ -374,13 +402,9 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
             # Single call if no pagination
             if not ptype:
-                req_kwargs: dict[str, Any] = {}
-                if params:
-                    req_kwargs['params'] = params
-                if headers:
-                    req_kwargs['headers'] = headers
-                if timeout is not None:
-                    req_kwargs['timeout'] = timeout
+                req_kwargs = _build_req_kwargs(
+                    params=params, headers=headers, timeout=timeout,
+                )
                 if not url:
                     raise ValueError('API source missing URL')
                 data = extract('api', url, **req_kwargs)
@@ -410,13 +434,11 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                         req_params = dict(params)
                         req_params[str(page_param or 'page')] = current
                         req_params[str(size_param or 'per_page')] = ps
-                        req_kwargs_page: dict[str, Any] = {
-                            'params': req_params,
-                        }
-                        if headers:
-                            req_kwargs_page['headers'] = headers
-                        if timeout is not None:
-                            req_kwargs_page['timeout'] = timeout
+                        req_kwargs_page = _build_req_kwargs(
+                            params=req_params,
+                            headers=headers,
+                            timeout=timeout,
+                        )
                         if not url:
                             raise ValueError('API source missing URL')
                         page_data = extract('api', url, **req_kwargs_page)
@@ -458,11 +480,11 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             req_params[str(cursor_param or 'cursor')] = cursor
                         if ps:
                             req_params.setdefault('limit', ps)
-                        req_kwargs_cur: dict[str, Any] = {'params': req_params}
-                        if headers:
-                            req_kwargs_cur['headers'] = headers
-                        if timeout is not None:
-                            req_kwargs_cur['timeout'] = timeout
+                        req_kwargs_cur = _build_req_kwargs(
+                            params=req_params,
+                            headers=headers,
+                            timeout=timeout,
+                        )
                         if not url:
                             raise ValueError('API source missing URL')
                         page_data = extract('api', url, **req_kwargs_cur)
@@ -500,13 +522,9 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                         cursor = next_cursor
                 else:
                     # Unknown pagination -> single request
-                    single_kwargs: dict[str, Any] = {}
-                    if params:
-                        single_kwargs['params'] = params
-                    if headers:
-                        single_kwargs['headers'] = headers
-                    if timeout is not None:
-                        single_kwargs['timeout'] = timeout
+                    single_kwargs = _build_req_kwargs(
+                        params=params, headers=headers, timeout=timeout,
+                    )
                     if not url:
                         raise ValueError('API source missing URL')
                     data = extract('api', url, **single_kwargs)
@@ -516,7 +534,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         else:
             raise ValueError(f"Unsupported source type: {stype}")
 
-        # Validate (optional) with severity/phase
+        # Validate (optional) with severity/phase.
         if job.validate:
             rules = cfg.validations.get(job.validate.ruleset, {})
             severity = (job.validate.severity or 'error').lower()
@@ -535,7 +553,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             if phase in {'before_transform', 'both'}:
                 data = _handle_validation(data)
 
-        # Transform (optional)
+        # Transform (optional).
         if job.transform:
             ops: Any = cfg.transforms.get(job.transform.pipeline, {})
             data = transform(data, ops)
@@ -552,7 +570,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     if severity != 'warn':
                         raise ValueError('Validation failed')
 
-        # Load
+        # Load.
         if not job.load:
             raise ValueError("Job missing 'load' section")
         target_name = job.load.target
@@ -599,41 +617,6 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         return 0
 
     # Default: print summary
-    summary = {
-        'name': cfg.name,
-        'version': cfg.version,
-        'sources': [getattr(s, 'name', None) for s in cfg.sources],
-        'targets': [getattr(t, 'name', None) for t in cfg.targets],
-        'jobs': [j.name for j in cfg.jobs if j.name],
-    }
-    _print_json(summary)
-
-    return 0
-
-
-def cmd_pipeline_info(args: argparse.Namespace) -> int:
-    """
-    Inspect a pipeline YAML configuration.
-
-    Currently supports listing job names via --list.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command-line arguments.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-
-    cfg = load_pipeline_config(args.config, substitute=True)
-    if getattr(args, 'list', False):
-        jobs = [j.name for j in cfg.jobs if j.name]
-        _print_json({'jobs': jobs})
-        return 0
-    # Default: print a brief summary
     summary = {
         'name': cfg.name,
         'version': cfg.version,
@@ -844,52 +827,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        if args.command == 'extract':
-            data = extract(
-                args.source_type,
-                args.source,
-                format=args.format,
-            )
-            if args.output:
-                with open(args.output, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2)
-                print(f'Data extracted and saved to {args.output}')
-            else:
-                print(json.dumps(data, indent=2))
+        # Prefer argparse's dispatch to avoid duplicating logic.
+        func = getattr(args, 'func', None)
+        if callable(func):
+            return int(func(args))
 
-        elif args.command == 'validate':
-            rules = args.rules or {}
-            validate_result = validate(args.source, rules)
-            print(json.dumps(validate_result, indent=2))
-
-        elif args.command == 'transform':
-            operations = args.operations or {}
-            data = transform(args.source, operations)
-            if args.output:
-                with open(args.output, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2)
-                print(f'Data transformed and saved to {args.output}')
-            else:
-                print(json.dumps(data, indent=2))
-
-        elif args.command == 'load':
-            load_result = load(
-                args.source,
-                args.target_type,
-                args.target,
-                format=args.format,
-            )
-            print(json.dumps(load_result, indent=2))
-
-        elif args.command == 'pipeline':
-            # Delegate to the pipeline handler (list or run).
-            return cmd_pipeline(args)
-
+        # Fallback: no subcommand function bound.
+        parser.print_help()
         return 0
 
     except KeyboardInterrupt:
         # Conventional exit code for SIGINT
         return 130
+
     except (OSError, TypeError, ValueError) as e:
         print(f'Error: {e}', file=sys.stderr)
         return 1
