@@ -259,7 +259,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         # Lookup job by name
         job = next((j for j in cfg.jobs if j.name == run_job), None)
         if not job:
-            raise ValueError(f"Job not found: {run_job}")
+            raise ValueError(f'Job not found: {run_job}')
 
         # Index sources/targets by name
         sources_by_name = {getattr(s, 'name', None): s for s in cfg.sources}
@@ -297,321 +297,381 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
         # Extract.
         if not job.extract:
-            raise ValueError("Job missing 'extract' section")
+            raise ValueError('Job missing "extract" section')
         source_name = job.extract.source
         if source_name not in sources_by_name:
-            raise ValueError(f"Unknown source: {source_name}")
+            raise ValueError(f'Unknown source: {source_name}')
         source_obj = sources_by_name[source_name]
         ex_opts: dict[str, Any] = job.extract.options or {}
 
         data: Any
         stype = getattr(source_obj, 'type', None)
-        if stype == 'file':
-            path = getattr(source_obj, 'path', None)
-            fmt = ex_opts.get('format') or getattr(
-                source_obj, 'format', 'json',
-            )
-            if not path:
-                raise ValueError("File source missing 'path'")
-            data = extract('file', path, format=fmt)
-        elif stype == 'database':
-            conn = getattr(source_obj, 'connection_string', '')
-            data = extract('database', conn)
-        elif stype == 'api':
-            # Build URL, params, headers, pagination, rate_limit
-            url: str | None = getattr(source_obj, 'url', None)
-            params: dict[str, Any] = dict(
-                getattr(source_obj, 'params', {}) or {},
-            )
-            headers: dict[str, str] = dict(
-                getattr(source_obj, 'headers', {}) or {},
-            )
-            pagination = getattr(source_obj, 'pagination', None)
-            rate_limit = getattr(source_obj, 'rate_limit', None)
-
-            api_name = getattr(source_obj, 'api', None)
-            endpoint_name = getattr(source_obj, 'endpoint', None)
-            if api_name and endpoint_name:
-                api_cfg = cfg.apis.get(api_name)
-                if not api_cfg:
-                    raise ValueError(f"API not defined: {api_name}")
-                ep = api_cfg.endpoints.get(endpoint_name)
-                if not ep:
-                    raise ValueError(
-                        f"Endpoint '{endpoint_name}' not defined in API "
-                        f"'{api_name}'",
-                    )
-                # Compose and inherit
-                base = api_cfg.base_url.rstrip('/')
-                path = ep.path.lstrip('/')
-                url = f"{base}/{path}"
-                params = {**ep.params, **params}
-                headers = {**api_cfg.headers, **headers}
-                pagination = pagination or ep.pagination
-                rate_limit = rate_limit or ep.rate_limit
-
-            # Apply overrides from job.extract.options.
-            params = _merge(params, ex_opts.get('params'))
-            headers = _merge(headers, ex_opts.get('headers'))
-            timeout = ex_opts.get('timeout')
-            pag_ov = ex_opts.get('pagination') or {}
-            rl_ov = ex_opts.get('rate_limit') or {}
-
-            # Compute rate limit sleep.
-            sleep_s: float = 0.0
-            if rate_limit and rate_limit.sleep_seconds:
-                sleep_s = float(rate_limit.sleep_seconds)
-            if (
-                rate_limit and rate_limit.max_per_sec
-                and rate_limit.max_per_sec > 0
-            ):
-                sleep_s = 1.0 / float(rate_limit.max_per_sec)
-            if 'sleep_seconds' in rl_ov:
-                try:
-                    sleep_s = float(rl_ov['sleep_seconds'])
-                except (TypeError, ValueError):
-                    pass
-            if 'max_per_sec' in rl_ov:
-                try:
-                    mps = float(rl_ov['max_per_sec'])
-                    if mps > 0:
-                        sleep_s = 1.0 / mps
-                except (TypeError, ValueError):
-                    pass
-
-            def _apply_sleep() -> None:
-                if sleep_s and sleep_s > 0:
-                    time.sleep(sleep_s)
-
-            # Pagination params
-            ptype = None
-            records_path = None
-            max_pages = None
-            max_records = None
-            if pagination:
-                ptype = (pagination.type or '').strip().lower()
-                records_path = pagination.records_path
-                max_pages = pagination.max_pages
-                max_records = pagination.max_records
-            # Override with job-level
-            if pag_ov:
-                ptype = (pag_ov.get('type') or ptype or '').strip().lower()
-                records_path = pag_ov.get('records_path', records_path)
-                max_pages = pag_ov.get('max_pages', max_pages)
-                max_records = pag_ov.get('max_records', max_records)
-
-            # Single call if no pagination
-            if not ptype:
-                req_kwargs = _build_req_kwargs(
-                    params=params, headers=headers, timeout=timeout,
+        match stype:
+            case 'file':
+                path = getattr(source_obj, 'path', None)
+                fmt = ex_opts.get('format') or getattr(
+                    source_obj, 'format', 'json',
                 )
-                if not url:
-                    raise ValueError('API source missing URL')
-                data = extract('api', url, **req_kwargs)
-            else:
-                results: list[dict] = []
-                pages = 0
-                recs = 0
+                if not path:
+                    raise ValueError('File source missing "path"')
+                data = extract('file', path, format=fmt)
+            case 'database':
+                conn = getattr(source_obj, 'connection_string', '')
+                data = extract('database', conn)
+            case 'api':
+                # Build URL, params, headers, pagination, rate_limit
+                url: str | None = getattr(source_obj, 'url', None)
+                params: dict[str, Any] = dict(
+                    getattr(source_obj, 'params', {}) or {},
+                )
+                headers: dict[str, str] = dict(
+                    getattr(source_obj, 'headers', {}) or {},
+                )
+                pagination = getattr(source_obj, 'pagination', None)
+                rate_limit = getattr(source_obj, 'rate_limit', None)
 
-                if ptype in {'page', 'offset'}:
-                    page_param = pag_ov.get('page_param') if pag_ov else None
-                    size_param = pag_ov.get('size_param') if pag_ov else None
-                    start_page = pag_ov.get('start_page') if pag_ov else None
-                    page_size = pag_ov.get('page_size') if pag_ov else None
-                    # fallbacks from source pagination
-                    if pagination:
-                        page_param = (
-                            page_param or pagination.page_param or 'page'
+                api_name = getattr(source_obj, 'api', None)
+                endpoint_name = getattr(source_obj, 'endpoint', None)
+                if api_name and endpoint_name:
+                    api_cfg = cfg.apis.get(api_name)
+                    if not api_cfg:
+                        raise ValueError(f'API not defined: {api_name}')
+                    ep = api_cfg.endpoints.get(endpoint_name)
+                    if not ep:
+                        raise ValueError(
+                            f'Endpoint "{endpoint_name}" not defined in API '
+                            f'"{api_name}"',
                         )
-                        size_param = (
-                            size_param or pagination.size_param or 'per_page'
-                        )
-                        start_page = start_page or pagination.start_page or 1
-                        page_size = page_size or pagination.page_size or 100
-                    current = int(start_page or 1)
-                    ps = int(page_size or 100)
-                    while True:
-                        req_params = dict(params)
-                        req_params[str(page_param or 'page')] = current
-                        req_params[str(size_param or 'per_page')] = ps
-                        req_kwargs_page = _build_req_kwargs(
-                            params=req_params,
-                            headers=headers,
-                            timeout=timeout,
-                        )
-                        if not url:
-                            raise ValueError('API source missing URL')
-                        page_data = extract('api', url, **req_kwargs_page)
-                        batch = _coalesce_records(page_data, records_path)
-                        results.extend(batch)
-                        pages += 1
-                        recs += len(batch)
-                        if len(batch) < ps:
-                            break
-                        if isinstance(max_pages, int) and pages >= max_pages:
-                            break
-                        if (
-                            isinstance(max_records, int)
-                            and recs >= max_records
-                        ):
-                            results = results[: int(max_records)]
-                            break
-                        _apply_sleep()
-                        current += 1
-                elif ptype == 'cursor':
-                    cursor_param = (
-                        pag_ov.get('cursor_param') if pag_ov else None
-                    )
-                    cursor_path = pag_ov.get('cursor_path') if pag_ov else None
-                    page_size = pag_ov.get('page_size') if pag_ov else None
-                    if pagination:
-                        cursor_param = (
-                            cursor_param or pagination.cursor_param or 'cursor'
-                        )
-                        cursor_path = cursor_path or pagination.cursor_path
-                        page_size = page_size or pagination.page_size or 100
-                        cursor = pagination.start_cursor
-                    else:
-                        cursor = None
-                    ps = int(page_size or 100)
-                    while True:
-                        req_params = dict(params)
-                        if cursor is not None:
-                            req_params[str(cursor_param or 'cursor')] = cursor
-                        if ps:
-                            req_params.setdefault('limit', ps)
-                        req_kwargs_cur = _build_req_kwargs(
-                            params=req_params,
-                            headers=headers,
-                            timeout=timeout,
-                        )
-                        if not url:
-                            raise ValueError('API source missing URL')
-                        page_data = extract('api', url, **req_kwargs_cur)
-                        batch = _coalesce_records(page_data, records_path)
-                        results.extend(batch)
-                        pages += 1
-                        recs += len(batch)
-                        # derive next cursor
-                        next_cursor = None
-                        if (
-                            isinstance(cursor_path, str)
-                            and cursor_path
-                            and isinstance(page_data, dict)
-                        ):
-                            cur: Any = page_data
-                            for part in cursor_path.split('.'):  # dotted
-                                if isinstance(cur, dict):
-                                    cur = cur.get(part)
-                                else:
-                                    cur = None
-                                    break
-                            if isinstance(cur, (str, int)):
-                                next_cursor = cur
-                        if not next_cursor or len(batch) == 0:
-                            break
-                        if isinstance(max_pages, int) and pages >= max_pages:
-                            break
-                        if (
-                            isinstance(max_records, int)
-                            and recs >= max_records
-                        ):
-                            results = results[: int(max_records)]
-                            break
-                        _apply_sleep()
-                        cursor = next_cursor
-                else:
-                    # Unknown pagination -> single request
-                    single_kwargs = _build_req_kwargs(
+                    # Compose and inherit
+                    base = api_cfg.base_url.rstrip('/')
+                    path = ep.path.lstrip('/')
+                    url = f'{base}/{path}'
+                    params = {**ep.params, **params}
+                    headers = {**api_cfg.headers, **headers}
+                    pagination = pagination or ep.pagination
+                    rate_limit = rate_limit or ep.rate_limit
+
+                # Apply overrides from job.extract.options.
+                params = _merge(params, ex_opts.get('params'))
+                headers = _merge(headers, ex_opts.get('headers'))
+                timeout = ex_opts.get('timeout')
+                pag_ov = ex_opts.get('pagination') or {}
+                rl_ov = ex_opts.get('rate_limit') or {}
+
+                # Compute rate limit sleep.
+                sleep_s: float = 0.0
+                if rate_limit and rate_limit.sleep_seconds:
+                    sleep_s = float(rate_limit.sleep_seconds)
+                if (
+                    rate_limit and rate_limit.max_per_sec
+                    and rate_limit.max_per_sec > 0
+                ):
+                    sleep_s = 1.0 / float(rate_limit.max_per_sec)
+                if 'sleep_seconds' in rl_ov:
+                    try:
+                        sleep_s = float(rl_ov['sleep_seconds'])
+                    except (TypeError, ValueError):
+                        pass
+                if 'max_per_sec' in rl_ov:
+                    try:
+                        mps = float(rl_ov['max_per_sec'])
+                        if mps > 0:
+                            sleep_s = 1.0 / mps
+                    except (TypeError, ValueError):
+                        pass
+
+                def _apply_sleep() -> None:
+                    if sleep_s and sleep_s > 0:
+                        time.sleep(sleep_s)
+
+                # Pagination params
+                ptype = None
+                records_path = None
+                max_pages = None
+                max_records = None
+                if pagination:
+                    ptype = (pagination.type or '').strip().lower()
+                    records_path = pagination.records_path
+                    max_pages = pagination.max_pages
+                    max_records = pagination.max_records
+                # Override with job-level
+                if pag_ov:
+                    ptype = (pag_ov.get('type') or ptype or '').strip().lower()
+                    records_path = pag_ov.get('records_path', records_path)
+                    max_pages = pag_ov.get('max_pages', max_pages)
+                    max_records = pag_ov.get('max_records', max_records)
+
+                # Single call if no pagination
+                if not ptype:
+                    req_kwargs = _build_req_kwargs(
                         params=params, headers=headers, timeout=timeout,
                     )
                     if not url:
                         raise ValueError('API source missing URL')
-                    data = extract('api', url, **single_kwargs)
+                    data = extract('api', url, **req_kwargs)
+                else:
+                    results: list[dict] = []
+                    pages = 0
+                    recs = 0
 
-                if ptype:
-                    data = results
+                    if ptype in {'page', 'offset'}:
+                        page_param = (
+                            pag_ov.get('page_param') if pag_ov else None
+                        )
+                        size_param = (
+                            pag_ov.get('size_param') if pag_ov else None
+                        )
+                        start_page = (
+                            pag_ov.get('start_page') if pag_ov else None
+                        )
+                        page_size = (
+                            pag_ov.get('page_size') if pag_ov else None
+                        )
+                        # fallbacks from source pagination
+                        if pagination:
+                            page_param = (
+                                page_param or pagination.page_param or 'page'
+                            )
+                            size_param = (
+                                size_param
+                                or pagination.size_param
+                                or 'per_page'
+                            )
+                            start_page = (
+                                start_page or pagination.start_page or 1
+                            )
+                            page_size = (
+                                page_size or pagination.page_size or 100
+                            )
+                        current = int(start_page or 1)
+                        ps = int(page_size or 100)
+                        while True:
+                            req_params = dict(params)
+                            req_params[str(page_param or 'page')] = current
+                            req_params[str(size_param or 'per_page')] = ps
+                            req_kwargs_page = _build_req_kwargs(
+                                params=req_params,
+                                headers=headers,
+                                timeout=timeout,
+                            )
+                            if not url:
+                                raise ValueError('API source missing URL')
+                            page_data = extract('api', url, **req_kwargs_page)
+                            batch = _coalesce_records(page_data, records_path)
+                            results.extend(batch)
+                            pages += 1
+                            recs += len(batch)
+                            if len(batch) < ps:
+                                break
+                            if (
+                                isinstance(max_pages, int)
+                                and pages >= max_pages
+                            ):
+                                break
+                            if (
+                                isinstance(max_records, int)
+                                and recs >= max_records
+                            ):
+                                results = results[: int(max_records)]
+                                break
+                            _apply_sleep()
+                            current += 1
+                    elif ptype == 'cursor':
+                        cursor_param = (
+                            pag_ov.get('cursor_param') if pag_ov else None
+                        )
+                        cursor_path = (
+                            pag_ov.get('cursor_path') if pag_ov else None
+                        )
+                        page_size = (
+                            pag_ov.get('page_size') if pag_ov else None
+                        )
+                        if pagination:
+                            cursor_param = (
+                                cursor_param
+                                or pagination.cursor_param
+                                or 'cursor'
+                            )
+                            cursor_path = cursor_path or pagination.cursor_path
+                            page_size = (
+                                page_size or pagination.page_size or 100
+                            )
+                            cursor = pagination.start_cursor
+                        else:
+                            cursor = None
+                        ps = int(page_size or 100)
+                        while True:
+                            req_params = dict(params)
+                            if cursor is not None:
+                                key = str(cursor_param or 'cursor')
+                                req_params[key] = cursor
+                            if ps:
+                                req_params.setdefault('limit', ps)
+                            req_kwargs_cur = _build_req_kwargs(
+                                params=req_params,
+                                headers=headers,
+                                timeout=timeout,
+                            )
+                            if not url:
+                                raise ValueError('API source missing URL')
+                            page_data = extract('api', url, **req_kwargs_cur)
+                            batch = _coalesce_records(page_data, records_path)
+                            results.extend(batch)
+                            pages += 1
+                            recs += len(batch)
+                            # derive next cursor
+                            next_cursor = None
+                            if (
+                                isinstance(cursor_path, str)
+                                and cursor_path
+                                and isinstance(page_data, dict)
+                            ):
+                                cur: Any = page_data
+                                for part in cursor_path.split('.'):  # dotted
+                                    if isinstance(cur, dict):
+                                        cur = cur.get(part)
+                                    else:
+                                        cur = None
+                                        break
+                                if isinstance(cur, (str, int)):
+                                    next_cursor = cur
+                            if not next_cursor or len(batch) == 0:
+                                break
+                            if (
+                                isinstance(max_pages, int)
+                                and pages >= max_pages
+                            ):
+                                break
+                            if (
+                                isinstance(max_records, int)
+                                and recs >= max_records
+                            ):
+                                results = results[: int(max_records)]
+                                break
+                            _apply_sleep()
+                            cursor = next_cursor
+                    else:
+                        # Unknown pagination -> single request
+                        single_kwargs = _build_req_kwargs(
+                            params=params, headers=headers, timeout=timeout,
+                        )
+                        if not url:
+                            raise ValueError('API source missing URL')
+                        data = extract('api', url, **single_kwargs)
+
+                    if ptype:
+                        data = results
+            case _:
+                raise ValueError(f'Unsupported source type: {stype}')
+
+        # DRY: unified validation helper (pre/post transform)
+        val_ref = job.validate
+        enabled_validation = val_ref is not None
+        if enabled_validation:
+            # Type narrowing for static checkers
+            assert val_ref is not None
+            rules = cfg.validations.get(val_ref.ruleset, {})
+            severity = (
+                (val_ref.severity or 'error').lower()
+            )
+            phase = (
+                (val_ref.phase or 'before_transform').lower()
+            )
         else:
-            raise ValueError(f"Unsupported source type: {stype}")
+            rules = {}
+            severity = 'error'
+            phase = 'before_transform'
 
-        # Validate (optional) with severity/phase.
-        if job.validate:
-            rules = cfg.validations.get(job.validate.ruleset, {})
-            severity = (job.validate.severity or 'error').lower()
-            phase = (job.validate.phase or 'before_transform').lower()
+        def _maybe_validate(payload: Any, when: str) -> Any:
+            """Validate payload when phase matches; honor severity."""
+            if not enabled_validation:
+                return payload
+            active = (
+                (
+                    when == 'before_transform'
+                    and phase in {
+                        'before_transform',
+                        'both',
+                    }
+                )
+                or (
+                    when == 'after_transform'
+                    and phase in {
+                        'after_transform',
+                        'both',
+                    }
+                )
+            )
+            if not active:
+                return payload
+            res = validate(payload, rules)
+            if res.get('valid', False):
+                # Prefer validator-loaded data if available
+                res_data = res.get('data')
+                return res_data if res_data is not None else payload
+            msg = {'status': 'validation_failed', 'result': res}
+            _print_json(msg)
+            if severity == 'warn':
+                return payload
+            raise ValueError('Validation failed')
 
-            def _handle_validation(payload: Any) -> Any:
-                res = validate(payload, rules)
-                if res.get('valid', False):
-                    return res['data']
-                msg = {'status': 'validation_failed', 'result': res}
-                _print_json(msg)
-                if severity == 'warn':
-                    return payload
-                raise ValueError('Validation failed')
-
-            if phase in {'before_transform', 'both'}:
-                data = _handle_validation(data)
+        # Pre-transform validation (if configured)
+        data = _maybe_validate(data, 'before_transform')
 
         # Transform (optional).
         if job.transform:
             ops: Any = cfg.transforms.get(job.transform.pipeline, {})
             data = transform(data, ops)
 
-        if job.validate:
-            rules = cfg.validations.get(job.validate.ruleset, {})
-            severity = (job.validate.severity or 'error').lower()
-            phase = (job.validate.phase or 'before_transform').lower()
-            if phase in {'after_transform', 'both'}:
-                res = validate(data, rules)
-                if not res.get('valid', False):
-                    msg = {'status': 'validation_failed', 'result': res}
-                    _print_json(msg)
-                    if severity != 'warn':
-                        raise ValueError('Validation failed')
+        # Post-transform validation (if configured)
+        data = _maybe_validate(data, 'after_transform')
 
         # Load.
         if not job.load:
-            raise ValueError("Job missing 'load' section")
+            raise ValueError('Job missing "load" section')
         target_name = job.load.target
         if target_name not in targets_by_name:
-            raise ValueError(f"Unknown target: {target_name}")
+            raise ValueError(f'Unknown target: {target_name}')
         target_obj = targets_by_name[target_name]
         overrides = job.load.overrides or {}
 
         ttype = getattr(target_obj, 'type', None)
-        if ttype == 'file':
-            path = overrides.get('path') or getattr(target_obj, 'path', None)
-            fmt = overrides.get('format') or getattr(
-                target_obj, 'format', 'json',
-            )
-            if not path:
-                raise ValueError("File target missing 'path'")
-            result = load(data, 'file', path, format=fmt)
-        elif ttype == 'api':
-            url = overrides.get('url') or getattr(target_obj, 'url', None)
-            method = overrides.get('method') or getattr(
-                target_obj, 'method', 'post',
-            )
-            headers = {
-                **(getattr(target_obj, 'headers', {}) or {}),
-                **(overrides.get('headers') or {}),
-            }
-            kwargs: dict[str, Any] = {}
-            if headers:
-                kwargs['headers'] = headers
-            if 'timeout' in overrides:
-                kwargs['timeout'] = overrides['timeout']
-            if not url:
-                raise ValueError("API target missing 'url'")
-            result = load(data, 'api', url, method=method, **kwargs)
-        elif ttype == 'database':
-            conn = overrides.get('connection_string') or getattr(
-                target_obj, 'connection_string', '',
-            )
-            result = load(data, 'database', str(conn))
-        else:
-            raise ValueError(f"Unsupported target type: {ttype}")
+        match ttype:
+            case 'file':
+                path = (
+                    overrides.get('path')
+                    or getattr(target_obj, 'path', None)
+                )
+                fmt = overrides.get('format') or getattr(
+                    target_obj, 'format', 'json',
+                )
+                if not path:
+                    raise ValueError('File target missing "path"')
+                result = load(data, 'file', path, format=fmt)
+            case 'api':
+                url = overrides.get('url') or getattr(target_obj, 'url', None)
+                method = overrides.get('method') or getattr(
+                    target_obj, 'method', 'post',
+                )
+                headers = {
+                    **(getattr(target_obj, 'headers', {}) or {}),
+                    **(overrides.get('headers') or {}),
+                }
+                kwargs: dict[str, Any] = {}
+                if headers:
+                    kwargs['headers'] = headers
+                if 'timeout' in overrides:
+                    kwargs['timeout'] = overrides['timeout']
+                if not url:
+                    raise ValueError('API target missing "url"')
+                result = load(data, 'api', url, method=method, **kwargs)
+            case 'database':
+                conn = overrides.get('connection_string') or getattr(
+                    target_obj, 'connection_string', '',
+                )
+                result = load(data, 'database', str(conn))
+            case _:
+                raise ValueError(f'Unsupported target type: {ttype}')
 
         _print_json({'status': 'ok', 'result': result})
         return 0
@@ -650,8 +710,8 @@ def create_parser() -> argparse.ArgumentParser:
             Provide a subcommand and options. Examples:
 
               etlplus extract file data.csv --format csv -o out.json
-              etlplus validate data.json --rules '{"required": ["id"]}'
-              etlplus transform data.json --operations '{"select": ["id"]}'
+              etlplus validate data.json --rules '{"required": ['id]'}'
+              etlplus transform data.json --operations '{"select": ['id]'}'
               etlplus load data.json file output.json --format json
             """,
         ).strip(),
