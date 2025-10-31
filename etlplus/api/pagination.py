@@ -9,60 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..extract import extract as _extract
-from .request import apply_sleep
-from .request import build_request_kwargs
-
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
-
-
-def _coalesce_records(x: Any, records_path: str | None) -> list[dict]:
-    """
-    Coalesce JSON page payloads into a list of dicts.
-
-    Supports dotted path extraction via ``records_path`` and handles lists,
-    maps, and scalars by coercing non-dict items into ``{'value': x}``.
-
-    Parameters
-    ----------
-    x : Any
-        The JSON payload from an API response.
-    records_path : str | None
-        Dotted path to the records within the payload.
-
-    Returns
-    -------
-    list[dict]
-        List of record dicts extracted from the payload.
-    """
-    def _get_path(obj: Any, path: str) -> Any:
-        cur = obj
-        for part in path.split('.'):
-            if isinstance(cur, dict):
-                cur = cur.get(part)
-            else:
-                return None
-        return cur
-
-    data = x
-    if isinstance(records_path, str) and records_path:
-        data = _get_path(x, records_path)
-
-    if isinstance(data, list):
-        out: list[dict] = []
-        for item in data:
-            if isinstance(item, dict):
-                out.append(item)
-            else:
-                out.append({'value': item})
-        return out
-    if isinstance(data, dict):
-        items = data.get('items')
-        if isinstance(items, list):
-            return _coalesce_records(items, None)
-        return [data]
-    return [{'value': data}]
-
+from .client import EndpointClient
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -90,7 +37,7 @@ def paginate(
     # Single call when pagination type is missing/empty
     ptype = (pagination or {}).get('type') if pagination else None
     if not ptype:
-        kw = build_request_kwargs(
+        kw = EndpointClient.build_request_kwargs(
             params=params, headers=headers, timeout=timeout,
         )
         return _extract('api', url, **kw)
@@ -122,11 +69,11 @@ def paginate(
             req_params = dict(params or {})
             req_params[str(page_param)] = current
             req_params[str(size_param)] = page_size
-            kw = build_request_kwargs(
+            kw = EndpointClient.build_request_kwargs(
                 params=req_params, headers=headers, timeout=timeout,
             )
             page_data = _extract('api', url, **kw)
-            batch = _coalesce_records(page_data, records_path)
+            batch = EndpointClient.coalesce_records(page_data, records_path)
             results.extend(batch)
             n = len(batch)
             pages += 1
@@ -140,7 +87,7 @@ def paginate(
                     results[:] = results[: int(max_records)]
                 break
             current += 1
-            apply_sleep(sleep_seconds)
+            EndpointClient.apply_sleep(sleep_seconds)
         return results
 
     # Cursor strategy
@@ -171,11 +118,11 @@ def paginate(
                 req_params[str(cursor_param)] = cursor_value
             if page_size:
                 req_params.setdefault('limit', page_size)
-            kw = build_request_kwargs(
+            kw = EndpointClient.build_request_kwargs(
                 params=req_params, headers=headers, timeout=timeout,
             )
             page_data = _extract('api', url, **kw)
-            batch = _coalesce_records(page_data, records_path)
+            batch = EndpointClient.coalesce_records(page_data, records_path)
             results.extend(batch)
             n = len(batch)
             pages += 1
@@ -189,11 +136,11 @@ def paginate(
                     results[:] = results[: int(max_records)]
                 break
             cursor_value = nxt
-            apply_sleep(sleep_seconds)
+            EndpointClient.apply_sleep(sleep_seconds)
         return results
 
     # Unknown pagination type -> single request
-    kw = build_request_kwargs(
+    kw = EndpointClient.build_request_kwargs(
         params=params, headers=headers, timeout=timeout,
     )
     return _extract('api', url, **kw)
