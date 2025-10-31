@@ -22,6 +22,7 @@ import sys
 import time
 from typing import Any
 
+import etlplus.api.client as cmod
 import etlplus.api.pagination as pmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
@@ -91,6 +92,7 @@ jobs:
     #   fetches.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     # Run CLI
@@ -166,6 +168,7 @@ jobs:
     # cli_mod.extract in other code paths.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     monkeypatch.setattr(
@@ -236,6 +239,7 @@ jobs:
     # pagination module's internal fetch function.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     monkeypatch.setattr(
