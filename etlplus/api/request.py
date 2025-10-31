@@ -12,27 +12,6 @@ from typing import Any
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-def build_request_kwargs(
-    *,
-    params: dict[str, Any] | None = None,
-    headers: dict[str, Any] | None = None,
-    timeout: float | int | None = None,
-) -> dict[str, Any]:
-    """
-    Build kwargs for requests.get (used by extract_from_api).
-
-    Only include keys that have non-empty values to keep kwargs tidy.
-    """
-    kw: dict[str, Any] = {}
-    if params:
-        kw['params'] = params
-    if headers:
-        kw['headers'] = headers
-    if timeout is not None:
-        kw['timeout'] = timeout
-    return kw
-
-
 def compute_sleep_seconds(
     rate_limit: Any | None,
     overrides: dict[str, Any] | None = None,
@@ -70,24 +49,3 @@ def compute_sleep_seconds(
             except (TypeError, ValueError):
                 pass
     return sleep_s
-
-
-def apply_sleep(
-    sleep_seconds: float,
-    *,
-    sleeper=None,
-) -> None:
-    """
-    Sleep for the specified seconds if positive.
-
-    The optional ``sleeper`` is useful for tests (e.g., pass
-    ``lambda s: None``).
-    Defaults to using time.sleep when not provided.
-    """
-    if sleep_seconds and sleep_seconds > 0:
-        if sleeper is None:
-            import time as _time
-
-            _time.sleep(sleep_seconds)
-        else:
-            sleeper(sleep_seconds)
