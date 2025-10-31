@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import etlplus.api.pagination as pmod
+import etlplus.api.client as cmod
 from etlplus.api.pagination import paginate
 
 
@@ -39,7 +39,9 @@ def test_paginate_page_short_batch(monkeypatch):
             return [{'id': 3}]
         return []
 
-    monkeypatch.setattr(pmod, '_extract', fake_extract)
+    # Patch the client module's internal fetch (used now that paginate is a
+    # shim delegating to EndpointClient.paginate_url).
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
 
     url = 'https://example.test/api'
     params = {}
