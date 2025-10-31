@@ -22,9 +22,11 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
 
 from etlplus import __version__
-from etlplus.api.pagination import paginate as api_paginate
+from etlplus.api.client import EndpointClient
 from etlplus.api.request import compute_sleep_seconds
 from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
@@ -458,7 +460,11 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
                 if not url:
                     raise ValueError('API source missing URL')
-                data = api_paginate(
+                # Use instance-based pagination via EndpointClient.
+                parts = urlsplit(url)
+                base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+                client = EndpointClient(base_url=base, endpoints={})
+                data = client.paginate_url(
                     url,
                     params,
                     headers,
