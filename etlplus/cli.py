@@ -401,6 +401,52 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     max_pages = pag_ov.get('max_pages', max_pages)
                     max_records = pag_ov.get('max_records', max_records)
 
+                # Shared pagination helpers
+                def _api_call(u: str, p: dict[str, Any]) -> Any:
+                    kw = _build_req_kwargs(
+                        params=p,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    if not u:
+                        raise ValueError('API source missing URL')
+                    return extract('api', u, **kw)
+
+                def _append_batch(page_data: Any) -> int:
+                    batch = _coalesce_records(page_data, records_path)
+                    results.extend(batch)
+                    return len(batch)
+
+                def _stop_limits(
+                    pg: int,
+                    mx_pg: Any,
+                    rc: int,
+                    mx_rc: Any,
+                ) -> bool:
+                    if isinstance(mx_pg, int) and pg >= mx_pg:
+                        return True
+                    if isinstance(mx_rc, int) and rc >= mx_rc:
+                        return True
+                    return False
+
+                def _next_cursor_from(
+                    data_obj: Any,
+                    path: str | None,
+                ) -> Any:
+                    if not (
+                        isinstance(path, str)
+                        and path
+                        and isinstance(data_obj, dict)
+                    ):
+                        return None
+                    cur: Any = data_obj
+                    for part in path.split('.'):
+                        if isinstance(cur, dict):
+                            cur = cur.get(part)
+                        else:
+                            return None
+                    return cur if isinstance(cur, (str, int)) else None
+
                 # Single call if no pagination
                 if not ptype:
                     req_kwargs = _build_req_kwargs(
@@ -449,30 +495,17 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             req_params = dict(params)
                             req_params[str(page_param or 'page')] = current
                             req_params[str(size_param or 'per_page')] = ps
-                            req_kwargs_page = _build_req_kwargs(
-                                params=req_params,
-                                headers=headers,
-                                timeout=timeout,
-                            )
-                            if not url:
-                                raise ValueError('API source missing URL')
-                            page_data = extract('api', url, **req_kwargs_page)
-                            batch = _coalesce_records(page_data, records_path)
-                            results.extend(batch)
+                            page_data = _api_call(url or '', req_params)
+                            n = _append_batch(page_data)
                             pages += 1
-                            recs += len(batch)
-                            if len(batch) < ps:
+                            recs += n
+                            if n < ps:
                                 break
-                            if (
-                                isinstance(max_pages, int)
-                                and pages >= max_pages
+                            if _stop_limits(
+                                pages, max_pages, recs, max_records,
                             ):
-                                break
-                            if (
-                                isinstance(max_records, int)
-                                and recs >= max_records
-                            ):
-                                results = results[: int(max_records)]
+                                if isinstance(max_records, int):
+                                    results[:] = results[: int(max_records)]
                                 break
                             _apply_sleep()
                             current += 1
@@ -507,46 +540,20 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                                 req_params[key] = cursor
                             if ps:
                                 req_params.setdefault('limit', ps)
-                            req_kwargs_cur = _build_req_kwargs(
-                                params=req_params,
-                                headers=headers,
-                                timeout=timeout,
-                            )
-                            if not url:
-                                raise ValueError('API source missing URL')
-                            page_data = extract('api', url, **req_kwargs_cur)
-                            batch = _coalesce_records(page_data, records_path)
-                            results.extend(batch)
+                            page_data = _api_call(url or '', req_params)
+                            n = _append_batch(page_data)
                             pages += 1
-                            recs += len(batch)
-                            # derive next cursor
-                            next_cursor = None
-                            if (
-                                isinstance(cursor_path, str)
-                                and cursor_path
-                                and isinstance(page_data, dict)
-                            ):
-                                cur: Any = page_data
-                                for part in cursor_path.split('.'):  # dotted
-                                    if isinstance(cur, dict):
-                                        cur = cur.get(part)
-                                    else:
-                                        cur = None
-                                        break
-                                if isinstance(cur, (str, int)):
-                                    next_cursor = cur
-                            if not next_cursor or len(batch) == 0:
+                            recs += n
+                            next_cursor = _next_cursor_from(
+                                page_data, cursor_path,
+                            )
+                            if not next_cursor or n == 0:
                                 break
-                            if (
-                                isinstance(max_pages, int)
-                                and pages >= max_pages
+                            if _stop_limits(
+                                pages, max_pages, recs, max_records,
                             ):
-                                break
-                            if (
-                                isinstance(max_records, int)
-                                and recs >= max_records
-                            ):
-                                results = results[: int(max_records)]
+                                if isinstance(max_records, int):
+                                    results[:] = results[: int(max_records)]
                                 break
                             _apply_sleep()
                             cursor = next_cursor
