@@ -11,6 +11,7 @@ from typing import Any
 from ..extract import extract as _extract
 from .client import EndpointClient
 
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
