@@ -460,6 +460,72 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     pages = 0
                     recs = 0
 
+                    # Pagination strategies unify loop behavior.
+                    class _PageStrategy:
+                        def __init__(
+                            self,
+                            page_param: str,
+                            size_param: str,
+                            start_page: int,
+                            page_size: int,
+                        ) -> None:
+                            self.page_param = page_param
+                            self.size_param = size_param
+                            self.current = start_page
+                            self.ps = page_size
+
+                        def make_params(
+                            self, base: dict[str, Any],
+                        ) -> dict[str, Any]:
+                            p = dict(base)
+                            p[str(self.page_param or 'page')] = self.current
+                            p[str(self.size_param or 'per_page')] = self.ps
+                            return p
+
+                        def should_continue(
+                            self, _page_data: Any, n: int,
+                        ) -> bool:
+                            if n < self.ps:
+                                return False
+                            self.current += 1
+                            return True
+
+                    class _CursorStrategy:
+                        def __init__(
+                            self,
+                            cursor_param: str,
+                            start_cursor: Any,
+                            page_size: int,
+                            cursor_path: str | None,
+                        ) -> None:
+                            self.cursor_param = cursor_param
+                            self.cursor = start_cursor
+                            self.ps = page_size
+                            self.cursor_path = cursor_path
+
+                        def make_params(
+                            self, base: dict[str, Any],
+                        ) -> dict[str, Any]:
+                            p = dict(base)
+                            if self.cursor is not None:
+                                key = str(self.cursor_param or 'cursor')
+                                p[key] = self.cursor
+                            if self.ps:
+                                p.setdefault('limit', self.ps)
+                            return p
+
+                        def should_continue(
+                            self, page_data: Any, n: int,
+                        ) -> bool:
+                            nxt = _next_cursor_from(
+                                page_data, self.cursor_path,
+                            )
+                            if not nxt or n == 0:
+                                return False
+                            self.cursor = nxt
+                            return True
+
+                    strategy: Any
                     if ptype in {'page', 'offset'}:
                         page_param = (
                             pag_ov.get('page_param') if pag_ov else None
@@ -473,7 +539,6 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                         page_size = (
                             pag_ov.get('page_size') if pag_ov else None
                         )
-                        # fallbacks from source pagination
                         if pagination:
                             page_param = (
                                 page_param or pagination.page_param or 'page'
@@ -489,26 +554,12 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             page_size = (
                                 page_size or pagination.page_size or 100
                             )
-                        current = int(start_page or 1)
-                        ps = int(page_size or 100)
-                        while True:
-                            req_params = dict(params)
-                            req_params[str(page_param or 'page')] = current
-                            req_params[str(size_param or 'per_page')] = ps
-                            page_data = _api_call(url or '', req_params)
-                            n = _append_batch(page_data)
-                            pages += 1
-                            recs += n
-                            if n < ps:
-                                break
-                            if _stop_limits(
-                                pages, max_pages, recs, max_records,
-                            ):
-                                if isinstance(max_records, int):
-                                    results[:] = results[: int(max_records)]
-                                break
-                            _apply_sleep()
-                            current += 1
+                        strategy = _PageStrategy(
+                            str(page_param or 'page'),
+                            str(size_param or 'per_page'),
+                            int(start_page or 1),
+                            int(page_size or 100),
+                        )
                     elif ptype == 'cursor':
                         cursor_param = (
                             pag_ov.get('cursor_param') if pag_ov else None
@@ -529,25 +580,34 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             page_size = (
                                 page_size or pagination.page_size or 100
                             )
-                            cursor = pagination.start_cursor
+                            start_cursor = pagination.start_cursor
                         else:
-                            cursor = None
-                        ps = int(page_size or 100)
+                            start_cursor = None
+                        strategy = _CursorStrategy(
+                            str(cursor_param or 'cursor'),
+                            start_cursor,
+                            int(page_size or 100),
+                            cursor_path,
+                        )
+                    else:
+                        # Unknown pagination -> single request
+                        single_kwargs = _build_req_kwargs(
+                            params=params, headers=headers, timeout=timeout,
+                        )
+                        if not url:
+                            raise ValueError('API source missing URL')
+                        data = extract('api', url, **single_kwargs)
+                        # fall through; unified assignment below will set
+                        # data = results when pagination type is active
+
+                    if ptype in {'page', 'offset', 'cursor'}:
                         while True:
-                            req_params = dict(params)
-                            if cursor is not None:
-                                key = str(cursor_param or 'cursor')
-                                req_params[key] = cursor
-                            if ps:
-                                req_params.setdefault('limit', ps)
+                            req_params = strategy.make_params(params)
                             page_data = _api_call(url or '', req_params)
                             n = _append_batch(page_data)
                             pages += 1
                             recs += n
-                            next_cursor = _next_cursor_from(
-                                page_data, cursor_path,
-                            )
-                            if not next_cursor or n == 0:
+                            if not strategy.should_continue(page_data, n):
                                 break
                             if _stop_limits(
                                 pages, max_pages, recs, max_records,
@@ -556,7 +616,8 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                                     results[:] = results[: int(max_records)]
                                 break
                             _apply_sleep()
-                            cursor = next_cursor
+                    if ptype:
+                        data = results
                     else:
                         # Unknown pagination -> single request
                         single_kwargs = _build_req_kwargs(
