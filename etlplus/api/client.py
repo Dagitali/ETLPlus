@@ -21,7 +21,7 @@ from urllib.parse import urlunsplit
 from ..extract import extract as _extract
 
 
-# SECTION: TYPES ============================================================ #
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class PagePaginationConfig(TypedDict, total=False):
@@ -92,10 +92,17 @@ class CursorPaginationConfig(TypedDict, total=False):
     page_size: int
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type JSONDict = dict[str, Any]
+type JSONList = list[JSONDict]
+type JSONData = JSONDict | JSONList
+
 type PaginationConfig = PagePaginationConfig | CursorPaginationConfig
 
 
-# SECTION: CLASSES ========================================================= #
+# SECTION: CLASSES ========================================================== #
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +184,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfig | None = None,
         sleep_seconds: float = 0.0,
-    ) -> Any:
+    ) -> JSONData:
         """
         Convenience wrapper to paginate by endpoint key.
 
@@ -203,7 +210,14 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+
+        Returns
+        -------
+        JSONData
+            Raw JSON object for non-paginated calls, or a list of record
+            dicts aggregated across pages for paginated calls.
         """
+
         url = self.url(
             endpoint_key,
             path_parameters=path_parameters,
@@ -227,7 +241,7 @@ class EndpointClient:
         pagination: PaginationConfig | None,
         *,
         sleep_seconds: float = 0.0,
-    ) -> Any:
+    ) -> JSONData:
         """
         Paginate API responses for an absolute URL and aggregate records.
 
@@ -248,9 +262,11 @@ class EndpointClient:
 
         Returns
         -------
-        Any
-            Aggregated records from all paginated responses.
+        JSONData
+            Raw JSON object for non-paginated calls, or a list of record
+            dicts aggregated across pages for paginated calls.
         """
+
         ptype = (pagination or {}).get('type') if pagination else None
         if not ptype:
             kw = EndpointClient.build_request_kwargs(
@@ -386,8 +402,8 @@ class EndpointClient:
     def url(
         self,
         endpoint_key: str,
-        path_parameters: dict[str, str] | None = None,
-        query_parameters: dict[str, str] | None = None,
+        path_parameters: dict[str, Any] | None = None,
+        query_parameters: dict[str, Any] | None = None,
     ) -> str:
         """
         Build a fully qualified URL for a registered endpoint.
@@ -397,12 +413,12 @@ class EndpointClient:
         endpoint_key : str
             Key into the `endpoints` mapping whose relative path will be
             resolved against `base_url`.
-        path_parameters : dict[str, str], optional
+        path_parameters : dict[str, Any], optional
             Values to substitute into placeholders in the endpoint path.
             Placeholders must be written as `{placeholder}` in the relative
             path. Each substituted value is percent-encoded as a single path
             segment (slashes are encoded) to prevent path traversal.
-        query_parameters : dict[str, str], optional
+        query_parameters : dict[str, Any] | None, optional
             Query parameters to append (and merge with any already present on
             `base_url`). Values are percent-encoded and combined using
             `application/x-www-form-urlencoded` rules.
@@ -540,7 +556,10 @@ class EndpointClient:
         return kw
 
     @staticmethod
-    def coalesce_records(x: Any, records_path: str | None) -> list[dict]:
+    def coalesce_records(
+        x: Any,
+        records_path: str | None,
+    ) -> JSONList:
         """
         Coalesce JSON page payloads into a list of dicts.
 
@@ -556,7 +575,7 @@ class EndpointClient:
 
         Returns
         -------
-        list[dict]
+        JSONList
             List of record dicts extracted from the payload.
         """
 
