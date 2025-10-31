@@ -182,6 +182,27 @@ class EndpointClient:
         Convenience wrapper to paginate by endpoint key.
 
         Builds the URL via `self.url(...)` and delegates to `paginate_url`.
+
+        Parameters
+        ----------
+        endpoint_key : str
+            Key into the `endpoints` mapping whose relative path will be
+            resolved against `base_url`.
+        path_parameters : dict[str, str] | None
+            Values to substitute into placeholders in the endpoint path.
+        query_parameters : dict[str, str] | None
+            Query parameters to append (and merge with any already present on
+            `base_url`).
+        params : dict[str, Any] | None
+            Query parameters to include in the request.
+        headers : dict[str, Any] | None
+            Headers to include in the request.
+        timeout : float | int | None
+            Timeout for the request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
         """
         url = self.url(
             endpoint_key,
@@ -210,7 +231,25 @@ class EndpointClient:
         """
         Paginate API responses for an absolute URL and aggregate records.
 
-        Mirrors etlplus.api.pagination.paginate with class helpers.
+        Parameters
+        ----------
+        url : str
+            Absolute URL to paginate.
+        params : dict[str, Any] | None
+            Query parameters to include in the request.
+        headers : dict[str, Any] | None
+            Headers to include in the request.
+        timeout : float | int | None
+            Timeout for the request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
+
+        Returns
+        -------
+        Any
+            Aggregated records from all paginated responses.
         """
         ptype = (pagination or {}).get('type') if pagination else None
         if not ptype:
@@ -341,6 +380,7 @@ class EndpointClient:
         kw = EndpointClient.build_request_kwargs(
             params=params, headers=headers, timeout=timeout,
         )
+
         return _extract('api', url, **kw)
 
     def url(
