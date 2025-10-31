@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 import etlplus.api.client as cmod
-from etlplus.api.pagination import paginate
+from etlplus.api.client import EndpointClient
 
 
 def test_paginate_page_short_batch(monkeypatch):
@@ -57,7 +57,9 @@ def test_paginate_page_short_batch(monkeypatch):
         'max_pages': None,
         'max_records': None,
     }
-
-    data = paginate(url, params, headers, timeout, pagination)
+    client = EndpointClient(base_url='https://example.test', endpoints={})
+    data = client.paginate_url(
+        url, params, headers, timeout, pagination,
+    )
     ids = [r['id'] for r in data]
     assert ids == [1, 2, 3]
