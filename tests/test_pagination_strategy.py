@@ -7,6 +7,13 @@ Tiny tests to lock in pagination invariants for page/offset and cursor modes.
 We mock etlplus.extract.extract to simulate API responses and monkeypatch
 time.sleep to avoid delays. We drive the CLI entrypoint to exercise the same
 code paths as real usage without network calls.
+
+Maintainer note:
+- Pagination logic was modularized into ``etlplus.api.pagination.paginate``
+  which calls an internal ``_extract`` on each page fetch.
+- The CLI may still call ``etlplus.cli.extract`` on some code paths.
+- To keep tests hermetic after modularization, we patch both targets:
+  ``cli_mod.extract`` and ``pmod._extract``.
 """
 from __future__ import annotations
 
@@ -76,6 +83,12 @@ jobs:
             return [{'id': 3}]  # smaller than page_size -> stop
         return []
 
+    # Patch both extract targets:
+    # - cli_mod.extract: CLI may call extract directly for non-paginated paths
+    #   and for historical consistency.
+    # - pmod._extract: paginate() calls an internal _extract on each page;
+    #   after modularization, mocking only cli_mod.extract won't intercept page
+    #   fetches.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
@@ -148,6 +161,9 @@ jobs:
             return {'data': [{'id': 'c'}], 'next': None}
         return {'data': [], 'next': None}
 
+    # Patch both extract targets for the same reason as the page/offset test:
+    # paginate() uses pmod._extract internally, while the CLI may use
+    # cli_mod.extract in other code paths.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
@@ -215,6 +231,9 @@ jobs:
             return [{'id': 4}]
         return []
 
+    # Patch both extract targets to ensure pagination calls are intercepted
+    # regardless of whether they go through the CLI entry point or the
+    # pagination module's internal fetch function.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
     monkeypatch.setattr(pmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
