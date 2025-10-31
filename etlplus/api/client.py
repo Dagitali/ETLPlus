@@ -166,6 +166,183 @@ class EndpointClient:
 
     # -- Instance Methods -- #
 
+    def paginate(
+        self,
+        endpoint_key: str,
+        *,
+        path_parameters: dict[str, str] | None = None,
+        query_parameters: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        timeout: float | int | None = None,
+        pagination: PaginationConfig | None = None,
+        sleep_seconds: float = 0.0,
+    ) -> Any:
+        """
+        Convenience wrapper to paginate by endpoint key.
+
+        Builds the URL via `self.url(...)` and delegates to `paginate_url`.
+        """
+        url = self.url(
+            endpoint_key,
+            path_parameters=path_parameters,
+            query_parameters=query_parameters,
+        )
+        return self.paginate_url(
+            url=url,
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            pagination=pagination,
+            sleep_seconds=sleep_seconds,
+        )
+
+    def paginate_url(
+        self,
+        url: str,
+        params: dict[str, Any] | None,
+        headers: dict[str, Any] | None,
+        timeout: float | int | None,
+        pagination: PaginationConfig | None,
+        *,
+        sleep_seconds: float = 0.0,
+    ) -> Any:
+        """
+        Paginate API responses for an absolute URL and aggregate records.
+
+        Mirrors etlplus.api.pagination.paginate with class helpers.
+        """
+        ptype = (pagination or {}).get('type') if pagination else None
+        if not ptype:
+            kw = EndpointClient.build_request_kwargs(
+                params=params, headers=headers, timeout=timeout,
+            )
+            return _extract('api', url, **kw)
+
+        records_path = (pagination or {}).get('records_path')
+        max_pages = (pagination or {}).get('max_pages')
+        max_records = (pagination or {}).get('max_records')
+
+        def _stop_limits(pages: int, recs: int) -> bool:
+            if isinstance(max_pages, int) and pages >= max_pages:
+                return True
+            if isinstance(max_records, int) and recs >= max_records:
+                return True
+            return False
+
+        results: list[dict] = []
+        pages = 0
+        recs = 0
+
+        if ptype in {'page', 'offset'}:
+            page_param = (pagination or {}).get('page_param', 'page')
+            size_param = (pagination or {}).get('size_param', 'per_page')
+
+            start_page = int(
+                cast(
+                    int | float | str,
+                    (pagination or {}).get('start_page', 1),
+                ),
+            )
+            start_page = 1 if start_page < 1 else start_page
+
+            page_size = int(
+                cast(
+                    int | float | str,
+                    (pagination or {}).get('page_size', 100),
+                ),
+            )
+            page_size = 1 if page_size < 1 else page_size
+
+            current = start_page
+            while True:
+                req_params = dict(params or {})
+                req_params[str(page_param)] = current
+                req_params[str(size_param)] = page_size
+                kw = EndpointClient.build_request_kwargs(
+                    params=req_params, headers=headers, timeout=timeout,
+                )
+                page_data = _extract('api', url, **kw)
+                batch = EndpointClient.coalesce_records(
+                    page_data, records_path,
+                )
+                results.extend(batch)
+                n = len(batch)
+                pages += 1
+                recs += n
+                if n < page_size:
+                    break
+                if _stop_limits(pages, recs):
+                    if isinstance(max_records, int):
+                        results[:] = results[: int(max_records)]
+                    break
+                current += 1
+                EndpointClient.apply_sleep(sleep_seconds)
+            return results
+
+        if ptype == 'cursor':
+            cursor_param = (pagination or {}).get('cursor_param') or 'cursor'
+            cursor_path = cast(
+                str | None,
+                (pagination or {}).get('cursor_path'),
+            )
+            try:
+                page_size = int((pagination or {}).get('page_size') or 100)
+            except (TypeError, ValueError):
+                page_size = 100
+            page_size = 1 if page_size < 1 else page_size
+            cursor_value = (pagination or {}).get('start_cursor')
+
+            def _next_cursor_from(data_obj: Any, path: str | None) -> Any:
+                if not (
+                    isinstance(path, str)
+                    and path
+                    and isinstance(data_obj, dict)
+                ):
+                    return None
+                cur: Any = data_obj
+                for part in path.split('.'):
+                    if isinstance(cur, dict):
+                        cur = cur.get(part)
+                    else:
+                        return None
+                return cur if isinstance(cur, (str, int)) else None
+
+            while True:
+                req_params = dict(params or {})
+                if cursor_value is not None:
+                    req_params[str(cursor_param)] = cursor_value
+                if page_size:
+                    req_params.setdefault('limit', page_size)
+                kw = EndpointClient.build_request_kwargs(
+                    params=req_params, headers=headers, timeout=timeout,
+                )
+                page_data = _extract('api', url, **kw)
+                batch = EndpointClient.coalesce_records(
+                    page_data, records_path,
+                )
+                results.extend(batch)
+                n = len(batch)
+                pages += 1
+                recs += n
+
+                nxt = _next_cursor_from(page_data, cursor_path)
+                if not nxt or n == 0:
+                    break
+                if _stop_limits(pages, recs):
+                    if isinstance(max_records, int):
+                        results[:] = results[: int(max_records)]
+                    break
+                cursor_value = nxt
+                EndpointClient.apply_sleep(sleep_seconds)
+            return results
+
+        # Unknown pagination type -> single request
+        kw = EndpointClient.build_request_kwargs(
+            params=params, headers=headers, timeout=timeout,
+        )
+        return _extract('api', url, **kw)
+
     def url(
         self,
         endpoint_key: str,
@@ -371,196 +548,3 @@ class EndpointClient:
             return [data]
 
         return [{'value': data}]
-
-    def paginate_url(
-        self,
-        url: str,
-        params: dict[str, Any] | None,
-        headers: dict[str, Any] | None,
-        timeout: float | int | None,
-        pagination: PaginationConfig | None,
-        *,
-        sleep_seconds: float = 0.0,
-    ) -> Any:
-        """
-        Paginate API responses for an absolute URL and aggregate records.
-
-        Mirrors etlplus.api.pagination.paginate with class helpers.
-        """
-        ptype = (pagination or {}).get('type') if pagination else None
-        if not ptype:
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return _extract('api', url, **kw)
-
-        records_path = (pagination or {}).get('records_path')
-        max_pages = (pagination or {}).get('max_pages')
-        max_records = (pagination or {}).get('max_records')
-
-        def _stop_limits(pages: int, recs: int) -> bool:
-            if isinstance(max_pages, int) and pages >= max_pages:
-                return True
-            if isinstance(max_records, int) and recs >= max_records:
-                return True
-            return False
-
-        results: list[dict] = []
-        pages = 0
-        recs = 0
-
-        if ptype in {'page', 'offset'}:
-            page_param = (pagination or {}).get('page_param', 'page')
-            size_param = (pagination or {}).get('size_param', 'per_page')
-            # Defensive guards against invalid values
-            # raw_start_page = (pagination or {}).get('start_page', 1)
-            start_page = int(
-                cast(
-                    int | float | str,
-                    (pagination or {}).get('start_page', 1),
-                ),
-            )
-            # try:
-            #     if raw_start_page is None:
-            #         start_page = 1
-            #     else:
-            #         start_page = int(cast(int | float | str, raw_start_page))
-            # except (TypeError, ValueError):
-            #     start_page = 1
-
-            # raw_page_size = (pagination or {}).get('page_size')
-            page_size = int(
-                cast(
-                    int | float | str,
-                    (pagination or {}).get('page_size', 100),
-                ),
-            )
-            # try:
-            #     if raw_page_size is None:
-            #         page_size = 100
-            #     else:
-            #         page_size = int(cast(int | float | str, raw_page_size))
-            # except (TypeError, ValueError):
-            #     page_size = 100
-            start_page = 1 if start_page < 1 else start_page
-            page_size = 1 if page_size < 1 else page_size
-
-            current = start_page
-            while True:
-                req_params = dict(params or {})
-                req_params[str(page_param)] = current
-                req_params[str(size_param)] = page_size
-                kw = EndpointClient.build_request_kwargs(
-                    params=req_params, headers=headers, timeout=timeout,
-                )
-                page_data = _extract('api', url, **kw)
-                batch = EndpointClient.coalesce_records(
-                    page_data, records_path,
-                )
-                results.extend(batch)
-                n = len(batch)
-                pages += 1
-                recs += n
-                if n < page_size:
-                    break
-                if _stop_limits(pages, recs):
-                    if isinstance(max_records, int):
-                        results[:] = results[: int(max_records)]
-                    break
-                current += 1
-                EndpointClient.apply_sleep(sleep_seconds)
-            return results
-
-        if ptype == 'cursor':
-            cursor_param = (pagination or {}).get('cursor_param') or 'cursor'
-            cursor_path = cast(
-                str | None,
-                (pagination or {}).get('cursor_path'),
-            )
-            try:
-                page_size = int((pagination or {}).get('page_size') or 100)
-            except (TypeError, ValueError):
-                page_size = 100
-            page_size = 1 if page_size < 1 else page_size
-            cursor_value = (pagination or {}).get('start_cursor')
-
-            def _next_cursor_from(data_obj: Any, path: str | None) -> Any:
-                if not (
-                    isinstance(path, str)
-                    and path
-                    and isinstance(data_obj, dict)
-                ):
-                    return None
-                cur: Any = data_obj
-                for part in path.split('.'):
-                    if isinstance(cur, dict):
-                        cur = cur.get(part)
-                    else:
-                        return None
-                return cur if isinstance(cur, (str, int)) else None
-
-            while True:
-                req_params = dict(params or {})
-                if cursor_value is not None:
-                    req_params[str(cursor_param)] = cursor_value
-                if page_size:
-                    req_params.setdefault('limit', page_size)
-                kw = EndpointClient.build_request_kwargs(
-                    params=req_params, headers=headers, timeout=timeout,
-                )
-                page_data = _extract('api', url, **kw)
-                batch = EndpointClient.coalesce_records(
-                    page_data, records_path,
-                )
-                results.extend(batch)
-                n = len(batch)
-                pages += 1
-                recs += n
-
-                nxt = _next_cursor_from(page_data, cursor_path)
-                if not nxt or n == 0:
-                    break
-                if _stop_limits(pages, recs):
-                    if isinstance(max_records, int):
-                        results[:] = results[: int(max_records)]
-                    break
-                cursor_value = nxt
-                EndpointClient.apply_sleep(sleep_seconds)
-            return results
-
-        # Unknown pagination type -> single request
-        kw = EndpointClient.build_request_kwargs(
-            params=params, headers=headers, timeout=timeout,
-        )
-        return _extract('api', url, **kw)
-
-    def paginate(
-        self,
-        endpoint_key: str,
-        *,
-        path_parameters: dict[str, str] | None = None,
-        query_parameters: dict[str, str] | None = None,
-        params: dict[str, Any] | None = None,
-        headers: dict[str, Any] | None = None,
-        timeout: float | int | None = None,
-        pagination: PaginationConfig | None = None,
-        sleep_seconds: float = 0.0,
-    ) -> Any:
-        """
-        Convenience wrapper to paginate by endpoint key.
-
-        Builds the URL via `self.url(...)` and delegates to `paginate_url`.
-        """
-        url = self.url(
-            endpoint_key,
-            path_parameters=path_parameters,
-            query_parameters=query_parameters,
-        )
-        return self.paginate_url(
-            url=url,
-            params=params,
-            headers=headers,
-            timeout=timeout,
-            pagination=pagination,
-            sleep_seconds=sleep_seconds,
-        )
