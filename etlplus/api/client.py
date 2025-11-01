@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 from typing import cast
+from typing import ClassVar
 from typing import Literal
+from typing import Mapping
+from typing import NotRequired
 from typing import TypedDict
 from urllib.parse import parse_qsl
 from urllib.parse import quote
@@ -24,7 +28,7 @@ from ..extract import extract as _extract
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class PagePaginationConfig(TypedDict, total=False):
+class PagePaginationConfig(TypedDict):
     """
     Pagination config for 'page' and 'offset' types.
 
@@ -47,18 +51,17 @@ class PagePaginationConfig(TypedDict, total=False):
     page_size : int
         Number of records per page.
     """
-
     type: Literal['page', 'offset']
-    records_path: str
-    max_pages: int
-    max_records: int
-    page_param: str
-    size_param: str
-    start_page: int
-    page_size: int
+    records_path: NotRequired[str]
+    max_pages: NotRequired[int]
+    max_records: NotRequired[int]
+    page_param: NotRequired[str]
+    size_param: NotRequired[str]
+    start_page: NotRequired[int]
+    page_size: NotRequired[int]
 
 
-class CursorPaginationConfig(TypedDict, total=False):
+class CursorPaginationConfig(TypedDict):
     """
     Pagination config for cursor-based pagination.
 
@@ -81,15 +84,14 @@ class CursorPaginationConfig(TypedDict, total=False):
     page_size : int
         Number of records per page.
     """
-
     type: Literal['cursor']
-    records_path: str
-    max_pages: int
-    max_records: int
-    cursor_param: str
-    cursor_path: str
-    start_cursor: str | int
-    page_size: int
+    records_path: NotRequired[str]
+    max_pages: NotRequired[int]
+    max_records: NotRequired[int]
+    cursor_param: NotRequired[str]
+    cursor_path: NotRequired[str]
+    start_cursor: NotRequired[str | int]
+    page_size: NotRequired[int]
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -114,7 +116,7 @@ class EndpointClient:
     ----------
     base_url : str
         Absolute base URL, e.g., `"https://api.example.com/v1"`
-    endpoints : dict[str, str]
+    endpoints : Mapping[str, str]
         Mapping of endpoint keys to *relative* paths, e.g.,
         `{"list_users": "/users", "user": "/users/{id}"}`.
 
@@ -123,13 +125,12 @@ class EndpointClient:
     base_url : str
         The absolute base URL used as the root for all endpoints (e.g.,
         `"https://api.example.com/v1"`).
-    endpoints : dict[str, str]
-        Mapping of endpoint keys to *relative* paths, e.g.,
+    endpoints : Mapping[str, str]
+        Mapping of endpoint keys to *relative* paths (read-only), e.g.,
         `{"list_users": "/users", "user": "/users/{id}"}`. A defensive copy of
         the mapping supplied at construction. The dataclass is frozen
-        (attributes are read-only), but the dict itself remains mutable. If you
-        need deep immutability, store a read-only mapping (e.g., via
-        `types.MappingProxyType`).
+        (attributes are read-only), and the mapping is wrapped in a
+        read-only proxy to prevent mutation.
 
     Raises
     ------
@@ -150,7 +151,16 @@ class EndpointClient:
     # -- Attributes -- #
 
     base_url: str
-    endpoints: dict[str, str]
+    endpoints: Mapping[str, str]
+
+    # -- Class Defaults (Centralized) -- #
+
+    DEFAULT_PAGE_PARAM: ClassVar[str] = 'page'
+    DEFAULT_SIZE_PARAM: ClassVar[str] = 'per_page'
+    DEFAULT_START_PAGE: ClassVar[int] = 1
+    DEFAULT_PAGE_SIZE: ClassVar[int] = 100
+    DEFAULT_CURSOR_PARAM: ClassVar[str] = 'cursor'
+    DEFAULT_LIMIT_PARAM: ClassVar[str] = 'limit'
 
     # -- Magic Methods (Object Lifecycle) -- #
 
@@ -169,7 +179,8 @@ class EndpointClient:
                 raise ValueError(
                     'endpoints must map str -> non-empty str',
                 )
-        object.__setattr__(self, 'endpoints', eps)  # Ok w/ frozen dataclasses
+        # Wrap in a read-only mapping to ensure immutability
+        object.__setattr__(self, 'endpoints', MappingProxyType(eps))
 
     # -- Instance Methods -- #
 
@@ -267,16 +278,18 @@ class EndpointClient:
             dicts aggregated across pages for paginated calls.
         """
 
-        ptype = (pagination or {}).get('type') if pagination else None
+        # Normalize pagination config for typed access.
+        pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
+        ptype = pg.get('type') if pagination else None
         if not ptype:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
             return _extract('api', url, **kw)
 
-        records_path = (pagination or {}).get('records_path')
-        max_pages = (pagination or {}).get('max_pages')
-        max_records = (pagination or {}).get('max_records')
+        records_path = pg.get('records_path')
+        max_pages = pg.get('max_pages')
+        max_records = pg.get('max_records')
 
         def _stop_limits(pages: int, recs: int) -> bool:
             if isinstance(max_pages, int) and pages >= max_pages:
@@ -290,13 +303,17 @@ class EndpointClient:
         recs = 0
 
         if ptype in {'page', 'offset'}:
-            page_param = (pagination or {}).get('page_param', 'page')
-            size_param = (pagination or {}).get('size_param', 'per_page')
+            page_param = pg.get(
+                'page_param', self.DEFAULT_PAGE_PARAM,
+            )
+            size_param = pg.get(
+                'size_param', self.DEFAULT_SIZE_PARAM,
+            )
 
             start_page = int(
                 cast(
                     int | float | str,
-                    (pagination or {}).get('start_page', 1),
+                    pg.get('start_page', self.DEFAULT_START_PAGE),
                 ),
             )
             start_page = 1 if start_page < 1 else start_page
@@ -304,7 +321,7 @@ class EndpointClient:
             page_size = int(
                 cast(
                     int | float | str,
-                    (pagination or {}).get('page_size', 100),
+                    pg.get('page_size', self.DEFAULT_PAGE_SIZE),
                 ),
             )
             page_size = 1 if page_size < 1 else page_size
@@ -336,17 +353,21 @@ class EndpointClient:
             return results
 
         if ptype == 'cursor':
-            cursor_param = (pagination or {}).get('cursor_param') or 'cursor'
+            cursor_param = (
+                pg.get('cursor_param', self.DEFAULT_CURSOR_PARAM)
+            )
             cursor_path = cast(
                 str | None,
-                (pagination or {}).get('cursor_path'),
+                pg.get('cursor_path'),
             )
             try:
-                page_size = int((pagination or {}).get('page_size') or 100)
+                page_size = int(
+                    pg.get('page_size', self.DEFAULT_PAGE_SIZE),
+                )
             except (TypeError, ValueError):
-                page_size = 100
+                page_size = self.DEFAULT_PAGE_SIZE
             page_size = 1 if page_size < 1 else page_size
-            cursor_value = (pagination or {}).get('start_cursor')
+            cursor_value = pg.get('start_cursor')
 
             def _next_cursor_from(data_obj: Any, path: str | None) -> Any:
                 if not (
@@ -368,7 +389,7 @@ class EndpointClient:
                 if cursor_value is not None:
                     req_params[str(cursor_param)] = cursor_value
                 if page_size:
-                    req_params.setdefault('limit', page_size)
+                    req_params.setdefault(self.DEFAULT_LIMIT_PARAM, page_size)
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
