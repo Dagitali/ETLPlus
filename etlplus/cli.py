@@ -324,7 +324,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 conn = getattr(source_obj, 'connection_string', '')
                 data = extract('database', conn)
             case 'api':
-                # Build URL, params, headers, pagination, rate_limit
+                # Build URL, params, headers, pagination, rate_limit, retry
                 url: str | None = getattr(source_obj, 'url', None)
                 params: dict[str, Any] = dict(
                     getattr(source_obj, 'params', {}) or {},
@@ -334,6 +334,10 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 )
                 pagination = getattr(source_obj, 'pagination', None)
                 rate_limit = getattr(source_obj, 'rate_limit', None)
+                retry = getattr(source_obj, 'retry', None)
+                retry_network_errors = bool(
+                    getattr(source_obj, 'retry_network_errors', False),
+                )
 
                 api_name = getattr(source_obj, 'api', None)
                 endpoint_name = getattr(source_obj, 'endpoint', None)
@@ -355,6 +359,16 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     headers = {**api_cfg.headers, **headers}
                     pagination = pagination or ep.pagination
                     rate_limit = rate_limit or ep.rate_limit
+                    retry = retry or getattr(ep, 'retry', None) or getattr(
+                        api_cfg, 'retry', None,
+                    )
+                    retry_network_errors = (
+                        retry_network_errors
+                        or bool(getattr(ep, 'retry_network_errors', False))
+                        or bool(
+                            getattr(api_cfg, 'retry_network_errors', False),
+                        )
+                    )
 
                 # Apply overrides from job.extract.options.
                 params = _merge(params, ex_opts.get('params'))
@@ -362,10 +376,24 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 timeout = ex_opts.get('timeout')
                 pag_ov = ex_opts.get('pagination') or {}
                 rl_ov = ex_opts.get('rate_limit') or {}
+                rty_ov = (
+                    ex_opts.get('retry') if 'retry' in ex_opts else None
+                )
+                rne_ov = (
+                    ex_opts.get('retry_network_errors')
+                    if 'retry_network_errors' in ex_opts
+                    else None
+                )
 
                 # Compute rate limit sleep using helper
                 sleep_s = \
                     EndpointClient.compute_sleep_seconds(rate_limit, rl_ov)
+
+                # Apply retry overrides (if present)
+                if rty_ov is not None:
+                    retry = rty_ov
+                if rne_ov is not None:
+                    retry_network_errors = bool(rne_ov)
 
                 # Pagination params
                 ptype = None
@@ -465,7 +493,12 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 # Use instance-based pagination via EndpointClient.
                 parts = urlsplit(url)
                 base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-                client = EndpointClient(base_url=base, endpoints={})
+                client = EndpointClient(
+                    base_url=base,
+                    endpoints={},
+                    retry=retry,
+                    retry_network_errors=retry_network_errors,
+                )
                 data = client.paginate_url(
                     url,
                     params,
