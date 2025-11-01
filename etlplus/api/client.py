@@ -53,6 +53,7 @@ class PagePaginationConfig(TypedDict):
     page_size : int
         Number of records per page.
     """
+
     type: Literal['page', 'offset']
     records_path: NotRequired[str]
     max_pages: NotRequired[int]
@@ -86,6 +87,7 @@ class CursorPaginationConfig(TypedDict):
     page_size : int
         Number of records per page.
     """
+
     type: Literal['cursor']
     records_path: NotRequired[str]
     max_pages: NotRequired[int]
@@ -115,6 +117,23 @@ class RetryPolicy(TypedDict):
     max_attempts: NotRequired[int]
     backoff: NotRequired[float]
     retry_on: NotRequired[list[int]]
+
+
+class RateLimitConfig(TypedDict):
+    """
+    Optional rate limit configuration.
+
+    Attributes
+    ----------
+    sleep_seconds : float
+        Fixed delay between requests.
+    max_per_sec : float
+        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
+        between requests when positive.
+    """
+
+    sleep_seconds: NotRequired[float | int]
+    max_per_sec: NotRequired[float | int]
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -175,6 +194,8 @@ class EndpointClient:
 
     base_url: str
     endpoints: Mapping[str, str]
+    # Optional client-wide rate limit configuration
+    rate_limit: RateLimitConfig | None = None
 
     # -- Class Defaults (Centralized) -- #
 
@@ -386,6 +407,13 @@ class EndpointClient:
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
+        # Determine effective sleep seconds: explicit parameter wins; otherwise
+        # compute from client rate_limit, if any.
+        effective_sleep = (
+            sleep_seconds
+            if (sleep_seconds and sleep_seconds > 0)
+            else EndpointClient.compute_sleep_seconds(self.rate_limit, None)
+        )
         if not ptype:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
@@ -454,7 +482,7 @@ class EndpointClient:
                         results[:] = results[: int(max_records)]
                     break
                 current += 1
-                EndpointClient.apply_sleep(sleep_seconds)
+                EndpointClient.apply_sleep(effective_sleep)
             return results
 
         if ptype == 'cursor':
@@ -500,7 +528,7 @@ class EndpointClient:
                         results[:] = results[: int(max_records)]
                     break
                 cursor_value = nxt
-                EndpointClient.apply_sleep(sleep_seconds)
+                EndpointClient.apply_sleep(effective_sleep)
             return results
 
         # Unknown pagination type -> single request
@@ -665,6 +693,64 @@ class EndpointClient:
         if timeout is not None:
             kw['timeout'] = timeout
         return kw
+
+    @staticmethod
+    def compute_sleep_seconds(
+        rate_limit: RateLimitConfig | None = None,
+        overrides: dict[str, Any] | None = None,
+    ) -> float:
+        """
+        Compute sleep seconds from ``rate_limit`` and optional ``overrides``.
+
+        Supports either explicit ``sleep_seconds`` or ``max_per_sec`` which
+        converts to ``1 / max_per_sec`` when positive. Mirrors the behavior of
+        ``etlplus.api.request.compute_sleep_seconds`` for cohesion.
+
+        Parameters
+        ----------
+        rate_limit : RateLimitConfig | Any | None
+            Rate limit configuration object (dict-like or attribute-based).
+        overrides : dict[str, Any] | None
+            Optional overrides; same keys as ``rate_limit``.
+
+        Returns
+        -------
+        float
+            The computed sleep seconds (>= 0.0).
+        """
+
+        sleep_s: float = 0.0
+        if rate_limit and getattr(rate_limit, 'sleep_seconds', None):
+            try:
+                sleep_s = float(
+                    rate_limit.sleep_seconds,  # type: ignore[attr-defined]
+                )
+            except (TypeError, ValueError):
+                sleep_s = 0.0
+        if rate_limit and getattr(rate_limit, 'max_per_sec', None):
+            try:
+                # type: ignore[attr-defined]
+                mps = float(
+                    rate_limit.max_per_sec,  # type: ignore[attr-defined]
+                )
+                if mps > 0:
+                    sleep_s = 1.0 / mps
+            except (TypeError, ValueError):
+                pass
+        if overrides:
+            if 'sleep_seconds' in overrides:
+                try:
+                    sleep_s = float(overrides['sleep_seconds'])
+                except (TypeError, ValueError):
+                    pass
+            if 'max_per_sec' in overrides:
+                try:
+                    mps = float(overrides['max_per_sec'])
+                    if mps > 0:
+                        sleep_s = 1.0 / mps
+                except (TypeError, ValueError):
+                    pass
+        return sleep_s
 
     @staticmethod
     def coalesce_records(
