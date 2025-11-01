@@ -22,6 +22,8 @@ from urllib.parse import urlencode
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+import requests
+
 from ..extract import extract as _extract
 
 
@@ -94,6 +96,27 @@ class CursorPaginationConfig(TypedDict):
     page_size: NotRequired[int]
 
 
+class RetryPolicy(TypedDict):
+    """
+    Optional retry policy for HTTP requests.
+
+    Attributes
+    ----------
+    max_attempts : int
+        Maximum number of attempts (including the first). If omitted,
+        a default is applied when a policy is provided.
+    backoff : float
+        Base backoff seconds for exponential backoff. Attempt ``n`` sleeps
+        ``backoff * 2**(n-1)`` before retrying.
+    retry_on : list[int]
+        HTTP status codes that should trigger a retry.
+    """
+
+    max_attempts: NotRequired[int]
+    backoff: NotRequired[float]
+    retry_on: NotRequired[list[int]]
+
+
 # SECTION: TYPE ALIASES ===================================================== #
 
 
@@ -162,6 +185,11 @@ class EndpointClient:
     DEFAULT_CURSOR_PARAM: ClassVar[str] = 'cursor'
     DEFAULT_LIMIT_PARAM: ClassVar[str] = 'limit'
 
+    # Retry defaults (only used if a policy is provided)
+    DEFAULT_RETRY_MAX_ATTEMPTS: ClassVar[int] = 3
+    DEFAULT_RETRY_BACKOFF: ClassVar[float] = 0.5
+    DEFAULT_RETRY_ON: ClassVar[tuple[int, ...]] = (429, 502, 503, 504)
+
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
@@ -181,6 +209,83 @@ class EndpointClient:
                 )
         # Wrap in a read-only mapping to ensure immutability
         object.__setattr__(self, 'endpoints', MappingProxyType(eps))
+
+    # -- Protected Instance Methods -- #
+
+    def _extract_with_retry(
+        self,
+        url: str,
+        **kw: Any,
+    ) -> JSONData:
+        """
+        Execute an API GET with optional retry policy.
+
+        Retries only apply when a retry policy is configured on the client.
+        Without a policy, a single attempt is performed.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to fetch.
+        **kw : Any
+            Keyword arguments forwarded to ``requests.get`` via ``extract``.
+
+        Returns
+        -------
+        JSONData
+            The parsed JSON payload or a fallback object when appropriate.
+
+        Raises
+        ------
+        requests.RequestException
+            If all retry attempts fail with a retry-eligible HTTP status
+            (or if no policy is configured and the request fails).
+        ValueError
+            Propagated if JSON parsing fails within ``extract``.
+        """
+
+        policy: RetryPolicy | None = getattr(
+            self, 'retry', None,
+        )  # type: ignore[attr-defined]
+        if not policy:
+            return _extract('api', url, **kw)
+
+        max_attempts = int(
+            cast(int | float | str | None, policy.get('max_attempts', 0))
+            or self.DEFAULT_RETRY_MAX_ATTEMPTS,
+        )
+        if max_attempts < 1:
+            max_attempts = 1
+
+        try:
+            backoff = float(policy.get('backoff', self.DEFAULT_RETRY_BACKOFF))
+        except (TypeError, ValueError):
+            backoff = self.DEFAULT_RETRY_BACKOFF
+        backoff = 0.0 if backoff < 0 else backoff
+
+        retry_on = policy.get('retry_on')
+        if not retry_on:
+            retry_on_codes = set(self.DEFAULT_RETRY_ON)
+        else:
+            retry_on_codes = {int(c) for c in retry_on}
+
+        attempt = 1
+        while True:
+            try:
+                return _extract('api', url, **kw)
+            except requests.RequestException as e:  # pragma: no cover (net)
+                status = getattr(
+                    getattr(e, 'response', None), 'status_code', None,
+                )
+                should_retry = (
+                    isinstance(status, int) and status in retry_on_codes
+                )
+                if not should_retry or attempt >= max_attempts:
+                    raise
+                # exponential backoff: backoff * 2**(attempt-1)
+                sleep = backoff * (2 ** (attempt - 1)) if backoff else 0.0
+                EndpointClient.apply_sleep(sleep)
+                attempt += 1
 
     # -- Instance Methods -- #
 
@@ -285,7 +390,7 @@ class EndpointClient:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
-            return _extract('api', url, **kw)
+            return self._extract_with_retry(url, **kw)
 
         records_path = pg.get('records_path')
         max_pages = pg.get('max_pages')
@@ -334,7 +439,7 @@ class EndpointClient:
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
-                page_data = _extract('api', url, **kw)
+                page_data = self._extract_with_retry(url, **kw)
                 batch = EndpointClient.coalesce_records(
                     page_data, records_path,
                 )
@@ -378,7 +483,7 @@ class EndpointClient:
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
-                page_data = _extract('api', url, **kw)
+                page_data = self._extract_with_retry(url, **kw)
                 batch = EndpointClient.coalesce_records(
                     page_data, records_path,
                 )
@@ -403,7 +508,7 @@ class EndpointClient:
             params=params, headers=headers, timeout=timeout,
         )
 
-        return _extract('api', url, **kw)
+        return self._extract_with_retry(url, **kw)
 
     def url(
         self,
@@ -533,7 +638,7 @@ class EndpointClient:
         timeout: float | int | None = None,
     ) -> dict[str, Any]:
         """
-        Build kwargs for requests.get.
+        Build kwargs for ``requests.get``.
 
         Only include keys that have non-empty values to keep kwargs tidy.
 
@@ -549,7 +654,7 @@ class EndpointClient:
         Returns
         -------
         dict[str, Any]
-            Dictionary of keyword arguments for requests.get.
+            Dictionary of keyword arguments for ``requests.get``.
         """
 
         kw: dict[str, Any] = {}
