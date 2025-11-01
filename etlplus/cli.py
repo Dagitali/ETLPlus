@@ -22,12 +22,13 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
+from typing import cast
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from etlplus import __version__
 from etlplus.api.client import EndpointClient
-from etlplus.api.request import compute_sleep_seconds
+from etlplus.api.client import PaginationConfig
 from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
 from etlplus.load import load
@@ -363,7 +364,8 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 rl_ov = ex_opts.get('rate_limit') or {}
 
                 # Compute rate limit sleep using helper
-                sleep_s: float = compute_sleep_seconds(rate_limit, rl_ov)
+                sleep_s = \
+                    EndpointClient.compute_sleep_seconds(rate_limit, rl_ov)
 
                 # Pagination params
                 ptype = None
@@ -469,7 +471,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     params,
                     headers,
                     timeout,
-                    pag_cfg,
+                    cast(PaginationConfig | None, pag_cfg),
                     sleep_seconds=sleep_s,
                 )
             case _:
