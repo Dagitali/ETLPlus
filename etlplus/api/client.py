@@ -369,21 +369,6 @@ class EndpointClient:
             page_size = 1 if page_size < 1 else page_size
             cursor_value = pg.get('start_cursor')
 
-            def _next_cursor_from(data_obj: Any, path: str | None) -> Any:
-                if not (
-                    isinstance(path, str)
-                    and path
-                    and isinstance(data_obj, dict)
-                ):
-                    return None
-                cur: Any = data_obj
-                for part in path.split('.'):
-                    if isinstance(cur, dict):
-                        cur = cur.get(part)
-                    else:
-                        return None
-                return cur if isinstance(cur, (str, int)) else None
-
             while True:
                 req_params = dict(params or {})
                 if cursor_value is not None:
@@ -402,7 +387,7 @@ class EndpointClient:
                 pages += 1
                 recs += n
 
-                nxt = _next_cursor_from(page_data, cursor_path)
+                nxt = EndpointClient.next_cursor_from(page_data, cursor_path)
                 if not nxt or n == 0:
                     break
                 if _stop_limits(pages, recs):
@@ -628,3 +613,40 @@ class EndpointClient:
             return [data]
 
         return [{'value': data}]
+
+    @staticmethod
+    def next_cursor_from(
+        data_obj: Any,
+        path: str | None,
+    ) -> str | int | None:
+        """
+        Extract a cursor value from a JSON payload using a dotted path.
+
+        Parameters
+        ----------
+        data_obj : Any
+            The JSON payload object (expected to be a dict).
+        path : str | None
+            Dotted path within the payload that points to the next cursor.
+
+        Returns
+        -------
+        str | int | None
+            The extracted cursor value if present and of type str or int;
+            otherwise None.
+        """
+
+        if not (
+            isinstance(path, str)
+            and path
+            and isinstance(data_obj, dict)
+        ):
+            return None
+        cur: Any = data_obj
+        for part in path.split('.'):
+            if isinstance(cur, dict):
+                cur = cur.get(part)
+            else:
+                return None
+
+        return cur if isinstance(cur, (str, int)) else None
