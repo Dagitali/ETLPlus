@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Literal
@@ -173,6 +174,12 @@ class EndpointClient:
     rate_limit : RateLimitConfig | None, optional
         Optional client-wide rate limit used to derive an inter-request
         delay when an explicit ``sleep_seconds`` is not provided.
+    session : requests.Session | None, optional
+        Optional HTTP session to use for requests. When provided, all
+        requests are executed via ``session.get``.
+    session_factory : Callable[[], requests.Session] | None, optional
+        Optional factory to lazily create a session per client call. Ignored
+        if ``session`` is provided.
 
     Attributes
     ----------
@@ -194,6 +201,10 @@ class EndpointClient:
     rate_limit : RateLimitConfig | None
         Optional rate limiting configuration used to compute an inter-request
         sleep when not explicitly provided to ``paginate``/``paginate_url``.
+    session : Any | None
+        Optional HTTP session used for API requests.
+    session_factory : Callable[[], Any] | None
+        Optional factory used to create a session when needed.
 
     Raises
     ------
@@ -225,11 +236,16 @@ class EndpointClient:
 
     base_url: str
     endpoints: Mapping[str, str]
+
     # Optional retry configuration (constructor parameter; object is frozen)
     retry: RetryPolicy | None = None
     retry_network_errors: bool = False
     # Optional client-wide rate limit configuration
     rate_limit: RateLimitConfig | None = None
+
+    # Optional HTTP session or factory
+    session: Any | None = None
+    session_factory: Callable[[], Any] | None = None
 
     # -- Class Defaults (Centralized) -- #
 
@@ -268,6 +284,10 @@ class EndpointClient:
         # Wrap in a read-only mapping to ensure immutability
         object.__setattr__(self, 'endpoints', MappingProxyType(eps))
 
+        # If both session and factory are provided, prefer explicit session.
+        if self.session is not None and self.session_factory is not None:
+            object.__setattr__(self, 'session_factory', None)
+
     # -- Protected Instance Methods -- #
 
     def _extract_with_retry(
@@ -302,8 +322,19 @@ class EndpointClient:
             Propagated if JSON parsing fails within ``extract``.
         """
 
+        # Determine session to use for this request.
+        sess = self.session
+        if sess is None and self.session_factory is not None:
+            try:
+                sess = self.session_factory()
+            except Exception:
+                sess = None
+
         policy: RetryPolicy | None = self.retry
         if not policy:
+            if sess is not None:
+                kw = dict(kw)
+                kw['session'] = sess
             return _extract('api', url, **kw)
 
         max_attempts = int(
@@ -329,7 +360,12 @@ class EndpointClient:
         cap = self.DEFAULT_RETRY_CAP
         while True:
             try:
-                return _extract('api', url, **kw)
+                if sess is not None:
+                    call_kw = dict(kw)
+                    call_kw['session'] = sess
+                else:
+                    call_kw = kw
+                return _extract('api', url, **call_kw)
             except requests.RequestException as e:  # pragma: no cover (net)
                 status = getattr(
                     getattr(e, 'response', None), 'status_code', None,
@@ -338,6 +374,7 @@ class EndpointClient:
                 should_retry = (
                     isinstance(status, int) and status in retry_on_codes
                 )
+
                 # Network error retry (timeouts/connection failures)
                 if not should_retry and self.retry_network_errors:
                     is_timeout = isinstance(e, requests.Timeout)
