@@ -26,6 +26,8 @@ from typing import cast
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+import requests
+
 from etlplus import __version__
 from etlplus.api.client import EndpointClient
 from etlplus.api.client import PaginationConfig
@@ -252,6 +254,55 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             kw['timeout'] = timeout
         return kw
 
+    def _build_session_from_config(
+        cfg: dict[str, Any] | None,
+    ) -> requests.Session:
+        """Create a requests.Session from a simple config mapping.
+
+        Supported keys: headers, params, auth, verify, cert, proxies,
+        cookies, trust_env.
+        """
+        s = requests.Session()
+        if not cfg:
+            return s
+        headers = cfg.get('headers')
+        if isinstance(headers, dict):
+            s.headers.update(headers)
+        params = cfg.get('params')
+        if isinstance(params, dict):
+            # requests supports Session.params on recent versions
+            try:
+                setattr(s, 'params', params)
+            except Exception:
+                pass
+        auth = cfg.get('auth')
+        if auth is not None:
+            if isinstance(auth, (list, tuple)) and len(auth) == 2:
+                s.auth = (auth[0], auth[1])  # type: ignore[assignment]
+            else:
+                s.auth = auth  # type: ignore[assignment]
+        if 'verify' in cfg:
+            s.verify = cfg.get('verify')  # type: ignore[assignment]
+        cert = cfg.get('cert')
+        if cert is not None:
+            s.cert = cert  # type: ignore[assignment]
+        proxies = cfg.get('proxies')
+        if isinstance(proxies, dict):
+            s.proxies.update(proxies)
+        cookies = cfg.get('cookies')
+        if isinstance(cookies, dict):
+            try:
+                s.cookies.update(cookies)
+            except Exception:
+                pass
+        if 'trust_env' in cfg:
+            try:
+                # type: ignore[attr-defined]
+                s.trust_env = bool(cfg.get('trust_env'))
+            except Exception:
+                pass
+        return s
+
     # List mode
     if getattr(args, 'list', False) and not getattr(args, 'run', None):
         jobs = [j.name for j in cfg.jobs if j.name]
@@ -324,7 +375,8 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 conn = getattr(source_obj, 'connection_string', '')
                 data = extract('database', conn)
             case 'api':
-                # Build URL, params, headers, pagination, rate_limit, retry
+                # Build URL, params, headers, pagination, rate_limit, retry,
+                # session config.
                 url: str | None = getattr(source_obj, 'url', None)
                 params: dict[str, Any] = dict(
                     getattr(source_obj, 'params', {}) or {},
@@ -338,6 +390,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 retry_network_errors = bool(
                     getattr(source_obj, 'retry_network_errors', False),
                 )
+                session_cfg = getattr(source_obj, 'session', None)
 
                 api_name = getattr(source_obj, 'api', None)
                 endpoint_name = getattr(source_obj, 'endpoint', None)
@@ -369,6 +422,17 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             getattr(api_cfg, 'retry_network_errors', False),
                         )
                     )
+                    # Merge session config: api -> endpoint -> source
+                    api_sess = getattr(api_cfg, 'session', None)
+                    ep_sess = getattr(ep, 'session', None)
+                    merged: dict[str, Any] = {}
+                    if isinstance(api_sess, dict):
+                        merged.update(api_sess)
+                    if isinstance(ep_sess, dict):
+                        merged.update(ep_sess)
+                    if isinstance(session_cfg, dict):
+                        merged.update(session_cfg)
+                    session_cfg = merged or None
 
                 # Apply overrides from job.extract.options.
                 params = _merge(params, ex_opts.get('params'))
@@ -384,16 +448,23 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     if 'retry_network_errors' in ex_opts
                     else None
                 )
+                sess_ov = ex_opts.get('session') or {}
 
                 # Compute rate limit sleep using helper
                 sleep_s = \
                     EndpointClient.compute_sleep_seconds(rate_limit, rl_ov)
 
-                # Apply retry overrides (if present)
+                # Apply retry overrides (if present).
                 if rty_ov is not None:
                     retry = rty_ov
                 if rne_ov is not None:
                     retry_network_errors = bool(rne_ov)
+
+                # Apply session overrides (merge).
+                if isinstance(sess_ov, dict):
+                    base_cfg = dict(session_cfg or {})
+                    base_cfg.update(sess_ov)
+                    session_cfg = base_cfg
 
                 # Pagination params
                 ptype = None
@@ -493,11 +564,19 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 # Use instance-based pagination via EndpointClient.
                 parts = urlsplit(url)
                 base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+
+                # Build session object if config provided.
+                sess_obj = (
+                    _build_session_from_config(session_cfg)
+                    if isinstance(session_cfg, dict)
+                    else None
+                )
                 client = EndpointClient(
                     base_url=base,
                     endpoints={},
                     retry=retry,
                     retry_network_errors=retry_network_errors,
+                    session=sess_obj,
                 )
                 data = client.paginate_url(
                     url,
