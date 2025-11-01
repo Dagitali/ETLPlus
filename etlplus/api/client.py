@@ -6,6 +6,7 @@ REST API helpers for client interactions.
 """
 from __future__ import annotations
 
+import random
 import time
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -161,6 +162,17 @@ class EndpointClient:
     endpoints : Mapping[str, str]
         Mapping of endpoint keys to *relative* paths, e.g.,
         `{"list_users": "/users", "user": "/users/{id}"}`.
+    retry : RetryPolicy | None, optional
+        Optional retry policy applied to HTTP requests performed by this
+        client. Retries use exponential backoff with jitter to reduce
+        thundering herds. If omitted, no automatic retries are performed.
+    retry_network_errors : bool, optional
+        When True, also retry on network errors such as timeouts and
+        connection resets, in addition to HTTP status-based retries.
+        Defaults to False.
+    rate_limit : RateLimitConfig | None, optional
+        Optional client-wide rate limit used to derive an inter-request
+        delay when an explicit ``sleep_seconds`` is not provided.
 
     Attributes
     ----------
@@ -173,6 +185,15 @@ class EndpointClient:
         the mapping supplied at construction. The dataclass is frozen
         (attributes are read-only), and the mapping is wrapped in a
         read-only proxy to prevent mutation.
+    retry : RetryPolicy | None
+        Optional retry policy. When set, requests are retried on configured
+        HTTP status codes with exponential backoff and jitter.
+    retry_network_errors : bool
+        When True, also retry on common network failures (timeouts,
+        connection errors).
+    rate_limit : RateLimitConfig | None
+        Optional rate limiting configuration used to compute an inter-request
+        sleep when not explicitly provided to ``paginate``/``paginate_url``.
 
     Raises
     ------
@@ -188,12 +209,25 @@ class EndpointClient:
     ... )
     >>> ep.url("list_users", {"active": "true"})
     'https://api.example.com/v1/users?active=true'
+
+    Configure retries with jitter and (optionally) network error retries:
+
+    >>> client = EndpointClient(
+    ...     base_url="https://api.example.com/v1",
+    ...     endpoints={"list": "/items"},
+    ...     retry={"max_attempts": 5, "backoff": 0.5, "retry_on": [429, 503]},
+    ...     retry_network_errors=True,
+    ... )
+    >>> client.paginate("list", pagination={"type": "page", "page_size": 50})
     """
 
     # -- Attributes -- #
 
     base_url: str
     endpoints: Mapping[str, str]
+    # Optional retry configuration (constructor parameter; object is frozen)
+    retry: RetryPolicy | None = None
+    retry_network_errors: bool = False
     # Optional client-wide rate limit configuration
     rate_limit: RateLimitConfig | None = None
 
@@ -210,6 +244,9 @@ class EndpointClient:
     DEFAULT_RETRY_MAX_ATTEMPTS: ClassVar[int] = 3
     DEFAULT_RETRY_BACKOFF: ClassVar[float] = 0.5
     DEFAULT_RETRY_ON: ClassVar[tuple[int, ...]] = (429, 502, 503, 504)
+
+    # Cap for jittered backoff sleeps (seconds)
+    DEFAULT_RETRY_CAP: ClassVar[float] = 30.0
 
     # -- Magic Methods (Object Lifecycle) -- #
 
@@ -265,9 +302,7 @@ class EndpointClient:
             Propagated if JSON parsing fails within ``extract``.
         """
 
-        policy: RetryPolicy | None = getattr(
-            self, 'retry', None,
-        )  # type: ignore[attr-defined]
+        policy: RetryPolicy | None = self.retry
         if not policy:
             return _extract('api', url, **kw)
 
@@ -291,6 +326,7 @@ class EndpointClient:
             retry_on_codes = {int(c) for c in retry_on}
 
         attempt = 1
+        cap = self.DEFAULT_RETRY_CAP
         while True:
             try:
                 return _extract('api', url, **kw)
@@ -298,13 +334,26 @@ class EndpointClient:
                 status = getattr(
                     getattr(e, 'response', None), 'status_code', None,
                 )
+                # HTTP status-based retry
                 should_retry = (
                     isinstance(status, int) and status in retry_on_codes
                 )
+                # Network error retry (timeouts/connection failures)
+                if not should_retry and self.retry_network_errors:
+                    is_timeout = isinstance(e, requests.Timeout)
+                    is_conn = isinstance(e, requests.ConnectionError)
+                    should_retry = is_timeout or is_conn
                 if not should_retry or attempt >= max_attempts:
                     raise
-                # exponential backoff: backoff * 2**(attempt-1)
-                sleep = backoff * (2 ** (attempt - 1)) if backoff else 0.0
+
+                # Exponential backoff with Full Jitter to reduce herding:
+                #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1)))
+                if backoff > 0:
+                    exp = backoff * (2 ** (attempt - 1))
+                    upper = exp if exp < cap else cap
+                    sleep = random.uniform(0.0, upper)
+                else:
+                    sleep = 0.0
                 EndpointClient.apply_sleep(sleep)
                 attempt += 1
 
@@ -407,6 +456,7 @@ class EndpointClient:
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
+
         # Determine effective sleep seconds: explicit parameter wins; otherwise
         # compute from client rate_limit, if any.
         effective_sleep = (
