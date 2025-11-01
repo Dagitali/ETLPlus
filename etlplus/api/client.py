@@ -25,45 +25,63 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests
+from requests.adapters import HTTPAdapter
 
 from ..extract import extract as _extract
 
 
-# SECTION: TYPED DICTS ====================================================== #
+# SECTION: TYPED DICTS (HTTP Adaption) ====================================== #
 
 
-class PagePaginationConfig(TypedDict):
+class HTTPAdapterMountConfig(TypedDict, total=False):
     """
-    Pagination config for 'page' and 'offset' types.
+    Configuration for mounting an HTTPAdapter on a Session.
 
     Attributes
     ----------
-    type : Literal['page', 'offset']
-        Pagination type.
-    records_path : str
-        Dotted path to records in the payload.
-    max_pages : int
-        Maximum number of pages to fetch.
-    max_records : int
-        Maximum number of records to fetch.
-    page_param : str
-        Query parameter name for the page number.
-    size_param : str
-        Query parameter name for the page size.
-    start_page : int
-        Starting page number (1-based).
-    page_size : int
-        Number of records per page.
+    prefix : str
+        Prefix to mount the adapter on (e.g., 'https://', 'http://', or a
+        specific base like 'https://api.example.com/'). Defaults to
+        'https://' if omitted.
+    pool_connections : int
+        The number of urllib3 connection pools to cache.
+    pool_maxsize : int
+        The maximum number of connections to save in the pool.
+    pool_block : bool
+        Whether the connection pool should block for connections.
+    max_retries : int | HTTPAdapterRetryConfig
+        Retry configuration. When an int, passed directly to HTTPAdapter.
+        When a dict, converted to urllib3 Retry with matching keys.
     """
 
-    type: Literal['page', 'offset']
-    records_path: NotRequired[str]
-    max_pages: NotRequired[int]
-    max_records: NotRequired[int]
-    page_param: NotRequired[str]
-    size_param: NotRequired[str]
-    start_page: NotRequired[int]
-    page_size: NotRequired[int]
+    prefix: str
+    pool_connections: int
+    pool_maxsize: int
+    pool_block: bool
+    max_retries: int | HTTPAdapterRetryConfig
+
+
+class HTTPAdapterRetryConfig(TypedDict, total=False):
+    """
+    Retry configuration for urllib3 Retry used by requests' HTTPAdapter.
+
+    Keys mirror urllib3.util.retry.Retry constructor where relevant.
+    All keys are optional; omit unset values.
+    """
+
+    total: int
+    connect: int
+    read: int
+    redirect: int
+    status: int
+    backoff_factor: float
+    status_forcelist: list[int] | tuple[int, ...]
+    allowed_methods: list[str] | set[str] | tuple[str, ...]
+    raise_on_status: bool
+    respect_retry_after_header: bool
+
+
+# SECTION: TYPED DICTS (Pagination) ========================================= #
 
 
 class CursorPaginationConfig(TypedDict):
@@ -100,6 +118,60 @@ class CursorPaginationConfig(TypedDict):
     page_size: NotRequired[int]
 
 
+class PagePaginationConfig(TypedDict):
+    """
+    Pagination config for 'page' and 'offset' types.
+
+    Attributes
+    ----------
+    type : Literal['page', 'offset']
+        Pagination type.
+    records_path : str
+        Dotted path to records in the payload.
+    max_pages : int
+        Maximum number of pages to fetch.
+    max_records : int
+        Maximum number of records to fetch.
+    page_param : str
+        Query parameter name for the page number.
+    size_param : str
+        Query parameter name for the page size.
+    start_page : int
+        Starting page number (1-based).
+    page_size : int
+        Number of records per page.
+    """
+
+    type: Literal['page', 'offset']
+    records_path: NotRequired[str]
+    max_pages: NotRequired[int]
+    max_records: NotRequired[int]
+    page_param: NotRequired[str]
+    size_param: NotRequired[str]
+    start_page: NotRequired[int]
+    page_size: NotRequired[int]
+
+
+# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
+
+
+class RateLimitConfig(TypedDict):
+    """
+    Optional rate limit configuration.
+
+    Attributes
+    ----------
+    sleep_seconds : float
+        Fixed delay between requests.
+    max_per_sec : float
+        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
+        between requests when positive.
+    """
+
+    sleep_seconds: NotRequired[float | int]
+    max_per_sec: NotRequired[float | int]
+
+
 class RetryPolicy(TypedDict):
     """
     Optional retry policy for HTTP requests.
@@ -119,23 +191,6 @@ class RetryPolicy(TypedDict):
     max_attempts: NotRequired[int]
     backoff: NotRequired[float]
     retry_on: NotRequired[list[int]]
-
-
-class RateLimitConfig(TypedDict):
-    """
-    Optional rate limit configuration.
-
-    Attributes
-    ----------
-    sleep_seconds : float
-        Fixed delay between requests.
-    max_per_sec : float
-        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
-        between requests when positive.
-    """
-
-    sleep_seconds: NotRequired[float | int]
-    max_per_sec: NotRequired[float | int]
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -247,6 +302,12 @@ class EndpointClient:
     session: Any | None = None
     session_factory: Callable[[], Any] | None = None
 
+    # Optional HTTPAdapter mount configuration(s) for transport-level retries
+    # and connection pooling. If provided and neither `session` nor
+    # `session_factory` is supplied, a factory is synthesized to create a
+    # Session and mount the configured adapters lazily.
+    session_adapters: list[HTTPAdapterMountConfig] | None = None
+
     # -- Class Defaults (Centralized) -- #
 
     DEFAULT_PAGE_PARAM: ClassVar[str] = 'page'
@@ -287,6 +348,30 @@ class EndpointClient:
         # If both session and factory are provided, prefer explicit session.
         if self.session is not None and self.session_factory is not None:
             object.__setattr__(self, 'session_factory', None)
+
+        # If no session/factory provided but adapter configs are, synthesize
+        # a factory that builds a Session and mounts adapters.
+        if (
+            self.session is None
+            and self.session_factory is None
+            and self.session_adapters
+        ):
+            adapters_cfg = list(self.session_adapters)
+
+            def _factory() -> requests.Session:
+                s = requests.Session()
+                for cfg in adapters_cfg:
+                    prefix = cfg.get('prefix', 'https://')
+                    try:
+                        adapter = EndpointClient.build_http_adapter(cfg)
+                        s.mount(prefix, adapter)
+                    except Exception:
+                        # If mounting fails for any reason, continue so that
+                        # at least a default Session is returned.
+                        continue
+                return s
+
+            object.__setattr__(self, 'session_factory', _factory)
 
     # -- Protected Instance Methods -- #
 
@@ -744,6 +829,106 @@ class EndpointClient:
                 time.sleep(sleep_seconds)
             else:
                 sleeper(sleep_seconds)
+
+    @staticmethod
+    def build_http_adapter(
+        cfg: Mapping[str, Any],
+    ) -> HTTPAdapter:
+        """
+        Build a requests HTTPAdapter from a configuration mapping.
+
+        Supported keys in cfg:
+        - pool_connections (int)
+        - pool_maxsize (int)
+        - pool_block (bool)
+        - max_retries (int or dict matching urllib3 Retry args)
+
+        When ``max_retries`` is a dict, this will attempt to construct an
+        ``urllib3.util.retry.Retry`` instance with the provided keys. Unknown
+        keys are ignored. If urllib3 is unavailable, falls back to no retries
+        (0) or an integer value when provided.
+
+        Parameters
+        ----------
+        cfg : Mapping[str, Any]
+            Adapter configuration mapping.
+
+        Returns
+        -------
+        HTTPAdapter
+            Configured HTTPAdapter instance.
+        """
+
+        pool_connections = cfg.get('pool_connections')
+        try:
+            pool_connections_i = (
+                int(pool_connections) if pool_connections is not None else 10
+            )
+        except (TypeError, ValueError):
+            pool_connections_i = 10
+
+        pool_maxsize = cfg.get('pool_maxsize')
+        try:
+            pool_maxsize_i = (
+                int(pool_maxsize) if pool_maxsize is not None else 10
+            )
+        except (TypeError, ValueError):
+            pool_maxsize_i = 10
+
+        pool_block = bool(cfg.get('pool_block', False))
+
+        retries_cfg = cfg.get('max_retries')
+        max_retries: Any
+        if isinstance(retries_cfg, int):
+            max_retries = retries_cfg
+        elif isinstance(retries_cfg, dict):
+            # Try to construct urllib3 Retry from dict
+            try:
+                from urllib3.util.retry import Retry  # type: ignore
+
+                allowed_keys = {
+                    'total',
+                    'connect',
+                    'read',
+                    'redirect',
+                    'status',
+                    'backoff_factor',
+                    'status_forcelist',
+                    'allowed_methods',
+                    'raise_on_status',
+                    'respect_retry_after_header',
+                }
+                kwargs: dict[str, Any] = {}
+                for k, v in retries_cfg.items():
+                    if (
+                        k in {'status_forcelist', 'allowed_methods'}
+                        and isinstance(v, (list, tuple, set))
+                    ):
+                        # Convert to tuple/set as appropriate
+                        kwargs[k] = (
+                            tuple(v) if k == 'status_forcelist'
+                            else frozenset(v)
+                        )
+                    elif k in allowed_keys:
+                        kwargs[k] = v
+                max_retries = Retry(**kwargs) if kwargs else 0
+            except Exception:
+                # Fallback if urllib3 not available or invalid config
+                total = (
+                    retries_cfg.get('total')
+                    if isinstance(retries_cfg.get('total'), int)
+                    else 0
+                )
+                max_retries = int(total) if isinstance(total, int) else 0
+        else:
+            max_retries = 0
+
+        return HTTPAdapter(
+            pool_connections=pool_connections_i,
+            pool_maxsize=pool_maxsize_i,
+            max_retries=max_retries,
+            pool_block=pool_block,
+        )
 
     @staticmethod
     def build_request_kwargs(
