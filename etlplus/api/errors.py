@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 import requests  # type: ignore
 
+from .types import RetryPolicy
+
 
 @dataclass(slots=True)
 class ApiRequestError(requests.RequestException):
@@ -38,7 +40,7 @@ class ApiRequestError(requests.RequestException):
     status: int | None = None
     attempts: int = 1
     retried: bool = False
-    retry_policy: dict | None = None
+    retry_policy: RetryPolicy | None = None
     cause: Exception | None = None
 
     # -- Magic Methods (Object Representation) -- #

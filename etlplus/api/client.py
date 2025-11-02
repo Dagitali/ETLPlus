@@ -330,7 +330,7 @@ class EndpointClient:
                             status=status,
                             attempts=attempt,
                             retried=retried,
-                            retry_policy=cast(dict, policy),
+                            retry_policy=policy,
                             cause=e,
                         )
                     else:
@@ -339,7 +339,7 @@ class EndpointClient:
                             status=status,
                             attempts=attempt,
                             retried=retried,
-                            retry_policy=cast(dict, policy),
+                            retry_policy=policy,
                             cause=e,
                         )
                     raise final_err from e
