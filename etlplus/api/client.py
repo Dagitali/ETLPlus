@@ -2,17 +2,41 @@
 etlplus.api.client
 ==================
 
-A module enabling REST API client interactions.
+A module for registering endpoint paths, building URLs, and paginating API
+responses with optional retries and rate limiting.
 
-Typing notes
-------------
+Notes
+-----
 - Centralized types live in :mod:`etlplus.api.types` (re-exported from
-    :mod:`etlplus.api`). Prefer importing `PaginationConfig`,
-    `RateLimitConfig`, and `RetryPolicy` from there rather than redefining
-    ad-hoc dicts.
-- Pagination handling in this module expects a `PaginationConfig`; see
+    :mod:`etlplus.api`). Prefer importing ``PaginationConfig``,
+    ``RateLimitConfig``, and ``RetryPolicy`` rather than redefining ad-hoc
+    dicts.
+- Pagination requires a ``PaginationConfig``. See
     :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the
     accepted shapes.
+
+Examples
+--------
+
+Page-based pagination
+^^^^^^^^^^^^^^^^^^^^^
+>>> client = EndpointClient(
+...     base_url="https://api.example.com/v1",
+...     endpoints={"list": "/items"},
+... )
+>>> pg = {"type": "page", "page_size": 100}
+>>> rows = client.paginate("list", pagination=pg)
+
+Cursor-based pagination
+^^^^^^^^^^^^^^^^^^^^^^^
+>>> pg = {
+...   "type": "cursor",
+...   "records_path": "data.items",
+...   "cursor_param": "cursor",
+...   "cursor_path": "data.nextCursor",
+...   "page_size": 100,
+... }
+>>> rows = client.paginate("list", pagination=pg)
 """
 from __future__ import annotations
 

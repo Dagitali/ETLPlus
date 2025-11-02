@@ -2,19 +2,22 @@
 etlplus.api.__init__
 ====================
 
-A module providing helpers for building simple REST API clients (pagination,
-request utils).
+The top-level module defining ``:mod:etlplus.api``, a package of high-level
+helpers for building simple REST API clients with pagination, retry, and
+transport configuration.
 
-Primary usage
--------------
+Summary
+-------
+Use :class:`~etlplus.api.client.EndpointClient` to register relative endpoint
+paths under a base URL and to paginate API responses. The client can apply
+rate limits between requests and perform exponential-backoff retries with
+full jitter.
 
-Prefer using :meth:`EndpointClient.paginate` with an endpoint key registered
-on the client. This builds the absolute URL for you and aggregates records
-across pages when a pagination config is provided.
+Examples
+--------
 
-Example
-~~~~~~~
-
+Page-based pagination
+^^^^^^^^^^^^^^^^^^^^^
 >>> client = EndpointClient(
 ...     base_url="https://api.example.com/v1",
 ...     endpoints={"list_users": "/users"},
@@ -34,15 +37,7 @@ Example
 ... )
 
 Retries and network errors
---------------------------
-
-Optionally configure automatic retries with exponential backoff and jitter.
-You can also opt-in to retry common network errors (timeouts/connection
-resets) in addition to specific HTTP status codes.
-
-Example
-~~~~~~~
-
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 >>> client = EndpointClient(
 ...     base_url="https://api.example.com/v1",
 ...     endpoints={"list": "/items"},
@@ -53,9 +48,8 @@ Example
 ...     "list", pagination={"type": "page", "page_size": 50}
 ... )
 
-Escape hatch: absolute URLs
----------------------------
-
+Absolute URLs
+^^^^^^^^^^^^^
 When you need to call an already-composed absolute URL, use
 :meth:`EndpointClient.paginate_url`. It accepts the same pagination config
 and returns either the raw JSON object (no pagination) or a list of record
@@ -65,20 +59,17 @@ Notes
 -----
 - ``EndpointClient.endpoints`` is read-only at runtime.
 - Default pagination parameters are centralized on the client (e.g.,
-  ``page``, ``per_page``, ``cursor``, ``limit``, start page ``1``, and
-  page size ``100``). Override via the pagination config as needed.
+    ``page``, ``per_page``, ``cursor``, ``limit``, start page ``1``, and
+    page size ``100``). Override via the pagination config as needed.
 - Retries are opt-in via the ``retry`` parameter. Backoff uses jitter to
     reduce thundering herds. Use ``retry_network_errors=True`` to also retry
     timeouts/connection errors.
 
-Types
------
-Common types used across the API are centralized in :mod:`etlplus.api.types`
-and re-exported from :mod:`etlplus.api` for convenience. Prefer importing
-`PaginationConfig`, `PagePaginationConfig`, `CursorPaginationConfig`,
-`RateLimitConfig`, `RetryPolicy`, and HTTP adapter config types directly from
-this package or the :mod:`types` submodule instead of redefining ad-hoc
-dicts. This keeps annotations DRY and consistent.
+See Also
+--------
+- :mod:`etlplus.api.types` for shared types such as
+    ``PaginationConfig``, ``RetryPolicy``, and HTTP adapter configs
+- :mod:`etlplus.api.transport` for HTTPAdapter helpers
 """
 from __future__ import annotations
 

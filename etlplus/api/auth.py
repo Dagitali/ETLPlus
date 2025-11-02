@@ -2,7 +2,38 @@
 etlplus.api.auth
 ================
 
-A module enabling REST API endpoint authorization.
+A module enabling bearer token authentication for REST APIs using the OAuth2
+Client Credentials flow.
+
+Summary
+-------
+Use :class:`EndpointCredentialsBearer` with ``requests`` to automatically add
+``Authorization: Bearer <token>`` headers. Tokens are fetched and refreshed
+on demand with a small clock skew to avoid edge-of-expiry races.
+
+Notes
+-----
+- Tokens are refreshed when the remaining lifetime is less than
+    ``CLOCK_SKEW_SEC`` seconds.
+- Network and HTTP errors are surfaced from ``requests``; logs provide
+    brief diagnostics.
+
+Examples
+--------
+
+Basic usage with ``requests.Session``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>>> auth = EndpointCredentialsBearer(
+...     token_url="https://auth.example.com/oauth2/token",
+...     client_id="id",
+...     client_secret="secret",
+...     scope="read",
+... )
+>>> import requests
+>>> s = requests.Session()
+>>> s.auth = auth
+>>> r = s.get("https://api.example.com/v1/items")
+>>> r.raise_for_status()
 """
 from __future__ import annotations
 

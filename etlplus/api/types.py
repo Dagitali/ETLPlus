@@ -2,13 +2,24 @@
 etlplus.api.types
 =================
 
-A module centralizing type aliases and TypedDict-based configurations used
-across the ``etlplus.api`` package. Keeping these in one module avoids
-duplication and ``etlplus.api`` package. Keeping these in one module avoids
-duplication and ensures consistent annotations between modules like ``client``
-and ``request``.
+A module centralizing type aliases and ``TypedDict``-based configurations used
+in the ``:mod:etlplus.api`` package.
 
+Contents
+--------
+- JSON aliases: ``JSONDict``, ``JSONList``, ``JSONData``
+- Pagination configs: ``PagePaginationConfig``, ``CursorPaginationConfig``,
+  and the union ``PaginationConfig``
+- Rate limiting: ``RateLimitConfig``
+- Retry policy: ``RetryPolicy``
+- HTTP transport: ``HTTPAdapterRetryConfig``, ``HTTPAdapterMountConfig``
 
+Examples
+--------
+>>> from etlplus.api import PaginationConfig
+>>> pg: PaginationConfig = {"type": "page", "page_size": 100}
+>>> from etlplus.api import RetryPolicy
+>>> rp: RetryPolicy = {"max_attempts": 3, "backoff": 0.5}
 """
 from __future__ import annotations
 
