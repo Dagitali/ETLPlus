@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from etlplus.api.client import EndpointClient
+from etlplus.api import EndpointClient
 
 
 class FakeResponse:
