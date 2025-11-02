@@ -43,6 +43,7 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass
+from dataclasses import field
 from types import MappingProxyType
 from typing import Any
 from typing import Callable
@@ -177,6 +178,12 @@ class EndpointClient:
     # Session and mount the configured adapters lazily.
     session_adapters: list[HTTPAdapterMountConfig] | None = None
 
+    # Internal: context-managed session and ownership flag.
+    _ctx_session: Any | None = field(default=None, repr=False, compare=False)
+    _ctx_owns_session: bool = field(
+        default=False, repr=False, compare=False,
+    )
+
     # -- Class Defaults (Centralized) -- #
 
     DEFAULT_PAGE_PARAM: ClassVar[str] = 'page'
@@ -242,6 +249,66 @@ class EndpointClient:
 
             object.__setattr__(self, 'session_factory', _factory)
 
+    # -- Magic Methods (Context Manager Protocol) -- #
+
+    def __enter__(self) -> EndpointClient:
+        """Enter a context where a session is managed by the client.
+
+        Behavior
+        --------
+        - If an explicit ``session`` was provided at construction, it is used
+          and will NOT be closed on exit.
+        - Else if a ``session_factory`` exists, it is used to create a session
+          which WILL be closed on exit.
+        - Else a default ``requests.Session`` is created and WILL be closed on
+          exit.
+        """
+
+        if self._ctx_session is not None:
+            return self
+
+        if self.session is not None:
+            object.__setattr__(self, '_ctx_session', self.session)
+            object.__setattr__(self, '_ctx_owns_session', False)
+            return self
+
+        if self.session_factory is not None:
+            s = self.session_factory()
+            object.__setattr__(self, '_ctx_session', s)
+            object.__setattr__(self, '_ctx_owns_session', True)
+            return self
+
+        s = requests.Session()
+        object.__setattr__(self, '_ctx_session', s)
+        object.__setattr__(self, '_ctx_owns_session', True)
+        return self
+
+    def __exit__(
+        self,
+        exc_type,
+        exc,
+        tb,
+    ) -> None:
+        s = self._ctx_session
+        owns = self._ctx_owns_session
+        if s is not None and owns:
+            try:
+                close_attr = getattr(s, 'close', None)
+                if close_attr is not None:
+                    try:
+                        # Some objects may expose a non-callable 'close'
+                        # attribute. Guard the call to avoid TypeError.
+                        close_attr()  # type: ignore[misc]
+                    except TypeError:
+                        pass
+            finally:
+                object.__setattr__(self, '_ctx_session', None)
+                object.__setattr__(self, '_ctx_owns_session', False)
+        else:
+            # Ensure cleared even if we didn't own it
+            object.__setattr__(self, '_ctx_session', None)
+            object.__setattr__(self, '_ctx_owns_session', False)
+
     # -- Protected Instance Methods -- #
 
     def _extract_with_retry(
@@ -277,7 +344,12 @@ class EndpointClient:
         """
 
         # Determine session to use for this request.
-        sess = self.session
+        # Prefer context-managed session when present
+        sess = (
+            self._ctx_session
+            if self._ctx_session is not None
+            else self.session
+        )
         if sess is None and self.session_factory is not None:
             sess = self.session_factory()
 
