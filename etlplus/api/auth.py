@@ -10,8 +10,8 @@ import logging
 import time
 from dataclasses import dataclass
 
-import requests
-from requests.auth import AuthBase
+import requests  # type: ignore
+from requests.auth import AuthBase  # type: ignore
 
 logger = logging.getLogger(__name__)
 
