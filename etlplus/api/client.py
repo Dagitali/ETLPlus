@@ -24,10 +24,13 @@ from urllib.parse import urlencode
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-import requests
-from requests.adapters import HTTPAdapter
+import requests  # type: ignore
+from requests.adapters import HTTPAdapter  # type: ignore
 
 from ..extract import extract as _extract
+from .errors import ApiAuthError
+from .errors import ApiRequestError
+from .errors import PaginationError
 
 
 # SECTION: TYPED DICTS (HTTP Adaption) ====================================== #
@@ -365,7 +368,7 @@ class EndpointClient:
                     try:
                         adapter = EndpointClient.build_http_adapter(cfg)
                         s.mount(prefix, adapter)
-                    except Exception:
+                    except (ValueError, TypeError, AttributeError):
                         # If mounting fails for any reason, continue so that
                         # at least a default Session is returned.
                         continue
@@ -410,17 +413,40 @@ class EndpointClient:
         # Determine session to use for this request.
         sess = self.session
         if sess is None and self.session_factory is not None:
-            try:
-                sess = self.session_factory()
-            except Exception:
-                sess = None
+            sess = self.session_factory()
 
         policy: RetryPolicy | None = self.retry
         if not policy:
             if sess is not None:
                 kw = dict(kw)
                 kw['session'] = sess
-            return _extract('api', url, **kw)
+            try:
+                return _extract('api', url, **kw)
+            except requests.RequestException as e:  # pragma: no cover (net)
+                status = getattr(
+                    getattr(e, 'response', None), 'status_code', None,
+                )
+                retried = False
+                err: ApiRequestError
+                if status in {401, 403}:
+                    err = ApiAuthError(
+                        url=url,
+                        status=status,
+                        attempts=1,
+                        retried=retried,
+                        retry_policy=None,
+                        cause=e,
+                    )
+                else:
+                    err = ApiRequestError(
+                        url=url,
+                        status=status,
+                        attempts=1,
+                        retried=retried,
+                        retry_policy=None,
+                        cause=e,
+                    )
+                raise err from e
 
         max_attempts = int(
             cast(int | float | str | None, policy.get('max_attempts', 0))
@@ -466,7 +492,27 @@ class EndpointClient:
                     is_conn = isinstance(e, requests.ConnectionError)
                     should_retry = is_timeout or is_conn
                 if not should_retry or attempt >= max_attempts:
-                    raise
+                    retried = attempt > 1
+                    final_err: ApiRequestError
+                    if status in {401, 403}:
+                        final_err = ApiAuthError(
+                            url=url,
+                            status=status,
+                            attempts=attempt,
+                            retried=retried,
+                            retry_policy=cast(dict, policy),
+                            cause=e,
+                        )
+                    else:
+                        final_err = ApiRequestError(
+                            url=url,
+                            status=status,
+                            attempts=attempt,
+                            retried=retried,
+                            retry_policy=cast(dict, policy),
+                            cause=e,
+                        )
+                    raise final_err from e
 
                 # Exponential backoff with Full Jitter to reduce herding:
                 #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1)))
@@ -639,7 +685,18 @@ class EndpointClient:
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
-                page_data = self._extract_with_retry(url, **kw)
+                try:
+                    page_data = self._extract_with_retry(url, **kw)
+                except ApiRequestError as e:
+                    raise PaginationError(
+                        url=url,
+                        status=e.status,
+                        attempts=e.attempts,
+                        retried=e.retried,
+                        retry_policy=e.retry_policy,
+                        cause=e,
+                        page=current,
+                    ) from e
                 batch = EndpointClient.coalesce_records(
                     page_data, records_path,
                 )
@@ -683,7 +740,18 @@ class EndpointClient:
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
-                page_data = self._extract_with_retry(url, **kw)
+                try:
+                    page_data = self._extract_with_retry(url, **kw)
+                except ApiRequestError as e:
+                    raise PaginationError(
+                        url=url,
+                        status=e.status,
+                        attempts=e.attempts,
+                        retried=e.retried,
+                        retry_policy=e.retry_policy,
+                        cause=e,
+                        page=pages + 1,
+                    ) from e
                 batch = EndpointClient.coalesce_records(
                     page_data, records_path,
                 )
@@ -912,7 +980,7 @@ class EndpointClient:
                     elif k in allowed_keys:
                         kwargs[k] = v
                 max_retries = Retry(**kwargs) if kwargs else 0
-            except Exception:
+            except (ImportError, TypeError, ValueError, AttributeError):
                 # Fallback if urllib3 not available or invalid config
                 total = (
                     retries_cfg.get('total')
