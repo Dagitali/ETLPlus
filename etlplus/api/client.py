@@ -531,10 +531,10 @@ class EndpointClient:
         self,
         endpoint_key: str,
         *,
-        path_parameters: dict[str, str] | None = None,
-        query_parameters: dict[str, str] | None = None,
-        params: dict[str, Any] | None = None,
-        headers: dict[str, Any] | None = None,
+        path_parameters: Mapping[str, str] | None = None,
+        query_parameters: Mapping[str, str] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfig | None = None,
         sleep_seconds: float = 0.0,
@@ -549,14 +549,14 @@ class EndpointClient:
         endpoint_key : str
             Key into the `endpoints` mapping whose relative path will be
             resolved against `base_url`.
-        path_parameters : dict[str, str] | None
+        path_parameters : Mapping[str, str] | None
             Values to substitute into placeholders in the endpoint path.
-        query_parameters : dict[str, str] | None
+        query_parameters : Mapping[str, str] | None
             Query parameters to append (and merge with any already present on
             `base_url`).
-        params : dict[str, Any] | None
+        params : Mapping[str, Any] | None
             Query parameters to include in the request.
-        headers : dict[str, Any] | None
+        headers : Mapping[str, Any] | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -589,8 +589,8 @@ class EndpointClient:
     def paginate_url(
         self,
         url: str,
-        params: dict[str, Any] | None,
-        headers: dict[str, Any] | None,
+        params: Mapping[str, Any] | None,
+        headers: Mapping[str, Any] | None,
         timeout: float | int | None,
         pagination: PaginationConfig | None,
         *,
@@ -603,9 +603,9 @@ class EndpointClient:
         ----------
         url : str
             Absolute URL to paginate.
-        params : dict[str, Any] | None
+        params : Mapping[str, Any] | None
             Query parameters to include in the request.
-        headers : dict[str, Any] | None
+        headers : Mapping[str, Any] | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -787,8 +787,8 @@ class EndpointClient:
     def url(
         self,
         endpoint_key: str,
-        path_parameters: dict[str, Any] | None = None,
-        query_parameters: dict[str, Any] | None = None,
+        path_parameters: Mapping[str, Any] | None = None,
+        query_parameters: Mapping[str, Any] | None = None,
     ) -> str:
         """
         Build a fully qualified URL for a registered endpoint.
@@ -798,12 +798,12 @@ class EndpointClient:
         endpoint_key : str
             Key into the `endpoints` mapping whose relative path will be
             resolved against `base_url`.
-        path_parameters : dict[str, Any], optional
+        path_parameters : Mapping[str, Any] | None, optional
             Values to substitute into placeholders in the endpoint path.
             Placeholders must be written as `{placeholder}` in the relative
             path. Each substituted value is percent-encoded as a single path
             segment (slashes are encoded) to prevent path traversal.
-        query_parameters : dict[str, Any] | None, optional
+        query_parameters : Mapping[str, Any] | None, optional
             Query parameters to append (and merge with any already present on
             `base_url`). Values are percent-encoded and combined using
             `application/x-www-form-urlencoded` rules.
@@ -1007,8 +1007,8 @@ class EndpointClient:
     @staticmethod
     def build_request_kwargs(
         *,
-        params: dict[str, Any] | None = None,
-        headers: dict[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1018,9 +1018,9 @@ class EndpointClient:
 
         Parameters
         ----------
-        params : dict[str, Any] | None, optional
+        params : Mapping[str, Any] | None, optional
             Query parameters to include in the request.
-        headers : dict[str, Any] | None, optional
+        headers : Mapping[str, Any] | None, optional
             Headers to include in the request.
         timeout : float | int | None, optional
             Timeout for the request in seconds.
@@ -1033,9 +1033,9 @@ class EndpointClient:
 
         kw: dict[str, Any] = {}
         if params:
-            kw['params'] = params
+            kw['params'] = dict(params)
         if headers:
-            kw['headers'] = headers
+            kw['headers'] = dict(headers)
         if timeout is not None:
             kw['timeout'] = timeout
         return kw
@@ -1043,7 +1043,7 @@ class EndpointClient:
     @staticmethod
     def compute_sleep_seconds(
         rate_limit: RateLimitConfig | None = None,
-        overrides: dict[str, Any] | None = None,
+        overrides: Mapping[str, Any] | None = None,
     ) -> float:
         """
         Compute sleep seconds from ``rate_limit`` and optional ``overrides``.
@@ -1056,7 +1056,7 @@ class EndpointClient:
         ----------
         rate_limit : RateLimitConfig | Any | None
             Rate limit configuration object (dict-like or attribute-based).
-        overrides : dict[str, Any] | None
+        overrides : Mapping[str, Any] | None
             Optional overrides; same keys as ``rate_limit``.
 
         Returns
