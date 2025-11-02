@@ -75,6 +75,16 @@ from __future__ import annotations
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
 from .request import compute_sleep_seconds
+from .types import CursorPaginationConfig
+from .types import HTTPAdapterMountConfig
+from .types import HTTPAdapterRetryConfig
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
+from .types import PagePaginationConfig
+from .types import PaginationConfig
+from .types import RateLimitConfig
+from .types import RetryPolicy
 
 
 # SECTION: PUBLIC API ======================================================= #
@@ -84,4 +94,10 @@ __all__ = [
     'EndpointCredentialsBearer',
     'EndpointClient',
     'compute_sleep_seconds',
+
+    # Common types
+    'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
+    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+    'CursorPaginationConfig', 'PagePaginationConfig',
+    'RateLimitConfig', 'RetryPolicy',
 ]
