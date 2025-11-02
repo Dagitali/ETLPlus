@@ -58,42 +58,33 @@ def compute_sleep_seconds(
         The computed sleep seconds (>= 0.0).
     """
 
-    # Start with base configuration.
-    sleep_s: float = 0.0
-    if rate_limit:
-        # Prefer explicit sleep_seconds if numeric
-        try:
-            ss = rate_limit.get(
-                'max_per_sec',
-                'sleep_seconds',
-            )  # type: ignore[assignment]
-            if ss is not None:
-                sleep_s = float(ss)
-        except (TypeError, ValueError):
-            sleep_s = 0.0
-        # Derive from max_per_sec if positive
-        try:
-            mps = rate_limit.get('max_per_sec')  # type: ignore[assignment]
-            if mps is not None:
-                mps_f = float(mps)
-                if mps_f > 0:
-                    sleep_s = 1.0 / mps_f
-        except (TypeError, ValueError):
-            pass
+    def _from_cfg(cfg: Mapping[str, Any] | None) -> float | None:
+        if not cfg:
+            return None
 
-    # Apply overrides with higher precedence.
-    if overrides:
-        if 'sleep_seconds' in overrides:
+        # Prefer explicit positive sleep_seconds if numeric.
+        if 'sleep_seconds' in cfg:
             try:
-                sleep_s = float(overrides['sleep_seconds'])
+                ss = float(cfg['sleep_seconds'])
+                if ss > 0:
+                    return ss
             except (TypeError, ValueError):
                 pass
-        if 'max_per_sec' in overrides:
+
+        # Else derive from positive max_per_sec.
+        if 'max_per_sec' in cfg:
             try:
-                mps = float(overrides['max_per_sec'])
+                mps = float(cfg['max_per_sec'])
                 if mps > 0:
-                    sleep_s = 1.0 / mps
+                    return 1.0 / mps
             except (TypeError, ValueError):
                 pass
 
-    return sleep_s
+        return None
+
+    # Precedence: overrides > rate_limit
+    value = _from_cfg(overrides)
+    if value is None:
+        value = _from_cfg(rate_limit)
+
+    return float(value) if value is not None else 0.0
