@@ -38,6 +38,15 @@ class HTTPAdapterRetryConfig(TypedDict, total=False):
 
     Keys mirror urllib3.util.retry.Retry constructor where relevant.
     All keys are optional; omit unset values.
+
+    Example
+    -------
+    >>> retry_cfg: HTTPAdapterRetryConfig = {
+    ...     'total': 5,
+    ...     'backoff_factor': 0.5,
+    ...     'status_forcelist': [429, 503],
+    ...     'allowed_methods': ['GET'],
+    ... }
     """
 
     # -- Attributes -- #
@@ -73,6 +82,19 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries : int | HTTPAdapterRetryConfig
         Retry configuration. When an int, passed directly to HTTPAdapter.
         When a dict, converted to urllib3 Retry with matching keys.
+
+    Example
+    -------
+    >>> adapter_cfg: HTTPAdapterMountConfig = {
+    ...     'prefix': 'https://',
+    ...     'pool_connections': 10,
+    ...     'pool_maxsize': 10,
+    ...     'pool_block': False,
+    ...     'max_retries': {
+    ...         'total': 3,
+    ...         'backoff_factor': 0.5,
+    ...     },
+    ... }
     """
 
     # -- Attributes -- #
@@ -109,6 +131,16 @@ class CursorPaginationConfig(TypedDict):
         Initial cursor value to start pagination.
     page_size : int
         Number of records per page.
+
+    Example
+    -------
+    >>> cfg: CursorPaginationConfig = {
+    ...     'type': 'cursor',
+    ...     'records_path': 'data.items',
+    ...     'cursor_param': 'cursor',
+    ...     'cursor_path': 'data.nextCursor',
+    ...     'page_size': 100,
+    ... }
     """
 
     # -- Attributes -- #
@@ -145,6 +177,17 @@ class PagePaginationConfig(TypedDict):
         Starting page number (1-based).
     page_size : int
         Number of records per page.
+
+    Example
+    -------
+    >>> cfg: PagePaginationConfig = {
+    ...     'type': 'page',
+    ...     'records_path': 'data.items',
+    ...     'page_param': 'page',
+    ...     'size_param': 'per_page',
+    ...     'start_page': 1,
+    ...     'page_size': 100,
+    ... }
     """
 
     # -- Attributes -- #
@@ -173,6 +216,11 @@ class RateLimitConfig(TypedDict):
     max_per_sec : float
         Maximum requests per second; converted to ``1 / max_per_sec`` seconds
         between requests when positive.
+
+    Example
+    -------
+    >>> rl: RateLimitConfig = {'max_per_sec': 4}
+    ... # sleep ~= 0.25s between calls
     """
 
     # -- Attributes -- #
@@ -195,6 +243,14 @@ class RetryPolicy(TypedDict):
         ``backoff * 2**(n-1)`` before retrying.
     retry_on : list[int]
         HTTP status codes that should trigger a retry.
+
+    Example
+    -------
+    >>> rp: RetryPolicy = {
+    ...     'max_attempts': 5,
+    ...     'backoff': 0.5,
+    ...     'retry_on': [429, 502, 503, 504],
+    ... }
     """
 
     # -- Attributes -- #
