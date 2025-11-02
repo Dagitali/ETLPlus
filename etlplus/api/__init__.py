@@ -70,6 +70,8 @@ See Also
 - :mod:`etlplus.api.types` for shared types such as
     ``PaginationConfig``, ``RetryPolicy``, and HTTP adapter configs
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
+- :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
+    from rate limit settings
 """
 from __future__ import annotations
 
