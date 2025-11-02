@@ -19,17 +19,25 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
+from typing import cast
+from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
+
+import requests
 
 from etlplus import __version__
+from etlplus.api import compute_sleep_seconds
+from etlplus.api import EndpointClient
+from etlplus.api import PaginationConfig
 from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
 from etlplus.load import load
 from etlplus.transform import transform
 from etlplus.validate import validate
+from etlplus.validation.utils import maybe_validate as _maybe_validate
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -247,6 +255,55 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             kw['timeout'] = timeout
         return kw
 
+    def _build_session_from_config(
+        cfg: dict[str, Any] | None,
+    ) -> requests.Session:
+        """Create a requests.Session from a simple config mapping.
+
+        Supported keys: headers, params, auth, verify, cert, proxies,
+        cookies, trust_env.
+        """
+        s = requests.Session()
+        if not cfg:
+            return s
+        headers = cfg.get('headers')
+        if isinstance(headers, dict):
+            s.headers.update(headers)
+        params = cfg.get('params')
+        if isinstance(params, dict):
+            # requests supports Session.params on recent versions
+            try:
+                setattr(s, 'params', params)
+            except Exception:
+                pass
+        auth = cfg.get('auth')
+        if auth is not None:
+            if isinstance(auth, (list, tuple)) and len(auth) == 2:
+                s.auth = (auth[0], auth[1])  # type: ignore[assignment]
+            else:
+                s.auth = auth  # type: ignore[assignment]
+        if 'verify' in cfg:
+            s.verify = cfg.get('verify')  # type: ignore[assignment]
+        cert = cfg.get('cert')
+        if cert is not None:
+            s.cert = cert  # type: ignore[assignment]
+        proxies = cfg.get('proxies')
+        if isinstance(proxies, dict):
+            s.proxies.update(proxies)
+        cookies = cfg.get('cookies')
+        if isinstance(cookies, dict):
+            try:
+                s.cookies.update(cookies)
+            except Exception:
+                pass
+        if 'trust_env' in cfg:
+            try:
+                # type: ignore[attr-defined]
+                s.trust_env = bool(cfg.get('trust_env'))
+            except Exception:
+                pass
+        return s
+
     # List mode
     if getattr(args, 'list', False) and not getattr(args, 'run', None):
         jobs = [j.name for j in cfg.jobs if j.name]
@@ -319,7 +376,8 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 conn = getattr(source_obj, 'connection_string', '')
                 data = extract('database', conn)
             case 'api':
-                # Build URL, params, headers, pagination, rate_limit
+                # Build URL, params, headers, pagination, rate_limit, retry,
+                # session config.
                 url: str | None = getattr(source_obj, 'url', None)
                 params: dict[str, Any] = dict(
                     getattr(source_obj, 'params', {}) or {},
@@ -329,6 +387,11 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 )
                 pagination = getattr(source_obj, 'pagination', None)
                 rate_limit = getattr(source_obj, 'rate_limit', None)
+                retry = getattr(source_obj, 'retry', None)
+                retry_network_errors = bool(
+                    getattr(source_obj, 'retry_network_errors', False),
+                )
+                session_cfg = getattr(source_obj, 'session', None)
 
                 api_name = getattr(source_obj, 'api', None)
                 endpoint_name = getattr(source_obj, 'endpoint', None)
@@ -350,6 +413,27 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     headers = {**api_cfg.headers, **headers}
                     pagination = pagination or ep.pagination
                     rate_limit = rate_limit or ep.rate_limit
+                    retry = retry or getattr(ep, 'retry', None) or getattr(
+                        api_cfg, 'retry', None,
+                    )
+                    retry_network_errors = (
+                        retry_network_errors
+                        or bool(getattr(ep, 'retry_network_errors', False))
+                        or bool(
+                            getattr(api_cfg, 'retry_network_errors', False),
+                        )
+                    )
+                    # Merge session config: api -> endpoint -> source
+                    api_sess = getattr(api_cfg, 'session', None)
+                    ep_sess = getattr(ep, 'session', None)
+                    merged: dict[str, Any] = {}
+                    if isinstance(api_sess, dict):
+                        merged.update(api_sess)
+                    if isinstance(ep_sess, dict):
+                        merged.update(ep_sess)
+                    if isinstance(session_cfg, dict):
+                        merged.update(session_cfg)
+                    session_cfg = merged or None
 
                 # Apply overrides from job.extract.options.
                 params = _merge(params, ex_opts.get('params'))
@@ -357,32 +441,30 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 timeout = ex_opts.get('timeout')
                 pag_ov = ex_opts.get('pagination') or {}
                 rl_ov = ex_opts.get('rate_limit') or {}
+                rty_ov = (
+                    ex_opts.get('retry') if 'retry' in ex_opts else None
+                )
+                rne_ov = (
+                    ex_opts.get('retry_network_errors')
+                    if 'retry_network_errors' in ex_opts
+                    else None
+                )
+                sess_ov = ex_opts.get('session') or {}
 
-                # Compute rate limit sleep.
-                sleep_s: float = 0.0
-                if rate_limit and rate_limit.sleep_seconds:
-                    sleep_s = float(rate_limit.sleep_seconds)
-                if (
-                    rate_limit and rate_limit.max_per_sec
-                    and rate_limit.max_per_sec > 0
-                ):
-                    sleep_s = 1.0 / float(rate_limit.max_per_sec)
-                if 'sleep_seconds' in rl_ov:
-                    try:
-                        sleep_s = float(rl_ov['sleep_seconds'])
-                    except (TypeError, ValueError):
-                        pass
-                if 'max_per_sec' in rl_ov:
-                    try:
-                        mps = float(rl_ov['max_per_sec'])
-                        if mps > 0:
-                            sleep_s = 1.0 / mps
-                    except (TypeError, ValueError):
-                        pass
+                # Compute rate limit sleep using helper
+                sleep_s = compute_sleep_seconds(rate_limit, rl_ov)
 
-                def _apply_sleep() -> None:
-                    if sleep_s and sleep_s > 0:
-                        time.sleep(sleep_s)
+                # Apply retry overrides (if present).
+                if rty_ov is not None:
+                    retry = rty_ov
+                if rne_ov is not None:
+                    retry_network_errors = bool(rne_ov)
+
+                # Apply session overrides (merge).
+                if isinstance(sess_ov, dict):
+                    base_cfg = dict(session_cfg or {})
+                    base_cfg.update(sess_ov)
+                    session_cfg = base_cfg
 
                 # Pagination params
                 ptype = None
@@ -401,131 +483,15 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                     max_pages = pag_ov.get('max_pages', max_pages)
                     max_records = pag_ov.get('max_records', max_records)
 
-                # Shared pagination helpers
-                def _api_call(u: str, p: dict[str, Any]) -> Any:
-                    kw = _build_req_kwargs(
-                        params=p,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    if not u:
-                        raise ValueError('API source missing URL')
-                    return extract('api', u, **kw)
-
-                def _append_batch(page_data: Any) -> int:
-                    batch = _coalesce_records(page_data, records_path)
-                    results.extend(batch)
-                    return len(batch)
-
-                def _stop_limits(
-                    pg: int,
-                    mx_pg: Any,
-                    rc: int,
-                    mx_rc: Any,
-                ) -> bool:
-                    if isinstance(mx_pg, int) and pg >= mx_pg:
-                        return True
-                    if isinstance(mx_rc, int) and rc >= mx_rc:
-                        return True
-                    return False
-
-                def _next_cursor_from(
-                    data_obj: Any,
-                    path: str | None,
-                ) -> Any:
-                    if not (
-                        isinstance(path, str)
-                        and path
-                        and isinstance(data_obj, dict)
-                    ):
-                        return None
-                    cur: Any = data_obj
-                    for part in path.split('.'):
-                        if isinstance(cur, dict):
-                            cur = cur.get(part)
-                        else:
-                            return None
-                    return cur if isinstance(cur, (str, int)) else None
-
-                # Single call if no pagination
-                if not ptype:
-                    req_kwargs = _build_req_kwargs(
-                        params=params, headers=headers, timeout=timeout,
-                    )
-                    if not url:
-                        raise ValueError('API source missing URL')
-                    data = extract('api', url, **req_kwargs)
-                else:
-                    results: list[dict] = []
-                    pages = 0
-                    recs = 0
-
-                    # Pagination strategies unify loop behavior.
-                    class _PageStrategy:
-                        def __init__(
-                            self,
-                            page_param: str,
-                            size_param: str,
-                            start_page: int,
-                            page_size: int,
-                        ) -> None:
-                            self.page_param = page_param
-                            self.size_param = size_param
-                            self.current = start_page
-                            self.ps = page_size
-
-                        def make_params(
-                            self, base: dict[str, Any],
-                        ) -> dict[str, Any]:
-                            p = dict(base)
-                            p[str(self.page_param or 'page')] = self.current
-                            p[str(self.size_param or 'per_page')] = self.ps
-                            return p
-
-                        def should_continue(
-                            self, _page_data: Any, n: int,
-                        ) -> bool:
-                            if n < self.ps:
-                                return False
-                            self.current += 1
-                            return True
-
-                    class _CursorStrategy:
-                        def __init__(
-                            self,
-                            cursor_param: str,
-                            start_cursor: Any,
-                            page_size: int,
-                            cursor_path: str | None,
-                        ) -> None:
-                            self.cursor_param = cursor_param
-                            self.cursor = start_cursor
-                            self.ps = page_size
-                            self.cursor_path = cursor_path
-
-                        def make_params(
-                            self, base: dict[str, Any],
-                        ) -> dict[str, Any]:
-                            p = dict(base)
-                            if self.cursor is not None:
-                                key = str(self.cursor_param or 'cursor')
-                                p[key] = self.cursor
-                            if self.ps:
-                                p.setdefault('limit', self.ps)
-                            return p
-
-                        def should_continue(
-                            self, page_data: Any, n: int,
-                        ) -> bool:
-                            nxt = _next_cursor_from(
-                                page_data, self.cursor_path,
-                            )
-                            if not nxt or n == 0:
-                                return False
-                            self.cursor = nxt
-                            return True
-
-                    strategy: Any
+                # Delegate to pagination helper
+                pag_cfg: dict[str, Any] | None = None
+                if ptype:
+                    pag_cfg = {
+                        'type': ptype,
+                        'records_path': records_path,
+                        'max_pages': max_pages,
+                        'max_records': max_records,
+                    }
                     if ptype in {'page', 'offset'}:
                         page_param = (
                             pag_ov.get('page_param') if pag_ov else None
@@ -554,11 +520,13 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                             page_size = (
                                 page_size or pagination.page_size or 100
                             )
-                        strategy = _PageStrategy(
-                            str(page_param or 'page'),
-                            str(size_param or 'per_page'),
-                            int(start_page or 1),
-                            int(page_size or 100),
+                        pag_cfg.update(
+                            {
+                                'page_param': str(page_param or 'page'),
+                                'size_param': str(size_param or 'per_page'),
+                                'start_page': int(start_page or 1),
+                                'page_size': int(page_size or 100),
+                            },
                         )
                     elif ptype == 'cursor':
                         cursor_param = (
@@ -567,68 +535,57 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                         cursor_path = (
                             pag_ov.get('cursor_path') if pag_ov else None
                         )
-                        page_size = (
-                            pag_ov.get('page_size') if pag_ov else None
-                        )
+                        page_size = pag_ov.get('page_size') if pag_ov else None
+                        start_cursor = None
                         if pagination:
                             cursor_param = (
                                 cursor_param
                                 or pagination.cursor_param
                                 or 'cursor'
                             )
-                            cursor_path = cursor_path or pagination.cursor_path
+                            cursor_path = (
+                                cursor_path or pagination.cursor_path
+                            )
                             page_size = (
                                 page_size or pagination.page_size or 100
                             )
                             start_cursor = pagination.start_cursor
-                        else:
-                            start_cursor = None
-                        strategy = _CursorStrategy(
-                            str(cursor_param or 'cursor'),
-                            start_cursor,
-                            int(page_size or 100),
-                            cursor_path,
+                        pag_cfg.update(
+                            {
+                                'cursor_param': str(cursor_param or 'cursor'),
+                                'cursor_path': cursor_path,
+                                'page_size': int(page_size or 100),
+                                'start_cursor': start_cursor,
+                            },
                         )
-                    else:
-                        # Unknown pagination -> single request
-                        single_kwargs = _build_req_kwargs(
-                            params=params, headers=headers, timeout=timeout,
-                        )
-                        if not url:
-                            raise ValueError('API source missing URL')
-                        data = extract('api', url, **single_kwargs)
-                        # fall through; unified assignment below will set
-                        # data = results when pagination type is active
 
-                    if ptype in {'page', 'offset', 'cursor'}:
-                        while True:
-                            req_params = strategy.make_params(params)
-                            page_data = _api_call(url or '', req_params)
-                            n = _append_batch(page_data)
-                            pages += 1
-                            recs += n
-                            if not strategy.should_continue(page_data, n):
-                                break
-                            if _stop_limits(
-                                pages, max_pages, recs, max_records,
-                            ):
-                                if isinstance(max_records, int):
-                                    results[:] = results[: int(max_records)]
-                                break
-                            _apply_sleep()
-                    if ptype:
-                        data = results
-                    else:
-                        # Unknown pagination -> single request
-                        single_kwargs = _build_req_kwargs(
-                            params=params, headers=headers, timeout=timeout,
-                        )
-                        if not url:
-                            raise ValueError('API source missing URL')
-                        data = extract('api', url, **single_kwargs)
+                if not url:
+                    raise ValueError('API source missing URL')
+                # Use instance-based pagination via EndpointClient.
+                parts = urlsplit(url)
+                base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
 
-                    if ptype:
-                        data = results
+                # Build session object if config provided.
+                sess_obj = (
+                    _build_session_from_config(session_cfg)
+                    if isinstance(session_cfg, dict)
+                    else None
+                )
+                client = EndpointClient(
+                    base_url=base,
+                    endpoints={},
+                    retry=retry,
+                    retry_network_errors=retry_network_errors,
+                    session=sess_obj,
+                )
+                data = client.paginate_url(
+                    url,
+                    params,
+                    headers,
+                    timeout,
+                    cast(PaginationConfig | None, pag_cfg),
+                    sleep_seconds=sleep_s,
+                )
             case _:
                 raise ValueError(f'Unsupported source type: {stype}')
 
@@ -650,41 +607,17 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             severity = 'error'
             phase = 'before_transform'
 
-        def _maybe_validate(payload: Any, when: str) -> Any:
-            """Validate payload when phase matches; honor severity."""
-            if not enabled_validation:
-                return payload
-            active = (
-                (
-                    when == 'before_transform'
-                    and phase in {
-                        'before_transform',
-                        'both',
-                    }
-                )
-                or (
-                    when == 'after_transform'
-                    and phase in {
-                        'after_transform',
-                        'both',
-                    }
-                )
-            )
-            if not active:
-                return payload
-            res = validate(payload, rules)
-            if res.get('valid', False):
-                # Prefer validator-loaded data if available
-                res_data = res.get('data')
-                return res_data if res_data is not None else payload
-            msg = {'status': 'validation_failed', 'result': res}
-            _print_json(msg)
-            if severity == 'warn':
-                return payload
-            raise ValueError('Validation failed')
-
         # Pre-transform validation (if configured)
-        data = _maybe_validate(data, 'before_transform')
+        data = _maybe_validate(
+            data,
+            'before_transform',
+            enabled=enabled_validation,
+            rules=rules,
+            phase=phase,
+            severity=severity,
+            validate_fn=validate,  # type: ignore[arg-type]
+            print_json_fn=_print_json,
+        )
 
         # Transform (optional).
         if job.transform:
@@ -692,7 +625,16 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             data = transform(data, ops)
 
         # Post-transform validation (if configured)
-        data = _maybe_validate(data, 'after_transform')
+        data = _maybe_validate(
+            data,
+            'after_transform',
+            enabled=enabled_validation,
+            rules=rules,
+            phase=phase,
+            severity=severity,
+            validate_fn=validate,  # type: ignore[arg-type]
+            print_json_fn=_print_json,
+        )
 
         # Load.
         if not job.load:

@@ -7,6 +7,13 @@ Tiny tests to lock in pagination invariants for page/offset and cursor modes.
 We mock etlplus.extract.extract to simulate API responses and monkeypatch
 time.sleep to avoid delays. We drive the CLI entrypoint to exercise the same
 code paths as real usage without network calls.
+
+Maintainer note:
+- Pagination logic now lives on `EndpointClient.paginate_url`. The public
+  `etlplus.api.pagination.paginate` remains as a deprecated shim delegating to
+  the client. Therefore, patching the client's internal `_extract` is
+  sufficient to intercept page fetches. We also patch `cli_mod.extract` for
+  historical code paths.
 """
 from __future__ import annotations
 
@@ -15,6 +22,7 @@ import sys
 import time
 from typing import Any
 
+import etlplus.api.client as cmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
 
@@ -75,7 +83,12 @@ jobs:
             return [{'id': 3}]  # smaller than page_size -> stop
         return []
 
+    # Patch extract targets:
+    # - cli_mod.extract: CLI may call extract directly for some paths.
+    # - cmod._extract: paginate now delegates to EndpointClient, which uses
+    #   the client's internal extractor per page.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     # Run CLI
@@ -146,7 +159,9 @@ jobs:
             return {'data': [{'id': 'c'}], 'next': None}
         return {'data': [], 'next': None}
 
+    # Patch extract targets consistent with the page/offset test.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     monkeypatch.setattr(
@@ -212,7 +227,9 @@ jobs:
             return [{'id': 4}]
         return []
 
+    # Patch extract targets to ensure pagination calls are intercepted.
     monkeypatch.setattr(cli_mod, 'extract', fake_extract)
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
     monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     monkeypatch.setattr(
