@@ -31,6 +31,7 @@ import requests
 from etlplus import __version__
 from etlplus.api.client import EndpointClient
 from etlplus.api.client import PaginationConfig
+from etlplus.api.rate import compute_sleep_seconds
 from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
 from etlplus.load import load
@@ -451,8 +452,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
                 sess_ov = ex_opts.get('session') or {}
 
                 # Compute rate limit sleep using helper
-                sleep_s = \
-                    EndpointClient.compute_sleep_seconds(rate_limit, rl_ov)
+                sleep_s = compute_sleep_seconds(rate_limit, rl_ov)
 
                 # Apply retry overrides (if present).
                 if rty_ov is not None:
