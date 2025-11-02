@@ -283,6 +283,65 @@ Example:
 
 ## Development
 
+### etlplus.api quickstart
+
+Prefer importing public API and types via the `etlplus.api` re-exports:
+
+```python
+from etlplus.api import (
+  EndpointClient,
+  EndpointCredentialsBearer,
+  PaginationConfig,  # re-exported from etlplus.api.types
+)
+
+client = EndpointClient(
+  base_url="https://api.example.com/v1",
+  endpoints={"list": "/items"},
+)
+
+# Simple page-based pagination
+pg: PaginationConfig = {"type": "page", "page_size": 100}
+rows = client.paginate("list", pagination=pg)
+```
+
+Tip: choosing records_path and cursor_path
+
+If the API responds like this:
+
+```json
+{
+  "data": {
+    "items": [ {"id": 1}, {"id": 2} ],
+    "nextCursor": "abc123"
+  }
+}
+```
+
+- `records_path` should be `data.items`
+- `cursor_path` should be `data.nextCursor`
+
+If the response is a list at the top level, you can omit `records_path`.
+
+Cursor-based pagination example:
+
+```python
+# Cursor-based pagination
+pg: PaginationConfig = {
+  "type": "cursor",
+  # Where records live in the JSON payload (dot path or top-level key)
+  "records_path": "data.items",
+  # Query parameter name that carries the cursor
+  "cursor_param": "cursor",
+  # Dot path in the response JSON that holds the next cursor value
+  "cursor_path": "data.nextCursor",
+  # Optional: limit per page
+  "page_size": 100,
+  # Optional: start from a specific cursor value
+  # "start_cursor": "abc123",
+}
+rows = client.paginate("list", pagination=pg)
+```
+
 ### Running Tests
 
 ```bash
