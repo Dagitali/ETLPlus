@@ -35,6 +35,9 @@ import requests  # type: ignore
 from .types import RetryPolicy
 
 
+# SECTION: CLASSES ========================================================== #
+
+
 @dataclass(slots=True)
 class ApiRequestError(requests.RequestException):
     """
