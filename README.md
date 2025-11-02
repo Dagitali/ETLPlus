@@ -5,6 +5,7 @@ A Swiss Army knife for enabling simple ETL operations - a Python package and com
 - [ETLPlus](#etlplus)
   - [Features](#features)
   - [Installation](#installation)
+  - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
       - [Extract Data](#extract-data)
@@ -18,9 +19,11 @@ A Swiss Army knife for enabling simple ETL operations - a Python package and com
     - [Aggregation Functions](#aggregation-functions)
   - [Validation Rules](#validation-rules)
   - [Development](#development)
+    - [API client docs](#api-client-docs)
     - [Running Tests](#running-tests)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
+  - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
 
@@ -61,6 +64,36 @@ For development:
 
 ```bash
 pip install -e ".[dev]"
+```
+
+## Quickstart
+
+Get up and running in under a minute.
+
+Command line:
+
+```bash
+# Inspect help and version
+etlplus --help
+etlplus --version
+
+# One-liner: extract CSV, filter, select, and write JSON
+etlplus extract file input.csv --format csv \
+  | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  -o output.json
+```
+
+Python:
+
+```python
+from etlplus import extract, transform, validate, load
+
+data = extract("file", "input.csv", format="csv")
+ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}
+filtered = transform(data, ops)
+rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
+assert validate(filtered, rules)["valid"]
+load(filtered, "file", "output.json", format="json")
 ```
 
 ## Usage
@@ -283,64 +316,14 @@ Example:
 
 ## Development
 
-### etlplus.api quickstart
+### API client docs
 
-Prefer importing public API and types via the `etlplus.api` re-exports:
+Looking for the HTTP client and pagination helpers? See the dedicated docs in `etlplus/api/README.md` for:
 
-```python
-from etlplus.api import (
-  EndpointClient,
-  EndpointCredentialsBearer,
-  PaginationConfig,  # re-exported from etlplus.api.types
-)
-
-client = EndpointClient(
-  base_url="https://api.example.com/v1",
-  endpoints={"list": "/items"},
-)
-
-# Simple page-based pagination
-pg: PaginationConfig = {"type": "page", "page_size": 100}
-rows = client.paginate("list", pagination=pg)
-```
-
-Tip: choosing records_path and cursor_path
-
-If the API responds like this:
-
-```json
-{
-  "data": {
-    "items": [ {"id": 1}, {"id": 2} ],
-    "nextCursor": "abc123"
-  }
-}
-```
-
-- `records_path` should be `data.items`
-- `cursor_path` should be `data.nextCursor`
-
-If the response is a list at the top level, you can omit `records_path`.
-
-Cursor-based pagination example:
-
-```python
-# Cursor-based pagination
-pg: PaginationConfig = {
-  "type": "cursor",
-  # Where records live in the JSON payload (dot path or top-level key)
-  "records_path": "data.items",
-  # Query parameter name that carries the cursor
-  "cursor_param": "cursor",
-  # Dot path in the response JSON that holds the next cursor value
-  "cursor_path": "data.nextCursor",
-  # Optional: limit per page
-  "page_size": 100,
-  # Optional: start from a specific cursor value
-  # "start_cursor": "abc123",
-}
-rows = client.paginate("list", pagination=pg)
-```
+- Quickstart with `EndpointClient`
+- Authentication via `EndpointCredentialsBearer`
+- Pagination with `PaginationConfig` (page and cursor styles)
+- Tips on `records_path` and `cursor_path`
 
 ### Running Tests
 
@@ -360,6 +343,12 @@ pytest tests/ --cov=etlplus --cov-report=html
 flake8 etlplus/
 black etlplus/
 ```
+
+## Links
+
+- API client docs: see `etlplus/api/README.md`
+- Demo and walkthrough: `DEMO.md`
+- Additional references: `REFERENCES.md`
 
 ## License
 
