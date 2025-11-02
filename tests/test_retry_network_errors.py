@@ -10,7 +10,7 @@ from typing import Any
 
 import requests
 
-from etlplus.api.client import EndpointClient
+from etlplus.api import EndpointClient
 
 
 def test_retry_on_network_errors(monkeypatch) -> None:
