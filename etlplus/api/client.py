@@ -48,6 +48,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import ClassVar
+from typing import Iterator
 from typing import Mapping
 from urllib.parse import parse_qsl
 from urllib.parse import quote
@@ -442,7 +443,64 @@ class EndpointClient:
             path_parameters=path_parameters,
             query_parameters=query_parameters,
         )
-        return self.paginate_url(
+        # If no pagination provided, preserve single-request behavior.
+        if not pagination or not pagination.get('type'):
+            kw = EndpointClient.build_request_kwargs(
+                params=params, headers=headers, timeout=timeout,
+            )
+            return self._extract_with_retry(url, **kw)
+        # Collect from iterator for paginated streaming ergonomics.
+        return list(
+            self.paginate_url_iter(
+                url=url,
+                params=params,
+                headers=headers,
+                timeout=timeout,
+                pagination=pagination,
+                sleep_seconds=sleep_seconds,
+            ),
+        )
+
+    def paginate_iter(
+        self,
+        endpoint_key: str,
+        *,
+        path_parameters: Mapping[str, str] | None = None,
+        query_parameters: Mapping[str, str] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
+        timeout: float | int | None = None,
+        pagination: PaginationConfig | None = None,
+        sleep_seconds: float = 0.0,
+    ) -> Iterator[dict]:
+        """
+        Stream records for a registered endpoint using pagination.
+
+        This is a generator variant of ``paginate`` that yields record dicts
+        across pages instead of aggregating them into a list. Only used when a
+        pagination configuration is provided.
+
+        Parameters
+        ----------
+        endpoint_key : str
+            Key into the ``endpoints`` mapping whose relative path will be
+            resolved against ``base_url``.
+        path_parameters, query_parameters, params, headers, timeout,
+        pagination, sleep_seconds
+            See ``paginate`` for parameter semantics.
+
+        Yields
+        ------
+        dict
+            Record dictionaries extracted from each page.
+        """
+
+        url = self.url(
+            endpoint_key,
+            path_parameters=path_parameters,
+            query_parameters=query_parameters,
+        )
+        yield from self.paginate_url_iter(
             url=url,
             params=params,
             headers=headers,
@@ -488,7 +546,55 @@ class EndpointClient:
 
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        # See etlplus.api.types.PaginationConfig for supported values
+        ptype = pg.get('type') if pagination else None
+
+        # Preserve raw JSON behavior for non-paginated and unknown types.
+        if not ptype or ptype not in {'page', 'offset', 'cursor'}:
+            kw = EndpointClient.build_request_kwargs(
+                params=params, headers=headers, timeout=timeout,
+            )
+            return self._extract_with_retry(url, **kw)
+
+        # For known pagination types, collect from the generator.
+        return list(
+            self.paginate_url_iter(
+                url=url,
+                params=params,
+                headers=headers,
+                timeout=timeout,
+                pagination=pagination,
+                sleep_seconds=sleep_seconds,
+            ),
+        )
+
+    def paginate_url_iter(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None,
+        headers: Mapping[str, Any] | None,
+        timeout: float | int | None,
+        pagination: PaginationConfig | None,
+        *,
+        sleep_seconds: float = 0.0,
+    ) -> Iterator[dict]:
+        """
+        Stream records by paginating an absolute URL.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to paginate.
+        params, headers, timeout, pagination, sleep_seconds
+            See ``paginate_url`` for parameter semantics.
+
+        Yields
+        ------
+        dict
+            Record dictionaries extracted from each page.
+        """
+
+        # Normalize pagination config for typed access.
+        pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
 
         # Determine effective sleep seconds: explicit parameter wins; otherwise
@@ -498,13 +604,8 @@ class EndpointClient:
             if (sleep_seconds and sleep_seconds > 0)
             else compute_sleep_seconds(self.rate_limit, None)
         )
-        if not ptype:
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return self._extract_with_retry(url, **kw)
 
-        records_path = pg.get('records_path')
+        # Helper for stop limits
         max_pages = pg.get('max_pages')
         max_records = pg.get('max_records')
 
@@ -515,140 +616,135 @@ class EndpointClient:
                 return True
             return False
 
-        results: list[dict] = []
-        pages = 0
-        recs = 0
+        # Known pagination strategies
+        if ptype in {'page', 'offset'}:
+            page_param = pg.get('page_param', self.DEFAULT_PAGE_PARAM)
+            size_param = pg.get('size_param', self.DEFAULT_SIZE_PARAM)
 
-        match ptype:
-            case 'page' | 'offset':
-                page_param = pg.get(
-                    'page_param', self.DEFAULT_PAGE_PARAM,
-                )
-                size_param = pg.get(
-                    'size_param', self.DEFAULT_SIZE_PARAM,
-                )
+            start_page = int(
+                cast(
+                    int | float | str,
+                    pg.get('start_page', self.DEFAULT_START_PAGE),
+                ),
+            )
+            start_page = 1 if start_page < 1 else start_page
 
-                start_page = int(
-                    cast(
-                        int | float | str,
-                        pg.get('start_page', self.DEFAULT_START_PAGE),
-                    ),
-                )
-                start_page = 1 if start_page < 1 else start_page
+            page_size = int(
+                cast(
+                    int | float | str,
+                    pg.get('page_size', self.DEFAULT_PAGE_SIZE),
+                ),
+            )
+            page_size = 1 if page_size < 1 else page_size
 
-                page_size = int(
-                    cast(
-                        int | float | str,
-                        pg.get('page_size', self.DEFAULT_PAGE_SIZE),
-                    ),
-                )
-                page_size = 1 if page_size < 1 else page_size
-
-                current = start_page
-                while True:
-                    req_params = dict(params or {})
-                    req_params[str(page_param)] = current
-                    req_params[str(size_param)] = page_size
-                    kw = EndpointClient.build_request_kwargs(
-                        params=req_params, headers=headers, timeout=timeout,
-                    )
-                    try:
-                        page_data = self._extract_with_retry(url, **kw)
-                    except ApiRequestError as e:
-                        raise PaginationError(
-                            url=url,
-                            status=e.status,
-                            attempts=e.attempts,
-                            retried=e.retried,
-                            retry_policy=e.retry_policy,
-                            cause=e,
-                            page=current,
-                        ) from e
-                    batch = EndpointClient.coalesce_records(
-                        page_data, records_path,
-                    )
-                    results.extend(batch)
-                    n = len(batch)
-                    pages += 1
-                    recs += n
-                    if n < page_size:
-                        break
-                    if _stop_limits(pages, recs):
-                        if isinstance(max_records, int):
-                            results[:] = results[: int(max_records)]
-                        break
-                    current += 1
-                    EndpointClient.apply_sleep(effective_sleep)
-                return results
-
-            case 'cursor':
-                cursor_param = (
-                    pg.get('cursor_param', self.DEFAULT_CURSOR_PARAM)
-                )
-                cursor_path = cast(
-                    str | None,
-                    pg.get('cursor_path'),
+            records_path = pg.get('records_path')
+            pages = 0
+            recs = 0
+            current = start_page
+            while True:
+                req_params = dict(params or {})
+                req_params[str(page_param)] = current
+                req_params[str(size_param)] = page_size
+                kw = EndpointClient.build_request_kwargs(
+                    params=req_params, headers=headers, timeout=timeout,
                 )
                 try:
-                    page_size = int(
-                        pg.get('page_size', self.DEFAULT_PAGE_SIZE),
-                    )
-                except (TypeError, ValueError):
-                    page_size = self.DEFAULT_PAGE_SIZE
-                page_size = 1 if page_size < 1 else page_size
-                cursor_value = pg.get('start_cursor')
-
-                while True:
-                    req_params = dict(params or {})
-                    if cursor_value is not None:
-                        req_params[str(cursor_param)] = cursor_value
-                    if page_size:
-                        req_params.setdefault(
-                            self.DEFAULT_LIMIT_PARAM, page_size,
-                        )
-                    kw = EndpointClient.build_request_kwargs(
-                        params=req_params, headers=headers, timeout=timeout,
-                    )
-                    try:
-                        page_data = self._extract_with_retry(url, **kw)
-                    except ApiRequestError as e:
-                        raise PaginationError(
-                            url=url,
-                            status=e.status,
-                            attempts=e.attempts,
-                            retried=e.retried,
-                            retry_policy=e.retry_policy,
-                            cause=e,
-                            page=pages + 1,
-                        ) from e
-                    batch = EndpointClient.coalesce_records(
-                        page_data, records_path,
-                    )
-                    results.extend(batch)
-                    n = len(batch)
-                    pages += 1
-                    recs += n
-
-                    nxt = EndpointClient.next_cursor_from(
-                        page_data, cursor_path,
-                    )
-                    if not nxt or n == 0:
-                        break
-                    if _stop_limits(pages, recs):
-                        if isinstance(max_records, int):
-                            results[:] = results[: int(max_records)]
-                        break
-                    cursor_value = nxt
-                    EndpointClient.apply_sleep(effective_sleep)
-                return results
-
-            case _:
-                # Unknown pagination type -> single request
-                kw = EndpointClient.build_request_kwargs(
-                    params=params, headers=headers, timeout=timeout,
+                    page_data = self._extract_with_retry(url, **kw)
+                except ApiRequestError as e:
+                    raise PaginationError(
+                        url=url,
+                        status=e.status,
+                        attempts=e.attempts,
+                        retried=e.retried,
+                        retry_policy=e.retry_policy,
+                        cause=e,
+                        page=current,
+                    ) from e
+                batch = EndpointClient.coalesce_records(
+                    page_data, records_path,
                 )
-                return self._extract_with_retry(url, **kw)
-        # Unreachable: match covers all branches
+                n = len(batch)
+                pages += 1
+                recs += n
+
+                # Yield with respect to max_records cap
+                if isinstance(max_records, int) and recs > max_records:
+                    take = max(0, int(max_records) - (recs - n))
+                    yield from batch[:take]
+                    break
+                yield from batch
+
+                if n < page_size:
+                    break
+                if _stop_limits(pages, recs):
+                    break
+                current += 1
+                EndpointClient.apply_sleep(effective_sleep)
+            return
+
+        if ptype == 'cursor':
+            cursor_param = pg.get('cursor_param', self.DEFAULT_CURSOR_PARAM)
+            cursor_path = cast(str | None, pg.get('cursor_path'))
+            try:
+                page_size = int(pg.get('page_size', self.DEFAULT_PAGE_SIZE))
+            except (TypeError, ValueError):
+                page_size = self.DEFAULT_PAGE_SIZE
+            page_size = 1 if page_size < 1 else page_size
+            cursor_value = pg.get('start_cursor')
+
+            records_path = pg.get('records_path')
+            pages = 0
+            recs = 0
+            while True:
+                req_params = dict(params or {})
+                if cursor_value is not None:
+                    req_params[str(cursor_param)] = cursor_value
+                if page_size:
+                    req_params.setdefault(self.DEFAULT_LIMIT_PARAM, page_size)
+                kw = EndpointClient.build_request_kwargs(
+                    params=req_params, headers=headers, timeout=timeout,
+                )
+                try:
+                    page_data = self._extract_with_retry(url, **kw)
+                except ApiRequestError as e:
+                    raise PaginationError(
+                        url=url,
+                        status=e.status,
+                        attempts=e.attempts,
+                        retried=e.retried,
+                        retry_policy=e.retry_policy,
+                        cause=e,
+                        page=pages + 1,
+                    ) from e
+                batch = EndpointClient.coalesce_records(
+                    page_data, records_path,
+                )
+                n = len(batch)
+                pages += 1
+                recs += n
+
+                if isinstance(max_records, int) and recs > max_records:
+                    take = max(0, int(max_records) - (recs - n))
+                    yield from batch[:take]
+                    break
+                yield from batch
+
+                nxt = EndpointClient.next_cursor_from(page_data, cursor_path)
+                if not nxt or n == 0:
+                    break
+                if _stop_limits(pages, recs):
+                    break
+                cursor_value = nxt
+                EndpointClient.apply_sleep(effective_sleep)
+            return
+
+        # No/unknown pagination type: single request, coalesce and yield
+        kw = EndpointClient.build_request_kwargs(
+            params=params, headers=headers, timeout=timeout,
+        )
+        page_data = self._extract_with_retry(url, **kw)
+        records_path = pg.get('records_path')
+        yield from EndpointClient.coalesce_records(page_data, records_path)
 
     def url(
         self,
