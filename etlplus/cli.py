@@ -29,9 +29,9 @@ from urllib.parse import urlunsplit
 import requests
 
 from etlplus import __version__
-from etlplus.api.client import EndpointClient
-from etlplus.api.client import PaginationConfig
-from etlplus.api.rate import compute_sleep_seconds
+from etlplus.api import compute_sleep_seconds
+from etlplus.api import EndpointClient
+from etlplus.api import PaginationConfig
 from etlplus.config import load_pipeline_config
 from etlplus.extract import extract
 from etlplus.load import load
