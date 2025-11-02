@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 import etlplus.api.client as cmod
-from etlplus.api.client import EndpointClient
+from etlplus.api import EndpointClient
 
 
 def test_paginate_page_short_batch(monkeypatch):
