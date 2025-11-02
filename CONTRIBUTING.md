@@ -11,6 +11,7 @@ email, or any other method with the owners of this repository before making a ch
 - [Contributing Guidelines](#contributing-guidelines)
   - [Merge Request Process](#merge-request-process)
   - [Code of Conduct](#code-of-conduct)
+  - [Type Checking](#type-checking)
 
 ## Merge Request Process
 
@@ -30,6 +31,20 @@ do the following:
 
 1. Read it before making any contributions;
 2. Follow it in all your interactions with the project.
+
+## Type Checking
+
+We ship a `py.typed` marker so downstream consumers get typing by default.  For local development,
+if your editor reports missing stubs for `requests` (e.g., "Library stubs not installed for
+requests"), either install the types package or rely on inline ignores present in the codebase:
+
+```bash
+pip install types-requests
+```
+
+We’ve added `# type: ignore` on imports where appropriate to keep editors happy without extra deps,
+but using the stubs can provide a nicer editing experience.
+
 
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [owner]: https://dagitali.com
