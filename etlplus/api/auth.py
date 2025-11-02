@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 
 import requests
 from requests.auth import AuthBase
@@ -15,9 +16,16 @@ from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
 
-# SECTION: CLASSES ========================================================= #
+# SECTION: CONSTANTS ======================================================== #
 
 
+CLOCK_SKEW_SEC = 30
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+@dataclass(slots=True, repr=False, eq=False)
 class EndpointCredentialsBearer(AuthBase):
     """
     Bearer token authentication via OAuth2 client credentials flow.
@@ -38,15 +46,14 @@ class EndpointCredentialsBearer(AuthBase):
         The UNIX timestamp when the token expires.
     """
 
-    # -- Magic Methods (Object Lifecycle) -- #
+    # -- Attributes -- #
 
-    def __init__(self, token_url, client_id, client_secret, scope=None):
-        self.token_url = token_url
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.scope = scope
-        self.token = None
-        self.expiry = 0
+    token_url: str
+    client_id: str
+    client_secret: str
+    scope: str | None = None
+    token: str | None = None
+    expiry: float = 0.0
 
     # -- Magic Methods (Object Behavior) -- #
 
@@ -58,7 +65,7 @@ class EndpointCredentialsBearer(AuthBase):
     # -- Protected Methods -- #
 
     def _ensure_token(self):
-        if self.token and time.time() < self.expiry - 30:
+        if self.token and time.time() < self.expiry - CLOCK_SKEW_SEC:
             return
         try:
             resp = requests.post(
