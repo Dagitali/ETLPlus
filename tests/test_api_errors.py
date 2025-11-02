@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 import requests  # type: ignore
 
-from etlplus.api.client import EndpointClient
+from etlplus.api import EndpointClient
 
 
 class DummyResponse:
