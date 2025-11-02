@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from etlplus.api.client import EndpointClient
+from etlplus.api import EndpointClient
 
 
 class _Resp:
