@@ -1,8 +1,9 @@
 """
-ETLPlus API Client Errors
-======================
+etlplus.api.errors
+==================
 
-API-specific exception types with rich context.
+A module defining exception types with rich context for catching REST API
+errors.
 """
 from __future__ import annotations
 

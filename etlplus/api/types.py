@@ -1,10 +1,14 @@
 """
-etlplus.api.types module
-============================
+etlplus.api.types
+=================
 
-Centralized type aliases and TypedDict-based configurations used across the
-``etlplus.api`` package. Keeping these in one module avoids duplication and
-ensures consistent annotations between modules like ``client`` and ``request``.
+A module centralizing type aliases and TypedDict-based configurations used
+across the ``etlplus.api`` package. Keeping these in one module avoids
+duplication and ``etlplus.api`` package. Keeping these in one module avoids
+duplication and ensures consistent annotations between modules like ``client``
+and ``request``.
+
+
 """
 from __future__ import annotations
 
@@ -20,10 +24,13 @@ from typing import TypedDict
 __all__ = [
     # Aliases
     'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+
     # HTTP adapter config
     'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
+
     # Pagination configs
     'CursorPaginationConfig', 'PagePaginationConfig',
+
     # Rate limit / retry
     'RateLimitConfig', 'RetryPolicy',
 ]

@@ -1,8 +1,8 @@
 """
-ETLPlus API Authorization
-======================
+etlplus.api.auth
+================
 
-REST API helpers for authorization.
+A module enabling REST API endpoint authorization.
 """
 from __future__ import annotations
 

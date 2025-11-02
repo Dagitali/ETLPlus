@@ -1,13 +1,8 @@
 """
-etlplus.api.transport module
-============================
+etlplus.api.transport
+=====================
 
-Lightweight helpers for configuring HTTP transport, kept separate to avoid
-duplication across modules.
-
-Functions
----------
-- build_http_adapter(cfg): Build a requests HTTPAdapter from a simple mapping.
+A module for configuring HTTP transport.
 """
 from __future__ import annotations
 

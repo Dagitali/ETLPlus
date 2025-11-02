@@ -1,8 +1,8 @@
 """
-etlplus.api.client module
-======================
+etlplus.api.client
+==================
 
-REST API helpers for client interactions.
+A module enabling REST API client interactions.
 
 Typing notes
 ------------

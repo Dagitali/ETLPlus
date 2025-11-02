@@ -1,8 +1,9 @@
 """
-etlplus.api.__init__ module
-===========
+etlplus.api.__init__
+====================
 
-Helpers for building simple REST API clients (pagination, request utils).
+A module providing helpers for building simple REST API clients (pagination,
+request utils).
 
 Primary usage
 -------------
