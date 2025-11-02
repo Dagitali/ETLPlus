@@ -83,6 +83,7 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
+from .transport import build_http_adapter
 from .types import CursorPaginationConfig
 from .types import HTTPAdapterMountConfig
 from .types import HTTPAdapterRetryConfig
@@ -99,9 +100,9 @@ from .types import RetryPolicy
 
 
 __all__ = [
-    'EndpointCredentialsBearer',
     'EndpointClient',
-    'compute_sleep_seconds',
+    'EndpointCredentialsBearer',
+    'build_http_adapter',
 
     # Common types
     'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
