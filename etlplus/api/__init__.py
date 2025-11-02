@@ -1,5 +1,5 @@
 """
-ETLPlus API
+etlplus.api.__init__ module
 ===========
 
 Helpers for building simple REST API clients (pagination, request utils).
@@ -69,12 +69,20 @@ Notes
 - Retries are opt-in via the ``retry`` parameter. Backoff uses jitter to
     reduce thundering herds. Use ``retry_network_errors=True`` to also retry
     timeouts/connection errors.
+
+Types
+-----
+Common types used across the API are centralized in :mod:`etlplus.api.types`
+and re-exported from :mod:`etlplus.api` for convenience. Prefer importing
+`PaginationConfig`, `PagePaginationConfig`, `CursorPaginationConfig`,
+`RateLimitConfig`, `RetryPolicy`, and HTTP adapter config types directly from
+this package or the :mod:`types` submodule instead of redefining ad-hoc
+dicts. This keeps annotations DRY and consistent.
 """
 from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .request import compute_sleep_seconds
 from .types import CursorPaginationConfig
 from .types import HTTPAdapterMountConfig
 from .types import HTTPAdapterRetryConfig
