@@ -1,10 +1,15 @@
 # ETLPlus
 
+[![PyPI Version](https://img.shields.io/pypi/v/etlplus.svg)](https://pypi.org/project/etlplus/)
+[![License: MIT](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](LICENSE)
+[![CI](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml)
+
 A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
 
 - [ETLPlus](#etlplus)
   - [Features](#features)
   - [Installation](#installation)
+  - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
       - [Extract Data](#extract-data)
@@ -18,9 +23,11 @@ A Swiss Army knife for enabling simple ETL operations - a Python package and com
     - [Aggregation Functions](#aggregation-functions)
   - [Validation Rules](#validation-rules)
   - [Development](#development)
+    - [API client docs](#api-client-docs)
     - [Running Tests](#running-tests)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
+  - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
 
@@ -61,6 +68,36 @@ For development:
 
 ```bash
 pip install -e ".[dev]"
+```
+
+## Quickstart
+
+Get up and running in under a minute.
+
+Command line:
+
+```bash
+# Inspect help and version
+etlplus --help
+etlplus --version
+
+# One-liner: extract CSV, filter, select, and write JSON
+etlplus extract file input.csv --format csv \
+  | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  -o output.json
+```
+
+Python:
+
+```python
+from etlplus import extract, transform, validate, load
+
+data = extract("file", "input.csv", format="csv")
+ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}
+filtered = transform(data, ops)
+rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
+assert validate(filtered, rules)["valid"]
+load(filtered, "file", "output.json", format="json")
 ```
 
 ## Usage
@@ -283,6 +320,15 @@ Example:
 
 ## Development
 
+### API client docs
+
+Looking for the HTTP client and pagination helpers? See the dedicated docs in `etlplus/api/README.md` for:
+
+- Quickstart with `EndpointClient`
+- Authentication via `EndpointCredentialsBearer`
+- Pagination with `PaginationConfig` (page and cursor styles)
+- Tips on `records_path` and `cursor_path`
+
 ### Running Tests
 
 ```bash
@@ -301,6 +347,14 @@ pytest tests/ --cov=etlplus --cov-report=html
 flake8 etlplus/
 black etlplus/
 ```
+
+## Links
+
+- API client docs: see `etlplus/api/README.md`
+- Examples: see `examples/README.md`
+- Pipeline authoring guide: see `docs/pipeline-guide.md`
+- Demo and walkthrough: `DEMO.md`
+- Additional references: `REFERENCES.md`
 
 ## License
 
