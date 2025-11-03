@@ -441,6 +441,23 @@ def create_parser() -> argparse.ArgumentParser:
     )
     list_parser.set_defaults(func=cmd_list)
 
+    # Define "run" command.
+    run_parser = subparsers.add_parser(
+        'run',
+        help='Run an ETL pipeline',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    run_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    run_parser.add_argument(
+        '-p', '--pipeline',
+        help='Name of the pipeline to run',
+    )
+    run_parser.set_defaults(func=cmd_run)
+
     return parser
 
 # -- Main -- #
