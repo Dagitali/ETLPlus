@@ -1,5 +1,9 @@
 # ETLPlus
 
+[![PyPI Version](https://img.shields.io/pypi/v/etlplus.svg)](https://pypi.org/project/etlplus/)
+[![License: MIT](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](LICENSE)
+[![CI](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml)
+
 A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
 
 - [ETLPlus](#etlplus)
@@ -347,6 +351,8 @@ black etlplus/
 ## Links
 
 - API client docs: see `etlplus/api/README.md`
+- Examples: see `examples/README.md`
+- Pipeline authoring guide: see `docs/pipeline-guide.md`
 - Demo and walkthrough: `DEMO.md`
 - Additional references: `REFERENCES.md`
 
