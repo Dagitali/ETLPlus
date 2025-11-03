@@ -1,8 +1,15 @@
 # ETLPlus
 
 [![PyPI version](https://img.shields.io/pypi/v/etlplus.svg)](https://pypi.org/project/etlplus/)
+[![GitHub Release](https://img.shields.io/github/v/release/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus)
 [![GitHub License](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](https://github.com/Dagitali/ETLPlus/blob/main/LICENSE)
 [![Build status](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/Dagitali/ETLPlus)](https://codecov.io/github/Dagitali/ETLPlus?branch=main)
+[![GitHub Issues](https://img.shields.io/github/issues/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus/pulls)
+[![GitHub top language](https://img.shields.io/github/languages/top/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus)
+[![GitHub repo size](https://img.shields.io/github/repo-size/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus)
+[![GitHub contributors](https://img.shields.io/github/contributors/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus)
 
 A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
 
