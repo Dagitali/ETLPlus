@@ -1,7 +1,7 @@
 # ETLPlus
 
 [![PyPI version](https://img.shields.io/pypi/v/etlplus.svg)](https://pypi.org/project/etlplus/)
-[![License: MIT](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](https://github.com/Dagitali/ETLPlus/LICENSE)
 [![Build status](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml)
 
 A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
