@@ -10,7 +10,8 @@
 [![PRs](https://img.shields.io/github/issues-pr/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus/pulls)
 [![GitHub contributors](https://img.shields.io/github/contributors/Dagitali/ETLPlus)](https://github.com/Dagitali/ETLPlus/graphs/contributors)
 
-A Swiss Army knife for enabling simple ETL operations - a Python package and command-line interface for data extraction, validation, transformation, and loading.
+ETLPlus is a veritable Swiss Army knife for enabling simple ETL operations, offering both a Python
+package and command-line interface for data extraction, validation, transformation, and loading.
 
 - [ETLPlus](#etlplus)
   - [Features](#features)
@@ -36,6 +37,7 @@ A Swiss Army knife for enabling simple ETL operations - a Python package and com
   - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
+  - [Acknowledgments](#acknowledgments)
 
 ## Features
 
@@ -364,8 +366,21 @@ black etlplus/
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the [MIT License](LICENSE).
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Code and codeless contributions are welcome!  If you’d like to add a new feature, fix a bug, or
+improve the documentation, please feel free to submit a pull request as follows:
+
+1. Fork this repository.
+2. Create a new feature branch for your changes (`git checkout -b feature/feature-name`).
+3. Commit your changes (`git commit -m "Add feature"`).
+4. Push to your branch (`git push origin feature-name`).
+5. Submit a pull request with a detailed description.
+
+## Acknowledgments
+
+ETLPlus is inspired by common work patterns in data engineering and software engineering patterns in
+Python development, aiming to increase productivity and reduce boilerplate code.  Feedback and
+contributions are always appreciated!
