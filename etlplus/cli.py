@@ -1,8 +1,8 @@
 """
-ETLPlus Command-Line Interface
-==============================
+etlplus.cli
+===========
 
-Entry point for the ``etlplus`` CLI.
+Entry point for the ``etlplus`` command-line Interface (CLI).
 
 This module wires subcommands via ``argparse`` using
 ``set_defaults(func=...)`` so dispatch is clean and extensible.
@@ -17,91 +17,19 @@ Subcommands
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from pathlib import Path
 from textwrap import dedent
-from typing import Any
-from typing import cast
-from urllib.parse import urlsplit
-from urllib.parse import urlunsplit
 
-import requests
-
-from etlplus import __version__
-from etlplus.api import compute_sleep_seconds
-from etlplus.api import EndpointClient
-from etlplus.api import PaginationConfig
-from etlplus.config import load_pipeline_config
-from etlplus.extract import extract
-from etlplus.load import load
-from etlplus.transform import transform
-from etlplus.validate import validate
-from etlplus.validation.utils import maybe_validate as _maybe_validate
-
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
-
-
-def _json_type(option: str) -> Any:
-    """
-    Argparse ``type=`` hook that parses a JSON string.
-
-    Parameters
-    ----------
-    option
-        Raw CLI string to parse as JSON.
-
-    Returns
-    -------
-    Any
-        Parsed JSON value.
-
-    Raises
-    ------
-    argparse.ArgumentTypeError
-        If the input cannot be parsed as JSON.
-    """
-
-    try:
-        return json.loads(option)
-    except json.JSONDecodeError as e:  # pragma: no cover - argparse path
-        raise argparse.ArgumentTypeError(
-            f'Invalid JSON: {e.msg} (pos {e.pos})',
-        ) from e
-
-
-def _print_json(obj: Any) -> None:
-    """
-    Pretty-print JSON to stdout using UTF-8 without ASCII escaping.
-
-    Parameters
-    ----------
-    obj
-        Object to serialize as JSON.
-    """
-
-    print(json.dumps(obj, indent=2, ensure_ascii=False))
-
-
-def _write_json(obj: Any, out: str | Path) -> None:
-    """
-    Write JSON to ``out``, creating parent dirs as needed.
-
-    Parameters
-    ----------
-    obj
-        Object to serialize as JSON.
-    out : str | Path
-        Output file path.
-    """
-
-    path = Path(out)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(obj, indent=2, ensure_ascii=False),
-        encoding='utf-8',
-    )
+from . import __version__
+from .config import load_pipeline_config
+from .extract import extract
+from .load import load
+from .run import run
+from .transform import transform
+from .utils import json_type
+from .utils import print_json
+from .utils import write_json
+from .validate import validate
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -127,10 +55,10 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
     data = extract(args.source_type, args.source, format=args.format)
     if args.output:
-        _write_json(data, args.output)
+        write_json(data, args.output)
         print(f'Data extracted and saved to {args.output}')
     else:
-        _print_json(data)
+        print_json(data)
 
     return 0
 
@@ -152,7 +80,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     # ``args.rules`` already parsed by ``_json_type`` (defaults to {}).
     result = validate(args.source, args.rules)
-    _print_json(result)
+    print_json(result)
 
     return 0
 
@@ -175,10 +103,10 @@ def cmd_transform(args: argparse.Namespace) -> int:
     # ``args.operations`` already parsed by ``_json_type`` (defaults to {}).
     data = transform(args.source, args.operations)
     if args.output:
-        _write_json(data, args.output)
+        write_json(data, args.output)
         print(f'Data transformed and saved to {args.output}')
     else:
-        _print_json(data)
+        print_json(data)
 
     return 0
 
@@ -204,7 +132,7 @@ def cmd_load(args: argparse.Namespace) -> int:
         args.target,
         format=args.format,
     )
-    _print_json(result)
+    print_json(result)
 
     return 0
 
@@ -228,465 +156,21 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
     cfg = load_pipeline_config(args.config, substitute=True)
 
-    def _merge(
-        a: dict[str, Any] | None,
-        b: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        """Shallow merge two dicts, later values override earlier."""
-        out: dict[str, Any] = {}
-        if a:
-            out.update(a)
-        if b:
-            out.update(b)
-        return out
-
-    def _build_req_kwargs(
-        *,
-        params: dict[str, Any] | None = None,
-        headers: dict[str, Any] | None = None,
-        timeout: float | int | None = None,
-    ) -> dict[str, Any]:
-        kw: dict[str, Any] = {}
-        if params:
-            kw['params'] = params
-        if headers:
-            kw['headers'] = headers
-        if timeout is not None:
-            kw['timeout'] = timeout
-        return kw
-
-    def _build_session_from_config(
-        cfg: dict[str, Any] | None,
-    ) -> requests.Session:
-        """Create a requests.Session from a simple config mapping.
-
-        Supported keys: headers, params, auth, verify, cert, proxies,
-        cookies, trust_env.
-        """
-        s = requests.Session()
-        if not cfg:
-            return s
-        headers = cfg.get('headers')
-        if isinstance(headers, dict):
-            s.headers.update(headers)
-        params = cfg.get('params')
-        if isinstance(params, dict):
-            # requests supports Session.params on recent versions
-            try:
-                setattr(s, 'params', params)
-            except Exception:
-                pass
-        auth = cfg.get('auth')
-        if auth is not None:
-            if isinstance(auth, (list, tuple)) and len(auth) == 2:
-                s.auth = (auth[0], auth[1])  # type: ignore[assignment]
-            else:
-                s.auth = auth  # type: ignore[assignment]
-        if 'verify' in cfg:
-            s.verify = cfg.get('verify')  # type: ignore[assignment]
-        cert = cfg.get('cert')
-        if cert is not None:
-            s.cert = cert  # type: ignore[assignment]
-        proxies = cfg.get('proxies')
-        if isinstance(proxies, dict):
-            s.proxies.update(proxies)
-        cookies = cfg.get('cookies')
-        if isinstance(cookies, dict):
-            try:
-                s.cookies.update(cookies)
-            except Exception:
-                pass
-        if 'trust_env' in cfg:
-            try:
-                # type: ignore[attr-defined]
-                s.trust_env = bool(cfg.get('trust_env'))
-            except Exception:
-                pass
-        return s
-
     # List mode
     if getattr(args, 'list', False) and not getattr(args, 'run', None):
         jobs = [j.name for j in cfg.jobs if j.name]
-        _print_json({'jobs': jobs})
+        print_json({'jobs': jobs})
         return 0
 
     # Run mode
     run_job = getattr(args, 'run', None)
     if run_job:
-        # Lookup job by name
-        job = next((j for j in cfg.jobs if j.name == run_job), None)
-        if not job:
-            raise ValueError(f'Job not found: {run_job}')
+        result = run(job=run_job)
 
-        # Index sources/targets by name
-        sources_by_name = {getattr(s, 'name', None): s for s in cfg.sources}
-        targets_by_name = {getattr(t, 'name', None): t for t in cfg.targets}
-
-        # Helper: coalesce records into list[dict].
-        def _coalesce_records(x: Any, records_path: str | None) -> list[dict]:
-            def _get_path(obj: Any, path: str) -> Any:
-                cur = obj
-                for part in path.split('.'):  # simple dotted path
-                    if isinstance(cur, dict):
-                        cur = cur.get(part)
-                    else:
-                        return None
-                return cur
-
-            data = x
-            if isinstance(records_path, str) and records_path:
-                data = _get_path(x, records_path)
-
-            if isinstance(data, list):
-                out: list[dict] = []
-                for item in data:
-                    if isinstance(item, dict):
-                        out.append(item)
-                    else:
-                        out.append({'value': item})
-                return out
-            if isinstance(data, dict):
-                items = data.get('items')
-                if isinstance(items, list):
-                    return _coalesce_records(items, None)
-                return [data]
-            return [{'value': data}]
-
-        # Extract.
-        if not job.extract:
-            raise ValueError('Job missing "extract" section')
-        source_name = job.extract.source
-        if source_name not in sources_by_name:
-            raise ValueError(f'Unknown source: {source_name}')
-        source_obj = sources_by_name[source_name]
-        ex_opts: dict[str, Any] = job.extract.options or {}
-
-        data: Any
-        stype = getattr(source_obj, 'type', None)
-        match stype:
-            case 'file':
-                path = getattr(source_obj, 'path', None)
-                fmt = ex_opts.get('format') or getattr(
-                    source_obj, 'format', 'json',
-                )
-                if not path:
-                    raise ValueError('File source missing "path"')
-                data = extract('file', path, format=fmt)
-            case 'database':
-                conn = getattr(source_obj, 'connection_string', '')
-                data = extract('database', conn)
-            case 'api':
-                # Build URL, params, headers, pagination, rate_limit, retry,
-                # session config.
-                url: str | None = getattr(source_obj, 'url', None)
-                params: dict[str, Any] = dict(
-                    getattr(source_obj, 'params', {}) or {},
-                )
-                headers: dict[str, str] = dict(
-                    getattr(source_obj, 'headers', {}) or {},
-                )
-                pagination = getattr(source_obj, 'pagination', None)
-                rate_limit = getattr(source_obj, 'rate_limit', None)
-                retry = getattr(source_obj, 'retry', None)
-                retry_network_errors = bool(
-                    getattr(source_obj, 'retry_network_errors', False),
-                )
-                session_cfg = getattr(source_obj, 'session', None)
-
-                api_name = getattr(source_obj, 'api', None)
-                endpoint_name = getattr(source_obj, 'endpoint', None)
-                if api_name and endpoint_name:
-                    api_cfg = cfg.apis.get(api_name)
-                    if not api_cfg:
-                        raise ValueError(f'API not defined: {api_name}')
-                    ep = api_cfg.endpoints.get(endpoint_name)
-                    if not ep:
-                        raise ValueError(
-                            f'Endpoint "{endpoint_name}" not defined in API '
-                            f'"{api_name}"',
-                        )
-                    # Compose and inherit
-                    base = api_cfg.base_url.rstrip('/')
-                    path = ep.path.lstrip('/')
-                    url = f'{base}/{path}'
-                    params = {**ep.params, **params}
-                    headers = {**api_cfg.headers, **headers}
-                    pagination = pagination or ep.pagination
-                    rate_limit = rate_limit or ep.rate_limit
-                    retry = retry or getattr(ep, 'retry', None) or getattr(
-                        api_cfg, 'retry', None,
-                    )
-                    retry_network_errors = (
-                        retry_network_errors
-                        or bool(getattr(ep, 'retry_network_errors', False))
-                        or bool(
-                            getattr(api_cfg, 'retry_network_errors', False),
-                        )
-                    )
-                    # Merge session config: api -> endpoint -> source
-                    api_sess = getattr(api_cfg, 'session', None)
-                    ep_sess = getattr(ep, 'session', None)
-                    merged: dict[str, Any] = {}
-                    if isinstance(api_sess, dict):
-                        merged.update(api_sess)
-                    if isinstance(ep_sess, dict):
-                        merged.update(ep_sess)
-                    if isinstance(session_cfg, dict):
-                        merged.update(session_cfg)
-                    session_cfg = merged or None
-
-                # Apply overrides from job.extract.options.
-                params = _merge(params, ex_opts.get('params'))
-                headers = _merge(headers, ex_opts.get('headers'))
-                timeout = ex_opts.get('timeout')
-                pag_ov = ex_opts.get('pagination') or {}
-                rl_ov = ex_opts.get('rate_limit') or {}
-                rty_ov = (
-                    ex_opts.get('retry') if 'retry' in ex_opts else None
-                )
-                rne_ov = (
-                    ex_opts.get('retry_network_errors')
-                    if 'retry_network_errors' in ex_opts
-                    else None
-                )
-                sess_ov = ex_opts.get('session') or {}
-
-                # Compute rate limit sleep using helper
-                sleep_s = compute_sleep_seconds(rate_limit, rl_ov)
-
-                # Apply retry overrides (if present).
-                if rty_ov is not None:
-                    retry = rty_ov
-                if rne_ov is not None:
-                    retry_network_errors = bool(rne_ov)
-
-                # Apply session overrides (merge).
-                if isinstance(sess_ov, dict):
-                    base_cfg = dict(session_cfg or {})
-                    base_cfg.update(sess_ov)
-                    session_cfg = base_cfg
-
-                # Pagination params
-                ptype = None
-                records_path = None
-                max_pages = None
-                max_records = None
-                if pagination:
-                    ptype = (pagination.type or '').strip().lower()
-                    records_path = pagination.records_path
-                    max_pages = pagination.max_pages
-                    max_records = pagination.max_records
-                # Override with job-level
-                if pag_ov:
-                    ptype = (pag_ov.get('type') or ptype or '').strip().lower()
-                    records_path = pag_ov.get('records_path', records_path)
-                    max_pages = pag_ov.get('max_pages', max_pages)
-                    max_records = pag_ov.get('max_records', max_records)
-
-                # Delegate to pagination helper
-                pag_cfg: dict[str, Any] | None = None
-                if ptype:
-                    pag_cfg = {
-                        'type': ptype,
-                        'records_path': records_path,
-                        'max_pages': max_pages,
-                        'max_records': max_records,
-                    }
-                    if ptype in {'page', 'offset'}:
-                        page_param = (
-                            pag_ov.get('page_param') if pag_ov else None
-                        )
-                        size_param = (
-                            pag_ov.get('size_param') if pag_ov else None
-                        )
-                        start_page = (
-                            pag_ov.get('start_page') if pag_ov else None
-                        )
-                        page_size = (
-                            pag_ov.get('page_size') if pag_ov else None
-                        )
-                        if pagination:
-                            page_param = (
-                                page_param or pagination.page_param or 'page'
-                            )
-                            size_param = (
-                                size_param
-                                or pagination.size_param
-                                or 'per_page'
-                            )
-                            start_page = (
-                                start_page or pagination.start_page or 1
-                            )
-                            page_size = (
-                                page_size or pagination.page_size or 100
-                            )
-                        pag_cfg.update(
-                            {
-                                'page_param': str(page_param or 'page'),
-                                'size_param': str(size_param or 'per_page'),
-                                'start_page': int(start_page or 1),
-                                'page_size': int(page_size or 100),
-                            },
-                        )
-                    elif ptype == 'cursor':
-                        cursor_param = (
-                            pag_ov.get('cursor_param') if pag_ov else None
-                        )
-                        cursor_path = (
-                            pag_ov.get('cursor_path') if pag_ov else None
-                        )
-                        page_size = pag_ov.get('page_size') if pag_ov else None
-                        start_cursor = None
-                        if pagination:
-                            cursor_param = (
-                                cursor_param
-                                or pagination.cursor_param
-                                or 'cursor'
-                            )
-                            cursor_path = (
-                                cursor_path or pagination.cursor_path
-                            )
-                            page_size = (
-                                page_size or pagination.page_size or 100
-                            )
-                            start_cursor = pagination.start_cursor
-                        pag_cfg.update(
-                            {
-                                'cursor_param': str(cursor_param or 'cursor'),
-                                'cursor_path': cursor_path,
-                                'page_size': int(page_size or 100),
-                                'start_cursor': start_cursor,
-                            },
-                        )
-
-                if not url:
-                    raise ValueError('API source missing URL')
-                # Use instance-based pagination via EndpointClient.
-                parts = urlsplit(url)
-                base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-
-                # Build session object if config provided.
-                sess_obj = (
-                    _build_session_from_config(session_cfg)
-                    if isinstance(session_cfg, dict)
-                    else None
-                )
-                client = EndpointClient(
-                    base_url=base,
-                    endpoints={},
-                    retry=retry,
-                    retry_network_errors=retry_network_errors,
-                    session=sess_obj,
-                )
-                data = client.paginate_url(
-                    url,
-                    params,
-                    headers,
-                    timeout,
-                    cast(PaginationConfig | None, pag_cfg),
-                    sleep_seconds=sleep_s,
-                )
-            case _:
-                raise ValueError(f'Unsupported source type: {stype}')
-
-        # DRY: unified validation helper (pre/post transform)
-        val_ref = job.validate
-        enabled_validation = val_ref is not None
-        if enabled_validation:
-            # Type narrowing for static checkers
-            assert val_ref is not None
-            rules = cfg.validations.get(val_ref.ruleset, {})
-            severity = (
-                (val_ref.severity or 'error').lower()
-            )
-            phase = (
-                (val_ref.phase or 'before_transform').lower()
-            )
-        else:
-            rules = {}
-            severity = 'error'
-            phase = 'before_transform'
-
-        # Pre-transform validation (if configured)
-        data = _maybe_validate(
-            data,
-            'before_transform',
-            enabled=enabled_validation,
-            rules=rules,
-            phase=phase,
-            severity=severity,
-            validate_fn=validate,  # type: ignore[arg-type]
-            print_json_fn=_print_json,
-        )
-
-        # Transform (optional).
-        if job.transform:
-            ops: Any = cfg.transforms.get(job.transform.pipeline, {})
-            data = transform(data, ops)
-
-        # Post-transform validation (if configured)
-        data = _maybe_validate(
-            data,
-            'after_transform',
-            enabled=enabled_validation,
-            rules=rules,
-            phase=phase,
-            severity=severity,
-            validate_fn=validate,  # type: ignore[arg-type]
-            print_json_fn=_print_json,
-        )
-
-        # Load.
-        if not job.load:
-            raise ValueError('Job missing "load" section')
-        target_name = job.load.target
-        if target_name not in targets_by_name:
-            raise ValueError(f'Unknown target: {target_name}')
-        target_obj = targets_by_name[target_name]
-        overrides = job.load.overrides or {}
-
-        ttype = getattr(target_obj, 'type', None)
-        match ttype:
-            case 'file':
-                path = (
-                    overrides.get('path')
-                    or getattr(target_obj, 'path', None)
-                )
-                fmt = overrides.get('format') or getattr(
-                    target_obj, 'format', 'json',
-                )
-                if not path:
-                    raise ValueError('File target missing "path"')
-                result = load(data, 'file', path, format=fmt)
-            case 'api':
-                url = overrides.get('url') or getattr(target_obj, 'url', None)
-                method = overrides.get('method') or getattr(
-                    target_obj, 'method', 'post',
-                )
-                headers = {
-                    **(getattr(target_obj, 'headers', {}) or {}),
-                    **(overrides.get('headers') or {}),
-                }
-                kwargs: dict[str, Any] = {}
-                if headers:
-                    kwargs['headers'] = headers
-                if 'timeout' in overrides:
-                    kwargs['timeout'] = overrides['timeout']
-                if not url:
-                    raise ValueError('API target missing "url"')
-                result = load(data, 'api', url, method=method, **kwargs)
-            case 'database':
-                conn = overrides.get('connection_string') or getattr(
-                    target_obj, 'connection_string', '',
-                )
-                result = load(data, 'database', str(conn))
-            case _:
-                raise ValueError(f'Unsupported target type: {ttype}')
-
-        _print_json({'status': 'ok', 'result': result})
+        print_json({'status': 'ok', 'result': result})
         return 0
 
-    # Default: print summary
+    # Default: print summary.
     summary = {
         'name': cfg.name,
         'version': cfg.version,
@@ -694,7 +178,66 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         'targets': [getattr(t, 'name', None) for t in cfg.targets],
         'jobs': [j.name for j in cfg.jobs if j.name],
     }
-    _print_json(summary)
+    print_json(summary)
+
+    return 0
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    """
+    Prints ETL job names from a pipeline YAML configuration.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    cfg = load_pipeline_config(args.config, substitute=True)
+    jobs = [j.name for j in cfg.jobs if j.name]
+    print_json({'jobs': jobs})
+
+    return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """
+    Execute an ETL job end-to-end from a pipeline YAML configuration.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+
+    cfg = load_pipeline_config(args.config, substitute=True)
+
+    run_job = getattr(args, 'run', None)
+    if run_job:
+        result = run(job=run_job)
+
+        print_json({'status': 'ok', 'result': result})
+        return 0
+
+    # Default: print summary.
+    summary = {
+        'name': cfg.name,
+        'version': cfg.version,
+        'sources': [getattr(s, 'name', None) for s in cfg.sources],
+        'targets': [getattr(t, 'name', None) for t in cfg.targets],
+        'jobs': [j.name for j in cfg.jobs if j.name],
+    }
+    print_json(summary)
 
     return 0
 
@@ -784,7 +327,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument(
         '--rules',
-        type=_json_type,
+        type=json_type,
         default={},
         help='Validation rules as JSON string',
     )
@@ -802,7 +345,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     transform_parser.add_argument(
         '--operations',
-        type=_json_type,
+        type=json_type,
         default={},
         help='Transformation operations as JSON string',
     )
@@ -865,8 +408,40 @@ def create_parser() -> argparse.ArgumentParser:
     )
     pipe_parser.set_defaults(func=cmd_pipeline)
 
-    return parser
+    # Define "list" command.
+    list_parser = subparsers.add_parser(
+        'list',
+        help='List ETL pipeline metadata',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    list_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    list_parser.add_argument(
+        '--pipelines',
+        action='store_true',
+        help='List ETL pipelines',
+    )
+    list_parser.add_argument(
+        '--sources',
+        action='store_true',
+        help='List data sources',
+    )
+    list_parser.add_argument(
+        '--targets',
+        action='store_true',
+        help='List data targets',
+    )
+    list_parser.add_argument(
+        '--transforms',
+        action='store_true',
+        help='List data transforms',
+    )
+    list_parser.set_defaults(func=cmd_list)
 
+    return parser
 
 # -- Main -- #
 
