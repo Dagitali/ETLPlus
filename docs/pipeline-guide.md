@@ -37,8 +37,9 @@ apis:
       Accept: application/vnd.github+json
       Authorization: "Bearer ${GITHUB_TOKEN}"
     endpoints:
-      org_repos: "/orgs/${GITHUB_ORG}/repos"
-        params:
+      org_repos:
+        path: "/orgs/${GITHUB_ORG}/repos"
+        query_params:
           per_page: 100
           type: public
         pagination:
@@ -50,6 +51,8 @@ apis:
         rate_limit:
           max_per_sec: 2
 ```
+
+Note: Use `query_params` for URL query string pairs (e.g., `?key=value`). Older keys like `params` or `query` are not supported to avoid ambiguity with body/form fields.
 
 Pagination tips (mirrors `etlplus.api`):
 - Page/offset styles: use `page_param`, `size_param`, `start_page`, and `page_size`.
@@ -120,7 +123,7 @@ sources:
 
   - name: github_repos
     type: api
-    name: github      # reference into apis
+    service: github   # reference into apis
     endpoint: org_repos
 ```
 
