@@ -37,10 +37,12 @@ vars:
 
 apis:
   github:
-    base_url: "https://api.github.com"
-    headers:
-      Accept: application/vnd.github+json
-      Authorization: "Bearer ${GITHUB_TOKEN}"
+    profiles:
+      default:
+        base_url: "https://api.github.com"
+        headers:
+          Accept: application/vnd.github+json
+          Authorization: "Bearer ${GITHUB_TOKEN}"
     endpoints:
       org_repos:
         path: "/orgs/${GITHUB_ORG}/repos"
@@ -70,9 +72,11 @@ apis:
       # repo_issues: "/repos/${GITHUB_ORG}/${REPO_NAME}/issues"
       # repo_pull_requests: "/repos/${GITHUB_ORG}/${REPO_NAME}/pulls"
   my_api:
-    base_url: "https://api.example.com/v1"
-    headers:
-      Authorization: "Bearer ${MY_API_TOKEN}"
+    profiles:
+      default:
+        base_url: "https://api.example.com/v1"
+        headers:
+          Authorization: "Bearer ${MY_API_TOKEN}"
 
 databases:
   mssql:
