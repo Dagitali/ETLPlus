@@ -534,10 +534,10 @@ class SourceApi:
         Type of the source (default: "api").
     url : str | None
         URL of the API endpoint.
-    params : dict[str, Any]
-        Query parameters for the API request.
     headers : dict[str, str]
         Headers to include in the API request.
+    query_params : dict[str, Any]
+        Query parameters for the API request.
     pagination : PaginationConfig | None
         Pagination configuration for the API request.
     rate_limit : RateLimitConfig | None
@@ -560,12 +560,12 @@ class SourceApi:
 
     # Direct form
     url: str | None = None
-    params: dict[str, Any] = field(default_factory=dict)
     headers: dict[str, str] = field(default_factory=dict)
+    query_params: dict[str, Any] = field(default_factory=dict)
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
-    # Reference form (to top-level apis/endpoints)
+    # Reference form (to top-level APIs/endpoints)
     api: str | None = None
     endpoint: str | None = None
 
@@ -639,20 +639,31 @@ class TargetApi:
     type : str
         Type of the target (default: "api").
     url : str | None
-        URL of the API endpoint.
+        Absolute URL of the API endpoint.
     method : str | None
-        HTTP method to use (e.g., "POST", "PUT").
+        HTTP method to use (e.g., "POST", "PUT"). Defaults to "post" in the
+        runner when omitted.
     headers : dict[str, str]
         Headers to include in the API request.
+    api : str | None
+        Optional reference to a named API service (alias: service).
+    endpoint : str | None
+        Optional endpoint key within the referenced API service.
     """
 
     # -- Attributes -- #
 
     name: str
     type: str = 'api'
+
+    # Direct form
     url: str | None = None
     method: str | None = None
     headers: dict[str, str] = field(default_factory=dict)
+
+    # Reference form (to top-level APIs/endpoints)
+    api: str | None = None
+    endpoint: str | None = None
 
 
 @dataclass(slots=True)
@@ -1025,11 +1036,11 @@ class PipelineConfig:
                         name=sname,
                         type='api',
                         url=s.get('url'),
-                        params=dict(s.get('params', {}) or {}),
                         headers={
                             k: str(v)
                             for k, v in (s.get('headers', {}) or {}).items()
                         },
+                        query_params=dict(s.get('query_params', {}) or {}),
                         pagination=PaginationConfig.from_obj(
                             s.get('pagination'),
                         ),
@@ -1077,6 +1088,8 @@ class PipelineConfig:
                             k: str(v)
                             for k, v in (t.get('headers', {}) or {}).items()
                         },
+                        api=t.get('api') or t.get('service'),
+                        endpoint=t.get('endpoint'),
                     ),
                 )
             elif ttype == 'database':
