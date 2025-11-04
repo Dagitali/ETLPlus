@@ -1,8 +1,11 @@
 # Pipeline Authoring Guide
 
-This guide explains how to author an ETLPlus pipeline YAML, using the example at `in/pipeline.yml` as a reference.
+This guide explains how to author an ETLPlus pipeline YAML, using the example at `in/pipeline.yml`
+as a reference.
 
-ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative description that your runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`, `validate`, `transform`, and `load`.
+ETLPlus focuses on simple, JSON-first ETL.  The pipeline file is a declarative description that your
+runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
+`validate`, `transform`, and `load`.
 
 ## Top-level structure
 
@@ -22,12 +25,13 @@ vars:
   out_dir: out
 ```
 
-- `profile.env` is a convenient place to document expected environment variables. Resolve them in your runner before invoking ETLPlus functions.
+- `profile.env` is a convenient place to document expected environment variables.  Resolve them in
+  your runner before invoking ETLPlus functions.
 - `vars` collects reusable paths/values for templating.
 
 ## APIs
 
-Declare HTTP APIs and endpoints under `apis`. You can define headers, endpoints, and pagination:
+Declare HTTP APIs and endpoints under `apis`.  You can define headers, endpoints, and pagination:
 
 ```yaml
 apis:
@@ -52,7 +56,8 @@ apis:
           max_per_sec: 2
 ```
 
-Note: Use `query_params` for URL query string pairs (e.g., `?key=value`). Older keys like `params` or `query` are not supported to avoid ambiguity with body/form fields.
+Note: Use `query_params` for URL query string pairs (e.g., `?key=value`).  Older keys like `params`
+or `query` are not supported to avoid ambiguity with body/form fields.
 
 Pagination tips (mirrors `etlplus.api`):
 - Page/offset styles: use `page_param`, `size_param`, `start_page`, and `page_size`.
@@ -85,7 +90,8 @@ databases:
         timeout: 30
 ```
 
-Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for orchestration that calls into DB clients.
+Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
+orchestration that calls into DB clients.
 
 ## File systems
 
@@ -186,7 +192,8 @@ targets:
 
 ## Jobs
 
-Jobs orchestrate the flow end-to-end. Each job can reference a source, validations, transform, and target:
+Jobs orchestrate the flow end-to-end.  Each job can reference a source, validations, transform, and
+target:
 
 ```yaml
 jobs:
@@ -234,7 +241,8 @@ jobs:
 
 - Use environment variables for secrets and org-specific values; resolve them in your runner.
 - Apply safety caps for API pagination (`max_pages`, `max_records`) when running in CI.
-- Validation controls: set `severity: warn|error` and `phase: before_transform|after_transform|both`.
+- Validation controls: set `severity: warn|error` and
+  `phase: before_transform|after_transform|both`.
 - Keep pipelines composable; factor common transforms into named pipelines reused across jobs.
 
 For the HTTP client and pagination API, see `etlplus/api/README.md`.
