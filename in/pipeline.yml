@@ -58,7 +58,7 @@ apis:
       org_repos:
         method: GET
         path: "/orgs/${GITHUB_ORG}/repos"
-        params:
+        query_params:
           per_page: 100
           type: public
         pagination:
@@ -104,7 +104,7 @@ apis:
       list-users:
         method: GET
         path: /users
-        query:
+        query_params:
           active: true
       get-user:
         method: GET
