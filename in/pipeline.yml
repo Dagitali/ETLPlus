@@ -104,11 +104,22 @@ apis:
       list-users:
         method: GET
         path: /users
+        query:
+          active: true
       get-user:
         method: GET
         path: /users/{id}
-        pagination:
-          type: none
+      upload-avatar:
+        method: POST
+        path: /users/{id}/avatar
+        path_params:
+          id: int
+        body:
+          type: file
+          file_path: ./${data_dir}/avatar.png
+      list-events:
+        method: GET
+        path: /events
 
 databases:
   mssql:
