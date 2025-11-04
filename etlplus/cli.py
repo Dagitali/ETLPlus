@@ -165,7 +165,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     # Run mode
     run_job = getattr(args, 'run', None)
     if run_job:
-        result = run(job=run_job)
+        result = run(job=run_job, config_path=args.config)
 
         print_json({'status': 'ok', 'result': result})
         return 0
@@ -224,7 +224,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     run_job = getattr(args, 'run', None)
     if run_job:
-        result = run(job=run_job)
+        result = run(job=run_job, config_path=args.config)
 
         print_json({'status': 'ok', 'result': result})
         return 0
