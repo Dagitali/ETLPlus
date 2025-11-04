@@ -41,6 +41,9 @@ apis:
       default: &profile_defaults
         base_url: "https://api.github.com"
         base_path: /v1
+        auth:
+          type: bearer
+          token: "${GITHUB_TOKEN}"  # Use env/substitution; avoid plain secrets.
         headers:
           Accept: application/vnd.github+json
           Authorization: "Bearer ${GITHUB_TOKEN}"
@@ -91,6 +94,10 @@ apis:
     profiles:
       default:
         base_url: "https://api.example.com/v1"
+        base_path: /v1
+        auth:
+          type: bearer
+          token: ${MY_API_TOKEN}  # Use env/substitution; avoid plain secrets.
         headers:
           Authorization: "Bearer ${MY_API_TOKEN}"
     endpoints:
