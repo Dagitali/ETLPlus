@@ -1,8 +1,31 @@
 """
-ETLPlus Enums
+etlplus.enums
 =======================
 
 Shared enumeration types used across ETLPlus modules.
+
+Public API
+----------
+- AggregateName : CoercibleStrEnum
+    Enum of supported aggregation functions.
+- CoercibleStrEnum : enum.StrEnum
+    Base class for string enums with coercion helpers.
+- DataConnectorType : CoercibleStrEnum
+    Enum of supported data connector types.
+- FileFormat : CoercibleStrEnum
+    Enum of supported file formats.
+- HttpMethod : CoercibleStrEnum
+    Enum of supported HTTP methods.
+- OperatorName : CoercibleStrEnum
+    Enum of supported comparison operators.
+- PipelineStep : CoercibleStrEnum
+    Enum of pipeline step names.
+- coerce_data_connector_type : callable
+    Normalize textual data connector values to :class:`DataConnectorType`.
+- coerce_file_format : callable
+    Normalize textual file format values to :class:`FileFormat`.
+- coerce_http_method : callable
+    Normalize textual HTTP method values to :class:`HttpMethod`.
 """
 from __future__ import annotations
 
@@ -16,10 +39,10 @@ from .types import OperatorFunc
 from .types import StrStrMap
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
-__all__ = (
+__all__ = [
     'AggregateName',
     'CoercibleStrEnum',
     'DataConnectorType',
@@ -30,7 +53,7 @@ __all__ = (
     'coerce_data_connector_type',
     'coerce_file_format',
     'coerce_http_method',
-)
+]
 
 
 # SECTION: CLASSES ========================================================== #
