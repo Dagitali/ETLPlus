@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
 
 from .file import read_yaml
 from .types import StrAnyMap
@@ -269,6 +271,85 @@ class ApiConfig:
     headers: dict[str, str] = field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
     profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
+
+    # -- Instance Methods -- #
+
+    def build_endpoint_url(
+        self, endpoint: EndpointConfig,
+    ) -> str:
+        """
+        Compose a full URL from base_url, base_path, and endpoint.path.
+
+        This mirrors EndpointClient.url path-join semantics, but uses
+        the model's effective_base_url() which includes profile base_path.
+
+        Parameters
+        ----------
+        endpoint : EndpointConfig
+            The endpoint configuration to build the URL for.
+
+        Returns
+        -------
+        str
+            The composed URL for the endpoint.
+        """
+
+        base = self.effective_base_url()
+        parts = urlsplit(base)
+        base_path = parts.path.rstrip('/')
+        rel_norm = '/' + endpoint.path.lstrip('/')
+        path = (base_path + rel_norm) if base_path else rel_norm
+
+        return urlunsplit(
+            (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
+        )
+
+    def effective_base_path(self) -> str | None:
+        """
+        Return the selected profile's base_path, if any.
+
+        Selection mirrors base_url/header selection: use the 'default'
+        profile when present, otherwise the first available profile.
+        For legacy flat shapes (no profiles), returns None.
+
+        Returns
+        -------
+        str | None
+            The effective base path for the API.
+        """
+
+        if not self.profiles:
+            return None
+        prof_name = (
+            'default' if 'default' in self.profiles
+            else next(iter(self.profiles.keys()))
+        )
+
+        return getattr(self.profiles[prof_name], 'base_path', None)
+
+    def effective_base_url(self) -> str:
+        """
+        Compute base_url combined with effective base_path, if present.
+
+        This composes the URL path as:
+          urlsplit(base_url).path + '/' + base_path + ...
+        ensuring single slashes between segments.
+
+        Returns
+        -------
+        str
+            The composed URL for the endpoint.
+        """
+
+        parts = urlsplit(self.base_url)
+        base_path = parts.path.rstrip('/')
+        extra = self.effective_base_path()
+        extra_norm = ('/' + extra.lstrip('/')) if extra else ''
+        path = (base_path + extra_norm) if (base_path or extra_norm) else ''
+
+        return urlunsplit(
+            (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
+        )
 
     # -- Static Methods -- #
 
