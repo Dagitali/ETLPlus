@@ -80,8 +80,8 @@ def load_pipeline_config(
     """
     Read a pipeline YAML file into a PipelineConfig dataclass.
 
-    If `substitute` is True, perform ${VAR} substitutions using the config's
-    `vars` plus the provided `env` (or os.environ if omitted).
+    Delegates to PipelineConfig.from_yaml for the actual construction and
+    optional variable substitution.
 
     Parameters
     ----------
@@ -94,18 +94,7 @@ def load_pipeline_config(
         os.environ will be used, by default None.
     """
 
-    raw = read_yaml(Path(path))
-    if not isinstance(raw, dict):
-        raise TypeError('Pipeline YAML must have a mapping/object root')
-
-    cfg = PipelineConfig.from_dict(raw)
-
-    if substitute:
-        env_map = dict(env) if env is not None else dict(os.environ)
-        resolved = _deep_substitute(raw, cfg.vars, env_map)
-        cfg = PipelineConfig.from_dict(resolved)
-
-    return cfg
+    return PipelineConfig.from_yaml(path, substitute=substitute, env=env)
 
 
 # SECTION: CLASSES (Pagination/Rate) ======================================== #
@@ -721,6 +710,53 @@ class PipelineConfig:
     transforms: dict[str, dict[str, Any]] = field(default_factory=dict)
     targets: list[Target] = field(default_factory=list)
     jobs: list[JobConfig] = field(default_factory=list)
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_yaml(
+        cls,
+        path: StrPath,
+        *,
+        substitute: bool = False,
+        env: StrStrMap | None = None,
+    ) -> PipelineConfig:
+        """
+        Create a PipelineConfig instance from a YAML file.
+
+        This convenience constructor mirrors load_pipeline_config, reading the
+        YAML, validating its root type, constructing the config via from_dict,
+        and optionally performing ${VAR} substitutions using cfg.vars combined
+        with the provided env mapping (or os.environ if omitted).
+
+        Parameters
+        ----------
+        path : StrPath
+            Path to the pipeline YAML file.
+        substitute : bool, optional
+            Whether to perform variable substitution, by default False.
+        env : StrStrMap | None, optional
+            Environment variable mapping to use for substitution. If None,
+            os.environ will be used, by default None.
+
+        Returns
+        -------
+        PipelineConfig
+            The created PipelineConfig instance.
+        """
+
+        raw = read_yaml(Path(path))
+        if not isinstance(raw, dict):
+            raise TypeError('Pipeline YAML must have a mapping/object root')
+
+        cfg = cls.from_dict(raw)
+
+        if substitute:
+            env_map = dict(env) if env is not None else dict(os.environ)
+            resolved = _deep_substitute(raw, cfg.vars, env_map)
+            cfg = cls.from_dict(resolved)
+
+        return cfg
 
     # -- Static Methods -- #
 
