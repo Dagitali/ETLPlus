@@ -40,6 +40,7 @@ apis:
     profiles:
       default: &profile_defaults
         base_url: "https://api.github.com"
+        base_path: /v1
         headers:
           Accept: application/vnd.github+json
           Authorization: "Bearer ${GITHUB_TOKEN}"
@@ -49,6 +50,7 @@ apis:
       prod-v2:
         <<: *profile_defaults
         base_url: "https://api.github.com"
+        base_path: /v2
     endpoints:
       org_repos:
         method: GET
