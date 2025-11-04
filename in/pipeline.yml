@@ -38,16 +38,17 @@ vars:
 apis:
   github:
     profiles:
-      default:
+      default: &profile_defaults
         base_url: "https://api.github.com"
         headers:
           Accept: application/vnd.github+json
           Authorization: "Bearer ${GITHUB_TOKEN}"
+      staging:
+        <<: *profile_defaults
+        base_url: "https://staging.api.github.com"
       prod-v2:
+        <<: *profile_defaults
         base_url: "https://api.github.com"
-        headers:
-          Accept: application/vnd.github+json
-          Authorization: "Bearer ${GITHUB_TOKEN}"
     endpoints:
       org_repos:
         method: GET
@@ -72,11 +73,18 @@ apis:
           # Choose one: sleep_seconds or max_per_sec
           # sleep_seconds: 0.5
           max_per_sec: 2
-
-      # repo_commits: "/repos/${GITHUB_ORG}/${REPO_NAME}/commits"
-      # repo_contents: "/repos/${GITHUB_ORG}/${REPO_NAME}/contents"
-      # repo_issues: "/repos/${GITHUB_ORG}/${REPO_NAME}/issues"
-      # repo_pull_requests: "/repos/${GITHUB_ORG}/${REPO_NAME}/pulls"
+      repo_commits:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/commits"
+      repo_contents:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/contents"
+      repo_issues:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/issues"
+      repo_pull_requests:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/pulls"
   my_api:
     profiles:
       default:
