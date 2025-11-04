@@ -43,8 +43,14 @@ apis:
         headers:
           Accept: application/vnd.github+json
           Authorization: "Bearer ${GITHUB_TOKEN}"
+      prod-v2:
+        base_url: "https://api.github.com"
+        headers:
+          Accept: application/vnd.github+json
+          Authorization: "Bearer ${GITHUB_TOKEN}"
     endpoints:
       org_repos:
+        method: GET
         path: "/orgs/${GITHUB_ORG}/repos"
         params:
           per_page: 100
@@ -77,6 +83,15 @@ apis:
         base_url: "https://api.example.com/v1"
         headers:
           Authorization: "Bearer ${MY_API_TOKEN}"
+    endpoints:
+      list-users:
+        method: GET
+        path: /users
+      get-user:
+        method: GET
+        path: /users/{id}
+        pagination:
+          type: none
 
 databases:
   mssql:
