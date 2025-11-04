@@ -1,8 +1,8 @@
 """
-etlplus.load
+etlplus.run
 ============
 
-A module for loading data into target files, databases, and REST APIs.
+A module for running ETL jobs defined in YAML configurations.
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from .validate import validate
 from .validation.utils import maybe_validate
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['run']
@@ -109,12 +109,15 @@ def _build_session_from_config(
 
 def run(
     job: str,
+    config_path: str | None = None,
 ) -> JSONDict:
     """
-    Run a pipeline job defined in the default YAML configuration.
+    Run a pipeline job defined in a YAML configuration.
 
     This mirrors the run-mode logic from ``etlplus.cli.cmd_pipeline``
-    (without the list/summary modes) and accepts only the job name.
+    (without the list/summary modes). By default it reads the configuration
+    from ``in/pipeline.yml``, but callers can provide an explicit
+    ``config_path`` to override this.
 
     Parameters
     ----------
@@ -127,7 +130,8 @@ def run(
         Result dictionary.
     """
 
-    cfg = load_pipeline_config(DEFAULT_CONFIG_PATH, substitute=True)
+    cfg_path = config_path or DEFAULT_CONFIG_PATH
+    cfg = load_pipeline_config(cfg_path, substitute=True)
 
     # Lookup job by name
     job_obj = next((j for j in cfg.jobs if j.name == job), None)
@@ -469,4 +473,6 @@ def run(
         case _:
             raise ValueError(f'Unsupported target type: {ttype}')
 
-    return {'status': 'ok', 'result': result}
+    # Return the terminal load result directly; callers (e.g., CLI) can wrap
+    # it in their own envelope when needed.
+    return cast(JSONDict, result)
