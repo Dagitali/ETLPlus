@@ -1,8 +1,8 @@
 """
-ETLPlus Configuration
-==============================
+etl.config
+==========
 
-Pipeline configuration dataclasses for ETLPlus.
+A module defining pipeline configuration models.
 
 These classes represent a tolerant schema for pipeline YAML files like
 `in/pipeline.yml`. They aim to cover common shapes while allowing
@@ -10,6 +10,7 @@ provider-specific options to pass through as dictionaries.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -100,8 +101,7 @@ def load_pipeline_config(
     cfg = PipelineConfig.from_dict(raw)
 
     if substitute:
-        import os as _os
-        env_map = dict(env) if env is not None else dict(_os.environ)
+        env_map = dict(env) if env is not None else dict(os.environ)
         resolved = _deep_substitute(raw, cfg.vars, env_map)
         cfg = PipelineConfig.from_dict(resolved)
 

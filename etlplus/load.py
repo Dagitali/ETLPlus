@@ -1,6 +1,6 @@
 """
-ETLPlus Data Loading
-====================
+etlplus.load
+============
 
 Helpers to load data into files, databases, and REST APIs.
 """
@@ -160,7 +160,7 @@ def load_to_file(
 def load_to_database(
     data: JSONData,
     connection_string: str,
-) -> JSONData:
+) -> JSONDict:
     """
     Load data to a database.
 
@@ -183,6 +183,7 @@ def load_to_database(
     """
 
     records = count_records(data)
+
     return {
         'status': 'not_implemented',
         'message': 'Database loading not yet implemented',
