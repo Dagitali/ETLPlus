@@ -100,13 +100,13 @@ def test_endpoint_captures_path_params_and_body():
         'method': 'POST',
         'path': '/users/{id}/avatar',
         'path_params': {'id': 'int'},
-        'body': {'type': 'file', 'file_path': './x.png'},
         'query_params': {'size': 'large'},
+        'body': {'type': 'file', 'file_path': './x.png'},
     })
     assert ep.method == 'POST'
     assert ep.path_params == {'id': 'int'}
     assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
-    assert ep.params == {'size': 'large'}
+    assert ep.query_params == {'size': 'large'}
 
 
 def test_api_config_effective_base_url_and_build_endpoint_url():
@@ -141,7 +141,7 @@ def test_endpoint_config_parses_method():
     })
     assert ep.path == '/users'
     assert ep.method == 'GET'
-    assert ep.params.get('active') is True
+    assert ep.query_params.get('active') is True
 
 
 def test_endpoint_config_from_str_sets_no_method():
