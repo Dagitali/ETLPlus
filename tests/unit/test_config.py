@@ -61,7 +61,7 @@ def test_endpoint_config_parses_method():
     ep = EndpointConfig.from_obj({
         'method': 'GET',
         'path': '/users',
-        'params': {'active': True},
+        'query_params': {'active': True},
     })
     assert ep.path == '/users'
     assert ep.method == 'GET'
