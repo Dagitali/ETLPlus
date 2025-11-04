@@ -185,6 +185,13 @@ def run(
 
             api_name = getattr(source_obj, 'api', None)
             endpoint_name = getattr(source_obj, 'endpoint', None)
+
+            # When an API + endpoint are referenced, compose using ApiConfig
+            # and prefer ApiConfig helpers for correctness (e.g., base_path).
+            use_client_endpoints = False
+            client_base_url: str | None = None
+            client_endpoints_map: dict[str, str] | None = None
+            selected_endpoint_key: str | None = None
             if api_name and endpoint_name:
                 api_cfg = cfg.apis.get(api_name)
                 if not api_cfg:
@@ -195,10 +202,9 @@ def run(
                         f'Endpoint "{endpoint_name}" not defined in API '
                         f'"{api_name}"',
                     )
-                # Compose and inherit
-                base = api_cfg.base_url.rstrip('/')
-                path = ep.path.lstrip('/')
-                url = f'{base}/{path}'
+
+                # Compose and inherit, using helpers for accuracy.
+                url = api_cfg.build_endpoint_url(ep)
                 params = {**ep.params, **params}
                 headers = {**api_cfg.headers, **headers}
                 pagination = pagination or ep.pagination
@@ -224,6 +230,15 @@ def run(
                 if isinstance(session_cfg, dict):
                     merged.update(session_cfg)
                 session_cfg = merged or None
+
+                # Prepare EndpointClient instantiation using effective base URL
+                # so relative endpoint paths are resolved with any base_path.
+                use_client_endpoints = True
+                client_base_url = api_cfg.effective_base_url()
+                client_endpoints_map = {
+                    k: v.path for k, v in api_cfg.endpoints.items()
+                }
+                selected_endpoint_key = endpoint_name
 
             # Apply overrides from job.extract.options.
             params |= ex_opts.get('params', {})
@@ -349,33 +364,59 @@ def run(
                         },
                     )
 
-            if not url:
-                raise ValueError('API source missing URL')
-            # Use instance-based pagination via EndpointClient.
-            parts = urlsplit(url)
-            base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-
             # Build session object if config provided.
             sess_obj = (
                 _build_session_from_config(session_cfg)
                 if isinstance(session_cfg, dict)
                 else None
             )
-            client = EndpointClient(
-                base_url=base,
-                endpoints={},
-                retry=retry,
-                retry_network_errors=retry_network_errors,
-                session=sess_obj,
-            )
-            data = client.paginate_url(
-                url,
-                params,
-                headers,
-                timeout,
-                cast(PaginationConfig | None, pag_cfg),
-                sleep_seconds=sleep_s,
-            )
+
+            if (
+                use_client_endpoints
+                and client_base_url
+                and client_endpoints_map
+                and selected_endpoint_key
+            ):
+                # Instantiate client with effective_base_url and known
+                # endpoints.
+                client = EndpointClient(
+                    base_url=client_base_url,
+                    endpoints=client_endpoints_map,
+                    retry=retry,
+                    retry_network_errors=retry_network_errors,
+                    session=sess_obj,
+                )
+                data = client.paginate(
+                    selected_endpoint_key,
+                    params=params,
+                    headers=headers,
+                    timeout=timeout,
+                    pagination=cast(PaginationConfig | None, pag_cfg),
+                    sleep_seconds=sleep_s,
+                )
+            else:
+                if not url:
+                    raise ValueError('API source missing URL')
+
+                # Use instance-based pagination via EndpointClient for
+                # absolute URL.
+                parts = urlsplit(url)
+                base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+                client = EndpointClient(
+                    base_url=base,
+                    endpoints={},
+                    retry=retry,
+                    retry_network_errors=retry_network_errors,
+                    session=sess_obj,
+                )
+                data = client.paginate_url(
+                    url,
+                    params,
+                    headers,
+                    timeout,
+                    cast(PaginationConfig | None, pag_cfg),
+                    sleep_seconds=sleep_s,
+                )
         case _:
             raise ValueError(f'Unsupported source type: {stype}')
 
@@ -397,7 +438,7 @@ def run(
         severity = 'error'
         phase = 'before_transform'
 
-    # Pre-transform validation (if configured)
+    # Pre-transform validation (if configured).
     data = maybe_validate(
         data,
         'before_transform',
