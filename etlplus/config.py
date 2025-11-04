@@ -226,12 +226,18 @@ class ApiProfileConfig:
         Base URL for the API.
     headers : dict[str, str]
         Default headers for the API.
+    base_path : str | None
+        Optional base path to prepend to endpoint paths.
+    auth : dict[str, Any]
+        Optional auth block (provider-specific shape, passed through).
     """
 
     # -- Attributes -- #
 
     base_url: str
     headers: dict[str, str] = field(default_factory=dict)
+    base_path: str | None = None
+    auth: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -303,12 +309,26 @@ class ApiConfig:
                         raise TypeError(
                             'ApiProfileConfig requires "base_url" (str)',
                         )
+
+                    # Merge defaults.headers (low precedence) with headers.
+                    dflt_headers_raw = (
+                        (p.get('defaults', {}) or {}).get('headers', {})
+                    )
+                    dflt_headers = {
+                        k: str(v) for k, v in (dflt_headers_raw or {}).items()
+                    }
                     p_headers = {
                         k: str(v)
                         for k, v in (p.get('headers', {}) or {}).items()
                     }
+                    merged_headers = {**dflt_headers, **p_headers}
+                    base_path = p.get('base_path')
+                    auth = dict(p.get('auth', {}) or {})
                     profiles[str(name)] = ApiProfileConfig(
-                        base_url=p_base, headers=p_headers,
+                        base_url=p_base,
+                        headers=merged_headers,
+                        base_path=base_path,
+                        auth=auth,
                     )
 
         # Top-level fallbacks (or legacy flat shape)
@@ -379,6 +399,8 @@ class EndpointConfig:
     path: str
     method: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
+    path_params: dict[str, Any] = field(default_factory=dict)
+    body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
@@ -406,6 +428,8 @@ class EndpointConfig:
                 path=path,
                 method=obj.get('method', 'GET'),
                 params=query_params,
+                path_params=dict(obj.get('path_params', {}) or {}),
+                body=obj.get('body'),
                 pagination=PaginationConfig.from_obj(obj.get('pagination')),
                 rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             )
