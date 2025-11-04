@@ -110,6 +110,41 @@ Pagination tips (mirrors `etlplus.api`):
 
 See `etlplus/api/README.md` for the code-level pagination API.
 
+### Runner behavior with `base_path` (sources and targets)
+
+When you reference an API service and endpoint in a pipeline (whether in a
+source or an API target), the runner composes the request URL using the API
+model’s helpers, which honor any configured `base_path` automatically.
+
+Example:
+
+```yaml
+apis:
+  myapi:
+    profiles:
+      default:
+        base_url: "https://api.example.com"
+        base_path: "/v1"
+    endpoints:
+      list_items:
+        path: "/items"
+
+sources:
+  - name: list_items_source
+    type: api
+    service: myapi
+    endpoint: list_items
+```
+
+At runtime, the request is issued to:
+
+```
+https://api.example.com/v1/items
+```
+
+No extra wiring is needed — the composed base URL (including `base_path`) is
+used under the hood when the job runs.
+
 ## Databases
 
 Declare connection defaults or named connections you’ll use in sources/targets:
@@ -177,6 +212,10 @@ sources:
     endpoint: org_repos
 ```
 
+Note: When using a service + endpoint in a source, URL composition (including
+`base_path`) is handled automatically. See “Runner behavior with base_path
+(sources and targets)” in the APIs section.
+
 ## Validations
 
 Validation rule sets map field names to rules, mirroring `etlplus.validate.FieldRules`:
@@ -233,6 +272,9 @@ targets:
     headers:
       Content-Type: application/json
 ```
+
+Note: API targets that reference a service + endpoint also honor `base_path`
+via the same runner behavior described in the APIs section.
 
 ## Jobs
 
