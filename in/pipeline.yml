@@ -44,9 +44,10 @@ apis:
         auth:
           type: bearer
           token: "${GITHUB_TOKEN}"  # Use env/substitution; avoid plain secrets.
-        headers:
-          Accept: application/vnd.github+json
-          Authorization: "Bearer ${GITHUB_TOKEN}"
+        defaults:
+          headers:
+            Accept: application/vnd.github+json
+            Authorization: "Bearer ${GITHUB_TOKEN}"
       staging:
         <<: *profile_defaults
         base_url: "https://staging.api.github.com"
@@ -98,8 +99,11 @@ apis:
         auth:
           type: bearer
           token: ${MY_API_TOKEN}  # Use env/substitution; avoid plain secrets.
-        headers:
-          Authorization: "Bearer ${MY_API_TOKEN}"
+        defaults:
+          headers:
+            Accept: application/json
+            Content-Type: application/json
+            User-Agent: etlplus/1.0
     endpoints:
       list-users:
         method: GET
