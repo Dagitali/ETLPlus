@@ -170,7 +170,7 @@ def run(
             # session config.
             url: str | None = getattr(source_obj, 'url', None)
             params: dict[str, Any] = dict(
-                getattr(source_obj, 'params', {}) or {},
+                getattr(source_obj, 'query_params', {}) or {},
             )
             headers: dict[str, str] = dict(
                 getattr(source_obj, 'headers', {}) or {},
@@ -205,7 +205,7 @@ def run(
 
                 # Compose and inherit, using helpers for accuracy.
                 url = api_cfg.build_endpoint_url(ep)
-                params = {**ep.params, **params}
+                params = {**ep.query_params, **params}
                 headers = {**api_cfg.headers, **headers}
                 pagination = pagination or ep.pagination
                 rate_limit = rate_limit or ep.rate_limit
@@ -241,7 +241,7 @@ def run(
                 selected_endpoint_key = endpoint_name
 
             # Apply overrides from job.extract.options.
-            params |= ex_opts.get('params', {})
+            params |= ex_opts.get('query_params', {})
             headers |= ex_opts.get('headers', {})
             timeout = ex_opts.get('timeout')
             pag_ov = ex_opts.get('pagination', {})
@@ -503,6 +503,25 @@ def run(
                 kwargs['headers'] = headers
             if 'timeout' in overrides:
                 kwargs['timeout'] = overrides['timeout']
+            # Support service + endpoint composition similar to Sources.
+            tgt_api_name = getattr(target_obj, 'api', None)
+            tgt_endpoint_name = getattr(target_obj, 'endpoint', None)
+            if tgt_api_name and tgt_endpoint_name and not url:
+                api_cfg = cfg.apis.get(tgt_api_name)
+                if not api_cfg:
+                    raise ValueError(f'API not defined: {tgt_api_name}')
+                ep = api_cfg.endpoints.get(tgt_endpoint_name)
+                if not ep:
+                    raise ValueError(
+                        f'Endpoint "{tgt_endpoint_name}" not defined in '
+                        f'API "{tgt_api_name}"',
+                    )
+                url = api_cfg.build_endpoint_url(ep)
+                # Merge API-level headers with target headers
+                kwargs['headers'] = {
+                    **api_cfg.headers,
+                    **(kwargs.get('headers') or {}),
+                }
             if not url:
                 raise ValueError('API target missing "url"')
             result = load(data, 'api', url, method=method, **kwargs)

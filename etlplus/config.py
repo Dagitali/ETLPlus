@@ -462,12 +462,19 @@ class EndpointConfig:
     ----------
     path : str
         Endpoint path (relative to base URL).
-    params : dict[str, Any]
-        Default query parameters for the endpoint.
-    pagination : PaginationConfig | None
-        Pagination configuration for the endpoint.
-    rate_limit : RateLimitConfig | None
-        Rate limiting configuration for the endpoint.
+    method : str, optional
+        HTTP method for the endpoint (e.g., "GET", "POST"). Defaults to "GET".
+    path_params : dict[str, Any], optional
+        Path parameters for the endpoint. Defaults to an empty dictionary.
+    query_params : dict[str, Any], optional
+        Default query parameters for the endpoint. Defaults to an empty
+        dictionary.
+    body : Any | None, optional
+        Request body configuration for the endpoint. Defaults to None.
+    pagination : PaginationConfig | None, optional
+        Pagination configuration for the endpoint. Defaults to None.
+    rate_limit : RateLimitConfig | None, optional
+        Rate limiting configuration for the endpoint. Defaults to None.
 
     Methods
     -------
@@ -478,9 +485,9 @@ class EndpointConfig:
     # -- Attributes -- #
 
     path: str
-    method: str | None = None
-    params: dict[str, Any] = field(default_factory=dict)
+    method: str = 'GET'
     path_params: dict[str, Any] = field(default_factory=dict)
+    query_params: dict[str, Any] = field(default_factory=dict)
     body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
@@ -501,15 +508,11 @@ class EndpointConfig:
             if not isinstance(path, str):
                 raise TypeError('EndpointConfig requires a "path" (str)')
 
-            # Accept only explicit query_params for URL query string pairs.
-            # This removes ambiguity compared to a generic "params" key.
-            query_params = dict(obj.get('query_params', {}) or {})
-
             return EndpointConfig(
                 path=path,
                 method=obj.get('method', 'GET'),
-                params=query_params,
                 path_params=dict(obj.get('path_params', {}) or {}),
+                query_params=dict(obj.get('query_params', {}) or {}),
                 body=obj.get('body'),
                 pagination=PaginationConfig.from_obj(obj.get('pagination')),
                 rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
