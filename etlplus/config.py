@@ -391,18 +391,25 @@ class EndpointConfig:
             return EndpointConfig(path=obj)
         if isinstance(obj, dict):
             path = obj.get('path')
+
             # Tolerate configs that provide the path directly at key level
             if path is None and 'url' in obj:
                 path = obj.get('url')
             if not isinstance(path, str):
                 raise TypeError('EndpointConfig requires a "path" (str)')
+
+            # Accept only explicit query_params for URL query string pairs.
+            # This removes ambiguity compared to a generic "params" key.
+            query_params = dict(obj.get('query_params', {}) or {})
+
             return EndpointConfig(
                 path=path,
                 method=obj.get('method', 'GET'),
-                params=dict(obj.get('params', {}) or {}),
+                params=query_params,
                 pagination=PaginationConfig.from_obj(obj.get('pagination')),
                 rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             )
+
         raise TypeError('Invalid endpoint config: must be str or mapping')
 
 
