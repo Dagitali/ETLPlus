@@ -276,6 +276,29 @@ targets:
 Note: API targets that reference a service + endpoint also honor `base_path`
 via the same runner behavior described in the APIs section.
 
+Service + endpoint target example:
+
+```yaml
+apis:
+  myapi:
+    profiles:
+      default:
+        base_url: "https://api.example.com"
+        base_path: "/v1"
+    endpoints:
+      ingest:
+        path: "/ingest"
+
+targets:
+  - name: ingest_out
+    type: api
+    service: myapi
+    endpoint: ingest
+    method: post
+    headers:
+      Content-Type: application/json
+```
+
 ## Jobs
 
 Jobs orchestrate the flow end-to-end.  Each job can reference a source, validations, transform, and
