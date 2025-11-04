@@ -57,6 +57,58 @@ def test_api_config_flat_shape_still_supported():
     assert 'ping' in cfg.endpoints
 
 
+def test_api_profile_defaults_headers_and_fields():
+    obj = {
+        'profiles': {
+            'default': {
+                'base_url': 'https://api.example.com/v1',
+                'defaults': {
+                    'headers': {
+                        'Accept': 'application/json',
+                        'X-From-Defaults': '1',
+                    },
+                },
+                'headers': {
+                    'Authorization': 'Bearer token',
+                    'X-From-Defaults': '2',
+                },
+                'base_path': '/v1',
+                'auth': {'type': 'bearer', 'token': 'abc'},
+            },
+        },
+        'headers': {'X-Top': 't'},
+        'endpoints': {},
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+    # Headers: defaults.headers < profile.headers < top-level
+    assert cfg.headers['Accept'] == 'application/json'
+    assert cfg.headers['Authorization'] == 'Bearer token'
+    # profile.headers overrides defaults
+    assert cfg.headers['X-From-Defaults'] == '2'
+    # top-level overrides/augments
+    assert cfg.headers['X-Top'] == 't'
+
+    # Profile extras captured
+    prof = cfg.profiles['default']
+    assert prof.base_path == '/v1'
+    assert prof.auth.get('type') == 'bearer'
+
+
+def test_endpoint_captures_path_params_and_body():
+    ep = EndpointConfig.from_obj({
+        'method': 'POST',
+        'path': '/users/{id}/avatar',
+        'path_params': {'id': 'int'},
+        'body': {'type': 'file', 'file_path': './x.png'},
+        'query_params': {'size': 'large'},
+    })
+    assert ep.method == 'POST'
+    assert ep.path_params == {'id': 'int'}
+    assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
+    assert ep.params == {'size': 'large'}
+
+
 def test_endpoint_config_parses_method():
     ep = EndpointConfig.from_obj({
         'method': 'GET',
