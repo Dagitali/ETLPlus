@@ -453,6 +453,10 @@ def create_parser() -> argparse.ArgumentParser:
         help='Path to pipeline YAML configuration file',
     )
     run_parser.add_argument(
+        '-j', '--job',
+        help='Name of the job to run',
+    )
+    run_parser.add_argument(
         '-p', '--pipeline',
         help='Name of the pipeline to run',
     )
