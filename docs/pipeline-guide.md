@@ -59,7 +59,51 @@ apis:
 Note: Use `query_params` for URL query string pairs (e.g., `?key=value`).  Older keys like `params`
 or `query` are not supported to avoid ambiguity with body/form fields.
 
+### Profiles, base_path, and auth
+
+For per-environment settings, define named profiles under an API. Each profile can include:
+
+- `base_url` (required): scheme + host (optionally with a path)
+- `base_path` (optional): path prefix that’s composed after `base_url`
+- `headers`: default headers for that profile
+- `auth`: provider-specific auth block (shape is pass-through)
+
+Example:
+
+```yaml
+apis:
+  github:
+    profiles:
+      default:
+        base_url: "https://api.github.com"
+        base_path: "/v1"
+        auth:
+          type: bearer
+          token: "${GITHUB_TOKEN}"
+        headers:
+          Accept: application/vnd.github+json
+          Authorization: "Bearer ${GITHUB_TOKEN}"
+    endpoints:
+      org_repos:
+        path: "/orgs/${GITHUB_ORG}/repos"
+```
+
+At runtime, the model computes an effective base URL by composing `base_url` and `base_path`.
+If you build an HTTP client from the config, prefer using the composed URL. For convenience, the
+`ApiConfig` model exposes:
+
+- `effective_base_url()`: returns `base_url` + `base_path` (when present)
+- `build_endpoint_url(endpoint)`: composes the full URL from `base_url`, `base_path`, and the
+  endpoint’s `path`
+
+Header precedence:
+
+1. `profiles.<name>.defaults.headers` (lowest)
+2. `profiles.<name>.headers`
+3. API top-level `headers` (highest)
+
 Pagination tips (mirrors `etlplus.api`):
+
 - Page/offset styles: use `page_param`, `size_param`, `start_page`, and `page_size`.
 - Cursor style: specify `cursor_param` and `cursor_path` (e.g., `data.nextCursor`).
 - Extract records from nested payloads with `records_path` (e.g., `data.items`).
