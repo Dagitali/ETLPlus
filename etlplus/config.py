@@ -216,9 +216,9 @@ class RateLimitConfig:
 
 
 @dataclass(slots=True)
-class ApiConfig:
+class ApiProfileConfig:
     """
-    Configuration for a REST API service.
+    Profile configuration for a REST API service.
 
     Attributes
     ----------
@@ -226,8 +226,30 @@ class ApiConfig:
         Base URL for the API.
     headers : dict[str, str]
         Default headers for the API.
+    """
+
+    # -- Attributes -- #
+
+    base_url: str
+    headers: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class ApiConfig:
+    """
+    Configuration for a REST API service.
+
+    Attributes
+    ----------
+    base_url : str
+        Base URL for the API (may be derived from a selected profile). This
+        field is always required and must be a non-empty string.
+    headers : dict[str, str]
+        Default headers for the API (may be derived from a selected profile).
     endpoints : dict[str, EndpointConfig]
         Configured endpoints for the API.
+    profiles : dict[str, ApiProfileConfig]
+        Optional named profiles providing per-environment base_url/headers.
 
     Methods
     -------
@@ -240,6 +262,7 @@ class ApiConfig:
     base_url: str
     headers: dict[str, str] = field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
+    profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
 
     # -- Static Methods -- #
 
@@ -268,20 +291,65 @@ class ApiConfig:
 
         if not isinstance(obj, dict):
             raise TypeError('ApiConfig must be a mapping')
-        base_url = obj.get('base_url')
-        if not isinstance(base_url, str):
-            raise TypeError('ApiConfig requires "base_url" (str)')
-        headers = {
+
+        # Optional: profiles structure
+        profiles_raw = obj.get('profiles', {}) or {}
+        profiles: dict[str, ApiProfileConfig] = {}
+        if isinstance(profiles_raw, dict):
+            for name, p in profiles_raw.items():
+                if isinstance(p, dict):
+                    p_base = p.get('base_url')
+                    if not isinstance(p_base, str):
+                        raise TypeError(
+                            'ApiProfileConfig requires "base_url" (str)',
+                        )
+                    p_headers = {
+                        k: str(v)
+                        for k, v in (p.get('headers', {}) or {}).items()
+                    }
+                    profiles[str(name)] = ApiProfileConfig(
+                        base_url=p_base, headers=p_headers,
+                    )
+
+        # Top-level fallbacks (or legacy flat shape)
+        tl_base = obj.get('base_url')
+        tl_headers = {
             k: str(v)
             for k, v in (obj.get('headers', {}) or {}).items()
         }
+
+        # Determine effective base_url/headers for backward compatibility
+        # Always compute a concrete str for base_url.
+        base_url: str
+        headers: dict[str, str] = {}
+        if profiles:
+            # Choose a default profile: explicit 'default' else first key
+            prof_name = 'default' if 'default' in profiles else (
+                next(iter(profiles.keys()))
+            )
+            base_url = profiles[prof_name].base_url
+            headers = dict(profiles[prof_name].headers)
+            # Merge in top-level headers as overrides if provided
+            if tl_headers:
+                headers |= tl_headers
+        else:
+            # Legacy flat shape must provide base_url
+            if not isinstance(tl_base, str):
+                raise TypeError('ApiConfig requires "base_url" (str)')
+            base_url = tl_base
+            headers = tl_headers
         raw_eps = obj.get('endpoints', {}) or {}
         eps: dict[str, EndpointConfig] = {}
         if isinstance(raw_eps, dict):
             for name, ep in raw_eps.items():
                 eps[str(name)] = EndpointConfig.from_obj(ep)
 
-        return ApiConfig(base_url=base_url, headers=headers, endpoints=eps)
+        return ApiConfig(
+            base_url=base_url,
+            headers=headers,
+            endpoints=eps,
+            profiles=profiles,
+        )
 
 
 @dataclass(slots=True)
@@ -309,6 +377,7 @@ class EndpointConfig:
     # -- Attributes -- #
 
     path: str
+    method: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
@@ -329,6 +398,7 @@ class EndpointConfig:
                 raise TypeError('EndpointConfig requires a "path" (str)')
             return EndpointConfig(
                 path=path,
+                method=obj.get('method', 'GET'),
                 params=dict(obj.get('params', {}) or {}),
                 pagination=PaginationConfig.from_obj(obj.get('pagination')),
                 rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
@@ -752,7 +822,13 @@ class PipelineConfig:
         cfg = cls.from_dict(raw)
 
         if substitute:
-            env_map = dict(env) if env is not None else dict(os.environ)
+            # Merge order: profile.env first (lowest), then provided env or
+            # os.environ (highest). External env overrides profile defaults.
+            base_env = dict(getattr(cfg.profile, 'env', {}) or {})
+            external = (
+                dict(env) if env is not None else dict(os.environ)
+            )
+            env_map = {**base_env, **external}
             resolved = _deep_substitute(raw, cfg.vars, env_map)
             cfg = cls.from_dict(resolved)
 
