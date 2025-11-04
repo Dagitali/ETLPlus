@@ -212,6 +212,23 @@ sources:
     endpoint: org_repos
 ```
 
+Source-level query_params (direct form):
+
+```yaml
+sources:
+  - name: users_api
+    type: api
+    url: "https://api.example.com/v1/users"
+    headers:
+      Authorization: "Bearer ${TOKEN}"
+    query_params:
+      active: true
+      page: 1
+```
+
+Tip: You can also override query parameters per job using
+`jobs[].extract.options.query_params: { ... }`.
+
 Note: When using a service + endpoint in a source, URL composition (including
 `base_path`) is handled automatically. See “Runner behavior with base_path
 (sources and targets)” in the APIs section.
