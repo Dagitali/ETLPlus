@@ -109,6 +109,30 @@ def test_endpoint_captures_path_params_and_body():
     assert ep.params == {'size': 'large'}
 
 
+def test_api_config_effective_base_url_and_build_endpoint_url():
+    obj = {
+        'profiles': {
+            'default': {
+                'base_url': 'https://api.example.com',
+                'base_path': '/v1',
+            },
+        },
+        'endpoints': {
+            'users': {'path': '/users'},
+        },
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+
+    # Effective base URL composes base_url + base_path
+    assert cfg.effective_base_url() == 'https://api.example.com/v1'
+
+    # build_endpoint_url composes base and endpoint path
+    ep = cfg.endpoints['users']
+    url = cfg.build_endpoint_url(ep)
+    assert url == 'https://api.example.com/v1/users'
+
+
 def test_endpoint_config_parses_method():
     ep = EndpointConfig.from_obj({
         'method': 'GET',
