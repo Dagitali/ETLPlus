@@ -95,6 +95,47 @@ def test_api_profile_defaults_headers_and_fields():
     assert prof.auth.get('type') == 'bearer'
 
 
+def test_api_profile_defaults_pagination_mapped():
+    obj = {
+        'profiles': {
+            'default': {
+                'base_url': 'https://api.example.com',
+                'defaults': {
+                    'pagination': {
+                        'type': 'page',
+                        'params': {
+                            'page': 'page',
+                            'per_page': 'per_page',
+                            'cursor': 'cursor',
+                            'limit': 'limit',
+                        },
+                        'response': {
+                            'items_path': 'data.items',
+                            'next_cursor_path': 'meta.next_cursor',
+                        },
+                        'defaults': {'per_page': 25},
+                        'max_pages': 10,
+                    },
+                },
+            },
+        },
+        'endpoints': {},
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+    prof = cfg.profiles['default']
+    pdef = getattr(prof, 'pagination_defaults', None)
+    assert pdef is not None
+    assert pdef.type == 'page'
+    assert pdef.page_param == 'page'
+    assert pdef.size_param == 'per_page'
+    assert pdef.cursor_param == 'cursor'
+    assert pdef.cursor_path == 'meta.next_cursor'
+    assert pdef.records_path == 'data.items'
+    assert pdef.page_size == 25
+    assert pdef.max_pages == 10
+
+
 def test_endpoint_captures_path_params_and_body():
     ep = EndpointConfig.from_obj({
         'method': 'POST',
