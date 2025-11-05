@@ -207,8 +207,19 @@ def run(
                 url = api_cfg.build_endpoint_url(ep)
                 params = {**ep.query_params, **params}
                 headers = {**api_cfg.headers, **headers}
-                pagination = pagination or ep.pagination
-                rate_limit = rate_limit or ep.rate_limit
+
+                # Inherit pagination/rate_limit in order:
+                # source -> endpoint -> API profile defaults
+                pagination = (
+                    pagination
+                    or ep.pagination
+                    or api_cfg.effective_pagination_defaults()
+                )
+                rate_limit = (
+                    rate_limit
+                    or ep.rate_limit
+                    or api_cfg.effective_rate_limit_defaults()
+                )
                 retry = retry or getattr(ep, 'retry', None) or getattr(
                     api_cfg, 'retry', None,
                 )
