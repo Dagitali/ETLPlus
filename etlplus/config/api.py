@@ -4,6 +4,11 @@ etlplus.config.api
 
 A module defining configuration types for REST APIs endpoint services.
 
+Notes
+-----
+TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
+accepts Mapping[str, Any]).
+
 See also
 --------
 - ApiProfileConfig.from_obj: canonical parsing logic for API profile entries

@@ -92,7 +92,9 @@ class ApiProfileConfigMap(TypedDict, total=False):
     """
     Shape accepted for a profile entry under ApiConfigMap.profiles.
 
-    Note: `base_url` is required at runtime when profiles are provided.
+    Notes
+    -----
+    `base_url` is required at runtime when profiles are provided.
 
     See also
     --------
@@ -110,7 +112,9 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     """
     Defaults block available under a profile (all keys optional).
 
-    Note: Runtime expects header values to be str; typing remains permissive.
+    Notes
+    -----
+    Runtime expects header values to be str; typing remains permissive.
 
     See also
     --------

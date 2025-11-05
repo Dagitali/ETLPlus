@@ -4,6 +4,11 @@ etlplus.config.rate_limit
 
 A module defining configuration types for rate limiting in REST API endpoint
 requests.
+
+Notes
+-----
+TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
+accepts Mapping[str, Any]).
 """
 from __future__ import annotations
 
