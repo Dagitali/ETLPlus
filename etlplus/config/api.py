@@ -6,10 +6,11 @@ A module defining configuration types for REST APIs endpoint services.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
-from typing import Mapping
+from typing import Self
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -214,10 +215,11 @@ class ApiConfig:
 
     # -- Static Methods -- #
 
-    @staticmethod
+    @classmethod
     def from_obj(
-        obj: Any,
-    ) -> ApiConfig:
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
         """
         Create an ApiConfig instance from a dictionary-like object.
 
@@ -232,7 +234,8 @@ class ApiConfig:
             The parsed ApiConfig instance.
         """
 
-        if not isinstance(obj, dict):
+        # Accept any mapping-like object; provide a consistent error otherwise.
+        if not isinstance(obj, Mapping):
             raise TypeError('ApiConfig must be a mapping')
 
         # Optional: profiles structure
@@ -313,7 +316,7 @@ class ApiConfig:
             for name, ep in raw_eps.items():
                 eps[str(name)] = EndpointConfig.from_obj(ep)
 
-        return ApiConfig(
+        return cls(
             base_url=base_url,
             headers=headers,
             endpoints=eps,
@@ -357,10 +360,11 @@ class EndpointConfig:
 
     # -- Static Methods -- #
 
-    @staticmethod
+    @classmethod
     def from_obj(
-        obj: Any,
-    ) -> EndpointConfig:
+        cls,
+        obj: str | Mapping[str, Any],
+    ) -> Self:
         """
         Create an EndpointConfig instance from a string or dictionary-like
         object.
@@ -379,8 +383,8 @@ class EndpointConfig:
         # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):
             # When provided as a bare string, preserve method=None
-            return EndpointConfig(path=obj, method=None)
-        if isinstance(obj, dict):
+            return cls(path=obj, method=None)
+        if isinstance(obj, Mapping):
             path = obj.get('path')
 
             # Tolerate configs that provide the path directly at key level
@@ -389,7 +393,7 @@ class EndpointConfig:
             if not isinstance(path, str):
                 raise TypeError('EndpointConfig requires a "path" (str)')
 
-            return EndpointConfig(
+            return cls(
                 path=path,
                 method=obj.get('method'),
                 path_params=dict(obj.get('path_params', {}) or {}),
