@@ -62,7 +62,6 @@ class RateLimitConfig:
 
         if not isinstance(obj, Mapping):
             return None
-        return cls(
-            sleep_seconds=obj.get('sleep_seconds'),
-            max_per_sec=obj.get('max_per_sec'),
-        )
+        kwargs = {k: obj.get(k) for k in ('sleep_seconds', 'max_per_sec')}
+
+        return cls(**kwargs)
