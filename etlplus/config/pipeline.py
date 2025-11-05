@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from typing import cast
+from typing import Protocol
 from typing import Self
 
 from ..file import read_yaml
@@ -31,6 +33,21 @@ from .targets import TargetFile
 from .types import Source
 from .types import Target
 from .utils import deep_substitute
+
+
+# SECTION: PROTOCOLS ======================================================== #
+
+
+class _SourceFactory(Protocol):
+
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any]) -> Source: ...
+
+
+class _TargetFactory(Protocol):
+
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any]) -> Target: ...
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -123,22 +140,26 @@ def _build_sources(
     """
 
     sources: list[Source] = []
+    type_map = cast(
+        dict[str, type[_SourceFactory]],
+        {
+            'file': SourceFile,
+            'database': SourceDb,
+            'api': SourceApi,
+        },
+    )
 
     for s in (raw.get('sources', []) or []):
         if not isinstance(s, dict):
             continue
         stype = str(s.get('type', '')).casefold()
-        sname = str(s.get('name')) if s.get('name') is not None else None
-        if not sname:
+        name = s.get('name')
+        if not isinstance(name, str):
             continue
-        if stype == 'file':
-            sources.append(SourceFile.from_obj(s))
-        elif stype == 'database':
-            sources.append(SourceDb.from_obj(s))
-        elif stype == 'api':
-            sources.append(SourceApi.from_obj(s))
-        else:
+        cls_ = type_map.get(stype)
+        if cls_ is None:
             continue
+        sources.append(cls_.from_obj(s))
 
     return sources
 
@@ -161,42 +182,28 @@ def _build_targets(
     """
 
     targets: list[Target] = []
+    type_map = cast(
+        dict[str, type[_TargetFactory]],
+        {
+            'file': TargetFile,
+            'api': TargetApi,
+            'database': TargetDb,
+        },
+    )
 
     for t in (raw.get('targets', []) or []):
         if not isinstance(t, dict):
             continue
         ttype = str(t.get('type', '')).casefold()
-        tname = str(t.get('name')) if t.get('name') is not None else None
-        if not tname:
+        name = t.get('name')
+        if not isinstance(name, str):
             continue
-        if ttype == 'file':
-            targets.append(TargetFile.from_obj(t))
-        elif ttype == 'api':
-            targets.append(TargetApi.from_obj(t))
-        elif ttype == 'database':
-            targets.append(TargetDb.from_obj(t))
-        else:
+        cls_ = type_map.get(ttype)
+        if cls_ is None:
             continue
+        targets.append(cls_.from_obj(t))
 
     return targets
-
-
-def _cast_headers(m: Mapping[str, Any] | None) -> dict[str, str]:
-    """
-    Convert headers to a string mapping.
-
-    Parameters
-    ----------
-    m : Mapping[str, Any] | None
-        The headers mapping to convert.
-
-    Returns
-    -------
-    dict[str, str]
-        A mapping of header names to their string values.
-    """
-
-    return {k: str(v) for k, v in (m or {}).items()}
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -256,6 +263,21 @@ class PipelineConfig:
     ) -> Self:
         """
         Create a PipelineConfig instance from a YAML file.
+
+        Parameters
+        ----------
+        path : Path | str
+            The path to the YAML file.
+        substitute : bool, optional
+            Whether to perform variable substitution, by default False.
+        env : Mapping[str, str] | None, optional
+            An optional mapping of environment variables to use for
+            substitution, by default None (uses os.environ).
+
+        Returns
+        -------
+        Self
+            The created PipelineConfig instance.
         """
 
         raw = read_yaml(Path(path))
@@ -286,6 +308,16 @@ class PipelineConfig:
     ) -> Self:
         """
         Create a PipelineConfig instance from a dictionary.
+
+        Parameters
+        ----------
+        raw : Mapping[str, Any]
+            The raw configuration dictionary.
+
+        Returns
+        -------
+        Self
+            The created PipelineConfig instance.
         """
 
         # Basic metadata
@@ -294,13 +326,7 @@ class PipelineConfig:
 
         # Profile and vars
         prof_raw = raw.get('profile', {}) or {}
-        profile = ProfileConfig(
-            default_target=prof_raw.get('default_target'),
-            env={
-                k: str(v)
-                for k, v in (prof_raw.get('env', {}) or {}).items()
-            },
-        )
+        profile = ProfileConfig.from_obj(prof_raw)
         vars_map: dict[str, Any] = dict(raw.get('vars', {}) or {})
 
         # APIs
