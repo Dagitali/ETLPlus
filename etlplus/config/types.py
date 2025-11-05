@@ -57,6 +57,8 @@ __all__ = [
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
     'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
+    'SourceApiConfigMap', 'SourceDbConfigMap', 'SourceFileConfigMap',
+    'TargetApiConfigMap', 'TargetDbConfigMap', 'TargetFileConfigMap',
 ]
 
 
@@ -182,3 +184,103 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     sleep_seconds: float
     max_per_sec: float
+
+
+class SourceApiConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by SourceApi.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.sources.SourceApi.from_obj
+    """
+
+    name: str
+    type: str
+    url: str
+    headers: Mapping[str, Any]
+    query_params: Mapping[str, Any]
+    pagination: PaginationConfigMap
+    rate_limit: RateLimitConfigMap
+    api: str
+    endpoint: str
+
+
+class SourceDbConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by SourceDb.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.sources.SourceDb.from_obj
+    """
+
+    name: str
+    type: str
+    connection_string: str
+    query: str
+
+
+class SourceFileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by SourceFile.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.sources.SourceFile.from_obj
+    """
+
+    name: str
+    type: str
+    format: str
+    path: str
+    options: Mapping[str, Any]
+
+
+class TargetApiConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by TargetApi.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.targets.TargetApi.from_obj
+    """
+
+    name: str
+    type: str
+    url: str
+    method: str
+    headers: Mapping[str, Any]
+    api: str
+    endpoint: str
+
+
+class TargetDbConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by TargetDb.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.targets.TargetDb.from_obj
+    """
+
+    name: str
+    type: str
+    connection_string: str
+    table: str
+    mode: str
+
+
+class TargetFileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by TargetFile.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.targets.TargetFile.from_obj
+    """
+
+    name: str
+    type: str
+    format: str
+    path: str
