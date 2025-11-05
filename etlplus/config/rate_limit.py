@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from typing import Any
 from typing import overload
 from typing import Self
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .types import RateLimitConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -46,7 +50,7 @@ class RateLimitConfig:
     @overload
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: RateLimitConfigMap,
     ) -> Self: ...
 
     @classmethod

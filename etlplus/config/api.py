@@ -12,6 +12,7 @@ from dataclasses import field
 from typing import Any
 from typing import overload
 from typing import Self
+from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -19,6 +20,9 @@ from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
+
+if TYPE_CHECKING:
+    from .types import EndpointConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -373,7 +377,7 @@ class EndpointConfig:
     @overload
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: EndpointConfigMap,
     ) -> Self: ...
 
     @classmethod
