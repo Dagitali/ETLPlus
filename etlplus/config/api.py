@@ -16,7 +16,6 @@ from urllib.parse import urlunsplit
 
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
-from .types import Config
 from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
@@ -219,7 +218,7 @@ class ApiConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: Config,
+        obj: Mapping[str, Any],
     ) -> Self:
         """
         Create an ApiConfig instance from a dictionary-like object.
@@ -244,12 +243,12 @@ class ApiConfig:
         profiles: dict[str, ApiProfileConfig] = {}
         if isinstance(profiles_raw, dict):
             def _merge_headers(
-                defaults_raw: Config | None,
-                headers_raw: Config | None,
+                defaults_raw: Mapping[str, Any] | None,
+                headers_raw: Mapping[str, Any] | None,
             ) -> dict[str, str]:
                 dflt = {k: str(v) for k, v in (defaults_raw or {}).items()}
                 hdrs = {k: str(v) for k, v in (headers_raw or {}).items()}
-                return {**dflt, **hdrs}
+                return dflt | hdrs
 
             for name, p in profiles_raw.items():
                 if isinstance(p, dict):
@@ -364,7 +363,7 @@ class EndpointConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: str | Config,
+        obj: str | Mapping[str, Any],
     ) -> Self:
         """
         Create an EndpointConfig instance from a string or dictionary-like
