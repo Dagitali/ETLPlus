@@ -7,12 +7,12 @@ A module defining configuration types for ETL job orchestration.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
-from typing import cast
 from typing import Protocol
 from typing import Self
 from typing import TypeVar
@@ -151,14 +151,11 @@ def _build_sources(
     """
 
     sources: list[Source] = []
-    type_map = cast(
-        dict[str, type[_SourceFactory[Source]]],
-        {
-            'file': SourceFile,
-            'database': SourceDb,
-            'api': SourceApi,
-        },
-    )
+    type_map: dict[str, Callable[[Mapping[str, Any]], Source]] = {
+        'file': SourceFile.from_obj,
+        'database': SourceDb.from_obj,
+        'api': SourceApi.from_obj,
+    }
 
     for s in (raw.get('sources', []) or []):
         if not isinstance(s, dict):
@@ -167,10 +164,10 @@ def _build_sources(
         name = s.get('name')
         if not isinstance(name, str):
             continue
-        cls_ = type_map.get(stype)
-        if cls_ is None:
+        build = type_map.get(stype)
+        if build is None:
             continue
-        sources.append(cls_.from_obj(s))
+        sources.append(build(s))
 
     return sources
 
@@ -193,14 +190,11 @@ def _build_targets(
     """
 
     targets: list[Target] = []
-    type_map = cast(
-        dict[str, type[_TargetFactory[Target]]],
-        {
-            'file': TargetFile,
-            'api': TargetApi,
-            'database': TargetDb,
-        },
-    )
+    type_map: dict[str, Callable[[Mapping[str, Any]], Target]] = {
+        'file': TargetFile.from_obj,
+        'api': TargetApi.from_obj,
+        'database': TargetDb.from_obj,
+    }
 
     for t in (raw.get('targets', []) or []):
         if not isinstance(t, dict):
@@ -209,10 +203,10 @@ def _build_targets(
         name = t.get('name')
         if not isinstance(name, str):
             continue
-        cls_ = type_map.get(ttype)
-        if cls_ is None:
+        build = type_map.get(ttype)
+        if build is None:
             continue
-        targets.append(cls_.from_obj(t))
+        targets.append(build(t))
 
     return targets
 
