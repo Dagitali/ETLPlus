@@ -3,6 +3,13 @@ etlplus.config.sources
 ======================
 
 A module defining configuration types for data sources in ETL pipelines.
+
+See also
+--------
+- TypedDict shapes for editor hints (not enforced at runtime):
+    etlplus.config.types.SourceApiConfigMap,
+    etlplus.config.types.SourceDbConfigMap,
+    etlplus.config.types.SourceFileConfigMap
 """
 from __future__ import annotations
 

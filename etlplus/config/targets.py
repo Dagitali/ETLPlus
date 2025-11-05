@@ -3,6 +3,13 @@ etlplus.config.targets
 ======================
 
 A module defining configuration types for data targets in ETL pipelines.
+
+See also
+--------
+- TypedDict shapes for editor hints (not enforced at runtime):
+    etlplus.config.types.TargetApiConfigMap,
+    etlplus.config.types.TargetDbConfigMap,
+    etlplus.config.types.TargetFileConfigMap
 """
 from __future__ import annotations
 
