@@ -10,11 +10,20 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import overload
 from typing import Self
+from typing import TYPE_CHECKING
 
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
+
+if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
+    from .types import (
+        SourceApiConfigMap,
+        SourceDbConfigMap,
+        SourceFileConfigMap,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -43,6 +52,14 @@ class SourceApi:
     endpoint: str | None = None
 
     # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: SourceApiConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
 
     @classmethod
     def from_obj(
@@ -102,6 +119,14 @@ class SourceDb:
     # -- Class Methods -- #
 
     @classmethod
+    @overload
+    def from_obj(cls, obj: SourceDbConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+
+    @classmethod
     def from_obj(
         cls,
         obj: Mapping[str, Any],
@@ -152,6 +177,14 @@ class SourceFile:
     options: dict[str, Any] = field(default_factory=dict)
 
     # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: SourceFileConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
 
     @classmethod
     def from_obj(

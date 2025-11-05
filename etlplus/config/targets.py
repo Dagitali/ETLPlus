@@ -10,9 +10,18 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import overload
 from typing import Self
+from typing import TYPE_CHECKING
 
 from .utils import cast_str_dict
+
+if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
+    from .types import (
+        TargetApiConfigMap,
+        TargetDbConfigMap,
+        TargetFileConfigMap,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -39,6 +48,14 @@ class TargetApi:
     endpoint: str | None = None
 
     # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: TargetApiConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
 
     @classmethod
     def from_obj(
@@ -97,6 +114,14 @@ class TargetDb:
     # -- Class Methods -- #
 
     @classmethod
+    @overload
+    def from_obj(cls, obj: TargetDbConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+
+    @classmethod
     def from_obj(
         cls,
         obj: Mapping[str, Any],
@@ -147,6 +172,14 @@ class TargetFile:
     path: str | None = None
 
     # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: TargetFileConfigMap) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
 
     @classmethod
     def from_obj(
