@@ -17,6 +17,52 @@ import etlplus.api.client as cmod
 from etlplus.api import EndpointClient
 
 
+def test_client_base_path_prefixes_endpoint_path(monkeypatch):
+    """EndpointClient.url should honor the client's base_path prefix."""
+
+    captured: list[str] = []
+
+    def fake_extract(kind: str, url: str, **_kwargs: Any):
+        assert kind == 'api'
+        captured.append(url)
+        return {'ok': True}
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    # base_url has no path; base_path should be prefixed
+    client = EndpointClient(
+        base_url='https://api.example.com',
+        endpoints={'list': 'items'},
+        base_path='/v2',
+    )
+
+    out = client.paginate('list', pagination=None)
+    assert out == {'ok': True}
+    assert captured == ['https://api.example.com/v2/items']
+
+
+def test_client_base_url_path_and_base_path_both_applied(monkeypatch):
+    """Both base_url path and base_path should compose in order."""
+
+    captured: list[str] = []
+
+    def fake_extract(kind: str, url: str, **_kwargs: Any):
+        assert kind == 'api'
+        captured.append(url)
+        return {'ok': True}
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    client = EndpointClient(
+        base_url='https://api.example.com/api',
+        endpoints={'list': '/items'},
+        base_path='v1',  # missing leading slash is tolerated
+    )
+
+    client.paginate('list', pagination=None)
+    assert captured == ['https://api.example.com/api/v1/items']
+
+
 def test_url_includes_base_path_when_paginating(monkeypatch):
     """EndpointClient.paginate should include base path from base_url."""
 
