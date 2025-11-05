@@ -8,7 +8,7 @@ transport configuration.
 
 Summary
 -------
-Use :class:`~etlplus.api.client.EndpointClient` to register relative endpoint
+Use ``:class:etlplus.api.client.EndpointClient`` to register relative endpoint
 paths under a base URL and to paginate API responses. The client can apply
 rate limits between requests and perform exponential-backoff retries with
 full jitter.
