@@ -48,6 +48,32 @@ apis:
           headers:
             Accept: application/vnd.github+json
             Authorization: "Bearer ${GITHUB_TOKEN}"
+          pagination:
+            type: cursor             # none | page | offset | cursor | link
+            params:                  # request param names (used if applicable)
+              page: page
+              per_page: per_page
+              cursor: cursor
+              limit: limit
+            response:                # selectors into response
+              items_path: data.items
+              next_cursor_path: meta.next_cursor
+            defaults:
+              per_page: 100
+          rate_limit:
+            bucket: default
+            policy: header_based
+            headers:
+              remaining: X-RateLimit-Remaining
+              reset: X-RateLimit-Reset
+          retries:
+            max: 5
+            backoff: exponential
+            base_ms: 250
+            jitter: true
+            retry_on: [429, 500, 502, 503, 504]
+          ssl_verify: true
+          timeout_s: 30
       staging:
         <<: *profile_defaults
         base_url: "https://staging.api.github.com"
