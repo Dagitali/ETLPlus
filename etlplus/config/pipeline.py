@@ -21,9 +21,7 @@ from .jobs import JobConfig
 from .jobs import LoadRef
 from .jobs import TransformRef
 from .jobs import ValidationRef
-from .pagination import PaginationConfig
 from .profile import ProfileConfig
-from .rate_limit import RateLimitConfig
 from .sources import SourceApi
 from .sources import SourceDb
 from .sources import SourceFile
@@ -134,42 +132,11 @@ def _build_sources(
         if not sname:
             continue
         if stype == 'file':
-            sources.append(
-                SourceFile(
-                    name=sname,
-                    type='file',
-                    format=s.get('format'),
-                    path=s.get('path'),
-                    options=dict(s.get('options', {}) or {}),
-                ),
-            )
+            sources.append(SourceFile.from_obj(s))
         elif stype == 'database':
-            sources.append(
-                SourceDb(
-                    name=sname,
-                    type='database',
-                    connection_string=s.get('connection_string'),
-                    query=s.get('query'),
-                ),
-            )
+            sources.append(SourceDb.from_obj(s))
         elif stype == 'api':
-            sources.append(
-                SourceApi(
-                    name=sname,
-                    type='api',
-                    url=s.get('url'),
-                    headers=_cast_headers(s.get('headers')),
-                    query_params=dict(s.get('query_params', {}) or {}),
-                    pagination=PaginationConfig.from_obj(
-                        s.get('pagination'),
-                    ),
-                    rate_limit=RateLimitConfig.from_obj(
-                        s.get('rate_limit'),
-                    ),
-                    api=s.get('api') or s.get('service'),
-                    endpoint=s.get('endpoint'),
-                ),
-            )
+            sources.append(SourceApi.from_obj(s))
         else:
             continue
 
@@ -203,36 +170,11 @@ def _build_targets(
         if not tname:
             continue
         if ttype == 'file':
-            targets.append(
-                TargetFile(
-                    name=tname,
-                    type='file',
-                    format=t.get('format'),
-                    path=t.get('path'),
-                ),
-            )
+            targets.append(TargetFile.from_obj(t))
         elif ttype == 'api':
-            targets.append(
-                TargetApi(
-                    name=tname,
-                    type='api',
-                    url=t.get('url'),
-                    method=t.get('method'),
-                    headers=_cast_headers(t.get('headers')),
-                    api=t.get('api') or t.get('service'),
-                    endpoint=t.get('endpoint'),
-                ),
-            )
+            targets.append(TargetApi.from_obj(t))
         elif ttype == 'database':
-            targets.append(
-                TargetDb(
-                    name=tname,
-                    type='database',
-                    connection_string=t.get('connection_string'),
-                    table=t.get('table'),
-                    mode=t.get('mode'),
-                ),
-            )
+            targets.append(TargetDb.from_obj(t))
         else:
             continue
 

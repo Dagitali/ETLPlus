@@ -6,8 +6,11 @@ A module defining configuration types for data targets in ETL pipelines.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from typing import Any
+from typing import Self
 
 
 # SECTION: CLASSES ========================================================== #
@@ -33,6 +36,27 @@ class TargetApi:
     api: str | None = None
     endpoint: str | None = None
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+        name = obj.get('name')
+        if not isinstance(name, str):
+            raise TypeError('TargetApi requires a "name" (str)')
+        headers = {
+            k: str(v)
+            for k, v in (obj.get('headers', {}) or {}).items()
+        }
+        return cls(
+            name=name,
+            type='api',
+            url=obj.get('url'),
+            method=obj.get('method'),
+            headers=headers,
+            api=obj.get('api') or obj.get('service'),
+            endpoint=obj.get('endpoint'),
+        )
+
 
 @dataclass(slots=True)
 class TargetDb:
@@ -48,6 +72,21 @@ class TargetDb:
     table: str | None = None
     mode: str | None = None  # append|replace|upsert (future)
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+        name = obj.get('name')
+        if not isinstance(name, str):
+            raise TypeError('TargetDb requires a "name" (str)')
+        return cls(
+            name=name,
+            type='database',
+            connection_string=obj.get('connection_string'),
+            table=obj.get('table'),
+            mode=obj.get('mode'),
+        )
+
 
 @dataclass(slots=True)
 class TargetFile:
@@ -61,3 +100,17 @@ class TargetFile:
     type: str = 'file'
     format: str | None = None
     path: str | None = None
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+        name = obj.get('name')
+        if not isinstance(name, str):
+            raise TypeError('TargetFile requires a "name" (str)')
+        return cls(
+            name=name,
+            type='file',
+            format=obj.get('format'),
+            path=obj.get('path'),
+        )
