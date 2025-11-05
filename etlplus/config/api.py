@@ -22,7 +22,7 @@ from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
 if TYPE_CHECKING:
-    from .types import EndpointConfigMap, ApiConfigMap
+    from .types import ApiConfigMap, ApiProfileConfigMap, EndpointConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -55,6 +55,81 @@ class ApiProfileConfig:
     # Optional defaults carried at profile level
     pagination_defaults: PaginationConfig | None = None
     rate_limit_defaults: RateLimitConfig | None = None
+
+    # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: ApiProfileConfigMap,
+    ) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self: ...
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create an ApiProfileConfig from a dictionary-like object.
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The object to parse (expected to be a mapping).
+
+        Returns
+        -------
+        ApiProfileConfig
+            The parsed ApiProfileConfig instance.
+
+        Notes
+        -----
+        TypedDict shape: ApiProfileConfigMap (for editor and type-checkers).
+        """
+
+        if not isinstance(obj, Mapping):
+            raise TypeError('ApiProfileConfig must be a mapping')
+
+        if not isinstance((base := obj.get('base_url')), str):
+            raise TypeError('ApiProfileConfig requires "base_url" (str)')
+
+        # Merge defaults.headers (low precedence) with profile headers (high).
+        def _merge_headers(
+            defaults_raw: Mapping[str, Any] | None,
+            headers_raw: Mapping[str, Any] | None,
+        ) -> dict[str, str]:
+            dflt = {k: str(v) for k, v in (defaults_raw or {}).items()}
+            hdrs = {k: str(v) for k, v in (headers_raw or {}).items()}
+            return dflt | hdrs
+
+        defaults_raw = obj.get('defaults', {}) or {}
+        merged_headers = _merge_headers(
+            (defaults_raw.get('headers', {}) or {}),
+            obj.get('headers', {}),
+        )
+
+        base_path = obj.get('base_path')
+        auth = dict(obj.get('auth', {}) or {})
+
+        pag_def = pagination_from_defaults(defaults_raw.get('pagination'))
+        rl_def = rate_limit_from_defaults(defaults_raw.get('rate_limit'))
+
+        return cls(
+            base_url=base,
+            headers=merged_headers,
+            base_path=base_path,
+            auth=auth,
+            pagination_defaults=pag_def,
+            rate_limit_defaults=rl_def,
+        )
 
 
 @dataclass(slots=True)
@@ -265,45 +340,9 @@ class ApiConfig:
         profiles_raw = obj.get('profiles', {}) or {}
         profiles: dict[str, ApiProfileConfig] = {}
         if isinstance(profiles_raw, dict):
-            def _merge_headers(
-                defaults_raw: Mapping[str, Any] | None,
-                headers_raw: Mapping[str, Any] | None,
-            ) -> dict[str, str]:
-                dflt = {k: str(v) for k, v in (defaults_raw or {}).items()}
-                hdrs = {k: str(v) for k, v in (headers_raw or {}).items()}
-                return dflt | hdrs
-
             for name, p in profiles_raw.items():
                 if isinstance(p, dict):
-                    if not isinstance((p_base := p.get('base_url')), str):
-                        raise TypeError(
-                            'ApiProfileConfig requires "base_url" (str)',
-                        )
-
-                    # Merge defaults.headers (low precedence) over profile
-                    # headers (high precedence).
-                    merged_headers = _merge_headers(
-                        (p.get('defaults', {}) or {}).get('headers', {}),
-                        p.get('headers', {}),
-                    )
-                    base_path = p.get('base_path')
-                    auth = dict(p.get('auth', {}) or {})
-                    # Optional defaults: pagination/rate_limit
-                    defaults_raw = p.get('defaults', {}) or {}
-                    pag_def = pagination_from_defaults(
-                        defaults_raw.get('pagination'),
-                    )
-                    rl_def = rate_limit_from_defaults(
-                        defaults_raw.get('rate_limit'),
-                    )
-                    profiles[str(name)] = ApiProfileConfig(
-                        base_url=p_base,
-                        headers=merged_headers,
-                        base_path=base_path,
-                        auth=auth,
-                        pagination_defaults=pag_def,
-                        rate_limit_defaults=rl_def,
-                    )
+                    profiles[str(name)] = ApiProfileConfig.from_obj(p)
 
         # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
