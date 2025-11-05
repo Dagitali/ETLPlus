@@ -12,6 +12,8 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from .utils import cast_str_dict
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -39,14 +41,34 @@ class TargetApi:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create a TargetApi from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the TargetApi from.
+
+        Returns
+        -------
+        Self
+            The created TargetApi instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
+        """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('TargetApi requires a "name" (str)')
-        headers = {
-            k: str(v)
-            for k, v in (obj.get('headers', {}) or {}).items()
-        }
+        headers = cast_str_dict(obj.get('headers'))
+
         return cls(
             name=name,
             type='api',
@@ -75,10 +97,33 @@ class TargetDb:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create a TargetDb from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the TargetDb from.
+
+        Returns
+        -------
+        Self
+            The created TargetDb instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
+        """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('TargetDb requires a "name" (str)')
+
         return cls(
             name=name,
             type='database',
@@ -104,10 +149,33 @@ class TargetFile:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create a TargetFile from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the TargetFile from.
+
+        Returns
+        -------
+        Self
+            The created TargetFile instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
+        """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('TargetFile requires a "name" (str)')
+
         return cls(
             name=name,
             type='file',

@@ -14,6 +14,7 @@ from typing import Self
 
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
+from .utils import cast_str_dict
 
 
 # SECTION: CLASSES ========================================================== #
@@ -44,17 +45,34 @@ class SourceApi:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
         """
         Create a SourceApi from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the SourceApi from.
+
+        Returns
+        -------
+        Self
+            The created SourceApi instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
         """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('SourceApi requires a "name" (str)')
-        headers = {
-            k: str(v)
-            for k, v in (obj.get('headers', {}) or {}).items()
-        }
+        headers = cast_str_dict(obj.get('headers'))
+
         return cls(
             name=name,
             type='api',
@@ -84,10 +102,33 @@ class SourceDb:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create a SourceDb from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the SourceDb from.
+
+        Returns
+        -------
+        Self
+            The created SourceDb instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
+        """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('SourceDb requires a "name" (str)')
+
         return cls(
             name=name,
             type='database',
@@ -102,6 +143,8 @@ class SourceFile:
     Configuration for a file-based data source.
     """
 
+    # -- Attributes -- #
+
     name: str
     type: str = 'file'
     format: str | None = None
@@ -111,10 +154,33 @@ class SourceFile:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self:
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self:
+        """
+        Create a SourceFile from a mapping (tolerant to missing optional keys).
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any]
+            The mapping to create the SourceFile from.
+
+        Returns
+        -------
+        Self
+            The created SourceFile instance.
+
+        Raises
+        ------
+        TypeError
+            If the input mapping is invalid.
+        """
+
         name = obj.get('name')
         if not isinstance(name, str):
             raise TypeError('SourceFile requires a "name" (str)')
+
         return cls(
             name=name,
             type='file',
