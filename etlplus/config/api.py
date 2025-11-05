@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import Mapping
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -77,7 +78,35 @@ class ApiConfig:
 
     # -- Protected Instance Methods -- #
 
+    def _selected_profile(self) -> ApiProfileConfig | None:
+        """
+        Return the active profile object, if any.
+
+        Selection order mirrors headers/base_url behavior: 'default' when
+        present, otherwise the first profile listed.
+
+        Returns
+        -------
+        ApiProfileConfig | None
+            The selected profile configuration, or None if no profiles exist.
+        """
+
+        name = self._selected_profile_name()
+        return self.profiles.get(name) if name else None
+
     def _selected_profile_name(self) -> str | None:
+        """
+        Return the name of the selected profile, if any.
+
+        Selection order mirrors headers/base_url behavior: 'default' when
+        present, otherwise the first profile listed.
+
+        Returns
+        -------
+        str | None
+            The name of the selected profile, or None if no profiles exist.
+        """
+
         if not self.profiles:
             return None
 
@@ -88,12 +117,25 @@ class ApiConfig:
 
     # -- Instance Methods -- #
 
-    def build_endpoint_url(self, endpoint: EndpointConfig) -> str:
+    def build_endpoint_url(
+        self,
+        endpoint: EndpointConfig,
+    ) -> str:
         """
         Compose a full URL from base_url, base_path, and endpoint.path.
 
         This mirrors EndpointClient.url path-join semantics, but uses
         the model's effective_base_url() which includes profile base_path.
+
+        Parameters
+        ----------
+        endpoint : EndpointConfig
+            The endpoint configuration.
+
+        Returns
+        -------
+        str
+            The full URL for the endpoint.
         """
 
         base = self.effective_base_url()
@@ -107,16 +149,18 @@ class ApiConfig:
         )
 
     def effective_base_path(self) -> str | None:
-        """Return the selected profile's base_path, if any."""
+        """
+        Return the selected profile's base_path, if any.
 
-        if not self.profiles:
-            return None
-        prof_name = (
-            'default' if 'default' in self.profiles
-            else next(iter(self.profiles.keys()))
-        )
+        Returns
+        -------
+        str | None
+            The base path from the selected profile, or None if not set.
+        """
 
-        return getattr(self.profiles[prof_name], 'base_path', None)
+        prof = self._selected_profile()
+
+        return getattr(prof, 'base_path', None) if prof else None
 
     def effective_base_url(self) -> str:
         """Compute base_url combined with effective base_path, if present."""
@@ -132,29 +176,53 @@ class ApiConfig:
         )
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
-        """Get the effective pagination defaults for the API."""
+        """
+        Get the effective pagination defaults for the API.
 
-        name = self._selected_profile_name()
-        if not name:
-            return None
+        Returns
+        -------
+        PaginationConfig | None
+            The pagination defaults from the selected profile, or None if not
+            set.
+        """
 
-        return getattr(self.profiles[name], 'pagination_defaults', None)
+        prof = self._selected_profile()
+
+        return getattr(prof, 'pagination_defaults', None) if prof else None
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
-        """Get the effective rate limit defaults for the API."""
+        """
+        Get the effective rate limit defaults for the API.
 
-        name = self._selected_profile_name()
-        if not name:
-            return None
+        Returns
+        -------
+        RateLimitConfig | None
+            The rate limit defaults from the selected profile, or None if not
+            set.
+        """
 
-        return getattr(self.profiles[name], 'rate_limit_defaults', None)
+        prof = self._selected_profile()
+
+        return getattr(prof, 'rate_limit_defaults', None) if prof else None
 
     # -- Static Methods -- #
 
     @staticmethod
-    def from_obj(obj: Any) -> ApiConfig:
+    def from_obj(
+        obj: Any,
+    ) -> ApiConfig:
         """
         Create an ApiConfig instance from a dictionary-like object.
+
+        Parameters
+        ----------
+        obj : Any
+            The object to parse (expected to be a mapping).
+
+        Returns
+        -------
+        ApiConfig
+            The parsed ApiConfig instance.
         """
 
         if not isinstance(obj, dict):
@@ -164,6 +232,14 @@ class ApiConfig:
         profiles_raw = obj.get('profiles', {}) or {}
         profiles: dict[str, ApiProfileConfig] = {}
         if isinstance(profiles_raw, dict):
+            def _merge_headers(
+                defaults_raw: Mapping[str, Any] | None,
+                headers_raw: Mapping[str, Any] | None,
+            ) -> dict[str, str]:
+                dflt = {k: str(v) for k, v in (defaults_raw or {}).items()}
+                hdrs = {k: str(v) for k, v in (headers_raw or {}).items()}
+                return {**dflt, **hdrs}
+
             for name, p in profiles_raw.items():
                 if isinstance(p, dict):
                     p_base = p.get('base_url')
@@ -172,18 +248,12 @@ class ApiConfig:
                             'ApiProfileConfig requires "base_url" (str)',
                         )
 
-                    # Merge defaults.headers (low precedence) with headers.
-                    dflt_headers_raw = (
-                        (p.get('defaults', {}) or {}).get('headers', {})
+                    # Merge defaults.headers (low precedence) over profile
+                    # headers (high precedence).
+                    merged_headers = _merge_headers(
+                        (p.get('defaults', {}) or {}).get('headers', {}),
+                        p.get('headers', {}),
                     )
-                    dflt_headers = {
-                        k: str(v) for k, v in (dflt_headers_raw or {}).items()
-                    }
-                    p_headers = {
-                        k: str(v)
-                        for k, v in (p.get('headers', {}) or {}).items()
-                    }
-                    merged_headers = {**dflt_headers, **p_headers}
                     base_path = p.get('base_path')
                     auth = dict(p.get('auth', {}) or {})
                     # Optional defaults: pagination/rate_limit
@@ -203,7 +273,7 @@ class ApiConfig:
                         rate_limit_defaults=rl_def,
                     )
 
-        # Top-level fallbacks (or legacy flat shape)
+        # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
         tl_headers = {
             k: str(v)
@@ -225,7 +295,7 @@ class ApiConfig:
             if tl_headers:
                 headers |= tl_headers
         else:
-            # Legacy flat shape must provide base_url
+            # Legacy flat shape must provide base_url.
             if not isinstance(tl_base, str):
                 raise TypeError('ApiConfig requires "base_url" (str)')
             base_url = tl_base
@@ -281,8 +351,25 @@ class EndpointConfig:
     # -- Static Methods -- #
 
     @staticmethod
-    def from_obj(obj: Any) -> EndpointConfig:
-        # Allow either a bare string path or a mapping with explicit fields
+    def from_obj(
+        obj: Any,
+    ) -> EndpointConfig:
+        """
+        Create an EndpointConfig instance from a string or dictionary-like
+        object.
+
+        Parameters
+        ----------
+        obj : Any
+            The object to parse (expected to be a str or mapping).
+
+        Returns
+        -------
+        EndpointConfig
+            The parsed EndpointConfig instance.
+        """
+
+        # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):
             # When provided as a bare string, preserve method=None
             return EndpointConfig(path=obj, method=None)
