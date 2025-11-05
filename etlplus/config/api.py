@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+from ..api import EndpointClient
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import pagination_from_defaults
@@ -221,8 +222,9 @@ class ApiConfig:
         """
         Compose a full URL from base_url, base_path, and endpoint.path.
 
-        This mirrors EndpointClient.url path-join semantics, but uses
-        the model's effective_base_url() which includes profile base_path.
+        Implementation delegates URL joining to EndpointClient so that
+        path composition stays consistent with the client (including
+        handling of leading/trailing slashes and optional base_path).
 
         Parameters
         ----------
@@ -235,15 +237,13 @@ class ApiConfig:
             The full URL for the endpoint.
         """
 
-        base = self.effective_base_url()
-        parts = urlsplit(base)
-        base_path = parts.path.rstrip('/')
-        rel_norm = '/' + endpoint.path.lstrip('/')
-        path = (base_path + rel_norm) if base_path else rel_norm
-
-        return urlunsplit(
-            (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
+        client = EndpointClient(
+            base_url=self.base_url,
+            base_path=self.effective_base_path(),
+            endpoints={'__ep__': endpoint.path},
         )
+
+        return client.url('__ep__')
 
     def effective_base_path(self) -> str | None:
         """
