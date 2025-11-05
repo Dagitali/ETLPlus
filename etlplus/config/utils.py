@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from ..types import StrAnyMap
-from ..types import StrStrMap
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .types import Config
@@ -21,8 +19,8 @@ from .types import Config
 
 def deep_substitute(
     value: Any,
-    vars_map: StrAnyMap,
-    env_map: StrStrMap,
+    vars_map: Mapping[str, Any],
+    env_map: Mapping[str, str],
 ) -> Any:
     """
     Recursively substitute ${VAR} tokens using vars and environment.
