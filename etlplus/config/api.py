@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import overload
 from typing import Self
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
@@ -359,7 +360,21 @@ class EndpointConfig:
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
-    # -- Static Methods -- #
+    # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: str,
+    ) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self: ...
 
     @classmethod
     def from_obj(

@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import overload
 from typing import Self
 
 
@@ -40,6 +41,20 @@ class RateLimitConfig:
     max_per_sec: float | None = None
 
     # -- Class Methods -- #
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: None,
+    ) -> None: ...
 
     @classmethod
     def from_obj(
