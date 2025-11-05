@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from typing import Self
 
 from ..file import read_yaml
 from ..types import StrPath
@@ -30,6 +31,7 @@ from .sources import SourceFile
 from .targets import TargetApi
 from .targets import TargetDb
 from .targets import TargetFile
+from .types import Config
 from .types import Source
 from .types import Target
 from .utils import deep_substitute
@@ -38,7 +40,23 @@ from .utils import deep_substitute
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-def _build_jobs(raw: dict[str, Any]) -> list[JobConfig]:
+def _build_jobs(
+    raw: Config,
+) -> list[JobConfig]:
+    """
+    Build a list of JobConfig objects from the raw configuration.
+
+    Parameters
+    ----------
+    raw : Config
+        The raw configuration dictionary.
+
+    Returns
+    -------
+    list[JobConfig]
+        A list of JobConfig objects.
+    """
+
     jobs: list[JobConfig] = []
     for j in (raw.get('jobs', []) or []):
         if not isinstance(j, dict):
@@ -87,10 +105,27 @@ def _build_jobs(raw: dict[str, Any]) -> list[JobConfig]:
                 load=load,
             ),
         )
+
     return jobs
 
 
-def _build_sources(raw: dict[str, Any]) -> list[Source]:
+def _build_sources(
+    raw: Config,
+) -> list[Source]:
+    """
+    Build a list of Source objects from the raw configuration.
+
+    Parameters
+    ----------
+    raw : Config
+        The raw configuration dictionary.
+
+    Returns
+    -------
+    list[Source]
+        A list of Source objects.
+    """
+
     sources: list[Source] = []
     for s in (raw.get('sources', []) or []):
         if not isinstance(s, dict):
@@ -141,10 +176,27 @@ def _build_sources(raw: dict[str, Any]) -> list[Source]:
             )
         else:
             continue
+
     return sources
 
 
-def _build_targets(raw: dict[str, Any]) -> list[Target]:
+def _build_targets(
+    raw: Config,
+) -> list[Target]:
+    """
+    Build a list of Target objects from the raw configuration.
+
+    Parameters
+    ----------
+    raw : Config
+        The raw configuration dictionary.
+
+    Returns
+    -------
+    list[Target]
+        A list of Target objects.
+    """
+
     targets: list[Target] = []
     for t in (raw.get('targets', []) or []):
         if not isinstance(t, dict):
@@ -189,6 +241,7 @@ def _build_targets(raw: dict[str, Any]) -> list[Target]:
             )
         else:
             continue
+
     return targets
 
 
@@ -246,7 +299,7 @@ class PipelineConfig:
         *,
         substitute: bool = False,
         env: StrStrMap | None = None,
-    ) -> PipelineConfig:
+    ) -> Self:
         """
         Create a PipelineConfig instance from a YAML file.
         """
@@ -270,10 +323,10 @@ class PipelineConfig:
 
         return cfg
 
-    # -- Static Methods -- #
+    # -- Class Methods -- #
 
-    @staticmethod
-    def from_dict(raw: dict[str, Any]) -> PipelineConfig:
+    @classmethod
+    def from_dict(cls, raw: Config) -> Self:
         """
         Create a PipelineConfig instance from a dictionary.
         """
@@ -315,7 +368,7 @@ class PipelineConfig:
         # Jobs
         jobs = _build_jobs(raw)
 
-        return PipelineConfig(
+        return cls(
             name=name,
             version=version,
             profile=profile,
