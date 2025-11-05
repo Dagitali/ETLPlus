@@ -37,6 +37,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
+    - [For code contributors](#for-code-contributors)
   - [Acknowledgments](#acknowledgments)
 
 ## Features
@@ -380,6 +381,14 @@ improve the documentation, please feel free to submit a pull request as follows:
 3. Commit your changes (`git commit -m "Add feature"`).
 4. Push to your branch (`git push origin feature-name`).
 5. Submit a pull request with a detailed description.
+
+### For code contributors
+
+- Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
+- Design notes (Mapping inputs, dict outputs):
+  [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
+- Typing philosophy (TypedDicts as editor hints, permissive runtime):
+  [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 
 ## Acknowledgments
 
