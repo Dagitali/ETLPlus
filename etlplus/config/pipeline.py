@@ -7,6 +7,7 @@ A module defining configuration types for ETL job orchestration.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -14,8 +15,6 @@ from typing import Any
 from typing import Self
 
 from ..file import read_yaml
-from ..types import StrPath
-from ..types import StrStrMap
 from .api import ApiConfig
 from .jobs import ExtractRef
 from .jobs import JobConfig
@@ -249,10 +248,10 @@ def _build_targets(
 
 
 def load_pipeline_config(
-    path: StrPath,
+    path: Path | str,
     *,
     substitute: bool = False,
-    env: StrStrMap | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> PipelineConfig:
     """
     Read a pipeline YAML file into a PipelineConfig dataclass.
@@ -295,10 +294,10 @@ class PipelineConfig:
     @classmethod
     def from_yaml(
         cls,
-        path: StrPath,
+        path: Path | str,
         *,
         substitute: bool = False,
-        env: StrStrMap | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> Self:
         """
         Create a PipelineConfig instance from a YAML file.
@@ -326,7 +325,10 @@ class PipelineConfig:
     # -- Class Methods -- #
 
     @classmethod
-    def from_dict(cls, raw: Config) -> Self:
+    def from_dict(
+        cls,
+        raw: Config,
+    ) -> Self:
         """
         Create a PipelineConfig instance from a dictionary.
         """
