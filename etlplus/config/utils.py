@@ -29,10 +29,16 @@ def deep_substitute(
     """
 
     if isinstance(value, str):
+        # Fast path: single combined pass over substitutions.
+        if not vars_map and not env_map:
+            return value
         out = value
-        for name, replacement in vars_map.items():
-            out = out.replace(f"${{{name}}}", str(replacement))
-        for name, replacement in env_map.items():
+        all_vars: dict[str, Any] = {}
+        if vars_map:
+            all_vars.update(vars_map)
+        if env_map:
+            all_vars.update(env_map)
+        for name, replacement in all_vars.items():
             out = out.replace(f"${{{name}}}", str(replacement))
         return out
     if isinstance(value, dict):
