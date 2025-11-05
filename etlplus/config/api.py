@@ -22,7 +22,7 @@ from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
 if TYPE_CHECKING:
-    from .types import EndpointConfigMap
+    from .types import EndpointConfigMap, ApiConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -221,6 +221,20 @@ class ApiConfig:
     # -- Static Methods -- #
 
     @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: ApiConfigMap,
+    ) -> Self: ...
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any],
+    ) -> Self: ...
+
+    @classmethod
     def from_obj(
         cls,
         obj: Mapping[str, Any],
@@ -237,6 +251,10 @@ class ApiConfig:
         -------
         ApiConfig
             The parsed ApiConfig instance.
+
+        Notes
+        -----
+        TypedDict shape: ApiConfigMap (for editor and type-checkers).
         """
 
         # Accept any mapping-like object; provide a consistent error otherwise.
@@ -398,6 +416,10 @@ class EndpointConfig:
         -------
         EndpointConfig
             The parsed EndpointConfig instance.
+
+        Notes
+        -----
+        TypedDict shape: EndpointConfigMap (for editor and type-checkers).
         """
 
         # Allow either a bare string path or a mapping with explicit fields.
