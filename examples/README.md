@@ -35,3 +35,9 @@ etlplus transform examples/data/sample.json \
 
 For larger workflows, author a pipeline YAML and run it with your own orchestration or helper script.
 See the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example `in/pipeline.yml` for a richer configuration.
+
+Design notes on config typing and merges:
+- Mapping inputs, dict outputs, and merge semantics are documented in
+  `docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`.
+ - Typing philosophy (TypedDicts as editor hints, permissive runtime):
+   `CONTRIBUTING.md#typing-philosophy`.

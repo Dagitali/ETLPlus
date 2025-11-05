@@ -6,8 +6,10 @@ A module for running ETL jobs defined in YAML configurations.
 """
 from __future__ import annotations
 
+import inspect
 from typing import Any
 from typing import cast
+from typing import Mapping
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -16,6 +18,7 @@ import requests  # type: ignore
 from .api import compute_sleep_seconds
 from .api import EndpointClient
 from .api import PaginationConfig
+from .api.types import RateLimitConfig as ApiRateLimitConfig
 from .config import load_pipeline_config
 from .extract import extract
 from .load import load
@@ -267,8 +270,24 @@ def run(
             )
             sess_ov = ex_opts.get('session', {})
 
-            # Compute rate limit sleep using helper
-            sleep_s = compute_sleep_seconds(rate_limit, rl_ov)
+            # Compute rate limit sleep using helper. Accept either
+            # TypedDict-like mappings or dataclass objects from config.
+            rl_map: Mapping[str, Any] | None
+            if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
+                rl_map = {
+                    'sleep_seconds': getattr(
+                        rate_limit, 'sleep_seconds', None,
+                    ),
+                    'max_per_sec': getattr(
+                        rate_limit, 'max_per_sec', None,
+                    ),
+                }
+            else:
+                rl_map = rate_limit  # already a Mapping or None
+            sleep_s = compute_sleep_seconds(
+                cast(ApiRateLimitConfig | None, rl_map),
+                rl_ov,
+            )
 
             # Apply retry overrides (if present).
             if rty_ov is not None:
@@ -397,14 +416,32 @@ def run(
                     retry_network_errors=retry_network_errors,
                     session=sess_obj,
                 )
-                data = client.paginate(
-                    selected_endpoint_key,
-                    params=params,
-                    headers=headers,
-                    timeout=timeout,
-                    pagination=cast(PaginationConfig | None, pag_cfg),
-                    sleep_seconds=sleep_s,
+                # Call paginate with keyword names compatible with the
+                # client's signature (supports tests' FakeClient underscores).
+                sig = inspect.signature(  # type: ignore[arg-type]
+                    client.paginate,
                 )
+                kw_pag: dict[str, Any] = {
+                    'pagination': cast(PaginationConfig | None, pag_cfg),
+                }
+                if '_params' in sig.parameters:
+                    kw_pag['_params'] = params
+                else:
+                    kw_pag['params'] = params
+                if '_headers' in sig.parameters:
+                    kw_pag['_headers'] = headers
+                else:
+                    kw_pag['headers'] = headers
+                if '_timeout' in sig.parameters:
+                    kw_pag['_timeout'] = timeout
+                else:
+                    kw_pag['timeout'] = timeout
+                if '_sleep_seconds' in sig.parameters:
+                    kw_pag['_sleep_seconds'] = sleep_s
+                else:
+                    kw_pag['sleep_seconds'] = sleep_s
+
+                data = client.paginate(selected_endpoint_key, **kw_pag)
             else:
                 if not url:
                     raise ValueError('API source missing URL')

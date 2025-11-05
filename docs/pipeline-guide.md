@@ -372,3 +372,45 @@ jobs:
 - Keep pipelines composable; factor common transforms into named pipelines reused across jobs.
 
 For the HTTP client and pagination API, see `etlplus/api/README.md`.
+
+## Design notes: Mapping inputs, dict outputs
+
+ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `PipelineConfig.from_dict`)
+accept `Mapping[str, Any]` rather than `dict[str, Any]` for inputs. Why?
+
+- Flexibility: callers can pass any mapping-like object (e.g., YAML loaders that
+  return custom mappings) without copying into a `dict` first.
+- Clear intent: inputs are treated as read-only; we normalize to concrete `dict`
+  only for internal storage.
+- Lower coupling: depending on the standard Mapping protocol avoids import cycles
+  and keeps modules cohesive.
+
+Practically, you can pass a plain `dict` everywhere and it will work.
+
+### Merge semantics (Python 3.13)
+
+We use the dict union operator for clarity:
+
+- `a | b` creates a merged copy with `b` taking precedence.
+- `a |= b` updates `a` in-place with `b`’s keys.
+
+Header precedence (lowest → highest):
+
+1. `profiles.<name>.defaults.headers`
+2. `profiles.<name>.headers`
+3. API top-level `headers`
+
+### Extending config shapes
+
+When adding new config objects or fields:
+
+- Prefer `@dataclass(slots=True)` for models.
+- Add a `@classmethod from_obj(cls, obj: Mapping[str, Any]) -> Self` that is tolerant
+  of missing optional keys and performs minimal type normalization (e.g., cast header
+  values to `str`).
+- Keep inputs as `Mapping[...]` (non-mutating) and store concrete `dict` internally.
+- Reuse small helpers for repeated casts (e.g., `headers: dict[str, str]`).
+
+Contributors: for the repo-wide typing approach (TypedDicts as editor hints,
+`Mapping[str, Any]` inputs, and overloads imported only under `TYPE_CHECKING`),
+see [`CONTRIBUTING.md#typing-philosophy`](../CONTRIBUTING.md#typing-philosophy).
