@@ -120,7 +120,7 @@ apis:
   my_api:
     profiles:
       default:
-        base_url: "https://api.example.com/v1"
+        base_url: "https://api.example.com"
         base_path: /v1
         auth:
           type: bearer
