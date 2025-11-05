@@ -30,7 +30,6 @@ from .sources import SourceFile
 from .targets import TargetApi
 from .targets import TargetDb
 from .targets import TargetFile
-from .types import Config
 from .types import Source
 from .types import Target
 from .utils import deep_substitute
@@ -40,14 +39,14 @@ from .utils import deep_substitute
 
 
 def _build_jobs(
-    raw: Config,
+    raw: Mapping[str, Any],
 ) -> list[JobConfig]:
     """
     Build a list of JobConfig objects from the raw configuration.
 
     Parameters
     ----------
-    raw : Config
+    raw : Mapping[str, Any]
         The raw configuration dictionary.
 
     Returns
@@ -109,14 +108,14 @@ def _build_jobs(
 
 
 def _build_sources(
-    raw: Config,
+    raw: Mapping[str, Any],
 ) -> list[Source]:
     """
     Build a list of Source objects from the raw configuration.
 
     Parameters
     ----------
-    raw : Config
+    raw : Mapping[str, Any]
         The raw configuration dictionary.
 
     Returns
@@ -180,14 +179,14 @@ def _build_sources(
 
 
 def _build_targets(
-    raw: Config,
+    raw: Mapping[str, Any],
 ) -> list[Target]:
     """
     Build a list of Target objects from the raw configuration.
 
     Parameters
     ----------
-    raw : Config
+    raw : Mapping[str, Any]
         The raw configuration dictionary.
 
     Returns
@@ -316,7 +315,7 @@ class PipelineConfig:
             external = (
                 dict(env) if env is not None else dict(os.environ)
             )
-            env_map = {**base_env, **external}
+            env_map = base_env | external
             resolved = deep_substitute(raw, cfg.vars, env_map)
             cfg = cls.from_dict(resolved)
 
@@ -327,7 +326,7 @@ class PipelineConfig:
     @classmethod
     def from_dict(
         cls,
-        raw: Config,
+        raw: Mapping[str, Any],
     ) -> Self:
         """
         Create a PipelineConfig instance from a dictionary.

@@ -11,7 +11,6 @@ from typing import Any
 
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
-from .types import Config
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -31,9 +30,9 @@ def deep_substitute(
     ----------
     value : Any
         The value to perform substitutions on.
-    vars_map : StrAnyMap
+    vars_map : Mapping[str, Any]
         A mapping of variable names to replacement values.
-    env_map : StrStrMap
+    env_map : Mapping[str, str]
         A mapping of environment variable names to replacement values.
 
     Returns
@@ -67,7 +66,7 @@ def deep_substitute(
 
 
 def pagination_from_defaults(
-    obj: Config | None,
+    obj: Mapping[str, Any] | None,
 ) -> PaginationConfig | None:
     """
     Best-effort parser for profile-level defaults.pagination structures.
@@ -77,7 +76,7 @@ def pagination_from_defaults(
 
     Parameters
     ----------
-    obj : Config | None
+    obj : Mapping[str, Any] | None
         The object to parse (expected to be a mapping).
 
     Returns
@@ -139,7 +138,7 @@ def pagination_from_defaults(
 
 
 def rate_limit_from_defaults(
-    obj: Config | None,
+    obj: Mapping[str, Any] | None,
 ) -> RateLimitConfig | None:
     """
     Best-effort parser for profile-level defaults.rate_limit structures.
@@ -148,7 +147,7 @@ def rate_limit_from_defaults(
 
     Parameters
     ----------
-    obj : Config | None
+    obj : Mapping[str, Any] | None
         The object to parse (expected to be a mapping).
 
     Returns

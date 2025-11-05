@@ -25,9 +25,6 @@ Examples
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
-
 from .sources import SourceApi
 from .sources import SourceDb
 from .sources import SourceFile
@@ -44,7 +41,6 @@ __all__ = ['Source', 'Target']
 
 # SECTION: TYPE ALIASES ===================================================== #
 
-type Config = Mapping[str, Any]
 
 type Source = SourceFile | SourceDb | SourceApi
 type Target = TargetFile | TargetApi | TargetDb
