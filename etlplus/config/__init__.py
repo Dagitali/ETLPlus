@@ -2,9 +2,14 @@
 etlplus.config.__init__
 ====================
 
-The top-level module defining ``:mod:etlplus.config``, a package of high-level
-helpers for defining ETL pipeline configurations including data sources,
-data targets, jobs, and profiles.
+The top-level module defining ``:mod:etlplus.config``, a package of classes for
+defining ETL pipeline configurations including data sources, data targets,
+jobs, and profiles as well as helper functions to load and parse them.
+
+The configuration classes represent a tolerant schema for pipeline YAML files
+like `in/pipeline.yml`. They aim to cover common shapes while allowing
+provider-specific options to pass through as dictionaries.
+
 """
 from __future__ import annotations
 
