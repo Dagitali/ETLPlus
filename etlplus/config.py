@@ -70,6 +70,88 @@ def _deep_substitute(
     return value
 
 
+def _pagination_from_defaults(obj: Any) -> PaginationConfig | None:
+    """
+    Best-effort parser for profile-level defaults.pagination structures.
+
+    Tolerates either a flat PaginationConfig-like mapping or a nested shape
+    with "params" and "response" blocks. Unknown keys are ignored.
+    """
+
+    if not isinstance(obj, dict):
+        return None
+
+    # Start with direct keys if present
+    ptype = obj.get('type')
+    page_param = obj.get('page_param')
+    size_param = obj.get('size_param')
+    start_page = obj.get('start_page')
+    page_size = obj.get('page_size')
+    cursor_param = obj.get('cursor_param')
+    cursor_path = obj.get('cursor_path')
+    records_path = obj.get('records_path')
+    max_pages = obj.get('max_pages')
+    max_records = obj.get('max_records')
+
+    # Map from nested shapes when provided
+    params_blk = (
+        obj.get('params') if isinstance(obj.get('params'), dict) else None
+    )
+    if params_blk and not page_param:
+        page_param = params_blk.get('page')
+    if params_blk and not size_param:
+        size_param = params_blk.get('per_page') or params_blk.get('limit')
+    if params_blk and not cursor_param:
+        cursor_param = params_blk.get('cursor')
+
+    resp_blk = (
+        obj.get('response') if isinstance(obj.get('response'), dict) else None
+    )
+    if resp_blk and not records_path:
+        records_path = resp_blk.get('items_path')
+    if resp_blk and not cursor_path:
+        cursor_path = resp_blk.get('next_cursor_path')
+
+    dflt_blk = (
+        obj.get('defaults') if isinstance(obj.get('defaults'), dict) else None
+    )
+    if dflt_blk and not page_size:
+        page_size = dflt_blk.get('per_page')
+
+    return PaginationConfig(
+        type=str(ptype) if ptype is not None else None,
+        page_param=page_param,
+        size_param=size_param,
+        start_page=start_page,
+        page_size=page_size,
+        cursor_param=cursor_param,
+        cursor_path=cursor_path,
+        start_cursor=None,
+        records_path=records_path,
+        max_pages=max_pages,
+        max_records=max_records,
+    )
+
+
+def _rate_limit_from_defaults(obj: Any) -> RateLimitConfig | None:
+    """
+    Best-effort parser for profile-level defaults.rate_limit structures.
+
+    Only supports sleep_seconds and max_per_sec. Other keys are ignored.
+    """
+
+    if not isinstance(obj, dict):
+        return None
+    sleep_seconds = obj.get('sleep_seconds')
+    max_per_sec = obj.get('max_per_sec')
+    if sleep_seconds is None and max_per_sec is None:
+        return None
+    return RateLimitConfig(
+        sleep_seconds=sleep_seconds,
+        max_per_sec=max_per_sec,
+    )
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -241,6 +323,10 @@ class ApiProfileConfig:
     base_path: str | None = None
     auth: dict[str, Any] = field(default_factory=dict)
 
+    # Optional defaults carried at profile level
+    pagination_defaults: PaginationConfig | None = None
+    rate_limit_defaults: RateLimitConfig | None = None
+
 
 @dataclass(slots=True)
 class ApiConfig:
@@ -271,6 +357,17 @@ class ApiConfig:
     headers: dict[str, str] = field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
     profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
+
+    # -- Protected Instance Methods -- #
+
+    def _selected_profile_name(self) -> str | None:
+        if not self.profiles:
+            return None
+
+        return (
+            'default' if 'default' in self.profiles
+            else next(iter(self.profiles.keys()))
+        )
 
     # -- Instance Methods -- #
 
@@ -351,6 +448,38 @@ class ApiConfig:
             (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
         )
 
+    def effective_pagination_defaults(self) -> PaginationConfig | None:
+        """
+        Get the effective pagination defaults for the API.
+
+        Returns
+        -------
+        PaginationConfig | None
+            The effective pagination defaults for the API, or None if not set.
+        """
+
+        name = self._selected_profile_name()
+        if not name:
+            return None
+
+        return getattr(self.profiles[name], 'pagination_defaults', None)
+
+    def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
+        """
+        Get the effective rate limit defaults for the API.
+
+        Returns
+        -------
+        RateLimitConfig | None
+            The effective rate limit defaults for the API, or None if not set.
+        """
+
+        name = self._selected_profile_name()
+        if not name:
+            return None
+
+        return getattr(self.profiles[name], 'pagination_defaults', None)
+
     # -- Static Methods -- #
 
     @staticmethod
@@ -405,11 +534,21 @@ class ApiConfig:
                     merged_headers = {**dflt_headers, **p_headers}
                     base_path = p.get('base_path')
                     auth = dict(p.get('auth', {}) or {})
+                    # Optional defaults: pagination/rate_limit
+                    defaults_raw = p.get('defaults', {}) or {}
+                    pag_def = _pagination_from_defaults(
+                        defaults_raw.get('pagination'),
+                    )
+                    rl_def = _rate_limit_from_defaults(
+                        defaults_raw.get('rate_limit'),
+                    )
                     profiles[str(name)] = ApiProfileConfig(
                         base_url=p_base,
                         headers=merged_headers,
                         base_path=base_path,
                         auth=auth,
+                        pagination_defaults=pag_def,
+                        rate_limit_defaults=rl_def,
                     )
 
         # Top-level fallbacks (or legacy flat shape)
