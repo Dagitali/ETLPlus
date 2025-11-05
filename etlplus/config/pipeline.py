@@ -125,6 +125,7 @@ def _build_sources(
     """
 
     sources: list[Source] = []
+
     for s in (raw.get('sources', []) or []):
         if not isinstance(s, dict):
             continue
@@ -157,10 +158,7 @@ def _build_sources(
                     name=sname,
                     type='api',
                     url=s.get('url'),
-                    headers={
-                        k: str(v)
-                        for k, v in (s.get('headers', {}) or {}).items()
-                    },
+                    headers=_cast_headers(s.get('headers')),
                     query_params=dict(s.get('query_params', {}) or {}),
                     pagination=PaginationConfig.from_obj(
                         s.get('pagination'),
@@ -196,6 +194,7 @@ def _build_targets(
     """
 
     targets: list[Target] = []
+
     for t in (raw.get('targets', []) or []):
         if not isinstance(t, dict):
             continue
@@ -219,10 +218,7 @@ def _build_targets(
                     type='api',
                     url=t.get('url'),
                     method=t.get('method'),
-                    headers={
-                        k: str(v)
-                        for k, v in (t.get('headers', {}) or {}).items()
-                    },
+                    headers=_cast_headers(t.get('headers')),
                     api=t.get('api') or t.get('service'),
                     endpoint=t.get('endpoint'),
                 ),
@@ -241,6 +237,24 @@ def _build_targets(
             continue
 
     return targets
+
+
+def _cast_headers(m: Mapping[str, Any] | None) -> dict[str, str]:
+    """
+    Convert headers to a string mapping.
+
+    Parameters
+    ----------
+    m : Mapping[str, Any] | None
+        The headers mapping to convert.
+
+    Returns
+    -------
+    dict[str, str]
+        A mapping of header names to their string values.
+    """
+
+    return {k: str(v) for k, v in (m or {}).items()}
 
 
 # SECTION: FUNCTIONS ======================================================== #
