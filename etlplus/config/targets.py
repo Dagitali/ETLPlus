@@ -4,6 +4,8 @@ etlplus.config.targets
 
 A module defining configuration types for data targets in ETL pipelines.
 
+TypedDicts are editor hints; runtime remains permissive.
+
 See also
 --------
 - TypedDict shapes for editor hints (not enforced at runtime):

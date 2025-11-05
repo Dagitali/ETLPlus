@@ -4,6 +4,8 @@ etlplus.config.sources
 
 A module defining configuration types for data sources in ETL pipelines.
 
+TypedDicts are editor hints; runtime remains permissive.
+
 See also
 --------
 - TypedDict shapes for editor hints (not enforced at runtime):
