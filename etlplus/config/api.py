@@ -163,7 +163,14 @@ class ApiConfig:
         return getattr(prof, 'base_path', None) if prof else None
 
     def effective_base_url(self) -> str:
-        """Compute base_url combined with effective base_path, if present."""
+        """
+        Compute base_url combined with effective base_path, if present.
+
+        Returns
+        -------
+        str
+            The effective base URL including base_path.
+        """
 
         parts = urlsplit(self.base_url)
         base_path = parts.path.rstrip('/')
