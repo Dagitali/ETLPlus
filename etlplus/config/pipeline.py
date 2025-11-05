@@ -13,9 +13,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
-from typing import Protocol
 from typing import Self
-from typing import TypeVar
 
 from ..file import read_yaml
 from .api import ApiConfig
@@ -36,32 +34,7 @@ from .types import Target
 from .utils import deep_substitute
 
 
-# SECTION: TYPE VARS ======================================================== #
-
-
-S_co = TypeVar('S_co', bound=Source, covariant=True)
-T_co = TypeVar('T_co', bound=Target, covariant=True)
-
-
-# SECTION: PROTOCOLS ======================================================== #
-
-
-class _SourceFactory(Protocol[S_co]):
-
-    @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> S_co: ...
-
-
-class _TargetFactory(Protocol[T_co]):
-
-    @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> T_co: ...
-
-
 # SECTION: PROTECTED FUNCTIONS ============================================== #
-
-# Protocols above provide structural typing for factories;
-# runtime remains permissive.
 
 
 def _build_jobs(
