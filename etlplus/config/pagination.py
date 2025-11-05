@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 from typing import Self
+
+from .types import Config
 
 
 # SECTION: CLASSES ========================================================== #
@@ -75,7 +76,19 @@ class PaginationConfig:
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any] | None) -> Self | None:
+    def from_obj(
+        cls,
+        obj: Config | None,
+    ) -> Self | None:
+        """
+        Create a PaginationConfig instance from a dictionary-like object.
+
+        Parameters
+        ----------
+        obj : Config | None
+            The object to parse (expected to be a mapping).
+        """
+
         if not isinstance(obj, Mapping):
             return None
         return cls(
