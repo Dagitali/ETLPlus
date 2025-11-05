@@ -15,6 +15,7 @@ from typing import Any
 from typing import cast
 from typing import Protocol
 from typing import Self
+from typing import TypeVar
 
 from ..file import read_yaml
 from .api import ApiConfig
@@ -35,22 +36,32 @@ from .types import Target
 from .utils import deep_substitute
 
 
+# SECTION: TYPE VARS ======================================================== #
+
+
+S_co = TypeVar('S_co', bound=Source, covariant=True)
+T_co = TypeVar('T_co', bound=Target, covariant=True)
+
+
 # SECTION: PROTOCOLS ======================================================== #
 
 
-class _SourceFactory(Protocol):
+class _SourceFactory(Protocol[S_co]):
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Source: ...
+    def from_obj(cls, obj: Mapping[str, Any]) -> S_co: ...
 
 
-class _TargetFactory(Protocol):
+class _TargetFactory(Protocol[T_co]):
 
     @classmethod
-    def from_obj(cls, obj: Mapping[str, Any]) -> Target: ...
+    def from_obj(cls, obj: Mapping[str, Any]) -> T_co: ...
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
+
+# Protocols above provide structural typing for factories;
+# runtime remains permissive.
 
 
 def _build_jobs(
@@ -141,7 +152,7 @@ def _build_sources(
 
     sources: list[Source] = []
     type_map = cast(
-        dict[str, type[_SourceFactory]],
+        dict[str, type[_SourceFactory[Source]]],
         {
             'file': SourceFile,
             'database': SourceDb,
@@ -183,7 +194,7 @@ def _build_targets(
 
     targets: list[Target] = []
     type_map = cast(
-        dict[str, type[_TargetFactory]],
+        dict[str, type[_TargetFactory[Target]]],
         {
             'file': TargetFile,
             'api': TargetApi,
