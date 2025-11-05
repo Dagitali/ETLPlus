@@ -3,6 +3,11 @@ etlplus.config.api
 ===================
 
 A module defining configuration types for REST APIs endpoint services.
+
+See also
+--------
+- ApiProfileConfig.from_obj: canonical parsing logic for API profile entries
+    (used by ApiConfig.from_obj when processing the ``profiles`` section).
 """
 from __future__ import annotations
 
@@ -148,6 +153,10 @@ class ApiConfig:
         Configured endpoints for the API.
     profiles : dict[str, ApiProfileConfig]
         Optional named profiles providing per-environment base_url/headers.
+
+    Notes
+    -----
+    See also: ApiProfileConfig.from_obj for profile parsing logic.
     """
 
     # -- Attributes -- #
@@ -155,6 +164,8 @@ class ApiConfig:
     base_url: str
     headers: dict[str, str] = field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
+
+    # See also: ApiProfileConfig.from_obj for profile parsing logic.
     profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
 
     # -- Protected Instance Methods -- #
@@ -337,6 +348,7 @@ class ApiConfig:
             raise TypeError('ApiConfig must be a mapping')
 
         # Optional: profiles structure
+        # See also: ApiProfileConfig.from_obj for profile parsing logic.
         profiles_raw = obj.get('profiles', {}) or {}
         profiles: dict[str, ApiProfileConfig] = {}
         if isinstance(profiles_raw, dict):

@@ -8,6 +8,15 @@ Contents
 --------
 - Type aliases: ``Source``, ``Target``
 
+Notes
+-----
+- TypedDicts in this module are editor/type-checking hints. They are
+    intentionally ``total=False`` (all keys optional) and are not enforced at
+    runtime.
+- Constructors like ``*.from_obj`` accept ``Mapping[str, Any]`` and perform
+    tolerant parsing and light casting. This keeps the runtime permissive while
+    improving autocomplete and static analysis for contributors.
+
 Examples
 --------
 >>> from etlplus.config import Source
@@ -67,6 +76,10 @@ class ApiConfigMap(TypedDict, total=False):
 
     Either provide a 'base_url' with optional 'headers' and 'endpoints', or
     provide 'profiles' with at least one profile having a 'base_url'.
+
+    See also
+    --------
+    - etlplus.config.api.ApiConfig.from_obj: parses this mapping
     """
 
     base_url: str
@@ -80,6 +93,10 @@ class ApiProfileConfigMap(TypedDict, total=False):
     Shape accepted for a profile entry under ApiConfigMap.profiles.
 
     Note: `base_url` is required at runtime when profiles are provided.
+
+    See also
+    --------
+    - etlplus.config.api.ApiProfileConfig.from_obj: parses this mapping
     """
 
     base_url: str
@@ -94,6 +111,12 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     Defaults block available under a profile (all keys optional).
 
     Note: Runtime expects header values to be str; typing remains permissive.
+
+    See also
+    --------
+    - etlplus.config.api.ApiProfileConfig.from_obj: consumes this block
+    - etlplus.config.pagination.PaginationConfig.from_obj: parses pagination
+    - etlplus.config.rate_limit.RateLimitConfig.from_obj: parses rate_limit
     """
 
     headers: Mapping[str, Any]
@@ -106,6 +129,10 @@ class EndpointConfigMap(TypedDict, total=False):
     Shape accepted by EndpointConfig.from_obj.
 
     One of 'path' or 'url' should be provided.
+
+    See also
+    --------
+    - etlplus.config.api.EndpointConfig.from_obj: parses this mapping
     """
 
     path: NotRequired[str]
@@ -121,6 +148,10 @@ class EndpointConfigMap(TypedDict, total=False):
 class PaginationConfigMap(TypedDict, total=False):
     """
     Shape accepted by PaginationConfig.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.pagination.PaginationConfig.from_obj
     """
 
     type: str
@@ -139,6 +170,10 @@ class PaginationConfigMap(TypedDict, total=False):
 class RateLimitConfigMap(TypedDict, total=False):
     """
     Shape accepted by RateLimitConfig.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.rate_limit.RateLimitConfig.from_obj
     """
 
     sleep_seconds: float
