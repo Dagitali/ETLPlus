@@ -16,6 +16,29 @@ from .rate_limit import RateLimitConfig
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def cast_str_dict(
+    m: Mapping[str, Any] | None,
+) -> dict[str, str]:
+    """
+    Return a shallow copy of a mapping with all values coerced to strings.
+
+    This is commonly used for HTTP headers where values can be numbers or
+    other primitives but need to be serialized as strings.
+
+    Parameters
+    ----------
+    m : Mapping[str, Any] | None
+        The mapping to coerce.
+
+    Returns
+    -------
+    dict[str, str]
+        A new mapping with all values as strings.
+    """
+
+    return {k: str(v) for k, v in (m or {}).items()}
+
+
 def deep_substitute(
     value: Any,
     vars_map: Mapping[str, Any],
