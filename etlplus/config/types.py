@@ -46,6 +46,7 @@ __all__ = [
     'Source', 'Target',
 
     # TypedDicts
+    'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
     'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
 ]
 
@@ -58,6 +59,63 @@ type Target = TargetFile | TargetApi | TargetDb
 
 
 # SECTION: TYPED DICTS ====================================================== #
+
+
+class ApiConfigMap(TypedDict, total=False):
+    """
+    Top-level API config shape parsed by ApiConfig.from_obj.
+
+    Either provide a 'base_url' with optional 'headers' and 'endpoints', or
+    provide 'profiles' with at least one profile having a 'base_url'.
+    """
+
+    base_url: str
+    headers: Mapping[str, Any]
+    endpoints: Mapping[str, EndpointConfigMap | str]
+    profiles: Mapping[str, ApiProfileConfigMap]
+
+
+class ApiProfileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted for a profile entry under ApiConfigMap.profiles.
+
+    Note: `base_url` is required at runtime when profiles are provided.
+    """
+
+    base_url: str
+    headers: Mapping[str, Any]
+    base_path: str
+    auth: Mapping[str, Any]
+    defaults: ApiProfileDefaultsMap
+
+
+class ApiProfileDefaultsMap(TypedDict, total=False):
+    """
+    Defaults block available under a profile (all keys optional).
+
+    Note: Runtime expects header values to be str; typing remains permissive.
+    """
+
+    headers: Mapping[str, Any]
+    pagination: PaginationConfigMap | Mapping[str, Any]
+    rate_limit: RateLimitConfigMap | Mapping[str, Any]
+
+
+class EndpointConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by EndpointConfig.from_obj.
+
+    One of 'path' or 'url' should be provided.
+    """
+
+    path: NotRequired[str]
+    url: NotRequired[str]
+    method: NotRequired[str]
+    path_params: NotRequired[Mapping[str, Any]]
+    query_params: NotRequired[Mapping[str, Any]]
+    body: NotRequired[Any]
+    pagination: NotRequired[PaginationConfigMap]
+    rate_limit: NotRequired[RateLimitConfigMap]
 
 
 class PaginationConfigMap(TypedDict, total=False):
@@ -85,20 +143,3 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     sleep_seconds: float
     max_per_sec: float
-
-
-class EndpointConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by EndpointConfig.from_obj.
-
-    One of 'path' or 'url' should be provided.
-    """
-
-    path: NotRequired[str]
-    url: NotRequired[str]
-    method: NotRequired[str]
-    path_params: NotRequired[Mapping[str, Any]]
-    query_params: NotRequired[Mapping[str, Any]]
-    body: NotRequired[Any]
-    pagination: NotRequired[PaginationConfigMap]
-    rate_limit: NotRequired[RateLimitConfigMap]
