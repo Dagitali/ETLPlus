@@ -362,6 +362,7 @@ black etlplus/
 - Examples: [`examples/README.md`](examples/README.md)
 - Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
+- Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 - Demo and walkthrough: [`DEMO.md`](DEMO.md)
 - Additional references: [`REFERENCES.md`](`REFERENCES.md)
 
