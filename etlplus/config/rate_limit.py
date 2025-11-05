@@ -7,8 +7,10 @@ requests.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import Self
 
 
 # SECTION: CLASSES ========================================================== #
@@ -37,13 +39,13 @@ class RateLimitConfig:
     sleep_seconds: float | None = None
     max_per_sec: float | None = None
 
-    # -- Static Methods -- #
+    # -- Class Methods -- #
 
-    @staticmethod
-    def from_obj(obj: Any) -> RateLimitConfig | None:
-        if not isinstance(obj, dict):
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any] | None) -> Self | None:
+        if not isinstance(obj, Mapping):
             return None
-        return RateLimitConfig(
+        return cls(
             sleep_seconds=obj.get('sleep_seconds'),
             max_per_sec=obj.get('max_per_sec'),
         )
