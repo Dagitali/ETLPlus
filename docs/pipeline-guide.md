@@ -410,3 +410,7 @@ When adding new config objects or fields:
   values to `str`).
 - Keep inputs as `Mapping[...]` (non-mutating) and store concrete `dict` internally.
 - Reuse small helpers for repeated casts (e.g., `headers: dict[str, str]`).
+
+Contributors: for the repo-wide typing approach (TypedDicts as editor hints,
+`Mapping[str, Any]` inputs, and overloads imported only under `TYPE_CHECKING`),
+see [`CONTRIBUTING.md#typing-philosophy`](../CONTRIBUTING.md#typing-philosophy).
