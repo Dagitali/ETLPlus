@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 from typing import Self
-
-from .types import Config
 
 
 # SECTION: CLASSES ========================================================== #
@@ -45,14 +44,14 @@ class RateLimitConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: Config | None,
+        obj: Mapping[str, Any] | None,
     ) -> Self | None:
         """
         Create a RateLimitConfig instance from a dictionary-like object.
 
         Parameters
         ----------
-        obj : Config | None
+        obj : Mapping[str, Any] | None
             The object to parse (expected to be a mapping).
 
         Returns
