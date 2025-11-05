@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
 
 from .file import read_yaml
 from .types import StrAnyMap
@@ -66,6 +68,88 @@ def _deep_substitute(
         return [_deep_substitute(v, vars_map, env_map) for v in value]
 
     return value
+
+
+def _pagination_from_defaults(obj: Any) -> PaginationConfig | None:
+    """
+    Best-effort parser for profile-level defaults.pagination structures.
+
+    Tolerates either a flat PaginationConfig-like mapping or a nested shape
+    with "params" and "response" blocks. Unknown keys are ignored.
+    """
+
+    if not isinstance(obj, dict):
+        return None
+
+    # Start with direct keys if present
+    ptype = obj.get('type')
+    page_param = obj.get('page_param')
+    size_param = obj.get('size_param')
+    start_page = obj.get('start_page')
+    page_size = obj.get('page_size')
+    cursor_param = obj.get('cursor_param')
+    cursor_path = obj.get('cursor_path')
+    records_path = obj.get('records_path')
+    max_pages = obj.get('max_pages')
+    max_records = obj.get('max_records')
+
+    # Map from nested shapes when provided
+    params_blk = (
+        obj.get('params') if isinstance(obj.get('params'), dict) else None
+    )
+    if params_blk and not page_param:
+        page_param = params_blk.get('page')
+    if params_blk and not size_param:
+        size_param = params_blk.get('per_page') or params_blk.get('limit')
+    if params_blk and not cursor_param:
+        cursor_param = params_blk.get('cursor')
+
+    resp_blk = (
+        obj.get('response') if isinstance(obj.get('response'), dict) else None
+    )
+    if resp_blk and not records_path:
+        records_path = resp_blk.get('items_path')
+    if resp_blk and not cursor_path:
+        cursor_path = resp_blk.get('next_cursor_path')
+
+    dflt_blk = (
+        obj.get('defaults') if isinstance(obj.get('defaults'), dict) else None
+    )
+    if dflt_blk and not page_size:
+        page_size = dflt_blk.get('per_page')
+
+    return PaginationConfig(
+        type=str(ptype) if ptype is not None else None,
+        page_param=page_param,
+        size_param=size_param,
+        start_page=start_page,
+        page_size=page_size,
+        cursor_param=cursor_param,
+        cursor_path=cursor_path,
+        start_cursor=None,
+        records_path=records_path,
+        max_pages=max_pages,
+        max_records=max_records,
+    )
+
+
+def _rate_limit_from_defaults(obj: Any) -> RateLimitConfig | None:
+    """
+    Best-effort parser for profile-level defaults.rate_limit structures.
+
+    Only supports sleep_seconds and max_per_sec. Other keys are ignored.
+    """
+
+    if not isinstance(obj, dict):
+        return None
+    sleep_seconds = obj.get('sleep_seconds')
+    max_per_sec = obj.get('max_per_sec')
+    if sleep_seconds is None and max_per_sec is None:
+        return None
+    return RateLimitConfig(
+        sleep_seconds=sleep_seconds,
+        max_per_sec=max_per_sec,
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -216,9 +300,9 @@ class RateLimitConfig:
 
 
 @dataclass(slots=True)
-class ApiConfig:
+class ApiProfileConfig:
     """
-    Configuration for a REST API service.
+    Profile configuration for a REST API service.
 
     Attributes
     ----------
@@ -226,8 +310,40 @@ class ApiConfig:
         Base URL for the API.
     headers : dict[str, str]
         Default headers for the API.
+    base_path : str | None
+        Optional base path to prepend to endpoint paths.
+    auth : dict[str, Any]
+        Optional auth block (provider-specific shape, passed through).
+    """
+
+    # -- Attributes -- #
+
+    base_url: str
+    headers: dict[str, str] = field(default_factory=dict)
+    base_path: str | None = None
+    auth: dict[str, Any] = field(default_factory=dict)
+
+    # Optional defaults carried at profile level
+    pagination_defaults: PaginationConfig | None = None
+    rate_limit_defaults: RateLimitConfig | None = None
+
+
+@dataclass(slots=True)
+class ApiConfig:
+    """
+    Configuration for a REST API service.
+
+    Attributes
+    ----------
+    base_url : str
+        Base URL for the API (may be derived from a selected profile). This
+        field is always required and must be a non-empty string.
+    headers : dict[str, str]
+        Default headers for the API (may be derived from a selected profile).
     endpoints : dict[str, EndpointConfig]
         Configured endpoints for the API.
+    profiles : dict[str, ApiProfileConfig]
+        Optional named profiles providing per-environment base_url/headers.
 
     Methods
     -------
@@ -240,6 +356,129 @@ class ApiConfig:
     base_url: str
     headers: dict[str, str] = field(default_factory=dict)
     endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
+    profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
+
+    # -- Protected Instance Methods -- #
+
+    def _selected_profile_name(self) -> str | None:
+        if not self.profiles:
+            return None
+
+        return (
+            'default' if 'default' in self.profiles
+            else next(iter(self.profiles.keys()))
+        )
+
+    # -- Instance Methods -- #
+
+    def build_endpoint_url(
+        self, endpoint: EndpointConfig,
+    ) -> str:
+        """
+        Compose a full URL from base_url, base_path, and endpoint.path.
+
+        This mirrors EndpointClient.url path-join semantics, but uses
+        the model's effective_base_url() which includes profile base_path.
+
+        Parameters
+        ----------
+        endpoint : EndpointConfig
+            The endpoint configuration to build the URL for.
+
+        Returns
+        -------
+        str
+            The composed URL for the endpoint.
+        """
+
+        base = self.effective_base_url()
+        parts = urlsplit(base)
+        base_path = parts.path.rstrip('/')
+        rel_norm = '/' + endpoint.path.lstrip('/')
+        path = (base_path + rel_norm) if base_path else rel_norm
+
+        return urlunsplit(
+            (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
+        )
+
+    def effective_base_path(self) -> str | None:
+        """
+        Return the selected profile's base_path, if any.
+
+        Selection mirrors base_url/header selection: use the 'default'
+        profile when present, otherwise the first available profile.
+        For legacy flat shapes (no profiles), returns None.
+
+        Returns
+        -------
+        str | None
+            The effective base path for the API.
+        """
+
+        if not self.profiles:
+            return None
+        prof_name = (
+            'default' if 'default' in self.profiles
+            else next(iter(self.profiles.keys()))
+        )
+
+        return getattr(self.profiles[prof_name], 'base_path', None)
+
+    def effective_base_url(self) -> str:
+        """
+        Compute base_url combined with effective base_path, if present.
+
+        This composes the URL path as:
+          urlsplit(base_url).path + '/' + base_path + ...
+        ensuring single slashes between segments.
+
+        Returns
+        -------
+        str
+            The composed URL for the endpoint.
+        """
+
+        parts = urlsplit(self.base_url)
+        base_path = parts.path.rstrip('/')
+        extra = self.effective_base_path()
+        extra_norm = ('/' + extra.lstrip('/')) if extra else ''
+        path = (base_path + extra_norm) if (base_path or extra_norm) else ''
+
+        return urlunsplit(
+            (parts.scheme, parts.netloc, path, parts.query, parts.fragment),
+        )
+
+    def effective_pagination_defaults(self) -> PaginationConfig | None:
+        """
+        Get the effective pagination defaults for the API.
+
+        Returns
+        -------
+        PaginationConfig | None
+            The effective pagination defaults for the API, or None if not set.
+        """
+
+        name = self._selected_profile_name()
+        if not name:
+            return None
+
+        return getattr(self.profiles[name], 'pagination_defaults', None)
+
+    def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
+        """
+        Get the effective rate limit defaults for the API.
+
+        Returns
+        -------
+        RateLimitConfig | None
+            The effective rate limit defaults for the API, or None if not set.
+        """
+
+        name = self._selected_profile_name()
+        if not name:
+            return None
+
+        return getattr(self.profiles[name], 'pagination_defaults', None)
 
     # -- Static Methods -- #
 
@@ -268,20 +507,89 @@ class ApiConfig:
 
         if not isinstance(obj, dict):
             raise TypeError('ApiConfig must be a mapping')
-        base_url = obj.get('base_url')
-        if not isinstance(base_url, str):
-            raise TypeError('ApiConfig requires "base_url" (str)')
-        headers = {
+
+        # Optional: profiles structure
+        profiles_raw = obj.get('profiles', {}) or {}
+        profiles: dict[str, ApiProfileConfig] = {}
+        if isinstance(profiles_raw, dict):
+            for name, p in profiles_raw.items():
+                if isinstance(p, dict):
+                    p_base = p.get('base_url')
+                    if not isinstance(p_base, str):
+                        raise TypeError(
+                            'ApiProfileConfig requires "base_url" (str)',
+                        )
+
+                    # Merge defaults.headers (low precedence) with headers.
+                    dflt_headers_raw = (
+                        (p.get('defaults', {}) or {}).get('headers', {})
+                    )
+                    dflt_headers = {
+                        k: str(v) for k, v in (dflt_headers_raw or {}).items()
+                    }
+                    p_headers = {
+                        k: str(v)
+                        for k, v in (p.get('headers', {}) or {}).items()
+                    }
+                    merged_headers = {**dflt_headers, **p_headers}
+                    base_path = p.get('base_path')
+                    auth = dict(p.get('auth', {}) or {})
+                    # Optional defaults: pagination/rate_limit
+                    defaults_raw = p.get('defaults', {}) or {}
+                    pag_def = _pagination_from_defaults(
+                        defaults_raw.get('pagination'),
+                    )
+                    rl_def = _rate_limit_from_defaults(
+                        defaults_raw.get('rate_limit'),
+                    )
+                    profiles[str(name)] = ApiProfileConfig(
+                        base_url=p_base,
+                        headers=merged_headers,
+                        base_path=base_path,
+                        auth=auth,
+                        pagination_defaults=pag_def,
+                        rate_limit_defaults=rl_def,
+                    )
+
+        # Top-level fallbacks (or legacy flat shape)
+        tl_base = obj.get('base_url')
+        tl_headers = {
             k: str(v)
             for k, v in (obj.get('headers', {}) or {}).items()
         }
+
+        # Determine effective base_url/headers for backward compatibility
+        # Always compute a concrete str for base_url.
+        base_url: str
+        headers: dict[str, str] = {}
+        if profiles:
+            # Choose a default profile: explicit 'default' else first key
+            prof_name = 'default' if 'default' in profiles else (
+                next(iter(profiles.keys()))
+            )
+            base_url = profiles[prof_name].base_url
+            headers = dict(profiles[prof_name].headers)
+            # Merge in top-level headers as overrides if provided
+            if tl_headers:
+                headers |= tl_headers
+        else:
+            # Legacy flat shape must provide base_url
+            if not isinstance(tl_base, str):
+                raise TypeError('ApiConfig requires "base_url" (str)')
+            base_url = tl_base
+            headers = tl_headers
         raw_eps = obj.get('endpoints', {}) or {}
         eps: dict[str, EndpointConfig] = {}
         if isinstance(raw_eps, dict):
             for name, ep in raw_eps.items():
                 eps[str(name)] = EndpointConfig.from_obj(ep)
 
-        return ApiConfig(base_url=base_url, headers=headers, endpoints=eps)
+        return ApiConfig(
+            base_url=base_url,
+            headers=headers,
+            endpoints=eps,
+            profiles=profiles,
+        )
 
 
 @dataclass(slots=True)
@@ -293,12 +601,19 @@ class EndpointConfig:
     ----------
     path : str
         Endpoint path (relative to base URL).
-    params : dict[str, Any]
-        Default query parameters for the endpoint.
-    pagination : PaginationConfig | None
-        Pagination configuration for the endpoint.
-    rate_limit : RateLimitConfig | None
-        Rate limiting configuration for the endpoint.
+    method : str, optional
+        HTTP method for the endpoint (e.g., "GET", "POST"). Defaults to "GET".
+    path_params : dict[str, Any], optional
+        Path parameters for the endpoint. Defaults to an empty dictionary.
+    query_params : dict[str, Any], optional
+        Default query parameters for the endpoint. Defaults to an empty
+        dictionary.
+    body : Any | None, optional
+        Request body configuration for the endpoint. Defaults to None.
+    pagination : PaginationConfig | None, optional
+        Pagination configuration for the endpoint. Defaults to None.
+    rate_limit : RateLimitConfig | None, optional
+        Rate limiting configuration for the endpoint. Defaults to None.
 
     Methods
     -------
@@ -309,7 +624,10 @@ class EndpointConfig:
     # -- Attributes -- #
 
     path: str
-    params: dict[str, Any] = field(default_factory=dict)
+    method: str = 'GET'
+    path_params: dict[str, Any] = field(default_factory=dict)
+    query_params: dict[str, Any] = field(default_factory=dict)
+    body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
@@ -322,17 +640,23 @@ class EndpointConfig:
             return EndpointConfig(path=obj)
         if isinstance(obj, dict):
             path = obj.get('path')
+
             # Tolerate configs that provide the path directly at key level
             if path is None and 'url' in obj:
                 path = obj.get('url')
             if not isinstance(path, str):
                 raise TypeError('EndpointConfig requires a "path" (str)')
+
             return EndpointConfig(
                 path=path,
-                params=dict(obj.get('params', {}) or {}),
+                method=obj.get('method', 'GET'),
+                path_params=dict(obj.get('path_params', {}) or {}),
+                query_params=dict(obj.get('query_params', {}) or {}),
+                body=obj.get('body'),
                 pagination=PaginationConfig.from_obj(obj.get('pagination')),
                 rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             )
+
         raise TypeError('Invalid endpoint config: must be str or mapping')
 
 
@@ -352,10 +676,10 @@ class SourceApi:
         Type of the source (default: "api").
     url : str | None
         URL of the API endpoint.
-    params : dict[str, Any]
-        Query parameters for the API request.
     headers : dict[str, str]
         Headers to include in the API request.
+    query_params : dict[str, Any]
+        Query parameters for the API request.
     pagination : PaginationConfig | None
         Pagination configuration for the API request.
     rate_limit : RateLimitConfig | None
@@ -378,12 +702,12 @@ class SourceApi:
 
     # Direct form
     url: str | None = None
-    params: dict[str, Any] = field(default_factory=dict)
     headers: dict[str, str] = field(default_factory=dict)
+    query_params: dict[str, Any] = field(default_factory=dict)
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
-    # Reference form (to top-level apis/endpoints)
+    # Reference form (to top-level APIs/endpoints)
     api: str | None = None
     endpoint: str | None = None
 
@@ -457,20 +781,31 @@ class TargetApi:
     type : str
         Type of the target (default: "api").
     url : str | None
-        URL of the API endpoint.
+        Absolute URL of the API endpoint.
     method : str | None
-        HTTP method to use (e.g., "POST", "PUT").
+        HTTP method to use (e.g., "POST", "PUT"). Defaults to "post" in the
+        runner when omitted.
     headers : dict[str, str]
         Headers to include in the API request.
+    api : str | None
+        Optional reference to a named API service (alias: service).
+    endpoint : str | None
+        Optional endpoint key within the referenced API service.
     """
 
     # -- Attributes -- #
 
     name: str
     type: str = 'api'
+
+    # Direct form
     url: str | None = None
     method: str | None = None
     headers: dict[str, str] = field(default_factory=dict)
+
+    # Reference form (to top-level APIs/endpoints)
+    api: str | None = None
+    endpoint: str | None = None
 
 
 @dataclass(slots=True)
@@ -752,7 +1087,13 @@ class PipelineConfig:
         cfg = cls.from_dict(raw)
 
         if substitute:
-            env_map = dict(env) if env is not None else dict(os.environ)
+            # Merge order: profile.env first (lowest), then provided env or
+            # os.environ (highest). External env overrides profile defaults.
+            base_env = dict(getattr(cfg.profile, 'env', {}) or {})
+            external = (
+                dict(env) if env is not None else dict(os.environ)
+            )
+            env_map = {**base_env, **external}
             resolved = _deep_substitute(raw, cfg.vars, env_map)
             cfg = cls.from_dict(resolved)
 
@@ -837,11 +1178,11 @@ class PipelineConfig:
                         name=sname,
                         type='api',
                         url=s.get('url'),
-                        params=dict(s.get('params', {}) or {}),
                         headers={
                             k: str(v)
                             for k, v in (s.get('headers', {}) or {}).items()
                         },
+                        query_params=dict(s.get('query_params', {}) or {}),
                         pagination=PaginationConfig.from_obj(
                             s.get('pagination'),
                         ),
@@ -889,6 +1230,8 @@ class PipelineConfig:
                             k: str(v)
                             for k, v in (t.get('headers', {}) or {}).items()
                         },
+                        api=t.get('api') or t.get('service'),
+                        endpoint=t.get('endpoint'),
                     ),
                 )
             elif ttype == 'database':
