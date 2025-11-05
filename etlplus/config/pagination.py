@@ -7,8 +7,10 @@ pagination.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import Self
 
 
 # SECTION: CLASSES ========================================================== #
@@ -70,13 +72,13 @@ class PaginationConfig:
     max_pages: int | None = None
     max_records: int | None = None
 
-    # -- Static Methods -- #
+    # -- Class Methods -- #
 
-    @staticmethod
-    def from_obj(obj: Any) -> PaginationConfig | None:
-        if not isinstance(obj, dict):
+    @classmethod
+    def from_obj(cls, obj: Mapping[str, Any] | None) -> Self | None:
+        if not isinstance(obj, Mapping):
             return None
-        return PaginationConfig(
+        return cls(
             type=str(obj.get('type')) if obj.get('type') is not None else None,
             page_param=obj.get('page_param'),
             size_param=obj.get('size_param'),
