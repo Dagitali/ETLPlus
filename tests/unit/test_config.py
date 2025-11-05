@@ -136,6 +136,30 @@ def test_api_profile_defaults_pagination_mapped():
     assert pdef.max_pages == 10
 
 
+def test_api_profile_defaults_rate_limit_mapped():
+    obj = {
+        'profiles': {
+            'default': {
+                'base_url': 'https://api.example.com',
+                'defaults': {
+                    'rate_limit': {
+                        'sleep_seconds': 0.5,
+                        'max_per_sec': 2,
+                    },
+                },
+            },
+        },
+        'endpoints': {},
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+    prof = cfg.profiles['default']
+    rdef = getattr(prof, 'rate_limit_defaults', None)
+    assert rdef is not None
+    assert rdef.sleep_seconds == 0.5
+    assert rdef.max_per_sec == 2
+
+
 def test_endpoint_captures_path_params_and_body():
     ep = EndpointConfig.from_obj({
         'method': 'POST',
