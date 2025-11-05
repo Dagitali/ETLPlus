@@ -88,6 +88,10 @@ class EndpointClient:
     endpoints : Mapping[str, str]
         Mapping of endpoint keys to *relative* paths, e.g.,
         `{"list_users": "/users", "user": "/users/{id}"}`.
+    base_path : str | None, optional
+        Optional base path to prepend to all endpoint paths. For example, if
+        the base path is `/v2`, the effective endpoint path for `list_users`
+        would be `/v2/users`.
     retry : RetryPolicy | None, optional
         Optional retry policy applied to HTTP requests performed by this
         client. Retries use exponential backoff with jitter to reduce
@@ -161,6 +165,7 @@ class EndpointClient:
 
     base_url: str
     endpoints: Mapping[str, str]
+    base_path: str | None = None
 
     # Optional retry configuration (constructor parameter; object is frozen)
     retry: RetryPolicy | None = None
@@ -515,12 +520,14 @@ class EndpointClient:
             path_parameters=path_parameters,
             query_parameters=query_parameters,
         )
+
         # If no pagination provided, preserve single-request behavior.
         if not pagination or not pagination.get('type'):
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
             return self._extract_with_retry(url, **kw)
+
         # Collect from iterator for paginated streaming ergonomics.
         return list(
             self.paginate_url_iter(
@@ -677,7 +684,7 @@ class EndpointClient:
             else compute_sleep_seconds(self.rate_limit, None)
         )
 
-        # Helper for stop limits
+        # Helper for stop limits.
         max_pages = pg.get('max_pages')
         max_records = pg.get('max_records')
 
@@ -688,7 +695,7 @@ class EndpointClient:
                 return True
             return False
 
-        # Known pagination strategies
+        # Known pagination strategies.
         if ptype in {'page', 'offset'}:
             page_param = pg.get('page_param', self.DEFAULT_PAGE_PARAM)
             size_param = pg.get('size_param', self.DEFAULT_SIZE_PARAM)
@@ -739,7 +746,7 @@ class EndpointClient:
                 pages += 1
                 recs += n
 
-                # Yield with respect to max_records cap
+                # Yield with respect to max_records cap.
                 if isinstance(max_records, int) and recs > max_records:
                     take = max(0, int(max_records) - (recs - n))
                     yield from batch[:take]
@@ -810,7 +817,7 @@ class EndpointClient:
                 EndpointClient.apply_sleep(effective_sleep)
             return
 
-        # No/unknown pagination type: single request, coalesce and yield
+        # No/unknown pagination type: single request, coalesce, and yield.
         kw = EndpointClient.build_request_kwargs(
             params=params, headers=headers, timeout=timeout,
         )
@@ -895,11 +902,16 @@ class EndpointClient:
                     f'Invalid path template {rel_path!r}: {e}',
                 ) from None
 
-        # Build final absolute URL.
+        # Build final absolute URL, honoring any client base_path prefix.
         parts = urlsplit(self.base_url)
-        base_path = parts.path.rstrip('/')
+        base_url_path = parts.path.rstrip('/')
+        extra = self.base_path
+        extra_norm = ('/' + extra.lstrip('/')) if extra else ''
+        composed_base = (
+            base_url_path + extra_norm if (base_url_path or extra_norm) else ''
+        )
         rel_norm = '/' + rel_path.lstrip('/')
-        path = (base_path + rel_norm) if base_path else rel_norm
+        path = (composed_base + rel_norm) if composed_base else rel_norm
 
         # Merge base query with provided query_parameters.
         base_q = parse_qsl(parts.query, keep_blank_values=True)
@@ -937,8 +949,6 @@ class EndpointClient:
                 time.sleep(sleep_seconds)
             else:
                 sleeper(sleep_seconds)
-
-    # build_http_adapter moved to etlplus.api.transport
 
     @staticmethod
     def build_request_kwargs(
