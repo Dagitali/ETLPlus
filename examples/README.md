@@ -39,3 +39,5 @@ See the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example `in
 Design notes on config typing and merges:
 - Mapping inputs, dict outputs, and merge semantics are documented in
   `docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`.
+ - Typing philosophy (TypedDicts as editor hints, permissive runtime):
+   `CONTRIBUTING.md#typing-philosophy`.
