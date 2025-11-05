@@ -252,8 +252,7 @@ class ApiConfig:
 
             for name, p in profiles_raw.items():
                 if isinstance(p, dict):
-                    p_base = p.get('base_url')
-                    if not isinstance(p_base, str):
+                    if not isinstance((p_base := p.get('base_url')), str):
                         raise TypeError(
                             'ApiProfileConfig requires "base_url" (str)',
                         )
@@ -313,8 +312,10 @@ class ApiConfig:
         raw_eps = obj.get('endpoints', {}) or {}
         eps: dict[str, EndpointConfig] = {}
         if isinstance(raw_eps, dict):
-            for name, ep in raw_eps.items():
-                eps[str(name)] = EndpointConfig.from_obj(ep)
+            eps = {
+                str(name): EndpointConfig.from_obj(ep)
+                for name, ep in raw_eps.items()
+            }
 
         return cls(
             base_url=base_url,
@@ -382,14 +383,9 @@ class EndpointConfig:
 
         # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):
-            # When provided as a bare string, preserve method=None
             return cls(path=obj, method=None)
         if isinstance(obj, Mapping):
-            path = obj.get('path')
-
-            # Tolerate configs that provide the path directly at key level
-            if path is None and 'url' in obj:
-                path = obj.get('url')
+            path = obj.get('path') or obj.get('url')
             if not isinstance(path, str):
                 raise TypeError('EndpointConfig requires a "path" (str)')
 
