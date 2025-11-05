@@ -90,16 +90,14 @@ class PaginationConfig:
 
         if not isinstance(obj, Mapping):
             return None
-        return cls(
-            type=str(obj.get('type')) if obj.get('type') is not None else None,
-            page_param=obj.get('page_param'),
-            size_param=obj.get('size_param'),
-            start_page=obj.get('start_page'),
-            page_size=obj.get('page_size'),
-            cursor_param=obj.get('cursor_param'),
-            cursor_path=obj.get('cursor_path'),
-            start_cursor=obj.get('start_cursor'),
-            records_path=obj.get('records_path'),
-            max_pages=obj.get('max_pages'),
-            max_records=obj.get('max_records'),
-        )
+
+        # Normalize type to str when present; pass through other keys directly.
+        t = obj.get('type')
+        kwargs = {
+            k: obj.get(k) for k in (
+                'page_param', 'size_param', 'start_page', 'page_size',
+                'cursor_param', 'cursor_path', 'start_cursor',
+                'records_path', 'max_pages', 'max_records',
+            )
+        }
+        return cls(type=str(t) if t is not None else None, **kwargs)
