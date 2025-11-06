@@ -57,6 +57,28 @@ class RateLimitConfig:
     sleep_seconds: float | None = None
     max_per_sec: float | None = None
 
+    # -- Instance Methods -- #
+
+    def validate_bounds(self) -> list[str]:
+        """
+        Validate rate limit numeric bounds and return warnings.
+
+        This is optional and non-raising; it returns user-facing warnings.
+
+        Returns
+        -------
+        list[str]
+            A list of warning messages (empty if values look sane).
+        """
+
+        warnings: list[str] = []
+        if self.sleep_seconds is not None and self.sleep_seconds < 0:
+            warnings.append('sleep_seconds should be >= 0')
+        if self.max_per_sec is not None and self.max_per_sec <= 0:
+            warnings.append('max_per_sec should be > 0')
+
+        return warnings
+
     # -- Class Methods -- #
 
     @classmethod
