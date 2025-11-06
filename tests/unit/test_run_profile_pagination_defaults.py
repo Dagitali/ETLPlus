@@ -13,14 +13,14 @@ from typing import Any
 
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
+from etlplus.config import ConnectorApi
+from etlplus.config import ConnectorFile
 from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import SourceApi
-from etlplus.config import TargetFile
 
 
 run_mod = importlib.import_module('etlplus.run')
@@ -50,11 +50,14 @@ def test_profile_pagination_defaults_applied(monkeypatch, tmp_path):
     )
 
     # Source references the API + endpoint (no source.pagination)
-    src = SourceApi(name='s', type='api', api='svc', endpoint='items')
+    src = ConnectorApi(name='s', type='api', api='svc', endpoint='items')
 
     # Provide a dummy file target; we'll stub load() to avoid IO
     out_path = tmp_path / 'out.json'
-    tgt = TargetFile(name='t', type='file', format='json', path=str(out_path))
+    tgt = ConnectorFile(
+        name='t', type='file',
+        format='json', path=str(out_path),
+    )
 
     cfg = PipelineConfig(
         apis={'svc': api},
