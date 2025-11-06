@@ -82,7 +82,8 @@ class SessionConfig(TypedDict, total=False):
 
 
 class ApiRequestEnv(TypedDict, total=False):
-    """Composed request environment for API sources.
+    """
+    Composed request environment for API sources.
 
     Returned by ``_compose_api_request_env`` and consumed by the API extract
     branch. Values are fully merged with endpoint/API defaults and job-level
@@ -107,6 +108,34 @@ class ApiRequestEnv(TypedDict, total=False):
     # Reliability knobs
     retry: ApiRetryPolicy | None
     retry_network_errors: bool
+
+    # Session
+    session: requests.Session | None
+
+
+class ApiTargetEnv(TypedDict, total=False):
+    """
+    Composed request environment for API targets.
+
+    Returned by ``_compose_api_target_env`` and consumed by the API load
+    branch. Values are merged from the target object, optional API/endpoint
+    reference, and job-level overrides, preserving original precedence and
+    behavior.
+
+    Notes
+    -----
+        - Precedence for inherited values matches original logic:
+            overrides -> target -> API profile defaults.
+        - Target composition does not include pagination/rate-limit/retry since
+            loads are single-request operations; only headers/timeout/session
+            apply.
+    """
+
+    # Request details
+    url: URL | None
+    method: str | None
+    headers: dict[str, str]
+    timeout: Timeout
 
     # Session
     session: requests.Session | None
@@ -485,6 +514,97 @@ def _compose_api_request_env(
     }
 
 
+def _compose_api_target_env(
+    cfg: Any,
+    target_obj: Any,
+    overrides: Mapping[str, Any] | None,
+) -> ApiTargetEnv:
+    """
+    Compose API target settings with job overrides into a ready context.
+
+    Contract
+    --------
+    Inputs:
+    - cfg: Pipeline config (for resolving API + endpoint references)
+    - target_obj: TargetApi-like object with optional api/endpoint refs
+    - overrides: Load overrides mapping (url, method, headers, timeout, etc.)
+
+    Outputs (ApiTargetEnv):
+    - url: Resolved URL (direct or via API+endpoint). Required for load.
+    - method: Resolved HTTP method (defaults to 'post' when unspecified).
+    - headers: Merged headers (API headers under target and overrides).
+    - timeout: Optional timeout (only from overrides if provided).
+    - session: Optional requests.Session built from overrides/session.
+
+    Precedence
+    ----------
+    overrides -> target -> API profile defaults (for headers, url from
+    endpoint). If a direct URL override is provided, API/endpoint resolution
+    is skipped.
+    """
+
+    ov = overrides or {}
+
+    # Direct fields from target + overrides
+    url: URL | None = cast(
+        URL | None, ov.get('url') or getattr(
+            target_obj, 'url', None,
+        ),
+    )
+    method: str | None = cast(
+        str | None, ov.get('method') or getattr(
+            target_obj, 'method', 'post',
+        ),
+    )
+    headers: dict[str, str] = {
+        **(getattr(target_obj, 'headers', {}) or {}),
+        **cast(dict[str, str], ov.get('headers', {})),
+    }
+    timeout: Timeout = (
+        cast(Timeout, ov.get('timeout'))
+        if 'timeout' in ov
+        else None
+    )
+
+    # Optional session support via overrides
+    sess_cfg: SessionConfig | None = cast(
+        SessionConfig | None, ov.get('session'),
+    )
+
+    # Resolve through API + endpoint if referenced and URL not explicitly set
+    api_name = getattr(target_obj, 'api', None)
+    endpoint_name = getattr(target_obj, 'endpoint', None)
+    if api_name and endpoint_name and not url:
+        api_cfg = cfg.apis.get(api_name)
+        if not api_cfg:
+            raise ValueError(f'API not defined: {api_name}')
+        ep = api_cfg.endpoints.get(endpoint_name)
+        if not ep:
+            raise ValueError(
+                f'Endpoint "{endpoint_name}" not defined in API '
+                f'"{api_name}"',
+            )
+        url = api_cfg.build_endpoint_url(ep)
+        # API headers are the base; target/overrides take precedence
+        headers = {**api_cfg.headers, **headers}
+        # Merge any session options in a symmetric manner
+        sess_cfg = _merge_session_cfg_three(api_cfg, ep, sess_cfg)
+
+    sess_obj = (
+        _build_session_from_config(sess_cfg)
+        if isinstance(sess_cfg, dict)
+        else None
+    )
+
+    return {
+        'url': url,
+        'method': method,
+        'headers': headers,
+        'timeout': timeout,
+        'session': sess_obj,
+    }
+
+
 def _compute_rl_sleep_seconds(
     rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
@@ -817,41 +937,24 @@ def run(
                 raise ValueError('File target missing "path"')
             result = load(data, 'file', path, format=fmt)
         case 'api':
-            url = overrides.get('url') or getattr(target_obj, 'url', None)
-            method = overrides.get('method') or getattr(
-                target_obj, 'method', 'post',
-            )
-            headers = {
-                **(getattr(target_obj, 'headers', {}) or {}),
-                **overrides.get('headers', {}),
-            }
-            kwargs: dict[str, Any] = {}
-            if headers:
-                kwargs['headers'] = headers
-            if 'timeout' in overrides:
-                kwargs['timeout'] = overrides['timeout']
-            # Support service + endpoint composition similar to Sources.
-            tgt_api_name = getattr(target_obj, 'api', None)
-            tgt_endpoint_name = getattr(target_obj, 'endpoint', None)
-            if tgt_api_name and tgt_endpoint_name and not url:
-                api_cfg = cfg.apis.get(tgt_api_name)
-                if not api_cfg:
-                    raise ValueError(f'API not defined: {tgt_api_name}')
-                ep = api_cfg.endpoints.get(tgt_endpoint_name)
-                if not ep:
-                    raise ValueError(
-                        f'Endpoint "{tgt_endpoint_name}" not defined in '
-                        f'API "{tgt_api_name}"',
-                    )
-                url = api_cfg.build_endpoint_url(ep)
-                # Merge API-level headers with target headers
-                kwargs['headers'] = {
-                    **api_cfg.headers,
-                    **(kwargs.get('headers') or {}),
-                }
-            if not url:
+            env_t = _compose_api_target_env(cfg, target_obj, overrides)
+            url_t = env_t.get('url')
+            if not url_t:
                 raise ValueError('API target missing "url"')
-            result = load(data, 'api', url, method=method, **kwargs)
+            kwargs_t: dict[str, Any] = {}
+            if env_t.get('headers'):
+                kwargs_t['headers'] = cast(dict[str, str], env_t['headers'])
+            if env_t.get('timeout') is not None:
+                kwargs_t['timeout'] = env_t['timeout']
+            if env_t.get('session') is not None:
+                kwargs_t['session'] = env_t['session']
+            result = load(
+                data,
+                'api',
+                cast(str, url_t),
+                method=cast(str | Any, env_t.get('method') or 'post'),
+                **kwargs_t,
+            )
         case 'database':
             conn = overrides.get('connection_string') or getattr(
                 target_obj, 'connection_string', '',
