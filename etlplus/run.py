@@ -65,8 +65,73 @@ type URL = str
 # SECTION: TYPED DICTS ====================================================== #
 
 
+class BaseApiHttpEnv(TypedDict, total=False):
+    """
+    Common HTTP request environment for API interactions.
+
+    Fields shared by both source-side and target-side API operations.
+    """
+
+    # Request details
+    url: URL | None
+    headers: dict[str, str]
+    timeout: Timeout
+
+    # Session
+    session: requests.Session | None
+
+
+class ApiRequestEnv(BaseApiHttpEnv, total=False):
+    """
+    Composed request environment for API sources.
+
+    Returned by ``_compose_api_request_env`` and consumed by the API extract
+    branch. Values are fully merged with endpoint/API defaults and job-level
+    overrides, preserving the original precedence and behavior.
+    """
+
+    # Client
+    use_endpoints: bool
+    base_url: str | None
+    base_path: str | None
+    endpoints_map: dict[str, str] | None
+    endpoint_key: str | None
+
+    # Request
+    params: dict[str, Any]
+    pagination: ApiPaginationConfig | None
+    sleep_seconds: float
+
+    # Reliability
+    retry: ApiRetryPolicy | None
+    retry_network_errors: bool
+
+
+class ApiTargetEnv(BaseApiHttpEnv, total=False):
+    """
+    Composed request environment for API targets.
+
+    Returned by ``_compose_api_target_env`` and consumed by the API load
+    branch. Values are merged from the target object, optional API/endpoint
+    reference, and job-level overrides, preserving original precedence and
+    behavior.
+
+    Notes
+    -----
+    - Precedence for inherited values matches original logic:
+        overrides -> target -> API profile defaults.
+    - Target composition does not include pagination/rate-limit/retry since
+        loads are single-request operations; only headers/timeout/session
+        apply.
+    """
+
+    # Request
+    method: str | None
+
+
 class SessionConfig(TypedDict, total=False):
-    """Minimal session configuration schema accepted by this runner.
+    """
+    Minimal session configuration schema accepted by this runner.
 
     Keys mirror common requests.Session options; all are optional.
     """
@@ -79,66 +144,6 @@ class SessionConfig(TypedDict, total=False):
     proxies: Mapping[str, Any]
     cookies: Mapping[str, Any]
     trust_env: bool
-
-
-class ApiRequestEnv(TypedDict, total=False):
-    """
-    Composed request environment for API sources.
-
-    Returned by ``_compose_api_request_env`` and consumed by the API extract
-    branch. Values are fully merged with endpoint/API defaults and job-level
-    overrides, preserving the original precedence and behavior.
-    """
-
-    # Client wiring
-    use_endpoints: bool
-    base_url: str | None
-    base_path: str | None
-    endpoints_map: dict[str, str] | None
-    endpoint_key: str | None
-
-    # Request details
-    url: URL | None
-    params: dict[str, Any]
-    headers: dict[str, str]
-    timeout: Timeout
-    pagination: ApiPaginationConfig | None
-    sleep_seconds: float
-
-    # Reliability knobs
-    retry: ApiRetryPolicy | None
-    retry_network_errors: bool
-
-    # Session
-    session: requests.Session | None
-
-
-class ApiTargetEnv(TypedDict, total=False):
-    """
-    Composed request environment for API targets.
-
-    Returned by ``_compose_api_target_env`` and consumed by the API load
-    branch. Values are merged from the target object, optional API/endpoint
-    reference, and job-level overrides, preserving original precedence and
-    behavior.
-
-    Notes
-    -----
-        - Precedence for inherited values matches original logic:
-            overrides -> target -> API profile defaults.
-        - Target composition does not include pagination/rate-limit/retry since
-            loads are single-request operations; only headers/timeout/session
-            apply.
-    """
-
-    # Request details
-    url: URL | None
-    method: str | None
-    headers: dict[str, str]
-    timeout: Timeout
-
-    # Session
-    session: requests.Session | None
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -409,9 +414,10 @@ def _compose_api_request_env(
             cfg, api_name, endpoint_name,
         )
 
-        url = api_cfg.build_endpoint_url(ep)
-        params = {**ep.query_params, **params}
-        headers = {**api_cfg.headers, **headers}
+        url, headers, session_cfg = _inherit_http_from_api_endpoint(
+            api_cfg, ep, url, headers, session_cfg, force_url=True,
+        )
+        params = ep.query_params | params
 
         pagination = (
             pagination
@@ -436,7 +442,7 @@ def _compose_api_request_env(
             or bool(getattr(ep, 'retry_network_errors', False))
             or bool(getattr(api_cfg, 'retry_network_errors', False))
         )
-        session_cfg = _merge_session_cfg_three(api_cfg, ep, session_cfg)
+    # session_cfg merged via _inherit_http_from_api_endpoint above
 
         # Client endpoint wiring.
         use_client_endpoints = True
@@ -550,10 +556,10 @@ def _compose_api_target_env(
             target_obj, 'method', 'post',
         ),
     )
-    headers: dict[str, str] = {
-        **(getattr(target_obj, 'headers', {}) or {}),
-        **cast(dict[str, str], ov.get('headers', {})),
-    }
+    headers: dict[str, str] = (
+        (getattr(target_obj, 'headers', {}) or {}) |
+        cast(dict[str, str], ov.get('headers', {}))
+    )
     timeout: Timeout = (
         cast(Timeout, ov.get('timeout'))
         if 'timeout' in ov
@@ -572,13 +578,9 @@ def _compose_api_target_env(
         api_cfg, ep = _get_api_cfg_and_endpoint(
             cfg, api_name, endpoint_name,
         )
-        url = api_cfg.build_endpoint_url(ep)
-
-        # API headers are the base; target/overrides take precedence.
-        headers = {**api_cfg.headers, **headers}
-
-        # Merge any session options in a symmetric manner.
-        sess_cfg = _merge_session_cfg_three(api_cfg, ep, sess_cfg)
+        url, headers, sess_cfg = _inherit_http_from_api_endpoint(
+            api_cfg, ep, url, headers, sess_cfg, force_url=False,
+        )
 
     sess_obj = (
         _build_session_from_config(sess_cfg)
@@ -672,6 +674,61 @@ def _get_api_cfg_and_endpoint(
         )
 
     return api_cfg, ep
+
+
+def _inherit_http_from_api_endpoint(
+    api_cfg: CfgApiConfig,
+    ep: CfgEndpointConfig,
+    url: URL | None,
+    headers: dict[str, str],
+    session_cfg: SessionConfig | None,
+    force_url: bool = False,
+) -> tuple[URL | None, dict[str, str], SessionConfig | None]:
+    """
+    Merge URL, headers, and session from API + endpoint into HTTP env.
+
+    Parameters
+    ----------
+    api_cfg : CfgApiConfig
+        API configuration object (provides base headers, base
+        path/url, session).
+    ep : CfgEndpointConfig
+        Endpoint configuration object (provides path, per-endpoint
+        session, etc.).
+    url : URL | None
+        Existing URL value, if any.
+    headers : dict[str, str]
+        Existing headers mapping to be overlaid on top of API defaults.
+    session_cfg : SessionConfig | None
+        Existing session overrides to be merged with API/endpoint session.
+    force_url : bool
+        When True, always compute URL from the endpoint. When False, only set
+        URL if the provided ``url`` is falsy.
+
+    Returns
+    -------
+    (URL | None, dict[str, str], SessionConfig | None)
+        The merged (url, headers, session_cfg) tuple.
+
+    Notes
+    -----
+    - API headers are the base, then existing headers take precedence.
+    - Session configs are merged API < Endpoint < existing session.
+    - URL is computed from the endpoint when ``force_url`` is True or when the
+      provided ``url`` is falsy.
+    """
+
+    # Compute URL when requested or not explicitly set.
+    if force_url or not url:
+        url = api_cfg.build_endpoint_url(ep)
+
+    # Merge headers with API as base.
+    headers = {**api_cfg.headers, **headers}
+
+    # Merge session: API < Endpoint < provided overrides
+    session_cfg = _merge_session_cfg_three(api_cfg, ep, session_cfg)
+
+    return url, headers, session_cfg
 
 
 def _merge_session_cfg_three(
