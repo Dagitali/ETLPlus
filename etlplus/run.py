@@ -308,7 +308,7 @@ def _build_session_from_config(
         s.headers.update(headers)
     params = cfg.get('params')
     if isinstance(params, dict):
-        # requests supports Session.params on recent versions
+        # requests supports Session.params on recent versions.
         try:
             setattr(s, 'params', params)
         except (AttributeError, TypeError):
@@ -375,7 +375,7 @@ def _compose_api_request_env(
 
     ex_opts = ex_opts or {}
 
-    # Seed from source
+    # Seed from source.
     url: URL | None = getattr(source_obj, 'url', None)
     params: dict[str, Any] = dict(
         getattr(source_obj, 'query_params', {}) or {},
@@ -396,24 +396,18 @@ def _compose_api_request_env(
     api_name = getattr(source_obj, 'api', None)
     endpoint_name = getattr(source_obj, 'endpoint', None)
 
-    # Defaults for client wiring
+    # Defaults for client wiring.
     use_client_endpoints = False
     client_base_url: str | None = None
     client_base_path: str | None = None
     client_endpoints_map: dict[str, str] | None = None
     selected_endpoint_key: str | None = None
 
-    # Inherit from API/endpoint when referenced
+    # Inherit from API/endpoint when referenced.
     if api_name and endpoint_name:
-        api_cfg = cfg.apis.get(api_name)
-        if not api_cfg:
-            raise ValueError(f'API not defined: {api_name}')
-        ep = api_cfg.endpoints.get(endpoint_name)
-        if not ep:
-            raise ValueError(
-                f'Endpoint "{endpoint_name}" not defined in API '
-                f'"{api_name}"',
-            )
+        api_cfg, ep = _get_api_cfg_and_endpoint(
+            cfg, api_name, endpoint_name,
+        )
 
         url = api_cfg.build_endpoint_url(ep)
         params = {**ep.query_params, **params}
@@ -444,7 +438,7 @@ def _compose_api_request_env(
         )
         session_cfg = _merge_session_cfg_three(api_cfg, ep, session_cfg)
 
-        # Client endpoint wiring
+        # Client endpoint wiring.
         use_client_endpoints = True
         client_base_url = api_cfg.base_url
         client_base_path = api_cfg.effective_base_path()
@@ -453,7 +447,7 @@ def _compose_api_request_env(
         }
         selected_endpoint_key = endpoint_name
 
-    # Apply job overrides
+    # Apply job overrides.
     params |= ex_opts.get('query_params', {})
     headers |= ex_opts.get('headers', {})
     timeout: Timeout = ex_opts.get('timeout')
@@ -470,22 +464,22 @@ def _compose_api_request_env(
     )
     sess_ov: SessionConfig = cast(SessionConfig, ex_opts.get('session', {}))
 
-    # Compute rate limit sleep using consolidated helper
+    # Compute rate limit sleep using consolidated helper.
     sleep_s = _compute_rl_sleep_seconds(rate_limit, rl_ov) or 0.0
 
-    # Apply retry/network-error overrides
+    # Apply retry/network-error overrides.
     if rty_ov is not None:
         retry = rty_ov
     if rne_ov is not None:
         retry_network_errors = bool(rne_ov)
 
-    # Merge session overrides
+    # Merge session overrides.
     if isinstance(sess_ov, dict):
         base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
 
-    # Build pagination config and session object
+    # Build pagination config and session object.
     pag_cfg: ApiPaginationConfig | None = _build_pagination_cfg(
         pagination,
         pag_ov,
@@ -545,7 +539,7 @@ def _compose_api_target_env(
 
     ov = overrides or {}
 
-    # Direct fields from target + overrides
+    # Direct fields from target + overrides.
     url: URL | None = cast(
         URL | None, ov.get('url') or getattr(
             target_obj, 'url', None,
@@ -566,28 +560,24 @@ def _compose_api_target_env(
         else None
     )
 
-    # Optional session support via overrides
+    # Optional session support via overrides.
     sess_cfg: SessionConfig | None = cast(
         SessionConfig | None, ov.get('session'),
     )
 
-    # Resolve through API + endpoint if referenced and URL not explicitly set
+    # Resolve through API + endpoint if referenced and URL not explicitly set.
     api_name = getattr(target_obj, 'api', None)
     endpoint_name = getattr(target_obj, 'endpoint', None)
     if api_name and endpoint_name and not url:
-        api_cfg = cfg.apis.get(api_name)
-        if not api_cfg:
-            raise ValueError(f'API not defined: {api_name}')
-        ep = api_cfg.endpoints.get(endpoint_name)
-        if not ep:
-            raise ValueError(
-                f'Endpoint "{endpoint_name}" not defined in API '
-                f'"{api_name}"',
-            )
+        api_cfg, ep = _get_api_cfg_and_endpoint(
+            cfg, api_name, endpoint_name,
+        )
         url = api_cfg.build_endpoint_url(ep)
-        # API headers are the base; target/overrides take precedence
+
+        # API headers are the base; target/overrides take precedence.
         headers = {**api_cfg.headers, **headers}
-        # Merge any session options in a symmetric manner
+
+        # Merge any session options in a symmetric manner.
         sess_cfg = _merge_session_cfg_three(api_cfg, ep, sess_cfg)
 
     sess_obj = (
@@ -641,6 +631,47 @@ def _compute_rl_sleep_seconds(
     else:
         rl_map = cast(Mapping[str, Any] | None, rate_limit)
     return compute_sleep_seconds(cast(Any, rl_map), overrides or {})
+
+
+def _get_api_cfg_and_endpoint(
+    cfg: Any,
+    api_name: str,
+    endpoint_name: str,
+) -> tuple[CfgApiConfig, CfgEndpointConfig]:
+    """
+    Resolve and return (ApiConfig, EndpointConfig) with consistent errors.
+
+    Parameters
+    ----------
+    cfg : Any
+        Pipeline config object with ``apis`` mapping.
+    api_name : str
+        API name to look up.
+    endpoint_name : str
+        Endpoint key to look up within the API.
+
+    Returns
+    -------
+    (CfgApiConfig, CfgEndpointConfig)
+        The resolved API and endpoint configurations.
+
+    Raises
+    ------
+    ValueError
+        If the API or endpoint is not defined.
+    """
+
+    api_cfg = cfg.apis.get(api_name)
+    if not api_cfg:
+        raise ValueError(f'API not defined: {api_name}')
+    ep = api_cfg.endpoints.get(endpoint_name)
+    if not ep:
+        raise ValueError(
+            f'Endpoint "{endpoint_name}" not defined in API '
+            f'"{api_name}"',
+        )
+
+    return api_cfg, ep
 
 
 def _merge_session_cfg_three(
