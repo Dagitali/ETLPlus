@@ -18,7 +18,10 @@ import requests  # type: ignore
 from .api import compute_sleep_seconds
 from .api import EndpointClient
 from .api import PaginationConfig as ApiPaginationConfig
+from .api.types import RetryPolicy as ApiRetryPolicy
 from .config import load_pipeline_config
+from .config.api import ApiConfig as CfgApiConfig
+from .config.api import EndpointConfig as CfgEndpointConfig
 from .config.pagination import PaginationConfig as CfgPaginationConfig
 from .config.rate_limit import RateLimitConfig as CfgRateLimitConfig
 from .extract import extract
@@ -277,8 +280,8 @@ def _compute_rl_sleep_seconds(
 
 
 def _merge_session_cfg_three(
-    api_cfg: Any,
-    ep: Any,
+    api_cfg: CfgApiConfig,
+    ep: CfgEndpointConfig,
     source_session_cfg: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """
@@ -286,9 +289,9 @@ def _merge_session_cfg_three(
 
     Parameters
     ----------
-    api_cfg : Any
+    api_cfg : CfgApiConfig
         API config object (may have a 'session' dict attribute).
-    ep : Any
+    ep : CfgEndpointConfig
         Endpoint config object (may have a 'session' dict attribute).
     source_session_cfg : dict[str, Any] | None
         Source-level session config overrides.
@@ -322,7 +325,7 @@ def _paginate_with_client(
     params: Mapping[str, Any] | None,
     headers: Mapping[str, str] | None,
     timeout: Any,
-    pagination: Any,
+    pagination: ApiPaginationConfig | None,
     sleep_seconds: float | None,
 ) -> Any:
     """
@@ -341,7 +344,7 @@ def _paginate_with_client(
         The headers to include in the request.
     timeout : Any
         The timeout configuration to use.
-    pagination : Any
+    pagination : ApiPaginationConfig | None
         The pagination configuration to use.
     sleep_seconds : float | None
         The sleep seconds configuration to use.
@@ -458,7 +461,9 @@ def run(
             )
             pagination = getattr(source_obj, 'pagination', None)
             rate_limit = getattr(source_obj, 'rate_limit', None)
-            retry = getattr(source_obj, 'retry', None)
+            retry: ApiRetryPolicy | None = cast(
+                ApiRetryPolicy | None, getattr(source_obj, 'retry', None),
+            )
             retry_network_errors = bool(
                 getattr(source_obj, 'retry_network_errors', False),
             )
@@ -502,8 +507,12 @@ def run(
                     or ep.rate_limit
                     or api_cfg.effective_rate_limit_defaults()
                 )
-                retry = retry or getattr(ep, 'retry', None) or getattr(
-                    api_cfg, 'retry', None,
+                retry = cast(
+                    ApiRetryPolicy | None, (
+                        retry or getattr(ep, 'retry', None) or getattr(
+                            api_cfg, 'retry', None,
+                        )
+                    ),
                 )
                 retry_network_errors = (
                     retry_network_errors
@@ -536,8 +545,9 @@ def run(
             timeout = ex_opts.get('timeout')
             pag_ov = ex_opts.get('pagination', {})
             rl_ov = ex_opts.get('rate_limit', {})
-            rty_ov = (
-                ex_opts.get('retry') if 'retry' in ex_opts else None
+            rty_ov: ApiRetryPolicy | None = cast(
+                ApiRetryPolicy | None,
+                (ex_opts.get('retry') if 'retry' in ex_opts else None),
             )
             rne_ov = (
                 ex_opts.get('retry_network_errors')
