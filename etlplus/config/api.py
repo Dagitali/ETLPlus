@@ -29,6 +29,7 @@ from urllib.parse import urlunsplit
 from ..api import EndpointClient
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
+from .utils import cast_str_dict
 from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
@@ -112,19 +113,10 @@ class ApiProfileConfig:
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        # Merge defaults.headers (low precedence) with profile headers (high).
-        def _merge_headers(
-            defaults_raw: Mapping[str, Any] | None,
-            headers_raw: Mapping[str, Any] | None,
-        ) -> dict[str, str]:
-            dflt = {k: str(v) for k, v in (defaults_raw or {}).items()}
-            hdrs = {k: str(v) for k, v in (headers_raw or {}).items()}
-            return dflt | hdrs
-
         defaults_raw = obj.get('defaults', {}) or {}
-        merged_headers = _merge_headers(
-            (defaults_raw.get('headers', {}) or {}),
-            obj.get('headers', {}),
+        merged_headers = (
+            cast_str_dict(defaults_raw.get('headers'))
+            | cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
