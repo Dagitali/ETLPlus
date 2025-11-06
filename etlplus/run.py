@@ -57,11 +57,9 @@ __all__ = ['run']
 # - ApiRetryPolicy: etlplus.api.types.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
-# Local, readability-first type aliases
-Headers = Mapping[str, str]
-Params = Mapping[str, Any]
-SleepSeconds = float
-URL = str
+type Headers = Mapping[str, str]
+type Params = Mapping[str, Any]
+type URL = str
 
 
 # SECTION: CONSTANTS ======================================================== #
