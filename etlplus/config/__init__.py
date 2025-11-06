@@ -16,7 +16,6 @@ from __future__ import annotations
 from .api import ApiConfig
 from .api import ApiProfileConfig
 from .api import EndpointConfig
-from .connector import Connector
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
@@ -31,14 +30,7 @@ from .pipeline import load_pipeline_config
 from .pipeline import PipelineConfig
 from .profile import ProfileConfig
 from .rate_limit import RateLimitConfig
-from .sources import SourceApi
-from .sources import SourceDb
-from .sources import SourceFile
-from .targets import TargetApi
-from .targets import TargetDb
-from .targets import TargetFile
-from .types import Source
-from .types import Target
+from .types import Connector
 
 __all__ = [
     # API
@@ -69,18 +61,6 @@ __all__ = [
     # Profile
     'ProfileConfig',
 
-    # Sources
-    'SourceApi',
-    'SourceDb',
-    'SourceFile',
-
-    # Targets
-    'TargetApi',
-    'TargetDb',
-    'TargetFile',
-
     # Type aliases
     'Connector',
-    'Source',
-    'Target',
 ]

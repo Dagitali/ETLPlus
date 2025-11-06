@@ -17,20 +17,16 @@ from typing import Self
 
 from ..file import read_yaml
 from .api import ApiConfig
+from .connector import ConnectorApi
+from .connector import ConnectorDb
+from .connector import ConnectorFile
 from .jobs import ExtractRef
 from .jobs import JobConfig
 from .jobs import LoadRef
 from .jobs import TransformRef
 from .jobs import ValidationRef
 from .profile import ProfileConfig
-from .sources import SourceApi
-from .sources import SourceDb
-from .sources import SourceFile
-from .targets import TargetApi
-from .targets import TargetDb
-from .targets import TargetFile
-from .types import Source
-from .types import Target
+from .types import Connector
 from .utils import deep_substitute
 
 
@@ -114,9 +110,9 @@ def _build_jobs(
 
 def _build_sources(
     raw: Mapping[str, Any],
-) -> list[Source]:
+) -> list[Connector]:
     """
-    Build a list of Source objects from the raw configuration.
+    Build a list of data sources from the raw configuration.
 
     Parameters
     ----------
@@ -125,14 +121,14 @@ def _build_sources(
 
     Returns
     -------
-    list[Source]
-        A list of Source objects.
+    list[Connector]
+        A list of Connector objects representing data sources.
     """
 
-    registry: dict[str, Callable[[Mapping[str, Any]], Source]] = {
-        'file': SourceFile.from_obj,
-        'database': SourceDb.from_obj,
-        'api': SourceApi.from_obj,
+    registry: dict[str, Callable[[Mapping[str, Any]], Connector]] = {
+        'file': ConnectorFile.from_obj,
+        'database': ConnectorDb.from_obj,
+        'api': ConnectorApi.from_obj,
     }
 
     return _build_typed_items(raw, 'sources', registry)
@@ -140,9 +136,9 @@ def _build_sources(
 
 def _build_targets(
     raw: Mapping[str, Any],
-) -> list[Target]:
+) -> list[Connector]:
     """
-    Build a list of Target objects from the raw configuration.
+    Build a list of data targets from the raw configuration.
 
     Parameters
     ----------
@@ -151,14 +147,14 @@ def _build_targets(
 
     Returns
     -------
-    list[Target]
-        A list of Target objects.
+    list[Connector]
+        A list of Connector objects representing data targets.
     """
 
-    registry: dict[str, Callable[[Mapping[str, Any]], Target]] = {
-        'file': TargetFile.from_obj,
-        'api': TargetApi.from_obj,
-        'database': TargetDb.from_obj,
+    registry: dict[str, Callable[[Mapping[str, Any]], Connector]] = {
+        'file': ConnectorFile.from_obj,
+        'api': ConnectorApi.from_obj,
+        'database': ConnectorDb.from_obj,
     }
 
     return _build_typed_items(raw, 'targets', registry)
@@ -243,10 +239,10 @@ class PipelineConfig:
     databases: dict[str, dict[str, Any]] = field(default_factory=dict)
     file_systems: dict[str, dict[str, Any]] = field(default_factory=dict)
 
-    sources: list[Source] = field(default_factory=list)
+    sources: list[Connector] = field(default_factory=list)
     validations: dict[str, dict[str, Any]] = field(default_factory=dict)
     transforms: dict[str, dict[str, Any]] = field(default_factory=dict)
-    targets: list[Target] = field(default_factory=list)
+    targets: list[Connector] = field(default_factory=list)
     jobs: list[JobConfig] = field(default_factory=list)
 
     # -- Class Methods -- #

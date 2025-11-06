@@ -42,12 +42,6 @@ from typing import TypedDict
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
-from .sources import SourceApi
-from .sources import SourceDb
-from .sources import SourceFile
-from .targets import TargetApi
-from .targets import TargetDb
-from .targets import TargetFile
 
 
 # SECTION: EXPORTS  ========================================================= #
@@ -55,14 +49,12 @@ from .targets import TargetFile
 
 __all__ = [
     # Type aliases
-    'Source', 'Target',
+    'Connector',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
     'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
     'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
-    'SourceApiConfigMap', 'SourceDbConfigMap', 'SourceFileConfigMap',
-    'TargetApiConfigMap', 'TargetDbConfigMap', 'TargetFileConfigMap',
 ]
 
 
@@ -70,8 +62,6 @@ __all__ = [
 
 
 type Connector = ConnectorApi | ConnectorDb | ConnectorFile
-type Source = SourceApi | SourceDb | SourceFile
-type Target = TargetApi | TargetDb | TargetFile
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -147,6 +137,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     name: str
     type: str
     url: str
+    method: str
     headers: Mapping[str, Any]
     query_params: Mapping[str, Any]
     pagination: PaginationConfigMap
@@ -168,6 +159,8 @@ class ConnectorDbConfigMap(TypedDict, total=False):
     type: str
     connection_string: str
     query: str
+    table: str
+    mode: str
 
 
 class ConnectorFileConfigMap(TypedDict, total=False):
@@ -240,103 +233,3 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     sleep_seconds: float
     max_per_sec: float
-
-
-class SourceApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceApi.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceApi.from_obj
-    """
-
-    name: str
-    type: str
-    url: str
-    headers: Mapping[str, Any]
-    query_params: Mapping[str, Any]
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
-    api: str
-    endpoint: str
-
-
-class SourceDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceDb.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceDb.from_obj
-    """
-
-    name: str
-    type: str
-    connection_string: str
-    query: str
-
-
-class SourceFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceFile.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceFile.from_obj
-    """
-
-    name: str
-    type: str
-    format: str
-    path: str
-    options: Mapping[str, Any]
-
-
-class TargetApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetApi.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetApi.from_obj
-    """
-
-    name: str
-    type: str
-    url: str
-    method: str
-    headers: Mapping[str, Any]
-    api: str
-    endpoint: str
-
-
-class TargetDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetDb.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetDb.from_obj
-    """
-
-    name: str
-    type: str
-    connection_string: str
-    table: str
-    mode: str
-
-
-class TargetFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetFile.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetFile.from_obj
-    """
-
-    name: str
-    type: str
-    format: str
-    path: str
