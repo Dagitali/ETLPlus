@@ -69,13 +69,6 @@ __all__ = [
 ]
 
 
-# SECTION: TYPED ALIASES ==================================================== #
-
-
-# Type alias representing any supported connector
-type Connector = ConnectorApi | ConnectorDb | ConnectorFile
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -307,14 +300,21 @@ def parse_connector(obj: Mapping[str, Any]) -> Connector:
       ``from_obj`` constructors, which tolerate missing optional keys.
     """
 
-    t = str(obj.get('type', '')).casefold()
-    if t == 'file':
-        return ConnectorFile.from_obj(obj)
-    if t == 'database':
-        return ConnectorDb.from_obj(obj)
-    if t == 'api':
-        return ConnectorApi.from_obj(obj)
+    match str(obj.get('type', '')).casefold():
+        case 'file':
+            return ConnectorFile.from_obj(obj)
+        case 'database':
+            return ConnectorDb.from_obj(obj)
+        case 'api':
+            return ConnectorApi.from_obj(obj)
+        case _:
+            raise TypeError(
+                'Unsupported connector type; expected one of '
+                '{file, database, api}',
+            )
 
-    raise TypeError(
-        'Unsupported connector type; expected one of {file, database, api}',
-    )
+
+# SECTION: TYPED ALIASES (post-class definitions) ========================= #
+
+# Type alias representing any supported connector
+type Connector = ConnectorApi | ConnectorDb | ConnectorFile
