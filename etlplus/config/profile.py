@@ -50,7 +50,8 @@ class ProfileConfig:
         if not isinstance(obj, Mapping):
             return cls()
 
-        env = cast_str_dict(obj.get('env') if isinstance(obj, Mapping) else {})
+        # Coerce all env values to strings using shared helper.
+        env = cast_str_dict(obj.get('env'))
 
         return cls(
             default_target=obj.get('default_target'),
