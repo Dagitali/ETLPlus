@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import Iterable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -81,16 +82,19 @@ def deep_substitute(
 
     if isinstance(value, str):
         # Fast path: single combined pass over substitutions.
-        if not vars_map and not env_map:
+        if not (vars_map or env_map):
             return value
-        out = value
-        # Merge mappings using dict union for a single pass over replacements.
-        all_vars: dict[str, Any] = (
-            dict(vars_map) | dict(env_map)
-            if env_map else dict(vars_map)
+
+        # Union preserves right-hand precedence (env overrides vars).
+        merged: Iterable[tuple[str, Any]] = (
+            (dict(vars_map) | dict(env_map)).items()
+            if env_map else vars_map.items()
         )
-        for name, replacement in all_vars.items():
-            out = out.replace(f"${{{name}}}", str(replacement))
+        out = value
+        for name, replacement in merged:
+            token = f"${{{name}}}"
+            if token in out:
+                out = out.replace(token, str(replacement))
         return out
     if isinstance(value, dict):
         return {
@@ -203,6 +207,7 @@ def rate_limit_from_defaults(
     max_per_sec = obj.get('max_per_sec')
     if sleep_seconds is None and max_per_sec is None:
         return None
+
     # Local import to avoid circular dependency with rate_limit -> utils
     from .rate_limit import RateLimitConfig as _RateLimitConfig
 
