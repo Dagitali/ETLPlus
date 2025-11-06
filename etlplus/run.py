@@ -193,6 +193,7 @@ def run(
             # and prefer ApiConfig helpers for correctness (e.g., base_path).
             use_client_endpoints = False
             client_base_url: str | None = None
+            client_base_path: str | None = None
             client_endpoints_map: dict[str, str] | None = None
             selected_endpoint_key: str | None = None
             if api_name and endpoint_name:
@@ -245,10 +246,12 @@ def run(
                     merged.update(session_cfg)
                 session_cfg = merged or None
 
-                # Prepare EndpointClient instantiation using effective base URL
-                # so relative endpoint paths are resolved with any base_path.
+                # Prepare EndpointClient instantiation using base_url +
+                # base_path (passed via the client's base_path parameter)
+                # so relative endpoint paths are resolved consistently.
                 use_client_endpoints = True
-                client_base_url = api_cfg.effective_base_url()
+                client_base_url = api_cfg.base_url
+                client_base_path = api_cfg.effective_base_path()
                 client_endpoints_map = {
                     k: v.path for k, v in api_cfg.endpoints.items()
                 }
@@ -411,6 +414,7 @@ def run(
                 # endpoints.
                 client = EndpointClient(
                     base_url=client_base_url,
+                    base_path=client_base_path,
                     endpoints=client_endpoints_map,
                     retry=retry,
                     retry_network_errors=retry_network_errors,
