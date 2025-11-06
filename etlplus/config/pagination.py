@@ -94,11 +94,9 @@ class PaginationConfig:
 
     def validate_bounds(self) -> list[str]:
         """
-        Validate common pagination numeric bounds and return warnings.
+        Return non-raising warnings for suspicious numeric bounds.
 
-        This method is optional and side-effect free. It does not raise
-        exceptions; instead, it returns a list of human-readable warnings
-        describing values that look out of range.
+        Uses structural pattern matching to keep branching concise.
 
         Returns
         -------
@@ -107,27 +105,27 @@ class PaginationConfig:
         """
 
         warnings: list[str] = []
-        t = (self.type or '').strip().lower()
 
         # General limits
-        if self.max_pages is not None and self.max_pages <= 0:
+        if (mp := self.max_pages) is not None and mp <= 0:
             warnings.append('max_pages should be > 0')
-        if self.max_records is not None and self.max_records <= 0:
+        if (mr := self.max_records) is not None and mr <= 0:
             warnings.append('max_records should be > 0')
 
         # Page/offset
-        if t in {'page', 'offset'}:
-            if self.start_page is not None and self.start_page < 1:
-                warnings.append('start_page should be >= 1')
-            if self.page_size is not None and self.page_size <= 0:
-                warnings.append('page_size should be > 0')
-
-        # Cursor
-        if t == 'cursor':
-            if self.page_size is not None and self.page_size <= 0:
-                warnings.append(
-                    'page_size should be > 0 for cursor pagination',
-                )
+        match (self.type or '').strip().lower():
+            case 'page' | 'offset':
+                if (sp := self.start_page) is not None and sp < 1:
+                    warnings.append('start_page should be >= 1')
+                if (ps := self.page_size) is not None and ps <= 0:
+                    warnings.append('page_size should be > 0')
+            case 'cursor':
+                if (ps := self.page_size) is not None and ps <= 0:
+                    warnings.append(
+                        'page_size should be > 0 for cursor pagination',
+                    )
+            case _:
+                pass
 
         return warnings
 
