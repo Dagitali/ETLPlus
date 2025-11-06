@@ -2,30 +2,28 @@
 etlplus.config.types
 ====================
 
-A module centralizing type aliases used in the ``:mod:etlplus.config`` package.
+A module centralizing type aliases and editor-only TypedDicts used in the
+``:mod:etlplus.config`` package.
 
-Contents
---------
-- Type aliases: ``Source``, ``Target``
+These types improve IDE autocomplete and static analysis while theruntime
+parsers remain permissive.
 
 Notes
 -----
-- TypedDicts in this module are editor/type-checking hints. They are
-    intentionally ``total=False`` (all keys optional) and are not enforced at
-    runtime.
-- Constructors like ``*.from_obj`` accept ``Mapping[str, Any]`` and perform
-    tolerant parsing and light casting. This keeps the runtime permissive while
-    improving autocomplete and static analysis for contributors.
+- TypedDicts in this module are intentionally ``total=False`` and are not
+    enforced at runtime.
+- ``*.from_obj`` constructors accept ``Mapping[str, Any]`` and perform
+  tolerant parsing and light casting. This keeps the runtime permissive while
+  improving autocomplete and static analysis for contributors.
 
 Examples
 --------
->>> from etlplus.config import Source
->>> src: Source = {
+>>> from etlplus.config import Connector
+>>> src: Connector = {
 >>>     "type": "file",
 >>>     "path": "/data/input.csv",
 >>> }
->>> from etlplus.config import Target
->>> tgt: Target = {
+>>> tgt: Connector = {
 >>>     "type": "database",
 >>>     "connection_string": "postgresql://user:pass@localhost/db",
 >>> }
