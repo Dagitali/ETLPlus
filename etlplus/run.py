@@ -9,6 +9,7 @@ from __future__ import annotations
 import inspect
 from typing import Any
 from typing import cast
+from typing import Final
 from typing import Mapping
 from typing import TypedDict
 from urllib.parse import urlsplit
@@ -29,6 +30,7 @@ from .extract import extract
 from .load import load
 from .transform import transform
 from .types import JSONDict
+from .types import Timeout
 from .utils import print_json
 from .validate import validate
 from .validation.utils import maybe_validate
@@ -40,13 +42,8 @@ from .validation.utils import maybe_validate
 __all__ = ['run']
 
 
-# SECTION: CONSTANTS ======================================================== #
+# SECTION: TYPES ============================================================ #
 
-
-DEFAULT_CONFIG_PATH = 'in/pipeline.yml'
-
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
 
 # Types glossary (config vs API client)
 # ------------------------------------
@@ -59,6 +56,21 @@ DEFAULT_CONFIG_PATH = 'in/pipeline.yml'
 # - ApiPaginationConfig: etlplus.api.types.PaginationConfig (client layer)
 # - ApiRetryPolicy: etlplus.api.types.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
+
+# Local, readability-first type aliases
+Headers = Mapping[str, str]
+Params = Mapping[str, Any]
+SleepSeconds = float
+URL = str
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
 class SessionConfig(TypedDict, total=False):
@@ -352,9 +364,9 @@ def _merge_session_cfg_three(
 def _paginate_with_client(
     client: Any,
     endpoint_key: str,
-    params: Mapping[str, Any] | None,
-    headers: Mapping[str, str] | None,
-    timeout: float | int | None,
+    params: Params | None,
+    headers: Headers | None,
+    timeout: Timeout,
     pagination: ApiPaginationConfig | None,
     sleep_seconds: float | None,
 ) -> Any:
@@ -482,7 +494,7 @@ def run(
         case 'api':
             # Build URL, params, headers, pagination, rate_limit, retry,
             # session config.
-            url: str | None = getattr(source_obj, 'url', None)
+            url: URL | None = getattr(source_obj, 'url', None)
             params: dict[str, Any] = dict(
                 getattr(source_obj, 'query_params', {}) or {},
             )
@@ -574,7 +586,7 @@ def run(
             # Apply overrides from job.extract.options.
             params |= ex_opts.get('query_params', {})
             headers |= ex_opts.get('headers', {})
-            timeout: float | int | None = ex_opts.get('timeout')
+            timeout: Timeout = ex_opts.get('timeout')
             pag_ov = ex_opts.get('pagination', {})
             rl_ov = ex_opts.get('rate_limit', {})
             rty_ov: ApiRetryPolicy | None = cast(
@@ -641,7 +653,7 @@ def run(
                     params,
                     headers,
                     timeout,
-                    cast(ApiPaginationConfig | None, pag_cfg),
+                    pag_cfg,
                     sleep_s,
                 )
             else:
@@ -664,7 +676,7 @@ def run(
                     params,
                     headers,
                     timeout,
-                    cast(ApiPaginationConfig | None, pag_cfg),
+                    pag_cfg,
                     sleep_seconds=(sleep_s or 0.0),
                 )
         case _:
