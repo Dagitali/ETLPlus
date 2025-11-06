@@ -10,6 +10,7 @@ import inspect
 from typing import Any
 from typing import cast
 from typing import Mapping
+from typing import TypedDict
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -46,6 +47,34 @@ DEFAULT_CONFIG_PATH = 'in/pipeline.yml'
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
+
+# Types glossary (config vs API client)
+# ------------------------------------
+# - CfgApiConfig: etlplus.config.api.ApiConfig (config layer)
+# - CfgEndpointConfig: etlplus.config.api.EndpointConfig (config layer)
+# - CfgPaginationConfig: etlplus.config.pagination.PaginationConfig
+#   (config layer)
+# - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
+#   (config layer)
+# - ApiPaginationConfig: etlplus.api.types.PaginationConfig (client layer)
+# - ApiRetryPolicy: etlplus.api.types.RetryPolicy (client layer)
+# - SessionConfig (below): runner-only TypedDict for HTTP session options
+
+
+class SessionConfig(TypedDict, total=False):
+    """Minimal session configuration schema accepted by this runner.
+
+    Keys mirror common requests.Session options; all are optional.
+    """
+
+    headers: Mapping[str, Any]
+    params: Mapping[str, Any]
+    auth: Any  # (user, pass) tuple or requests-compatible auth object
+    verify: bool | str
+    cert: Any  # str or (cert, key)
+    proxies: Mapping[str, Any]
+    cookies: Mapping[str, Any]
+    trust_env: bool
 
 
 def _build_pagination_cfg(
@@ -173,7 +202,7 @@ def _build_pagination_cfg(
 
 
 def _build_session_from_config(
-    cfg: dict[str, Any] | None,
+    cfg: SessionConfig | None,
 ) -> requests.Session:
     """
     Create a requests.Session from a simple config mapping.
@@ -183,7 +212,7 @@ def _build_session_from_config(
 
     Parameters
     ----------
-    cfg : dict[str, Any] | None
+    cfg : SessionConfig | None
         Configuration mapping.
 
     Returns
@@ -282,8 +311,8 @@ def _compute_rl_sleep_seconds(
 def _merge_session_cfg_three(
     api_cfg: CfgApiConfig,
     ep: CfgEndpointConfig,
-    source_session_cfg: dict[str, Any] | None,
-) -> dict[str, Any] | None:
+    source_session_cfg: SessionConfig | None,
+) -> SessionConfig | None:
     """
     Merge session config dictionaries from api -> endpoint -> source.
 
@@ -293,12 +322,12 @@ def _merge_session_cfg_three(
         API config object (may have a 'session' dict attribute).
     ep : CfgEndpointConfig
         Endpoint config object (may have a 'session' dict attribute).
-    source_session_cfg : dict[str, Any] | None
+    source_session_cfg : SessionConfig | None
         Source-level session config overrides.
 
     Returns
     -------
-    dict[str, Any] | None
+    SessionConfig | None
         Merged session configuration or None if empty.
 
     Notes
@@ -316,7 +345,8 @@ def _merge_session_cfg_three(
         merged.update(ep_sess)
     if isinstance(source_session_cfg, dict):
         merged.update(source_session_cfg)
-    return merged or None
+
+    return cast(SessionConfig | None, (merged or None))
 
 
 def _paginate_with_client(
@@ -324,7 +354,7 @@ def _paginate_with_client(
     endpoint_key: str,
     params: Mapping[str, Any] | None,
     headers: Mapping[str, str] | None,
-    timeout: Any,
+    timeout: float | int | None,
     pagination: ApiPaginationConfig | None,
     sleep_seconds: float | None,
 ) -> Any:
@@ -467,7 +497,9 @@ def run(
             retry_network_errors = bool(
                 getattr(source_obj, 'retry_network_errors', False),
             )
-            session_cfg = getattr(source_obj, 'session', None)
+            session_cfg = cast(
+                SessionConfig | None, getattr(source_obj, 'session', None),
+            )
 
             api_name = getattr(source_obj, 'api', None)
             endpoint_name = getattr(source_obj, 'endpoint', None)
@@ -542,7 +574,7 @@ def run(
             # Apply overrides from job.extract.options.
             params |= ex_opts.get('query_params', {})
             headers |= ex_opts.get('headers', {})
-            timeout = ex_opts.get('timeout')
+            timeout: float | int | None = ex_opts.get('timeout')
             pag_ov = ex_opts.get('pagination', {})
             rl_ov = ex_opts.get('rate_limit', {})
             rty_ov: ApiRetryPolicy | None = cast(
@@ -554,7 +586,9 @@ def run(
                 if 'retry_network_errors' in ex_opts
                 else None
             )
-            sess_ov = ex_opts.get('session', {})
+            sess_ov: SessionConfig = cast(
+                SessionConfig, ex_opts.get('session', {}),
+            )
 
             # Compute rate limit sleep using consolidated helper.
             sleep_s = _compute_rl_sleep_seconds(rate_limit, rl_ov)
@@ -567,9 +601,9 @@ def run(
 
             # Apply session overrides (merge).
             if isinstance(sess_ov, dict):
-                base_cfg = dict(session_cfg or {})
+                base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
                 base_cfg.update(sess_ov)
-                session_cfg = base_cfg
+                session_cfg = cast(SessionConfig, base_cfg)
 
             # Build pagination config via helper
             pag_cfg: ApiPaginationConfig | None = _build_pagination_cfg(
