@@ -50,6 +50,25 @@ def _build_pagination_cfg(
     """
     Build a pagination config mapping for the client from an optional
     PaginationConfig-like object and optional overrides.
+
+    Parameters
+    ----------
+    pagination: PaginationConfig | None
+        The pagination configuration to use.
+    pag_overrides: Mapping[str, Any] | None
+        Overrides to apply to the pagination configuration.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        The built pagination configuration or None if not determinable.
+
+    Notes
+    -----
+    - Returns None when no pagination type can be determined.
+    - Inputs can be dataclass-like objects (with attributes) or None.
+    - Job-level overrides (``pag_overrides``) take precedence over the
+      values on ``pagination``.
     """
 
     ptype = None
@@ -166,6 +185,12 @@ def _build_session_from_config(
     -------
     requests.Session
         Configured requests.Session instance.
+
+    Notes
+    -----
+    - Only known keys are respected and safely ignored if malformed.
+    - ``Session.params`` may not exist on very old ``requests`` versions; the
+      setattr is guarded accordingly.
     """
 
     s = requests.Session()
@@ -217,6 +242,25 @@ def _compute_rl_sleep_seconds(
 ) -> float | None:
     """
     Compute sleep_seconds from a rate_limit dataclass/mapping plus overrides.
+
+    Parameters
+    ----------
+    rate_limit : Any | Mapping[str, Any] | None
+        The rate limit configuration to use.
+    overrides : Mapping[str, Any] | None
+        Overrides to apply to the rate limit configuration.
+
+    Returns
+    -------
+    float | None
+        The computed sleep seconds or None if not determinable.
+
+    Notes
+    -----
+    - Accepts either a dataclass-like object (with ``sleep_seconds`` and
+      ``max_per_sec`` attributes) or a Mapping in the same shape.
+    - Calls module-level ``compute_sleep_seconds`` so tests can monkeypatch it
+      via ``etlplus.run.compute_sleep_seconds``.
     """
 
     rl_map: Mapping[str, Any] | None
@@ -251,6 +295,11 @@ def _merge_session_cfg_three(
     -------
     dict[str, Any] | None
         Merged session configuration or None if empty.
+
+    Notes
+    -----
+    - Precedence: API < Endpoint < Source (later updates override earlier).
+    - Returns None instead of an empty dict for downstream convenience.
     """
 
     api_sess = getattr(api_cfg, 'session', None)
@@ -277,6 +326,36 @@ def _paginate_with_client(
     """
     Call client.paginate with kwargs matching its signature (supports
     FakeClient underscores).
+
+    Parameters
+    ----------
+    client : Any
+        The client instance to use for pagination.
+    endpoint_key : str
+        The endpoint key to paginate.
+    params : Mapping[str, Any] | None
+        The parameters to include in the request.
+    headers : Mapping[str, str] | None
+        The headers to include in the request.
+    timeout : Any
+        The timeout configuration to use.
+    pagination : Any
+        The pagination configuration to use.
+    sleep_seconds : float | None
+        The sleep seconds configuration to use.
+
+    Returns
+    -------
+    Any
+        The result of the pagination call.
+
+    Notes
+    -----
+    - Some tests use a FakeClient whose parameter names begin with underscores
+      (e.g., ``_params``); this helper inspects the callable to populate the
+      correct keyword names.
+    - ``sleep_seconds`` is normalized to ``float`` (None -> 0.0) to match the
+      client typing.
     """
 
     sig = inspect.signature(client.paginate)  # type: ignore[arg-type]
