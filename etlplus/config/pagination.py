@@ -23,6 +23,12 @@ if TYPE_CHECKING:
     from .types import PaginationConfigMap
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['PaginationConfig']
+
+
 # SECTION: CLASSES ========================================================== #
 
 
