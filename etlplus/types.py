@@ -29,6 +29,9 @@ __all__ = [
     'StepApplier', 'StepOrSteps', 'StepSeq', 'StepSpec',
     'StrAnyMap', 'StrPath', 'StrStrMap', 'StrSeqMap',
     'AggregateSpec', 'FilterSpec', 'MapSpec', 'SelectSpec', 'SortSpec',
+
+    # Networking / runtime helpers
+    'Timeout',
 ]
 
 
@@ -93,3 +96,8 @@ type PipelineConfig = Mapping[PipelineStepName, StepOrSteps]
 
 type StepApplier = Callable[[JSONList, Any], JSONList]
 type SortKey = tuple[int, Any]
+
+# -- Networking / Runtime -- #
+
+# Shared timeout alias for HTTP calls and client configuration.
+type Timeout = float | int | None
