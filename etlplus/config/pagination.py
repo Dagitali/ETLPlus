@@ -19,6 +19,8 @@ from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from .utils import to_int
+
 if TYPE_CHECKING:
     from .types import PaginationConfigMap
 
@@ -121,13 +123,19 @@ class PaginationConfig:
         if not isinstance(obj, Mapping):
             return None
 
-        # Normalize type to str when present; pass through other keys directly.
+        # Normalize type to str when present; cast numeric fields.
         t = obj.get('type')
-        kwargs = {
-            k: obj.get(k) for k in (
-                'page_param', 'size_param', 'start_page', 'page_size',
-                'cursor_param', 'cursor_path', 'start_cursor',
-                'records_path', 'max_pages', 'max_records',
-            )
-        }
-        return cls(type=str(t) if t is not None else None, **kwargs)
+
+        return cls(
+            type=str(t) if t is not None else None,
+            page_param=obj.get('page_param'),
+            size_param=obj.get('size_param'),
+            start_page=to_int(obj.get('start_page')),
+            page_size=to_int(obj.get('page_size')),
+            cursor_param=obj.get('cursor_param'),
+            cursor_path=obj.get('cursor_path'),
+            start_cursor=obj.get('start_cursor'),
+            records_path=obj.get('records_path'),
+            max_pages=to_int(obj.get('max_pages')),
+            max_records=to_int(obj.get('max_records')),
+        )
