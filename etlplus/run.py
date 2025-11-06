@@ -155,6 +155,46 @@ DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
+def _build_endpoint_client_from_env(
+    *,
+    base_url: str,
+    base_path: str | None,
+    endpoints: dict[str, str],
+    env: Mapping[str, Any],
+) -> EndpointClient:
+    """
+    Construct an EndpointClient from a prepared environment mapping.
+
+    Pulls retry, retry_network_errors, and session out of ``env`` to
+    centralize client creation.
+
+    Parameters
+    ----------
+    base_url : str
+        The base URL for the API.
+    base_path : str | None
+        The base path for the API.
+    endpoints : dict[str, str]
+        A mapping of endpoint names to their paths.
+    env : Mapping[str, Any]
+        The environment mapping to use for client creation.
+
+    Returns
+    -------
+    EndpointClient
+        The constructed EndpointClient instance.
+    """
+
+    return EndpointClient(
+        base_url=base_url,
+        base_path=base_path,
+        endpoints=endpoints,
+        retry=env.get('retry'),
+        retry_network_errors=bool(env.get('retry_network_errors', False)),
+        session=env.get('session'),
+    )
+
+
 def _build_pagination_cfg(
     pagination: CfgPaginationConfig | None,
     pag_overrides: Mapping[str, Any] | None,
@@ -208,73 +248,86 @@ def _build_pagination_cfg(
         'max_records': max_records,
     }
 
-    if ptype in {'page', 'offset'}:
-        page_param = pag_overrides.get('page_param') if pag_overrides else None
-        size_param = pag_overrides.get('size_param') if pag_overrides else None
-        start_page = pag_overrides.get('start_page') if pag_overrides else None
-        page_size = pag_overrides.get('page_size') if pag_overrides else None
-        if pagination:
+    match ptype:
+        case 'page' | 'offset':
             page_param = (
-                page_param
-                or getattr(pagination, 'page_param', None)
-                or 'page'
+                pag_overrides.get('page_param') if pag_overrides else None
             )
             size_param = (
-                size_param
-                or getattr(pagination, 'size_param', None)
-                or 'per_page'
+                pag_overrides.get('size_param') if pag_overrides else None
             )
             start_page = (
-                start_page
-                or getattr(pagination, 'start_page', None)
-                or 1
+                pag_overrides.get('start_page') if pag_overrides else None
             )
             page_size = (
-                page_size
-                or getattr(pagination, 'page_size', None)
-                or 100
+                pag_overrides.get('page_size') if pag_overrides else None
             )
-        pag_cfg.update(
-            {
-                'page_param': str(page_param or 'page'),
-                'size_param': str(size_param or 'per_page'),
-                'start_page': int(start_page or 1),
-                'page_size': int(page_size or 100),
-            },
-        )
-    elif ptype == 'cursor':
-        cursor_param = (
-            pag_overrides.get('cursor_param') if pag_overrides else None
-        )
-        cursor_path = (
-            pag_overrides.get('cursor_path') if pag_overrides else None
-        )
-        page_size = pag_overrides.get('page_size') if pag_overrides else None
-        start_cursor = None
-        if pagination:
+            if pagination:
+                page_param = (
+                    page_param
+                    or getattr(pagination, 'page_param', None)
+                    or 'page'
+                )
+                size_param = (
+                    size_param
+                    or getattr(pagination, 'size_param', None)
+                    or 'per_page'
+                )
+                start_page = (
+                    start_page
+                    or getattr(pagination, 'start_page', None)
+                    or 1
+                )
+                page_size = (
+                    page_size
+                    or getattr(pagination, 'page_size', None)
+                    or 100
+                )
+            pag_cfg.update(
+                {
+                    'page_param': str(page_param or 'page'),
+                    'size_param': str(size_param or 'per_page'),
+                    'start_page': int(start_page or 1),
+                    'page_size': int(page_size or 100),
+                },
+            )
+        case 'cursor':
             cursor_param = (
-                cursor_param
-                or getattr(pagination, 'cursor_param', None)
-                or 'cursor'
+                pag_overrides.get('cursor_param') if pag_overrides else None
             )
             cursor_path = (
-                cursor_path
-                or getattr(pagination, 'cursor_path', None)
+                pag_overrides.get('cursor_path') if pag_overrides else None
             )
             page_size = (
-                page_size
-                or getattr(pagination, 'page_size', None)
-                or 100
+                pag_overrides.get('page_size') if pag_overrides else None
             )
-            start_cursor = getattr(pagination, 'start_cursor', None)
-        pag_cfg.update(
-            {
-                'cursor_param': str(cursor_param or 'cursor'),
-                'cursor_path': cursor_path,
-                'page_size': int(page_size or 100),
-                'start_cursor': start_cursor,
-            },
-        )
+            start_cursor = None
+            if pagination:
+                cursor_param = (
+                    cursor_param
+                    or getattr(pagination, 'cursor_param', None)
+                    or 'cursor'
+                )
+                cursor_path = (
+                    cursor_path
+                    or getattr(pagination, 'cursor_path', None)
+                )
+                page_size = (
+                    page_size
+                    or getattr(pagination, 'page_size', None)
+                    or 100
+                )
+                start_cursor = getattr(pagination, 'start_cursor', None)
+            pag_cfg.update(
+                {
+                    'cursor_param': str(cursor_param or 'cursor'),
+                    'cursor_path': cursor_path,
+                    'page_size': int(page_size or 100),
+                    'start_cursor': start_cursor,
+                },
+            )
+        case _:
+            pass
 
     return cast(ApiPaginationConfig, pag_cfg)
 
@@ -871,8 +924,7 @@ def run(
     cfg = load_pipeline_config(cfg_path, substitute=True)
 
     # Lookup job by name
-    job_obj = next((j for j in cfg.jobs if j.name == job), None)
-    if not job_obj:
+    if not (job_obj := next((j for j in cfg.jobs if j.name == job), None)):
         raise ValueError(f'Job not found: {job}')
 
     # Index sources/targets by name
@@ -910,15 +962,11 @@ def run(
                 and env.get('endpoints_map')
                 and env.get('endpoint_key')
             ):
-                client = EndpointClient(
+                client = _build_endpoint_client_from_env(
                     base_url=cast(str, env['base_url']),
                     base_path=cast(str | None, env.get('base_path')),
                     endpoints=cast(dict[str, str], env['endpoints_map']),
-                    retry=env.get('retry'),
-                    retry_network_errors=bool(
-                        env.get('retry_network_errors', False),
-                    ),
-                    session=env.get('session'),
+                    env=env,
                 )
                 data = _paginate_with_client(
                     client,
@@ -935,14 +983,8 @@ def run(
                     raise ValueError('API source missing URL')
                 parts = urlsplit(cast(str, url))
                 base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-                client = EndpointClient(
-                    base_url=base,
-                    endpoints={},
-                    retry=env.get('retry'),
-                    retry_network_errors=bool(
-                        env.get('retry_network_errors', False),
-                    ),
-                    session=env.get('session'),
+                client = _build_endpoint_client_from_env(
+                    base_url=base, base_path=None, endpoints={}, env=env,
                 )
                 data = client.paginate_url(
                     cast(str, url),
