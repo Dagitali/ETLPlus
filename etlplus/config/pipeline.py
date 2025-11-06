@@ -7,7 +7,6 @@ A module defining configuration types for ETL job orchestration.
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
@@ -17,9 +16,7 @@ from typing import Self
 
 from ..file import read_yaml
 from .api import ApiConfig
-from .connector import ConnectorApi
-from .connector import ConnectorDb
-from .connector import ConnectorFile
+from .connector import parse_connector
 from .jobs import ExtractRef
 from .jobs import JobConfig
 from .jobs import LoadRef
@@ -64,31 +61,39 @@ def _build_jobs(
         if not isinstance(name, str):
             continue
         # Extract
-        ex_raw = j.get('extract') or {}
         extract = None
-        if isinstance(ex_raw, dict) and ex_raw.get('source'):
+        if (
+            isinstance(ex_raw := j.get('extract') or {}, dict)
+            and ex_raw.get('source')
+        ):
             extract = ExtractRef(
                 source=str(ex_raw.get('source')),
                 options=dict(ex_raw.get('options', {}) or {}),
             )
         # Validate
-        v_raw = j.get('validate') or {}
         validate = None
-        if isinstance(v_raw, dict) and v_raw.get('ruleset'):
+        if (
+            isinstance(v_raw := j.get('validate') or {}, dict)
+            and v_raw.get('ruleset')
+        ):
             validate = ValidationRef(
                 ruleset=str(v_raw.get('ruleset')),
                 severity=v_raw.get('severity'),
                 phase=v_raw.get('phase'),
             )
         # Transform
-        tr_raw = j.get('transform') or {}
         transform = None
-        if isinstance(tr_raw, dict) and tr_raw.get('pipeline'):
+        if (
+            isinstance(tr_raw := j.get('transform') or {}, dict)
+            and tr_raw.get('pipeline')
+        ):
             transform = TransformRef(pipeline=str(tr_raw.get('pipeline')))
         # Load
-        ld_raw = j.get('load') or {}
         load = None
-        if isinstance(ld_raw, dict) and ld_raw.get('target'):
+        if (
+            isinstance(ld_raw := j.get('load') or {}, dict)
+            and ld_raw.get('target')
+        ):
             load = LoadRef(
                 target=str(ld_raw.get('target')),
                 overrides=dict(ld_raw.get('overrides', {}) or {}),
@@ -123,15 +128,9 @@ def _build_sources(
     -------
     list[Connector]
         A list of Connector objects representing data sources.
-    """
+     """
 
-    registry: dict[str, Callable[[Mapping[str, Any]], Connector]] = {
-        'file': ConnectorFile.from_obj,
-        'database': ConnectorDb.from_obj,
-        'api': ConnectorApi.from_obj,
-    }
-
-    return _build_typed_items(raw, 'sources', registry)
+    return _build_connectors(raw, 'sources')
 
 
 def _build_targets(
@@ -151,23 +150,17 @@ def _build_targets(
         A list of Connector objects representing data targets.
     """
 
-    registry: dict[str, Callable[[Mapping[str, Any]], Connector]] = {
-        'file': ConnectorFile.from_obj,
-        'api': ConnectorApi.from_obj,
-        'database': ConnectorDb.from_obj,
-    }
-
-    return _build_typed_items(raw, 'targets', registry)
+    return _build_connectors(raw, 'targets')
 
 
-def _build_typed_items[T](
+def _build_connectors(
     raw: Mapping[str, Any],
     key: str,
-    registry: Mapping[str, Callable[[Mapping[str, Any]], T]],
-) -> list[T]:
+) -> list[Connector]:
     """
-    Generic builder for lists of typed config items that share a common
-    shape of ``{"name": str, "type": str, ...}``.
+    Generic builder for connector lists using tolerant parsing.
+
+    Unknown or malformed entries are skipped to preserve permissiveness.
 
     Parameters
     ----------
@@ -180,22 +173,18 @@ def _build_typed_items[T](
 
     Returns
     -------
-    list[T]
+    list[Connector]
         List of constructed items, skipping malformed entries.
     """
-
-    items: list[T] = []
+    items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
         if not isinstance(obj, dict):
             continue
-        t = str(obj.get('type', '')).casefold()
-        name = obj.get('name')
-        if not isinstance(name, str):
+        try:
+            items.append(parse_connector(obj))
+        except TypeError:
+            # Skip unsupported types or malformed entries
             continue
-        build = registry.get(t)
-        if build is None:
-            continue
-        items.append(build(obj))
 
     return items
 
