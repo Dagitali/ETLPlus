@@ -16,6 +16,11 @@ from __future__ import annotations
 from .api import ApiConfig
 from .api import ApiProfileConfig
 from .api import EndpointConfig
+from .connector import Connector
+from .connector import ConnectorApi
+from .connector import ConnectorDb
+from .connector import ConnectorFile
+from .connector import parse_connector
 from .jobs import ExtractRef
 from .jobs import JobConfig
 from .jobs import LoadRef
@@ -43,6 +48,13 @@ __all__ = [
     'PaginationConfig',
     'RateLimitConfig',
 
+    # Connectors
+    'Connector',
+    'ConnectorApi',
+    'ConnectorDb',
+    'ConnectorFile',
+    'parse_connector',
+
     # Jobs / Refs
     'ExtractRef',
     'JobConfig',
@@ -68,6 +80,7 @@ __all__ = [
     'TargetFile',
 
     # Type aliases
+    'Connector',
     'Source',
     'Target',
 ]
