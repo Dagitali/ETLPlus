@@ -17,8 +17,10 @@ import requests  # type: ignore
 
 from .api import compute_sleep_seconds
 from .api import EndpointClient
-from .api import PaginationConfig
+from .api import PaginationConfig as ApiPaginationConfig
 from .config import load_pipeline_config
+from .config.pagination import PaginationConfig as CfgPaginationConfig
+from .config.rate_limit import RateLimitConfig as CfgRateLimitConfig
 from .extract import extract
 from .load import load
 from .transform import transform
@@ -44,9 +46,9 @@ DEFAULT_CONFIG_PATH = 'in/pipeline.yml'
 
 
 def _build_pagination_cfg(
-    pagination: Any | None,
+    pagination: CfgPaginationConfig | None,
     pag_overrides: Mapping[str, Any] | None,
-) -> dict[str, Any] | None:
+) -> ApiPaginationConfig | None:
     """
     Build a pagination config mapping for the client from an optional
     PaginationConfig-like object and optional overrides.
@@ -60,8 +62,8 @@ def _build_pagination_cfg(
 
     Returns
     -------
-    dict[str, Any] | None
-        The built pagination configuration or None if not determinable.
+    ApiPaginationConfig | None
+        The built API pagination configuration or None if not determinable.
 
     Notes
     -----
@@ -164,7 +166,7 @@ def _build_pagination_cfg(
             },
         )
 
-    return pag_cfg
+    return cast(ApiPaginationConfig, pag_cfg)
 
 
 def _build_session_from_config(
@@ -237,7 +239,7 @@ def _build_session_from_config(
 
 
 def _compute_rl_sleep_seconds(
-    rate_limit: Any | Mapping[str, Any] | None,
+    rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
 ) -> float | None:
     """
@@ -270,7 +272,7 @@ def _compute_rl_sleep_seconds(
             'max_per_sec': getattr(rate_limit, 'max_per_sec', None),
         }
     else:
-        rl_map = rate_limit  # already a Mapping or None
+        rl_map = cast(Mapping[str, Any] | None, rate_limit)
     return compute_sleep_seconds(cast(Any, rl_map), overrides or {})
 
 
@@ -560,7 +562,7 @@ def run(
                 session_cfg = base_cfg
 
             # Build pagination config via helper
-            pag_cfg: dict[str, Any] | None = _build_pagination_cfg(
+            pag_cfg: ApiPaginationConfig | None = _build_pagination_cfg(
                 pagination,
                 pag_ov,
             )
@@ -595,7 +597,7 @@ def run(
                     params,
                     headers,
                     timeout,
-                    cast(PaginationConfig | None, pag_cfg),
+                    cast(ApiPaginationConfig | None, pag_cfg),
                     sleep_s,
                 )
             else:
@@ -618,7 +620,7 @@ def run(
                     params,
                     headers,
                     timeout,
-                    cast(PaginationConfig | None, pag_cfg),
+                    cast(ApiPaginationConfig | None, pag_cfg),
                     sleep_seconds=(sleep_s or 0.0),
                 )
         case _:
