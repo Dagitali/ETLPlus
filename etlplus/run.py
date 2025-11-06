@@ -526,7 +526,7 @@ def _compose_api_target_env(
     --------
     Inputs:
     - cfg: Pipeline config (for resolving API + endpoint references)
-    - target_obj: TargetApi-like object with optional api/endpoint refs
+    - target_obj: ConnectorApi-like object with optional api/endpoint refs
     - overrides: Load overrides mapping (url, method, headers, timeout, etc.)
 
     Outputs (ApiTargetEnv):
