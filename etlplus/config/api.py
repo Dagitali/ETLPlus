@@ -180,10 +180,9 @@ class ApiConfig:
 
     def _selected_profile(self) -> ApiProfileConfig | None:
         """
-        Return the active profile object, if any.
+        Return the active profile object ("default" preferred) or None.
 
-        Selection order mirrors headers/base_url behavior: 'default' when
-        present, otherwise the first profile listed.
+        Uses a tiny helper for selection and avoids duplicating logic.
 
         Returns
         -------
@@ -191,29 +190,24 @@ class ApiConfig:
             The selected profile configuration, or None if no profiles exist.
         """
 
-        name = self._selected_profile_name()
-        return self.profiles.get(name) if name else None
-
-    def _selected_profile_name(self) -> str | None:
-        """
-        Return the name of the selected profile, if any.
-
-        Selection order mirrors headers/base_url behavior: 'default' when
-        present, otherwise the first profile listed.
-
-        Returns
-        -------
-        str | None
-            The name of the selected profile, or None if no profiles exist.
-        """
-
-        if not self.profiles:
+        if not (profiles := self.profiles):
             return None
 
-        return (
-            'default' if 'default' in self.profiles
-            else next(iter(self.profiles.keys()))
-        )
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+
+        return profiles.get(name)
+
+    def _profile_attr(self, attr: str) -> Any:
+        """
+        Generic accessor for an attribute on the selected profile.
+
+        This centralizes profile selection logic so "effective_*" helpers
+        become one-liners. Returns None if no profile or attribute missing.
+        """
+
+        prof = self._selected_profile()
+
+        return getattr(prof, attr, None) if prof else None
 
     # -- Instance Methods -- #
 
@@ -257,9 +251,7 @@ class ApiConfig:
             The base path from the selected profile, or None if not set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'base_path', None) if prof else None
+        return self._profile_attr('base_path')
 
     def effective_base_url(self) -> str:
         """
@@ -283,7 +275,7 @@ class ApiConfig:
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
         """
-        Get the effective pagination defaults for the API.
+        Return selected profile pagination_defaults, if any.
 
         Returns
         -------
@@ -292,13 +284,11 @@ class ApiConfig:
             set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'pagination_defaults', None) if prof else None
+        return self._profile_attr('pagination_defaults')
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
         """
-        Get the effective rate limit defaults for the API.
+        Return selected profile rate_limit_defaults, if any.
 
         Returns
         -------
@@ -307,9 +297,7 @@ class ApiConfig:
             set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'rate_limit_defaults', None) if prof else None
+        return self._profile_attr('rate_limit_defaults')
 
     # -- Static Methods -- #
 
@@ -357,11 +345,14 @@ class ApiConfig:
         # Optional: profiles structure
         # See also: ApiProfileConfig.from_obj for profile parsing logic.
         profiles_raw = obj.get('profiles', {}) or {}
-        profiles: dict[str, ApiProfileConfig] = {}
-        if isinstance(profiles_raw, dict):
-            for name, p in profiles_raw.items():
-                if isinstance(p, dict):
-                    profiles[str(name)] = ApiProfileConfig.from_obj(p)
+        profiles: dict[str, ApiProfileConfig] = (
+            {
+                str(name): ApiProfileConfig.from_obj(p)
+                for name, p in profiles_raw.items()
+                if isinstance(p, dict)
+            }
+            if isinstance(profiles_raw, dict) else {}
+        )
 
         # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
@@ -388,12 +379,13 @@ class ApiConfig:
             base_url = tl_base
             headers = tl_headers
         raw_eps = obj.get('endpoints', {}) or {}
-        eps: dict[str, EndpointConfig] = {}
-        if isinstance(raw_eps, dict):
-            eps = {
+        eps: dict[str, EndpointConfig] = (
+            {
                 str(name): EndpointConfig.from_obj(ep)
                 for name, ep in raw_eps.items()
             }
+            if isinstance(raw_eps, dict) else {}
+        )
 
         return cls(
             base_url=base_url,
