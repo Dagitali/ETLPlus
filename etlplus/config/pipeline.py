@@ -34,6 +34,12 @@ from .types import Target
 from .utils import deep_substitute
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['PipelineConfig', 'load_pipeline_config']
+
+
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
@@ -123,26 +129,13 @@ def _build_sources(
         A list of Source objects.
     """
 
-    sources: list[Source] = []
-    type_map: dict[str, Callable[[Mapping[str, Any]], Source]] = {
+    registry: dict[str, Callable[[Mapping[str, Any]], Source]] = {
         'file': SourceFile.from_obj,
         'database': SourceDb.from_obj,
         'api': SourceApi.from_obj,
     }
 
-    for s in (raw.get('sources', []) or []):
-        if not isinstance(s, dict):
-            continue
-        stype = str(s.get('type', '')).casefold()
-        name = s.get('name')
-        if not isinstance(name, str):
-            continue
-        build = type_map.get(stype)
-        if build is None:
-            continue
-        sources.append(build(s))
-
-    return sources
+    return _build_typed_items(raw, 'sources', registry)
 
 
 def _build_targets(
@@ -162,26 +155,53 @@ def _build_targets(
         A list of Target objects.
     """
 
-    targets: list[Target] = []
-    type_map: dict[str, Callable[[Mapping[str, Any]], Target]] = {
+    registry: dict[str, Callable[[Mapping[str, Any]], Target]] = {
         'file': TargetFile.from_obj,
         'api': TargetApi.from_obj,
         'database': TargetDb.from_obj,
     }
 
-    for t in (raw.get('targets', []) or []):
-        if not isinstance(t, dict):
+    return _build_typed_items(raw, 'targets', registry)
+
+
+def _build_typed_items[T](
+    raw: Mapping[str, Any],
+    key: str,
+    registry: Mapping[str, Callable[[Mapping[str, Any]], T]],
+) -> list[T]:
+    """
+    Generic builder for lists of typed config items that share a common
+    shape of ``{"name": str, "type": str, ...}``.
+
+    Parameters
+    ----------
+    raw : Mapping[str, Any]
+        Raw pipeline mapping.
+    key : str
+        Top-level key containing the list (e.g., "sources" or "targets").
+    registry : Mapping[str, Callable[[Mapping[str, Any]], T]]
+        Map of lower-cased type -> constructor.
+
+    Returns
+    -------
+    list[T]
+        List of constructed items, skipping malformed entries.
+    """
+
+    items: list[T] = []
+    for obj in (raw.get(key, []) or []):
+        if not isinstance(obj, dict):
             continue
-        ttype = str(t.get('type', '')).casefold()
-        name = t.get('name')
+        t = str(obj.get('type', '')).casefold()
+        name = obj.get('name')
         if not isinstance(name, str):
             continue
-        build = type_map.get(ttype)
+        build = registry.get(t)
         if build is None:
             continue
-        targets.append(build(t))
+        items.append(build(obj))
 
-    return targets
+    return items
 
 
 # SECTION: FUNCTIONS ======================================================== #

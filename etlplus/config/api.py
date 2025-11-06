@@ -37,6 +37,16 @@ if TYPE_CHECKING:
     from .types import ApiConfigMap, ApiProfileConfigMap, EndpointConfigMap
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'ApiConfig',
+    'ApiProfileConfig',
+    'EndpointConfig',
+]
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -355,10 +365,7 @@ class ApiConfig:
 
         # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
-        tl_headers = {
-            k: str(v)
-            for k, v in (obj.get('headers', {}) or {}).items()
-        }
+        tl_headers = cast_str_dict(obj.get('headers'))
 
         # Determine effective base_url/headers for backward compatibility
         # Always compute a concrete str for base_url.

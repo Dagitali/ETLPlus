@@ -8,9 +8,24 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import TYPE_CHECKING
 
-from .pagination import PaginationConfig
-from .rate_limit import RateLimitConfig
+if TYPE_CHECKING:
+    from .pagination import PaginationConfig
+    from .rate_limit import RateLimitConfig
+
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'cast_str_dict',
+    'deep_substitute',
+    'pagination_from_defaults',
+    'rate_limit_from_defaults',
+    'to_int',
+    'to_float',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -145,7 +160,10 @@ def pagination_from_defaults(
     if dflt_blk and not page_size:
         page_size = dflt_blk.get('per_page')
 
-    return PaginationConfig(
+    # Local import to avoid circular dependency with pagination -> utils
+    from .pagination import PaginationConfig as _PaginationConfig
+
+    return _PaginationConfig(
         type=str(ptype) if ptype is not None else None,
         page_param=page_param,
         size_param=size_param,
@@ -185,7 +203,58 @@ def rate_limit_from_defaults(
     max_per_sec = obj.get('max_per_sec')
     if sleep_seconds is None and max_per_sec is None:
         return None
-    return RateLimitConfig(
+    # Local import to avoid circular dependency with rate_limit -> utils
+    from .rate_limit import RateLimitConfig as _RateLimitConfig
+
+    return _RateLimitConfig(
         sleep_seconds=sleep_seconds,
         max_per_sec=max_per_sec,
     )
+
+
+# Small numeric coercion helpers used by config parsers. These are
+# intentionally forgiving: non-coercible values return None.
+
+def to_int(
+    v: Any,
+) -> int | None:
+    """
+    Coerce a value to an integer.
+
+    Parameters
+    ----------
+    v : Any
+        The value to coerce.
+
+    Returns
+    -------
+    int | None
+        The coerced integer value, or None if coercion failed.
+    """
+    try:
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def to_float(
+    v: Any,
+) -> float | None:
+    """
+    Coerce a value to a float.
+
+    Parameters
+    ----------
+    v : Any
+        The value to coerce.
+
+    Returns
+    -------
+    float | None
+        The coerced float value, or None if coercion failed.
+    """
+
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None

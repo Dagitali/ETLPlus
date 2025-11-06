@@ -15,6 +15,12 @@ from typing import Self
 from .utils import cast_str_dict
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['ProfileConfig']
+
+
 # SECTION: CLASSES ========================================================== #
 
 

@@ -19,8 +19,16 @@ from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from .utils import to_int
+
 if TYPE_CHECKING:
     from .types import PaginationConfigMap
+
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['PaginationConfig']
 
 
 # SECTION: CLASSES ========================================================== #
@@ -82,6 +90,47 @@ class PaginationConfig:
     max_pages: int | None = None
     max_records: int | None = None
 
+    # -- Instance Methods -- #
+
+    def validate_bounds(self) -> list[str]:
+        """
+        Validate common pagination numeric bounds and return warnings.
+
+        This method is optional and side-effect free. It does not raise
+        exceptions; instead, it returns a list of human-readable warnings
+        describing values that look out of range.
+
+        Returns
+        -------
+        list[str]
+            A list of warning messages (empty if all values look sane).
+        """
+
+        warnings: list[str] = []
+        t = (self.type or '').strip().lower()
+
+        # General limits
+        if self.max_pages is not None and self.max_pages <= 0:
+            warnings.append('max_pages should be > 0')
+        if self.max_records is not None and self.max_records <= 0:
+            warnings.append('max_records should be > 0')
+
+        # Page/offset
+        if t in {'page', 'offset'}:
+            if self.start_page is not None and self.start_page < 1:
+                warnings.append('start_page should be >= 1')
+            if self.page_size is not None and self.page_size <= 0:
+                warnings.append('page_size should be > 0')
+
+        # Cursor
+        if t == 'cursor':
+            if self.page_size is not None and self.page_size <= 0:
+                warnings.append(
+                    'page_size should be > 0 for cursor pagination',
+                )
+
+        return warnings
+
     # -- Class Methods -- #
 
     @classmethod
@@ -115,13 +164,19 @@ class PaginationConfig:
         if not isinstance(obj, Mapping):
             return None
 
-        # Normalize type to str when present; pass through other keys directly.
+        # Normalize type to str when present; cast numeric fields.
         t = obj.get('type')
-        kwargs = {
-            k: obj.get(k) for k in (
-                'page_param', 'size_param', 'start_page', 'page_size',
-                'cursor_param', 'cursor_path', 'start_cursor',
-                'records_path', 'max_pages', 'max_records',
-            )
-        }
-        return cls(type=str(t) if t is not None else None, **kwargs)
+
+        return cls(
+            type=str(t) if t is not None else None,
+            page_param=obj.get('page_param'),
+            size_param=obj.get('size_param'),
+            start_page=to_int(obj.get('start_page')),
+            page_size=to_int(obj.get('page_size')),
+            cursor_param=obj.get('cursor_param'),
+            cursor_path=obj.get('cursor_path'),
+            start_cursor=obj.get('start_cursor'),
+            records_path=obj.get('records_path'),
+            max_pages=to_int(obj.get('max_pages')),
+            max_records=to_int(obj.get('max_records')),
+        )
