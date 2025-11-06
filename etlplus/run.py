@@ -62,13 +62,7 @@ type Params = Mapping[str, Any]
 type URL = str
 
 
-# SECTION: CONSTANTS ======================================================== #
-
-
-DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
-
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class SessionConfig(TypedDict, total=False):
@@ -85,6 +79,46 @@ class SessionConfig(TypedDict, total=False):
     proxies: Mapping[str, Any]
     cookies: Mapping[str, Any]
     trust_env: bool
+
+
+class ApiRequestEnv(TypedDict, total=False):
+    """Composed request environment for API sources.
+
+    Returned by ``_compose_api_request_env`` and consumed by the API extract
+    branch. Values are fully merged with endpoint/API defaults and job-level
+    overrides, preserving the original precedence and behavior.
+    """
+
+    # Client wiring
+    use_endpoints: bool
+    base_url: str | None
+    base_path: str | None
+    endpoints_map: dict[str, str] | None
+    endpoint_key: str | None
+
+    # Request details
+    url: URL | None
+    params: dict[str, Any]
+    headers: dict[str, str]
+    timeout: Timeout
+    pagination: ApiPaginationConfig | None
+    sleep_seconds: float
+
+    # Reliability knobs
+    retry: ApiRetryPolicy | None
+    retry_network_errors: bool
+
+    # Session
+    session: requests.Session | None
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
 def _build_pagination_cfg(
@@ -278,6 +312,177 @@ def _build_session_from_config(
             pass
 
     return s
+
+
+def _compose_api_request_env(
+    cfg: Any,
+    source_obj: Any,
+    ex_opts: Mapping[str, Any] | None,
+) -> ApiRequestEnv:
+    """
+    Compose API+endpoint settings plus job overrides into a ready context.
+
+    Parameters
+    ----------
+    cfg : Any
+        The configuration mapping.
+    source_obj : Any
+        The source object to derive settings from.
+    ex_opts : Mapping[str, Any] | None
+        Additional options to override defaults.
+
+    Returns
+    -------
+    ApiRequestEnv
+        The composed API request environment.
+
+    Notes
+    -----
+    - Precedence for inherited values matches original logic:
+      source -> endpoint -> API profile defaults (then job overrides).
+    - ``sleep_seconds`` is computed via the module-level function so tests can
+      monkeypatch ``etlplus.run.compute_sleep_seconds``.
+    """
+
+    ex_opts = ex_opts or {}
+
+    # Seed from source
+    url: URL | None = getattr(source_obj, 'url', None)
+    params: dict[str, Any] = dict(
+        getattr(source_obj, 'query_params', {}) or {},
+    )
+    headers: dict[str, str] = dict(getattr(source_obj, 'headers', {}) or {})
+    pagination = getattr(source_obj, 'pagination', None)
+    rate_limit = getattr(source_obj, 'rate_limit', None)
+    retry: ApiRetryPolicy | None = cast(
+        ApiRetryPolicy | None, getattr(source_obj, 'retry', None),
+    )
+    retry_network_errors = bool(
+        getattr(source_obj, 'retry_network_errors', False),
+    )
+    session_cfg = cast(
+        SessionConfig | None, getattr(source_obj, 'session', None),
+    )
+
+    api_name = getattr(source_obj, 'api', None)
+    endpoint_name = getattr(source_obj, 'endpoint', None)
+
+    # Defaults for client wiring
+    use_client_endpoints = False
+    client_base_url: str | None = None
+    client_base_path: str | None = None
+    client_endpoints_map: dict[str, str] | None = None
+    selected_endpoint_key: str | None = None
+
+    # Inherit from API/endpoint when referenced
+    if api_name and endpoint_name:
+        api_cfg = cfg.apis.get(api_name)
+        if not api_cfg:
+            raise ValueError(f'API not defined: {api_name}')
+        ep = api_cfg.endpoints.get(endpoint_name)
+        if not ep:
+            raise ValueError(
+                f'Endpoint "{endpoint_name}" not defined in API '
+                f'"{api_name}"',
+            )
+
+        url = api_cfg.build_endpoint_url(ep)
+        params = {**ep.query_params, **params}
+        headers = {**api_cfg.headers, **headers}
+
+        pagination = (
+            pagination
+            or ep.pagination
+            or api_cfg.effective_pagination_defaults()
+        )
+        rate_limit = (
+            rate_limit
+            or ep.rate_limit
+            or api_cfg.effective_rate_limit_defaults()
+        )
+        retry = cast(
+            ApiRetryPolicy | None,
+            (
+                retry
+                or getattr(ep, 'retry', None)
+                or getattr(api_cfg, 'retry', None)
+            ),
+        )
+        retry_network_errors = (
+            retry_network_errors
+            or bool(getattr(ep, 'retry_network_errors', False))
+            or bool(getattr(api_cfg, 'retry_network_errors', False))
+        )
+        session_cfg = _merge_session_cfg_three(api_cfg, ep, session_cfg)
+
+        # Client endpoint wiring
+        use_client_endpoints = True
+        client_base_url = api_cfg.base_url
+        client_base_path = api_cfg.effective_base_path()
+        client_endpoints_map = {
+            k: v.path for k, v in api_cfg.endpoints.items()
+        }
+        selected_endpoint_key = endpoint_name
+
+    # Apply job overrides
+    params |= ex_opts.get('query_params', {})
+    headers |= ex_opts.get('headers', {})
+    timeout: Timeout = ex_opts.get('timeout')
+    pag_ov = ex_opts.get('pagination', {})
+    rl_ov = ex_opts.get('rate_limit', {})
+    rty_ov: ApiRetryPolicy | None = cast(
+        ApiRetryPolicy | None,
+        (ex_opts.get('retry') if 'retry' in ex_opts else None),
+    )
+    rne_ov = (
+        ex_opts.get('retry_network_errors')
+        if 'retry_network_errors' in ex_opts
+        else None
+    )
+    sess_ov: SessionConfig = cast(SessionConfig, ex_opts.get('session', {}))
+
+    # Compute rate limit sleep using consolidated helper
+    sleep_s = _compute_rl_sleep_seconds(rate_limit, rl_ov) or 0.0
+
+    # Apply retry/network-error overrides
+    if rty_ov is not None:
+        retry = rty_ov
+    if rne_ov is not None:
+        retry_network_errors = bool(rne_ov)
+
+    # Merge session overrides
+    if isinstance(sess_ov, dict):
+        base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
+        base_cfg.update(sess_ov)
+        session_cfg = cast(SessionConfig, base_cfg)
+
+    # Build pagination config and session object
+    pag_cfg: ApiPaginationConfig | None = _build_pagination_cfg(
+        pagination,
+        pag_ov,
+    )
+    sess_obj = (
+        _build_session_from_config(session_cfg)
+        if isinstance(session_cfg, dict)
+        else None
+    )
+
+    return {
+        'use_endpoints': use_client_endpoints,
+        'base_url': client_base_url,
+        'base_path': client_base_path,
+        'endpoints_map': client_endpoints_map,
+        'endpoint_key': selected_endpoint_key,
+        'url': url,
+        'params': params,
+        'headers': headers,
+        'timeout': timeout,
+        'pagination': pag_cfg,
+        'sleep_seconds': sleep_s,
+        'retry': retry,
+        'retry_network_errors': retry_network_errors,
+        'session': sess_obj,
+    }
 
 
 def _compute_rl_sleep_seconds(
@@ -490,192 +695,54 @@ def run(
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
         case 'api':
-            # Build URL, params, headers, pagination, rate_limit, retry,
-            # session config.
-            url: URL | None = getattr(source_obj, 'url', None)
-            params: dict[str, Any] = dict(
-                getattr(source_obj, 'query_params', {}) or {},
-            )
-            headers: dict[str, str] = dict(
-                getattr(source_obj, 'headers', {}) or {},
-            )
-            pagination = getattr(source_obj, 'pagination', None)
-            rate_limit = getattr(source_obj, 'rate_limit', None)
-            retry: ApiRetryPolicy | None = cast(
-                ApiRetryPolicy | None, getattr(source_obj, 'retry', None),
-            )
-            retry_network_errors = bool(
-                getattr(source_obj, 'retry_network_errors', False),
-            )
-            session_cfg = cast(
-                SessionConfig | None, getattr(source_obj, 'session', None),
-            )
-
-            api_name = getattr(source_obj, 'api', None)
-            endpoint_name = getattr(source_obj, 'endpoint', None)
-
-            # When an API + endpoint are referenced, compose using ApiConfig
-            # and prefer ApiConfig helpers for correctness (e.g., base_path).
-            use_client_endpoints = False
-            client_base_url: str | None = None
-            client_base_path: str | None = None
-            client_endpoints_map: dict[str, str] | None = None
-            selected_endpoint_key: str | None = None
-            if api_name and endpoint_name:
-                api_cfg = cfg.apis.get(api_name)
-                if not api_cfg:
-                    raise ValueError(f'API not defined: {api_name}')
-                ep = api_cfg.endpoints.get(endpoint_name)
-                if not ep:
-                    raise ValueError(
-                        f'Endpoint "{endpoint_name}" not defined in API '
-                        f'"{api_name}"',
-                    )
-
-                # Compose and inherit, using helpers for accuracy.
-                url = api_cfg.build_endpoint_url(ep)
-                params = {**ep.query_params, **params}
-                headers = {**api_cfg.headers, **headers}
-
-                # Inherit pagination/rate_limit in order:
-                # source -> endpoint -> API profile defaults
-                pagination = (
-                    pagination
-                    or ep.pagination
-                    or api_cfg.effective_pagination_defaults()
-                )
-                rate_limit = (
-                    rate_limit
-                    or ep.rate_limit
-                    or api_cfg.effective_rate_limit_defaults()
-                )
-                retry = cast(
-                    ApiRetryPolicy | None, (
-                        retry or getattr(ep, 'retry', None) or getattr(
-                            api_cfg, 'retry', None,
-                        )
-                    ),
-                )
-                retry_network_errors = (
-                    retry_network_errors
-                    or bool(getattr(ep, 'retry_network_errors', False))
-                    or bool(
-                        getattr(api_cfg, 'retry_network_errors', False),
-                    )
-                )
-                # Merge session config: api -> endpoint -> source
-                session_cfg = _merge_session_cfg_three(
-                    api_cfg,
-                    ep,
-                    session_cfg,
-                )
-
-                # Prepare EndpointClient instantiation using base_url +
-                # base_path (passed via the client's base_path parameter)
-                # so relative endpoint paths are resolved consistently.
-                use_client_endpoints = True
-                client_base_url = api_cfg.base_url
-                client_base_path = api_cfg.effective_base_path()
-                client_endpoints_map = {
-                    k: v.path for k, v in api_cfg.endpoints.items()
-                }
-                selected_endpoint_key = endpoint_name
-
-            # Apply overrides from job.extract.options.
-            params |= ex_opts.get('query_params', {})
-            headers |= ex_opts.get('headers', {})
-            timeout: Timeout = ex_opts.get('timeout')
-            pag_ov = ex_opts.get('pagination', {})
-            rl_ov = ex_opts.get('rate_limit', {})
-            rty_ov: ApiRetryPolicy | None = cast(
-                ApiRetryPolicy | None,
-                (ex_opts.get('retry') if 'retry' in ex_opts else None),
-            )
-            rne_ov = (
-                ex_opts.get('retry_network_errors')
-                if 'retry_network_errors' in ex_opts
-                else None
-            )
-            sess_ov: SessionConfig = cast(
-                SessionConfig, ex_opts.get('session', {}),
-            )
-
-            # Compute rate limit sleep using consolidated helper.
-            sleep_s = _compute_rl_sleep_seconds(rate_limit, rl_ov)
-
-            # Apply retry overrides (if present).
-            if rty_ov is not None:
-                retry = rty_ov
-            if rne_ov is not None:
-                retry_network_errors = bool(rne_ov)
-
-            # Apply session overrides (merge).
-            if isinstance(sess_ov, dict):
-                base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
-                base_cfg.update(sess_ov)
-                session_cfg = cast(SessionConfig, base_cfg)
-
-            # Build pagination config via helper
-            pag_cfg: ApiPaginationConfig | None = _build_pagination_cfg(
-                pagination,
-                pag_ov,
-            )
-
-            # Build session object if config provided.
-            sess_obj = (
-                _build_session_from_config(session_cfg)
-                if isinstance(session_cfg, dict)
-                else None
-            )
-
+            env = _compose_api_request_env(cfg, source_obj, ex_opts)
             if (
-                use_client_endpoints
-                and client_base_url
-                and client_endpoints_map
-                and selected_endpoint_key
+                env.get('use_endpoints')
+                and env.get('base_url')
+                and env.get('endpoints_map')
+                and env.get('endpoint_key')
             ):
-                # Instantiate client with effective_base_url and known
-                # endpoints.
                 client = EndpointClient(
-                    base_url=client_base_url,
-                    base_path=client_base_path,
-                    endpoints=client_endpoints_map,
-                    retry=retry,
-                    retry_network_errors=retry_network_errors,
-                    session=sess_obj,
+                    base_url=cast(str, env['base_url']),
+                    base_path=cast(str | None, env.get('base_path')),
+                    endpoints=cast(dict[str, str], env['endpoints_map']),
+                    retry=env.get('retry'),
+                    retry_network_errors=bool(
+                        env.get('retry_network_errors', False),
+                    ),
+                    session=env.get('session'),
                 )
-                # Call paginate via consolidated helper
                 data = _paginate_with_client(
                     client,
-                    selected_endpoint_key,
-                    params,
-                    headers,
-                    timeout,
-                    pag_cfg,
-                    sleep_s,
+                    cast(str, env['endpoint_key']),
+                    env.get('params'),
+                    env.get('headers'),
+                    env.get('timeout'),
+                    env.get('pagination'),
+                    cast(float | None, env.get('sleep_seconds')),
                 )
             else:
+                url = env.get('url')
                 if not url:
                     raise ValueError('API source missing URL')
-
-                # Use instance-based pagination via EndpointClient for
-                # absolute URL.
-                parts = urlsplit(url)
+                parts = urlsplit(cast(str, url))
                 base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
                 client = EndpointClient(
                     base_url=base,
                     endpoints={},
-                    retry=retry,
-                    retry_network_errors=retry_network_errors,
-                    session=sess_obj,
+                    retry=env.get('retry'),
+                    retry_network_errors=bool(
+                        env.get('retry_network_errors', False),
+                    ),
+                    session=env.get('session'),
                 )
                 data = client.paginate_url(
-                    url,
-                    params,
-                    headers,
-                    timeout,
-                    pag_cfg,
-                    sleep_seconds=(sleep_s or 0.0),
+                    cast(str, url),
+                    cast(Mapping[str, Any] | None, env.get('params')),
+                    cast(Mapping[str, str] | None, env.get('headers')),
+                    env.get('timeout'),
+                    cast(ApiPaginationConfig | None, env.get('pagination')),
+                    sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
             raise ValueError(f'Unsupported source type: {stype}')
