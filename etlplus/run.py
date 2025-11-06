@@ -18,7 +18,6 @@ import requests  # type: ignore
 from .api import compute_sleep_seconds
 from .api import EndpointClient
 from .api import PaginationConfig
-from .api.types import RateLimitConfig as ApiRateLimitConfig
 from .config import load_pipeline_config
 from .extract import extract
 from .load import load
@@ -42,6 +41,111 @@ DEFAULT_CONFIG_PATH = 'in/pipeline.yml'
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _build_pagination_cfg(
+    pagination: Any | None,
+    pag_overrides: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """
+    Build a pagination config mapping for the client from an optional
+    PaginationConfig-like object and optional overrides.
+    """
+
+    ptype = None
+    records_path = None
+    max_pages = None
+    max_records = None
+    if pagination:
+        ptype = (getattr(pagination, 'type', '') or '').strip().lower()
+        records_path = getattr(pagination, 'records_path', None)
+        max_pages = getattr(pagination, 'max_pages', None)
+        max_records = getattr(pagination, 'max_records', None)
+    if pag_overrides:
+        ptype = (pag_overrides.get('type') or ptype or '').strip().lower()
+        records_path = pag_overrides.get('records_path', records_path)
+        max_pages = pag_overrides.get('max_pages', max_pages)
+        max_records = pag_overrides.get('max_records', max_records)
+
+    if not ptype:
+        return None
+
+    pag_cfg: dict[str, Any] = {
+        'type': ptype,
+        'records_path': records_path,
+        'max_pages': max_pages,
+        'max_records': max_records,
+    }
+
+    if ptype in {'page', 'offset'}:
+        page_param = pag_overrides.get('page_param') if pag_overrides else None
+        size_param = pag_overrides.get('size_param') if pag_overrides else None
+        start_page = pag_overrides.get('start_page') if pag_overrides else None
+        page_size = pag_overrides.get('page_size') if pag_overrides else None
+        if pagination:
+            page_param = (
+                page_param
+                or getattr(pagination, 'page_param', None)
+                or 'page'
+            )
+            size_param = (
+                size_param
+                or getattr(pagination, 'size_param', None)
+                or 'per_page'
+            )
+            start_page = (
+                start_page
+                or getattr(pagination, 'start_page', None)
+                or 1
+            )
+            page_size = (
+                page_size
+                or getattr(pagination, 'page_size', None)
+                or 100
+            )
+        pag_cfg.update(
+            {
+                'page_param': str(page_param or 'page'),
+                'size_param': str(size_param or 'per_page'),
+                'start_page': int(start_page or 1),
+                'page_size': int(page_size or 100),
+            },
+        )
+    elif ptype == 'cursor':
+        cursor_param = (
+            pag_overrides.get('cursor_param') if pag_overrides else None
+        )
+        cursor_path = (
+            pag_overrides.get('cursor_path') if pag_overrides else None
+        )
+        page_size = pag_overrides.get('page_size') if pag_overrides else None
+        start_cursor = None
+        if pagination:
+            cursor_param = (
+                cursor_param
+                or getattr(pagination, 'cursor_param', None)
+                or 'cursor'
+            )
+            cursor_path = (
+                cursor_path
+                or getattr(pagination, 'cursor_path', None)
+            )
+            page_size = (
+                page_size
+                or getattr(pagination, 'page_size', None)
+                or 100
+            )
+            start_cursor = getattr(pagination, 'start_cursor', None)
+        pag_cfg.update(
+            {
+                'cursor_param': str(cursor_param or 'cursor'),
+                'cursor_path': cursor_path,
+                'page_size': int(page_size or 100),
+                'start_cursor': start_cursor,
+            },
+        )
+
+    return pag_cfg
 
 
 def _build_session_from_config(
@@ -75,7 +179,7 @@ def _build_session_from_config(
         # requests supports Session.params on recent versions
         try:
             setattr(s, 'params', params)
-        except Exception:
+        except (AttributeError, TypeError):
             pass
     auth = cfg.get('auth')
     if auth is not None:
@@ -95,16 +199,109 @@ def _build_session_from_config(
     if isinstance(cookies, dict):
         try:
             s.cookies.update(cookies)
-        except Exception:
+        except (TypeError, ValueError):
             pass
     if 'trust_env' in cfg:
         try:
             # type: ignore[attr-defined]
             s.trust_env = bool(cfg.get('trust_env'))
-        except Exception:
+        except AttributeError:
             pass
 
     return s
+
+
+def _compute_rl_sleep_seconds(
+    rate_limit: Any | Mapping[str, Any] | None,
+    overrides: Mapping[str, Any] | None,
+) -> float | None:
+    """
+    Compute sleep_seconds from a rate_limit dataclass/mapping plus overrides.
+    """
+
+    rl_map: Mapping[str, Any] | None
+    if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
+        rl_map = {
+            'sleep_seconds': getattr(rate_limit, 'sleep_seconds', None),
+            'max_per_sec': getattr(rate_limit, 'max_per_sec', None),
+        }
+    else:
+        rl_map = rate_limit  # already a Mapping or None
+    return compute_sleep_seconds(cast(Any, rl_map), overrides or {})
+
+
+def _merge_session_cfg_three(
+    api_cfg: Any,
+    ep: Any,
+    source_session_cfg: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """
+    Merge session config dictionaries from api -> endpoint -> source.
+
+    Parameters
+    ----------
+    api_cfg : Any
+        API config object (may have a 'session' dict attribute).
+    ep : Any
+        Endpoint config object (may have a 'session' dict attribute).
+    source_session_cfg : dict[str, Any] | None
+        Source-level session config overrides.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        Merged session configuration or None if empty.
+    """
+
+    api_sess = getattr(api_cfg, 'session', None)
+    ep_sess = getattr(ep, 'session', None)
+    merged: dict[str, Any] = {}
+    if isinstance(api_sess, dict):
+        merged.update(api_sess)
+    if isinstance(ep_sess, dict):
+        merged.update(ep_sess)
+    if isinstance(source_session_cfg, dict):
+        merged.update(source_session_cfg)
+    return merged or None
+
+
+def _paginate_with_client(
+    client: Any,
+    endpoint_key: str,
+    params: Mapping[str, Any] | None,
+    headers: Mapping[str, str] | None,
+    timeout: Any,
+    pagination: Any,
+    sleep_seconds: float | None,
+) -> Any:
+    """
+    Call client.paginate with kwargs matching its signature (supports
+    FakeClient underscores).
+    """
+
+    sig = inspect.signature(client.paginate)  # type: ignore[arg-type]
+    kw_pag: dict[str, Any] = {
+        'pagination': pagination,
+    }
+    if '_params' in sig.parameters:
+        kw_pag['_params'] = params
+    else:
+        kw_pag['params'] = params
+    if '_headers' in sig.parameters:
+        kw_pag['_headers'] = headers
+    else:
+        kw_pag['headers'] = headers
+    if '_timeout' in sig.parameters:
+        kw_pag['_timeout'] = timeout
+    else:
+        kw_pag['timeout'] = timeout
+    eff_sleep = 0.0 if sleep_seconds is None else sleep_seconds
+    if '_sleep_seconds' in sig.parameters:
+        kw_pag['_sleep_seconds'] = eff_sleep
+    else:
+        kw_pag['sleep_seconds'] = eff_sleep
+
+    return client.paginate(endpoint_key, **kw_pag)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -235,16 +432,11 @@ def run(
                     )
                 )
                 # Merge session config: api -> endpoint -> source
-                api_sess = getattr(api_cfg, 'session', None)
-                ep_sess = getattr(ep, 'session', None)
-                merged: dict[str, Any] = {}
-                if isinstance(api_sess, dict):
-                    merged.update(api_sess)
-                if isinstance(ep_sess, dict):
-                    merged.update(ep_sess)
-                if isinstance(session_cfg, dict):
-                    merged.update(session_cfg)
-                session_cfg = merged or None
+                session_cfg = _merge_session_cfg_three(
+                    api_cfg,
+                    ep,
+                    session_cfg,
+                )
 
                 # Prepare EndpointClient instantiation using base_url +
                 # base_path (passed via the client's base_path parameter)
@@ -273,24 +465,8 @@ def run(
             )
             sess_ov = ex_opts.get('session', {})
 
-            # Compute rate limit sleep using helper. Accept either
-            # TypedDict-like mappings or dataclass objects from config.
-            rl_map: Mapping[str, Any] | None
-            if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
-                rl_map = {
-                    'sleep_seconds': getattr(
-                        rate_limit, 'sleep_seconds', None,
-                    ),
-                    'max_per_sec': getattr(
-                        rate_limit, 'max_per_sec', None,
-                    ),
-                }
-            else:
-                rl_map = rate_limit  # already a Mapping or None
-            sleep_s = compute_sleep_seconds(
-                cast(ApiRateLimitConfig | None, rl_map),
-                rl_ov,
-            )
+            # Compute rate limit sleep using consolidated helper.
+            sleep_s = _compute_rl_sleep_seconds(rate_limit, rl_ov)
 
             # Apply retry overrides (if present).
             if rty_ov is not None:
@@ -304,98 +480,11 @@ def run(
                 base_cfg.update(sess_ov)
                 session_cfg = base_cfg
 
-            # Pagination params
-            ptype = None
-            records_path = None
-            max_pages = None
-            max_records = None
-            if pagination:
-                ptype = (pagination.type or '').strip().lower()
-                records_path = pagination.records_path
-                max_pages = pagination.max_pages
-                max_records = pagination.max_records
-            # Override with job-level
-            if pag_ov:
-                ptype = (pag_ov.get('type') or ptype or '').strip().lower()
-                records_path = pag_ov.get('records_path', records_path)
-                max_pages = pag_ov.get('max_pages', max_pages)
-                max_records = pag_ov.get('max_records', max_records)
-
-            # Delegate to pagination helper.
-            pag_cfg: dict[str, Any] | None = None
-            if ptype:
-                pag_cfg = {
-                    'type': ptype,
-                    'records_path': records_path,
-                    'max_pages': max_pages,
-                    'max_records': max_records,
-                }
-                if ptype in {'page', 'offset'}:
-                    page_param = (
-                        pag_ov.get('page_param') if pag_ov else None
-                    )
-                    size_param = (
-                        pag_ov.get('size_param') if pag_ov else None
-                    )
-                    start_page = (
-                        pag_ov.get('start_page') if pag_ov else None
-                    )
-                    page_size = (
-                        pag_ov.get('page_size') if pag_ov else None
-                    )
-                    if pagination:
-                        page_param = (
-                            page_param or pagination.page_param or 'page'
-                        )
-                        size_param = (
-                            size_param
-                            or pagination.size_param
-                            or 'per_page'
-                        )
-                        start_page = (
-                            start_page or pagination.start_page or 1
-                        )
-                        page_size = (
-                            page_size or pagination.page_size or 100
-                        )
-                    pag_cfg.update(
-                        {
-                            'page_param': str(page_param or 'page'),
-                            'size_param': str(size_param or 'per_page'),
-                            'start_page': int(start_page or 1),
-                            'page_size': int(page_size or 100),
-                        },
-                    )
-                elif ptype == 'cursor':
-                    cursor_param = (
-                        pag_ov.get('cursor_param') if pag_ov else None
-                    )
-                    cursor_path = (
-                        pag_ov.get('cursor_path') if pag_ov else None
-                    )
-                    page_size = pag_ov.get('page_size') if pag_ov else None
-                    start_cursor = None
-                    if pagination:
-                        cursor_param = (
-                            cursor_param
-                            or pagination.cursor_param
-                            or 'cursor'
-                        )
-                        cursor_path = (
-                            cursor_path or pagination.cursor_path
-                        )
-                        page_size = (
-                            page_size or pagination.page_size or 100
-                        )
-                        start_cursor = pagination.start_cursor
-                    pag_cfg.update(
-                        {
-                            'cursor_param': str(cursor_param or 'cursor'),
-                            'cursor_path': cursor_path,
-                            'page_size': int(page_size or 100),
-                            'start_cursor': start_cursor,
-                        },
-                    )
+            # Build pagination config via helper
+            pag_cfg: dict[str, Any] | None = _build_pagination_cfg(
+                pagination,
+                pag_ov,
+            )
 
             # Build session object if config provided.
             sess_obj = (
@@ -420,32 +509,16 @@ def run(
                     retry_network_errors=retry_network_errors,
                     session=sess_obj,
                 )
-                # Call paginate with keyword names compatible with the
-                # client's signature (supports tests' FakeClient underscores).
-                sig = inspect.signature(  # type: ignore[arg-type]
-                    client.paginate,
+                # Call paginate via consolidated helper
+                data = _paginate_with_client(
+                    client,
+                    selected_endpoint_key,
+                    params,
+                    headers,
+                    timeout,
+                    cast(PaginationConfig | None, pag_cfg),
+                    sleep_s,
                 )
-                kw_pag: dict[str, Any] = {
-                    'pagination': cast(PaginationConfig | None, pag_cfg),
-                }
-                if '_params' in sig.parameters:
-                    kw_pag['_params'] = params
-                else:
-                    kw_pag['params'] = params
-                if '_headers' in sig.parameters:
-                    kw_pag['_headers'] = headers
-                else:
-                    kw_pag['headers'] = headers
-                if '_timeout' in sig.parameters:
-                    kw_pag['_timeout'] = timeout
-                else:
-                    kw_pag['timeout'] = timeout
-                if '_sleep_seconds' in sig.parameters:
-                    kw_pag['_sleep_seconds'] = sleep_s
-                else:
-                    kw_pag['sleep_seconds'] = sleep_s
-
-                data = client.paginate(selected_endpoint_key, **kw_pag)
             else:
                 if not url:
                     raise ValueError('API source missing URL')
@@ -467,7 +540,7 @@ def run(
                     headers,
                     timeout,
                     cast(PaginationConfig | None, pag_cfg),
-                    sleep_seconds=sleep_s,
+                    sleep_seconds=(sleep_s or 0.0),
                 )
         case _:
             raise ValueError(f'Unsupported source type: {stype}')
