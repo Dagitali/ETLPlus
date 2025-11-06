@@ -39,6 +39,9 @@ from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
+from .connector import ConnectorApi
+from .connector import ConnectorDb
+from .connector import ConnectorFile
 from .sources import SourceApi
 from .sources import SourceDb
 from .sources import SourceFile
@@ -57,6 +60,7 @@ __all__ = [
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
     'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
+    'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
     'SourceApiConfigMap', 'SourceDbConfigMap', 'SourceFileConfigMap',
     'TargetApiConfigMap', 'TargetDbConfigMap', 'TargetFileConfigMap',
 ]
@@ -65,8 +69,9 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type Source = SourceFile | SourceDb | SourceApi
-type Target = TargetFile | TargetApi | TargetDb
+type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+type Source = SourceApi | SourceDb | SourceFile
+type Target = TargetApi | TargetDb | TargetFile
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -128,6 +133,57 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     headers: Mapping[str, Any]
     pagination: PaginationConfigMap | Mapping[str, Any]
     rate_limit: RateLimitConfigMap | Mapping[str, Any]
+
+
+class ConnectorApiConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorApi.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorApi.from_obj
+    """
+
+    name: str
+    type: str
+    url: str
+    headers: Mapping[str, Any]
+    query_params: Mapping[str, Any]
+    pagination: PaginationConfigMap
+    rate_limit: RateLimitConfigMap
+    api: str
+    endpoint: str
+
+
+class ConnectorDbConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorDb.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorDb.from_obj
+    """
+
+    name: str
+    type: str
+    connection_string: str
+    query: str
+
+
+class ConnectorFileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorFile.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorFile.from_obj
+    """
+
+    name: str
+    type: str
+    format: str
+    path: str
+    options: Mapping[str, Any]
 
 
 class EndpointConfigMap(TypedDict, total=False):
