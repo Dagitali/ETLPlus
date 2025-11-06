@@ -12,6 +12,8 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from .utils import cast_str_dict
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -47,11 +49,9 @@ class ProfileConfig:
 
         if not isinstance(obj, Mapping):
             return cls()
-        env_raw = obj.get('env')
-        env = (
-            {k: str(v) for k, v in (env_raw or {}).items()}
-            if isinstance(env_raw, Mapping) else {}
-        )
+
+        # Coerce all env values to strings using shared helper.
+        env = cast_str_dict(obj.get('env'))
 
         return cls(
             default_target=obj.get('default_target'),
