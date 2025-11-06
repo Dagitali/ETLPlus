@@ -17,6 +17,20 @@ Quick start
 - Use the ``Connector`` union for typing a value that can be any connector.
 - Use ``parse_connector(obj)`` to construct a connector instance from a generic
   mapping that includes a ``type`` key.
+
+Notes
+-----
+- TypedDict shapes are editor hints; runtime parsing remains permissive
+  (from_obj accepts Mapping[str, Any]).
+- TypedDicts referenced in :mod:`etlplus.config.types` remain editor hints.
+  Runtime parsing stays permissive and tolerant.
+
+See also
+--------
+- TypedDict shapes for editor hints (not enforced at runtime):
+    etlplus.config.types.ConnectorApiConfigMap,
+    etlplus.config.types.ConnectorDbConfigMap,
+    etlplus.config.types.ConnectorFileConfigMap
 """
 from __future__ import annotations
 
@@ -44,10 +58,13 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 
 
 __all__ = [
-    'ConnectorApi',
-    'ConnectorDb',
-    'ConnectorFile',
+    # Classes
+    'ConnectorApi', 'ConnectorDb', 'ConnectorFile',
+
+    # Type aliases
     'Connector',
+
+    # Functions
     'parse_connector',
 ]
 
@@ -65,7 +82,7 @@ type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 @dataclass(slots=True)
 class ConnectorApi:
     """
-    Configuration for an API-based data source.
+    Configuration for an API-based data connector.
     """
 
     # -- Attributes -- #
@@ -73,7 +90,7 @@ class ConnectorApi:
     name: str
     type: str = 'api'
 
-    # Direct form (usable for both source and target API endpoints)
+    # Direct form
     url: str | None = None
     # Optional HTTP method; typically omitted for sources (defaults to GET
     # at runtime) and used for targets (e.g., 'post', 'put').
@@ -103,17 +120,18 @@ class ConnectorApi:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a SourceApi from a mapping (tolerant to missing optional keys).
+        Create a ConnectorApi from a mapping (tolerant to missing optional
+        keys).
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the SourceApi from.
+            The mapping to create the ConnectorApi from.
 
         Returns
         -------
         Self
-            The created SourceApi instance.
+            The created ConnectorApi instance.
 
         Raises
         ------
@@ -123,7 +141,7 @@ class ConnectorApi:
 
         name = obj.get('name')
         if not isinstance(name, str):
-            raise TypeError('SourceApi requires a "name" (str)')
+            raise TypeError('ConnectorApi requires a "name" (str)')
         headers = cast_str_dict(obj.get('headers'))
 
         return cls(
@@ -143,7 +161,7 @@ class ConnectorApi:
 @dataclass(slots=True)
 class ConnectorDb:
     """
-    Configuration for a database-based data source.
+    Configuration for a database-based data connector.
     """
 
     # -- Attributes -- #
@@ -152,6 +170,8 @@ class ConnectorDb:
     type: str = 'database'
     connection_string: str | None = None
     query: str | None = None
+    table: str | None = None
+    mode: str | None = None  # append|replace|upsert (future)
 
     # -- Class Methods -- #
 
@@ -169,17 +189,18 @@ class ConnectorDb:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a SourceDb from a mapping (tolerant to missing optional keys).
+        Create a ConnectorDb from a mapping (tolerant to missing optional
+        keys).
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the SourceDb from.
+            The mapping to create the ConnectorDb from.
 
         Returns
         -------
         Self
-            The created SourceDb instance.
+            The created ConnectorDb instance.
 
         Raises
         ------
@@ -189,20 +210,22 @@ class ConnectorDb:
 
         name = obj.get('name')
         if not isinstance(name, str):
-            raise TypeError('SourceDb requires a "name" (str)')
+            raise TypeError('ConnectorDb requires a "name" (str)')
 
         return cls(
             name=name,
             type='database',
             connection_string=obj.get('connection_string'),
             query=obj.get('query'),
+            table=obj.get('table'),
+            mode=obj.get('mode'),
         )
 
 
 @dataclass(slots=True)
 class ConnectorFile:
     """
-    Configuration for a file-based data source.
+    Configuration for a file-based data connector.
     """
 
     # -- Attributes -- #
@@ -229,17 +252,18 @@ class ConnectorFile:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a SourceFile from a mapping (tolerant to missing optional keys).
+        Create a ConnectorFile from a mapping (tolerant to missing optional
+        keys).
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the SourceFile from.
+            The mapping to create the ConnectorFile from.
 
         Returns
         -------
         Self
-            The created SourceFile instance.
+            The created ConnectorFile instance.
 
         Raises
         ------
@@ -249,7 +273,7 @@ class ConnectorFile:
 
         name = obj.get('name')
         if not isinstance(name, str):
-            raise TypeError('SourceFile requires a "name" (str)')
+            raise TypeError('ConnectorFile requires a "name" (str)')
 
         return cls(
             name=name,
