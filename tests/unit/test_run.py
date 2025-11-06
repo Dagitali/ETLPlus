@@ -13,13 +13,13 @@ from typing import Any
 
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
+from etlplus.config import ConnectorApi
+from etlplus.config import ConnectorFile
 from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
 from etlplus.config import PipelineConfig
-from etlplus.config import SourceFile
-from etlplus.config import TargetApi
 
 run_mod = importlib.import_module('etlplus.run')
 load_mod = importlib.import_module('etlplus.load')
@@ -47,7 +47,7 @@ def test_target_service_endpoint_uses_base_path(monkeypatch, tmp_path):
     cfg = PipelineConfig(
         apis={'myapi': api},
         sources=[
-            SourceFile(
+            ConnectorFile(
                 name='local_json',
                 type='file',
                 format='json',
@@ -55,7 +55,7 @@ def test_target_service_endpoint_uses_base_path(monkeypatch, tmp_path):
             ),
         ],
         targets=[
-            TargetApi(
+            ConnectorApi(
                 name='ingest_out', type='api', api='myapi', endpoint='ingest',
                 method='post', headers={'Content-Type': 'application/json'},
             ),
