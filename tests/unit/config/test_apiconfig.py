@@ -1,22 +1,56 @@
 """
-ETLPlus Config Tests
-====================
+ETLPlus API Profile Attribute Tests
+===================================
 
-Unit tests for the ETLPlus configuration models.
+Unit tests for the ETLPlus API profile attributes.
 
 Notes
 -----
-These tests cover the loading and parsing of pipeline configuration
-YAML files, including variable substitution and profile handling.
+These tests cover the wrapping and propagation of API profile attributes.
 """
 from __future__ import annotations
 
-from etlplus.config import ApiConfig
-from etlplus.config import EndpointConfig
-from etlplus.config import PipelineConfig
+from etlplus.config.api import ApiConfig
 
 
-def test_api_config_parses_profiles_and_sets_defaults():
+def test_effective_base_url_and_build_endpoint_url():
+    obj = {
+        'profiles': {
+            'default': {
+                'base_url': 'https://api.example.com',
+                'base_path': '/v1',
+            },
+        },
+        'endpoints': {
+            'users': {'path': '/users'},
+        },
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+
+    # Effective base URL composes base_url + base_path
+    assert cfg.effective_base_url() == 'https://api.example.com/v1'
+
+    # build_endpoint_url composes base and endpoint path
+    ep = cfg.endpoints['users']
+    url = cfg.build_endpoint_url(ep)
+    assert url == 'https://api.example.com/v1/users'
+
+
+def test_flat_shape_still_supported():
+    obj = {
+        'base_url': 'https://flat.example.com',
+        'headers': {'X-Token': 'abc'},
+        'endpoints': {'ping': '/ping'},
+    }
+
+    cfg = ApiConfig.from_obj(obj)
+    assert cfg.base_url == 'https://flat.example.com'
+    assert cfg.headers.get('X-Token') == 'abc'
+    assert 'ping' in cfg.endpoints
+
+
+def test_parses_profiles_and_sets_defaults():
     obj = {
         'profiles': {
             'default': {
@@ -44,20 +78,39 @@ def test_api_config_parses_profiles_and_sets_defaults():
     assert 'list' in cfg.endpoints
 
 
-def test_api_config_flat_shape_still_supported():
-    obj = {
-        'base_url': 'https://flat.example.com',
-        'headers': {'X-Token': 'abc'},
-        'endpoints': {'ping': '/ping'},
-    }
+def test_profile_attr_with_default_profile():
+    cfg = ApiConfig.from_obj(
+        {
+            'profiles': {
+                'default': {
+                    'base_url': 'https://api.example.com',
+                    'base_path': '/v1',
+                    'defaults': {
+                        'pagination': {'type': 'page'},
+                        'rate_limit': {'sleep_seconds': 0.1},
+                    },
+                },
+                'other': {
+                    'base_url': 'https://api.other',
+                },
+            },
+            'endpoints': {},
+        },
+    )
 
-    cfg = ApiConfig.from_obj(obj)
-    assert cfg.base_url == 'https://flat.example.com'
-    assert cfg.headers.get('X-Token') == 'abc'
-    assert 'ping' in cfg.endpoints
+    # Effective getters rely on the internal helper; verify behavior
+    assert cfg.effective_base_path() == '/v1'
+    assert cfg.effective_pagination_defaults() is not None
 
 
-def test_api_profile_defaults_headers_and_fields():
+def test_profile_attr_without_profiles_returns_none():
+    cfg = ApiConfig.from_obj(
+        {'base_url': 'https://api.example.com', 'endpoints': {}},
+    )
+    assert cfg.effective_base_path() is None
+
+
+def test_profile_defaults_headers_and_fields():
     obj = {
         'profiles': {
             'default': {
@@ -95,7 +148,7 @@ def test_api_profile_defaults_headers_and_fields():
     assert prof.auth.get('type') == 'bearer'
 
 
-def test_api_profile_defaults_pagination_mapped():
+def test_profile_defaults_pagination_mapped():
     obj = {
         'profiles': {
             'default': {
@@ -158,86 +211,3 @@ def test_api_profile_defaults_rate_limit_mapped():
     assert rdef is not None
     assert rdef.sleep_seconds == 0.5
     assert rdef.max_per_sec == 2
-
-
-def test_endpoint_captures_path_params_and_body():
-    ep = EndpointConfig.from_obj({
-        'method': 'POST',
-        'path': '/users/{id}/avatar',
-        'path_params': {'id': 'int'},
-        'query_params': {'size': 'large'},
-        'body': {'type': 'file', 'file_path': './x.png'},
-    })
-    assert ep.method == 'POST'
-    assert ep.path_params == {'id': 'int'}
-    assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
-    assert ep.query_params == {'size': 'large'}
-
-
-def test_api_config_effective_base_url_and_build_endpoint_url():
-    obj = {
-        'profiles': {
-            'default': {
-                'base_url': 'https://api.example.com',
-                'base_path': '/v1',
-            },
-        },
-        'endpoints': {
-            'users': {'path': '/users'},
-        },
-    }
-
-    cfg = ApiConfig.from_obj(obj)
-
-    # Effective base URL composes base_url + base_path
-    assert cfg.effective_base_url() == 'https://api.example.com/v1'
-
-    # build_endpoint_url composes base and endpoint path
-    ep = cfg.endpoints['users']
-    url = cfg.build_endpoint_url(ep)
-    assert url == 'https://api.example.com/v1/users'
-
-
-def test_endpoint_config_parses_method():
-    ep = EndpointConfig.from_obj({
-        'method': 'GET',
-        'path': '/users',
-        'query_params': {'active': True},
-    })
-    assert ep.path == '/users'
-    assert ep.method == 'GET'
-    assert ep.query_params.get('active') is True
-
-
-def test_endpoint_config_from_str_sets_no_method():
-    ep = EndpointConfig.from_obj('/ping')
-    assert ep.path == '/ping'
-    assert ep.method is None
-
-
-def test_from_yaml_includes_profile_env_in_substitution(tmp_path):
-    yml = (
-        """
-name: Test
-profile:
-  env:
-    FOO: bar
-vars:
-  X: 123
-sources:
-  - name: s
-    type: file
-    format: json
-    path: "${FOO}-${X}.json"
-targets: []
-jobs: []
-"""
-    ).strip()
-
-    p = tmp_path / 'cfg.yml'
-    p.write_text(yml, encoding='utf-8')
-
-    cfg = PipelineConfig.from_yaml(p, substitute=True, env={})
-    # After substitution, re-parse should keep the resolved path
-    s = next(s for s in cfg.sources if s.name == 's')
-    assert getattr(s, 'path', None) == 'bar-123.json'

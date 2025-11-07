@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.config.connector import parse_connector
+from etlplus.config import parse_connector
 
 
 def test_parse_connector_unsupported_type_raises():
