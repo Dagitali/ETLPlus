@@ -7,8 +7,34 @@ for out-of-range numeric parameters.
 """
 from __future__ import annotations
 
+import pytest
+
 from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
+
+
+@pytest.mark.parametrize('tval', [None, 'weird', ''])
+def test_pagination_unknown_type_general_warnings_only(tval):
+    pc = PaginationConfig(
+        type=tval,
+        start_page=0,
+        page_size=0,
+        max_pages=0,
+        max_records=-1,
+    )
+    warnings = pc.validate_bounds()
+
+    # General warnings should be present
+    assert 'max_pages should be > 0' in warnings
+    assert 'max_records should be > 0' in warnings
+
+    # No page/offset or cursor-specific warnings for unknown types
+    assert not any('start_page should be >= 1' in w for w in warnings)
+    assert not any(
+        'page_size should be > 0 for cursor pagination' in w
+        for w in warnings
+    )
+    assert not any('page_size should be > 0' in w for w in warnings)
 
 
 def test_pagination_offset_mode_warnings():
