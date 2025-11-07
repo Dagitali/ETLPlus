@@ -914,7 +914,7 @@ class EndpointClient:
         query_parameters: Mapping[str, Any] | None = None,
     ) -> str:
         """
-        Build a fully qualified URL for a registered endpoint.
+        Build an absolute URL for a registered endpoint.
 
         Parameters
         ----------
@@ -934,13 +934,13 @@ class EndpointClient:
         Returns
         -------
         str
-            The constructed absolute URL.
+            Constructed absolute URL.
 
         Raises
         ------
         KeyError
-            If ``endpoint_key`` is unknown or a required ``{placeholder}``
-            in the path has no corresponding entry in ``path_parameters``.
+            If ``endpoint_key`` is unknown or a required placeholder in the
+            path has no corresponding entry in ``path_parameters``.
         ValueError
             If the path template is invalid.
 
