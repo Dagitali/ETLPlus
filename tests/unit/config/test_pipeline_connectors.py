@@ -35,3 +35,20 @@ def test_build_connectors_skips_malformed_and_unsupported():
     assert any(isinstance(c, ConnectorFile) for c in items)
     assert any(isinstance(c, ConnectorApi) for c in items)
     assert any(isinstance(c, ConnectorDb) for c in items)
+
+
+def test_build_connectors_for_targets_key():
+    raw = {
+        'targets': [
+            {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
+            {'name': 'sink', 'type': 'database', 'table': 'events_out'},
+            {'name': 'svc', 'type': 'api', 'api': 'hub', 'endpoint': 'post'},
+            {'name': 'bad', 'type': 'unknown'},  # skipped
+        ],
+    }
+
+    items = _build_connectors(raw, 'targets')
+    assert len(items) == 3
+    assert any(isinstance(c, ConnectorFile) for c in items)
+    assert any(isinstance(c, ConnectorDb) for c in items)
+    assert any(isinstance(c, ConnectorApi) for c in items)
