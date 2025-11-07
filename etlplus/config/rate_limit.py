@@ -61,9 +61,7 @@ class RateLimitConfig:
 
     def validate_bounds(self) -> list[str]:
         """
-        Validate rate limit numeric bounds and return warnings.
-
-        This is optional and non-raising; it returns user-facing warnings.
+        Return non-raising warnings for suspicious numeric bounds.
 
         Returns
         -------
@@ -72,9 +70,9 @@ class RateLimitConfig:
         """
 
         warnings: list[str] = []
-        if self.sleep_seconds is not None and self.sleep_seconds < 0:
+        if (ss := self.sleep_seconds) is not None and ss < 0:
             warnings.append('sleep_seconds should be >= 0')
-        if self.max_per_sec is not None and self.max_per_sec <= 0:
+        if (mps := self.max_per_sec) is not None and mps <= 0:
             warnings.append('max_per_sec should be > 0')
 
         return warnings
