@@ -45,12 +45,14 @@ import time
 from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
+from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Iterator
 from typing import Mapping
+from typing import Self
 from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
@@ -268,13 +270,20 @@ class EndpointClient:
                 'base_url must be absolute, e.g. "https://api.example.com"',
             )
 
-        # Defensive copy + validate endpoints.
+        # Defensive copy + validate endpoints with concise comprehension.
         eps = dict(self.endpoints)
-        for k, v in eps.items():
-            if not isinstance(k, str) or not isinstance(v, str) or not v:
-                raise ValueError(
-                    'endpoints must map str -> non-empty str',
-                )
+        invalid = [
+            (k, v)
+            for k, v in eps.items()
+            if not (isinstance(k, str) and isinstance(v, str) and v)
+        ]
+        if invalid:
+            sample = invalid[:3]
+            msg = (
+                'endpoints must map str -> non-empty str; '
+                f'invalid entries: {sample}'
+            )
+            raise ValueError(msg)
         # Wrap in a read-only mapping to ensure immutability
         object.__setattr__(self, 'endpoints', MappingProxyType(eps))
 
@@ -308,13 +317,13 @@ class EndpointClient:
 
     # -- Magic Methods (Context Manager Protocol) -- #
 
-    def __enter__(self) -> EndpointClient:
+    def __enter__(self) -> Self:
         """
         Enter a context where a session is managed by the client.
 
         Returns
         -------
-        EndpointClient
+        Self
             The client itself with an active session bound for the context.
 
         Notes
@@ -346,9 +355,9 @@ class EndpointClient:
 
     def __exit__(
         self,
-        exc_type,
-        exc,
-        tb,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         """
         Exit the managed-session context and close if owned.
@@ -376,6 +385,32 @@ class EndpointClient:
             # Ensure cleared even if we didn't own it
             object.__setattr__(self, '_ctx_session', None)
             object.__setattr__(self, '_ctx_owns_session', False)
+
+    # -- Private Helpers -------------------------------------------------- #
+
+    def _get_active_session(self) -> requests.Session | None:
+        """
+        Return the currently active session if available.
+
+        Prefers the context-managed session, then an explicit bound
+        ``session``, then lazily creates one via ``session_factory`` when
+        available. Returns ``None`` when no session can be obtained.
+
+        Returns
+        -------
+        requests.Session | None
+            The session to use for an outgoing request, if any.
+        """
+        if self._ctx_session is not None:
+            return self._ctx_session
+        if self.session is not None:
+            return self.session
+        if self.session_factory is not None:
+            try:
+                return self.session_factory()
+            except Exception:  # pragma: no cover - defensive
+                return None
+        return None
 
     # -- Protected Instance Methods -- #
 
@@ -413,13 +448,7 @@ class EndpointClient:
 
         # Determine session to use for this request.
         # Prefer context-managed session when present
-        sess = (
-            self._ctx_session
-            if self._ctx_session is not None
-            else self.session
-        )
-        if sess is None and self.session_factory is not None:
-            sess = self.session_factory()
+        sess = self._get_active_session()
 
         policy: RetryPolicy | None = self.retry
         if not policy:
@@ -540,7 +569,7 @@ class EndpointClient:
         sleep_seconds: float = 0.0,
     ) -> JSONData:
         """
-        Convenience wrapper to paginate by endpoint key.
+        Paginate by endpoint key.
 
         Builds the URL via ``self.url(...)`` and delegates to ``paginate_url``.
 
@@ -690,8 +719,7 @@ class EndpointClient:
         JSONData
             Raw JSON object for non-paginated calls, or a list of record
             dicts aggregated across pages for paginated calls.
-        """
-
+    """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
@@ -944,9 +972,9 @@ class EndpointClient:
         ValueError
             If the path template is invalid.
 
-    Examples
-    --------
-    >>> ep = EndpointClient(
+        Examples
+        --------
+        >>> ep = EndpointClient(
         ...     base_url='https://api.example.com/v1',
         ...     endpoints={
         ...         'user': '/users/{id}',
