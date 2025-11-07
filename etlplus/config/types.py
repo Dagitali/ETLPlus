@@ -5,7 +5,7 @@ etlplus.config.types
 A module centralizing type aliases and editor-only TypedDicts used in the
 ``:mod:etlplus.config`` package.
 
-These types improve IDE autocomplete and static analysis while theruntime
+These types improve IDE autocomplete and static analysis while the runtime
 parsers remain permissive.
 
 Notes
@@ -33,6 +33,7 @@ Examples
 from __future__ import annotations
 
 from typing import Any
+from typing import Literal
 from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
@@ -48,6 +49,7 @@ from .connector import ConnectorFile
 __all__ = [
     # Type aliases
     'Connector',
+    'ConnectorType',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
@@ -60,6 +62,9 @@ __all__ = [
 
 
 type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+
+# Literal type for supported connector kinds
+type ConnectorType = Literal['api', 'database', 'file']
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -133,7 +138,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     """
 
     name: str
-    type: str
+    type: ConnectorType
     url: str
     method: str
     headers: Mapping[str, Any]
@@ -154,7 +159,7 @@ class ConnectorDbConfigMap(TypedDict, total=False):
     """
 
     name: str
-    type: str
+    type: ConnectorType
     connection_string: str
     query: str
     table: str
@@ -171,7 +176,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
     """
 
     name: str
-    type: str
+    type: ConnectorType
     format: str
     path: str
     options: Mapping[str, Any]
