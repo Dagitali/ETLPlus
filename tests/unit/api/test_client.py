@@ -132,6 +132,41 @@ def test_context_manager_does_not_close_external_session(
     assert sess.closed is False
 
 
+@pytest.mark.parametrize(
+    'raw_page_size,expected_limit',
+    [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
+)
+def test_cursor_page_size_malformed_values_normalize(
+    monkeypatch, raw_page_size, expected_limit,
+):
+    """Malformed cursor page_size values normalize to defaults/backoffs."""
+
+    calls: list[dict[str, Any]] = []
+
+    def fake_extract(kind: str, _url: str, **kwargs: Any):
+        assert kind == 'api'
+        calls.append(kwargs)
+        # End after first page to keep test minimal
+        return {'items': [{'i': 1}], 'next': None}
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    client = EndpointClient(base_url='https://example.test', endpoints={})
+    pagination = {
+        'type': 'cursor',
+        'cursor_param': 'cursor',
+        'cursor_path': 'next',
+        'page_size': raw_page_size,
+        'records_path': 'items',
+    }
+    data = client.paginate_url(
+        'https://example.test/x', None, None, None, pagination,
+    )
+    assert [r['i'] for r in data] == [1]
+    params = calls[0].get('params', {})
+    assert params.get('limit') == expected_limit
+
+
 def test_cursor_pagination_error_includes_page_number(
     monkeypatch: Any,
 ) -> None:
@@ -179,6 +214,62 @@ def test_cursor_pagination_error_includes_page_number(
     assert isinstance(err, PaginationError)
     assert err.page == 2
     assert err.status == 500
+
+
+def test_cursor_retry_backoff_sleeps(monkeypatch):
+    """Cursor pagination applies retry backoff sleep on failure."""
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        EndpointClient,
+        'apply_sleep',
+        staticmethod(lambda s, *, sleeper=None: sleeps.append(s)),
+        raising=False,
+    )
+
+    # Deterministic jitter sequence
+    import etlplus.api.client as client_mod
+    jitter_vals = iter([0.05])
+    monkeypatch.setattr(
+        client_mod.random, 'uniform', lambda a, b: next(jitter_vals),
+    )
+
+    attempts = {'n': 0}
+
+    def fake_extract(kind: str, _url: str, **_kwargs: Any):
+        assert kind == 'api'
+        attempts['n'] += 1
+        if attempts['n'] == 1:
+            err = requests.HTTPError('boom')
+            # attach response status for retry eligibility
+            err.response = types.SimpleNamespace(  # type: ignore[attr-defined]
+                status_code=503,
+            )
+            raise err
+        # success page; terminate cursor flow
+        return {'items': [{'i': 1}], 'next': None}
+
+    monkeypatch.setattr(client_mod, '_extract', fake_extract)
+
+    client = EndpointClient(
+        base_url='https://example.test',
+        endpoints={},
+        retry={'max_attempts': 2, 'backoff': 0.5, 'retry_on': [503]},
+    )
+    pagination = {
+        'type': 'cursor',
+        'cursor_param': 'cursor',
+        'cursor_path': 'next',
+        'page_size': 2,
+        'records_path': 'items',
+    }
+    out = client.paginate_url(
+        'https://example.test/x', None, None, None, pagination,
+    )
+    assert out == [{'i': 1}]
+    # One sleep from the single retry attempt
+    assert sleeps == [pytest.approx(0.05)]
+    assert attempts['n'] == 2
 
 
 def test_extract_uses_session_factory_when_no_explicit_session() -> None:
@@ -668,6 +759,32 @@ def test_paginate_cursor_with_start_cursor(monkeypatch):
     first, second = calls
     assert first.get('params', {}).get('cursor') == 'seed'
     assert second.get('params', {}).get('cursor') == 'abc'
+
+
+def test_url_query_merging_multiple_duplicate_base_params(monkeypatch):
+    """Base URL duplicate params keep order; new duplicates append."""
+
+    captured: list[str] = []
+
+    def fake_extract(kind: str, url: str, **_kwargs: Any):  # noqa: D401
+        assert kind == 'api'
+        captured.append(url)
+        return {'ok': True}
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    client = EndpointClient(
+        base_url='https://api.example.com/v1?dup=1&dup=2&z=9',
+        endpoints={'e': '/ep'},
+    )
+    client.paginate(
+        'e',
+        query_parameters={'dup': '3', 'a': '1'},
+        pagination=None,
+    )
+    assert captured[0] == (
+        'https://api.example.com/v1/ep?dup=1&dup=2&z=9&dup=3&a=1'
+    )
 
 
 def test_url_query_param_ordering(monkeypatch):
