@@ -13,7 +13,11 @@ from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
 
 
-@pytest.mark.parametrize('tval', [None, 'weird', ''])
+@pytest.mark.parametrize(
+    'tval',
+    [None, 'weird', ''],
+    ids=['none', 'weird', 'empty'],
+)
 def test_pagination_unknown_type_general_warnings_only(tval):
     pc = PaginationConfig(
         type=tval,
@@ -60,7 +64,11 @@ def test_rate_limit_valid_values_no_warnings():
     assert rl.validate_bounds() == []
 
 
-@pytest.mark.parametrize('ptype', ['page', 'offset', 'cursor'])
+@pytest.mark.parametrize(
+    'ptype',
+    ['page', 'offset', 'cursor'],
+    ids=['page', 'offset', 'cursor'],
+)
 def test_pagination_validate_bounds_parametrized(ptype: str):
     pc = PaginationConfig(
         type=ptype,
