@@ -31,6 +31,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Validation Rules](#validation-rules)
   - [Development](#development)
     - [API client docs](#api-client-docs)
+    - [Runner internals and connectors](#runner-internals-and-connectors)
     - [Running Tests](#running-tests)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
@@ -338,6 +339,14 @@ Looking for the HTTP client and pagination helpers? See the dedicated docs in `e
 - Pagination with `PaginationConfig` (page and cursor styles)
 - Tips on `records_path` and `cursor_path`
 
+### Runner internals and connectors
+
+Curious how the pipeline runner composes API requests, pagination, and load calls?
+
+- Runner overview and helpers: [`docs/run-module.md`](docs/run-module.md)
+- Unified "connector" vocabulary (API/File/DB): `etlplus/config/connector.py`
+  - API/file targets reuse the same shapes as sources; API targets typically set a `method`.
+
 ### Running Tests
 
 ```bash
@@ -362,6 +371,7 @@ black etlplus/
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
 - Examples: [`examples/README.md`](examples/README.md)
 - Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
+- Runner internals: [`docs/run-module.md`](docs/run-module.md)
 - Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
 - Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 - Demo and walkthrough: [`DEMO.md`](DEMO.md)
