@@ -2,7 +2,12 @@
 etlplus.config.mixins
 =====================
 
-Lightweight mixins used by config models.
+Lightweight mixins used by configuration models.
+
+Notes
+-----
+- Mixins are stateless and declare ``__slots__ = ()`` to avoid accidental
+    attribute creation.
 """
 from __future__ import annotations
 

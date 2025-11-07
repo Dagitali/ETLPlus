@@ -7,10 +7,10 @@ A module defining utility helpers for ETL pipeline configuration.
 Notes
 -----
 - Inputs to parsers favor ``Mapping[str, Any]`` to remain permissive and
-  avoid unnecessary copies; normalization returns concrete types.
+    avoid unnecessary copies; normalization returns concrete types.
 - Substitution is shallow for strings and recursive for containers.
 - Numeric coercion helpers are intentionally forgiving: invalid values
-  become ``None`` rather than raising.
+    become ``None`` rather than raising.
 """
 from __future__ import annotations
 

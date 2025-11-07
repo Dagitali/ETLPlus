@@ -2,7 +2,12 @@
 etlplus.config.profile
 ======================
 
-A module defining configuration types for ETL job pipeline profiles.
+Profile model for pipeline-level defaults and environment.
+
+Notes
+-----
+- Accepts ``Mapping[str, Any]`` and normalizes to concrete types.
+- Environment values are coerced to strings.
 """
 from __future__ import annotations
 

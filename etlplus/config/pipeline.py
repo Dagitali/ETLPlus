@@ -2,7 +2,16 @@
 etlplus.config.pipeline
 =======================
 
-A module defining configuration types for ETL job orchestration.
+Pipeline configuration model and helpers for job orchestration.
+
+Notes
+-----
+- Loads from dicts or YAML and builds typed models for sources, targets, and
+    jobs.
+- Connector parsing is unified (``parse_connector``) and tolerant; unknown or
+    malformed entries are skipped.
+- Optional variable substitution merges ``profile.env`` (lower precedence)
+    with the provided/environment variables (higher precedence).
 """
 from __future__ import annotations
 

@@ -2,7 +2,15 @@
 etlplus.config.jobs
 ===================
 
-A module defining configuration types for ETL jobs.
+Data classes modeling job orchestration references (extract, validate,
+transform, load).
+
+Notes
+-----
+- Lightweight references used inside ``PipelineConfig`` to avoid storing
+    large nested structures.
+- All attributes are simple and optional where appropriate, keeping parsing
+    tolerant.
 """
 from __future__ import annotations
 

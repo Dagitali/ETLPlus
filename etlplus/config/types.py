@@ -2,8 +2,7 @@
 etlplus.config.types
 ====================
 
-A module centralizing type aliases and editor-only TypedDicts used in the
-``:mod:etlplus.config`` package.
+Type aliases and editor-only TypedDicts for :mod:`etlplus.config`.
 
 These types improve IDE autocomplete and static analysis while the runtime
 parsers remain permissive.
@@ -13,8 +12,8 @@ Notes
 - TypedDicts in this module are intentionally ``total=False`` and are not
     enforced at runtime.
 - ``*.from_obj`` constructors accept ``Mapping[str, Any]`` and perform
-  tolerant parsing and light casting. This keeps the runtime permissive while
-  improving autocomplete and static analysis for contributors.
+    tolerant parsing and light casting. This keeps the runtime permissive while
+    improving autocomplete and static analysis for contributors.
 
 Examples
 --------
