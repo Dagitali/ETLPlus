@@ -50,6 +50,7 @@ __all__ = [
     # Type aliases
     'Connector',
     'ConnectorType',
+    'PaginationType',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
@@ -65,6 +66,9 @@ type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 
 # Literal type for supported connector kinds
 type ConnectorType = Literal['api', 'database', 'file']
+
+# Literal type for supported pagination kinds
+type PaginationType = Literal['page', 'offset', 'cursor']
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -212,7 +216,7 @@ class PaginationConfigMap(TypedDict, total=False):
     - etlplus.config.pagination.PaginationConfig.from_obj
     """
 
-    type: str
+    type: PaginationType
     page_param: str
     size_param: str
     start_page: int
