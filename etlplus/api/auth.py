@@ -40,6 +40,7 @@ import time
 from dataclasses import dataclass
 
 import requests  # type: ignore
+from requests import PreparedRequest  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,14 @@ class EndpointCredentialsBearer(AuthBase):
 
     Attributes
     ----------
+    token_url : str
+        OAuth2 token endpoint URL.
+    client_id : str
+        OAuth2 client ID.
+    client_secret : str
+        OAuth2 client secret.
+    scope : str | None
+        Optional OAuth2 scope string.
     token : str | None
         Current access token (``None`` until first successful request).
     expiry : float
@@ -103,7 +112,7 @@ class EndpointCredentialsBearer(AuthBase):
 
     # -- Magic Methods (Object Behavior) -- #
 
-    def __call__(self, r):
+    def __call__(self, r: PreparedRequest) -> PreparedRequest:
         """
         Attach an Authorization header to an outgoing request.
 
@@ -113,12 +122,12 @@ class EndpointCredentialsBearer(AuthBase):
 
         Parameters
         ----------
-        r : requests.PreparedRequest
+        r : PreparedRequest
             The request object that will be sent by ``requests``.
 
         Returns
         -------
-        requests.PreparedRequest
+        PreparedRequest
             The same request with the Authorization header set.
         """
 
@@ -128,18 +137,31 @@ class EndpointCredentialsBearer(AuthBase):
 
     # -- Protected Methods -- #
 
-    def _ensure_token(self):
+    def _ensure_token(self) -> None:
         """
         Fetch or refresh the bearer token if expired or missing.
 
         Uses the OAuth2 Client Credentials flow against ``token_url``.
         Applies a small clock skew to avoid edge-of-expiry races.
 
+        Returns
+        -------
+        None
+            This method mutates ``token`` and ``expiry`` in place.
+
         Raises
         ------
         requests.exceptions.RequestException
-            When the token endpoint cannot be reached or returns an
-            error status.
+            On generic request-level failures.
+        requests.exceptions.Timeout
+            When the token request times out.
+        requests.exceptions.ConnectionError
+            On network connection issues.
+        requests.exceptions.SSLError
+            On TLS/SSL negotiation failures.
+        requests.exceptions.HTTPError
+            When the endpoint returns a non-2xx status and ``raise_for_status``
+            triggers.
         RuntimeError
             When the token response does not include ``access_token``.
         ValueError

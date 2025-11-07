@@ -47,15 +47,15 @@ __all__ = ['build_http_adapter']
 
 def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
     """
-    Build a requests HTTPAdapter from a configuration mapping.
+    Build a requests ``HTTPAdapter`` from a configuration mapping.
 
     Supported keys in cfg:
     - pool_connections (int)
     - pool_maxsize (int)
     - pool_block (bool)
-    - max_retries (int or dict matching urllib3 Retry args)
+    - max_retries (int or dict matching urllib3 ``Retry`` args)
 
-    When ``max_retries`` is a dict, this will attempt to construct an
+    When ``max_retries`` is a dict, this attempts to construct an
     ``urllib3.util.retry.Retry`` instance with the provided keys. Unknown
     keys are ignored. If urllib3 is unavailable, falls back to no retries
     (0) or an integer value when provided.

@@ -2,8 +2,8 @@
 etlplus.api.client
 ==================
 
-A module for registering endpoint paths, building URLs, and paginating API
-responses with optional retries and rate limiting.
+Endpoint client utilities for registering endpoint paths, composing URLs, and
+paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
@@ -118,20 +118,45 @@ class EndpointClient:
 
     Attributes
     ----------
+    base_url : str
+        Absolute base URL.
     endpoints : Mapping[str, str]
-        Read-only mapping of endpoint keys to relative paths (wrapped in
-        a ``MappingProxyType``).
+        Read-only mapping of endpoint keys to relative paths
+        (``MappingProxyType``).
+    base_path : str | None
+        Optional base path prefix appended after ``base_url``.
     retry : RetryPolicy | None
         Retry policy reference (may be ``None``).
     retry_network_errors : bool
         Whether network errors are retried in addition to HTTP statuses.
     rate_limit : RateLimitConfig | None
         Client-wide rate limit configuration (may be ``None``).
-    session, session_factory : Any | Callable | None
-        Explicit session or factory used for requests.
+    session : requests.Session | None
+        Explicit HTTP session used for requests when provided.
+    session_factory : Callable[[], requests.Session] | None
+        Lazily invoked factory producing a session when needed.
     session_adapters : list[HTTPAdapterMountConfig] | None
-        Transport-level adapter mount configuration(s) for connection
-        pooling and urllib3-based retries.
+        Adapter mount configuration(s) for connection pooling / retries.
+    DEFAULT_PAGE_PARAM : ClassVar[str]
+        Default page parameter name.
+    DEFAULT_SIZE_PARAM : ClassVar[str]
+        Default page-size parameter name.
+    DEFAULT_START_PAGE : ClassVar[int]
+        Default starting page number.
+    DEFAULT_PAGE_SIZE : ClassVar[int]
+        Default records-per-page when unspecified.
+    DEFAULT_CURSOR_PARAM : ClassVar[str]
+        Default cursor parameter name.
+    DEFAULT_LIMIT_PARAM : ClassVar[str]
+        Default limit parameter name used for cursor pagination.
+    DEFAULT_RETRY_MAX_ATTEMPTS : ClassVar[int]
+        Fallback max attempts when retry policy omits it.
+    DEFAULT_RETRY_BACKOFF : ClassVar[float]
+        Fallback exponential backoff base seconds.
+    DEFAULT_RETRY_ON : ClassVar[tuple[int, ...]]
+        Default HTTP status codes eligible for retry.
+    DEFAULT_RETRY_CAP : ClassVar[float]
+        Maximum sleep seconds for jittered backoff.
 
     Raises
     ------
@@ -188,8 +213,8 @@ class EndpointClient:
     rate_limit: RateLimitConfig | None = None
 
     # Optional HTTP session or factory
-    session: Any | None = None
-    session_factory: Callable[[], Any] | None = None
+    session: requests.Session | None = None
+    session_factory: Callable[[], requests.Session] | None = None
 
     # Optional HTTPAdapter mount configuration(s) for transport-level retries
     # and connection pooling. If provided and neither `session` nor
@@ -294,11 +319,10 @@ class EndpointClient:
 
         Notes
         -----
-        - If an explicit ``session`` was provided, it is used and not closed
-          on exit.
-        - Else if ``session_factory`` exists, it creates a session that is
+        - Explicit ``session`` is reused and not closed on exit.
+        - When ``session_factory`` exists it's invoked and the session
           closed on exit.
-        - Else a default ``requests.Session`` is created and closed on exit.
+        - Otherwise, a default ``requests.Session`` is created and closed.
         """
 
         if self._ctx_session is not None:
@@ -380,11 +404,11 @@ class EndpointClient:
 
         Raises
         ------
-        requests.RequestException
-            If all retry attempts fail with a retry-eligible HTTP status
-            (or if no policy is configured and the request fails).
-        ValueError
-            Propagated if JSON parsing fails within ``extract``.
+        ApiAuthError
+            If authentication/authorization ultimately fails (e.g., 401/403).
+        ApiRequestError
+            If all retry attempts fail (or a single attempt fails with no retry
+            policy configured) for other HTTP statuses or network errors.
         """
 
         # Determine session to use for this request.
@@ -409,26 +433,23 @@ class EndpointClient:
                     getattr(e, 'response', None), 'status_code', None,
                 )
                 retried = False
-                err: ApiRequestError
                 if status in {401, 403}:
-                    err = ApiAuthError(
+                    raise ApiAuthError(
                         url=url,
                         status=status,
                         attempts=1,
                         retried=retried,
                         retry_policy=None,
                         cause=e,
-                    )
-                else:
-                    err = ApiRequestError(
-                        url=url,
-                        status=status,
-                        attempts=1,
-                        retried=retried,
-                        retry_policy=None,
-                        cause=e,
-                    )
-                raise err from e
+                    ) from e
+                raise ApiRequestError(
+                    url=url,
+                    status=status,
+                    attempts=1,
+                    retried=retried,
+                    retry_policy=None,
+                    cause=e,
+                ) from e
 
         max_attempts = int(
             cast(int | float | str | None, policy.get('max_attempts', 0))
@@ -475,26 +496,23 @@ class EndpointClient:
                     should_retry = is_timeout or is_conn
                 if not should_retry or attempt >= max_attempts:
                     retried = attempt > 1
-                    final_err: ApiRequestError
                     if status in {401, 403}:
-                        final_err = ApiAuthError(
+                        raise ApiAuthError(
                             url=url,
                             status=status,
                             attempts=attempt,
                             retried=retried,
                             retry_policy=policy,
                             cause=e,
-                        )
-                    else:
-                        final_err = ApiRequestError(
-                            url=url,
-                            status=status,
-                            attempts=attempt,
-                            retried=retried,
-                            retry_policy=policy,
-                            cause=e,
-                        )
-                    raise final_err from e
+                        ) from e
+                    raise ApiRequestError(
+                        url=url,
+                        status=status,
+                        attempts=attempt,
+                        retried=retried,
+                        retry_policy=policy,
+                        cause=e,
+                    ) from e
 
                 # Exponential backoff with Full Jitter to reduce herding:
                 #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1)))
@@ -524,18 +542,18 @@ class EndpointClient:
         """
         Convenience wrapper to paginate by endpoint key.
 
-        Builds the URL via `self.url(...)` and delegates to `paginate_url`.
+        Builds the URL via ``self.url(...)`` and delegates to ``paginate_url``.
 
         Parameters
         ----------
         endpoint_key : str
-            Key into the `endpoints` mapping whose relative path will be
-            resolved against `base_url`.
+            Key into the ``endpoints`` mapping whose relative path will be
+            resolved against ``base_url``.
         path_parameters : Mapping[str, str] | None
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
-            Query parameters to append (and merge with any already present on
-            `base_url`).
+            Query parameters to append (merged with any already present on
+            ``base_url``).
         params : Mapping[str, Any] | None
             Query parameters to include in the request.
         headers : Mapping[str, Any] | None
@@ -594,18 +612,30 @@ class EndpointClient:
         """
         Stream records for a registered endpoint using pagination.
 
-        This is a generator variant of ``paginate`` that yields record dicts
-        across pages instead of aggregating them into a list. Only used when a
-        pagination configuration is provided.
+        Summary
+        -------
+        Generator variant of ``paginate`` that yields record dicts across
+        pages instead of aggregating them into a list.
 
         Parameters
         ----------
         endpoint_key : str
             Key into the ``endpoints`` mapping whose relative path will be
             resolved against ``base_url``.
-        path_parameters, query_parameters, params, headers, timeout,
-        pagination, sleep_seconds
-            See ``paginate`` for parameter semantics.
+        path_parameters : Mapping[str, str] | None
+            Values to substitute into placeholders in the endpoint path.
+        query_parameters : Mapping[str, str] | None
+            Query parameters to append (merged with any already present).
+        params : Mapping[str, Any] | None
+            Query parameters to include in each request.
+        headers : Mapping[str, Any] | None
+            Headers to include in each request.
+        timeout : float | int | None
+            Timeout for each request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
 
         Yields
         ------
@@ -702,13 +732,26 @@ class EndpointClient:
         ----------
         url : str
             Absolute URL to paginate.
-        params, headers, timeout, pagination, sleep_seconds
-            See ``paginate_url`` for parameter semantics.
+        params : Mapping[str, Any] | None
+            Query parameters to include in each request.
+        headers : Mapping[str, Any] | None
+            Headers to include in each request.
+        timeout : float | int | None
+            Timeout for each request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
 
         Yields
         ------
         dict
             Record dictionaries extracted from each page.
+
+        Raises
+        ------
+        PaginationError
+            If a paginated request fails while streaming pages.
         """
 
         # Normalize pagination config for typed access.
@@ -876,17 +919,17 @@ class EndpointClient:
         Parameters
         ----------
         endpoint_key : str
-            Key into the `endpoints` mapping whose relative path will be
-            resolved against `base_url`.
+            Key into the ``endpoints`` mapping whose relative path will be
+            resolved against ``base_url``.
         path_parameters : Mapping[str, Any] | None, optional
             Values to substitute into placeholders in the endpoint path.
-            Placeholders must be written as `{placeholder}` in the relative
+            Placeholders must be written as ``{placeholder}`` in the relative
             path. Each substituted value is percent-encoded as a single path
             segment (slashes are encoded) to prevent path traversal.
         query_parameters : Mapping[str, Any] | None, optional
             Query parameters to append (and merge with any already present on
-            `base_url`). Values are percent-encoded and combined using
-            `application/x-www-form-urlencoded` rules.
+            ``base_url``). Values are percent-encoded and combined using
+            ``application/x-www-form-urlencoded`` rules.
 
         Returns
         -------
@@ -896,8 +939,10 @@ class EndpointClient:
         Raises
         ------
         KeyError
-            If `endpoint_key` is unknown or a required `{placeholder}`
-            in the path has no corresponding entry in `path_parameters`.
+            If ``endpoint_key`` is unknown or a required ``{placeholder}``
+            in the path has no corresponding entry in ``path_parameters``.
+        ValueError
+            If the path template is invalid.
 
     Examples
     --------
@@ -967,7 +1012,7 @@ class EndpointClient:
     def apply_sleep(
         sleep_seconds: float,
         *,
-        sleeper=None,
+        sleeper: Callable[[float], None] | None = None,
     ) -> None:
         """
         Sleep for the specified seconds if positive.
