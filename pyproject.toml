@@ -54,13 +54,23 @@ etlplus = "etlplus.cli:main"
 Homepage = "https://github.com/Dagitali/ETLPlus"
 Repository = "https://github.com/Dagitali/ETLPlus"
 
-[tool.setuptools.package-data]
-etlplus = ["py.typed"]
+# (Docstring enforcement handled by pydocstyle/pydoclint via `make doclint`)
 
-[tool.setuptools.packages.find]
-where = [".", "src"]
-include = ["etlplus*"]
-exclude = ["tests*", "docs*", "examples*"]
+[tool.pydoclint]
+style = "numpy"
+require-return-section-when-returning-nothing = false
+allow-init-docstring = true
+check-return-types = true
+check-types-decorators = true
+skip-checking-short-docstrings = true
+
+[tool.pydocstyle]
+convention = "numpy"
+match = '(?!.*__pycache__|.*\.egg-info).+\.py$'
+add-ignore = [
+  # Keep parity with Ruff ignores for convenience when running pydocstyle directly
+  "D105",
+]
 
 # ------------------------
 # Linting / Docstrings
@@ -83,20 +93,10 @@ ignore = [
   "D105",  # Missing docstring in magic method
 ]
 
-# (Docstring enforcement handled by pydocstyle/pydoclint via `make doclint`)
+[tool.setuptools.package-data]
+etlplus = ["py.typed"]
 
-[tool.pydocstyle]
-convention = "numpy"
-match = '(?!.*__pycache__|.*\.egg-info).+\.py$'
-add-ignore = [
-  # Keep parity with Ruff ignores for convenience when running pydocstyle directly
-  "D105",
-]
-
-[tool.pydoclint]
-style = "numpy"
-require-return-section-when-returning-nothing = false
-allow-init-docstring = true
-check-return-types = true
-check-types-decorators = true
-skip-checking-short-docstrings = true
+[tool.setuptools.packages.find]
+where = [".", "src"]
+include = ["etlplus*"]
+exclude = ["tests*", "docs*", "examples*"]
