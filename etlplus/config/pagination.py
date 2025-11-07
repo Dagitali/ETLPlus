@@ -2,13 +2,20 @@
 etlplus.config.pagination
 =========================
 
-A module defining configuration types for REST API endpoint response
-pagination.
+Pagination model for REST API responses (page, offset, cursor styles).
 
 Notes
 -----
-TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
-accepts Mapping[str, Any]).
+- TypedDict shapes are editor hints; runtime parsing remains permissive
+    (``from_obj`` accepts ``Mapping[str, Any]``).
+- Numeric fields are normalized with tolerant casts; ``validate_bounds``
+    returns warnings instead of raising.
+
+See Also
+--------
+- :meth:`PaginationConfig.validate_bounds`
+- :func:`etlplus.config.utils.to_int`
+- :func:`etlplus.config.utils.to_float`
 """
 from __future__ import annotations
 

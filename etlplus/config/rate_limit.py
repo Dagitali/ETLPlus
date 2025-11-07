@@ -10,6 +10,11 @@ Notes
     (``from_obj`` accepts ``Mapping[str, Any]``).
 - Numeric fields are normalized with tolerant casts; ``validate_bounds``
     returns warnings instead of raising.
+
+See Also
+--------
+- :meth:`RateLimitConfig.validate_bounds`
+- :func:`etlplus.config.utils.to_float`
 """
 from __future__ import annotations
 
