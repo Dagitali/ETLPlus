@@ -47,17 +47,16 @@ class BoundsWarningsMixin:
         message: str,
         bucket: list[str],
     ) -> None:
-        """
-        Append a warning message to a list if a condition is met.
+        """Append a warning to a list if a condition is met.
 
         Parameters
         ----------
         condition : bool
             Whether to issue the warning.
         message : str
-            The warning message.
+            Warning message to append.
         bucket : list[str]
-            The list to append the warning message to.
+            Target list for collected warnings.
         """
 
         if condition:

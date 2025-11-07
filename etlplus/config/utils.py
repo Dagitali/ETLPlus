@@ -45,7 +45,7 @@ def cast_str_dict(
     m: Mapping[str, Any] | None,
 ) -> dict[str, str]:
     """
-    Return a shallow copy of a mapping with all values coerced to strings.
+    Return a new ``dict`` with all values coerced to ``str``.
 
     This is commonly used for HTTP headers where values can be numbers or
     other primitives but need to be serialized as strings.
@@ -58,7 +58,7 @@ def cast_str_dict(
     Returns
     -------
     dict[str, str]
-        A new mapping with all values as strings.
+        Dictionary of the original pairs converted via ``str()``.
     """
 
     return {k: str(v) for k, v in (m or {}).items()}
@@ -70,7 +70,7 @@ def deep_substitute(
     env_map: Mapping[str, str],
 ) -> Any:
     """
-    Recursively substitute ${VAR} tokens using vars and environment.
+    Recursively substitute ``${VAR}`` tokens in nested structures.
 
     Only strings are substituted; other types are returned as-is.
 
@@ -86,7 +86,7 @@ def deep_substitute(
     Returns
     -------
     Any
-        The value with substitutions applied.
+        New structure with substitutions applied where tokens were found.
     """
 
     if isinstance(value, str):
@@ -120,7 +120,7 @@ def pagination_from_defaults(
     obj: Mapping[str, Any] | None,
 ) -> PaginationConfig | None:
     """
-    Best-effort parser for profile-level defaults.pagination structures.
+    Extract pagination type and integer bounds from defaults mapping.
 
     Tolerates either a flat PaginationConfig-like mapping or a nested shape
     with "params" and "response" blocks. Unknown keys are ignored.
@@ -133,7 +133,8 @@ def pagination_from_defaults(
     Returns
     -------
     PaginationConfig | None
-        A PaginationConfig instance, or None if parsing failed.
+        A PaginationConfig instance with numeric fields coerced to int/float
+        where applicable, or None if parsing failed.
     """
 
     if not isinstance(obj, Mapping):
@@ -209,7 +210,7 @@ def rate_limit_from_defaults(
     obj: Mapping[str, Any] | None,
 ) -> RateLimitConfig | None:
     """
-    Best-effort parser for profile-level defaults.rate_limit structures.
+    Return numeric rate-limit bounds from defaults mapping.
 
     Only supports sleep_seconds and max_per_sec. Other keys are ignored.
 
@@ -221,7 +222,8 @@ def rate_limit_from_defaults(
     Returns
     -------
     RateLimitConfig | None
-        A RateLimitConfig instance, or None if parsing failed.
+        A RateLimitConfig instance with numeric fields coerced, or None if
+        parsing failed.
     """
 
     if not isinstance(obj, Mapping):
