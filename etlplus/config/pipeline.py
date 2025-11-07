@@ -59,7 +59,7 @@ def _build_jobs(
     Returns
     -------
     list[JobConfig]
-        A list of JobConfig objects.
+        List of JobConfig instances.
     """
 
     jobs: list[JobConfig] = []
@@ -136,7 +136,7 @@ def _build_sources(
     Returns
     -------
     list[Connector]
-        A list of Connector objects representing data sources.
+        List of Connector instances (sources).
      """
 
     return _build_connectors(raw, 'sources')
@@ -156,7 +156,7 @@ def _build_targets(
     Returns
     -------
     list[Connector]
-        A list of Connector objects representing data targets.
+        List of Connector instances (targets).
     """
 
     return _build_connectors(raw, 'targets')
@@ -177,13 +177,11 @@ def _build_connectors(
         Raw pipeline mapping.
     key : str
         Top-level key containing the list (e.g., "sources" or "targets").
-    registry : Mapping[str, Callable[[Mapping[str, Any]], T]]
-        Map of lower-cased type -> constructor.
 
     Returns
     -------
     list[Connector]
-        List of constructed items, skipping malformed entries.
+        List of constructed connector instances, skipping malformed entries.
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
