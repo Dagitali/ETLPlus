@@ -30,6 +30,8 @@ class BoundsWarningsMixin:
     ['oops']
     """
 
+    __slots__ = ()
+
     _APPEND: Final = list.append
 
     # -- Static Methods -- #
