@@ -60,7 +60,4 @@ __all__ = [
 
     # Profile
     'ProfileConfig',
-
-    # Type aliases
-    'Connector',
 ]
