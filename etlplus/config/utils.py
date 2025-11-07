@@ -165,12 +165,12 @@ def pagination_from_defaults(
     if dflt_blk and not page_size:
         page_size = dflt_blk.get('per_page')
 
-    # Local import to avoid circular dependency with pagination -> utils
+    # Locally import inside function to avoid circular dependencies; narrow to
+    # literal.
     from .pagination import PaginationConfig as _PaginationConfig
+    from .types import PaginationType as _PaginationType
 
     # Normalize pagination type to supported literal when possible.
-    # Import inside function to avoid circulars; narrow to literal.
-    from .types import PaginationType as _PaginationType
     norm_type: _PaginationType | None
     match str(ptype).strip().lower() if ptype is not None else '':
         case 'page':
