@@ -1,6 +1,5 @@
 """
-ETLPlus Data Transformation
-===========================
+etlplus.transformation
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
@@ -92,7 +91,6 @@ def _agg_avg(
     float
         The average of the input numbers or ``0.0`` if empty.
     """
-
     return (sum(nums) / len(nums)) if nums else 0.0
 
 
@@ -115,7 +113,6 @@ def _agg_count(
     int
         The provided presence count ``present``.
     """
-
     return present
 
 
@@ -138,7 +135,6 @@ def _agg_max(
     float | None
         The maximum of the input numbers or ``None`` if empty.
     """
-
     return max(nums) if nums else None
 
 
@@ -161,7 +157,6 @@ def _agg_min(
     float | None
         The minimum of the input numbers or ``None`` if empty.
     """
-
     return min(nums) if nums else None
 
 
@@ -184,7 +179,6 @@ def _agg_sum(
     float
         The sum of the input numbers or ``0.0`` if empty.
     """
-
     return sum(nums)
 
 
@@ -207,7 +201,6 @@ def _normalize_specs(
     list[StepSpec]
         An empty list for ``None``, otherwise a list form of *config*.
     """
-
     if config is None:
         return []
     if isinstance(config, Sequence) and not isinstance(
@@ -237,7 +230,6 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
     dict[str, Any]
         Dictionary whose keys are normalized step names.
     """
-
     normalized: dict[str, Any] = {}
     for k, v in ops.items():
         if isinstance(k, str):
@@ -275,7 +267,6 @@ def _contains(
         ``True`` if ``member in container`` succeeds; ``False`` on
         ``TypeError`` or when containment fails.
     """
-
     try:
         return member in container  # type: ignore[operator]
     except TypeError:
@@ -292,7 +283,6 @@ def _has(
     This is the dual form of :func:`_contains` for readability in certain
     operator contexts (``in`` vs. ``contains``).
     """
-
     return _contains(container, member)
 
 
@@ -320,7 +310,6 @@ def _resolve_aggregator(
     TypeError
         If *func* cannot be interpreted as an aggregator.
     """
-
     if isinstance(func, AggregateName):
         return func.func
     if isinstance(func, str):
@@ -352,7 +341,6 @@ def _resolve_operator(
     TypeError
         If *op* cannot be interpreted as an operator.
     """
-
     if isinstance(op, OperatorName):
         return op.func
     if isinstance(op, str):
@@ -388,7 +376,6 @@ def _sort_key(
     SortKey
         A key with a type tag to avoid cross-type comparisons.
     """
-
     if value is None:
         return (2, '')
     if isinstance(value, (int, float)):
@@ -422,7 +409,6 @@ def _collect_numeric_and_presence(
         A tuple containing a list of numeric values and the count of present
         fields.
     """
-
     if not field:
         return [], len(rows)
 
@@ -461,7 +447,6 @@ def _derive_agg_key(
     str
         The derived output key name.
     """
-
     if alias is not None:
         return str(alias)
 
@@ -508,7 +493,6 @@ def _eval_condition(
     bool
         True if the condition is met; False if not.
     """
-
     try:
         lhs = record[field]
     except KeyError:
@@ -544,7 +528,6 @@ def _apply_aggregate_step(
     JSONList
         A list containing one mapping ``[{alias: value}]``.
     """
-
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
     func_raw = spec.get('func', 'count')
     alias = spec.get('alias')
@@ -576,7 +559,6 @@ def _apply_filter_step(
     JSONList
         Filtered records.
     """
-
     field: FieldName = spec.get('field')  # type: ignore[assignment]
     op = spec.get('op')
     value = spec.get('value')
@@ -611,7 +593,6 @@ def _apply_map_step(
     JSONList
         Transformed records.
     """
-
     if isinstance(spec, Mapping):
         return apply_map(records, spec)
 
@@ -638,7 +619,6 @@ def _apply_select_step(
     JSONList
         Transformed data.
     """
-
     fields: Sequence[Any]
     if isinstance(spec, Mapping):
         maybe_fields = spec.get('fields')
@@ -673,7 +653,6 @@ def _apply_sort_step(
     JSONList
         Sorted records.
     """
-
     if isinstance(spec, Mapping):
         field_value = spec.get('field')
         field = str(field_value) if field_value is not None else None
@@ -706,7 +685,6 @@ def _is_plain_fields_list(obj: Any) -> bool:
         True if obj is a non-text sequence of non-mapping items, False
         otherwise.
     """
-
     return isinstance(obj, Sequence) \
         and not isinstance(obj, (str, bytes, bytearray)) \
         and not any(isinstance(x, Mapping) for x in obj)
@@ -757,7 +735,6 @@ def apply_filter(
     JSONList
         Filtered records.
     """
-
     field = condition.get('field')
     op_raw = condition.get('op')
     value = condition.get('value')
@@ -803,7 +780,6 @@ def apply_map(
     JSONList
         New records with keys renamed. Unmapped fields are preserved.
     """
-
     rename_map = dict(mapping)
     result: JSONList = []
 
@@ -842,7 +818,6 @@ def apply_select(
     JSONList
         Records containing the requested fields; missing fields are ``None``.
     """
-
     return [
         {field: record.get(field) for field in fields} for record in records
     ]
@@ -870,7 +845,6 @@ def apply_sort(
     JSONList
         Sorted records.
     """
-
     if not field:
         return records
 
@@ -909,7 +883,6 @@ def apply_aggregate(
     Numeric operations ignore non-numeric values but count their presence
     for ``'count'``.
     """
-
     field = operation.get('field')
     func = operation.get('func')
     alias = operation.get('alias')
@@ -982,7 +955,6 @@ def transform(
         }
         result = transform(data, ops)
     """
-
     data = load_data(source)
 
     if not operations:

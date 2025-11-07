@@ -1,6 +1,5 @@
 """
-ETLPlus Files
-=======================
+etlplus.file
 
 Shared helpers for reading and writing structured and semi-structured data
 files.
@@ -81,7 +80,6 @@ def _dict_to_element(
     ET.Element
         The constructed XML element.
     """
-
     element = ET.Element(name)
 
     if isinstance(payload, dict):
@@ -125,7 +123,6 @@ def _element_to_dict(
     JSONDict
         Nested dictionary representation of the XML element.
     """
-
     result: JSONDict = {}
     text = (element.text or '').strip()
     if text:
@@ -157,7 +154,6 @@ def _get_yaml() -> Any:
 
     Raises an informative ImportError if the optional dependency is missing.
     """
-
     mod = _YAML_CACHE.get('mod')
     if mod is not None:  # pragma: no cover - tiny branch
         return mod
@@ -210,7 +206,6 @@ class File:
         extension is unknown, the attribute is left as ``None`` and will be
         validated later by :meth:`_ensure_format`.
         """
-
         if self.file_format is None:
             try:
                 self.file_format = self._guess_format()
@@ -226,7 +221,6 @@ class File:
 
         This centralizes existence checks across multiple read methods.
         """
-
         if not self.path.exists():
             raise FileNotFoundError(f'File not found: {self.path}')
 
@@ -234,7 +228,6 @@ class File:
         """
         Resolve the active format, guessing from extension if needed.
         """
-
         return self.file_format \
             if self.file_format is not None \
             else self._guess_format()
@@ -248,7 +241,6 @@ class File:
         ValueError
             If the extension is unknown or unsupported.
         """
-
         ext = self.path.suffix.lstrip('.').casefold()
         try:
             return _EXT_TO_FORMAT[ext]
@@ -263,7 +255,6 @@ class File:
         """
         Read structured data from :attr:`path` using :attr:`file_format`.
         """
-
         fmt = self._ensure_format()
         match fmt:
             case FileFormat.JSON:
@@ -293,7 +284,6 @@ class File:
             Root tag name to use when writing XML files. Defaults to
             ``'root'``.
         """
-
         fmt = self._ensure_format()
         match fmt:
             case FileFormat.JSON:
@@ -312,7 +302,6 @@ class File:
         """
         Load CSV content as a list of dictionaries from :attr:`path`.
         """
-
         self._assert_exists()
 
         with self.path.open('r', encoding='utf-8', newline='') as handle:
@@ -342,7 +331,6 @@ class File:
         int
             The number of rows written to the CSV file.
         """
-
         rows: list[JSONDict]
         if isinstance(data, list):
             rows = [row for row in data if isinstance(row, dict)]
@@ -369,7 +357,6 @@ class File:
         """
         Load and validate JSON payloads from :attr:`path`.
         """
-
         self._assert_exists()
 
         with self.path.open('r', encoding='utf-8') as handle:
@@ -406,7 +393,6 @@ class File:
         int
             The number of records written to the JSON file.
         """
-
         with self.path.open('w', encoding='utf-8') as handle:
             json.dump(data, handle, indent=2, ensure_ascii=False)
             handle.write('\n')
@@ -419,7 +405,6 @@ class File:
         """
         Parse XML document at :attr:`path` into a nested dictionary.
         """
-
         self._assert_exists()
 
         tree = ET.parse(self.path)
@@ -437,7 +422,6 @@ class File:
         """
         Load and validate YAML payloads from :attr:`path`.
         """
-
         self._require_yaml()
         self._assert_exists()
 
@@ -478,7 +462,6 @@ class File:
         int
             The number of records written to the XML file.
         """
-
         if isinstance(data, dict) and len(data) == 1:
             root_name, payload = next(iter(data.items()))
             root_element = _dict_to_element(str(root_name), payload)
@@ -497,7 +480,6 @@ class File:
         """
         Write ``data`` as YAML to :attr:`path` and return record count.
         """
-
         self._require_yaml()
         with self.path.open('w', encoding='utf-8') as handle:
             _get_yaml().safe_dump(
@@ -534,7 +516,6 @@ class File:
         File
             The constructed :class:`File` instance.
         """
-
         resolved = Path(path)
         ff: FileFormat | None
         if isinstance(file_format, str):
@@ -566,7 +547,6 @@ class File:
         JSONData
             The structured data read from the file.
         """
-
         return cls.from_path(path, file_format=file_format).read()
 
     @classmethod
@@ -599,7 +579,6 @@ class File:
         int
             The number of records written to the file.
         """
-
         return cls.from_path(path, file_format=file_format).write(
             data,
             root_tag=root_tag,

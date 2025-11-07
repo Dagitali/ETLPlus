@@ -1,6 +1,5 @@
 """
 etlplus.api.client
-==================
 
 Endpoint client utilities for registering endpoint paths, composing URLs, and
 paginating API responses with optional retries and rate limiting.
@@ -262,7 +261,6 @@ class EndpointClient:
         ValueError
             If ``base_url`` is not absolute or endpoints are invalid.
         """
-
         # Validate base_url is absolute.
         parts = urlsplit(self.base_url)
         if not parts.scheme or not parts.netloc:
@@ -333,7 +331,6 @@ class EndpointClient:
           closed on exit.
         - Otherwise, a default ``requests.Session`` is created and closed.
         """
-
         if self._ctx_session is not None:
             return self
 
@@ -365,7 +362,6 @@ class EndpointClient:
         Ensures any session created by the context is closed and internal
         context state is cleared.
         """
-
         s = self._ctx_session
         owns = self._ctx_owns_session
         if s is not None and owns:
@@ -445,7 +441,6 @@ class EndpointClient:
             If all retry attempts fail (or a single attempt fails with no retry
             policy configured) for other HTTP statuses or network errors.
         """
-
         # Determine session to use for this request.
         # Prefer context-managed session when present
         sess = self._get_active_session()
@@ -600,7 +595,6 @@ class EndpointClient:
             Raw JSON object for non-paginated calls, or a list of record
             dicts aggregated across pages for paginated calls.
         """
-
         url = self.url(
             endpoint_key,
             path_parameters=path_parameters,
@@ -671,7 +665,6 @@ class EndpointClient:
         dict
             Record dictionaries extracted from each page.
         """
-
         url = self.url(
             endpoint_key,
             path_parameters=path_parameters,
@@ -719,7 +712,7 @@ class EndpointClient:
         JSONData
             Raw JSON object for non-paginated calls, or a list of record
             dicts aggregated across pages for paginated calls.
-    """
+        """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None

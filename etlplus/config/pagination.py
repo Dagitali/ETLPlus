@@ -1,6 +1,5 @@
 """
 etlplus.config.pagination
-=========================
 
 Pagination model for REST API responses (page, offset, cursor styles).
 
@@ -121,7 +120,6 @@ class PaginationConfig(BoundsWarningsMixin):
             'max_records should be > 0',
             warnings,
         )
-
         # Page/offset
         match (self.type or '').strip().lower():
             case 'page' | 'offset':
@@ -185,7 +183,6 @@ class PaginationConfig(BoundsWarningsMixin):
         Tolerant: unknown keys ignored; numeric fields coerced via
         ``to_int``; non-mapping inputs return ``None``.
         """
-
         if not isinstance(obj, Mapping):
             return None
 

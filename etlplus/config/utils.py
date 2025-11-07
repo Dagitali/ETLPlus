@@ -1,6 +1,5 @@
 """
 etlplus.config.utils
-====================
 
 A module defining utility helpers for ETL pipeline configuration.
 
@@ -60,7 +59,6 @@ def cast_str_dict(
     dict[str, str]
         Dictionary of the original pairs converted via ``str()``.
     """
-
     return {k: str(v) for k, v in (m or {}).items()}
 
 
@@ -88,7 +86,6 @@ def deep_substitute(
     Any
         New structure with substitutions applied where tokens were found.
     """
-
     if isinstance(value, str):
         # Fast path: single combined pass over substitutions.
         if not (vars_map or env_map):
@@ -136,7 +133,6 @@ def pagination_from_defaults(
         A PaginationConfig instance with numeric fields coerced to int/float
         where applicable, or None if parsing failed.
     """
-
     if not isinstance(obj, Mapping):
         return None
 
@@ -225,7 +221,6 @@ def rate_limit_from_defaults(
         A RateLimitConfig instance with numeric fields coerced, or None if
         parsing failed.
     """
-
     if not isinstance(obj, Mapping):
         return None
     sleep_seconds = obj.get('sleep_seconds')
@@ -283,7 +278,6 @@ def to_float(
     float | None
         The coerced float value, or None if coercion failed.
     """
-
     try:
         return float(v) if v is not None else None
     except (TypeError, ValueError):

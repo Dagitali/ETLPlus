@@ -1,6 +1,5 @@
 """
 etlplus.config.mixins
-=====================
 
 Lightweight mixins used by configuration models.
 
@@ -58,6 +57,5 @@ class BoundsWarningsMixin:
         bucket : list[str]
             Target list for collected warnings.
         """
-
         if condition:
             BoundsWarningsMixin._APPEND(bucket, message)

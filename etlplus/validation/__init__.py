@@ -1,6 +1,5 @@
 """
-etlplus.validation.__init__
-==================
+etlplus.validation
 
 The top-level module defining ``:mod:etlplus.validation``, a package of high-
 level data validation helpers.

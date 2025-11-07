@@ -1,6 +1,5 @@
 """
 etlplus.validation.utils
-========================
 
 A module providing helpers for data validation.
 """
@@ -56,7 +55,6 @@ def maybe_validate(
         The (possibly modified) payload when validation passes, or raises
         ValueError when validation fails and severity=="error".
     """
-
     if not enabled:
         return payload
 

@@ -1,6 +1,5 @@
 """
 etlplus.run
-============
 
 A module for running ETL jobs defined in YAML configurations.
 """
@@ -174,7 +173,6 @@ def run(
     JSONDict
         Result dictionary.
     """
-
     # Propagate a possibly monkeypatched compute_sleep_seconds into helpers,
     # to preserve existing test contracts that patch run.compute_sleep_seconds.
     try:

@@ -1,6 +1,5 @@
 """
 etlplus.cli
-===========
 
 Entry point for the ``etlplus`` command-line Interface (CLI).
 
@@ -52,7 +51,6 @@ def cmd_extract(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     data = extract(args.source_type, args.source, format=args.format)
     if args.output:
         write_json(data, args.output)
@@ -77,7 +75,6 @@ def cmd_validate(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     # ``args.rules`` already parsed by ``_json_type`` (defaults to {}).
     result = validate(args.source, args.rules)
     print_json(result)
@@ -99,7 +96,6 @@ def cmd_transform(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     # ``args.operations`` already parsed by ``_json_type`` (defaults to {}).
     data = transform(args.source, args.operations)
     if args.output:
@@ -125,7 +121,6 @@ def cmd_load(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     result = load(
         args.source,
         args.target_type,
@@ -153,7 +148,6 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     cfg = load_pipeline_config(args.config, substitute=True)
 
     # List mode
@@ -197,7 +191,6 @@ def cmd_list(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     cfg = load_pipeline_config(args.config, substitute=True)
     jobs = [j.name for j in cfg.jobs if j.name]
     print_json({'jobs': jobs})
@@ -219,7 +212,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-
     cfg = load_pipeline_config(args.config, substitute=True)
 
     run_job = getattr(args, 'run', None)
