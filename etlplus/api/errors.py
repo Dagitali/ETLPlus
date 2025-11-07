@@ -6,12 +6,9 @@ Exception types with rich context for debugging REST API failures.
 
 Summary
 -------
-- :class:`ApiRequestError`: base error for HTTP request failures, including
-    the URL, status code, number of attempts, retry flag, and retry policy.
-- :class:`ApiAuthError`: specialization for authentication/authorization
-    failures (e.g., 401/403).
-- :class:`PaginationError`: adds ``page`` context for failures during
-    pagination.
+Provides subclasses for request errors (``ApiRequestError``), auth failures
+(``ApiAuthError``), and pagination errors with page context
+(``PaginationError``).
 
 Examples
 --------
@@ -58,7 +55,18 @@ class ApiRequestError(requests.RequestException):
 
     Attributes
     ----------
-    (Same as parameters; stored for introspection/logging.)
+    url : str
+        Absolute URL that was requested.
+    status : int | None
+        HTTP status code when available.
+    attempts : int
+        Number of attempts performed.
+    retried : bool
+        Whether any retry attempts were made.
+    retry_policy : RetryPolicy | None
+        The retry policy in effect, if any.
+    cause : Exception | None
+        Original underlying exception.
 
     Examples
     --------
@@ -109,7 +117,6 @@ class PaginationError(ApiRequestError):
     ----------
     page : int | None
         Stored page number.
-    (See ``ApiRequestError`` for remaining attributes.)
 
     Examples
     --------
