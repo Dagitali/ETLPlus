@@ -10,8 +10,8 @@ pipelines. A "connector" is any I/O endpoint:
 - REST API service/endpoint
 - (future) queues, streams, etc.
 
-Quick start
------------
+Examples
+--------
 - Use ``ConnectorApi``/``ConnectorFile``/``ConnectorDb`` when you want the
   concrete dataclasses.
 - Use the ``Connector`` union for typing a value that can be any connector.
@@ -25,12 +25,12 @@ Notes
 - TypedDicts referenced in :mod:`etlplus.config.types` remain editor hints.
   Runtime parsing stays permissive and tolerant.
 
-See also
+See Also
 --------
 - TypedDict shapes for editor hints (not enforced at runtime):
-    etlplus.config.types.ConnectorApiConfigMap,
-    etlplus.config.types.ConnectorDbConfigMap,
-    etlplus.config.types.ConnectorFileConfigMap
+    :mod:`etlplus.config.types.ConnectorApiConfigMap`,
+    :mod:`etlplus.config.types.ConnectorDbConfigMap`,
+    :mod:`etlplus.config.types.ConnectorFileConfigMap`.
 """
 from __future__ import annotations
 

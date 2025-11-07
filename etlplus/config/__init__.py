@@ -1,15 +1,18 @@
 """
-etlplus.config.__init__
-====================
+etlplus.config
+==============
 
-The top-level module defining ``:mod:etlplus.config``, a package of classes for
-defining ETL pipeline configurations including data sources, data targets,
-jobs, and profiles as well as helper functions to load and parse them.
+Configuration models and helpers for ETLPlus.
 
-The configuration classes represent a tolerant schema for pipeline YAML files
-like `in/pipeline.yml`. They aim to cover common shapes while allowing
-provider-specific options to pass through as dictionaries.
+This package defines models for data sources/targets ("connectors"), APIs,
+pagination/rate limits, pipeline orchestration, and related utilities. The
+parsers are permissive (accepting ``Mapping[str, Any]``) and normalize to
+concrete types without raising on unknown/optional fields.
 
+Notes
+-----
+- The models use ``@dataclass(slots=True)`` and avoid mutating inputs.
+- TypedDicts are editor/type-checking hints and are not enforced at runtime.
 """
 from __future__ import annotations
 

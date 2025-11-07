@@ -9,10 +9,10 @@ Notes
 TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
 accepts Mapping[str, Any]).
 
-See also
+See Also
 --------
 - ApiProfileConfig.from_obj: canonical parsing logic for API profile entries
-    (used by ApiConfig.from_obj when processing the ``profiles`` section).
+  (used by ApiConfig.from_obj when processing the ``profiles`` section).
 """
 from __future__ import annotations
 
