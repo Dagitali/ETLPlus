@@ -2,18 +2,13 @@
 etlplus.api.errors
 ==================
 
-A module defining exception types with rich context for catching REST API
-errors, carrying useful context for debugging REST API failures.
+Exception types with rich context for debugging REST API failures.
 
 Summary
 -------
-- :class:`ApiRequestError`: Base error for HTTP request failures, including
-    the URL, status code, number of attempts, whether retries occurred, and
-    the retry policy in effect.
-- :class:`ApiAuthError`: Subclass for authentication/authorization failures
-    (e.g., 401/403).
-- :class:`PaginationError`: Adds ``page`` information for failures that
-    occur while paginating.
+Provides subclasses for request errors (``ApiRequestError``), auth failures
+(``ApiAuthError``), and pagination errors with page context
+(``PaginationError``).
 
 Examples
 --------
@@ -41,7 +36,22 @@ from .types import RetryPolicy
 @dataclass(slots=True)
 class ApiRequestError(requests.RequestException):
     """
-    Base error for API request failures with useful context.
+    Base error for API request failures with rich context.
+
+    Parameters
+    ----------
+    url : str
+        Absolute URL that was requested.
+    status : int | None, optional
+        HTTP status code when available.
+    attempts : int, optional
+        Number of attempts performed (defaults to ``1``).
+    retried : bool, optional
+        Whether any retry attempts were made.
+    retry_policy : RetryPolicy | None, optional
+        The retry policy in effect, if any.
+    cause : Exception | None, optional
+        Original underlying exception.
 
     Attributes
     ----------
@@ -56,7 +66,15 @@ class ApiRequestError(requests.RequestException):
     retry_policy : RetryPolicy | None
         The retry policy in effect, if any.
     cause : Exception | None
-        The original underlying exception.
+        Original underlying exception.
+
+    Examples
+    --------
+    >>> try:
+    ...     raise ApiRequestError(url="https://api.example.com/x", status=500)
+    ... except ApiRequestError as e:
+    ...     print(e.status, e.attempts)
+    500 1
     """
 
     # -- Attributes -- #
@@ -88,17 +106,30 @@ class PaginationError(ApiRequestError):
     """
     Error raised during pagination with page context.
 
+    Parameters
+    ----------
+    page : int | None, optional
+        Page number (1-based) or request count when applicable.
+    **kwargs
+        Remaining keyword arguments forwarded to ``ApiRequestError``.
+
     Attributes
     ----------
     page : int | None
-        The page number (1-based) or request count when applicable.
+        Stored page number.
+
+    Examples
+    --------
+    >>> err = PaginationError(url="u", status=400, page=3)
+    >>> str(err).startswith("PaginationError(")
+    True
     """
 
     # -- Attributes -- #
 
     page: int | None = None
 
-    # -- Maggic Methods (Object Representation) -- #
+    # -- Magic Methods (Object Representation) -- #
 
     def __str__(self) -> str:  # pragma: no cover - formatting only
         base = super().__str__()

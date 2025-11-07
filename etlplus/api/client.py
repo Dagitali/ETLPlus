@@ -2,8 +2,8 @@
 etlplus.api.client
 ==================
 
-A module for registering endpoint paths, building URLs, and paginating API
-responses with optional retries and rate limiting.
+Endpoint client utilities for registering endpoint paths, composing URLs, and
+paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
@@ -45,12 +45,14 @@ import time
 from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
+from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Iterator
 from typing import Mapping
+from typing import Self
 from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
@@ -79,86 +81,125 @@ from .types import RetryPolicy
 @dataclass(frozen=True, slots=True)
 class EndpointClient:
     """
-    Immutable registry of API paths rooted at a base URL.
+    Immutable registry of endpoint path templates rooted at a base URL.
+
+    Summary
+    -------
+    Provides helpers for composing absolute URLs, paginating responses,
+    applying client-wide rate limits, and performing jittered exponential
+    backoff retries. The dataclass is frozen and uses ``slots`` for memory
+    efficiency; mutating attribute values is disallowed.
 
     Parameters
     ----------
     base_url : str
-        Absolute base URL, e.g., `"https://api.example.com/v1"`
+        Absolute base URL, e.g., ``"https://api.example.com/v1"``.
     endpoints : Mapping[str, str]
-        Mapping of endpoint keys to *relative* paths, e.g.,
-        `{"list_users": "/users", "user": "/users/{id}"}`.
+        Mapping of endpoint keys to relative paths, e.g.,
+        ``{"list_users": "/users", "user": "/users/{id}"}``.
     base_path : str | None, optional
-        Optional base path to prepend to all endpoint paths. For example, if
-        the base path is `/v2`, the effective endpoint path for `list_users`
-        would be `/v2/users`.
+        Optional base path prefix (``/v2``) prepended to all endpoint
+        paths when building URLs.
     retry : RetryPolicy | None, optional
-        Optional retry policy applied to HTTP requests performed by this
-        client. Retries use exponential backoff with jitter to reduce
-        thundering herds. If omitted, no automatic retries are performed.
+        Optional retry policy. When provided, failed requests matching
+        ``retry_on`` statuses are retried with full jitter.
     retry_network_errors : bool, optional
-        When True, also retry on network errors such as timeouts and
-        connection resets, in addition to HTTP status-based retries.
-        Defaults to False.
+        When ``True``, also retry on network errors (timeouts, connection
+        resets). Defaults to ``False``.
     rate_limit : RateLimitConfig | None, optional
         Optional client-wide rate limit used to derive an inter-request
-        delay when an explicit ``sleep_seconds`` is not provided.
+        delay when an explicit ``sleep_seconds`` isn't supplied.
     session : requests.Session | None, optional
-        Optional HTTP session to use for requests. When provided, all
-        requests are executed via ``session.get``.
+        Explicit HTTP session for all requests.
     session_factory : Callable[[], requests.Session] | None, optional
-        Optional factory to lazily create a session per client call. Ignored
-        if ``session`` is provided.
+        Factory used to lazily create a session. Ignored if ``session`` is
+        provided.
+    session_adapters : list[HTTPAdapterMountConfig] | None, optional
+        Adapter mount configuration(s) used to build a session lazily when
+        neither ``session`` nor ``session_factory`` is supplied.
 
     Attributes
     ----------
     base_url : str
-        The absolute base URL used as the root for all endpoints (e.g.,
-        `"https://api.example.com/v1"`).
+        Absolute base URL.
     endpoints : Mapping[str, str]
-        Mapping of endpoint keys to *relative* paths (read-only), e.g.,
-        `{"list_users": "/users", "user": "/users/{id}"}`. A defensive copy of
-        the mapping supplied at construction. The dataclass is frozen
-        (attributes are read-only), and the mapping is wrapped in a
-        read-only proxy to prevent mutation.
+        Read-only mapping of endpoint keys to relative paths
+        (``MappingProxyType``).
+    base_path : str | None
+        Optional base path prefix appended after ``base_url``.
     retry : RetryPolicy | None
-        Optional retry policy. When set, requests are retried on configured
-        HTTP status codes with exponential backoff and jitter.
+        Retry policy reference (may be ``None``).
     retry_network_errors : bool
-        When True, also retry on common network failures (timeouts,
-        connection errors).
+        Whether network errors are retried in addition to HTTP statuses.
     rate_limit : RateLimitConfig | None
-        Optional rate limiting configuration used to compute an inter-request
-        sleep when not explicitly provided to ``paginate``/``paginate_url``.
-    session : Any | None
-        Optional HTTP session used for API requests.
-    session_factory : Callable[[], Any] | None
-        Optional factory used to create a session when needed.
+        Client-wide rate limit configuration (may be ``None``).
+    session : requests.Session | None
+        Explicit HTTP session used for requests when provided.
+    session_factory : Callable[[], requests.Session] | None
+        Lazily invoked factory producing a session when needed.
+    session_adapters : list[HTTPAdapterMountConfig] | None
+        Adapter mount configuration(s) for connection pooling / retries.
+    DEFAULT_PAGE_PARAM : ClassVar[str]
+        Default page parameter name.
+    DEFAULT_SIZE_PARAM : ClassVar[str]
+        Default page-size parameter name.
+    DEFAULT_START_PAGE : ClassVar[int]
+        Default starting page number.
+    DEFAULT_PAGE_SIZE : ClassVar[int]
+        Default records-per-page when unspecified.
+    DEFAULT_CURSOR_PARAM : ClassVar[str]
+        Default cursor parameter name.
+    DEFAULT_LIMIT_PARAM : ClassVar[str]
+        Default limit parameter name used for cursor pagination.
+    DEFAULT_RETRY_MAX_ATTEMPTS : ClassVar[int]
+        Fallback max attempts when retry policy omits it.
+    DEFAULT_RETRY_BACKOFF : ClassVar[float]
+        Fallback exponential backoff base seconds.
+    DEFAULT_RETRY_ON : ClassVar[tuple[int, ...]]
+        Default HTTP status codes eligible for retry.
+    DEFAULT_RETRY_CAP : ClassVar[float]
+        Maximum sleep seconds for jittered backoff.
 
     Raises
     ------
     ValueError
-        If `base_url` is not absolute or if any endpoint key/value is not a
-        non-empty `str`.
+        If ``base_url`` is not absolute or endpoint keys/values are invalid.
+
+    Notes
+    -----
+    - Endpoint mapping is defensively copied and wrapped read-only.
+    - Pagination defaults (page size, start page, cursor param, etc.) are
+      centralized as class variables.
+    - Context manager support (``with EndpointClient(...) as client``)
+      manages session lifecycle; owned sessions are closed on exit.
+    - Retries use exponential backoff with jitter capped by
+      ``DEFAULT_RETRY_CAP`` seconds.
 
     Examples
     --------
-    >>> ep = Endpoint(
+    Basic URL composition
+    ^^^^^^^^^^^^^^^^^^^^^
+    >>> client = EndpointClient(
     ...     base_url="https://api.example.com/v1",
-    ...     endpoints={"list_users": "users", "user": "/users/{id}"}
+    ...     endpoints={"list_users": "/users", "user": "/users/{id}"},
     ... )
-    >>> ep.url("list_users", {"active": "true"})
+    >>> client.url("list_users", query_parameters={"active": "true"})
     'https://api.example.com/v1/users?active=true'
+    >>> client.url("user", path_parameters={"id": 42})
+    'https://api.example.com/v1/users/42'
 
-    Configure retries with jitter and (optionally) network error retries:
-
+    Page pagination with retries
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     >>> client = EndpointClient(
     ...     base_url="https://api.example.com/v1",
     ...     endpoints={"list": "/items"},
     ...     retry={"max_attempts": 5, "backoff": 0.5, "retry_on": [429, 503]},
     ...     retry_network_errors=True,
     ... )
-    >>> client.paginate("list", pagination={"type": "page", "page_size": 50})
+    >>> rows = client.paginate(
+    ...     "list",
+    ...     pagination={"type": "page", "page_size": 50},
+    ... )
     """
 
     # -- Attributes -- #
@@ -174,8 +215,8 @@ class EndpointClient:
     rate_limit: RateLimitConfig | None = None
 
     # Optional HTTP session or factory
-    session: Any | None = None
-    session_factory: Callable[[], Any] | None = None
+    session: requests.Session | None = None
+    session_factory: Callable[[], requests.Session] | None = None
 
     # Optional HTTPAdapter mount configuration(s) for transport-level retries
     # and connection pooling. If provided and neither `session` nor
@@ -209,6 +250,19 @@ class EndpointClient:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
+        """
+        Validate inputs and finalize immutable state.
+
+        Ensures ``base_url`` is absolute, copies and validates endpoint
+        mappings, wraps them in a read-only proxy, and synthesizes a
+        session factory when only adapter configs are provided.
+
+        Raises
+        ------
+        ValueError
+            If ``base_url`` is not absolute or endpoints are invalid.
+        """
+
         # Validate base_url is absolute.
         parts = urlsplit(self.base_url)
         if not parts.scheme or not parts.netloc:
@@ -216,13 +270,20 @@ class EndpointClient:
                 'base_url must be absolute, e.g. "https://api.example.com"',
             )
 
-        # Defensive copy + validate endpoints.
+        # Defensive copy + validate endpoints with concise comprehension.
         eps = dict(self.endpoints)
-        for k, v in eps.items():
-            if not isinstance(k, str) or not isinstance(v, str) or not v:
-                raise ValueError(
-                    'endpoints must map str -> non-empty str',
-                )
+        invalid = [
+            (k, v)
+            for k, v in eps.items()
+            if not (isinstance(k, str) and isinstance(v, str) and v)
+        ]
+        if invalid:
+            sample = invalid[:3]
+            msg = (
+                'endpoints must map str -> non-empty str; '
+                f'invalid entries: {sample}'
+            )
+            raise ValueError(msg)
         # Wrap in a read-only mapping to ensure immutability
         object.__setattr__(self, 'endpoints', MappingProxyType(eps))
 
@@ -256,17 +317,21 @@ class EndpointClient:
 
     # -- Magic Methods (Context Manager Protocol) -- #
 
-    def __enter__(self) -> EndpointClient:
-        """Enter a context where a session is managed by the client.
+    def __enter__(self) -> Self:
+        """
+        Enter a context where a session is managed by the client.
 
-        Behavior
-        --------
-        - If an explicit ``session`` was provided at construction, it is used
-          and will NOT be closed on exit.
-        - Else if a ``session_factory`` exists, it is used to create a session
-          which WILL be closed on exit.
-        - Else a default ``requests.Session`` is created and WILL be closed on
-          exit.
+        Returns
+        -------
+        Self
+            The client itself with an active session bound for the context.
+
+        Notes
+        -----
+        - Explicit ``session`` is reused and not closed on exit.
+        - When ``session_factory`` exists it's invoked and the session
+          closed on exit.
+        - Otherwise, a default ``requests.Session`` is created and closed.
         """
 
         if self._ctx_session is not None:
@@ -290,10 +355,17 @@ class EndpointClient:
 
     def __exit__(
         self,
-        exc_type,
-        exc,
-        tb,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
+        """
+        Exit the managed-session context and close if owned.
+
+        Ensures any session created by the context is closed and internal
+        context state is cleared.
+        """
+
         s = self._ctx_session
         owns = self._ctx_owns_session
         if s is not None and owns:
@@ -313,6 +385,32 @@ class EndpointClient:
             # Ensure cleared even if we didn't own it
             object.__setattr__(self, '_ctx_session', None)
             object.__setattr__(self, '_ctx_owns_session', False)
+
+    # -- Private Helpers -------------------------------------------------- #
+
+    def _get_active_session(self) -> requests.Session | None:
+        """
+        Return the currently active session if available.
+
+        Prefers the context-managed session, then an explicit bound
+        ``session``, then lazily creates one via ``session_factory`` when
+        available. Returns ``None`` when no session can be obtained.
+
+        Returns
+        -------
+        requests.Session | None
+            The session to use for an outgoing request, if any.
+        """
+        if self._ctx_session is not None:
+            return self._ctx_session
+        if self.session is not None:
+            return self.session
+        if self.session_factory is not None:
+            try:
+                return self.session_factory()
+            except Exception:  # pragma: no cover - defensive
+                return None
+        return None
 
     # -- Protected Instance Methods -- #
 
@@ -341,22 +439,16 @@ class EndpointClient:
 
         Raises
         ------
-        requests.RequestException
-            If all retry attempts fail with a retry-eligible HTTP status
-            (or if no policy is configured and the request fails).
-        ValueError
-            Propagated if JSON parsing fails within ``extract``.
+        ApiAuthError
+            If authentication/authorization ultimately fails (e.g., 401/403).
+        ApiRequestError
+            If all retry attempts fail (or a single attempt fails with no retry
+            policy configured) for other HTTP statuses or network errors.
         """
 
         # Determine session to use for this request.
         # Prefer context-managed session when present
-        sess = (
-            self._ctx_session
-            if self._ctx_session is not None
-            else self.session
-        )
-        if sess is None and self.session_factory is not None:
-            sess = self.session_factory()
+        sess = self._get_active_session()
 
         policy: RetryPolicy | None = self.retry
         if not policy:
@@ -370,26 +462,23 @@ class EndpointClient:
                     getattr(e, 'response', None), 'status_code', None,
                 )
                 retried = False
-                err: ApiRequestError
                 if status in {401, 403}:
-                    err = ApiAuthError(
+                    raise ApiAuthError(
                         url=url,
                         status=status,
                         attempts=1,
                         retried=retried,
                         retry_policy=None,
                         cause=e,
-                    )
-                else:
-                    err = ApiRequestError(
-                        url=url,
-                        status=status,
-                        attempts=1,
-                        retried=retried,
-                        retry_policy=None,
-                        cause=e,
-                    )
-                raise err from e
+                    ) from e
+                raise ApiRequestError(
+                    url=url,
+                    status=status,
+                    attempts=1,
+                    retried=retried,
+                    retry_policy=None,
+                    cause=e,
+                ) from e
 
         max_attempts = int(
             cast(int | float | str | None, policy.get('max_attempts', 0))
@@ -436,26 +525,23 @@ class EndpointClient:
                     should_retry = is_timeout or is_conn
                 if not should_retry or attempt >= max_attempts:
                     retried = attempt > 1
-                    final_err: ApiRequestError
                     if status in {401, 403}:
-                        final_err = ApiAuthError(
+                        raise ApiAuthError(
                             url=url,
                             status=status,
                             attempts=attempt,
                             retried=retried,
                             retry_policy=policy,
                             cause=e,
-                        )
-                    else:
-                        final_err = ApiRequestError(
-                            url=url,
-                            status=status,
-                            attempts=attempt,
-                            retried=retried,
-                            retry_policy=policy,
-                            cause=e,
-                        )
-                    raise final_err from e
+                        ) from e
+                    raise ApiRequestError(
+                        url=url,
+                        status=status,
+                        attempts=attempt,
+                        retried=retried,
+                        retry_policy=policy,
+                        cause=e,
+                    ) from e
 
                 # Exponential backoff with Full Jitter to reduce herding:
                 #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1)))
@@ -483,20 +569,20 @@ class EndpointClient:
         sleep_seconds: float = 0.0,
     ) -> JSONData:
         """
-        Convenience wrapper to paginate by endpoint key.
+        Paginate by endpoint key.
 
-        Builds the URL via `self.url(...)` and delegates to `paginate_url`.
+        Builds the URL via ``self.url(...)`` and delegates to ``paginate_url``.
 
         Parameters
         ----------
         endpoint_key : str
-            Key into the `endpoints` mapping whose relative path will be
-            resolved against `base_url`.
+            Key into the ``endpoints`` mapping whose relative path will be
+            resolved against ``base_url``.
         path_parameters : Mapping[str, str] | None
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
-            Query parameters to append (and merge with any already present on
-            `base_url`).
+            Query parameters to append (merged with any already present on
+            ``base_url``).
         params : Mapping[str, Any] | None
             Query parameters to include in the request.
         headers : Mapping[str, Any] | None
@@ -555,18 +641,30 @@ class EndpointClient:
         """
         Stream records for a registered endpoint using pagination.
 
-        This is a generator variant of ``paginate`` that yields record dicts
-        across pages instead of aggregating them into a list. Only used when a
-        pagination configuration is provided.
+        Summary
+        -------
+        Generator variant of ``paginate`` that yields record dicts across
+        pages instead of aggregating them into a list.
 
         Parameters
         ----------
         endpoint_key : str
             Key into the ``endpoints`` mapping whose relative path will be
             resolved against ``base_url``.
-        path_parameters, query_parameters, params, headers, timeout,
-        pagination, sleep_seconds
-            See ``paginate`` for parameter semantics.
+        path_parameters : Mapping[str, str] | None
+            Values to substitute into placeholders in the endpoint path.
+        query_parameters : Mapping[str, str] | None
+            Query parameters to append (merged with any already present).
+        params : Mapping[str, Any] | None
+            Query parameters to include in each request.
+        headers : Mapping[str, Any] | None
+            Headers to include in each request.
+        timeout : float | int | None
+            Timeout for each request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
 
         Yields
         ------
@@ -621,8 +719,7 @@ class EndpointClient:
         JSONData
             Raw JSON object for non-paginated calls, or a list of record
             dicts aggregated across pages for paginated calls.
-        """
-
+    """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
@@ -663,13 +760,26 @@ class EndpointClient:
         ----------
         url : str
             Absolute URL to paginate.
-        params, headers, timeout, pagination, sleep_seconds
-            See ``paginate_url`` for parameter semantics.
+        params : Mapping[str, Any] | None
+            Query parameters to include in each request.
+        headers : Mapping[str, Any] | None
+            Headers to include in each request.
+        timeout : float | int | None
+            Timeout for each request.
+        pagination : PaginationConfig | None
+            Pagination configuration.
+        sleep_seconds : float
+            Time to sleep between requests.
 
         Yields
         ------
         dict
             Record dictionaries extracted from each page.
+
+        Raises
+        ------
+        PaginationError
+            If a paginated request fails while streaming pages.
         """
 
         # Normalize pagination config for typed access.
@@ -832,37 +942,39 @@ class EndpointClient:
         query_parameters: Mapping[str, Any] | None = None,
     ) -> str:
         """
-        Build a fully qualified URL for a registered endpoint.
+        Build an absolute URL for a registered endpoint.
 
         Parameters
         ----------
         endpoint_key : str
-            Key into the `endpoints` mapping whose relative path will be
-            resolved against `base_url`.
+            Key into the ``endpoints`` mapping whose relative path will be
+            resolved against ``base_url``.
         path_parameters : Mapping[str, Any] | None, optional
             Values to substitute into placeholders in the endpoint path.
-            Placeholders must be written as `{placeholder}` in the relative
+            Placeholders must be written as ``{placeholder}`` in the relative
             path. Each substituted value is percent-encoded as a single path
             segment (slashes are encoded) to prevent path traversal.
         query_parameters : Mapping[str, Any] | None, optional
             Query parameters to append (and merge with any already present on
-            `base_url`). Values are percent-encoded and combined using
-            `application/x-www-form-urlencoded` rules.
+            ``base_url``). Values are percent-encoded and combined using
+            ``application/x-www-form-urlencoded`` rules.
 
         Returns
         -------
         str
-            The constructed absolute URL.
+            Constructed absolute URL.
 
         Raises
         ------
         KeyError
-            If `endpoint_key` is unknown or a required `{placeholder}`
-            in the path has no corresponding entry in `path_parameters`.
+            If ``endpoint_key`` is unknown or a required placeholder in the
+            path has no corresponding entry in ``path_parameters``.
+        ValueError
+            If the path template is invalid.
 
         Examples
         --------
-        >>> ep = Endpoint(
+        >>> ep = EndpointClient(
         ...     base_url='https://api.example.com/v1',
         ...     endpoints={
         ...         'user': '/users/{id}',
@@ -928,7 +1040,7 @@ class EndpointClient:
     def apply_sleep(
         sleep_seconds: float,
         *,
-        sleeper=None,
+        sleeper: Callable[[float], None] | None = None,
     ) -> None:
         """
         Sleep for the specified seconds if positive.

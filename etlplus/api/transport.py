@@ -2,19 +2,19 @@
 etlplus.api.transport
 =====================
 
-A module for configuring ``requests`` HTTPAdapters for HTTP transport with
-connection pooling and optional ``urllib3`` retry behavior.
+Configure ``requests`` ``HTTPAdapter`` instances with connection pooling and
+optional ``urllib3`` retry behavior.
 
-Notes
------
+Summary
+-------
 ``build_http_adapter`` accepts a lightweight mapping and translates it into
 an ``HTTPAdapter``. When a retry dict is provided, it is mapped to
-an ``HTTPAdapter``. When a retry dict is provided, it is mapped to
-``urllib3.util.retry.Retry`` where available; otherwise, it falls back to a
-simple integer retry count or no retries.
+``urllib3.util.retry.Retry`` where available; otherwise, falls back to an
+integer retry count or no retries.
 
 Examples
 --------
+>>> from etlplus.api import build_http_adapter
 >>> cfg = {
 ...   "pool_connections": 10,
 ...   "pool_maxsize": 10,
@@ -47,15 +47,15 @@ __all__ = ['build_http_adapter']
 
 def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
     """
-    Build a requests HTTPAdapter from a configuration mapping.
+    Build a requests ``HTTPAdapter`` from a configuration mapping.
 
     Supported keys in cfg:
     - pool_connections (int)
     - pool_maxsize (int)
     - pool_block (bool)
-    - max_retries (int or dict matching urllib3 Retry args)
+    - max_retries (int or dict matching urllib3 ``Retry`` args)
 
-    When ``max_retries`` is a dict, this will attempt to construct an
+    When ``max_retries`` is a dict, this attempts to construct an
     ``urllib3.util.retry.Retry`` instance with the provided keys. Unknown
     keys are ignored. If urllib3 is unavailable, falls back to no retries
     (0) or an integer value when provided.

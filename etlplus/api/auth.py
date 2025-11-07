@@ -2,27 +2,25 @@
 etlplus.api.auth
 ================
 
-A module enabling bearer token authentication for REST APIs using the OAuth2
-Client Credentials flow.
+Bearer token authentication for REST APIs using the OAuth2 Client Credentials
+flow.
 
 Summary
 -------
-Use :class:`EndpointCredentialsBearer` with ``requests`` to automatically add
+Use :class:`EndpointCredentialsBearer` with ``requests`` to add
 ``Authorization: Bearer <token>`` headers. Tokens are fetched and refreshed
 on demand with a small clock skew to avoid edge-of-expiry races.
 
 Notes
 -----
-- Tokens are refreshed when the remaining lifetime is less than
-    ``CLOCK_SKEW_SEC`` seconds.
-- Network and HTTP errors are surfaced from ``requests``; logs provide
-    brief diagnostics.
+- Tokens are refreshed when remaining lifetime < ``CLOCK_SKEW_SEC`` seconds.
+- Network/HTTP errors are surfaced from ``requests`` with concise logging.
 
 Examples
 --------
-
 Basic usage with ``requests.Session``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>>> from etlplus.api import EndpointCredentialsBearer
 >>> auth = EndpointCredentialsBearer(
 ...     token_url="https://auth.example.com/oauth2/token",
 ...     client_id="id",
@@ -42,6 +40,7 @@ import time
 from dataclasses import dataclass
 
 import requests  # type: ignore
+from requests import PreparedRequest  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -59,22 +58,47 @@ CLOCK_SKEW_SEC = 30
 @dataclass(slots=True, repr=False, eq=False)
 class EndpointCredentialsBearer(AuthBase):
     """
-    Bearer token authentication via OAuth2 client credentials flow.
+    Bearer token authentication via the OAuth2 Client Credentials flow.
+
+    Summary
+    -------
+    Implements ``requests`` ``AuthBase`` to lazily obtain and refresh an
+    access token, adding ``Authorization: Bearer <token>`` to outgoing
+    requests. A small clock skew avoids edge-of-expiry races.
+
+    Parameters
+    ----------
+    token_url : str
+        OAuth2 token endpoint URL.
+    client_id : str
+        OAuth2 client ID.
+    client_secret : str
+        OAuth2 client secret.
+    scope : str | None, optional
+        Optional OAuth2 scope string.
 
     Attributes
     ----------
     token_url : str
-        The OAuth2 token endpoint URL.
+        OAuth2 token endpoint URL.
     client_id : str
-        The OAuth2 client ID.
+        OAuth2 client ID.
     client_secret : str
-        The OAuth2 client secret.
+        OAuth2 client secret.
     scope : str | None
-        Optional OAuth2 scope.
+        Optional OAuth2 scope string.
     token : str | None
-        The current access token, if obtained.
+        Current access token (``None`` until first successful request).
     expiry : float
-        The UNIX timestamp when the token expires.
+        UNIX timestamp when the token expires.
+
+    Notes
+    -----
+    - Tokens are refreshed when remaining lifetime < ``CLOCK_SKEW_SEC``.
+    - Network/HTTP errors propagate as ``requests`` exceptions from
+      ``_ensure_token``.
+    - Missing ``access_token`` in a successful response raises
+      ``RuntimeError``.
     """
 
     # -- Attributes -- #
@@ -88,14 +112,62 @@ class EndpointCredentialsBearer(AuthBase):
 
     # -- Magic Methods (Object Behavior) -- #
 
-    def __call__(self, r):
+    def __call__(self, r: PreparedRequest) -> PreparedRequest:
+        """
+        Attach an Authorization header to an outgoing request.
+
+        Ensures a valid access token is available, refreshing when
+        necessary, and sets ``Authorization: Bearer <token>`` on the
+        provided request object.
+
+        Parameters
+        ----------
+        r : PreparedRequest
+            The request object that will be sent by ``requests``.
+
+        Returns
+        -------
+        PreparedRequest
+            The same request with the Authorization header set.
+        """
+
         self._ensure_token()
         r.headers['Authorization'] = f'Bearer {self.token}'
         return r
 
     # -- Protected Methods -- #
 
-    def _ensure_token(self):
+    def _ensure_token(self) -> None:
+        """
+        Fetch or refresh the bearer token if expired or missing.
+
+        Uses the OAuth2 Client Credentials flow against ``token_url``.
+        Applies a small clock skew to avoid edge-of-expiry races.
+
+        Returns
+        -------
+        None
+            This method mutates ``token`` and ``expiry`` in place.
+
+        Raises
+        ------
+        requests.exceptions.RequestException
+            On generic request-level failures.
+        requests.exceptions.Timeout
+            When the token request times out.
+        requests.exceptions.ConnectionError
+            On network connection issues.
+        requests.exceptions.SSLError
+            On TLS/SSL negotiation failures.
+        requests.exceptions.HTTPError
+            When the endpoint returns a non-2xx status and ``raise_for_status``
+            triggers.
+        RuntimeError
+            When the token response does not include ``access_token``.
+        ValueError
+            When the token response body is not valid JSON.
+        """
+
         if self.token and time.time() < self.expiry - CLOCK_SKEW_SEC:
             return
         try:

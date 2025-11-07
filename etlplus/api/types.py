@@ -2,8 +2,8 @@
 etlplus.api.types
 =================
 
-A module centralizing type aliases and ``TypedDict``-based configurations used
-in the ``:mod:etlplus.api`` package.
+Centralized type aliases and ``TypedDict``-based configurations used in the
+:mod:`etlplus.api` package.
 
 Contents
 --------
@@ -52,13 +52,40 @@ __all__ = [
 
 class HTTPAdapterRetryConfig(TypedDict, total=False):
     """
-    Retry configuration for urllib3 Retry used by requests' HTTPAdapter.
+    Retry configuration for urllib3 ``Retry`` used by requests'
+    ``HTTPAdapter``.
 
-    Keys mirror urllib3.util.retry.Retry constructor where relevant.
-    All keys are optional; omit unset values.
-
-    Example
+    Summary
     -------
+    Keys mirror the ``Retry`` constructor where relevant. All keys are
+    optional; omit any you don't need. When converted downstream, collection-
+    valued fields are normalized to tuples/frozensets.
+
+    Attributes
+    ----------
+    total : int
+        Retry counters matching urllib3 semantics.
+    connect : int
+        Number of connection-related retries.
+    read : int
+        Number of read-related retries.
+    redirect : int
+        Number of redirect-related retries.
+    status : int
+        Number of status-related retries.
+    backoff_factor : float
+        Base factor for exponential backoff between attempts.
+    status_forcelist : list[int] | tuple[int, ...]
+        HTTP status codes that should always be retried.
+    allowed_methods : list[str] | set[str] | tuple[str, ...]
+        Idempotent HTTP methods eligible for retry.
+    raise_on_status : bool
+        Whether to raise after exhausting status-based retries.
+    respect_retry_after_header : bool
+        Honor ``Retry-After`` response headers when present.
+
+    Examples
+    --------
     >>> retry_cfg: HTTPAdapterRetryConfig = {
     ...     'total': 5,
     ...     'backoff_factor': 0.5,
@@ -83,26 +110,31 @@ class HTTPAdapterRetryConfig(TypedDict, total=False):
 
 class HTTPAdapterMountConfig(TypedDict, total=False):
     """
-    Configuration for mounting an HTTPAdapter on a Session.
+    Configuration mapping for mounting an ``HTTPAdapter`` on a ``Session``.
+
+    Summary
+    -------
+    Provides connection pooling and optional retry behavior. Values are
+    forwarded into ``HTTPAdapter`` and, when a retry dict is supplied,
+    converted to a ``Retry`` instance where supported.
 
     Attributes
     ----------
     prefix : str
-        Prefix to mount the adapter on (e.g., 'https://', 'http://', or a
-        specific base like 'https://api.example.com/'). Defaults to
-        'https://' if omitted.
+        Prefix to mount the adapter on (e.g., ``'https://'`` or specific base).
     pool_connections : int
-        The number of urllib3 connection pools to cache.
+        Number of urllib3 connection pools to cache.
     pool_maxsize : int
-        The maximum number of connections to save in the pool.
+        Maximum connections per pool.
     pool_block : bool
-        Whether the connection pool should block for connections.
+        Whether the pool should block for connections instead of creating new
+        ones.
     max_retries : int | HTTPAdapterRetryConfig
-        Retry configuration. When an int, passed directly to HTTPAdapter.
-        When a dict, converted to urllib3 Retry with matching keys.
+        Retry configuration passed to ``HTTPAdapter`` (int) or converted to
+        ``Retry``.
 
-    Example
-    -------
+    Examples
+    --------
     >>> adapter_cfg: HTTPAdapterMountConfig = {
     ...     'prefix': 'https://',
     ...     'pool_connections': 10,
@@ -129,29 +161,34 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
 
 class CursorPaginationConfig(TypedDict):
     """
-    Pagination config for cursor-based pagination.
+    Configuration for cursor-based pagination.
+
+    Summary
+    -------
+    Supports fetching successive result pages using a cursor token returned in
+    each response. Values are all optional except ``type``.
 
     Attributes
     ----------
     type : Literal['cursor']
-        Pagination type.
-    records_path : str
-        Dotted path to records in the payload.
-    max_pages : int
+        Pagination type discriminator.
+    records_path : NotRequired[str]
+        Dotted path to the records list in each page payload.
+    max_pages : NotRequired[int]
         Maximum number of pages to fetch.
-    max_records : int
-        Maximum number of records to fetch.
-    cursor_param : str
-        Query parameter name for the cursor.
-    cursor_path : str
-        Dotted path to extract the next cursor from the payload.
-    start_cursor : str | int
-        Initial cursor value to start pagination.
-    page_size : int
+    max_records : NotRequired[int]
+        Maximum number of records to fetch across all pages.
+    cursor_param : NotRequired[str]
+        Query parameter name carrying the cursor value.
+    cursor_path : NotRequired[str]
+        Dotted path inside the payload pointing to the next cursor.
+    start_cursor : NotRequired[str | int]
+        Initial cursor value used for the first request.
+    page_size : NotRequired[int]
         Number of records per page.
 
-    Example
-    -------
+    Examples
+    --------
     >>> cfg: CursorPaginationConfig = {
     ...     'type': 'cursor',
     ...     'records_path': 'data.items',
@@ -175,29 +212,34 @@ class CursorPaginationConfig(TypedDict):
 
 class PagePaginationConfig(TypedDict):
     """
-    Pagination config for 'page' and 'offset' types.
+    Configuration for 'page' and 'offset' pagination types.
+
+    Summary
+    -------
+    Controls page-number or offset-based pagination. Values are optional
+    except ``type``.
 
     Attributes
     ----------
     type : Literal['page', 'offset']
-        Pagination type.
-    records_path : str
-        Dotted path to records in the payload.
-    max_pages : int
+        Pagination type discriminator.
+    records_path : NotRequired[str]
+        Dotted path to the records list in each page payload.
+    max_pages : NotRequired[int]
         Maximum number of pages to fetch.
-    max_records : int
-        Maximum number of records to fetch.
-    page_param : str
-        Query parameter name for the page number.
-    size_param : str
-        Query parameter name for the page size.
-    start_page : int
+    max_records : NotRequired[int]
+        Maximum number of records to fetch across all pages.
+    page_param : NotRequired[str]
+        Query parameter name carrying the page number.
+    size_param : NotRequired[str]
+        Query parameter name carrying the page size.
+    start_page : NotRequired[int]
         Starting page number (1-based).
-    page_size : int
+    page_size : NotRequired[int]
         Number of records per page.
 
-    Example
-    -------
+    Examples
+    --------
     >>> cfg: PagePaginationConfig = {
     ...     'type': 'page',
     ...     'records_path': 'data.items',
@@ -227,16 +269,21 @@ class RateLimitConfig(TypedDict):
     """
     Optional rate limit configuration.
 
+    Summary
+    -------
+    Provides either a fixed delay (``sleep_seconds``) or derives one from a
+    maximum requests-per-second value (``max_per_sec``).
+
     Attributes
     ----------
-    sleep_seconds : float
+    sleep_seconds : NotRequired[float | int]
         Fixed delay between requests.
-    max_per_sec : float
+    max_per_sec : NotRequired[float | int]
         Maximum requests per second; converted to ``1 / max_per_sec`` seconds
         between requests when positive.
 
-    Example
-    -------
+    Examples
+    --------
     >>> rl: RateLimitConfig = {'max_per_sec': 4}
     ... # sleep ~= 0.25s between calls
     """
@@ -251,19 +298,24 @@ class RetryPolicy(TypedDict):
     """
     Optional retry policy for HTTP requests.
 
+    Summary
+    -------
+    Controls exponential backoff with jitter (applied externally) and retry
+    eligibility by HTTP status code.
+
     Attributes
     ----------
-    max_attempts : int
-        Maximum number of attempts (including the first). If omitted,
-        a default is applied when a policy is provided.
-    backoff : float
-        Base backoff seconds for exponential backoff. Attempt ``n`` sleeps
-        ``backoff * 2**(n-1)`` before retrying.
-    retry_on : list[int]
+    max_attempts : NotRequired[int]
+        Maximum number of attempts (including the first). If omitted, a default
+        may be applied by callers.
+    backoff : NotRequired[float]
+        Base backoff seconds; attempt ``n`` sleeps ``backoff * 2**(n-1)``
+        before retrying.
+    retry_on : NotRequired[list[int]]
         HTTP status codes that should trigger a retry.
 
-    Example
-    -------
+    Examples
+    --------
     >>> rp: RetryPolicy = {
     ...     'max_attempts': 5,
     ...     'backoff': 0.5,
