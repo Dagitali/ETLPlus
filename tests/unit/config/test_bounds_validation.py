@@ -60,21 +60,34 @@ def test_rate_limit_valid_values_no_warnings():
     assert rl.validate_bounds() == []
 
 
-def test_pagination_validate_bounds_page_mode():
+@pytest.mark.parametrize('ptype', ['page', 'offset', 'cursor'])
+def test_pagination_validate_bounds_parametrized(ptype: str):
     pc = PaginationConfig(
-        type='page', start_page=0, page_size=0, max_pages=0, max_records=-1,
+        type=ptype,
+        start_page=0,
+        page_size=0,
+        max_pages=0,
+        max_records=-1,
     )
     warnings = pc.validate_bounds()
-    assert 'start_page should be >= 1' in warnings
-    assert 'page_size should be > 0' in warnings
+
+    # General warnings should always appear
     assert 'max_pages should be > 0' in warnings
     assert 'max_records should be > 0' in warnings
 
-
-def test_pagination_validate_bounds_cursor_mode():
-    pc = PaginationConfig(type='cursor', page_size=0)
-    warnings = pc.validate_bounds()
-    assert any('page_size should be > 0' in w for w in warnings)
+    if ptype in {'page', 'offset'}:
+        assert 'start_page should be >= 1' in warnings
+        assert 'page_size should be > 0' in warnings
+        assert not any(
+            'page_size should be > 0 for cursor pagination' in w
+            for w in warnings
+        )
+    else:  # cursor
+        assert not any('start_page should be >= 1' in w for w in warnings)
+        assert any(
+            'page_size should be > 0 for cursor pagination' in w
+            for w in warnings
+        )
 
 
 def test_rate_limit_validate_bounds():
