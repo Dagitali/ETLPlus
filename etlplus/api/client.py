@@ -209,6 +209,19 @@ class EndpointClient:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
+        """
+        Validate inputs and finalize immutable state.
+
+        Ensures ``base_url`` is absolute, copies and validates endpoint
+        mappings, wraps them in a read-only proxy, and synthesizes a
+        session factory when only adapter configs are provided.
+
+        Raises
+        ------
+        ValueError
+            If ``base_url`` is not absolute or endpoints are invalid.
+        """
+
         # Validate base_url is absolute.
         parts = urlsplit(self.base_url)
         if not parts.scheme or not parts.netloc:
@@ -257,16 +270,21 @@ class EndpointClient:
     # -- Magic Methods (Context Manager Protocol) -- #
 
     def __enter__(self) -> EndpointClient:
-        """Enter a context where a session is managed by the client.
+        """
+        Enter a context where a session is managed by the client.
 
-        Behavior
-        --------
-        - If an explicit ``session`` was provided at construction, it is used
-          and will NOT be closed on exit.
-        - Else if a ``session_factory`` exists, it is used to create a session
-          which WILL be closed on exit.
-        - Else a default ``requests.Session`` is created and WILL be closed on
-          exit.
+        Returns
+        -------
+        EndpointClient
+            The client itself with an active session bound for the context.
+
+        Notes
+        -----
+        - If an explicit ``session`` was provided, it is used and not closed
+          on exit.
+        - Else if ``session_factory`` exists, it creates a session that is
+          closed on exit.
+        - Else a default ``requests.Session`` is created and closed on exit.
         """
 
         if self._ctx_session is not None:
@@ -294,6 +312,13 @@ class EndpointClient:
         exc,
         tb,
     ) -> None:
+        """
+        Exit the managed-session context and close if owned.
+
+        Ensures any session created by the context is closed and internal
+        context state is cleared.
+        """
+
         s = self._ctx_session
         owns = self._ctx_owns_session
         if s is not None and owns:

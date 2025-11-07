@@ -89,6 +89,24 @@ class EndpointCredentialsBearer(AuthBase):
     # -- Magic Methods (Object Behavior) -- #
 
     def __call__(self, r):
+        """
+        Attach an Authorization header to an outgoing request.
+
+        Ensures a valid access token is available, refreshing when
+        necessary, and sets ``Authorization: Bearer <token>`` on the
+        provided request object.
+
+        Parameters
+        ----------
+        r : requests.PreparedRequest
+            The request object that will be sent by ``requests``.
+
+        Returns
+        -------
+        requests.PreparedRequest
+            The same request with the Authorization header set.
+        """
+
         self._ensure_token()
         r.headers['Authorization'] = f'Bearer {self.token}'
         return r
@@ -96,6 +114,23 @@ class EndpointCredentialsBearer(AuthBase):
     # -- Protected Methods -- #
 
     def _ensure_token(self):
+        """
+        Fetch or refresh the bearer token if expired or missing.
+
+        Uses the OAuth2 Client Credentials flow against ``token_url``.
+        Applies a small clock skew to avoid edge-of-expiry races.
+
+        Raises
+        ------
+        requests.exceptions.RequestException
+            When the token endpoint cannot be reached or returns an
+            error status.
+        RuntimeError
+            When the token response does not include ``access_token``.
+        ValueError
+            When the token response body is not valid JSON.
+        """
+
         if self.token and time.time() < self.expiry - CLOCK_SKEW_SEC:
             return
         try:
