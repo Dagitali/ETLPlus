@@ -62,13 +62,12 @@ class RateLimitConfig(BoundsWarningsMixin):
     # -- Instance Methods -- #
 
     def validate_bounds(self) -> list[str]:
-        """
-        Return non-raising warnings for suspicious numeric bounds.
+        """Return non-raising warnings for suspicious numeric bounds.
 
         Returns
         -------
         list[str]
-            A list of warning messages (empty if values look sane).
+            Warning messages (empty if values look sane).
         """
 
         warnings: list[str] = []
@@ -106,18 +105,17 @@ class RateLimitConfig(BoundsWarningsMixin):
         cls,
         obj: Mapping[str, Any] | None,
     ) -> Self | None:
-        """
-        Create a RateLimitConfig instance from a dictionary-like object.
+        """Parse a mapping into a ``RateLimitConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            The object to parse (expected to be a mapping).
+            Mapping with optional rate-limit fields, or ``None``.
 
         Returns
         -------
-        Self | None
-            A RateLimitConfig instance, or None if parsing failed.
+        RateLimitConfig | None
+            Parsed instance, or ``None`` if ``obj`` isn't a mapping.
         """
 
         if not isinstance(obj, Mapping):

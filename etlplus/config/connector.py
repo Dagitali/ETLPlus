@@ -139,23 +139,22 @@ class ConnectorApi:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a ConnectorApi from a mapping (tolerant to missing optional
-        keys).
+        Parse a mapping into a ``ConnectorApi`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the ConnectorApi from.
+            Mapping with at least ``name``.
 
         Returns
         -------
-        Self
-            The created ConnectorApi instance.
+        ConnectorApi
+            Parsed connector instance.
 
         Raises
         ------
         TypeError
-            If the input mapping is invalid.
+            If ``name`` is missing or invalid.
         """
 
         name = obj.get('name')
@@ -223,23 +222,22 @@ class ConnectorDb:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a ConnectorDb from a mapping (tolerant to missing optional
-        keys).
+        Parse a mapping into a ``ConnectorDb`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the ConnectorDb from.
+            Mapping with at least ``name``.
 
         Returns
         -------
-        Self
-            The created ConnectorDb instance.
+        ConnectorDb
+            Parsed connector instance.
 
         Raises
         ------
         TypeError
-            If the input mapping is invalid.
+            If ``name`` is missing or invalid.
         """
 
         name = obj.get('name')
@@ -299,23 +297,22 @@ class ConnectorFile:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create a ConnectorFile from a mapping (tolerant to missing optional
-        keys).
+        Parse a mapping into a ``ConnectorFile`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The mapping to create the ConnectorFile from.
+            Mapping with at least ``name``.
 
         Returns
         -------
-        Self
-            The created ConnectorFile instance.
+        ConnectorFile
+            Parsed connector instance.
 
         Raises
         ------
         TypeError
-            If the input mapping is invalid.
+            If ``name`` is missing or invalid.
         """
 
         name = obj.get('name')
@@ -336,27 +333,27 @@ class ConnectorFile:
 
 def parse_connector(obj: Mapping[str, Any]) -> Connector:
     """
-    Construct a connector instance from a generic mapping.
+    Dispatch to a concrete connector constructor based on ``type``.
 
     Parameters
     ----------
     obj : Mapping[str, Any]
-        Mapping with at least ``name`` and ``type`` keys.
+        Mapping with at least ``name`` and ``type``.
 
     Returns
     -------
     Connector
-        A concrete connector dataclass instance.
+        Concrete connector instance.
 
     Raises
     ------
     TypeError
-        If the mapping's ``type`` is unsupported or missing.
+        If ``type`` is unsupported or missing.
 
     Notes
     -----
-    - The mapping is parsed permissively by delegating to the underlying
-      ``from_obj`` constructors, which tolerate missing optional keys.
+    Delegates to the tolerant ``from_obj`` constructors for each connector
+    kind.
     """
 
     match str(obj.get('type', '')).casefold():

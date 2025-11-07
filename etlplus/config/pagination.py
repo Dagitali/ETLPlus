@@ -105,7 +105,7 @@ class PaginationConfig(BoundsWarningsMixin):
         Returns
         -------
         list[str]
-            A list of warning messages (empty if all values look sane).
+            Warning messages (empty if all values look sane).
         """
 
         warnings: list[str] = []
@@ -168,23 +168,22 @@ class PaginationConfig(BoundsWarningsMixin):
         obj: Mapping[str, Any] | None,
     ) -> Self | None:
         """
-        Create a PaginationConfig instance from a dictionary-like object.
+        Parse a mapping into a ``PaginationConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            The object to parse (expected to be a mapping).
+            Mapping with optional pagination fields, or ``None``.
 
         Returns
         -------
         PaginationConfig | None
-            A parsed instance when ``obj`` is a mapping, otherwise ``None``.
+            Parsed instance, or ``None`` if ``obj`` isn't a mapping.
 
         Notes
         -----
-        The parser is tolerant: unknown keys are ignored and numeric fields
-        are coerced with best-effort casting. Non-mapping inputs return
-        ``None`` instead of raising.
+        Tolerant: unknown keys ignored; numeric fields coerced via
+        ``to_int``; non-mapping inputs return ``None``.
         """
 
         if not isinstance(obj, Mapping):

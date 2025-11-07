@@ -108,21 +108,26 @@ class ApiProfileConfig:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create an ApiProfileConfig from a dictionary-like object.
+        Parse a mapping into an ``ApiProfileConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The object to parse (expected to be a mapping).
+            Mapping with at least ``base_url``.
 
         Returns
         -------
         ApiProfileConfig
-            The parsed ApiProfileConfig instance.
+            Parsed profile configuration.
+
+        Raises
+        ------
+        TypeError
+            If ``obj`` is not a mapping or ``base_url`` is missing/invalid.
 
         Notes
         -----
-        TypedDict shape: ApiProfileConfigMap (for editor and type-checkers).
+        TypedDict shape: ``ApiProfileConfigMap`` (editor/type-checker hint).
         """
 
         if not isinstance(obj, Mapping):
@@ -336,22 +341,26 @@ class ApiConfig:
         cls,
         obj: Mapping[str, Any],
     ) -> Self:
-        """
-        Create an ApiConfig instance from a dictionary-like object.
+        """Parse a mapping into an ``ApiConfig`` instance.
 
         Parameters
         ----------
-        obj : Config
-            The object to parse (expected to be a mapping).
+        obj : Mapping[str, Any]
+            Mapping containing either ``base_url`` or a ``profiles`` block.
 
         Returns
         -------
         ApiConfig
-            The parsed ApiConfig instance.
+            Parsed API configuration.
+
+        Raises
+        ------
+        TypeError
+            If ``obj`` is not a mapping or mandatory keys are missing.
 
         Notes
         -----
-        TypedDict shape: ApiConfigMap (for editor and type-checkers).
+        TypedDict shape: ``ApiConfigMap`` (editor/type-checker hint).
         """
 
         # Accept any mapping-like object; provide a consistent error otherwise.
@@ -465,23 +474,26 @@ class EndpointConfig:
         cls,
         obj: str | Mapping[str, Any],
     ) -> Self:
-        """
-        Create an EndpointConfig instance from a string or dictionary-like
-        object.
+        """Parse a string or mapping into an ``EndpointConfig`` instance.
 
         Parameters
         ----------
-        obj : str | Config
-            The object to parse (expected to be a str or mapping).
+        obj : str | Mapping[str, Any]
+            Either a bare path string or a mapping with endpoint fields.
 
         Returns
         -------
         EndpointConfig
-            The parsed EndpointConfig instance.
+            Parsed endpoint configuration.
+
+        Raises
+        ------
+        TypeError
+            If the input is neither str nor mapping, or ``path`` is missing.
 
         Notes
         -----
-        TypedDict shape: EndpointConfigMap (for editor and type-checkers).
+        TypedDict shape: ``EndpointConfigMap`` (editor/type-checker hint).
         """
 
         # Allow either a bare string path or a mapping with explicit fields.

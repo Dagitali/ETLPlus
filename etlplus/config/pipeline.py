@@ -49,17 +49,17 @@ def _build_jobs(
     raw: Mapping[str, Any],
 ) -> list[JobConfig]:
     """
-    Build a list of JobConfig objects from the raw configuration.
+    Return a list of ``JobConfig`` objects parsed from the mapping.
 
     Parameters
     ----------
     raw : Mapping[str, Any]
-        The raw configuration dictionary.
+        Raw pipeline mapping.
 
     Returns
     -------
     list[JobConfig]
-        List of JobConfig instances.
+        Parsed job configurations.
     """
 
     jobs: list[JobConfig] = []
@@ -126,17 +126,17 @@ def _build_sources(
     raw: Mapping[str, Any],
 ) -> list[Connector]:
     """
-    Build a list of data sources from the raw configuration.
+    Return a list of source connectors parsed from the mapping.
 
     Parameters
     ----------
     raw : Mapping[str, Any]
-        The raw configuration dictionary.
+        Raw pipeline mapping.
 
     Returns
     -------
     list[Connector]
-        List of Connector instances (sources).
+        Parsed source connectors.
      """
 
     return _build_connectors(raw, 'sources')
@@ -146,17 +146,17 @@ def _build_targets(
     raw: Mapping[str, Any],
 ) -> list[Connector]:
     """
-    Build a list of data targets from the raw configuration.
+    Return a list of target connectors parsed from the mapping.
 
     Parameters
     ----------
     raw : Mapping[str, Any]
-        The raw configuration dictionary.
+        Raw pipeline mapping.
 
     Returns
     -------
     list[Connector]
-        List of Connector instances (targets).
+        Parsed target connectors.
     """
 
     return _build_connectors(raw, 'targets')
@@ -167,7 +167,7 @@ def _build_connectors(
     key: str,
 ) -> list[Connector]:
     """
-    Generic builder for connector lists using tolerant parsing.
+    Return parsed connectors from ``raw[key]`` using tolerant parsing.
 
     Unknown or malformed entries are skipped to preserve permissiveness.
 
@@ -176,12 +176,12 @@ def _build_connectors(
     raw : Mapping[str, Any]
         Raw pipeline mapping.
     key : str
-        Top-level key containing the list (e.g., "sources" or "targets").
+        List-containing top-level key ("sources" or "targets").
 
     Returns
     -------
     list[Connector]
-        List of constructed connector instances, skipping malformed entries.
+        Constructed connector instances (malformed entries skipped).
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
@@ -206,10 +206,10 @@ def load_pipeline_config(
     env: Mapping[str, str] | None = None,
 ) -> PipelineConfig:
     """
-    Read a pipeline YAML file into a PipelineConfig dataclass.
+    Load a pipeline YAML file into a ``PipelineConfig`` instance.
 
-    Delegates to PipelineConfig.from_yaml for the actual construction and
-    optional variable substitution.
+    Delegates to ``PipelineConfig.from_yaml`` for construction and optional
+    variable substitution.
     """
 
     return PipelineConfig.from_yaml(path, substitute=substitute, env=env)
@@ -279,22 +279,22 @@ class PipelineConfig:
         env: Mapping[str, str] | None = None,
     ) -> Self:
         """
-        Create a PipelineConfig instance from a YAML file.
+        Parse a YAML file into a ``PipelineConfig`` instance.
 
         Parameters
         ----------
         path : Path | str
-            The path to the YAML file.
-        substitute : bool, optional
-            Whether to perform variable substitution, by default False.
-        env : Mapping[str, str] | None, optional
-            An optional mapping of environment variables to use for
-            substitution, by default None (uses os.environ).
+            Path to the YAML file.
+        substitute : bool, default False
+            Perform variable substitution after initial parse.
+        env : Mapping[str, str] | None, default None
+            Environment mapping used for substitution; if omitted use
+            ``os.environ``.
 
         Returns
         -------
-        Self
-            The created PipelineConfig instance.
+        PipelineConfig
+            Parsed pipeline configuration.
         """
 
         raw = read_yaml(Path(path))
@@ -324,17 +324,17 @@ class PipelineConfig:
         raw: Mapping[str, Any],
     ) -> Self:
         """
-        Create a PipelineConfig instance from a dictionary.
+        Parse a mapping into a ``PipelineConfig`` instance.
 
         Parameters
         ----------
         raw : Mapping[str, Any]
-            The raw configuration dictionary.
+            Raw pipeline mapping.
 
         Returns
         -------
-        Self
-            The created PipelineConfig instance.
+        PipelineConfig
+            Parsed pipeline configuration.
         """
 
         # Basic metadata

@@ -54,20 +54,18 @@ class ProfileConfig:
         cls,
         obj: Mapping[str, Any] | None,
     ) -> Self:
-        """
-        Create a ProfileConfig from a mapping.
+        """Parse a mapping into a ``ProfileConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            The mapping to create the ProfileConfig from.
+            Mapping with optional profile fields, or ``None``.
 
         Returns
         -------
         ProfileConfig
-            Parsed profile configuration; if ``obj`` is not a mapping,
-            an empty/default instance is returned. All ``env`` values are
-            coerced to strings.
+            Parsed profile configuration; non-mapping input yields a default
+            instance. All ``env`` values are coerced to strings.
         """
 
         if not isinstance(obj, Mapping):
