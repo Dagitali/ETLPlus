@@ -50,7 +50,7 @@ class PaginationConfig(BoundsWarningsMixin):
 
     Attributes
     ----------
-    type : str | None
+    type : PaginationType | None
         Pagination type: "page", "offset", or "cursor".
     page_param : str | None
         Name of the page parameter.
@@ -72,11 +72,6 @@ class PaginationConfig(BoundsWarningsMixin):
         Maximum number of pages to retrieve.
     max_records : int | None
         Maximum number of records to retrieve.
-
-    Methods
-    -------
-    from_obj(obj: Any) -> PaginationConfig | None
-        Create a PaginationConfig instance from a dictionary-like object.
     """
 
     # -- Attributes -- #

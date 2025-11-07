@@ -52,11 +52,6 @@ class RateLimitConfig(BoundsWarningsMixin):
         Number of seconds to sleep between requests.
     max_per_sec : float | None
         Maximum number of requests per second.
-
-    Methods
-    -------
-    from_obj(obj: Any) -> RateLimitConfig | None
-        Create a RateLimitConfig instance from a dictionary-like object.
     """
 
     # -- Attributes -- #
