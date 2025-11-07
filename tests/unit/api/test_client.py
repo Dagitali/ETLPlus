@@ -19,51 +19,6 @@ import etlplus.api.client as cmod
 from etlplus.api import EndpointClient
 
 
-@pytest.mark.parametrize(
-    'base_url,base_path,endpoint,expected',
-    [
-        (
-            'https://api.example.com',
-            'v2',
-            'items',
-            'https://api.example.com/v2/items',
-        ),
-        (
-            'https://api.example.com',
-            '/v2',
-            '/items',
-            'https://api.example.com/v2/items',
-        ),
-        (
-            'https://api.example.com/api',
-            'v1',
-            '/items',
-            'https://api.example.com/api/v1/items',
-        ),
-        # Note: trailing slashes on base_url/base_path not normalized by client
-    ],
-)
-def test_url_composition(monkeypatch, base_url, base_path, endpoint, expected):
-    """URL composition should honor base_url path + base_path variants."""
-    captured: list[str] = []
-
-    def fake_extract(kind: str, url: str, **_kwargs: Any):
-        assert kind == 'api'
-        captured.append(url)
-        return {'ok': True}
-
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-
-    client = EndpointClient(
-        base_url=base_url,
-        endpoints={'list': endpoint},
-        base_path=base_path,
-    )
-    out = client.paginate('list', pagination=None)
-    assert out == {'ok': True}
-    assert captured == [expected]
-
-
 def test_paginate_page_short_batch(monkeypatch):
     """Page pagination stops when last batch shorter than page_size."""
 
@@ -147,3 +102,48 @@ def test_paginate_page_size_normalization(monkeypatch):
         'https://example.test/x', None, None, None, pagination,
     )
     assert [r['id'] for r in data] == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
+    'base_url,base_path,endpoint,expected',
+    [
+        (
+            'https://api.example.com',
+            'v2',
+            'items',
+            'https://api.example.com/v2/items',
+        ),
+        (
+            'https://api.example.com',
+            '/v2',
+            '/items',
+            'https://api.example.com/v2/items',
+        ),
+        (
+            'https://api.example.com/api',
+            'v1',
+            '/items',
+            'https://api.example.com/api/v1/items',
+        ),
+        # Note: trailing slashes on base_url/base_path not normalized by client
+    ],
+)
+def test_url_composition(monkeypatch, base_url, base_path, endpoint, expected):
+    """URL composition should honor base_url path + base_path variants."""
+    captured: list[str] = []
+
+    def fake_extract(kind: str, url: str, **_kwargs: Any):
+        assert kind == 'api'
+        captured.append(url)
+        return {'ok': True}
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    client = EndpointClient(
+        base_url=base_url,
+        endpoints={'list': endpoint},
+        base_path=base_path,
+    )
+    out = client.paginate('list', pagination=None)
+    assert out == {'ok': True}
+    assert captured == [expected]
