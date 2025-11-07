@@ -2,19 +2,19 @@
 etlplus.api.transport
 =====================
 
-A module for configuring ``requests`` HTTPAdapters for HTTP transport with
-connection pooling and optional ``urllib3`` retry behavior.
+Configure ``requests`` ``HTTPAdapter`` instances with connection pooling and
+optional ``urllib3`` retry behavior.
 
-Notes
------
+Summary
+-------
 ``build_http_adapter`` accepts a lightweight mapping and translates it into
 an ``HTTPAdapter``. When a retry dict is provided, it is mapped to
-an ``HTTPAdapter``. When a retry dict is provided, it is mapped to
-``urllib3.util.retry.Retry`` where available; otherwise, it falls back to a
-simple integer retry count or no retries.
+``urllib3.util.retry.Retry`` where available; otherwise, falls back to an
+integer retry count or no retries.
 
 Examples
 --------
+>>> from etlplus.api import build_http_adapter
 >>> cfg = {
 ...   "pool_connections": 10,
 ...   "pool_maxsize": 10,

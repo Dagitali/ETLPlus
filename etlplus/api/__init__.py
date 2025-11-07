@@ -1,23 +1,21 @@
 """
-etlplus.api.__init__
-====================
+etlplus.api
+===========
 
-The top-level module defining ``:mod:etlplus.api``, a package of high-level
-helpers for building simple REST API clients with pagination, retry, and
-transport configuration.
+High-level helpers for building REST API clients with pagination, retry,
+rate limiting, and transport configuration.
 
 Summary
 -------
-Use ``:class:etlplus.api.client.EndpointClient`` to register relative endpoint
-paths under a base URL and to paginate API responses. The client can apply
-rate limits between requests and perform exponential-backoff retries with
-full jitter.
+Use :class:`etlplus.api.EndpointClient` to register relative endpoint paths
+under a base URL and paginate responses. The client can apply rate limits
+between requests and perform exponential-backoff retries with full jitter.
 
 Examples
 --------
-
 Page-based pagination
 ^^^^^^^^^^^^^^^^^^^^^
+>>> from etlplus.api import EndpointClient
 >>> client = EndpointClient(
 ...     base_url="https://api.example.com/v1",
 ...     endpoints={"list_users": "/users"},
@@ -50,28 +48,25 @@ Retries and network errors
 
 Absolute URLs
 ^^^^^^^^^^^^^
-When you need to call an already-composed absolute URL, use
-:meth:`EndpointClient.paginate_url`. It accepts the same pagination config
-and returns either the raw JSON object (no pagination) or a list of record
-dicts aggregated across pages.
+Use :meth:`EndpointClient.paginate_url` for an already composed absolute URL.
+It accepts the same pagination config and returns either the raw JSON object
+(no pagination) or a list of record dicts aggregated across pages.
 
 Notes
 -----
 - ``EndpointClient.endpoints`` is read-only at runtime.
-- Default pagination parameters are centralized on the client (e.g.,
-    ``page``, ``per_page``, ``cursor``, ``limit``, start page ``1``, and
-    page size ``100``). Override via the pagination config as needed.
-- Retries are opt-in via the ``retry`` parameter. Backoff uses jitter to
-    reduce thundering herds. Use ``retry_network_errors=True`` to also retry
-    timeouts/connection errors.
+- Pagination defaults are centralized on the client (``page``, ``per_page``,
+  ``cursor``, ``limit``; start page ``1``; page size ``100``).
+- Retries are opt-in via the ``retry`` parameter; backoff uses jitter.
+- Use ``retry_network_errors=True`` to also retry timeouts/connection errors.
 
 See Also
 --------
-- :mod:`etlplus.api.types` for shared types such as
-    ``PaginationConfig``, ``RetryPolicy``, and HTTP adapter configs
+- :mod:`etlplus.api.types` for shared types (``PaginationConfig``,
+  ``RetryPolicy``, HTTP adapter configs)
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
 - :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
-    from rate limit settings
+  from rate limit settings
 """
 from __future__ import annotations
 

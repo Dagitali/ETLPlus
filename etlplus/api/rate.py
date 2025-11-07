@@ -2,9 +2,17 @@
 etlplus.api.rate
 ================
 
-A module for computing inter-request sleep durations from a rate limit
-configuration. Supports explicit ``sleep_seconds`` or a derived value from
-``max_per_sec``.
+Compute inter-request sleep durations from a rate limit configuration.
+
+Summary
+-------
+Supports explicit ``sleep_seconds`` or deriving a delay from ``max_per_sec``.
+
+Notes
+-----
+- Precedence is: overrides.sleep_seconds > overrides.max_per_sec >
+    rate_limit.sleep_seconds > rate_limit.max_per_sec.
+- Non-numeric or non-positive values are ignored; fallback is ``0.0``.
 
 Examples
 --------

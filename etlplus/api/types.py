@@ -2,8 +2,8 @@
 etlplus.api.types
 =================
 
-A module centralizing type aliases and ``TypedDict``-based configurations used
-in the ``:mod:etlplus.api`` package.
+Centralized type aliases and ``TypedDict``-based configurations used in the
+:mod:`etlplus.api` package.
 
 Contents
 --------

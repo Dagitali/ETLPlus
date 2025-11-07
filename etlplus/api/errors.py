@@ -2,18 +2,16 @@
 etlplus.api.errors
 ==================
 
-A module defining exception types with rich context for catching REST API
-errors, carrying useful context for debugging REST API failures.
+Exception types with rich context for debugging REST API failures.
 
 Summary
 -------
-- :class:`ApiRequestError`: Base error for HTTP request failures, including
-    the URL, status code, number of attempts, whether retries occurred, and
-    the retry policy in effect.
-- :class:`ApiAuthError`: Subclass for authentication/authorization failures
-    (e.g., 401/403).
-- :class:`PaginationError`: Adds ``page`` information for failures that
-    occur while paginating.
+- :class:`ApiRequestError`: base error for HTTP request failures, including
+    the URL, status code, number of attempts, retry flag, and retry policy.
+- :class:`ApiAuthError`: specialization for authentication/authorization
+    failures (e.g., 401/403).
+- :class:`PaginationError`: adds ``page`` context for failures during
+    pagination.
 
 Examples
 --------
