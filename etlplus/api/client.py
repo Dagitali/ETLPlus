@@ -79,86 +79,100 @@ from .types import RetryPolicy
 @dataclass(frozen=True, slots=True)
 class EndpointClient:
     """
-    Immutable registry of API paths rooted at a base URL.
+    Immutable registry of endpoint path templates rooted at a base URL.
+
+    Summary
+    -------
+    Provides helpers for composing absolute URLs, paginating responses,
+    applying client-wide rate limits, and performing jittered exponential
+    backoff retries. The dataclass is frozen and uses ``slots`` for memory
+    efficiency; mutating attribute values is disallowed.
 
     Parameters
     ----------
     base_url : str
-        Absolute base URL, e.g., `"https://api.example.com/v1"`
+        Absolute base URL, e.g., ``"https://api.example.com/v1"``.
     endpoints : Mapping[str, str]
-        Mapping of endpoint keys to *relative* paths, e.g.,
-        `{"list_users": "/users", "user": "/users/{id}"}`.
+        Mapping of endpoint keys to relative paths, e.g.,
+        ``{"list_users": "/users", "user": "/users/{id}"}``.
     base_path : str | None, optional
-        Optional base path to prepend to all endpoint paths. For example, if
-        the base path is `/v2`, the effective endpoint path for `list_users`
-        would be `/v2/users`.
+        Optional base path prefix (``/v2``) prepended to all endpoint
+        paths when building URLs.
     retry : RetryPolicy | None, optional
-        Optional retry policy applied to HTTP requests performed by this
-        client. Retries use exponential backoff with jitter to reduce
-        thundering herds. If omitted, no automatic retries are performed.
+        Optional retry policy. When provided, failed requests matching
+        ``retry_on`` statuses are retried with full jitter.
     retry_network_errors : bool, optional
-        When True, also retry on network errors such as timeouts and
-        connection resets, in addition to HTTP status-based retries.
-        Defaults to False.
+        When ``True``, also retry on network errors (timeouts, connection
+        resets). Defaults to ``False``.
     rate_limit : RateLimitConfig | None, optional
         Optional client-wide rate limit used to derive an inter-request
-        delay when an explicit ``sleep_seconds`` is not provided.
+        delay when an explicit ``sleep_seconds`` isn't supplied.
     session : requests.Session | None, optional
-        Optional HTTP session to use for requests. When provided, all
-        requests are executed via ``session.get``.
+        Explicit HTTP session for all requests.
     session_factory : Callable[[], requests.Session] | None, optional
-        Optional factory to lazily create a session per client call. Ignored
-        if ``session`` is provided.
+        Factory used to lazily create a session. Ignored if ``session`` is
+        provided.
+    session_adapters : list[HTTPAdapterMountConfig] | None, optional
+        Adapter mount configuration(s) used to build a session lazily when
+        neither ``session`` nor ``session_factory`` is supplied.
 
     Attributes
     ----------
-    base_url : str
-        The absolute base URL used as the root for all endpoints (e.g.,
-        `"https://api.example.com/v1"`).
     endpoints : Mapping[str, str]
-        Mapping of endpoint keys to *relative* paths (read-only), e.g.,
-        `{"list_users": "/users", "user": "/users/{id}"}`. A defensive copy of
-        the mapping supplied at construction. The dataclass is frozen
-        (attributes are read-only), and the mapping is wrapped in a
-        read-only proxy to prevent mutation.
+        Read-only mapping of endpoint keys to relative paths (wrapped in
+        a ``MappingProxyType``).
     retry : RetryPolicy | None
-        Optional retry policy. When set, requests are retried on configured
-        HTTP status codes with exponential backoff and jitter.
+        Retry policy reference (may be ``None``).
     retry_network_errors : bool
-        When True, also retry on common network failures (timeouts,
-        connection errors).
+        Whether network errors are retried in addition to HTTP statuses.
     rate_limit : RateLimitConfig | None
-        Optional rate limiting configuration used to compute an inter-request
-        sleep when not explicitly provided to ``paginate``/``paginate_url``.
-    session : Any | None
-        Optional HTTP session used for API requests.
-    session_factory : Callable[[], Any] | None
-        Optional factory used to create a session when needed.
+        Client-wide rate limit configuration (may be ``None``).
+    session, session_factory : Any | Callable | None
+        Explicit session or factory used for requests.
+    session_adapters : list[HTTPAdapterMountConfig] | None
+        Transport-level adapter mount configuration(s) for connection
+        pooling and urllib3-based retries.
 
     Raises
     ------
     ValueError
-        If `base_url` is not absolute or if any endpoint key/value is not a
-        non-empty `str`.
+        If ``base_url`` is not absolute or endpoint keys/values are invalid.
+
+    Notes
+    -----
+    - Endpoint mapping is defensively copied and wrapped read-only.
+    - Pagination defaults (page size, start page, cursor param, etc.) are
+      centralized as class variables.
+    - Context manager support (``with EndpointClient(...) as client``)
+      manages session lifecycle; owned sessions are closed on exit.
+    - Retries use exponential backoff with jitter capped by
+      ``DEFAULT_RETRY_CAP`` seconds.
 
     Examples
     --------
-    >>> ep = Endpoint(
+    Basic URL composition
+    ^^^^^^^^^^^^^^^^^^^^^
+    >>> client = EndpointClient(
     ...     base_url="https://api.example.com/v1",
-    ...     endpoints={"list_users": "users", "user": "/users/{id}"}
+    ...     endpoints={"list_users": "/users", "user": "/users/{id}"},
     ... )
-    >>> ep.url("list_users", {"active": "true"})
+    >>> client.url("list_users", query_parameters={"active": "true"})
     'https://api.example.com/v1/users?active=true'
+    >>> client.url("user", path_parameters={"id": 42})
+    'https://api.example.com/v1/users/42'
 
-    Configure retries with jitter and (optionally) network error retries:
-
+    Page pagination with retries
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     >>> client = EndpointClient(
     ...     base_url="https://api.example.com/v1",
     ...     endpoints={"list": "/items"},
     ...     retry={"max_attempts": 5, "backoff": 0.5, "retry_on": [429, 503]},
     ...     retry_network_errors=True,
     ... )
-    >>> client.paginate("list", pagination={"type": "page", "page_size": 50})
+    >>> rows = client.paginate(
+    ...     "list",
+    ...     pagination={"type": "page", "page_size": 50},
+    ... )
     """
 
     # -- Attributes -- #
@@ -885,9 +899,9 @@ class EndpointClient:
             If `endpoint_key` is unknown or a required `{placeholder}`
             in the path has no corresponding entry in `path_parameters`.
 
-        Examples
-        --------
-        >>> ep = Endpoint(
+    Examples
+    --------
+    >>> ep = EndpointClient(
         ...     base_url='https://api.example.com/v1',
         ...     endpoints={
         ...         'user': '/users/{id}',

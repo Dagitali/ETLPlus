@@ -39,22 +39,34 @@ from .types import RetryPolicy
 @dataclass(slots=True)
 class ApiRequestError(requests.RequestException):
     """
-    Base error for API request failures with useful context.
+    Base error for API request failures with rich context.
 
-    Attributes
+    Parameters
     ----------
     url : str
         Absolute URL that was requested.
-    status : int | None
+    status : int | None, optional
         HTTP status code when available.
-    attempts : int
-        Number of attempts performed.
-    retried : bool
+    attempts : int, optional
+        Number of attempts performed (defaults to ``1``).
+    retried : bool, optional
         Whether any retry attempts were made.
-    retry_policy : RetryPolicy | None
+    retry_policy : RetryPolicy | None, optional
         The retry policy in effect, if any.
-    cause : Exception | None
-        The original underlying exception.
+    cause : Exception | None, optional
+        Original underlying exception.
+
+    Attributes
+    ----------
+    (Same as parameters; stored for introspection/logging.)
+
+    Examples
+    --------
+    >>> try:
+    ...     raise ApiRequestError(url="https://api.example.com/x", status=500)
+    ... except ApiRequestError as e:
+    ...     print(e.status, e.attempts)
+    500 1
     """
 
     # -- Attributes -- #
@@ -86,10 +98,24 @@ class PaginationError(ApiRequestError):
     """
     Error raised during pagination with page context.
 
+    Parameters
+    ----------
+    page : int | None, optional
+        Page number (1-based) or request count when applicable.
+    **kwargs
+        Remaining keyword arguments forwarded to ``ApiRequestError``.
+
     Attributes
     ----------
     page : int | None
-        The page number (1-based) or request count when applicable.
+        Stored page number.
+    (See ``ApiRequestError`` for remaining attributes.)
+
+    Examples
+    --------
+    >>> err = PaginationError(url="u", status=400, page=3)
+    >>> str(err).startswith("PaginationError(")
+    True
     """
 
     # -- Attributes -- #

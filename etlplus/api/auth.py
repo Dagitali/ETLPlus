@@ -57,22 +57,39 @@ CLOCK_SKEW_SEC = 30
 @dataclass(slots=True, repr=False, eq=False)
 class EndpointCredentialsBearer(AuthBase):
     """
-    Bearer token authentication via OAuth2 client credentials flow.
+    Bearer token authentication via the OAuth2 Client Credentials flow.
+
+    Summary
+    -------
+    Implements ``requests`` ``AuthBase`` to lazily obtain and refresh an
+    access token, adding ``Authorization: Bearer <token>`` to outgoing
+    requests. A small clock skew avoids edge-of-expiry races.
+
+    Parameters
+    ----------
+    token_url : str
+        OAuth2 token endpoint URL.
+    client_id : str
+        OAuth2 client ID.
+    client_secret : str
+        OAuth2 client secret.
+    scope : str | None, optional
+        Optional OAuth2 scope string.
 
     Attributes
     ----------
-    token_url : str
-        The OAuth2 token endpoint URL.
-    client_id : str
-        The OAuth2 client ID.
-    client_secret : str
-        The OAuth2 client secret.
-    scope : str | None
-        Optional OAuth2 scope.
     token : str | None
-        The current access token, if obtained.
+        Current access token (``None`` until first successful request).
     expiry : float
-        The UNIX timestamp when the token expires.
+        UNIX timestamp when the token expires.
+
+    Notes
+    -----
+    - Tokens are refreshed when remaining lifetime < ``CLOCK_SKEW_SEC``.
+    - Network/HTTP errors propagate as ``requests`` exceptions from
+      ``_ensure_token``.
+    - Missing ``access_token`` in a successful response raises
+      ``RuntimeError``.
     """
 
     # -- Attributes -- #
