@@ -186,14 +186,14 @@ def pagination_from_defaults(
         type=norm_type,
         page_param=page_param,
         size_param=size_param,
-        start_page=start_page,
-        page_size=page_size,
+        start_page=to_int(start_page),
+        page_size=to_int(page_size),
         cursor_param=cursor_param,
         cursor_path=cursor_path,
         start_cursor=None,
         records_path=records_path,
-        max_pages=max_pages,
-        max_records=max_records,
+        max_pages=to_int(max_pages),
+        max_records=to_int(max_records),
     )
 
 
@@ -227,8 +227,8 @@ def rate_limit_from_defaults(
     from .rate_limit import RateLimitConfig as _RateLimitConfig
 
     return _RateLimitConfig(
-        sleep_seconds=sleep_seconds,
-        max_per_sec=max_per_sec,
+        sleep_seconds=to_float(sleep_seconds),
+        max_per_sec=to_float(max_per_sec),
     )
 
 
