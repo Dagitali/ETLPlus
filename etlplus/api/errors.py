@@ -129,7 +129,7 @@ class PaginationError(ApiRequestError):
 
     page: int | None = None
 
-    # -- Maggic Methods (Object Representation) -- #
+    # -- Magic Methods (Object Representation) -- #
 
     def __str__(self) -> str:  # pragma: no cover - formatting only
         base = super().__str__()
