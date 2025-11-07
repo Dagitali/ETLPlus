@@ -31,6 +31,7 @@ from .pipeline import PipelineConfig
 from .profile import ProfileConfig
 from .rate_limit import RateLimitConfig
 from .types import Connector
+from .types import ConnectorType
 
 __all__ = [
     # API
@@ -42,6 +43,7 @@ __all__ = [
 
     # Connectors
     'Connector',
+    'ConnectorType',
     'ConnectorApi',
     'ConnectorDb',
     'ConnectorFile',
