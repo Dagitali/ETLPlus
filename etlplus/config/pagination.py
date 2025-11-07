@@ -174,6 +174,17 @@ class PaginationConfig(BoundsWarningsMixin):
         ----------
         obj : Mapping[str, Any] | None
             The object to parse (expected to be a mapping).
+
+        Returns
+        -------
+        PaginationConfig | None
+            A parsed instance when ``obj`` is a mapping, otherwise ``None``.
+
+        Notes
+        -----
+        The parser is tolerant: unknown keys are ignored and numeric fields
+        are coerced with best-effort casting. Non-mapping inputs return
+        ``None`` instead of raising.
         """
 
         if not isinstance(obj, Mapping):

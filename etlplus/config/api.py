@@ -200,12 +200,25 @@ class ApiConfig:
 
         return profiles.get(name)
 
-    def _profile_attr(self, attr: str) -> Any:
+    def _profile_attr(
+        self,
+        attr: str,
+    ) -> Any:
         """
         Generic accessor for an attribute on the selected profile.
 
         This centralizes profile selection logic so "effective_*" helpers
         become one-liners. Returns None if no profile or attribute missing.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute name to fetch from the selected profile.
+
+        Returns
+        -------
+        Any
+            The attribute value, or ``None`` when unavailable.
         """
 
         prof = self._selected_profile()

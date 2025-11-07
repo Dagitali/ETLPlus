@@ -348,6 +348,11 @@ def parse_connector(obj: Mapping[str, Any]) -> Connector:
     Connector
         A concrete connector dataclass instance.
 
+    Raises
+    ------
+    TypeError
+        If the mapping's ``type`` is unsupported or missing.
+
     Notes
     -----
     - The mapping is parsed permissively by delegating to the underlying

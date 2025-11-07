@@ -57,12 +57,17 @@ class ProfileConfig:
         """
         Create a ProfileConfig from a mapping.
 
-        Coerces all env values to str and tolerates missing keys.
-
         Parameters
         ----------
         obj : Mapping[str, Any] | None
             The mapping to create the ProfileConfig from.
+
+        Returns
+        -------
+        ProfileConfig
+            Parsed profile configuration; if ``obj`` is not a mapping,
+            an empty/default instance is returned. All ``env`` values are
+            coerced to strings.
         """
 
         if not isinstance(obj, Mapping):
