@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import cast
 from typing import Iterable
 from typing import TYPE_CHECKING
 
@@ -167,8 +168,22 @@ def pagination_from_defaults(
     # Local import to avoid circular dependency with pagination -> utils
     from .pagination import PaginationConfig as _PaginationConfig
 
+    # Normalize pagination type to supported literal when possible.
+    # Import inside function to avoid circulars; narrow to literal.
+    from .types import PaginationType as _PaginationType
+    norm_type: _PaginationType | None
+    match str(ptype).strip().lower() if ptype is not None else '':
+        case 'page':
+            norm_type = cast(_PaginationType, 'page')
+        case 'offset':
+            norm_type = cast(_PaginationType, 'offset')
+        case 'cursor':
+            norm_type = cast(_PaginationType, 'cursor')
+        case _:
+            norm_type = None
+
     return _PaginationConfig(
-        type=str(ptype) if ptype is not None else None,
+        type=norm_type,
         page_param=page_param,
         size_param=size_param,
         start_page=start_page,

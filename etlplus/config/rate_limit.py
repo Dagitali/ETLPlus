@@ -19,6 +19,7 @@ from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from .mixins import BoundsWarningsMixin
 from .utils import to_float
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ __all__ = ['RateLimitConfig']
 
 
 @dataclass(slots=True)
-class RateLimitConfig:
+class RateLimitConfig(BoundsWarningsMixin):
     """
     Configuration for rate limiting in API requests.
 
@@ -70,10 +71,16 @@ class RateLimitConfig:
         """
 
         warnings: list[str] = []
-        if (ss := self.sleep_seconds) is not None and ss < 0:
-            warnings.append('sleep_seconds should be >= 0')
-        if (mps := self.max_per_sec) is not None and mps <= 0:
-            warnings.append('max_per_sec should be > 0')
+        self._warn_if(
+            (ss := self.sleep_seconds) is not None and ss < 0,
+            'sleep_seconds should be >= 0',
+            warnings,
+        )
+        self._warn_if(
+            (mps := self.max_per_sec) is not None and mps <= 0,
+            'max_per_sec should be > 0',
+            warnings,
+        )
 
         return warnings
 

@@ -15,14 +15,16 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import cast
 from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from .mixins import BoundsWarningsMixin
 from .utils import to_int
 
 if TYPE_CHECKING:
-    from .types import PaginationConfigMap
+    from .types import PaginationConfigMap, PaginationType
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,7 +37,7 @@ __all__ = ['PaginationConfig']
 
 
 @dataclass(slots=True)
-class PaginationConfig:
+class PaginationConfig(BoundsWarningsMixin):
     """
     Configuration for pagination in API requests.
 
@@ -72,7 +74,7 @@ class PaginationConfig:
 
     # -- Attributes -- #
 
-    type: str | None = None  # "page" | "offset" | "cursor"
+    type: PaginationType | None = None  # "page" | "offset" | "cursor"
 
     # Page/offset
     page_param: str | None = None
@@ -107,23 +109,36 @@ class PaginationConfig:
         warnings: list[str] = []
 
         # General limits
-        if (mp := self.max_pages) is not None and mp <= 0:
-            warnings.append('max_pages should be > 0')
-        if (mr := self.max_records) is not None and mr <= 0:
-            warnings.append('max_records should be > 0')
+        self._warn_if(
+            (mp := self.max_pages) is not None and mp <= 0,
+            'max_pages should be > 0',
+            warnings,
+        )
+        self._warn_if(
+            (mr := self.max_records) is not None and mr <= 0,
+            'max_records should be > 0',
+            warnings,
+        )
 
         # Page/offset
         match (self.type or '').strip().lower():
             case 'page' | 'offset':
-                if (sp := self.start_page) is not None and sp < 1:
-                    warnings.append('start_page should be >= 1')
-                if (ps := self.page_size) is not None and ps <= 0:
-                    warnings.append('page_size should be > 0')
+                self._warn_if(
+                    (sp := self.start_page) is not None and sp < 1,
+                    'start_page should be >= 1',
+                    warnings,
+                )
+                self._warn_if(
+                    (ps := self.page_size) is not None and ps <= 0,
+                    'page_size should be > 0',
+                    warnings,
+                )
             case 'cursor':
-                if (ps := self.page_size) is not None and ps <= 0:
-                    warnings.append(
-                        'page_size should be > 0 for cursor pagination',
-                    )
+                self._warn_if(
+                    (ps := self.page_size) is not None and ps <= 0,
+                    'page_size should be > 0 for cursor pagination',
+                    warnings,
+                )
             case _:
                 pass
 
@@ -162,11 +177,21 @@ class PaginationConfig:
         if not isinstance(obj, Mapping):
             return None
 
-        # Normalize type to str when present; cast numeric fields.
+        # Normalize type to a supported literal; cast numeric fields.
         t = obj.get('type')
+        norm_type: PaginationType | None
+        match str(t).strip().lower() if t is not None else '':
+            case 'page':
+                norm_type = cast('PaginationType', 'page')
+            case 'offset':
+                norm_type = cast('PaginationType', 'offset')
+            case 'cursor':
+                norm_type = cast('PaginationType', 'cursor')
+            case _:
+                norm_type = None
 
         return cls(
-            type=str(t) if t is not None else None,
+            type=norm_type,
             page_param=obj.get('page_param'),
             size_param=obj.get('size_param'),
             start_page=to_int(obj.get('start_page')),
