@@ -63,8 +63,16 @@ class HTTPAdapterRetryConfig(TypedDict, total=False):
 
     Attributes
     ----------
-    total, connect, read, redirect, status : int
+    total : int
         Retry counters matching urllib3 semantics.
+    connect : int
+        Number of connection-related retries.
+    read : int
+        Number of read-related retries.
+    redirect : int
+        Number of redirect-related retries.
+    status : int
+        Number of status-related retries.
     backoff_factor : float
         Base factor for exponential backoff between attempts.
     status_forcelist : list[int] | tuple[int, ...]
@@ -164,19 +172,19 @@ class CursorPaginationConfig(TypedDict):
     ----------
     type : Literal['cursor']
         Pagination type discriminator.
-    records_path : str
+    records_path : NotRequired[str]
         Dotted path to the records list in each page payload.
-    max_pages : int
+    max_pages : NotRequired[int]
         Maximum number of pages to fetch.
-    max_records : int
+    max_records : NotRequired[int]
         Maximum number of records to fetch across all pages.
-    cursor_param : str
+    cursor_param : NotRequired[str]
         Query parameter name carrying the cursor value.
-    cursor_path : str
+    cursor_path : NotRequired[str]
         Dotted path inside the payload pointing to the next cursor.
-    start_cursor : str | int
+    start_cursor : NotRequired[str | int]
         Initial cursor value used for the first request.
-    page_size : int
+    page_size : NotRequired[int]
         Number of records per page.
 
     Examples
@@ -215,19 +223,19 @@ class PagePaginationConfig(TypedDict):
     ----------
     type : Literal['page', 'offset']
         Pagination type discriminator.
-    records_path : str
+    records_path : NotRequired[str]
         Dotted path to the records list in each page payload.
-    max_pages : int
+    max_pages : NotRequired[int]
         Maximum number of pages to fetch.
-    max_records : int
+    max_records : NotRequired[int]
         Maximum number of records to fetch across all pages.
-    page_param : str
+    page_param : NotRequired[str]
         Query parameter name carrying the page number.
-    size_param : str
+    size_param : NotRequired[str]
         Query parameter name carrying the page size.
-    start_page : int
+    start_page : NotRequired[int]
         Starting page number (1-based).
-    page_size : int
+    page_size : NotRequired[int]
         Number of records per page.
 
     Examples
@@ -268,9 +276,9 @@ class RateLimitConfig(TypedDict):
 
     Attributes
     ----------
-    sleep_seconds : float
+    sleep_seconds : NotRequired[float | int]
         Fixed delay between requests.
-    max_per_sec : float
+    max_per_sec : NotRequired[float | int]
         Maximum requests per second; converted to ``1 / max_per_sec`` seconds
         between requests when positive.
 
@@ -297,13 +305,13 @@ class RetryPolicy(TypedDict):
 
     Attributes
     ----------
-    max_attempts : int
+    max_attempts : NotRequired[int]
         Maximum number of attempts (including the first). If omitted, a default
         may be applied by callers.
-    backoff : float
+    backoff : NotRequired[float]
         Base backoff seconds; attempt ``n`` sleeps ``backoff * 2**(n-1)``
         before retrying.
-    retry_on : list[int]
+    retry_on : NotRequired[list[int]]
         HTTP status codes that should trigger a retry.
 
     Examples
