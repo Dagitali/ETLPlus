@@ -224,6 +224,33 @@ def load_pipeline_config(
 class PipelineConfig:
     """
     Configuration for the data processing pipeline.
+
+    Attributes
+    ----------
+    name : str | None
+        Optional pipeline name.
+    version : str | None
+        Optional pipeline version string.
+    profile : ProfileConfig
+        Pipeline profile defaults and environment.
+    vars : dict[str, Any]
+        Named variables available for substitution.
+    apis : dict[str, ApiConfig]
+        Named API configurations.
+    databases : dict[str, dict[str, Any]]
+        Pass-through database config structures.
+    file_systems : dict[str, dict[str, Any]]
+        Pass-through filesystem config structures.
+    sources : list[Connector]
+        Source connectors, parsed tolerantly.
+    validations : dict[str, dict[str, Any]]
+        Validation rule set definitions.
+    transforms : dict[str, dict[str, Any]]
+        Transform pipeline definitions.
+    targets : list[Connector]
+        Target connectors, parsed tolerantly.
+    jobs : list[JobConfig]
+        Job orchestration definitions.
     """
 
     # -- Attributes -- #

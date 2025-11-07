@@ -77,6 +77,31 @@ __all__ = [
 class ConnectorApi:
     """
     Configuration for an API-based data connector.
+
+    Attributes
+    ----------
+    name : str
+        Unique connector name.
+    type : ConnectorType
+        Connector kind literal, always ``"api"``.
+    url : str | None
+        Direct absolute URL (when not using ``service``/``endpoint`` refs).
+    method : str | None
+        Optional HTTP method; typically omitted for sources (defaults to
+        GET) and used for targets (e.g., ``"post"``).
+    headers : dict[str, str]
+        Additional request headers.
+    query_params : dict[str, Any]
+        Default query parameters.
+    pagination : PaginationConfig | None
+        Pagination settings (optional).
+    rate_limit : RateLimitConfig | None
+        Rate limiting settings (optional).
+    api : str | None
+        Service reference into the pipeline ``apis`` block (a.k.a.
+        ``service``).
+    endpoint : str | None
+        Endpoint name within the referenced service.
     """
 
     # -- Attributes -- #
@@ -156,6 +181,21 @@ class ConnectorApi:
 class ConnectorDb:
     """
     Configuration for a database-based data connector.
+
+    Attributes
+    ----------
+    name : str
+        Unique connector name.
+    type : ConnectorType
+        Connector kind literal, always ``"database"``.
+    connection_string : str | None
+        Connection string/DSN for the database.
+    query : str | None
+        Query to execute for extraction (optional).
+    table : str | None
+        Target/source table name (optional).
+    mode : str | None
+        Load mode hint (e.g., ``"append"``, ``"replace"``) — future use.
     """
 
     # -- Attributes -- #
@@ -220,6 +260,19 @@ class ConnectorDb:
 class ConnectorFile:
     """
     Configuration for a file-based data connector.
+
+    Attributes
+    ----------
+    name : str
+        Unique connector name.
+    type : ConnectorType
+        Connector kind literal, always ``"file"``.
+    format : str | None
+        File format (e.g., ``"json"``, ``"csv"``).
+    path : str | None
+        File path or URI.
+    options : dict[str, Any]
+        Reader/writer format options.
     """
 
     # -- Attributes -- #

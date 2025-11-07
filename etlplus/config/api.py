@@ -62,11 +62,17 @@ class ApiProfileConfig:
     base_url : str
         Base URL for the API.
     headers : dict[str, str]
-        Default headers for the API.
+        Profile-level default headers (merged with defaults.headers).
     base_path : str | None
-        Optional base path to prepend to endpoint paths.
+        Optional base path prefixed to endpoint paths when composing URLs.
     auth : dict[str, Any]
         Optional auth block (provider-specific shape, passed through).
+    pagination_defaults : PaginationConfig | None
+        Optional pagination defaults applied to endpoints referencing this
+        profile (lowest precedence).
+    rate_limit_defaults : RateLimitConfig | None
+        Optional rate limit defaults applied to endpoints referencing this
+        profile (lowest precedence).
     """
 
     # -- Attributes -- #
@@ -155,18 +161,13 @@ class ApiConfig:
     Attributes
     ----------
     base_url : str
-        Base URL for the API (may be derived from a selected profile). This
-        field is always required and must be a non-empty string.
+        Effective base URL (derived from profiles or top-level input).
     headers : dict[str, str]
-        Default headers for the API (may be derived from a selected profile).
+        Effective headers (profile + top-level merged with precedence).
     endpoints : dict[str, EndpointConfig]
-        Configured endpoints for the API.
+        Endpoint configurations keyed by name.
     profiles : dict[str, ApiProfileConfig]
-        Optional named profiles providing per-environment base_url/headers.
-
-    Notes
-    -----
-    See also: ApiProfileConfig.from_obj for profile parsing logic.
+        Named profile configurations; first or ``default`` becomes active.
     """
 
     # -- Attributes -- #
@@ -406,19 +407,18 @@ class EndpointConfig:
     ----------
     path : str
         Endpoint path (relative to base URL).
-    method : str, optional
-        HTTP method for the endpoint (e.g., "GET", "POST"). Defaults to "GET".
-    path_params : dict[str, Any], optional
-        Path parameters for the endpoint. Defaults to an empty dictionary.
-    query_params : dict[str, Any], optional
-        Default query parameters for the endpoint. Defaults to an empty
-        dictionary.
-    body : Any | None, optional
-        Request body configuration for the endpoint. Defaults to None.
-    pagination : PaginationConfig | None, optional
-        Pagination configuration for the endpoint. Defaults to None.
-    rate_limit : RateLimitConfig | None, optional
-        Rate limiting configuration for the endpoint. Defaults to None.
+    method : str | None
+        Optional HTTP method (default is GET when omitted at runtime).
+    path_params : dict[str, Any]
+        Path parameters used when constructing the request URL.
+    query_params : dict[str, Any]
+        Default query string parameters.
+    body : Any | None
+        Request body structure (pass-through, format-specific).
+    pagination : PaginationConfig | None
+        Pagination configuration for the endpoint.
+    rate_limit : RateLimitConfig | None
+        Rate limit configuration for the endpoint.
     """
 
     # -- Attributes -- #

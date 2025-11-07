@@ -33,6 +33,13 @@ __all__ = ['ProfileConfig']
 class ProfileConfig:
     """
     Configuration for pipeline profiles.
+
+    Attributes
+    ----------
+    default_target : str | None
+        Default target name for jobs that omit an explicit target.
+    env : dict[str, str]
+        Environment variables available for substitution.
     """
 
     # -- Attributes -- #

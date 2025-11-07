@@ -38,6 +38,13 @@ __all__ = [
 class ExtractRef:
     """
     Reference to a data source for extraction.
+
+    Attributes
+    ----------
+    source : str
+        Name of the source connector.
+    options : dict[str, Any]
+        Optional extract-time options (e.g., query parameters overrides).
     """
 
     # -- Attributes -- #
@@ -50,6 +57,21 @@ class ExtractRef:
 class JobConfig:
     """
     Configuration for a data processing job.
+
+    Attributes
+    ----------
+    name : str
+        Unique job name.
+    description : str | None
+        Optional human-friendly description.
+    extract : ExtractRef | None
+        Extraction reference.
+    validate : ValidationRef | None
+        Validation reference.
+    transform : TransformRef | None
+        Transform reference.
+    load : LoadRef | None
+        Load reference.
     """
 
     # -- Attributes -- #
@@ -66,6 +88,13 @@ class JobConfig:
 class LoadRef:
     """
     Reference to a data target for loading.
+
+    Attributes
+    ----------
+    target : str
+        Name of the target connector.
+    overrides : dict[str, Any]
+        Optional load-time overrides (e.g., headers).
     """
 
     # -- Attributes -- #
@@ -78,6 +107,11 @@ class LoadRef:
 class TransformRef:
     """
     Reference to a transformation pipeline.
+
+    Attributes
+    ----------
+    pipeline : str
+        Name of the transformation pipeline.
     """
 
     # -- Attributes -- #
@@ -89,6 +123,16 @@ class TransformRef:
 class ValidationRef:
     """
     Reference to a validation rule set.
+
+    Attributes
+    ----------
+    ruleset : str
+        Name of the validation rule set.
+    severity : str | None
+        Severity level (``"warn"`` or ``"error"``).
+    phase : str | None
+        Execution phase (``"before_transform"``, ``"after_transform"``,
+        or ``"both"``).
     """
 
     # -- Attributes -- #
