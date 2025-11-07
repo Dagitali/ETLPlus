@@ -51,6 +51,7 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
         ConnectorApiConfigMap,
         ConnectorDbConfigMap,
         ConnectorFileConfigMap,
+        ConnectorType,
     )
 
 
@@ -81,7 +82,7 @@ class ConnectorApi:
     # -- Attributes -- #
 
     name: str
-    type: str = 'api'
+    type: ConnectorType = 'api'
 
     # Direct form
     url: str | None = None
@@ -160,7 +161,7 @@ class ConnectorDb:
     # -- Attributes -- #
 
     name: str
-    type: str = 'database'
+    type: ConnectorType = 'database'
     connection_string: str | None = None
     query: str | None = None
     table: str | None = None
@@ -224,7 +225,7 @@ class ConnectorFile:
     # -- Attributes -- #
 
     name: str
-    type: str = 'file'
+    type: ConnectorType = 'file'
     format: str | None = None
     path: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
