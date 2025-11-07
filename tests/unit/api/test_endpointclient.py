@@ -57,34 +57,134 @@ def test_auth_error_wrapping_on_single_attempt(monkeypatch: Any) -> None:
     assert err.retry_policy is None
 
 
-def test_request_error_after_retries_exhausted(monkeypatch: Any) -> None:
-    # Retry twice, both 503
-    client = EndpointClient(
-        base_url='https://api.example.com/v1',
-        endpoints={'x': '/x'},
-        retry={'max_attempts': 2, 'backoff': 0.0, 'retry_on': [503]},
+def test_context_manager_closes_factory_session(monkeypatch: Any) -> None:
+    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
+        return {'ok': True}
+
+    import etlplus.api.client as cmod
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    sess = MockSession()
+
+    def factory() -> MockSession:
+        return sess
+
+    c = EndpointClient(
+        base_url='https://api.example.com',
+        endpoints={},
+        session_factory=factory,
     )
-
-    attempts = {'n': 0}
-
-    def boom(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
-        attempts['n'] += 1
-        raise make_http_error(503)
-
-    monkeypatch.setattr('etlplus.api.client._extract', boom)
-
-    with pytest.raises(Exception) as ei:
-        client.paginate_url(
-            'https://api.example.com/v1/x', None, None, None, None,
+    with c:
+        out = c.paginate_url(
+            'https://api.example.com/items', None, None, None, None,
         )
+        assert out == {'ok': True}
+    assert sess.closed is True
 
-    from etlplus.api.errors import ApiRequestError
 
-    err = ei.value
-    assert isinstance(err, ApiRequestError)
-    assert err.status == 503
-    assert err.attempts == 2  # exhausted
-    assert err.retried is True
+def test_context_manager_creates_and_closes_default_session(
+    monkeypatch: Any,
+) -> None:
+    # Patch extract to avoid network and capture params
+    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
+        return {'ok': True}
+
+    import etlplus.api.client as cmod
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    # Substitute requests.Session with our FakeSession to observe close()
+    created: dict[str, MockSession] = {}
+
+    def ctor() -> MockSession:
+        s = MockSession()
+        created['s'] = s
+        return s
+
+    monkeypatch.setattr(cmod.requests, 'Session', ctor)
+
+    c = EndpointClient(base_url='https://api.example.com', endpoints={})
+    with c:
+        out = c.paginate_url(
+            'https://api.example.com/items', None, None, None, None,
+        )
+        assert out == {'ok': True}
+    # After context exit, the created session should be closed
+    assert created['s'].closed is True
+
+
+def test_context_manager_does_not_close_external_session(
+    monkeypatch: Any,
+) -> None:
+    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
+        return {'ok': True}
+
+    import etlplus.api.client as cmod
+
+    monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+    sess = MockSession()
+    c = EndpointClient(
+        base_url='https://api.example.com', endpoints={}, session=sess,
+    )
+    with c:
+        out = c.paginate_url(
+            'https://api.example.com/items', None, None, None, None,
+        )
+        assert out == {'ok': True}
+    assert sess.closed is False
+
+
+def test_extract_uses_session_factory_when_no_explicit_session() -> None:
+    sess = MockSession()
+
+    def _factory() -> MockSession:
+        return sess
+
+    c = EndpointClient(
+        base_url='https://api.example.com',
+        endpoints={},
+        retry=None,
+        session_factory=_factory,
+    )
+    out = c.paginate_url(
+        'https://api.example.com/items',
+        params={'a': '1'},
+        headers={'x': 'y'},
+        timeout=3,
+        pagination=None,
+    )
+    assert out == {'ok': True}
+    assert len(sess.calls) == 1
+    url, kwargs = sess.calls[0]
+    assert url.endswith('/items')
+    assert kwargs.get('params') == {'a': '1'}
+    assert kwargs.get('headers') == {'x': 'y'}
+    assert kwargs.get('timeout') == 3
+
+
+def test_extract_uses_session_when_provided() -> None:
+    sess = MockSession()
+    c = EndpointClient(
+        base_url='https://api.example.com',
+        endpoints={},
+        retry=None,
+        session=sess,
+    )
+    out = c.paginate_url(
+        'https://api.example.com/items',
+        params=None,
+        headers=None,
+        timeout=5,
+        pagination=None,
+    )
+    assert out == {'ok': True}
+    assert len(sess.calls) == 1
+    url, kwargs = sess.calls[0]
+    assert url.endswith('/items')
+    # ensure timeout propagated
+    assert kwargs.get('timeout') == 5
 
 
 def test_pagination_error_includes_page_number(monkeypatch: Any) -> None:
@@ -126,6 +226,36 @@ def test_pagination_error_includes_page_number(monkeypatch: Any) -> None:
     assert isinstance(err, PaginationError)
     assert err.page == 4
     assert err.status == 500
+
+
+def test_request_error_after_retries_exhausted(monkeypatch: Any) -> None:
+    # Retry twice, both 503
+    client = EndpointClient(
+        base_url='https://api.example.com/v1',
+        endpoints={'x': '/x'},
+        retry={'max_attempts': 2, 'backoff': 0.0, 'retry_on': [503]},
+    )
+
+    attempts = {'n': 0}
+
+    def boom(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
+        attempts['n'] += 1
+        raise make_http_error(503)
+
+    monkeypatch.setattr('etlplus.api.client._extract', boom)
+
+    with pytest.raises(Exception) as ei:
+        client.paginate_url(
+            'https://api.example.com/v1/x', None, None, None, None,
+        )
+
+    from etlplus.api.errors import ApiRequestError
+
+    err = ei.value
+    assert isinstance(err, ApiRequestError)
+    assert err.status == 503
+    assert err.attempts == 2  # exhausted
+    assert err.retried is True
 
 
 def test_retry_backoff_full_jitter(monkeypatch) -> None:
@@ -237,133 +367,3 @@ def test_retry_on_network_errors(monkeypatch) -> None:
     # Should have slept twice (after 2 failures)
     assert sleeps == [0.12, 0.18]
     assert attempts['n'] == 3
-
-
-def test_extract_uses_session_when_provided() -> None:
-    sess = MockSession()
-    c = EndpointClient(
-        base_url='https://api.example.com',
-        endpoints={},
-        retry=None,
-        session=sess,
-    )
-    out = c.paginate_url(
-        'https://api.example.com/items',
-        params=None,
-        headers=None,
-        timeout=5,
-        pagination=None,
-    )
-    assert out == {'ok': True}
-    assert len(sess.calls) == 1
-    url, kwargs = sess.calls[0]
-    assert url.endswith('/items')
-    # ensure timeout propagated
-    assert kwargs.get('timeout') == 5
-
-
-def test_extract_uses_session_factory_when_no_explicit_session() -> None:
-    sess = MockSession()
-
-    def _factory() -> MockSession:
-        return sess
-
-    c = EndpointClient(
-        base_url='https://api.example.com',
-        endpoints={},
-        retry=None,
-        session_factory=_factory,
-    )
-    out = c.paginate_url(
-        'https://api.example.com/items',
-        params={'a': '1'},
-        headers={'x': 'y'},
-        timeout=3,
-        pagination=None,
-    )
-    assert out == {'ok': True}
-    assert len(sess.calls) == 1
-    url, kwargs = sess.calls[0]
-    assert url.endswith('/items')
-    assert kwargs.get('params') == {'a': '1'}
-    assert kwargs.get('headers') == {'x': 'y'}
-    assert kwargs.get('timeout') == 3
-
-
-def test_ctx_mgr_creates_and_closes_default_session(
-    monkeypatch: Any,
-) -> None:
-    # Patch extract to avoid network and capture params
-    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
-        return {'ok': True}
-
-    import etlplus.api.client as cmod
-
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-
-    # Substitute requests.Session with our FakeSession to observe close()
-    created: dict[str, MockSession] = {}
-
-    def ctor() -> MockSession:
-        s = MockSession()
-        created['s'] = s
-        return s
-
-    monkeypatch.setattr(cmod.requests, 'Session', ctor)
-
-    c = EndpointClient(base_url='https://api.example.com', endpoints={})
-    with c:
-        out = c.paginate_url(
-            'https://api.example.com/items', None, None, None, None,
-        )
-        assert out == {'ok': True}
-    # After context exit, the created session should be closed
-    assert created['s'].closed is True
-
-
-def test_ctx_mgr_does_not_close_external_session(
-    monkeypatch: Any,
-) -> None:
-    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
-        return {'ok': True}
-
-    import etlplus.api.client as cmod
-
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-
-    sess = MockSession()
-    c = EndpointClient(
-        base_url='https://api.example.com', endpoints={}, session=sess,
-    )
-    with c:
-        out = c.paginate_url(
-            'https://api.example.com/items', None, None, None, None,
-        )
-        assert out == {'ok': True}
-    assert sess.closed is False
-
-
-def test_context_manager_closes_factory_session(monkeypatch: Any) -> None:
-    def fake_extract(_stype: str, _url: str, **_kw: Any):  # noqa: ARG001
-        return {'ok': True}
-
-    import etlplus.api.client as cmod
-
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-
-    sess = MockSession()
-
-    def factory() -> MockSession:
-        return sess
-
-    c = EndpointClient(
-        base_url='https://api.example.com',
-        endpoints={},
-        session_factory=factory,
-    )
-    with c:
-        out = c.paginate_url(
-            'https://api.example.com/items', None, None, None, None,
-        )
-        assert out == {'ok': True}
-    assert sess.closed is True
