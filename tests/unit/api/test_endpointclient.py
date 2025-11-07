@@ -15,71 +15,9 @@ from typing import Any
 
 import pytest
 import requests  # type: ignore
-from requests.structures import CaseInsensitiveDict
 
 from etlplus.api import EndpointClient
-
-
-class DummyResponse:
-    def __init__(self, status_code: int) -> None:
-        self.status_code = status_code
-
-
-class _Resp:
-    def __init__(self, status_code: int) -> None:
-        self.status_code = status_code
-
-
-class FakeResponse(requests.Response):
-    """Minimal Response subclass that returns a provided JSON payload.
-
-    Subclassing ``requests.Response`` keeps the return type compatible for
-    test double usage while overriding ``json`` for simplicity.
-    """
-
-    def __init__(self, payload: Any) -> None:  # pragma: no cover - trivial
-        super().__init__()
-        self._payload = payload
-        self.status_code = 200
-        # requests.Response.headers is a CaseInsensitiveDict[str]
-        self.headers = CaseInsensitiveDict(
-            {'content-type': 'application/json'},
-        )
-
-    def json(self, **_kw: Any) -> Any:  # pragma: no cover - trivial
-        return self._payload
-
-
-class FakeSession(requests.Session):
-    """Session test double capturing GET calls.
-
-    Inherits from ``requests.Session`` so that it is type-compatible with
-    the ``EndpointClient`` constructor signature (``requests.Session | None``),
-    fixing mypy ``arg-type`` errors in tests. Only the ``get`` and ``close``
-    methods are customized; other behavior defers to the base class.
-    """
-
-    def __init__(self) -> None:  # pragma: no cover - trivial
-        super().__init__()
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-        self.closed: bool = False
-
-    def get(  # type: ignore[override]
-        self,
-        url: str,
-        params: Any = None,
-        **kwargs: Any,
-    ) -> requests.Response:
-        # Normalize kwargs incl. params for assertions.
-        call_kwargs: dict[str, Any] = dict(kwargs)
-        if params is not None:
-            call_kwargs['params'] = params
-        self.calls.append((url, call_kwargs))
-        return FakeResponse({'ok': True})
-
-    def close(self) -> None:  # pragma: no cover - trivial
-        super().close()
-        self.closed = True
+from tests.unit.api.test_mocks import MockSession
 
 
 def make_http_error(status: int) -> requests.HTTPError:
@@ -302,7 +240,7 @@ def test_retry_on_network_errors(monkeypatch) -> None:
 
 
 def test_extract_uses_session_when_provided() -> None:
-    sess = FakeSession()
+    sess = MockSession()
     c = EndpointClient(
         base_url='https://api.example.com',
         endpoints={},
@@ -325,9 +263,9 @@ def test_extract_uses_session_when_provided() -> None:
 
 
 def test_extract_uses_session_factory_when_no_explicit_session() -> None:
-    sess = FakeSession()
+    sess = MockSession()
 
-    def _factory() -> FakeSession:
+    def _factory() -> MockSession:
         return sess
 
     c = EndpointClient(
@@ -364,10 +302,10 @@ def test_ctx_mgr_creates_and_closes_default_session(
     monkeypatch.setattr(cmod, '_extract', fake_extract)
 
     # Substitute requests.Session with our FakeSession to observe close()
-    created: dict[str, FakeSession] = {}
+    created: dict[str, MockSession] = {}
 
-    def ctor() -> FakeSession:
-        s = FakeSession()
+    def ctor() -> MockSession:
+        s = MockSession()
         created['s'] = s
         return s
 
@@ -393,7 +331,7 @@ def test_ctx_mgr_does_not_close_external_session(
 
     monkeypatch.setattr(cmod, '_extract', fake_extract)
 
-    sess = FakeSession()
+    sess = MockSession()
     c = EndpointClient(
         base_url='https://api.example.com', endpoints={}, session=sess,
     )
@@ -413,9 +351,9 @@ def test_context_manager_closes_factory_session(monkeypatch: Any) -> None:
 
     monkeypatch.setattr(cmod, '_extract', fake_extract)
 
-    sess = FakeSession()
+    sess = MockSession()
 
-    def factory() -> FakeSession:
+    def factory() -> MockSession:
         return sess
 
     c = EndpointClient(
