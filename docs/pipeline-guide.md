@@ -316,6 +316,28 @@ targets:
       Content-Type: application/json
 ```
 
+## Connector parsing and extension
+
+Under the hood, source and target entries are parsed via a single tolerant
+constructor that looks at the `type` field and builds a concrete connector
+dataclass:
+
+- `type: file` → `ConnectorFile`
+- `type: database` → `ConnectorDb`
+- `type: api` → `ConnectorApi`
+
+Details:
+
+- The pipeline loader uses a unified path for both `sources` and `targets`.
+- Unknown or malformed entries are skipped rather than failing the whole load
+  (keeping pipeline authoring permissive).
+- The connector kind is also available as a type-safe literal in code as
+  `etlplus.config.ConnectorType` (values: `"file" | "database" | "api"`).
+
+To add new connector kinds in the future, implement a new dataclass in
+`etlplus.config.connector` and extend the internal parser to handle its `type`
+value.
+
 ## Jobs
 
 Jobs orchestrate the flow end-to-end.  Each job can reference a source, validations, transform, and

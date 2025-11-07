@@ -2,30 +2,27 @@
 etlplus.config.types
 ====================
 
-A module centralizing type aliases used in the ``:mod:etlplus.config`` package.
+Type aliases and editor-only TypedDicts for :mod:`etlplus.config`.
 
-Contents
---------
-- Type aliases: ``Source``, ``Target``
+These types improve IDE autocomplete and static analysis while the runtime
+parsers remain permissive.
 
 Notes
 -----
-- TypedDicts in this module are editor/type-checking hints. They are
-    intentionally ``total=False`` (all keys optional) and are not enforced at
-    runtime.
-- Constructors like ``*.from_obj`` accept ``Mapping[str, Any]`` and perform
+- TypedDicts in this module are intentionally ``total=False`` and are not
+    enforced at runtime.
+- ``*.from_obj`` constructors accept ``Mapping[str, Any]`` and perform
     tolerant parsing and light casting. This keeps the runtime permissive while
     improving autocomplete and static analysis for contributors.
 
 Examples
 --------
->>> from etlplus.config import Source
->>> src: Source = {
+>>> from etlplus.config import Connector
+>>> src: Connector = {
 >>>     "type": "file",
 >>>     "path": "/data/input.csv",
 >>> }
->>> from etlplus.config import Target
->>> tgt: Target = {
+>>> tgt: Connector = {
 >>>     "type": "database",
 >>>     "connection_string": "postgresql://user:pass@localhost/db",
 >>> }
@@ -35,16 +32,14 @@ Examples
 from __future__ import annotations
 
 from typing import Any
+from typing import Literal
 from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
-from .sources import SourceApi
-from .sources import SourceDb
-from .sources import SourceFile
-from .targets import TargetApi
-from .targets import TargetDb
-from .targets import TargetFile
+from .connector import ConnectorApi
+from .connector import ConnectorDb
+from .connector import ConnectorFile
 
 
 # SECTION: EXPORTS  ========================================================= #
@@ -52,21 +47,27 @@ from .targets import TargetFile
 
 __all__ = [
     # Type aliases
-    'Source', 'Target',
+    'Connector',
+    'ConnectorType',
+    'PaginationType',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
     'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
-    'SourceApiConfigMap', 'SourceDbConfigMap', 'SourceFileConfigMap',
-    'TargetApiConfigMap', 'TargetDbConfigMap', 'TargetFileConfigMap',
+    'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
 ]
 
 
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type Source = SourceFile | SourceDb | SourceApi
-type Target = TargetFile | TargetApi | TargetDb
+type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+
+# Literal type for supported connector kinds
+type ConnectorType = Literal['api', 'database', 'file']
+
+# Literal type for supported pagination kinds
+type PaginationType = Literal['page', 'offset', 'cursor']
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -130,6 +131,60 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     rate_limit: RateLimitConfigMap | Mapping[str, Any]
 
 
+class ConnectorApiConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorApi.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorApi.from_obj
+    """
+
+    name: str
+    type: ConnectorType
+    url: str
+    method: str
+    headers: Mapping[str, Any]
+    query_params: Mapping[str, Any]
+    pagination: PaginationConfigMap
+    rate_limit: RateLimitConfigMap
+    api: str
+    endpoint: str
+
+
+class ConnectorDbConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorDb.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorDb.from_obj
+    """
+
+    name: str
+    type: ConnectorType
+    connection_string: str
+    query: str
+    table: str
+    mode: str
+
+
+class ConnectorFileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by ConnectorFile.from_obj (all keys optional).
+
+    See also
+    --------
+    - etlplus.config.connector.ConnectorFile.from_obj
+    """
+
+    name: str
+    type: ConnectorType
+    format: str
+    path: str
+    options: Mapping[str, Any]
+
+
 class EndpointConfigMap(TypedDict, total=False):
     """
     Shape accepted by EndpointConfig.from_obj.
@@ -160,7 +215,7 @@ class PaginationConfigMap(TypedDict, total=False):
     - etlplus.config.pagination.PaginationConfig.from_obj
     """
 
-    type: str
+    type: PaginationType
     page_param: str
     size_param: str
     start_page: int
@@ -184,103 +239,3 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     sleep_seconds: float
     max_per_sec: float
-
-
-class SourceApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceApi.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceApi.from_obj
-    """
-
-    name: str
-    type: str
-    url: str
-    headers: Mapping[str, Any]
-    query_params: Mapping[str, Any]
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
-    api: str
-    endpoint: str
-
-
-class SourceDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceDb.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceDb.from_obj
-    """
-
-    name: str
-    type: str
-    connection_string: str
-    query: str
-
-
-class SourceFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by SourceFile.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.sources.SourceFile.from_obj
-    """
-
-    name: str
-    type: str
-    format: str
-    path: str
-    options: Mapping[str, Any]
-
-
-class TargetApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetApi.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetApi.from_obj
-    """
-
-    name: str
-    type: str
-    url: str
-    method: str
-    headers: Mapping[str, Any]
-    api: str
-    endpoint: str
-
-
-class TargetDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetDb.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetDb.from_obj
-    """
-
-    name: str
-    type: str
-    connection_string: str
-    table: str
-    mode: str
-
-
-class TargetFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by TargetFile.from_obj (all keys optional).
-
-    See also
-    --------
-    - etlplus.config.targets.TargetFile.from_obj
-    """
-
-    name: str
-    type: str
-    format: str
-    path: str

@@ -2,12 +2,22 @@
 etlplus.config.utils
 ====================
 
-A module defining utility functions for ETL pipeline configuration.
+A module defining utility helpers for ETL pipeline configuration.
+
+Notes
+-----
+- Inputs to parsers favor ``Mapping[str, Any]`` to remain permissive and
+    avoid unnecessary copies; normalization returns concrete types.
+- Substitution is shallow for strings and recursive for containers.
+- Numeric coercion helpers are intentionally forgiving: invalid values
+    become ``None`` rather than raising.
 """
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import cast
+from typing import Iterable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -35,7 +45,7 @@ def cast_str_dict(
     m: Mapping[str, Any] | None,
 ) -> dict[str, str]:
     """
-    Return a shallow copy of a mapping with all values coerced to strings.
+    Return a new ``dict`` with all values coerced to ``str``.
 
     This is commonly used for HTTP headers where values can be numbers or
     other primitives but need to be serialized as strings.
@@ -48,7 +58,7 @@ def cast_str_dict(
     Returns
     -------
     dict[str, str]
-        A new mapping with all values as strings.
+        Dictionary of the original pairs converted via ``str()``.
     """
 
     return {k: str(v) for k, v in (m or {}).items()}
@@ -60,7 +70,7 @@ def deep_substitute(
     env_map: Mapping[str, str],
 ) -> Any:
     """
-    Recursively substitute ${VAR} tokens using vars and environment.
+    Recursively substitute ``${VAR}`` tokens in nested structures.
 
     Only strings are substituted; other types are returned as-is.
 
@@ -76,21 +86,24 @@ def deep_substitute(
     Returns
     -------
     Any
-        The value with substitutions applied.
+        New structure with substitutions applied where tokens were found.
     """
 
     if isinstance(value, str):
         # Fast path: single combined pass over substitutions.
-        if not vars_map and not env_map:
+        if not (vars_map or env_map):
             return value
-        out = value
-        # Merge mappings using dict union for a single pass over replacements.
-        all_vars: dict[str, Any] = (
-            dict(vars_map) | dict(env_map)
-            if env_map else dict(vars_map)
+
+        # Union preserves right-hand precedence (env overrides vars).
+        merged: Iterable[tuple[str, Any]] = (
+            (dict(vars_map) | dict(env_map)).items()
+            if env_map else vars_map.items()
         )
-        for name, replacement in all_vars.items():
-            out = out.replace(f"${{{name}}}", str(replacement))
+        out = value
+        for name, replacement in merged:
+            token = f"${{{name}}}"
+            if token in out:
+                out = out.replace(token, str(replacement))
         return out
     if isinstance(value, dict):
         return {
@@ -107,7 +120,7 @@ def pagination_from_defaults(
     obj: Mapping[str, Any] | None,
 ) -> PaginationConfig | None:
     """
-    Best-effort parser for profile-level defaults.pagination structures.
+    Extract pagination type and integer bounds from defaults mapping.
 
     Tolerates either a flat PaginationConfig-like mapping or a nested shape
     with "params" and "response" blocks. Unknown keys are ignored.
@@ -120,7 +133,8 @@ def pagination_from_defaults(
     Returns
     -------
     PaginationConfig | None
-        A PaginationConfig instance, or None if parsing failed.
+        A PaginationConfig instance with numeric fields coerced to int/float
+        where applicable, or None if parsing failed.
     """
 
     if not isinstance(obj, Mapping):
@@ -160,21 +174,35 @@ def pagination_from_defaults(
     if dflt_blk and not page_size:
         page_size = dflt_blk.get('per_page')
 
-    # Local import to avoid circular dependency with pagination -> utils
+    # Locally import inside function to avoid circular dependencies; narrow to
+    # literal.
     from .pagination import PaginationConfig as _PaginationConfig
+    from .types import PaginationType as _PaginationType
+
+    # Normalize pagination type to supported literal when possible.
+    norm_type: _PaginationType | None
+    match str(ptype).strip().lower() if ptype is not None else '':
+        case 'page':
+            norm_type = cast(_PaginationType, 'page')
+        case 'offset':
+            norm_type = cast(_PaginationType, 'offset')
+        case 'cursor':
+            norm_type = cast(_PaginationType, 'cursor')
+        case _:
+            norm_type = None
 
     return _PaginationConfig(
-        type=str(ptype) if ptype is not None else None,
+        type=norm_type,
         page_param=page_param,
         size_param=size_param,
-        start_page=start_page,
-        page_size=page_size,
+        start_page=to_int(start_page),
+        page_size=to_int(page_size),
         cursor_param=cursor_param,
         cursor_path=cursor_path,
         start_cursor=None,
         records_path=records_path,
-        max_pages=max_pages,
-        max_records=max_records,
+        max_pages=to_int(max_pages),
+        max_records=to_int(max_records),
     )
 
 
@@ -182,7 +210,7 @@ def rate_limit_from_defaults(
     obj: Mapping[str, Any] | None,
 ) -> RateLimitConfig | None:
     """
-    Best-effort parser for profile-level defaults.rate_limit structures.
+    Return numeric rate-limit bounds from defaults mapping.
 
     Only supports sleep_seconds and max_per_sec. Other keys are ignored.
 
@@ -194,7 +222,8 @@ def rate_limit_from_defaults(
     Returns
     -------
     RateLimitConfig | None
-        A RateLimitConfig instance, or None if parsing failed.
+        A RateLimitConfig instance with numeric fields coerced, or None if
+        parsing failed.
     """
 
     if not isinstance(obj, Mapping):
@@ -203,12 +232,13 @@ def rate_limit_from_defaults(
     max_per_sec = obj.get('max_per_sec')
     if sleep_seconds is None and max_per_sec is None:
         return None
+
     # Local import to avoid circular dependency with rate_limit -> utils
     from .rate_limit import RateLimitConfig as _RateLimitConfig
 
     return _RateLimitConfig(
-        sleep_seconds=sleep_seconds,
-        max_per_sec=max_per_sec,
+        sleep_seconds=to_float(sleep_seconds),
+        max_per_sec=to_float(max_per_sec),
     )
 
 

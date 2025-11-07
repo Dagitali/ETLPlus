@@ -2,7 +2,12 @@
 etlplus.config.profile
 ======================
 
-A module defining configuration types for ETL job pipeline profiles.
+Profile model for pipeline-level defaults and environment.
+
+Notes
+-----
+- Accepts ``Mapping[str, Any]`` and normalizes to concrete types.
+- Environment values are coerced to strings.
 """
 from __future__ import annotations
 
@@ -28,6 +33,13 @@ __all__ = ['ProfileConfig']
 class ProfileConfig:
     """
     Configuration for pipeline profiles.
+
+    Attributes
+    ----------
+    default_target : str | None
+        Default target name for jobs that omit an explicit target.
+    env : dict[str, str]
+        Environment variables available for substitution.
     """
 
     # -- Attributes -- #
@@ -42,15 +54,18 @@ class ProfileConfig:
         cls,
         obj: Mapping[str, Any] | None,
     ) -> Self:
-        """
-        Create a ProfileConfig from a mapping.
-
-        Coerces all env values to str and tolerates missing keys.
+        """Parse a mapping into a ``ProfileConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            The mapping to create the ProfileConfig from.
+            Mapping with optional profile fields, or ``None``.
+
+        Returns
+        -------
+        ProfileConfig
+            Parsed profile configuration; non-mapping input yields a default
+            instance. All ``env`` values are coerced to strings.
         """
 
         if not isinstance(obj, Mapping):

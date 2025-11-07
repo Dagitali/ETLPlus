@@ -2,13 +2,19 @@
 etlplus.config.rate_limit
 =========================
 
-A module defining configuration types for rate limiting in REST API endpoint
-requests.
+Rate limit model for REST API requests.
 
 Notes
 -----
-TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
-accepts Mapping[str, Any]).
+- TypedDict shapes are editor hints; runtime parsing remains permissive
+    (``from_obj`` accepts ``Mapping[str, Any]``).
+- Numeric fields are normalized with tolerant casts; ``validate_bounds``
+    returns warnings instead of raising.
+
+See Also
+--------
+- :meth:`RateLimitConfig.validate_bounds`
+- :func:`etlplus.config.utils.to_float`
 """
 from __future__ import annotations
 
@@ -19,6 +25,7 @@ from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from .mixins import BoundsWarningsMixin
 from .utils import to_float
 
 if TYPE_CHECKING:
@@ -35,7 +42,7 @@ __all__ = ['RateLimitConfig']
 
 
 @dataclass(slots=True)
-class RateLimitConfig:
+class RateLimitConfig(BoundsWarningsMixin):
     """
     Configuration for rate limiting in API requests.
 
@@ -45,11 +52,6 @@ class RateLimitConfig:
         Number of seconds to sleep between requests.
     max_per_sec : float | None
         Maximum number of requests per second.
-
-    Methods
-    -------
-    from_obj(obj: Any) -> RateLimitConfig | None
-        Create a RateLimitConfig instance from a dictionary-like object.
     """
 
     # -- Attributes -- #
@@ -60,22 +62,25 @@ class RateLimitConfig:
     # -- Instance Methods -- #
 
     def validate_bounds(self) -> list[str]:
-        """
-        Validate rate limit numeric bounds and return warnings.
-
-        This is optional and non-raising; it returns user-facing warnings.
+        """Return non-raising warnings for suspicious numeric bounds.
 
         Returns
         -------
         list[str]
-            A list of warning messages (empty if values look sane).
+            Warning messages (empty if values look sane).
         """
 
         warnings: list[str] = []
-        if self.sleep_seconds is not None and self.sleep_seconds < 0:
-            warnings.append('sleep_seconds should be >= 0')
-        if self.max_per_sec is not None and self.max_per_sec <= 0:
-            warnings.append('max_per_sec should be > 0')
+        self._warn_if(
+            (ss := self.sleep_seconds) is not None and ss < 0,
+            'sleep_seconds should be >= 0',
+            warnings,
+        )
+        self._warn_if(
+            (mps := self.max_per_sec) is not None and mps <= 0,
+            'max_per_sec should be > 0',
+            warnings,
+        )
 
         return warnings
 
@@ -100,18 +105,17 @@ class RateLimitConfig:
         cls,
         obj: Mapping[str, Any] | None,
     ) -> Self | None:
-        """
-        Create a RateLimitConfig instance from a dictionary-like object.
+        """Parse a mapping into a ``RateLimitConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            The object to parse (expected to be a mapping).
+            Mapping with optional rate-limit fields, or ``None``.
 
         Returns
         -------
-        Self | None
-            A RateLimitConfig instance, or None if parsing failed.
+        RateLimitConfig | None
+            Parsed instance, or ``None`` if ``obj`` isn't a mapping.
         """
 
         if not isinstance(obj, Mapping):

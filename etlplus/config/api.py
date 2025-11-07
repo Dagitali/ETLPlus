@@ -1,18 +1,20 @@
 """
 etlplus.config.api
-===================
+==================
 
-A module defining configuration types for REST APIs endpoint services.
+Configuration models for REST API services and endpoints.
 
 Notes
 -----
-TypedDict shapes are editor hints; runtime parsing remains permissive (from_obj
-accepts Mapping[str, Any]).
+- TypedDict shapes are editor hints; runtime parsing remains permissive
+    (``from_obj`` accepts ``Mapping[str, Any]``).
+- Profile-level defaults (pagination and rate limit) are normalized at parse
+    time and exposed via convenience accessors.
 
-See also
+See Also
 --------
-- ApiProfileConfig.from_obj: canonical parsing logic for API profile entries
-    (used by ApiConfig.from_obj when processing the ``profiles`` section).
+- :class:`ApiProfileConfig` — canonical parsing for profiles (used when
+    processing the ``profiles`` section).
 """
 from __future__ import annotations
 
@@ -60,11 +62,17 @@ class ApiProfileConfig:
     base_url : str
         Base URL for the API.
     headers : dict[str, str]
-        Default headers for the API.
+        Profile-level default headers (merged with defaults.headers).
     base_path : str | None
-        Optional base path to prepend to endpoint paths.
+        Optional base path prefixed to endpoint paths when composing URLs.
     auth : dict[str, Any]
         Optional auth block (provider-specific shape, passed through).
+    pagination_defaults : PaginationConfig | None
+        Optional pagination defaults applied to endpoints referencing this
+        profile (lowest precedence).
+    rate_limit_defaults : RateLimitConfig | None
+        Optional rate limit defaults applied to endpoints referencing this
+        profile (lowest precedence).
     """
 
     # -- Attributes -- #
@@ -100,21 +108,26 @@ class ApiProfileConfig:
         obj: Mapping[str, Any],
     ) -> Self:
         """
-        Create an ApiProfileConfig from a dictionary-like object.
+        Parse a mapping into an ``ApiProfileConfig`` instance.
 
         Parameters
         ----------
         obj : Mapping[str, Any]
-            The object to parse (expected to be a mapping).
+            Mapping with at least ``base_url``.
 
         Returns
         -------
         ApiProfileConfig
-            The parsed ApiProfileConfig instance.
+            Parsed profile configuration.
+
+        Raises
+        ------
+        TypeError
+            If ``obj`` is not a mapping or ``base_url`` is missing/invalid.
 
         Notes
         -----
-        TypedDict shape: ApiProfileConfigMap (for editor and type-checkers).
+        TypedDict shape: ``ApiProfileConfigMap`` (editor/type-checker hint).
         """
 
         if not isinstance(obj, Mapping):
@@ -153,18 +166,13 @@ class ApiConfig:
     Attributes
     ----------
     base_url : str
-        Base URL for the API (may be derived from a selected profile). This
-        field is always required and must be a non-empty string.
+        Effective base URL (derived from profiles or top-level input).
     headers : dict[str, str]
-        Default headers for the API (may be derived from a selected profile).
+        Effective headers (profile + top-level merged with precedence).
     endpoints : dict[str, EndpointConfig]
-        Configured endpoints for the API.
+        Endpoint configurations keyed by name.
     profiles : dict[str, ApiProfileConfig]
-        Optional named profiles providing per-environment base_url/headers.
-
-    Notes
-    -----
-    See also: ApiProfileConfig.from_obj for profile parsing logic.
+        Named profile configurations; first or ``default`` becomes active.
     """
 
     # -- Attributes -- #
@@ -180,10 +188,9 @@ class ApiConfig:
 
     def _selected_profile(self) -> ApiProfileConfig | None:
         """
-        Return the active profile object, if any.
+        Return the active profile object ("default" preferred) or None.
 
-        Selection order mirrors headers/base_url behavior: 'default' when
-        present, otherwise the first profile listed.
+        Uses a tiny helper for selection and avoids duplicating logic.
 
         Returns
         -------
@@ -191,29 +198,37 @@ class ApiConfig:
             The selected profile configuration, or None if no profiles exist.
         """
 
-        name = self._selected_profile_name()
-        return self.profiles.get(name) if name else None
+        if not (profiles := self.profiles):
+            return None
 
-    def _selected_profile_name(self) -> str | None:
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+
+        return profiles.get(name)
+
+    def _profile_attr(
+        self,
+        attr: str,
+    ) -> Any:
         """
-        Return the name of the selected profile, if any.
+        Generic accessor for an attribute on the selected profile.
 
-        Selection order mirrors headers/base_url behavior: 'default' when
-        present, otherwise the first profile listed.
+        This centralizes profile selection logic so "effective_*" helpers
+        become one-liners. Returns None if no profile or attribute missing.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute name to fetch from the selected profile.
 
         Returns
         -------
-        str | None
-            The name of the selected profile, or None if no profiles exist.
+        Any
+            The attribute value, or ``None`` when unavailable.
         """
 
-        if not self.profiles:
-            return None
+        prof = self._selected_profile()
 
-        return (
-            'default' if 'default' in self.profiles
-            else next(iter(self.profiles.keys()))
-        )
+        return getattr(prof, attr, None) if prof else None
 
     # -- Instance Methods -- #
 
@@ -257,9 +272,7 @@ class ApiConfig:
             The base path from the selected profile, or None if not set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'base_path', None) if prof else None
+        return self._profile_attr('base_path')
 
     def effective_base_url(self) -> str:
         """
@@ -283,7 +296,7 @@ class ApiConfig:
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
         """
-        Get the effective pagination defaults for the API.
+        Return selected profile pagination_defaults, if any.
 
         Returns
         -------
@@ -292,13 +305,11 @@ class ApiConfig:
             set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'pagination_defaults', None) if prof else None
+        return self._profile_attr('pagination_defaults')
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
         """
-        Get the effective rate limit defaults for the API.
+        Return selected profile rate_limit_defaults, if any.
 
         Returns
         -------
@@ -307,9 +318,7 @@ class ApiConfig:
             set.
         """
 
-        prof = self._selected_profile()
-
-        return getattr(prof, 'rate_limit_defaults', None) if prof else None
+        return self._profile_attr('rate_limit_defaults')
 
     # -- Static Methods -- #
 
@@ -332,22 +341,26 @@ class ApiConfig:
         cls,
         obj: Mapping[str, Any],
     ) -> Self:
-        """
-        Create an ApiConfig instance from a dictionary-like object.
+        """Parse a mapping into an ``ApiConfig`` instance.
 
         Parameters
         ----------
-        obj : Config
-            The object to parse (expected to be a mapping).
+        obj : Mapping[str, Any]
+            Mapping containing either ``base_url`` or a ``profiles`` block.
 
         Returns
         -------
         ApiConfig
-            The parsed ApiConfig instance.
+            Parsed API configuration.
+
+        Raises
+        ------
+        TypeError
+            If ``obj`` is not a mapping or mandatory keys are missing.
 
         Notes
         -----
-        TypedDict shape: ApiConfigMap (for editor and type-checkers).
+        TypedDict shape: ``ApiConfigMap`` (editor/type-checker hint).
         """
 
         # Accept any mapping-like object; provide a consistent error otherwise.
@@ -357,11 +370,14 @@ class ApiConfig:
         # Optional: profiles structure
         # See also: ApiProfileConfig.from_obj for profile parsing logic.
         profiles_raw = obj.get('profiles', {}) or {}
-        profiles: dict[str, ApiProfileConfig] = {}
-        if isinstance(profiles_raw, dict):
-            for name, p in profiles_raw.items():
-                if isinstance(p, dict):
-                    profiles[str(name)] = ApiProfileConfig.from_obj(p)
+        profiles: dict[str, ApiProfileConfig] = (
+            {
+                str(name): ApiProfileConfig.from_obj(p)
+                for name, p in profiles_raw.items()
+                if isinstance(p, dict)
+            }
+            if isinstance(profiles_raw, dict) else {}
+        )
 
         # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
@@ -388,12 +404,13 @@ class ApiConfig:
             base_url = tl_base
             headers = tl_headers
         raw_eps = obj.get('endpoints', {}) or {}
-        eps: dict[str, EndpointConfig] = {}
-        if isinstance(raw_eps, dict):
-            eps = {
+        eps: dict[str, EndpointConfig] = (
+            {
                 str(name): EndpointConfig.from_obj(ep)
                 for name, ep in raw_eps.items()
             }
+            if isinstance(raw_eps, dict) else {}
+        )
 
         return cls(
             base_url=base_url,
@@ -412,19 +429,18 @@ class EndpointConfig:
     ----------
     path : str
         Endpoint path (relative to base URL).
-    method : str, optional
-        HTTP method for the endpoint (e.g., "GET", "POST"). Defaults to "GET".
-    path_params : dict[str, Any], optional
-        Path parameters for the endpoint. Defaults to an empty dictionary.
-    query_params : dict[str, Any], optional
-        Default query parameters for the endpoint. Defaults to an empty
-        dictionary.
-    body : Any | None, optional
-        Request body configuration for the endpoint. Defaults to None.
-    pagination : PaginationConfig | None, optional
-        Pagination configuration for the endpoint. Defaults to None.
-    rate_limit : RateLimitConfig | None, optional
-        Rate limiting configuration for the endpoint. Defaults to None.
+    method : str | None
+        Optional HTTP method (default is GET when omitted at runtime).
+    path_params : dict[str, Any]
+        Path parameters used when constructing the request URL.
+    query_params : dict[str, Any]
+        Default query string parameters.
+    body : Any | None
+        Request body structure (pass-through, format-specific).
+    pagination : PaginationConfig | None
+        Pagination configuration for the endpoint.
+    rate_limit : RateLimitConfig | None
+        Rate limit configuration for the endpoint.
     """
 
     # -- Attributes -- #
@@ -458,23 +474,26 @@ class EndpointConfig:
         cls,
         obj: str | Mapping[str, Any],
     ) -> Self:
-        """
-        Create an EndpointConfig instance from a string or dictionary-like
-        object.
+        """Parse a string or mapping into an ``EndpointConfig`` instance.
 
         Parameters
         ----------
-        obj : str | Config
-            The object to parse (expected to be a str or mapping).
+        obj : str | Mapping[str, Any]
+            Either a bare path string or a mapping with endpoint fields.
 
         Returns
         -------
         EndpointConfig
-            The parsed EndpointConfig instance.
+            Parsed endpoint configuration.
+
+        Raises
+        ------
+        TypeError
+            If the input is neither str nor mapping, or ``path`` is missing.
 
         Notes
         -----
-        TypedDict shape: EndpointConfigMap (for editor and type-checkers).
+        TypedDict shape: ``EndpointConfigMap`` (editor/type-checker hint).
         """
 
         # Allow either a bare string path or a mapping with explicit fields.
