@@ -1,6 +1,5 @@
 """
 etlplus.load
-============
 
 Helpers to load data into files, databases, and REST APIs.
 """
@@ -37,7 +36,6 @@ def _parse_json_string(
     """
     Parse JSON data from ``raw`` text.
     """
-
     try:
         loaded = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -84,7 +82,6 @@ def load_data(
     ValueError
         If the input cannot be interpreted as a JSON object or array.
     """
-
     if isinstance(source, (dict, list)):
         return cast(JSONData, source)
 
@@ -136,7 +133,6 @@ def load_to_file(
     ValueError
         If `file_format` is not one of the supported formats.
     """
-
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -181,7 +177,6 @@ def load_to_database(
     JSONDict
         Result object describing the operation.
     """
-
     records = count_records(data)
 
     return {
@@ -228,7 +223,6 @@ def load_to_api(
     ValueError
         If ``method`` is not supported.
     """
-
     http_method = coerce_http_method(method)
 
     # Apply a conservative timeout to guard against hanging requests.
@@ -295,7 +289,6 @@ def load(
     ValueError
         If `target_type` or options are invalid.
     """
-
     data = load_data(source)
     ttype = coerce_data_connector_type(target_type)
 

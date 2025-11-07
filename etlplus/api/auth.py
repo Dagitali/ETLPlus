@@ -1,6 +1,5 @@
 """
 etlplus.api.auth
-================
 
 Bearer token authentication for REST APIs using the OAuth2 Client Credentials
 flow.
@@ -130,7 +129,6 @@ class EndpointCredentialsBearer(AuthBase):
         PreparedRequest
             The same request with the Authorization header set.
         """
-
         self._ensure_token()
         r.headers['Authorization'] = f'Bearer {self.token}'
         return r
@@ -167,7 +165,6 @@ class EndpointCredentialsBearer(AuthBase):
         ValueError
             When the token response body is not valid JSON.
         """
-
         if self.token and time.time() < self.expiry - CLOCK_SKEW_SEC:
             return
         try:

@@ -1,6 +1,5 @@
 """
 etlplus.config.api
-==================
 
 Configuration models for REST API services and endpoints.
 
@@ -129,7 +128,6 @@ class ApiProfileConfig:
         -----
         TypedDict shape: ``ApiProfileConfigMap`` (editor/type-checker hint).
         """
-
         if not isinstance(obj, Mapping):
             raise TypeError('ApiProfileConfig must be a mapping')
 
@@ -197,7 +195,6 @@ class ApiConfig:
         ApiProfileConfig | None
             The selected profile configuration, or None if no profiles exist.
         """
-
         if not (profiles := self.profiles):
             return None
 
@@ -225,7 +222,6 @@ class ApiConfig:
         Any
             The attribute value, or ``None`` when unavailable.
         """
-
         prof = self._selected_profile()
 
         return getattr(prof, attr, None) if prof else None
@@ -253,7 +249,6 @@ class ApiConfig:
         str
             The full URL for the endpoint.
         """
-
         client = EndpointClient(
             base_url=self.base_url,
             base_path=self.effective_base_path(),
@@ -271,7 +266,6 @@ class ApiConfig:
         str | None
             The base path from the selected profile, or None if not set.
         """
-
         return self._profile_attr('base_path')
 
     def effective_base_url(self) -> str:
@@ -283,7 +277,6 @@ class ApiConfig:
         str
             The effective base URL including base_path.
         """
-
         parts = urlsplit(self.base_url)
         base_path = parts.path.rstrip('/')
         extra = self.effective_base_path()
@@ -304,7 +297,6 @@ class ApiConfig:
             The pagination defaults from the selected profile, or None if not
             set.
         """
-
         return self._profile_attr('pagination_defaults')
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
@@ -317,7 +309,6 @@ class ApiConfig:
             The rate limit defaults from the selected profile, or None if not
             set.
         """
-
         return self._profile_attr('rate_limit_defaults')
 
     # -- Static Methods -- #
@@ -362,7 +353,6 @@ class ApiConfig:
         -----
         TypedDict shape: ``ApiConfigMap`` (editor/type-checker hint).
         """
-
         # Accept any mapping-like object; provide a consistent error otherwise.
         if not isinstance(obj, Mapping):
             raise TypeError('ApiConfig must be a mapping')
@@ -495,7 +485,6 @@ class EndpointConfig:
         -----
         TypedDict shape: ``EndpointConfigMap`` (editor/type-checker hint).
         """
-
         # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):
             return cls(path=obj, method=None)

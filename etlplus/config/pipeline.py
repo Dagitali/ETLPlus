@@ -1,6 +1,5 @@
 """
 etlplus.config.pipeline
-=======================
 
 Pipeline configuration model and helpers for job orchestration.
 
@@ -61,7 +60,6 @@ def _build_jobs(
     list[JobConfig]
         Parsed job configurations.
     """
-
     jobs: list[JobConfig] = []
     for j in (raw.get('jobs', []) or []):
         if not isinstance(j, dict):
@@ -138,7 +136,6 @@ def _build_sources(
     list[Connector]
         Parsed source connectors.
      """
-
     return _build_connectors(raw, 'sources')
 
 
@@ -211,7 +208,6 @@ def load_pipeline_config(
     Delegates to ``PipelineConfig.from_yaml`` for construction and optional
     variable substitution.
     """
-
     return PipelineConfig.from_yaml(path, substitute=substitute, env=env)
 
 
@@ -296,7 +292,6 @@ class PipelineConfig:
         PipelineConfig
             Parsed pipeline configuration.
         """
-
         raw = read_yaml(Path(path))
         if not isinstance(raw, dict):
             raise TypeError('Pipeline YAML must have a mapping/object root')
@@ -336,7 +331,6 @@ class PipelineConfig:
         PipelineConfig
             Parsed pipeline configuration.
         """
-
         # Basic metadata
         name = raw.get('name')
         version = raw.get('version')

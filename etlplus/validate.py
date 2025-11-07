@@ -1,6 +1,5 @@
 """
-ETLPlus Data Validation
-=======================
+etlplus.validation
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 
@@ -169,7 +168,6 @@ def _coerce_rule(
     int | float | None
         The coerced value, or None if the key is absent.
     """
-
     if key not in rules:
         return None
 
@@ -208,7 +206,6 @@ def _get_int_rule(
     int | None
         The coerced integer value, or None if the key is absent.
     """
-
     coerced = _coerce_rule(rules, key, int, 'an integer', errors)
 
     return int(coerced) if coerced is not None else None
@@ -238,7 +235,6 @@ def _get_numeric_rule(
     float | None
         The coerced float value, or None if the key is absent.
     """
-
     coerced = _coerce_rule(rules, key, float, 'numeric', errors)
 
     return float(coerced) if coerced is not None else None
@@ -258,7 +254,6 @@ def _is_number(value: Any) -> bool:
     bool
         ``True`` if value is a number, else ``False``.
     """
-
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
@@ -278,7 +273,6 @@ def _type_matches(value: Any, expected: str) -> bool:
     bool
         ``True`` if the value matches the expected type; ``False`` if not.
     """
-
     py_type = TYPE_MAP.get(expected)
     if py_type:
         return isinstance(value, py_type)
@@ -311,7 +305,6 @@ def _validate_record(
     tuple[list[str], dict[str, list[str]]]
         A tuple of (errors, field_errors).
     """
-
     errors: list[str] = []
     field_errors: dict[str, list[str]] = {}
 
@@ -356,7 +349,6 @@ def validate_field(
     If ``required`` is ``False`` or absent and the value is ``None``, the
     field is considered valid without further checks.
     """
-
     errors: list[str] = []
 
     # Required check (None is treated as missing).
@@ -447,7 +439,6 @@ def validate(
         and ``data``. If loading fails, ``data`` is ``None`` and an error is
         reported in ``errors``.
     """
-
     try:
         data = load_data(source)
     except ValueError as e:

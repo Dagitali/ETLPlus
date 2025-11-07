@@ -1,6 +1,5 @@
 """
 etlplus.config.profile
-======================
 
 Profile model for pipeline-level defaults and environment.
 
@@ -67,7 +66,6 @@ class ProfileConfig:
             Parsed profile configuration; non-mapping input yields a default
             instance. All ``env`` values are coerced to strings.
         """
-
         if not isinstance(obj, Mapping):
             return cls()
 

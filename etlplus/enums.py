@@ -1,6 +1,5 @@
 """
 etlplus.enums
-=======================
 
 Shared enumeration types used across ETLPlus modules.
 
@@ -86,7 +85,6 @@ class CoercibleStrEnum(enum.StrEnum):
         StrStrMap
             A mapping of alias names to their corresponding enum member names.
         """
-
         return {}
 
     @classmethod
@@ -94,7 +92,6 @@ class CoercibleStrEnum(enum.StrEnum):
         """
         Return the allowed string values for this enum.
         """
-
         return tuple(member.value for member in cls)
 
     @classmethod
@@ -117,7 +114,6 @@ class CoercibleStrEnum(enum.StrEnum):
         ValueError
             If the value cannot be coerced into a valid member.
         """
-
         if isinstance(value, cls):
             return value
         try:
@@ -140,7 +136,6 @@ class CoercibleStrEnum(enum.StrEnum):
         value : object
             An existing enum member or a text value to normalize.
         """
-
         try:
             return cls.coerce(value)
         except ValueError:
@@ -175,7 +170,6 @@ class AggregateName(CoercibleStrEnum):
         AggregateFunc
             The aggregation function corresponding to this aggregation type.
         """
-
         if self is AggregateName.COUNT:
             return lambda xs, n: n
         if self is AggregateName.MAX:
@@ -212,7 +206,6 @@ class DataConnectorType(CoercibleStrEnum):
         StrStrMap
             A mapping of alias names to their corresponding enum member names.
         """
-
         return {
             'http': 'api',
             'https': 'api',
@@ -250,7 +243,6 @@ class FileFormat(CoercibleStrEnum):
         StrStrMap
             A mapping of alias names to their corresponding enum member names.
         """
-
         return {
             'text/csv': 'csv',
             'application/json': 'json',
@@ -283,7 +275,6 @@ class HttpMethod(CoercibleStrEnum):
           ``DELETE``), but many servers/clients do not expect them. We mark
           ``POST``, ``PUT``, and ``PATCH`` as True.
         """
-
         return self in {HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH}
 
 
@@ -315,7 +306,6 @@ class OperatorName(CoercibleStrEnum):
         OperatorFunc
             The comparison function corresponding to this operator.
         """
-
         match self:
             case OperatorName.EQ:
                 return _op.eq
@@ -346,7 +336,6 @@ class OperatorName(CoercibleStrEnum):
         StrStrMap
             A mapping of alias names to their corresponding enum member names.
         """
-
         return {
             '==': 'eq', '=': 'eq', '!=': 'ne', '<>': 'ne',
             '>=': 'gte', '≥': 'gte', '<=': 'lte', '≤': 'lte',
@@ -379,7 +368,6 @@ class PipelineStep(CoercibleStrEnum):
         int
             The execution order of this pipeline step.
         """
-
         return _PIPELINE_ORDER_INDEX[self]
 
 
@@ -408,7 +396,6 @@ def coerce_data_connector_type(
     This thin wrapper is kept for backward compatibility; prefer
     :meth:`DataConnectorType.coerce` going forward.
     """
-
     return DataConnectorType.coerce(connector)
 
 
@@ -421,7 +408,6 @@ def coerce_file_format(
     This thin wrapper is kept for backward compatibility; prefer
     :meth:`FileFormat.coerce` going forward.
     """
-
     return FileFormat.coerce(file_format)
 
 
@@ -434,5 +420,4 @@ def coerce_http_method(
     This thin wrapper is kept for backward compatibility; prefer
     :meth:`HttpMethod.coerce` going forward.
     """
-
     return HttpMethod.coerce(http_method)

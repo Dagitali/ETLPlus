@@ -1,6 +1,5 @@
 """
 etlplus.config.jobs
-===================
 
 Data classes modeling job orchestration references (extract, validate,
 transform, load).

@@ -1,6 +1,5 @@
 """
-ETLPlus Data Extraction
-=======================
+etlplus.extract
 
 Helpers to extract data from files, databases, and REST APIs.
 """
@@ -89,7 +88,6 @@ def extract_from_database(
     JSONList
         Informational message payload.
     """
-
     return [
         {
             'message': 'Database extraction not yet implemented',
@@ -131,7 +129,6 @@ def extract_from_api(
     ValueError
         If the HTTP response content is not valid JSON.
     """
-
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
     session = kwargs.pop('session', None)
@@ -199,7 +196,6 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
-
     stype = coerce_data_connector_type(source_type)
 
     if stype is DataConnectorType.FILE:

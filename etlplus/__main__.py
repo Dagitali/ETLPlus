@@ -1,6 +1,5 @@
 """
-ETLPlus Module Runner
-==============================
+etlplus.__main__
 
 Thin wrapper so `python -m etlplus` invokes the same CLI entrypoint as the
 console script defined in `pyproject.toml`.

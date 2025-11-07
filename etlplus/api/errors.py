@@ -1,6 +1,5 @@
 """
 etlplus.api.errors
-==================
 
 Exception types with rich context for debugging REST API failures.
 

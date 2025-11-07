@@ -1,6 +1,5 @@
 """
-ETLPlus Type Aliases
-=======================
+etlplus.type
 
 Shared type aliases leveraged across ETLPlus modules.
 """

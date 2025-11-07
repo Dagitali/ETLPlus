@@ -1,6 +1,5 @@
 """
 etlplus.utils
-=============
 
 Small shared helpers used across modules.
 """
@@ -44,7 +43,6 @@ def count_records(data: JSONData) -> int:
     int
         Number of records in `data`.
     """
-
     return len(data) if isinstance(data, list) else 1
 
 
@@ -67,7 +65,6 @@ def json_type(option: str) -> Any:
     argparse.ArgumentTypeError
         If the input cannot be parsed as JSON.
     """
-
     try:
         return json.loads(option)
     except json.JSONDecodeError as e:  # pragma: no cover - argparse path
@@ -85,7 +82,6 @@ def print_json(obj: Any) -> None:
     obj
         Object to serialize as JSON.
     """
-
     print(json.dumps(obj, indent=2, ensure_ascii=False))
 
 
@@ -100,7 +96,6 @@ def write_json(obj: Any, out: str | Path) -> None:
     out : str | Path
         Output file path.
     """
-
     path = Path(out)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

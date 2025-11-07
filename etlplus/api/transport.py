@@ -1,6 +1,5 @@
 """
 etlplus.api.transport
-=====================
 
 Configure ``requests`` ``HTTPAdapter`` instances with connection pooling and
 optional ``urllib3`` retry behavior.
@@ -70,7 +69,6 @@ def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
     HTTPAdapter
         Configured HTTPAdapter instance.
     """
-
     pool_connections = cfg.get('pool_connections')
     try:
         pool_connections_i = (

@@ -1,6 +1,5 @@
 """
 etlplus.config.rate_limit
-=========================
 
 Rate limit model for REST API requests.
 
@@ -69,7 +68,6 @@ class RateLimitConfig(BoundsWarningsMixin):
         list[str]
             Warning messages (empty if values look sane).
         """
-
         warnings: list[str] = []
         self._warn_if(
             (ss := self.sleep_seconds) is not None and ss < 0,
@@ -117,7 +115,6 @@ class RateLimitConfig(BoundsWarningsMixin):
         RateLimitConfig | None
             Parsed instance, or ``None`` if ``obj`` isn't a mapping.
         """
-
         if not isinstance(obj, Mapping):
             return None
 
