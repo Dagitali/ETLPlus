@@ -257,7 +257,10 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _type_matches(value: Any, expected: str) -> bool:
+def _type_matches(
+    value: Any,
+    expected: str,
+) -> bool:
     """
     Check if a value matches an expected JSON-like type.
 
@@ -265,8 +268,9 @@ def _type_matches(value: Any, expected: str) -> bool:
     ----------
     value : Any
         Value to test.
-    expected : {'string', 'number', 'integer', 'boolean', 'array', 'object'}
-        Expected logical type name.
+    expected : str
+        Expected logical type name ('string', 'number', 'integer', 'boolean',
+        'array', 'object').
 
     Returns
     -------
@@ -428,7 +432,8 @@ def validate(
 
     Parameters
     ----------
-    source : StrPath | Record | Records        Data source to validate.
+    source : StrPath | Record | Records
+        Data source to validate.
     rules : RulesMap | None, optional
         Field rules keyed by field name. If ``None``, data is considered
         valid and returned unchanged.

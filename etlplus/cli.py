@@ -180,7 +180,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
 def cmd_list(args: argparse.Namespace) -> int:
     """
-    Prints ETL job names from a pipeline YAML configuration.
+    Print ETL job names from a pipeline YAML configuration.
 
     Parameters
     ----------
@@ -462,7 +462,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Main entry point for the CLI.
+    Handle CLI's main entry point.
 
     Parameters
     ----------

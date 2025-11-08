@@ -51,8 +51,9 @@ __all__ = [
 
 class HTTPAdapterRetryConfig(TypedDict, total=False):
     """
-    Retry configuration for urllib3 ``Retry`` used by requests'
-    ``HTTPAdapter``.
+    Retry configuration for urllib3 ``Retry``.
+
+    Used by requests' ``HTTPAdapter``.
 
     Summary
     -------

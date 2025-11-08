@@ -62,7 +62,7 @@ class ProfileConfig:
 
         Returns
         -------
-        ProfileConfig
+        Self
             Parsed profile configuration; non-mapping input yields a default
             instance. All ``env`` values are coerced to strings.
         """

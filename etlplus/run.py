@@ -167,11 +167,19 @@ def run(
     ----------
     job : str
         Job name to execute.
+    config_path : str | None, optional
+        Path to the pipeline YAML configuration. Defaults to
+        ``in/pipeline.yml``.
 
     Returns
     -------
     JSONDict
         Result dictionary.
+
+    Raises
+    ------
+    ValueError
+        If the job is not found or if there are configuration issues.
     """
     # Propagate a possibly monkeypatched compute_sleep_seconds into helpers,
     # to preserve existing test contracts that patch run.compute_sleep_seconds.

@@ -175,7 +175,7 @@ class PaginationConfig(BoundsWarningsMixin):
 
         Returns
         -------
-        PaginationConfig | None
+        Self | None
             Parsed instance, or ``None`` if ``obj`` isn't a mapping.
 
         Notes

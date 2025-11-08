@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-ETLPlus YAML Runner
-===================
+run_pipeline.py script.
 
 Execute jobs defined in a dbt-inspired YAML pipeline configuration.
 
-Usage examples
+Examples
 --------------
 - List jobs:
     python tools/run_pipeline.py --list
