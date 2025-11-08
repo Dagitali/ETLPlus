@@ -281,16 +281,22 @@ class PipelineConfig:
         ----------
         path : Path | str
             Path to the YAML file.
-        substitute : bool, default False
-            Perform variable substitution after initial parse.
-        env : Mapping[str, str] | None, default None
+        substitute : bool, optional
+            Perform variable substitution after initial parse. Defaults to
+            ``False``.
+        env : Mapping[str, str] | None, optional
             Environment mapping used for substitution; if omitted use
-            ``os.environ``.
+            ``os.environ``. Defaults to ``None``.
 
         Returns
         -------
-        PipelineConfig
+        Self
             Parsed pipeline configuration.
+
+        Raises
+        ------
+        TypeError
+            If the YAML root is not a mapping/object.
         """
         raw = File(Path(path), FileFormat.YAML).read_yaml()
         if not isinstance(raw, dict):
@@ -328,7 +334,7 @@ class PipelineConfig:
 
         Returns
         -------
-        PipelineConfig
+        Self
             Parsed pipeline configuration.
         """
         # Basic metadata

@@ -50,7 +50,7 @@ def json_type(option: str) -> Any:
 
     Parameters
     ----------
-    option
+    option : str
         Raw CLI string to parse as JSON.
 
     Returns
@@ -77,7 +77,7 @@ def print_json(obj: Any) -> None:
 
     Parameters
     ----------
-    obj
+    obj : Any
         Object to serialize as JSON.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))

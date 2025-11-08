@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests
+import requests  # type: ignore
 
 from .enums import coerce_data_connector_type
 from .enums import coerce_file_format
@@ -39,22 +39,13 @@ def extract_from_file(
     ----------
     file_path : StrPath
         Source file path.
-    file_format : {'json', 'csv', 'xml'}, optional
+    file_format : FileFormat | str, optional
         File format to parse. Defaults to `'json'`.
 
     Returns
     -------
     JSONData
         Parsed data as a mapping or a list of mappings.
-
-    Raises
-    ------
-    FileNotFoundError
-        If `file_path` does not exist.
-    ValueError
-        If `file_format` is not one of the supported formats.
-    TypeError
-        If parsed JSON is not an object or an array of objects.
     """
     path = Path(file_path)
     fmt = coerce_file_format(file_format)
@@ -123,10 +114,8 @@ def extract_from_api(
 
     Raises
     ------
-    requests.RequestException
-        If the HTTP request fails or returns an error (i.e., non-2xx) status.
-    ValueError
-        If the HTTP response content is not valid JSON.
+    TypeError
+        If a provided `session` does not expose a callable `get` method.
     """
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)

@@ -116,7 +116,7 @@ class ApiProfileConfig:
 
         Returns
         -------
-        ApiProfileConfig
+        Self
             Parsed profile configuration.
 
         Raises
@@ -341,7 +341,7 @@ class ApiConfig:
 
         Returns
         -------
-        ApiConfig
+        Self
             Parsed API configuration.
 
         Raises
@@ -473,7 +473,7 @@ class EndpointConfig:
 
         Returns
         -------
-        EndpointConfig
+        Self
             Parsed endpoint configuration.
 
         Raises

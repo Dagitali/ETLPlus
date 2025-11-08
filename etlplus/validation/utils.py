@@ -54,6 +54,11 @@ def maybe_validate(
     Any
         The (possibly modified) payload when validation passes, or raises
         ValueError when validation fails and severity=="error".
+
+    Raises
+    ------
+    ValueError
+        If validation fails and severity is "error".
     """
     if not enabled:
         return payload

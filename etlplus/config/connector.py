@@ -147,7 +147,7 @@ class ConnectorApi:
 
         Returns
         -------
-        ConnectorApi
+        Self
             Parsed connector instance.
 
         Raises
@@ -229,7 +229,7 @@ class ConnectorDb:
 
         Returns
         -------
-        ConnectorDb
+        Self
             Parsed connector instance.
 
         Raises
@@ -303,7 +303,7 @@ class ConnectorFile:
 
         Returns
         -------
-        ConnectorFile
+        Self
             Parsed connector instance.
 
         Raises

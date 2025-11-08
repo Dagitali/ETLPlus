@@ -83,8 +83,6 @@ def _agg_avg(
     ----------
     nums : list[float]
         Numeric values to average.
-    _ : int
-        Unused count parameter for signature compatibility.
 
     Returns
     -------
@@ -103,8 +101,6 @@ def _agg_count(
 
     Parameters
     ----------
-    _ : list[float]
-        Unused list of numeric values.
     present : int
         Count of present values.
 
@@ -127,8 +123,6 @@ def _agg_max(
     ----------
     nums : list[float]
         Numeric values to consider.
-    _ : int
-        Unused count parameter for signature compatibility.
 
     Returns
     -------
@@ -149,8 +143,6 @@ def _agg_min(
     ----------
     nums : list[float]
         Numeric values to consider.
-    _ : int
-        Unused count parameter for signature compatibility.
 
     Returns
     -------
@@ -171,8 +163,6 @@ def _agg_sum(
     ----------
     nums : list[float]
         Numeric values to sum.
-    _ : int
-        Unused count parameter for signature compatibility.
 
     Returns
     -------
@@ -492,6 +482,11 @@ def _eval_condition(
     -------
     bool
         True if the condition is met; False if not.
+
+    Raises
+    ------
+    Exception
+        If *catch_all* is False and the operator raises.
     """
     try:
         lhs = record[field]
@@ -911,7 +906,7 @@ def transform(
     ----------
     source : StrPath | JSONData
         Data source to transform.
-    operations : PipelineConfig or None, optional
+    operations : PipelineConfig | None, optional
         Operation dictionary that may contain the keys ``filter``, ``map``,
         ``select``, ``sort``, and ``aggregate`` with their respective
         configs. Each value may be a single config or a sequence of configs

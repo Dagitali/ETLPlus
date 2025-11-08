@@ -133,7 +133,10 @@ class CoercibleStrEnum(enum.StrEnum):
             ) from e
 
     @classmethod
-    def try_coerce(cls, value: object) -> Self | None:
+    def try_coerce(
+        cls,
+        value: object,
+    ) -> Self | None:
         """
         Best-effort parse; return ``None`` on failure instead of raising.
 
@@ -141,6 +144,11 @@ class CoercibleStrEnum(enum.StrEnum):
         ----------
         value : object
             An existing enum member or a text value to normalize.
+
+        Returns
+        -------
+        Self | None
+            The corresponding enum member, or ``None`` if coercion fails.
         """
         try:
             return cls.coerce(value)

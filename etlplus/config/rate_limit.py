@@ -112,7 +112,7 @@ class RateLimitConfig(BoundsWarningsMixin):
 
         Returns
         -------
-        RateLimitConfig | None
+        Self | None
             Parsed instance, or ``None`` if ``obj`` isn't a mapping.
         """
         if not isinstance(obj, Mapping):
