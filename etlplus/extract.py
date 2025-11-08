@@ -15,7 +15,7 @@ from .enums import coerce_data_connector_type
 from .enums import coerce_file_format
 from .enums import DataConnectorType
 from .enums import FileFormat
-from .file import read_structured_file
+from .file import File
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -60,7 +60,7 @@ def extract_from_file(
     fmt = coerce_file_format(file_format)
 
     # Let file module perform existence and format validation.
-    return read_structured_file(path, fmt)
+    return File(path, fmt).read()
 
 
 # -- Database Extraction (Placeholder) -- #
