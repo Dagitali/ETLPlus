@@ -156,7 +156,6 @@ def _build_targets(
     list[Connector]
         Parsed target connectors.
     """
-
     return _build_connectors(raw, 'targets')
 
 

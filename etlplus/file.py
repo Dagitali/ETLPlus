@@ -219,6 +219,11 @@ class File:
     def _ensure_format(self) -> FileFormat:
         """
         Resolve the active format, guessing from extension if needed.
+
+        Returns
+        -------
+        FileFormat
+            The resolved file format.
         """
         return self.file_format \
             if self.file_format is not None \
@@ -246,11 +251,22 @@ class File:
                 'Cannot infer file format from extension '
                 f'{self.path.suffix!r}',
             ) from e
+
     # -- Instance Methods (Generic API) -- #
 
     def read(self) -> JSONData:
         """
         Read structured data from :attr:`path` using :attr:`file_format`.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the file.
+
+        Raises
+        ------
+        ValueError
+            If the resolved file format is unsupported.
         """
         fmt = self._ensure_format()
         match fmt:
@@ -308,6 +324,11 @@ class File:
     def read_csv(self) -> JSONList:
         """
         Load CSV content as a list of dictionaries from :attr:`path`.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the CSV file.
         """
         self._assert_exists()
 
@@ -363,6 +384,16 @@ class File:
     def read_json(self) -> JSONData:
         """
         Load and validate JSON payloads from :attr:`path`.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the JSON file.
+
+        Raises
+        ------
+        TypeError
+            If the JSON root is not an object or an array of objects.
         """
         self._assert_exists()
 
@@ -417,6 +448,11 @@ class File:
     def read_xml(self) -> JSONDict:
         """
         Parse XML document at :attr:`path` into a nested dictionary.
+
+        Returns
+        -------
+        JSONDict
+            Nested dictionary representation of the XML file.
         """
         self._assert_exists()
 
@@ -434,6 +470,16 @@ class File:
     def read_yaml(self) -> JSONData:
         """
         Load and validate YAML payloads from :attr:`path`.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the YAML file.
+
+        Raises
+        ------
+        TypeError
+            If the YAML root is not an object or an array of objects.
         """
         self._require_yaml()
         self._assert_exists()
@@ -492,6 +538,16 @@ class File:
     ) -> int:
         """
         Write ``data`` as YAML to :attr:`path` and return record count.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data to write as YAML.
+
+        Returns
+        -------
+        int
+            The number of records written.
         """
         self._require_yaml()
         with self.path.open('w', encoding='utf-8') as handle:

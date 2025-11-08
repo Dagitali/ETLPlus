@@ -34,6 +34,21 @@ def _parse_json_string(
 ) -> JSONData:
     """
     Parse JSON data from ``raw`` text.
+
+    Parameters
+    ----------
+    raw : str
+        Raw JSON string to parse.
+
+    Returns
+    -------
+    JSONData
+        Parsed object or list of objects.
+
+    Raises
+    ------
+    ValueError
+        If the JSON is invalid or not an object/array.
     """
     try:
         loaded = json.loads(raw)
@@ -78,8 +93,8 @@ def load_data(
 
     Raises
     ------
-    ValueError
-        If the input cannot be interpreted as a JSON object or array.
+    TypeError
+        If `source` is not a string, path, or JSON-like object.
     """
     if isinstance(source, (dict, list)):
         return cast(JSONData, source)
@@ -119,18 +134,13 @@ def load_to_file(
         Data to write.
     file_path : StrPath
         Target file path.
-    file_format : {'json', 'csv', 'xml'}, optional
+    file_format : FileFormat | str, optional
         Output format. Default is 'json'.
 
     Returns
     -------
     JSONDict
         Result dictionary with status and record count.
-
-    Raises
-    ------
-    ValueError
-        If `file_format` is not one of the supported formats.
     """
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,7 +215,7 @@ def load_to_api(
         Data to send as JSON.
     url : str
         API endpoint URL.
-    method : {'POST', 'PUT', 'PATCH'}
+    method : HttpMethod | str
         HTTP method to use.
     **kwargs : Any
         Extra arguments forwarded to ``requests`` (e.g., ``timeout``).
@@ -217,10 +227,8 @@ def load_to_api(
 
     Raises
     ------
-    requests.RequestException
-        If the HTTP request fails or returns an error (i.e., non-2xx) status.
-    ValueError
-        If ``method`` is not supported.
+    TypeError
+        If the session object is not valid.
     """
     http_method = coerce_http_method(method)
 

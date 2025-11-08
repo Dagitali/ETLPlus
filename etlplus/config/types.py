@@ -79,7 +79,7 @@ class ApiConfigMap(TypedDict, total=False):
     Either provide a 'base_url' with optional 'headers' and 'endpoints', or
     provide 'profiles' with at least one profile having a 'base_url'.
 
-    See also
+    See Also
     --------
     - etlplus.config.api.ApiConfig.from_obj: parses this mapping
     """
@@ -98,7 +98,7 @@ class ApiProfileConfigMap(TypedDict, total=False):
     -----
     `base_url` is required at runtime when profiles are provided.
 
-    See also
+    See Also
     --------
     - etlplus.config.api.ApiProfileConfig.from_obj: parses this mapping
     """
@@ -118,7 +118,7 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     -----
     Runtime expects header values to be str; typing remains permissive.
 
-    See also
+    See Also
     --------
     - etlplus.config.api.ApiProfileConfig.from_obj: consumes this block
     - etlplus.config.pagination.PaginationConfig.from_obj: parses pagination
@@ -134,7 +134,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     """
     Shape accepted by ConnectorApi.from_obj (all keys optional).
 
-    See also
+    See Also
     --------
     - etlplus.config.connector.ConnectorApi.from_obj
     """
@@ -155,7 +155,7 @@ class ConnectorDbConfigMap(TypedDict, total=False):
     """
     Shape accepted by ConnectorDb.from_obj (all keys optional).
 
-    See also
+    See Also
     --------
     - etlplus.config.connector.ConnectorDb.from_obj
     """
@@ -172,7 +172,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
     """
     Shape accepted by ConnectorFile.from_obj (all keys optional).
 
-    See also
+    See Also
     --------
     - etlplus.config.connector.ConnectorFile.from_obj
     """
@@ -190,7 +190,7 @@ class EndpointConfigMap(TypedDict, total=False):
 
     One of 'path' or 'url' should be provided.
 
-    See also
+    See Also
     --------
     - etlplus.config.api.EndpointConfig.from_obj: parses this mapping
     """
@@ -209,7 +209,7 @@ class PaginationConfigMap(TypedDict, total=False):
     """
     Shape accepted by PaginationConfig.from_obj (all keys optional).
 
-    See also
+    See Also
     --------
     - etlplus.config.pagination.PaginationConfig.from_obj
     """
@@ -231,7 +231,7 @@ class RateLimitConfigMap(TypedDict, total=False):
     """
     Shape accepted by RateLimitConfig.from_obj (all keys optional).
 
-    See also
+    See Also
     --------
     - etlplus.config.rate_limit.RateLimitConfig.from_obj
     """

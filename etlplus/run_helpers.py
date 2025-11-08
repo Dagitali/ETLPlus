@@ -1,6 +1,5 @@
 """
-etlplus.run_helpers
-
+etlplus.run_helpers module.
 
 Helper functions and small utilities used by ``etlplus.run`` to compose API
 request/load environments, pagination configs, session objects, and endpoint
@@ -72,6 +71,8 @@ type URL = str
 
 
 class ApiRequestEnv(TypedDict, total=False):
+    """API request environment configuration."""
+
     url: URL | None
     headers: dict[str, str]
     timeout: Timeout
@@ -89,6 +90,8 @@ class ApiRequestEnv(TypedDict, total=False):
 
 
 class ApiTargetEnv(TypedDict, total=False):
+    """API target environment configuration."""
+
     url: URL | None
     headers: dict[str, str]
     timeout: Timeout
@@ -97,6 +100,8 @@ class ApiTargetEnv(TypedDict, total=False):
 
 
 class SessionConfig(TypedDict, total=False):
+    """Configuration for requests.Session."""
+
     headers: Mapping[str, Any]
     params: Mapping[str, Any]
     auth: Any
@@ -118,28 +123,27 @@ def _get_api_cfg_and_endpoint(
     api_name: str,
     endpoint_name: str,
 ) -> tuple[CfgApiConfig, CfgEndpointConfig]:
-    """_summary_
+    """
+    Retrieve API configuration and endpoint configuration.
 
     Parameters
     ----------
     cfg : Any
-        _description_
+        The overall configuration object.
     api_name : str
-        _description_
+        The name of the API to retrieve.
     endpoint_name : str
-        _description_
+        The name of the endpoint to retrieve.
 
     Returns
     -------
     tuple[CfgApiConfig, CfgEndpointConfig]
-        _description_
+        The API configuration and endpoint configuration.
 
     Raises
     ------
     ValueError
-        _description_
-    ValueError
-        _description_
+        If the API or endpoint is not defined.
     """
     api_cfg = cfg.apis.get(api_name)
     if not api_cfg:
@@ -172,21 +176,22 @@ def _merge_session_cfg_three(
     ep: CfgEndpointConfig,
     source_session_cfg: SessionConfig | None,
 ) -> SessionConfig | None:
-    """_summary_
+    """
+    Merge session configurations from API, endpoint, and source.
 
     Parameters
     ----------
     api_cfg : CfgApiConfig
-        _description_
+        API configuration.
     ep : CfgEndpointConfig
-        _description_
+        Endpoint configuration.
     source_session_cfg : SessionConfig | None
-        _description_
+        Source session configuration.
 
     Returns
     -------
     SessionConfig | None
-        _description_
+        Merged session configuration.
     """
     api_sess = getattr(api_cfg, 'session', None)
     ep_sess = getattr(ep, 'session', None)
@@ -213,23 +218,24 @@ def build_endpoint_client(
     endpoints: dict[str, str],
     env: Mapping[str, Any],
 ) -> EndpointClient:
-    """_summary_
+    """
+    Build an endpoint client for the specified API environment.
 
     Parameters
     ----------
     base_url : str
-        _description_
+        The base URL for the API.
     base_path : str | None
-        _description_
+        The base path for the API.
     endpoints : dict[str, str]
-        _description_
+        A mapping of endpoint names to their paths.
     env : Mapping[str, Any]
-        _description_
+        Environment variables and configuration options.
 
     Returns
     -------
     EndpointClient
-        _description_
+        The constructed endpoint client.
     """
     # Allow tests to monkeypatch etlplus.run.EndpointClient and have it
     # propagate here by preferring the class on the run module if present.
@@ -253,21 +259,22 @@ def compose_api_request_env(
     source_obj: Any,
     ex_opts: Mapping[str, Any] | None,
 ) -> ApiRequestEnv:
-    """_summary_
+    """
+    Compose the API request environment.
 
     Parameters
     ----------
     cfg : Any
-        _description_
+        The API configuration.
     source_obj : Any
-        _description_
+        The source object for the API request.
     ex_opts : Mapping[str, Any] | None
-        _description_
+        The external options for the API request.
 
     Returns
     -------
     ApiRequestEnv
-        _description_
+        The composed API request environment.
     """
     ex_opts = ex_opts or {}
     url: URL | None = getattr(source_obj, 'url', None)
@@ -392,16 +399,16 @@ def compose_api_target_env(
     Parameters
     ----------
     cfg : Any
-        _description_
+        API configuration.
     target_obj : Any
-        _description_
+        Target object for the API call.
     overrides : Mapping[str, Any] | None
-        _description_
+        Override configuration options.
 
     Returns
     -------
     ApiTargetEnv
-        _description_
+        Composed API target environment.
     """
     ov = overrides or {}
     url: URL | None = cast(
@@ -453,19 +460,20 @@ def build_pagination_cfg(
     pagination: CfgPaginationConfig | None,
     overrides: Mapping[str, Any] | None,
 ) -> ApiPaginationConfig | None:
-    """_summary_
+    """
+    Build pagination configuration.
 
     Parameters
     ----------
     pagination : CfgPaginationConfig | None
-        _description_
+        Pagination configuration.
     overrides : Mapping[str, Any] | None
-        _description_
+        Override configuration options.
 
     Returns
     -------
     ApiPaginationConfig | None
-        _description_
+        Pagination configuration.
     """
     ptype: str | None = None
     records_path = None
@@ -574,29 +582,29 @@ def paginate_with_client(
     sleep_seconds: float | None,
 ) -> Any:
     """
-
+    Paginate using the given client.
 
     Parameters
     ----------
     client : Any
-
+        The endpoint client.
     endpoint_key : str
-
+        The key for the API endpoint.
     params : Params | None
-
+        Query parameters for the API request.
     headers : Headers | None
-
+        Headers to include in the API request.
     timeout : Timeout
-
+        Timeout configuration for the API request.
     pagination : ApiPaginationConfig | None
-
+        Pagination configuration for the API request.
     sleep_seconds : float | None
-
+        Sleep duration between API requests.
 
     Returns
     -------
     Any
-
+        Paginated results from the API.
     """
     sig = inspect.signature(client.paginate)  # type: ignore[arg-type]
     kw_pag: dict[str, Any] = {'pagination': pagination}

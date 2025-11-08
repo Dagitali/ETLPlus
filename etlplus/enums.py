@@ -77,8 +77,9 @@ class CoercibleStrEnum(enum.StrEnum):
     @classmethod
     def aliases(cls) -> StrStrMap:
         """
-        Return a mapping of common aliases for each enum member (Subclasses may
-        override).
+        Return a mapping of common aliases for each enum member.
+
+        Subclasses may override this method to provide custom aliases.
 
         Returns
         -------
