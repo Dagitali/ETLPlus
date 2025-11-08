@@ -25,19 +25,7 @@ from .utils import count_records
 # SECTION: PUBLIC API ======================================================= #
 
 
-__all__ = [
-    'File',
-    'read_csv',
-    'read_json',
-    'read_structured_file',
-    'read_xml',
-    'read_yaml',
-    'write_csv',
-    'write_json',
-    'write_structured_file',
-    'write_xml',
-    'write_yaml',
-]
+__all__ = ['File']
 
 
 # SECTION: PROTECTED CONSTANTS ============================================== #
@@ -206,6 +194,10 @@ class File:
         extension is unknown, the attribute is left as ``None`` and will be
         validated later by :meth:`_ensure_format`.
         """
+        # Normalize incoming path (allow str in constructor) to Path.
+        if isinstance(self.path, str):
+            self.path = Path(self.path)
+
         if self.file_format is None:
             try:
                 self.file_format = self._guess_format()
@@ -235,6 +227,11 @@ class File:
     def _guess_format(self) -> FileFormat:
         """
         Infer the file format from the filename extension.
+
+        Returns
+        -------
+        FileFormat
+            The inferred file format based on the file extension.
 
         Raises
         ------
@@ -283,6 +280,16 @@ class File:
         root_tag : str, optional
             Root tag name to use when writing XML files. Defaults to
             ``'root'``.
+
+        Returns
+        -------
+        int
+            The number of records written.
+
+        Raises
+        ------
+        ValueError
+            If the resolved file format is unsupported.
         """
         fmt = self._ensure_format()
         match fmt:
@@ -393,8 +400,14 @@ class File:
         int
             The number of records written to the JSON file.
         """
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open('w', encoding='utf-8') as handle:
-            json.dump(data, handle, indent=2, ensure_ascii=False)
+            json.dump(
+                data,
+                handle,
+                indent=2,
+                ensure_ascii=False,
+            )
             handle.write('\n')
 
         return count_records(data)
@@ -583,90 +596,3 @@ class File:
             data,
             root_tag=root_tag,
         )
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-# -- Structured Files -- #
-
-
-def read_structured_file(
-    path: Path,
-    file_format: FileFormat,
-) -> JSONData:
-    return File(path, file_format).read()
-
-
-def write_structured_file(
-    path: Path,
-    data: JSONData,
-    file_format: FileFormat,
-) -> int:
-    return File(path, file_format).write(data)
-
-
-# -- CSV Files -- #
-
-
-def read_csv(
-    path: Path,
-) -> JSONList:
-    return File(path, FileFormat.CSV).read_csv()
-
-
-def write_csv(
-    path: Path,
-    data: JSONData,
-) -> int:
-    return File(path, FileFormat.CSV).write_csv(data)
-
-
-# -- JSON Files -- #
-
-
-def read_json(
-    path: Path,
-) -> JSONData:
-    return File(path, FileFormat.JSON).read_json()
-
-
-def write_json(
-    path: Path,
-    data: JSONData,
-) -> int:
-    return File(path, FileFormat.JSON).write_json(data)
-
-
-# -- XML Files -- #
-
-
-def read_xml(
-    path: Path,
-) -> JSONDict:
-    return File(path, FileFormat.XML).read_xml()
-
-
-def write_xml(
-    path: Path,
-    data: JSONData,
-    *,
-    root_tag: str = _DEFAULT_XML_ROOT,
-) -> int:
-    return File(path, FileFormat.XML).write_xml(data, root_tag=root_tag)
-
-
-# -- YAML Files -- #
-
-
-def read_yaml(
-    path: Path,
-) -> JSONData:
-    return File(path, FileFormat.YAML).read_yaml()
-
-
-def write_yaml(
-    path: Path,
-    data: JSONData,
-) -> int:
-    return File(path, FileFormat.YAML).write_yaml(data)

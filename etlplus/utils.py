@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from typing import Any
 
 from .types import JSONData
@@ -20,7 +19,6 @@ __all__ = [
     'count_records',
     'json_type',
     'print_json',
-    'write_json',
 ]
 
 
@@ -83,22 +81,3 @@ def print_json(obj: Any) -> None:
         Object to serialize as JSON.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
-
-
-def write_json(obj: Any, out: str | Path) -> None:
-    """
-    Write JSON to ``out``, creating parent dirs as needed.
-
-    Parameters
-    ----------
-    obj
-        Object to serialize as JSON.
-    out : str | Path
-        Output file path.
-    """
-    path = Path(out)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(obj, indent=2, ensure_ascii=False),
-        encoding='utf-8',
-    )

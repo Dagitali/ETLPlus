@@ -21,13 +21,14 @@ from textwrap import dedent
 
 from . import __version__
 from .config import load_pipeline_config
+from .enums import FileFormat
 from .extract import extract
+from .file import File
 from .load import load
 from .run import run
 from .transform import transform
 from .utils import json_type
 from .utils import print_json
-from .utils import write_json
 from .validate import validate
 
 
@@ -53,7 +54,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
     """
     data = extract(args.source_type, args.source, format=args.format)
     if args.output:
-        write_json(data, args.output)
+        File(args.output, FileFormat.JSON).write_json(data)
         print(f'Data extracted and saved to {args.output}')
     else:
         print_json(data)
@@ -99,7 +100,7 @@ def cmd_transform(args: argparse.Namespace) -> int:
     # ``args.operations`` already parsed by ``_json_type`` (defaults to {}).
     data = transform(args.source, args.operations)
     if args.output:
-        write_json(data, args.output)
+        File(args.output, FileFormat.JSON).write_json(data)
         print(f'Data transformed and saved to {args.output}')
     else:
         print_json(data)

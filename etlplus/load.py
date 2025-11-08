@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests
+import requests  # type: ignore
 
 from .enums import coerce_data_connector_type
 from .enums import coerce_file_format
@@ -18,8 +18,7 @@ from .enums import coerce_http_method
 from .enums import DataConnectorType
 from .enums import FileFormat
 from .enums import HttpMethod
-from .file import read_json
-from .file import write_structured_file
+from .file import File
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -86,13 +85,13 @@ def load_data(
         return cast(JSONData, source)
 
     if isinstance(source, Path):
-        return read_json(source)
+        return File(source, FileFormat.JSON).read_json()
 
     if isinstance(source, str):
         candidate = Path(source)
         if candidate.exists():
             try:
-                return read_json(candidate)
+                return File(candidate, FileFormat.JSON).read_json()
             except (OSError, json.JSONDecodeError, ValueError):
                 # Fall back to treating the string as raw JSON content.
                 pass
@@ -137,7 +136,7 @@ def load_to_file(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     fmt = coerce_file_format(file_format)
-    records = write_structured_file(path, data, fmt)
+    records = File(path, fmt).write(data)
     if fmt is FileFormat.CSV and records == 0:
         message = 'No data to write'
     else:

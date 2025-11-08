@@ -26,8 +26,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+from etlplus.enums import FileFormat
 from etlplus.extract import extract
-from etlplus.file import read_yaml
+from etlplus.file import File
 from etlplus.load import load
 from etlplus.transform import transform
 from etlplus.types import JSONDict
@@ -370,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
     if not config_path.exists():
         ap.error(f'Config not found: {config_path}')
 
-    cfg = read_yaml(config_path)
+    cfg = File(config_path, FileFormat.YAML).read_yaml()
     if not isinstance(cfg, dict):
         ap.error('Config root must be a mapping (YAML object)')
 

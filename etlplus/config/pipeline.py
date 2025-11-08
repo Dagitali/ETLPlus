@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Any
 from typing import Self
 
-from ..file import read_yaml
+from ..enums import FileFormat
+from ..file import File
 from .api import ApiConfig
 from .connector import parse_connector
 from .jobs import ExtractRef
@@ -292,7 +293,7 @@ class PipelineConfig:
         PipelineConfig
             Parsed pipeline configuration.
         """
-        raw = read_yaml(Path(path))
+        raw = File(Path(path), FileFormat.YAML).read_yaml()
         if not isinstance(raw, dict):
             raise TypeError('Pipeline YAML must have a mapping/object root')
 
