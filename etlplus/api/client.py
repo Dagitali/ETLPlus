@@ -1,5 +1,5 @@
 """
-etlplus.api.client
+etlplus.api.client module.
 
 Endpoint client utilities for registering endpoint paths, composing URLs, and
 paginating API responses with optional retries and rate limiting.
@@ -16,9 +16,7 @@ Notes
 
 Examples
 --------
-
-Page-based pagination
-^^^^^^^^^^^^^^^^^^^^^
+>>> # Page-based pagination
 >>> client = EndpointClient(
 ...     base_url="https://api.example.com/v1",
 ...     endpoints={"list": "/items"},
@@ -26,8 +24,7 @@ Page-based pagination
 >>> pg = {"type": "page", "page_size": 100}
 >>> rows = client.paginate("list", pagination=pg)
 
-Cursor-based pagination
-^^^^^^^^^^^^^^^^^^^^^^^
+>>> # Cursor-based pagination
 >>> pg = {
 ...   "type": "cursor",
 ...   "records_path": "data.items",
@@ -774,7 +771,6 @@ class EndpointClient:
         PaginationError
             If a paginated request fails while streaming pages.
         """
-
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
         ptype = pg.get('type') if pagination else None
@@ -979,7 +975,6 @@ class EndpointClient:
         >>> ep.url('search', query_parameters={'q': 'Jane Doe', 'page': '2'})
         'https://api.example.com/v1/users?q=Jane+Doe&page=2'
         """
-
         if endpoint_key not in self.endpoints:
             raise KeyError(f'Unknown endpoint_key: {endpoint_key!r}')
 
@@ -1048,7 +1043,6 @@ class EndpointClient:
         sleeper : Callable[[float], None] | None, optional
             Optional sleeper function taking seconds as input.
         """
-
         if sleep_seconds and sleep_seconds > 0:
             if sleeper is None:
                 time.sleep(sleep_seconds)
@@ -1081,7 +1075,6 @@ class EndpointClient:
         dict[str, Any]
             Dictionary of keyword arguments for ``requests.get``.
         """
-
         kw: dict[str, Any] = {}
         if params:
             kw['params'] = dict(params)
@@ -1114,7 +1107,6 @@ class EndpointClient:
         JSONList
             List of record dicts extracted from the payload.
         """
-
         def _get_path(obj: Any, path: str) -> Any:
             cur = obj
             for part in path.split('.'):
@@ -1165,7 +1157,6 @@ class EndpointClient:
             The extracted cursor value if present and of type str or int;
             otherwise None.
         """
-
         if not (
             isinstance(path, str)
             and path

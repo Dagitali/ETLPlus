@@ -1,5 +1,5 @@
 """
-etlplus.enums
+etlplus.enums module.
 
 Shared enumeration types used across ETLPlus modules.
 
@@ -91,6 +91,11 @@ class CoercibleStrEnum(enum.StrEnum):
     def choices(cls) -> tuple[str, ...]:
         """
         Return the allowed string values for this enum.
+
+        Returns
+        -------
+        tuple[str, ...]
+            A tuple of allowed string values for this enum.
         """
         return tuple(member.value for member in cls)
 
@@ -146,9 +151,7 @@ class CoercibleStrEnum(enum.StrEnum):
 
 
 class AggregateName(CoercibleStrEnum):
-    """
-    Supported aggregations with helpers.
-    """
+    """Supported aggregations with helpers."""
 
     # -- Constants -- #
 
@@ -184,9 +187,7 @@ class AggregateName(CoercibleStrEnum):
 
 
 class DataConnectorType(CoercibleStrEnum):
-    """
-    Supported data connector types.
-    """
+    """Supported data connector types."""
 
     # -- Constants -- #
 
@@ -217,12 +218,7 @@ class DataConnectorType(CoercibleStrEnum):
 
 
 class FileFormat(CoercibleStrEnum):
-    """
-    Supported file formats for extraction.
-
-    Includes common aliases  (e.g., ``yml`` for ``yaml``) and select MIME
-    types.
-    """
+    """Supported file formats for extraction."""
 
     # -- Constants -- #
 
@@ -252,9 +248,7 @@ class FileFormat(CoercibleStrEnum):
 
 
 class HttpMethod(CoercibleStrEnum):
-    """
-    Supported HTTP verbs that accept JSON payloads.
-    """
+    """Supported HTTP verbs that accept JSON payloads."""
 
     # -- Constants -- #
 
@@ -279,9 +273,7 @@ class HttpMethod(CoercibleStrEnum):
 
 
 class OperatorName(CoercibleStrEnum):
-    """
-    Supported comparison operators with helpers.
-    """
+    """Supported comparison operators with helpers."""
 
     # -- Constants -- #
 
@@ -344,9 +336,7 @@ class OperatorName(CoercibleStrEnum):
 
 
 class PipelineStep(CoercibleStrEnum):
-    """
-    Pipeline step names as an enum for internal orchestration.
-    """
+    """Pipeline step names as an enum for internal orchestration."""
 
     # -- Constants -- #
 

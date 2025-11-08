@@ -1,5 +1,5 @@
 """
-etlplus.config.pagination
+etlplus.config.pagination module.
 
 Pagination model for REST API responses (page, offset, cursor styles).
 
@@ -106,7 +106,6 @@ class PaginationConfig(BoundsWarningsMixin):
         list[str]
             Warning messages (empty if all values look sane).
         """
-
         warnings: list[str] = []
 
         # General limits
@@ -120,6 +119,7 @@ class PaginationConfig(BoundsWarningsMixin):
             'max_records should be > 0',
             warnings,
         )
+
         # Page/offset
         match (self.type or '').strip().lower():
             case 'page' | 'offset':

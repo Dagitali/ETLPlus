@@ -1,5 +1,5 @@
 """
-etlplus.run
+etlplus.run module.
 
 A module for running ETL jobs defined in YAML configurations.
 """

@@ -1,5 +1,5 @@
 """
-etlplus.api
+etlplus.api package.
 
 High-level helpers for building REST API clients with pagination, retry,
 rate limiting, and transport configuration.

@@ -1,5 +1,5 @@
 """
-etlplus
+etlplus package.
 
 The top-level module defining ``:mod:etlplus``, a package for enabling simple
 ETL operations.

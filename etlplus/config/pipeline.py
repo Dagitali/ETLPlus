@@ -1,5 +1,5 @@
 """
-etlplus.config.pipeline
+etlplus.config.pipeline module.
 
 Pipeline configuration model and helpers for job orchestration.
 
@@ -135,7 +135,7 @@ def _build_sources(
     -------
     list[Connector]
         Parsed source connectors.
-     """
+    """
     return _build_connectors(raw, 'sources')
 
 

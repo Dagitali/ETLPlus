@@ -1,5 +1,5 @@
 """
-etlplus.api.auth
+etlplus.api.auth module.
 
 Bearer token authentication for REST APIs using the OAuth2 Client Credentials
 flow.

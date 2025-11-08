@@ -1,5 +1,5 @@
 """
-etlplus.api.errors
+etlplus.api.errors module.
 
 Exception types with rich context for debugging REST API failures.
 
@@ -95,9 +95,7 @@ class ApiRequestError(requests.RequestException):
 
 
 class ApiAuthError(ApiRequestError):
-    """
-    Authentication/authorization failure (e.g., 401/403).
-    """
+    """Authentication/authorization failure (e.g., 401/403)."""
 
 
 @dataclass(slots=True)
