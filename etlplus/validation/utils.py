@@ -1,5 +1,5 @@
 """
-etlplus.validation.utils
+etlplus.validation.utils module.
 
 A module providing helpers for data validation.
 """

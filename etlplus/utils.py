@@ -1,5 +1,5 @@
 """
-etlplus.utils
+etlplus.utils module.
 
 Small shared helpers used across modules.
 """

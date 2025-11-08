@@ -1,6 +1,5 @@
 """
-etlplus.config
-==============
+etlplus.config package.
 
 Configuration models and helpers for ETLPlus.
 

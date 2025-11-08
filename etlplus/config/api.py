@@ -1,5 +1,5 @@
 """
-etlplus.config.api
+etlplus.config.api module.
 
 Configuration models for REST API services and endpoints.
 
@@ -207,7 +207,7 @@ class ApiConfig:
         attr: str,
     ) -> Any:
         """
-        Generic accessor for an attribute on the selected profile.
+        Return an attribute on the selected profile, if available.
 
         This centralizes profile selection logic so "effective_*" helpers
         become one-liners. Returns None if no profile or attribute missing.

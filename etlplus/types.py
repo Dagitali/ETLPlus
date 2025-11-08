@@ -1,5 +1,5 @@
 """
-etlplus.type
+etlplus.type module.
 
 Shared type aliases leveraged across ETLPlus modules.
 """

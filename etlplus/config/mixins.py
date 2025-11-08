@@ -1,5 +1,5 @@
 """
-etlplus.config.mixins
+etlplus.config.mixins module.
 
 Lightweight mixins used by configuration models.
 

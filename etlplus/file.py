@@ -1,5 +1,5 @@
 """
-etlplus.file
+etlplus.file module.
 
 Shared helpers for reading and writing structured and semi-structured data
 files.
@@ -181,7 +181,7 @@ class File:
     instance methods while retaining the original function API for
     backward compatibility (those functions delegate to this class).
 
-    Parameters
+    Attributes
     ----------
     path : Path
         Path to the file on disk.
@@ -532,7 +532,7 @@ class File:
         file_format: FileFormat | str | None = None,
     ) -> JSONData:
         """
-        Convenience: ``File.read_file(path, fmt)`` → read structured data.
+        Read structured data.
 
         Parameters
         ----------
@@ -559,7 +559,7 @@ class File:
         root_tag: str = _DEFAULT_XML_ROOT,
     ) -> int:
         """
-        Convenience: ``File.write_file(path, data, fmt)`` → write and count.
+        Write structured data and count written records.
 
         Parameters
         ----------

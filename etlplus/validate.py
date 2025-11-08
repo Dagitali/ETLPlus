@@ -1,5 +1,5 @@
 """
-etlplus.validation
+etlplus.validation module.
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 
@@ -146,7 +146,7 @@ def _coerce_rule(
     errors: list[str],
 ) -> int | float | None:
     """
-    Generic helper to extract and coerce a rule value, recording an error.
+    Extract and coerce a rule value, recording an error.
 
     Returns None when the key is absent.
 
@@ -300,6 +300,7 @@ def _validate_record(
         The field rules.
     idx : int | None, optional
         Optional index for prefixing field keys.
+
     Returns
     -------
     tuple[list[str], dict[str, list[str]]]

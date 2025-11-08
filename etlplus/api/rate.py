@@ -1,5 +1,5 @@
 """
-etlplus.api.rate
+etlplus.api.rate module.
 
 Compute inter-request sleep durations from a rate limit configuration.
 

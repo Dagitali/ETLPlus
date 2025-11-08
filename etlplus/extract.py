@@ -1,5 +1,5 @@
 """
-etlplus.extract
+etlplus.extract module.
 
 Helpers to extract data from files, databases, and REST APIs.
 """
@@ -56,7 +56,6 @@ def extract_from_file(
     TypeError
         If parsed JSON is not an object or an array of objects.
     """
-
     path = Path(file_path)
     fmt = coerce_file_format(file_format)
 

@@ -1,6 +1,6 @@
 """
 etlplus.run_helpers
-===================
+
 
 Helper functions and small utilities used by ``etlplus.run`` to compose API
 request/load environments, pagination configs, session objects, and endpoint
@@ -118,6 +118,29 @@ def _get_api_cfg_and_endpoint(
     api_name: str,
     endpoint_name: str,
 ) -> tuple[CfgApiConfig, CfgEndpointConfig]:
+    """_summary_
+
+    Parameters
+    ----------
+    cfg : Any
+        _description_
+    api_name : str
+        _description_
+    endpoint_name : str
+        _description_
+
+    Returns
+    -------
+    tuple[CfgApiConfig, CfgEndpointConfig]
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+    ValueError
+        _description_
+    """
     api_cfg = cfg.apis.get(api_name)
     if not api_cfg:
         raise ValueError(f'API not defined: {api_name}')
@@ -149,6 +172,22 @@ def _merge_session_cfg_three(
     ep: CfgEndpointConfig,
     source_session_cfg: SessionConfig | None,
 ) -> SessionConfig | None:
+    """_summary_
+
+    Parameters
+    ----------
+    api_cfg : CfgApiConfig
+        _description_
+    ep : CfgEndpointConfig
+        _description_
+    source_session_cfg : SessionConfig | None
+        _description_
+
+    Returns
+    -------
+    SessionConfig | None
+        _description_
+    """
     api_sess = getattr(api_cfg, 'session', None)
     ep_sess = getattr(ep, 'session', None)
     merged: dict[str, Any] = {}
@@ -174,6 +213,24 @@ def build_endpoint_client(
     endpoints: dict[str, str],
     env: Mapping[str, Any],
 ) -> EndpointClient:
+    """_summary_
+
+    Parameters
+    ----------
+    base_url : str
+        _description_
+    base_path : str | None
+        _description_
+    endpoints : dict[str, str]
+        _description_
+    env : Mapping[str, Any]
+        _description_
+
+    Returns
+    -------
+    EndpointClient
+        _description_
+    """
     # Allow tests to monkeypatch etlplus.run.EndpointClient and have it
     # propagate here by preferring the class on the run module if present.
     try:
@@ -196,6 +253,22 @@ def compose_api_request_env(
     source_obj: Any,
     ex_opts: Mapping[str, Any] | None,
 ) -> ApiRequestEnv:
+    """_summary_
+
+    Parameters
+    ----------
+    cfg : Any
+        _description_
+    source_obj : Any
+        _description_
+    ex_opts : Mapping[str, Any] | None
+        _description_
+
+    Returns
+    -------
+    ApiRequestEnv
+        _description_
+    """
     ex_opts = ex_opts or {}
     url: URL | None = getattr(source_obj, 'url', None)
     params: dict[str, Any] = dict(
@@ -313,6 +386,23 @@ def compose_api_target_env(
     target_obj: Any,
     overrides: Mapping[str, Any] | None,
 ) -> ApiTargetEnv:
+    """
+    Compose the API target environment.
+
+    Parameters
+    ----------
+    cfg : Any
+        _description_
+    target_obj : Any
+        _description_
+    overrides : Mapping[str, Any] | None
+        _description_
+
+    Returns
+    -------
+    ApiTargetEnv
+        _description_
+    """
     ov = overrides or {}
     url: URL | None = cast(
         URL | None,
@@ -363,6 +453,20 @@ def build_pagination_cfg(
     pagination: CfgPaginationConfig | None,
     overrides: Mapping[str, Any] | None,
 ) -> ApiPaginationConfig | None:
+    """_summary_
+
+    Parameters
+    ----------
+    pagination : CfgPaginationConfig | None
+        _description_
+    overrides : Mapping[str, Any] | None
+        _description_
+
+    Returns
+    -------
+    ApiPaginationConfig | None
+        _description_
+    """
     ptype: str | None = None
     records_path = None
     max_pages = None
@@ -469,6 +573,31 @@ def paginate_with_client(
     pagination: ApiPaginationConfig | None,
     sleep_seconds: float | None,
 ) -> Any:
+    """
+
+
+    Parameters
+    ----------
+    client : Any
+
+    endpoint_key : str
+
+    params : Params | None
+
+    headers : Headers | None
+
+    timeout : Timeout
+
+    pagination : ApiPaginationConfig | None
+
+    sleep_seconds : float | None
+
+
+    Returns
+    -------
+    Any
+
+    """
     sig = inspect.signature(client.paginate)  # type: ignore[arg-type]
     kw_pag: dict[str, Any] = {'pagination': pagination}
     if '_params' in sig.parameters:
@@ -499,6 +628,21 @@ def compute_rl_sleep_seconds(
     rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
 ) -> float | None:
+    """
+    Compute sleep seconds from rate limit configuration and overrides.
+
+    Parameters
+    ----------
+    rate_limit : CfgRateLimitConfig | Mapping[str, Any] | None
+        Rate limit configuration.
+    overrides : Mapping[str, Any] | None
+        Override values for rate limit configuration.
+
+    Returns
+    -------
+    float | None
+        Sleep duration in seconds, or None if not applicable.
+    """
     rl_map: Mapping[str, Any] | None
     if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
         rl_map = {
@@ -514,7 +658,22 @@ def compute_rl_sleep_seconds(
 # -- Session -- #
 
 
-def build_session(cfg: SessionConfig | None) -> requests.Session:
+def build_session(
+    cfg: SessionConfig | None,
+) -> requests.Session:
+    """
+    Build a requests.Session object with the given configuration.
+
+    Parameters
+    ----------
+    cfg : SessionConfig | None
+        Session configuration.
+
+    Returns
+    -------
+    requests.Session
+        Configured session object.
+    """
     s = requests.Session()
     if not cfg:
         return s

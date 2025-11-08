@@ -1,4 +1,4 @@
-# etlplus.api
+# etlplus.api module.
 
 Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for paginated REST endpoints.
 

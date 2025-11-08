@@ -1,5 +1,5 @@
 """
-etlplus.config.connector
+etlplus.config.connector module.
 
 A module defining configuration types for data source/target connectors in ETL
 pipelines. A "connector" is any I/O endpoint:
