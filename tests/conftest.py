@@ -128,6 +128,32 @@ def offset_cfg() -> Callable[..., PagePaginationConfig]:
 
 
 @pytest.fixture
+def extract_stub(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, Any]:
+    """
+    Patch EndpointClient's module-level _extract and capture calls.
+
+    Returns dict with:
+      urls: list[str]
+      kwargs: list[dict[str, Any]]
+    """
+    import etlplus.api.client as cmod  # local import to avoid cycles
+
+    calls: dict[str, Any] = {'urls': [], 'kwargs': []}
+
+    def _fake_extract(kind: str, url: str, **kw: Any):  # noqa: D401
+        assert kind == 'api'
+        calls['urls'].append(url)
+        calls['kwargs'].append(kw)
+        return {'ok': True}
+
+    monkeypatch.setattr(cmod, '_extract', _fake_extract)
+
+    return calls
+
+
+@pytest.fixture
 def page_cfg() -> Callable[..., PagePaginationConfig]:
     """Builder for page-number pagination config (immutable)."""
 
@@ -135,5 +161,20 @@ def page_cfg() -> Callable[..., PagePaginationConfig]:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
         return cast(PagePaginationConfig, _freeze(base))
+
+    return _make
+
+
+@pytest.fixture
+def retry_cfg() -> Callable[..., dict[str, Any]]:
+    """Factory for building retry configuration dictionaries."""
+
+    def _make(**kwargs: Any) -> dict[str, Any]:
+        base: dict[str, Any] = {
+            'max_attempts': kwargs.pop('max_attempts', 3),
+            'backoff': kwargs.pop('backoff', 0.0),
+        }
+        base.update(kwargs)
+        return base
 
     return _make
