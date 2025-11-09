@@ -18,7 +18,7 @@ from typing import Any
 from typing import cast
 
 import pytest
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 import etlplus.api.client as cmod
 from etlplus.api import CursorPaginationConfig
@@ -172,7 +172,10 @@ class TestCursorPagination:
             cfg,
         )
         assert isinstance(out, list)
-        items = [cast(dict, r)['i'] for r in out]  # type: ignore
+
+        # mypy treats list element as Any due to external library response
+        # type.
+        items = [cast(dict, r)['i'] for r in out]  # type: ignore[index]
         assert items == [1]
         params = calls[0].get('params', {})
         assert params.get('limit') == expected_limit
@@ -208,7 +211,7 @@ class TestCursorPagination:
         )
         assert isinstance(data, list)
         assert len(calls) >= 2
-        values = [cast(dict, r)['i'] for r in data]  # type: ignore
+        values = [cast(dict, r)['i'] for r in data]  # type: ignore[index]
         assert values == [1, 2]
         first = calls[0]
         second = calls[1]
@@ -338,7 +341,7 @@ class TestPagePagination:
             cfg,
         )
         assert isinstance(data, list)
-        ids = [cast(dict, r)['id'] for r in data]  # type: ignore
+        ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
 
     def test_max_records_cap(
@@ -405,7 +408,7 @@ class TestPagePagination:
             cfg,
         )
         assert isinstance(data, list)
-        ids = [cast(dict, r)['id'] for r in data]  # type: ignore
+        ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
 
     def test_error_includes_page_number(
@@ -451,7 +454,7 @@ class TestPagePagination:
             lambda k, _u, **kwargs: {'foo': 'bar'} if k == 'api' else None,
         )
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        # type: ignore
+
         out = client.paginate_url(
             'https://example.test/x',
             None,
