@@ -16,6 +16,10 @@ from __future__ import annotations
 import types
 from typing import Any
 from typing import cast
+from typing import Protocol
+from typing import runtime_checkable
+from typing import TypedDict
+from typing import Unpack
 
 import pytest
 import requests  # type: ignore[import]
@@ -31,17 +35,43 @@ from tests.unit.api.test_mocks import MockSession
 # SECTION: HELPERS ========================================================== #
 
 
-def cursor_cfg(
-    **kwargs: Any,
-) -> CursorPaginationConfig:
-    """Build a typed CursorPaginationConfig with overrides.
+@runtime_checkable
+class _PaginationConfigProto(Protocol):  # pragma: no cover - structural only
+    """Lightweight protocol capturing the minimal mapping surface we use.
 
-    Accepts any valid keys of CursorPaginationConfig and returns a properly
-    typed configuration dict. Kept tests-only to reduce duplication.
+    Exists so helper builders can internally freeze configs (MappingProxyType)
+    while we still cast to the concrete TypedDicts expected by the public API.
     """
-    # Using cast to create a TypedDict from a literal + kwargs merge.
 
-    return cast(CursorPaginationConfig, {'type': 'cursor', **kwargs})
+    def get(self, key: str, default: Any = ...) -> Any: ...  # noqa: D401
+    def __contains__(self, key: str) -> bool: ...  # noqa: D401
+
+
+class CursorKw(TypedDict, total=False):
+    cursor_param: str
+    cursor_path: str
+    page_size: int | str
+    records_path: str
+    start_cursor: str | int
+    max_pages: int
+    max_records: int
+
+
+class PageKw(TypedDict, total=False):
+    page_param: str
+    size_param: str
+    start_page: int
+    page_size: int
+    records_path: str
+    max_pages: int
+    max_records: int
+
+
+def _freeze(
+    d: dict[str, Any],
+) -> types.MappingProxyType:  # pragma: no cover
+    """Return an immutable mapping proxy for a given dict."""
+    return types.MappingProxyType(d)
 
 
 def make_http_error(
@@ -57,12 +87,39 @@ def make_http_error(
     return err
 
 
-def page_cfg(
-    **kwargs: Any,
-) -> PagePaginationConfig:
-    """Build a typed PagePaginationConfig (defaults to type='page')."""
+def cursor_cfg(
+    **kwargs: Unpack[CursorKw],
+) -> CursorPaginationConfig:
+    """Build an immutable cursor pagination config (tests-only)."""
+    base: dict[str, Any] = {'type': 'cursor'}
+    base.update(kwargs)
 
-    return cast(PagePaginationConfig, {'type': 'page', **kwargs})
+    # Cast to satisfy function signatures expecting CursorPaginationConfig.
+    return cast(CursorPaginationConfig, _freeze(base))
+
+
+def offset_cfg(
+    **kwargs: Unpack[PageKw],
+) -> PagePaginationConfig:
+    """Build an immutable offset pagination config (future use).
+
+    Provided pre-emptively for scenarios where 'offset' pagination type is
+    exercised; mirrors page_cfg but sets type discriminator to 'offset'.
+    """
+    base: dict[str, Any] = {'type': 'offset'}
+    base.update(kwargs)
+
+    return cast(PagePaginationConfig, _freeze(base))
+
+
+def page_cfg(
+    **kwargs: Unpack[PageKw],
+) -> PagePaginationConfig:
+    """Build an immutable page-number pagination config."""
+    base: dict[str, Any] = {'type': 'page'}
+    base.update(kwargs)
+    return cast(PagePaginationConfig, _freeze(base))
+
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -169,7 +226,11 @@ class TestCursorPagination:
     ) -> None:
         calls: list[dict[str, Any]] = []
 
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
+        def fake_extract(
+            kind: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             assert kind == 'api'
             calls.append(kwargs)
 
@@ -206,7 +267,11 @@ class TestCursorPagination:
     ) -> None:
         calls: list[dict[str, Any]] = []
 
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
+        def fake_extract(
+            kind: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             assert kind == 'api'
             calls.append(kwargs)
             params = kwargs.get('params') or {}
@@ -254,7 +319,10 @@ class TestCursorPagination:
         # First page succeeds with next cursor; second raises 500.
         calls = {'n': 0}
 
-        def extractor(_stype: str, _url: str, **kwargs: Any):
+        def extractor(
+            _stype: str,
+            _url: str, **kwargs: dict[str, Any],
+        ):
             calls['n'] += 1
             if calls['n'] == 1:
                 return {
@@ -333,7 +401,11 @@ class TestPagePagination:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
+        def fake_extract(
+            kind: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             assert kind == 'api'
             page = int((kwargs.get('params') or {}).get('page', 1))
             if page == 1:
@@ -365,7 +437,11 @@ class TestPagePagination:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
+        def fake_extract(
+            kind: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             assert kind == 'api'
             page = int((kwargs.get('params') or {}).get('page', 1))
 
@@ -436,7 +512,11 @@ class TestPagePagination:
         )
         page_size = 2
 
-        def extractor(_stype: str, _url: str, **kwargs: Any):
+        def extractor(
+            _stype: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             params = kwargs.get('params') or {}
             page = int(params.get('page', 1))
             size = int(params.get('per_page', page_size))
@@ -491,7 +571,11 @@ class TestRetryLogic:
         )
         attempts = {'n': 0}
 
-        def boom(_stype: str, _url: str, **kwargs: Any):  # noqa: ARG001
+        def boom(
+            _stype: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):  # noqa: ARG001
             attempts['n'] += 1
             raise make_http_error(503)
 
@@ -518,7 +602,11 @@ class TestRetryLogic:
         # Patch _extract in client module to fail with 503 twice, then succeed.
         attempts = {'n': 0}
 
-        def _fake_extract(_stype: str, _url: str, **kwargs: Any):
+        def _fake_extract(
+            _stype: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             attempts['n'] += 1
             if attempts['n'] < 3:
                 err = requests.HTTPError('boom')
@@ -553,7 +641,11 @@ class TestRetryLogic:
         monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(vals))
         attempts = {'n': 0}
 
-        def _fake_extract(_stype: str, _url: str, **kwargs: Any):
+        def _fake_extract(
+            _stype: str,
+            _url: str,
+            **kwargs: dict[str, Any],
+        ):
             attempts['n'] += 1
             if attempts['n'] == 1:
                 raise requests.Timeout('slow')
@@ -722,7 +814,11 @@ class TestErrors:
             endpoints={'x': '/x'},
         )
 
-        def boom(_stype: str, url: str, **kwargs: Any):  # noqa: ARG001
+        def boom(
+            _stype: str,
+            url: str,
+            **kwargs: dict[str, Any],  # noqa: ARG001
+        ):
             raise make_http_error(401)
 
         monkeypatch.setattr('etlplus.api.client._extract', boom)
