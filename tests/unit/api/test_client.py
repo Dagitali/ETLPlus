@@ -121,27 +121,6 @@ def page_cfg(
     return cast(PagePaginationConfig, _freeze(base))
 
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture
-def capture_sleeps(
-    monkeypatch: pytest.MonkeyPatch,
-) -> list[float]:
-    values: list[float] = []
-
-    def _sleep(s: float, *, _sleeper=None) -> None:  # noqa: D401, ANN001
-        values.append(s)
-
-    monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_sleep),
-        raising=False,
-    )
-    return values
-
-
 # SECTION: TESTS ============================================================ #
 
 
