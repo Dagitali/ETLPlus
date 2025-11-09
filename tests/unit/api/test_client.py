@@ -18,17 +18,13 @@ from typing import Any
 from typing import cast
 from typing import Protocol
 from typing import runtime_checkable
-from typing import TypedDict
-from typing import Unpack
 
 import pytest
 import requests  # type: ignore[import]
 
 import etlplus.api.client as cmod
-from etlplus.api import CursorPaginationConfig
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
-from etlplus.api import PagePaginationConfig
 from tests.unit.api.test_mocks import MockSession
 
 
@@ -47,33 +43,6 @@ class _PaginationConfigProto(Protocol):  # pragma: no cover - structural only
     def __contains__(self, key: str) -> bool: ...  # noqa: D401
 
 
-class CursorKw(TypedDict, total=False):
-    cursor_param: str
-    cursor_path: str
-    page_size: int | str
-    records_path: str
-    start_cursor: str | int
-    max_pages: int
-    max_records: int
-
-
-class PageKw(TypedDict, total=False):
-    page_param: str
-    size_param: str
-    start_page: int
-    page_size: int
-    records_path: str
-    max_pages: int
-    max_records: int
-
-
-def _freeze(
-    d: dict[str, Any],
-) -> types.MappingProxyType:  # pragma: no cover
-    """Return an immutable mapping proxy for a given dict."""
-    return types.MappingProxyType(d)
-
-
 def make_http_error(
     status: int,
 ) -> requests.HTTPError:
@@ -85,40 +54,6 @@ def make_http_error(
     err.response = resp  # type: ignore[attr-defined]
 
     return err
-
-
-def cursor_cfg(
-    **kwargs: Unpack[CursorKw],
-) -> CursorPaginationConfig:
-    """Build an immutable cursor pagination config (tests-only)."""
-    base: dict[str, Any] = {'type': 'cursor'}
-    base.update(kwargs)
-
-    # Cast to satisfy function signatures expecting CursorPaginationConfig.
-    return cast(CursorPaginationConfig, _freeze(base))
-
-
-def offset_cfg(
-    **kwargs: Unpack[PageKw],
-) -> PagePaginationConfig:
-    """Build an immutable offset pagination config (future use).
-
-    Provided pre-emptively for scenarios where 'offset' pagination type is
-    exercised; mirrors page_cfg but sets type discriminator to 'offset'.
-    """
-    base: dict[str, Any] = {'type': 'offset'}
-    base.update(kwargs)
-
-    return cast(PagePaginationConfig, _freeze(base))
-
-
-def page_cfg(
-    **kwargs: Unpack[PageKw],
-) -> PagePaginationConfig:
-    """Build an immutable page-number pagination config."""
-    base: dict[str, Any] = {'type': 'page'}
-    base.update(kwargs)
-    return cast(PagePaginationConfig, _freeze(base))
 
 
 # SECTION: TESTS ============================================================ #
@@ -200,6 +135,7 @@ class TestCursorPagination:
     def test_page_size_normalizes(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        cursor_cfg,  # fixture from conftest
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -242,7 +178,9 @@ class TestCursorPagination:
         assert params.get('limit') == expected_limit
 
     def test_adds_limit_and_advances_cursor(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        cursor_cfg,  # fixture from conftest
     ) -> None:
         calls: list[dict[str, Any]] = []
 
@@ -285,7 +223,9 @@ class TestCursorPagination:
         assert second.get('params', {}).get('limit') == 10
 
     def test_error_includes_page_number(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        cursor_cfg,  # fixture from conftest
     ) -> None:
         """
         When a cursor-paginated request fails, PaginationError includes page.
@@ -328,6 +268,7 @@ class TestCursorPagination:
     def test_retry_backoff_sleeps(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        cursor_cfg,  # fixture from conftest
         capture_sleeps: list[float],
     ) -> None:
         """Cursor pagination applies retry backoff sleep on failure."""
@@ -379,6 +320,7 @@ class TestPagePagination:
     def test_stops_on_short_final_batch(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        page_cfg,  # fixture from conftest
     ) -> None:
         def fake_extract(
             kind: str,
@@ -415,6 +357,7 @@ class TestPagePagination:
     def test_max_records_cap(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        page_cfg,  # fixture from conftest
     ) -> None:
         def fake_extract(
             kind: str,
@@ -450,6 +393,7 @@ class TestPagePagination:
     def test_page_size_normalization(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        page_cfg,  # fixture from conftest
     ) -> None:
         def fake_extract(kind: str, _url: str, **kw: Any):
             assert kind == 'api'
@@ -484,6 +428,7 @@ class TestPagePagination:
     def test_error_includes_page_number(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        page_cfg,  # fixture from conftest
     ) -> None:
         client = EndpointClient(
             base_url='https://api.example.com/v1',
