@@ -31,7 +31,22 @@ from tests.unit.api.test_mocks import MockSession
 # SECTION: HELPERS ========================================================== #
 
 
-def make_http_error(status: int) -> requests.HTTPError:
+def cursor_cfg(
+    **kwargs: Any,
+) -> CursorPaginationConfig:
+    """Build a typed CursorPaginationConfig with overrides.
+
+    Accepts any valid keys of CursorPaginationConfig and returns a properly
+    typed configuration dict. Kept tests-only to reduce duplication.
+    """
+    # Using cast to create a TypedDict from a literal + kwargs merge.
+
+    return cast(CursorPaginationConfig, {'type': 'cursor', **kwargs})
+
+
+def make_http_error(
+    status: int,
+) -> requests.HTTPError:
     err = requests.HTTPError(f"HTTP {status}")
 
     # Attach a response-like object that exposes status_code
@@ -41,6 +56,13 @@ def make_http_error(status: int) -> requests.HTTPError:
 
     return err
 
+
+def page_cfg(
+    **kwargs: Any,
+) -> PagePaginationConfig:
+    """Build a typed PagePaginationConfig (defaults to type='page')."""
+
+    return cast(PagePaginationConfig, {'type': 'page', **kwargs})
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -157,13 +179,12 @@ class TestCursorPagination:
         monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        cfg: CursorPaginationConfig = {
-            'type': 'cursor',
-            'cursor_param': 'cursor',
-            'cursor_path': 'next',
-            'page_size': raw_page_size,
-            'records_path': 'items',
-        }
+        cfg = cursor_cfg(
+            cursor_param='cursor',
+            cursor_path='next',
+            page_size=raw_page_size,
+            records_path='items',
+        )
         out = client.paginate_url(
             'https://example.test/x',
             None,
@@ -195,13 +216,12 @@ class TestCursorPagination:
 
         monkeypatch.setattr(cmod, '_extract', fake_extract)
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        cfg: CursorPaginationConfig = {
-            'type': 'cursor',
-            'cursor_param': 'cursor',
-            'cursor_path': 'next',
-            'page_size': 10,
-            'records_path': 'items',
-        }
+        cfg = cursor_cfg(
+            cursor_param='cursor',
+            cursor_path='next',
+            page_size=10,
+            records_path='items',
+        )
         data = client.paginate_url(
             'https://example.test/x',
             None,
@@ -245,13 +265,12 @@ class TestCursorPagination:
 
         monkeypatch.setattr('etlplus.api.client._extract', extractor)
 
-        cfg: CursorPaginationConfig = {
-            'type': 'cursor',
-            'cursor_param': 'cursor',
-            'cursor_path': 'meta.next',
-            'page_size': 1,
-            'records_path': 'items',
-        }
+        cfg = cursor_cfg(
+            cursor_param='cursor',
+            cursor_path='meta.next',
+            page_size=1,
+            records_path='items',
+        )
 
         with pytest.raises(api_errors.PaginationError) as ei:
             list(
@@ -288,13 +307,12 @@ class TestCursorPagination:
             endpoints={},
             retry={'max_attempts': 2, 'backoff': 0.5, 'retry_on': [503]},
         )
-        cfg: CursorPaginationConfig = {
-            'type': 'cursor',
-            'cursor_param': 'cursor',
-            'cursor_path': 'next',
-            'page_size': 2,
-            'records_path': 'items',
-        }
+        cfg = cursor_cfg(
+            cursor_param='cursor',
+            cursor_path='next',
+            page_size=2,
+            records_path='items',
+        )
 
         out = client.paginate_url(
             'https://example.test/x',
@@ -326,13 +344,12 @@ class TestPagePagination:
 
         monkeypatch.setattr(cmod, '_extract', fake_extract)
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        cfg: PagePaginationConfig = {
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 1,
-            'page_size': 2,
-        }
+        cfg = page_cfg(
+            page_param='page',
+            size_param='per_page',
+            start_page=1,
+            page_size=2,
+        )
         data = client.paginate_url(
             'https://example.test/api',
             None,
@@ -358,14 +375,13 @@ class TestPagePagination:
         monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        cfg: PagePaginationConfig = {
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 1,
-            'page_size': 3,
-            'max_records': 5,  # Should truncate 2nd page (total would be 6).
-        }
+        cfg = page_cfg(
+            page_param='page',
+            size_param='per_page',
+            start_page=1,
+            page_size=3,
+            max_records=5,  # Should truncate 2nd page (total would be 6).
+        )
         data = client.paginate_url(
             'https://example.test/x',
             None,
@@ -392,14 +408,13 @@ class TestPagePagination:
         monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
-        cfg: PagePaginationConfig = {
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 1,
-            'page_size': 0,
-            'max_pages': 3,
-        }
+        cfg = page_cfg(
+            page_param='page',
+            size_param='per_page',
+            start_page=1,
+            page_size=0,
+            max_pages=3,
+        )
         data = client.paginate_url(
             'https://example.test/x',
             None,
@@ -421,8 +436,8 @@ class TestPagePagination:
         )
         page_size = 2
 
-        def extractor(_stype: str, _url: str, **kw: Any):
-            params = kw.get('params') or {}
+        def extractor(_stype: str, _url: str, **kwargs: Any):
+            params = kwargs.get('params') or {}
             page = int(params.get('page', 1))
             size = int(params.get('per_page', page_size))
             if page == 4:
@@ -431,14 +446,13 @@ class TestPagePagination:
 
         # Return exactly `size` records to force continue until failure.
         monkeypatch.setattr('etlplus.api.client._extract', extractor)
-        cfg: PagePaginationConfig = {
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 3,
-            'page_size': page_size,
-            'records_path': 'items',
-        }
+        cfg = page_cfg(
+            page_param='page',
+            size_param='per_page',
+            start_page=3,
+            page_size=page_size,
+            records_path='items',
+        )
 
         with pytest.raises(api_errors.PaginationError) as ei:
             client.paginate('list', pagination=cfg)
