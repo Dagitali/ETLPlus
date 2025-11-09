@@ -50,13 +50,13 @@ except ImportError:  # pragma: no cover
 
 
 @given(
-    st.text(
+    id_value=st.text(
         alphabet=st.characters(blacklist_categories=('Cs',)),
         min_size=1,
     ),
 )
 def test_path_parameter_encoding_property(
-    id_value: str, monkeypatch: pytest.MonkeyPatch,
+    id_value: str,
 ) -> None:
     captured: list[str] = []
 
@@ -65,14 +65,15 @@ def test_path_parameter_encoding_property(
         captured.append(url)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-    client = EndpointClient(
-        base_url='https://api.example.com/v1',
-        endpoints={'item': '/users/{id}'},
-    )
-    client.paginate(
-        'item', path_parameters={'id': id_value}, pagination=None,
-    )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(cmod, '_extract', fake_extract)
+        client = EndpointClient(
+            base_url='https://api.example.com/v1',
+            endpoints={'item': '/users/{id}'},
+        )
+        client.paginate(
+            'item', path_parameters={'id': id_value}, pagination=None,
+        )
     assert captured, 'no URL captured'
     url = captured.pop()
     parsed = urlparse.urlparse(url)
@@ -88,7 +89,7 @@ def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
 
 
 @given(
-    st.dictionaries(
+    params=st.dictionaries(
         keys=_ascii_no_amp_eq().filter(lambda s: len(s) > 0),
         values=_ascii_no_amp_eq(),
         min_size=1,
@@ -96,7 +97,7 @@ def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
     ),
 )
 def test_query_encoding_property(
-    params: dict[str, str], monkeypatch: pytest.MonkeyPatch,
+    params: dict[str, str],
 ) -> None:
     captured: list[str] = []
 
@@ -105,12 +106,13 @@ def test_query_encoding_property(
         captured.append(url)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod, '_extract', fake_extract)
-    client = EndpointClient(
-        base_url='https://api.example.com/v1',
-        endpoints={'e': '/ep'},
-    )
-    client.paginate('e', query_parameters=params, pagination=None)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(cmod, '_extract', fake_extract)
+        client = EndpointClient(
+            base_url='https://api.example.com/v1',
+            endpoints={'e': '/ep'},
+        )
+        client.paginate('e', query_parameters=params, pagination=None)
     assert captured, 'no URL captured'
     url = captured.pop()
     parsed = urlparse.urlparse(url)
