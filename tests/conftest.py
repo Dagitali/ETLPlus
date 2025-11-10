@@ -22,9 +22,16 @@ import pytest
 from etlplus.api import CursorPaginationConfig
 from etlplus.api import PagePaginationConfig
 from etlplus.api.client import EndpointClient
+from etlplus.config import ApiConfig
+from etlplus.config import ApiProfileConfig
+from etlplus.config import EndpointConfig
+from etlplus.config import PaginationConfig
+from etlplus.config import PipelineConfig
+from etlplus.config import RateLimitConfig
+from etlplus.config.types import PaginationConfigMap
+from etlplus.config.types import RateLimitConfigMap
 from etlplus.enums import DataConnectorType
 from tests.unit.api.test_mocks import MockSession
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -53,7 +60,7 @@ def _freeze(d: dict[str, Any]) -> types.MappingProxyType:  # pragma: no cover
     return types.MappingProxyType(d)
 
 
-# SECTION: FIXTURES ========================================================= #
+# SECTION: FIXTURES (API) =================================================== #
 
 
 @pytest.fixture
@@ -258,3 +265,177 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
         return base
 
     return _make
+
+
+# SECTION: FIXTURES (CONFIG) ================================================ #
+
+
+@pytest.fixture
+def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
+    """Wrapper to construct `ApiConfig` from a dict."""
+
+    def _make(obj: dict[str, Any]) -> ApiConfig:
+        return ApiConfig.from_obj(obj)
+
+    return _make
+
+
+@pytest.fixture
+def api_obj_factory(
+    base_url: str,
+    sample_endpoints: dict[str, dict[str, Any]],
+) -> Callable[..., dict[str, Any]]:
+    """Factory producing API configuration dicts for `ApiConfig.from_obj`.
+
+    Usage:
+        obj = api_obj_factory(base_path='/v1', headers={'X': '1'})
+        cfg = ApiConfig.from_obj(obj)
+    """
+
+    def _make(
+        *,
+        use_profiles: bool | None = False,
+        base_path: str | None = None,
+        headers: dict[str, str] | None = None,
+        endpoints: dict[str, dict[str, Any]] | None = None,
+        defaults: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        eps = endpoints or sample_endpoints
+        if use_profiles:
+            prof: dict[str, Any] = {
+                'default': {'base_url': base_url},
+            }
+            if base_path is not None:
+                prof['default']['base_path'] = base_path
+            if defaults is not None:
+                prof['default']['defaults'] = defaults
+            return {
+                'profiles': prof,
+                'endpoints': eps,
+                'headers': headers or {},
+            }
+        return {
+            'base_url': base_url,
+            **({'base_path': base_path} if base_path else {}),
+            'endpoints': eps,
+            **({'headers': headers} if headers else {}),
+        }
+
+    return _make
+
+
+@pytest.fixture
+def base_url() -> str:
+    """Common base URL used across config tests."""
+    return 'https://api.example.com'
+
+
+@pytest.fixture
+def endpoint_config_factory() -> Callable[[str], EndpointConfig]:
+    """Wrapper to construct `EndpointConfig` from a string path."""
+
+    def _make(obj: str) -> EndpointConfig:
+        return EndpointConfig.from_obj(obj)
+
+    return _make
+
+
+@pytest.fixture
+def pagination_config_factory() -> Callable[..., PaginationConfig]:
+    """Factory for `PaginationConfig` via constructor (typed kwargs)."""
+
+    def _make(**kwargs: Any) -> PaginationConfig:  # noqa: ANN401
+        return PaginationConfig(**kwargs)
+
+    return _make
+
+
+@pytest.fixture
+def pagination_from_obj_factory() -> Callable[
+    [Any], PaginationConfig,
+]:
+    """Factory for `PaginationConfig` via `from_obj` mapping."""
+
+    def _make(obj: PaginationConfigMap) -> PaginationConfig:  # noqa: ANN401
+        return PaginationConfig.from_obj(obj)
+
+    return _make
+
+
+@pytest.fixture
+def pipeline_yaml_factory() -> Callable[[str, Path], Path]:
+    """Write YAML content to a temporary file and return the path."""
+
+    def _make(yaml_text: str, tmp_dir: Path) -> Path:
+        p = tmp_dir / 'cfg.yml'
+        p.write_text(yaml_text.strip(), encoding='utf-8')
+        return p
+
+    return _make
+
+
+@pytest.fixture
+def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
+    """Wrapper to construct `PipelineConfig` from a YAML path."""
+
+    def _make(
+        path: Path,
+        *,
+        substitute: bool = True,
+        env: dict[str, str] | None = None,
+    ) -> PipelineConfig:
+        return PipelineConfig.from_yaml(
+            path,
+            substitute=substitute,
+            env=env or {},
+        )
+
+    return _make
+
+
+@pytest.fixture
+def profile_config_factory() -> Callable[[dict[str, Any]], ApiProfileConfig]:
+    """Wrapper to construct `ApiProfileConfig` from a dict."""
+
+    def _make(obj: dict[str, Any]) -> ApiProfileConfig:
+        return ApiProfileConfig.from_obj(obj)
+
+    return _make
+
+
+@pytest.fixture
+def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
+    """Factory for `RateLimitConfig` via constructor (typed kwargs)."""
+
+    def _make(**kwargs: Any) -> RateLimitConfig:  # noqa: ANN401
+        return RateLimitConfig(**kwargs)
+
+    return _make
+
+
+@pytest.fixture
+def rate_limit_from_obj_factory() -> Callable[
+    [RateLimitConfigMap], RateLimitConfig,
+]:
+    """Factory for `RateLimitConfig` via `from_obj` mapping."""
+
+    def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
+        return RateLimitConfig.from_obj(obj)
+
+    return _make
+
+
+@pytest.fixture
+def sample_endpoints() -> dict[str, dict[str, Any]]:
+    """Common endpoints mapping for config tests."""
+    return {
+        'users': {'path': '/users'},
+        'list': {'path': '/items'},
+        'ping': {'path': '/ping'},
+    }
+
+
+@pytest.fixture
+def sample_headers() -> dict[str, str]:
+    """Common headers mapping for config tests."""
+    return {'Accept': 'application/json'}
