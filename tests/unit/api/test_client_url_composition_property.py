@@ -49,6 +49,10 @@ except ImportError:  # pragma: no cover
     st = _DummyStrategies()  # type: ignore[assignment]
 
 
+# Mark all tests in this module as property-based
+pytestmark = pytest.mark.property
+
+
 @given(
     id_value=st.text(
         alphabet=st.characters(blacklist_categories=('Cs',)),
