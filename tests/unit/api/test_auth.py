@@ -1,5 +1,5 @@
 """
-tests.unit.api.auth unit tests module.
+tests.unit.api.test_auth unit tests module.
 
 Smoke tests for etlplus.api.auth EndpointCredentialsBearer.
 """
