@@ -1,5 +1,5 @@
 """
-tests.unit.api.rate unit tests module.
+tests.unit.api.test_rate unit tests module.
 
 Smoke tests for etlplus.api.rate.
 """
