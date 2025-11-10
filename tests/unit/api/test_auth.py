@@ -132,3 +132,27 @@ def test_bearer_refreshes_when_expiring(
     auth(r2)
     assert r2.headers['Authorization'] == 'Bearer long'
     assert calls['n'] == 2
+
+
+def test_missing_access_token_raises_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_post(
+        url: str,
+        data: dict[str, Any],
+        auth,
+        headers,
+        timeout,
+    ):  # noqa: D401, ANN001
+        return _Resp({'expires_in': 60})  # no access_token
+
+    monkeypatch.setattr(requests, 'post', fake_post)
+    auth = EndpointCredentialsBearer(
+        token_url='https://auth.example.com/token',
+        client_id='id',
+        client_secret='secret',
+        scope='read',
+    )
+    r = requests.Request('GET', 'https://api.example.com/x').prepare()
+    with pytest.raises(RuntimeError):
+        auth(r)
