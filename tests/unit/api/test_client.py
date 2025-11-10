@@ -14,6 +14,7 @@ module-level ``_extract`` function used by ``EndpointClient``.
 from __future__ import annotations
 
 import types
+import urllib.parse as urlparse
 from typing import Any
 from typing import cast
 from typing import Protocol
@@ -25,7 +26,37 @@ import requests  # type: ignore[import]
 import etlplus.api.client as cmod
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
+from etlplus.api import PagePaginationConfig
 from tests.unit.api.test_mocks import MockSession
+
+# Optional Hypothesis import with safe stubs when missing.
+try:  # pragma: no try
+    from hypothesis import given  # type: ignore[import-not-found]
+    from hypothesis import strategies as st  # type: ignore[import-not-found]
+    _HYP_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _HYP_AVAILABLE = False
+
+    def given(*_a, **_k):  # type: ignore[unused-ignore]
+        def _wrap(fn):
+            return pytest.mark.skip(reason='needs hypothesis')(fn)
+        return _wrap
+
+    class _Strategy:  # minimal chainable strategy stub
+        def filter(self, *_a, **_k):  # pragma: no cover
+            return self
+
+    class _DummyStrategies:
+        def text(self, *_a, **_k):  # pragma: no cover
+            return _Strategy()
+
+        def characters(self, *_a, **_k):  # pragma: no cover
+            return _Strategy()
+
+        def dictionaries(self, *_a, **_k):  # pragma: no cover
+            return _Strategy()
+
+    st = _DummyStrategies()  # type: ignore[assignment]
 
 
 # SECTION: HELPERS ========================================================== #
@@ -41,6 +72,13 @@ class _PaginationConfigProto(Protocol):  # pragma: no cover - structural only
 
     def get(self, key: str, default: Any = ...) -> Any: ...  # noqa: D401
     def __contains__(self, key: str) -> bool: ...  # noqa: D401
+
+
+def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
+    alpha = st.characters(min_codepoint=32, max_codepoint=126).filter(
+        lambda ch: ch not in ['&', '='],
+    )
+    return st.text(alphabet=alpha, min_size=0, max_size=12)
 
 
 def make_http_error(
@@ -316,6 +354,80 @@ class TestCursorPagination:
         # One sleep from the single retry attempt.
         assert capture_sleeps == [pytest.approx(0.05)]
         assert attempts['n'] == 2
+
+
+class TestErrors:
+    def test_auth_error_wrapping_on_single_attempt(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        client = EndpointClient(
+            base_url='https://api.example.com/v1',
+            endpoints={'x': '/x'},
+        )
+
+        def boom(
+            _stype: str,
+            url: str,
+            **kwargs: dict[str, Any],  # noqa: ARG001
+        ):
+            raise make_http_error(401)
+
+        monkeypatch.setattr('etlplus.api.client._extract', boom)
+        with pytest.raises(api_errors.ApiAuthError) as ei:
+            client.paginate_url(
+                'https://api.example.com/v1/x', None, None, None, None,
+            )
+        err = ei.value
+        assert err.status == 401
+        assert err.attempts == 1
+        assert err.retried is False
+        assert err.retry_policy is None
+
+
+class TestOffsetPagination:
+    def test_offset_pagination_behaves_like_offset(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        calls: list[dict[str, Any]] = []
+
+        def fake_extract(kind: str, _url: str, **kwargs: dict[str, Any]):
+            assert kind == 'api'
+            calls.append(kwargs)
+            params = kwargs.get('params') or {}
+            off = int(params.get('offset', 0))
+            limit = int(params.get('limit', 2))
+            # return exactly `limit` items until offset reaches 4
+            if off >= 4:
+                return []
+            return [{'i': i} for i in range(off, off + limit)]
+
+        monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+        client = EndpointClient(base_url='https://example.test', endpoints={})
+        cfg = cast(
+            PagePaginationConfig,
+            {
+                'type': 'offset',
+                'page_param': 'offset',
+                'size_param': 'limit',
+                'start_page': 0,
+                'page_size': 2,
+                'max_records': 3,
+            },
+        )
+
+        data = client.paginate_url(
+            'https://example.test/api',
+            None,
+            None,
+            None,
+            cfg,
+        )
+
+        # Expected behavior: collects up to max_records using offset stepping
+        assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
 
 
 class TestPagePagination:
@@ -704,30 +816,58 @@ class TestUrlComposition:
         )
 
 
-class TestErrors:
-    def test_auth_error_wrapping_on_single_attempt(
+@pytest.mark.property
+class TestUrlCompositionProperty:
+    """Property-based URL composition tests (Hypothesis)."""
+
+    @given(
+        id_value=st.text(
+            alphabet=st.characters(blacklist_categories=('Cs',)),
+            min_size=1,
+        ),
+    )
+    def test_path_parameter_encoding_property(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        id_value: str,
+        extract_stub_factory,  # session-scoped factory, Hypothesis-safe
     ) -> None:
-        client = EndpointClient(
-            base_url='https://api.example.com/v1',
-            endpoints={'x': '/x'},
-        )
-
-        def boom(
-            _stype: str,
-            url: str,
-            **kwargs: dict[str, Any],  # noqa: ARG001
-        ):
-            raise make_http_error(401)
-
-        monkeypatch.setattr('etlplus.api.client._extract', boom)
-        with pytest.raises(api_errors.ApiAuthError) as ei:
-            client.paginate_url(
-                'https://api.example.com/v1/x', None, None, None, None,
+        with extract_stub_factory() as calls:  # type: ignore[call-arg]
+            client = EndpointClient(
+                base_url='https://api.example.com/v1',
+                endpoints={'item': '/users/{id}'},
             )
-        err = ei.value
-        assert err.status == 401
-        assert err.attempts == 1
-        assert err.retried is False
-        assert err.retry_policy is None
+            client.paginate(
+                'item', path_parameters={'id': id_value}, pagination=None,
+            )
+            assert calls['urls'], 'no URL captured'
+            url = calls['urls'].pop()
+            parsed = urlparse.urlparse(url)
+            expected_id = urlparse.quote(id_value, safe='')
+            assert parsed.path.endswith('/users/' + expected_id)
+
+    @given(
+        params=st.dictionaries(
+            keys=_ascii_no_amp_eq().filter(lambda s: len(s) > 0),
+            values=_ascii_no_amp_eq(),
+            min_size=1,
+            max_size=5,
+        ),
+    )
+    def test_query_encoding_property(
+        self,
+        params: dict[str, str],
+        extract_stub_factory,  # session-scoped factory, Hypothesis-safe
+    ) -> None:
+        with extract_stub_factory() as calls:  # type: ignore[call-arg]
+            client = EndpointClient(
+                base_url='https://api.example.com/v1',
+                endpoints={'e': '/ep'},
+            )
+            client.paginate('e', query_parameters=params, pagination=None)
+            assert calls['urls'], 'no URL captured'
+            url = calls['urls'].pop()
+            parsed = urlparse.urlparse(url)
+            round_params = dict(
+                urlparse.parse_qsl(parsed.query, keep_blank_values=True),
+            )
+            assert round_params == params
