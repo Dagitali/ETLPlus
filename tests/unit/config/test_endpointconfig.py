@@ -1,6 +1,6 @@
 """
-ETLPlus Config Tests
-====================
+tests.unit.config.test_endpointconfig unit tests module.
+
 
 Unit tests for the ETLPlus configuration models.
 
@@ -11,35 +11,44 @@ YAML files, including variable substitution and profile handling.
 """
 from __future__ import annotations
 
-from etlplus.config import EndpointConfig
+
+# SECTION: TESTS ============================================================ #
 
 
-def test_endpoint_captures_path_params_and_body():
-    ep = EndpointConfig.from_obj({
-        'method': 'POST',
-        'path': '/users/{id}/avatar',
-        'path_params': {'id': 'int'},
-        'query_params': {'size': 'large'},
-        'body': {'type': 'file', 'file_path': './x.png'},
-    })
-    assert ep.method == 'POST'
-    assert ep.path_params == {'id': 'int'}
-    assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
-    assert ep.query_params == {'size': 'large'}
+class TestEndpointConfig:
+    def test_captures_path_params_and_body(
+        self,
+        endpoint_config_factory,
+    ) -> None:  # noqa: D401
+        ep = endpoint_config_factory({
+            'method': 'POST',
+            'path': '/users/{id}/avatar',
+            'path_params': {'id': 'int'},
+            'query_params': {'size': 'large'},
+            'body': {'type': 'file', 'file_path': './x.png'},
+        })
+        assert ep.method == 'POST'
+        assert ep.path_params == {'id': 'int'}
+        assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
+        assert ep.query_params == {'size': 'large'}
 
+    def test_parses_method(
+        self,
+        endpoint_config_factory,
+    ) -> None:  # noqa: D401
+        ep = endpoint_config_factory({
+            'method': 'GET',
+            'path': '/users',
+            'query_params': {'active': True},
+        })
+        assert ep.path == '/users'
+        assert ep.method == 'GET'
+        assert ep.query_params.get('active') is True
 
-def test_endpoint_config_parses_method():
-    ep = EndpointConfig.from_obj({
-        'method': 'GET',
-        'path': '/users',
-        'query_params': {'active': True},
-    })
-    assert ep.path == '/users'
-    assert ep.method == 'GET'
-    assert ep.query_params.get('active') is True
-
-
-def test_endpoint_config_from_str_sets_no_method():
-    ep = EndpointConfig.from_obj('/ping')
-    assert ep.path == '/ping'
-    assert ep.method is None
+    def test_from_str_sets_no_method(
+        self,
+        endpoint_config_factory,
+    ) -> None:  # noqa: D401
+        ep = endpoint_config_factory('/ping')
+        assert ep.path == '/ping'
+        assert ep.method is None
