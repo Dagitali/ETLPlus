@@ -1,39 +1,50 @@
 """
-Pipeline smoke test
-===================
+tests.integration.test_pipeline_smoke integration tests module.
 
-Runs a minimal file->file pipeline job end-to-end via the CLI to ensure the
-"pipeline --run" path works without network dependencies.
+Pipeline smoke tests.
+
+Modernized class-based test that exercises a minimal file→file job via the
+CLI. Parametrized to verify both empty and non-empty inputs.
 """
 from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path  # noqa: F401 (reserved for potential future use)
+
+import pytest
 
 from etlplus.cli import main
 
 
-def test_pipeline_run_file_to_file(
-    monkeypatch,
-    tmp_path,
-    capsys,
-):
-    """
-    Create a temporary JSON file, a temporary pipeline YAML referencing it as a
-    file source and a file target, then run the job with the CLI and verify
-    the output file is created with the expected contents.
-    """
+# SECTION: TESTS ============================================================ #
 
-    # Prepare input and output paths
-    data_in = [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}]
-    input_path = tmp_path / 'input.json'
-    output_path = tmp_path / 'output.json'
 
-    input_path.write_text(json.dumps(data_in), encoding='utf-8')
+class TestPipelineSmoke:
+    @pytest.mark.parametrize(
+        'data_in',
+        [
+            [],
+            [
+                {'id': 1, 'name': 'Alice'},
+                {'id': 2, 'name': 'Bob'},
+            ],
+        ],
+        ids=['empty', 'two-records'],
+    )
+    def test_file_to_file(
+        self,
+        monkeypatch,
+        tmp_path,
+        capsys,
+        data_in,
+    ) -> None:  # noqa: D401
+        # Prepare input and output paths.
+        input_path = tmp_path / 'input.json'
+        output_path = tmp_path / 'output.json'
+        input_path.write_text(json.dumps(data_in), encoding='utf-8')
 
-    # Minimal pipeline config (file -> file)
-    pipeline_yaml = f"""
+        # Minimal pipeline config (file -> file).
+        pipeline_yaml = f"""
 name: Smoke Test
 sources:
   - name: src
@@ -52,35 +63,34 @@ jobs:
     load:
       target: dest
 """
+        cfg_path = tmp_path / 'pipeline.yml'
+        cfg_path.write_text(pipeline_yaml, encoding='utf-8')
 
-    cfg_path = tmp_path / 'pipeline.yml'
-    cfg_path.write_text(pipeline_yaml, encoding='utf-8')
+        # Run CLI: etlplus pipeline --config <cfg> --run file_to_file_smoke.
+        monkeypatch.setattr(
+            sys,
+            'argv',
+            [
+                'etlplus',
+                'pipeline',
+                '--config',
+                str(cfg_path),
+                '--run',
+                'file_to_file_smoke',
+            ],
+        )
+        result = main()
+        assert result == 0
 
-    # Run CLI: etlplus pipeline --config <cfg> --run file_to_file_smoke
-    monkeypatch.setattr(
-        sys,
-        'argv',
-        [
-            'etlplus',
-            'pipeline',
-            '--config',
-            str(cfg_path),
-            '--run',
-            'file_to_file_smoke',
-        ],
-    )
-    result = main()
-    assert result == 0
+        payload = json.loads(capsys.readouterr().out)
 
-    # CLI should have printed a JSON object with status ok
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload.get('status') == 'ok'
-    assert isinstance(payload.get('result'), dict)
-    assert payload['result'].get('status') == 'success'
+        # CLI should have printed a JSON object with status ok.
+        assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('result'), dict)
+        assert payload['result'].get('status') == 'success'
 
-    # Output file should exist and match input data
-    assert output_path.exists()
-    with output_path.open('r', encoding='utf-8') as f:
-        out_data = json.load(f)
-    assert out_data == data_in
+        # Output file should exist and match input data.
+        assert output_path.exists()
+        with output_path.open('r', encoding='utf-8') as f:
+            out_data = json.load(f)
+        assert out_data == data_in
