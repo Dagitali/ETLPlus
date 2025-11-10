@@ -64,8 +64,9 @@ class TestContextManager:
         self,
         monkeypatch: pytest.MonkeyPatch,
         extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        mock_session: MockSession,
     ) -> None:
-        sess = MockSession()
+        sess = mock_session
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
@@ -112,8 +113,9 @@ class TestContextManager:
         self,
         monkeypatch: pytest.MonkeyPatch,
         extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        mock_session: MockSession,
     ) -> None:
-        sess = MockSession()
+        sess = mock_session
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
