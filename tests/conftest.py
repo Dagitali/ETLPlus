@@ -1,5 +1,5 @@
 """
-tests.conftest.py test fixtures module.
+tests.conftest pytest configuration module.
 
 Shared pytest fixtures for the test suite.
 
