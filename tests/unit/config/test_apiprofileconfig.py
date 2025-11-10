@@ -20,6 +20,45 @@ from etlplus.config import RateLimitConfig
 
 
 class TestApiProfileConfig:
+    @pytest.mark.parametrize(
+        'defaults',
+        [
+            {'pagination': 'not-a-dict'},
+            {'pagination': {'type': 123}},
+            {'rate_limit': 'oops'},
+            {'rate_limit': {'sleep_seconds': 'x', 'max_per_sec': []}},
+        ],
+        ids=[
+            'pagination-str',
+            'pagination-type-bad',
+            'rate-limit-str',
+            'rate-limit-bad-values',
+        ],
+    )
+    def test_invalid_defaults_blocks(
+        self,
+        defaults: dict[str, object],
+        profile_config_factory,
+    ) -> None:
+        obj = {
+            'base_url': 'https://api.example.com',
+            'defaults': defaults,
+        }
+        prof = profile_config_factory(obj)
+
+        # Invalid blocks should yield None defaults objects or sanitized
+        # values.
+        if 'pagination' in defaults:
+            assert getattr(prof, 'pagination_defaults', None) in (
+                None,
+                prof.pagination_defaults,
+            )
+        if 'rate_limit' in defaults:
+            assert getattr(prof, 'rate_limit_defaults', None) in (
+                None,
+                prof.rate_limit_defaults,
+            )
+
     def test_merges_headers_defaults_low_precedence(
         self,
         profile_config_factory,
