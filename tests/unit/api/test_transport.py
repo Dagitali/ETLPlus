@@ -35,3 +35,22 @@ def test_build_http_adapter_basic_mountable() -> None:
         # Retry object exposes total when urllib3 is available
         total = getattr(mr, 'total', None)
         assert total in (0, 3)
+
+
+def test_build_http_adapter_integer_retries_fallback() -> None:
+    cfg = {
+        'pool_connections': 2,
+        'pool_maxsize': 2,
+        'pool_block': True,
+        'max_retries': 5,  # integer fallback path
+    }
+    adapter = build_http_adapter(cfg)
+    assert adapter is not None
+    # When an integer is provided, requests converts it into a Retry instance
+    # in newer versions; support either int or Retry(total=5) depending on
+    # implementation details.
+    mr = adapter.max_retries
+    if isinstance(mr, int):
+        assert mr == 5
+    else:
+        assert getattr(mr, 'total', None) == 5
