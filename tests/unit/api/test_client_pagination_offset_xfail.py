@@ -17,7 +17,6 @@ from etlplus.api import EndpointClient
 from etlplus.api.types import PaginationConfig
 
 
-@pytest.mark.xfail(reason='offset pagination not implemented yet')
 def test_offset_pagination_behaves_like_offset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -56,5 +55,6 @@ def test_offset_pagination_behaves_like_offset(
         None,
         cfg,
     )
+
     # Expected behavior: collects up to max_records using offset stepping
     assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
