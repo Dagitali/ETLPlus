@@ -29,6 +29,10 @@ from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfig
 from tests.unit.api.test_mocks import MockSession
 
+
+# SECTION: HELPERS ========================================================== #
+
+
 # Optional Hypothesis import with safe stubs when missing.
 try:  # pragma: no try
     from hypothesis import given  # type: ignore[import-not-found]
@@ -57,9 +61,6 @@ except ImportError:  # pragma: no cover
             return _Strategy()
 
     st = _DummyStrategies()  # type: ignore[assignment]
-
-
-# SECTION: HELPERS ========================================================== #
 
 
 @runtime_checkable
