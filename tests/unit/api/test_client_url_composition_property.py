@@ -12,11 +12,12 @@ Skipped automatically if Hypothesis is absent.
 from __future__ import annotations
 
 import urllib.parse as urlparse
-from typing import Any
+from typing import Any  # noqa: F401 - kept for parity with stubs
 
 import pytest
+from hypothesis import HealthCheck  # type: ignore[import-not-found]
+from hypothesis import settings  # type: ignore[import-not-found]
 
-import etlplus.api.client as cmod
 from etlplus.api import EndpointClient
 
 # Optional Hypothesis import with safe stubs when missing.
@@ -59,27 +60,21 @@ pytestmark = pytest.mark.property
         min_size=1,
     ),
 )
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_path_parameter_encoding_property(
     id_value: str,
+    extract_stub: dict[str, Any],  # fixture provides URL capture
 ) -> None:
-    captured: list[str] = []
-
-    def fake_extract(kind: str, url: str, **_k: Any):
-        assert kind == 'api'
-        captured.append(url)
-        return {'ok': True}
-
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(cmod, '_extract', fake_extract)
-        client = EndpointClient(
-            base_url='https://api.example.com/v1',
-            endpoints={'item': '/users/{id}'},
-        )
-        client.paginate(
-            'item', path_parameters={'id': id_value}, pagination=None,
-        )
-    assert captured, 'no URL captured'
-    url = captured.pop()
+    calls = extract_stub
+    client = EndpointClient(
+        base_url='https://api.example.com/v1',
+        endpoints={'item': '/users/{id}'},
+    )
+    client.paginate(
+        'item', path_parameters={'id': id_value}, pagination=None,
+    )
+    assert calls['urls'], 'no URL captured'
+    url = calls['urls'].pop()
     parsed = urlparse.urlparse(url)
     expected_id = urlparse.quote(id_value, safe='')
     assert parsed.path.endswith('/users/' + expected_id)
@@ -100,25 +95,19 @@ def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
         max_size=5,
     ),
 )
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_encoding_property(
     params: dict[str, str],
+    extract_stub: dict[str, Any],  # fixture provides URL capture
 ) -> None:
-    captured: list[str] = []
-
-    def fake_extract(kind: str, url: str, **_k: Any):
-        assert kind == 'api'
-        captured.append(url)
-        return {'ok': True}
-
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(cmod, '_extract', fake_extract)
-        client = EndpointClient(
-            base_url='https://api.example.com/v1',
-            endpoints={'e': '/ep'},
-        )
-        client.paginate('e', query_parameters=params, pagination=None)
-    assert captured, 'no URL captured'
-    url = captured.pop()
+    calls = extract_stub
+    client = EndpointClient(
+        base_url='https://api.example.com/v1',
+        endpoints={'e': '/ep'},
+    )
+    client.paginate('e', query_parameters=params, pagination=None)
+    assert calls['urls'], 'no URL captured'
+    url = calls['urls'].pop()
     parsed = urlparse.urlparse(url)
     round_params = dict(
         urlparse.parse_qsl(parsed.query, keep_blank_values=True),
