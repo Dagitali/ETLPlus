@@ -202,6 +202,27 @@ def extract_stub_factory() -> Callable[..., Any]:
 
 
 @pytest.fixture
+def jitter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[list[float]], list[float]]:
+    """
+    Control retry jitter deterministically by supplying a sequence of values.
+
+    Usage:
+        vals = jitter([0.1, 0.2])
+        # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
+    """
+    import etlplus.api.client as cmod  # local import to avoid cycles
+
+    def _set(values: list[float]) -> list[float]:
+        seq = iter(values)
+        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(seq))
+        return values
+
+    return _set
+
+
+@pytest.fixture
 def mock_session() -> MockSession:
     """
     Provide a fresh ``MockSession`` per test.
