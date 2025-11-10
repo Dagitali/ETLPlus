@@ -223,3 +223,71 @@ jobs:
 
         data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == ['a', 'b', 'c']
+
+    def test_cursor_mode_missing_records_path(
+        self,
+        monkeypatch,
+        tmp_path,
+        capsys,
+    ) -> None:  # noqa: D401
+        # Omits records_path and relies on fallback coalescing behavior.
+        out_path = tmp_path / 'cursor_no_records_path.json'
+        pipeline_yaml = f"""
+name: cursor_test_no_records_path
+sources:
+  - name: src
+    type: api
+    url: https://example.test/api
+targets:
+  - name: dest
+    type: file
+    format: json
+    path: {out_path}
+jobs:
+  - name: api_cursor_no_records
+    extract:
+      source: src
+      options:
+        pagination:
+          type: cursor
+          cursor_param: cursor
+          cursor_path: next
+          page_size: 2
+          # records_path intentionally omitted
+    load:
+      target: dest
+"""
+        cfg = _write_pipeline(tmp_path, pipeline_yaml)
+
+        def fake_extract(kind: str, _url: str, **kwargs: Any):
+            assert kind == 'api'
+            params = kwargs.get('params') or {}
+            cur = params.get('cursor')
+            limit = int(params.get('limit', 2))
+            assert limit == 2
+            if cur is None:
+                return {'items': [{'id': 'x'}, {'id': 'y'}], 'next': 'tok1'}
+            if cur == 'tok1':
+                return {'items': [{'id': 'z'}], 'next': None}
+            return {'items': [], 'next': None}
+
+        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
+        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(
+            sys,
+            'argv',
+            [
+                'etlplus',
+                'pipeline',
+                '--config',
+                cfg,
+                '--run',
+                'api_cursor_no_records',
+            ],
+        )
+        rc = main()
+        assert rc == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload.get('status') == 'ok'
+        data = json.loads(out_path.read_text(encoding='utf-8'))
+        assert [r['id'] for r in data] == ['x', 'y', 'z']
