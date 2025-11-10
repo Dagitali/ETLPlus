@@ -1,5 +1,6 @@
 """
 tests.unit.api.test_client unit tests module.
+
 Modernized tests for the EndpointClient.
 
 Focus: URL composition, pagination, retries, and session handling.
