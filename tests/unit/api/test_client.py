@@ -311,11 +311,10 @@ class TestCursorPagination:
         monkeypatch: pytest.MonkeyPatch,
         cursor_cfg,  # fixture from conftest
         capture_sleeps: list[float],
+        jitter,
     ) -> None:
         """Cursor pagination applies retry backoff sleep on failure."""
-
-        jit = iter([0.05])
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(jit))
+        jitter([0.05])
 
         attempts = {'n': 0}
 
@@ -636,9 +635,9 @@ class TestRetryLogic:
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
         retry_cfg,
+        jitter,
     ) -> None:
-        vals = iter([0.1, 0.2])
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(vals))
+        jitter([0.1, 0.2])
 
         # Patch _extract in client module to fail with 503 twice, then succeed.
         attempts = {'n': 0}
@@ -678,9 +677,9 @@ class TestRetryLogic:
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
         retry_cfg,
+        jitter,
     ) -> None:
-        vals = iter([0.12, 0.18])
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(vals))
+        jitter([0.12, 0.18])
         attempts = {'n': 0}
 
         def _fake_extract(
