@@ -63,8 +63,8 @@ class TestContextManager:
     def test_closes_factory_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        monkeypatch.setattr(cmod, '_extract', lambda *_a, **_k: {'ok': True})
         sess = MockSession()
         client = EndpointClient(
             base_url='https://api.example.com',
@@ -81,9 +81,9 @@ class TestContextManager:
     def test_creates_and_closes_default_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
         # Patch extract to avoid network and capture params.
-        monkeypatch.setattr(cmod, '_extract', lambda *_a, **_k: {'ok': True})
 
         # Substitute Session with MockSession to observe close()
         created: dict[str, MockSession] = {}
@@ -111,8 +111,8 @@ class TestContextManager:
     def test_does_not_close_external_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        monkeypatch.setattr(cmod, '_extract', lambda *_a, **_k: {'ok': True})
         sess = MockSession()
         client = EndpointClient(
             base_url='https://api.example.com',
