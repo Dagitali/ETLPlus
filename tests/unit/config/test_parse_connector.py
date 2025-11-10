@@ -1,6 +1,6 @@
 """
-ETLPlus Connector Error Tests
-==============================
+tests.unit.config.test_parse_connector unit tests module.
+
 
 Unit tests for the ETLPlus connector error handling.
 """
@@ -11,6 +11,10 @@ import pytest
 from etlplus.config import parse_connector
 
 
-def test_parse_connector_unsupported_type_raises():
-    with pytest.raises(TypeError):
-        parse_connector({'name': 'x', 'type': 'unknown'})
+# SECTION: TESTS ============================================================ #
+
+
+class TestParseConnector:
+    def test_unsupported_type_raises(self):  # noqa: D401
+        with pytest.raises(TypeError):
+            parse_connector({'name': 'x', 'type': 'unknown'})
