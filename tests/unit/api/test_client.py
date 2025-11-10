@@ -489,11 +489,12 @@ class TestRetryLogic:
     def test_request_error_after_retries_exhausted(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        retry_cfg,
     ) -> None:
         client = EndpointClient(
             base_url='https://api.example.com/v1',
             endpoints={'x': '/x'},
-            retry={'max_attempts': 2, 'backoff': 0.0, 'retry_on': [503]},
+            retry=retry_cfg(max_attempts=2, backoff=0.0, retry_on=[503]),
         )
         attempts = {'n': 0}
 
@@ -518,9 +519,10 @@ class TestRetryLogic:
         assert err.retried is True
 
     def test_full_jitter_backoff(
-        self, monkeypatch:
-            pytest.MonkeyPatch,
-            capture_sleeps: list[float],
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_sleeps: list[float],
+        retry_cfg,
     ) -> None:
         vals = iter([0.1, 0.2])
         monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(vals))
@@ -547,7 +549,7 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry={'max_attempts': 4, 'backoff': 0.5, 'retry_on': [503]},
+            retry=retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
         )
         out = client.paginate_url(
             'https://api.example.com/items', None, None, None, None,
@@ -562,6 +564,7 @@ class TestRetryLogic:
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
+        retry_cfg,
     ) -> None:
         vals = iter([0.12, 0.18])
         monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(vals))
@@ -584,7 +587,7 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry={'max_attempts': 4, 'backoff': 0.5},
+            retry=retry_cfg(max_attempts=4, backoff=0.5),
             retry_network_errors=True,
         )
         out = client.paginate_url(
