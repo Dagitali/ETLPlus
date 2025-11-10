@@ -597,6 +597,48 @@ class TestPagePagination:
         assert out == {'foo': 'bar'}
 
 
+class TestRateLimitPrecedence:
+    def test_overrides_sleep_seconds_wins(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_sleeps: list[float],
+    ) -> None:
+        # Simulate apply_sleep capturing values already via capture_sleeps.
+        client = EndpointClient(
+            base_url='https://api.example.com/v1',
+            endpoints={'list': '/items'},
+            rate_limit={'max_per_sec': 2},  # would imply 0.5s if used
+        )
+
+        # Patch _extract to return enough pages for two sleeps in page mode.
+        calls = {'n': 0}
+
+        def fake_extract(kind: str, url: str, **kw: Any):  # noqa: D401
+            calls['n'] += 1
+            # Return full page until third call which ends pagination.
+            if calls['n'] < 3:
+                return [{'i': calls['n']}, {'i': calls['n'] + 10}]
+            return []
+
+        monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+        list(
+            client.paginate_iter(
+                'list',
+                pagination={
+                    'type': 'page',
+                    'page_size': 2,
+                    'start_page': 1,
+                },
+                sleep_seconds=0.05,  # explicit override should win
+            ),
+        )
+
+        # We expect exactly two sleeps (between three page fetches) and both
+        # should reflect explicit override (0.05) not derived 0.5.
+        assert capture_sleeps == [pytest.approx(0.05), pytest.approx(0.05)]
+
+
 class TestRetryLogic:
     def test_request_error_after_retries_exhausted(
         self,
