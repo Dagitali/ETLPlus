@@ -625,20 +625,12 @@ class TestUrlComposition:
     def test_base_path_variants(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
         base_url: str,
         base_path: str,
         endpoint: str,
         expected: str,
     ) -> None:
-        captured: list[str] = []
-
-        def fake_extract(kind: str, url: str, **_k: Any):
-            assert kind == 'api'
-            captured.append(url)
-            return {'ok': True}
-
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
-
         client = EndpointClient(
             base_url=base_url,
             endpoints={'list': endpoint},
@@ -646,20 +638,13 @@ class TestUrlComposition:
         )
         out = client.paginate('list', pagination=None)
         assert out == {'ok': True}
-        assert captured == [expected]
+        assert extract_stub['urls'] == [expected]
 
     def test_query_merging_and_path_encoding(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        captured: list[str] = []
-
-        def fake_extract(kind: str, url: str, **_k: Any):
-            assert kind == 'api'
-            captured.append(url)
-            return {'ok': True}
-
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(
             base_url='https://api.example.com/v1?existing=a&dup=1',
@@ -673,7 +658,7 @@ class TestUrlComposition:
             pagination=None,
         )
         assert out == {'ok': True}
-        assert captured[0] == (
+        assert extract_stub['urls'][0] == (
             'https://api.example.com/v1/users/A%2FB%20C?'
             'existing=a&dup=1&q=x+y&dup=2'
         )
@@ -681,15 +666,8 @@ class TestUrlComposition:
     def test_query_merging_duplicate_base_params(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        captured: list[str] = []
-
-        def fake_extract(kind: str, url: str, **_k: Any):
-            assert kind == 'api'
-            captured.append(url)
-            return {'ok': True}
-
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(
             base_url='https://api.example.com/v1?dup=1&dup=2&z=9',
@@ -700,21 +678,14 @@ class TestUrlComposition:
             query_parameters={'dup': '3', 'a': '1'},
             pagination=None,
         )
-        assert captured[0] == (
+        assert extract_stub['urls'][0] == (
             'https://api.example.com/v1/ep?dup=1&dup=2&z=9&dup=3&a=1'
         )
 
     def test_query_param_ordering(
         self, monkeypatch: pytest.MonkeyPatch,
+        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        captured: list[str] = []
-
-        def fake_extract(kind: str, url: str, **_k: Any):
-            assert kind == 'api'
-            captured.append(url)
-            return {'ok': True}
-
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
 
         client = EndpointClient(
             base_url='https://api.example.com/v1?z=9&dup=1',
@@ -723,7 +694,7 @@ class TestUrlComposition:
         client.paginate(
             'e', query_parameters={'a': '1', 'dup': '2'}, pagination=None,
         )
-        assert captured[0] == (
+        assert extract_stub['urls'][0] == (
             'https://api.example.com/v1/ep?z=9&dup=1&a=1&dup=2'
         )
 
