@@ -66,7 +66,9 @@ def token_sequence(monkeypatch: pytest.MonkeyPatch):
 # SECTION: TESTS ============================================================ #
 
 
-def test_bearer_fetches_and_caches(token_sequence):  # noqa: ANN001
+def test_bearer_fetches_and_caches(
+    token_sequence,
+):  # noqa: ANN001
     auth = EndpointCredentialsBearer(
         token_url='https://auth.example.com/token',
         client_id='id',
@@ -134,6 +136,41 @@ def test_bearer_refreshes_when_expiring(
     assert calls['n'] == 2
 
 
+def test_http_error_path_raises_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_post(
+        url: str,
+        data,
+        auth,
+        headers,
+        timeout,
+    ):  # noqa: D401, ANN001
+        # Simulate HTTP 401 with body; requests raises on raise_for_status
+        resp = requests.Response()
+        resp.status_code = 401
+        resp._content = b'Unauthorized'  # type: ignore[attr-defined]
+
+        class _R:
+            def raise_for_status(self):  # noqa: D401
+                e = requests.HTTPError('401')
+                e.response = resp  # type: ignore[attr-defined]
+                raise e
+
+        return _R()
+
+    monkeypatch.setattr(requests, 'post', fake_post)
+    auth = EndpointCredentialsBearer(
+        token_url='https://auth.example.com/token',
+        client_id='id',
+        client_secret='secret',
+        scope='read',
+    )
+    r = requests.Request('GET', 'https://api.example.com/x').prepare()
+    with pytest.raises(requests.HTTPError):
+        auth(r)
+
+
 def test_missing_access_token_raises_runtime_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -155,4 +192,30 @@ def test_missing_access_token_raises_runtime_error(
     )
     r = requests.Request('GET', 'https://api.example.com/x').prepare()
     with pytest.raises(RuntimeError):
+        auth(r)
+
+
+def test_non_json_body_raises_value_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _R:
+        status_code = 200
+        text = 'not json'
+
+        def raise_for_status(self):  # noqa: D401
+            return None
+
+        def json(self):  # noqa: D401
+            raise ValueError('invalid json')
+
+    monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())
+
+    auth = EndpointCredentialsBearer(
+        token_url='https://auth.example.com/token',
+        client_id='id',
+        client_secret='secret',
+        scope='read',
+    )
+    r = requests.Request('GET', 'https://api.example.com/x').prepare()
+    with pytest.raises(ValueError):
         auth(r)
