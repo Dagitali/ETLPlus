@@ -1,5 +1,5 @@
 """
-tests.unit.api.transport unit tests module.
+tests.unit.api.test_transport unit tests module.
 
 Smoke tests for etlplus.api.transport.
 """
