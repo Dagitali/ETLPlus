@@ -9,6 +9,8 @@ used by retry logic tests.
 from __future__ import annotations
 
 import types
+from os import PathLike
+from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -20,6 +22,7 @@ import pytest
 from etlplus.api import CursorPaginationConfig
 from etlplus.api import PagePaginationConfig
 from etlplus.api.client import EndpointClient
+from etlplus.enums import DataConnectorType
 from tests.unit.api.test_mocks import MockSession
 
 
@@ -143,15 +146,59 @@ def extract_stub(
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
-    def _fake_extract(kind: str, url: str, **kw: Any):  # noqa: D401
+    def _fake_extract(kind: str, url: str, **kwargs: Any):  # noqa: D401
         assert kind == 'api'
         calls['urls'].append(url)
-        calls['kwargs'].append(kw)
+        calls['kwargs'].append(kwargs)
         return {'ok': True}
 
     monkeypatch.setattr(cmod, '_extract', _fake_extract)
 
     return calls
+
+
+@pytest.fixture(scope='session')
+def extract_stub_factory() -> Callable[..., Any]:
+    """
+    Provide a per-use stub factory for ``_extract`` without relying on
+    function-scoped fixtures (Hypothesis-friendly).
+
+    Usage in tests:
+
+        with extract_stub_factory() as calls:
+            client.paginate(...)
+            assert calls['urls'] == [...]
+
+    Each invocation patches ``etlplus.api.client._extract`` for the duration
+    of the context manager and restores the original afterwards.
+    """
+    import contextlib
+    import etlplus.api.client as cmod  # Local import to avoid cycles
+
+    @contextlib.contextmanager
+    def _make(
+        *,
+        return_value: Any | None = None,
+    ):  # noqa: D401
+        calls: dict[str, Any] = {'urls': [], 'kwargs': []}
+
+        def _fake_extract(
+            source_type: DataConnectorType | str,
+            source: str | Path | PathLike[str],
+            **kwargs: Any,
+        ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
+            calls['urls'].append(str(source))
+            calls['kwargs'].append({'source_type': source_type, **kwargs})
+            return {'ok': True} if return_value is None else return_value
+
+        saved = getattr(cmod, '_extract')
+        cmod._extract = _fake_extract  # type: ignore[attr-defined]
+        try:
+            yield calls
+        finally:
+            cmod._extract = saved  # type: ignore[attr-defined]
+
+    return _make
 
 
 @pytest.fixture
