@@ -20,6 +20,7 @@ import pytest
 from etlplus.api import CursorPaginationConfig
 from etlplus.api import PagePaginationConfig
 from etlplus.api.client import EndpointClient
+from tests.unit.api.test_mocks import MockSession
 
 
 # SECTION: HELPERS ========================================================== #
@@ -151,6 +152,17 @@ def extract_stub(
     monkeypatch.setattr(cmod, '_extract', _fake_extract)
 
     return calls
+
+
+@pytest.fixture
+def mock_session() -> MockSession:
+    """
+    Provide a fresh ``MockSession`` per test.
+
+    Useful for tests that need to pass a raw session into ``EndpointClient``
+    or verify close semantics.
+    """
+    return MockSession()
 
 
 @pytest.fixture
