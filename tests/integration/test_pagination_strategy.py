@@ -3,16 +3,16 @@ tests.integration.test_pagination_strategy integration tests module.
 
 Integration tests for pagination strategies.
 
-Modernized to a class-based pytest style with parametrized scenarios. We mock
-API extraction for both page/offset and cursor modes and drive the CLI entry
-point to exercise the public path under real configuration semantics.
+Modern, class-based pytest suite with parametrized scenarios. We mock API
+extraction for both page/offset and cursor modes and drive the CLI entry point
+to exercise the public path under real configuration semantics.
 
 Notes
---------------------
+-----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
-  client module's internal ``_extract`` suffices to intercept page fetches.
+    client module's internal ``_extract`` suffices to intercept page fetches.
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
-- ``time.sleep`` is neutralized to keep tests fast/deterministic.
+- ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
 from __future__ import annotations
 
