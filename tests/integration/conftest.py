@@ -195,3 +195,50 @@ def run_patched(
         return run_mod.run('job')
 
     return _run
+
+
+@pytest.fixture
+def capture_load_to_api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Capture API load calls by patching the high-level ``load`` wrapper.
+
+    We monkeypatch ``etlplus.load.load`` because the runner invokes
+    ``load(data, 'api', url, method=...)`` rather than calling
+    ``load_to_api`` directly. The stub detects API loads and records
+    request details for assertions.
+
+    Returns
+    -------
+    dict[str, Any]
+        Mutable dictionary populated after a run where API load happens.
+    """
+    import importlib as _il
+    _load_mod = _il.import_module('etlplus.load')  # ensure module, not attr
+    _run_mod = _il.import_module('etlplus.run')
+
+    seen: dict[str, Any] = {}
+    real_load = _load_mod.load
+
+    def _fake_load(
+        data: Any,
+        target_type: str,
+        target: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        if target_type == 'api':
+            seen['url'] = target
+            seen['method'] = kwargs.get('method') or 'post'
+            seen['headers'] = kwargs.get('headers')
+            seen['timeout'] = kwargs.get('timeout')
+            seen['session'] = kwargs.get('session')
+            # Return a minimal success envelope similar to real load_to_api
+            return {
+                'status': 'ok',
+                'url': target,
+                'count': len(data) if isinstance(data, list) else 0,
+            }
+        return real_load(data, target_type, target, **kwargs)
+
+    # Patch both the load module and the run module reference
+    monkeypatch.setattr(_load_mod, 'load', _fake_load)
+    monkeypatch.setattr(_run_mod, 'load', _fake_load)
+    return seen
