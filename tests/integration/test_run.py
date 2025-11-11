@@ -9,7 +9,6 @@ composition.
 from __future__ import annotations
 
 import importlib
-from typing import Any
 
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
@@ -26,13 +25,16 @@ from etlplus.config import PipelineConfig
 
 
 run_mod = importlib.import_module('etlplus.run')
-load_mod = importlib.import_module('etlplus.load')
 
 
 # SECTION: TESTS ============================================================ #
 
 
-def test_target_service_endpoint_uses_base_path(monkeypatch, tmp_path):
+def test_target_service_endpoint_uses_base_path(
+    monkeypatch,
+    tmp_path,
+    capture_load_to_api,
+):
     # Make a simple source file so extract step succeeds without mocks.
     src_path = tmp_path / 'data.json'
     src_path.write_text('{"ok": true}\n', encoding='utf-8')
@@ -83,22 +85,31 @@ def test_target_service_endpoint_uses_base_path(monkeypatch, tmp_path):
     # Patch the config loader to return our in-memory config.
     monkeypatch.setattr(run_mod, 'load_pipeline_config', lambda *_a, **_k: cfg)
 
-    # Capture the final URL passed to load_to_api.
-    seen: dict[str, Any] = {}
+    # Stub network POST to avoid real DNS / HTTP.
+    import requests
 
-    def fake_load_to_api(_data: Any, url: str, method: str, **kwargs: Any):
-        seen['url'] = url
-        seen['method'] = method
-        seen['headers'] = kwargs.get('headers')
-        return {'status': 'ok', 'url': url}
+    def _fake_post(url, json=None, timeout=None, **_k):  # noqa: D401
+        class R:
+            status_code = 200
+            text = 'ok'
 
-    monkeypatch.setattr(load_mod, 'load_to_api', fake_load_to_api)
+            def json(self_inner):
+                return {'echo': json}
+
+            def raise_for_status(self_inner):
+                return None
+
+        return R()
+    monkeypatch.setattr(requests, 'post', _fake_post)
 
     result = run_mod.run('send')
 
-    assert result.get('status') == 'ok'
-    assert seen['url'] == 'https://api.example.com/v1/ingest'
+    assert result.get('status') in {'ok', 'success'}
+    assert capture_load_to_api['url'] == 'https://api.example.com/v1/ingest'
 
     # Ensure headers merged include Content-Type from target.
-    assert isinstance(seen['headers'], dict)
-    assert seen['headers'].get('Content-Type') == 'application/json'
+    assert isinstance(capture_load_to_api['headers'], dict)
+    assert (
+        capture_load_to_api['headers'].get('Content-Type')
+        == 'application/json'
+    )
