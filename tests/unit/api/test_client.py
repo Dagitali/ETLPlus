@@ -18,8 +18,6 @@ import types
 import urllib.parse as urlparse
 from typing import Any
 from typing import cast
-from typing import Protocol
-from typing import runtime_checkable
 
 import pytest
 import requests  # type: ignore[import]
@@ -62,18 +60,6 @@ except ImportError:  # pragma: no cover
             return _Strategy()
 
     st = _DummyStrategies()  # type: ignore[assignment]
-
-
-@runtime_checkable
-class _PaginationConfigProto(Protocol):  # pragma: no cover - structural only
-    """Lightweight protocol capturing the minimal mapping surface we use.
-
-    Exists so helper builders can internally freeze configs (MappingProxyType)
-    while we still cast to the concrete TypedDicts expected by the public API.
-    """
-
-    def get(self, key: str, default: Any = ...) -> Any: ...  # noqa: D401
-    def __contains__(self, key: str) -> bool: ...  # noqa: D401
 
 
 def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
