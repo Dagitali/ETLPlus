@@ -55,109 +55,6 @@ class TestPaginationStrategies:
     def _no_sleep(self, monkeypatch) -> None:  # noqa: D401
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
-    @pytest.mark.parametrize(
-        'scenario',
-        [
-            PageScenario(
-                name='page_offset_basic',
-                page_size=2,
-                pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
-                expected_ids=[1, 2, 3],
-            ),
-            PageScenario(
-                name='page_offset_trim',
-                page_size=3,
-                pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
-                expected_ids=[1, 2],
-                max_records=2,
-            ),
-        ],
-        ids=lambda s: s.name,
-    )
-    def test_page_offset_modes(
-        self,
-        scenario: PageScenario,
-        monkeypatch,
-        tmp_path,
-        capsys,
-    ) -> None:
-        # Prepare output path.
-        out_path = tmp_path / f'{scenario.name}.json'
-        max_records_yaml = (
-            f'\n          max_records: {scenario.max_records}'
-            if scenario.max_records is not None
-            else ''
-        )
-
-        # Minimal pipeline with API source using page/offset pagination.
-        pipeline_yaml = f"""
-name: {scenario.name}
-sources:
-  - name: src
-    type: api
-    url: https://example.test/api
-targets:
-  - name: dest
-    type: file
-    format: json
-    path: {out_path}
-jobs:
-  - name: job_{scenario.name}
-    extract:
-      source: src
-      options:
-        pagination:
-          type: page
-          page_param: page
-          size_param: per_page
-          page_size: {scenario.page_size}{max_records_yaml}
-    load:
-      target: dest
-"""
-        cfg = _write_pipeline(tmp_path, pipeline_yaml)
-
-        # Mock extract to return 2 items for page 1 and 1 item for page 2.
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
-            assert kind == 'api'
-            params = kwargs.get('params') or {}
-            page = int(params.get('page', 1))
-            size = int(params.get('per_page', scenario.page_size))
-            assert size == scenario.page_size
-            # Pages are 1-indexed; return shorter batch to signal stop.
-            if 1 <= page <= len(scenario.pages):
-                return scenario.pages[page - 1]
-            return []
-
-        # Patch extract targets:
-        # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - cmod._extract: paginate now delegates to EndpointClient, which uses
-        #   the client's internal extractor per page.
-        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
-
-        # Run CLI.
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            [
-                'etlplus',
-                'pipeline',
-                '--config',
-                cfg,
-                '--run',
-                f'job_{scenario.name}',
-            ],
-        )
-        rc = main()
-        assert rc == 0
-
-        payload = json.loads(capsys.readouterr().out)
-        assert payload.get('status') == 'ok'
-
-        # Output should contain 3 aggregated items.
-        data = json.loads(out_path.read_text(encoding='utf-8'))
-        assert [r['id'] for r in data] == scenario.expected_ids
-
     def test_cursor_mode(
         self,
         monkeypatch,
@@ -291,6 +188,109 @@ jobs:
         assert payload.get('status') == 'ok'
         data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == ['x', 'y', 'z']
+
+    @pytest.mark.parametrize(
+        'scenario',
+        [
+            PageScenario(
+                name='page_offset_basic',
+                page_size=2,
+                pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
+                expected_ids=[1, 2, 3],
+            ),
+            PageScenario(
+                name='page_offset_trim',
+                page_size=3,
+                pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
+                expected_ids=[1, 2],
+                max_records=2,
+            ),
+        ],
+        ids=lambda s: s.name,
+    )
+    def test_page_offset_modes(
+        self,
+        scenario: PageScenario,
+        monkeypatch,
+        tmp_path,
+        capsys,
+    ) -> None:
+        # Prepare output path.
+        out_path = tmp_path / f'{scenario.name}.json'
+        max_records_yaml = (
+            f'\n          max_records: {scenario.max_records}'
+            if scenario.max_records is not None
+            else ''
+        )
+
+        # Minimal pipeline with API source using page/offset pagination.
+        pipeline_yaml = f"""
+name: {scenario.name}
+sources:
+  - name: src
+    type: api
+    url: https://example.test/api
+targets:
+  - name: dest
+    type: file
+    format: json
+    path: {out_path}
+jobs:
+  - name: job_{scenario.name}
+    extract:
+      source: src
+      options:
+        pagination:
+          type: page
+          page_param: page
+          size_param: per_page
+          page_size: {scenario.page_size}{max_records_yaml}
+    load:
+      target: dest
+"""
+        cfg = _write_pipeline(tmp_path, pipeline_yaml)
+
+        # Mock extract to return 2 items for page 1 and 1 item for page 2.
+        def fake_extract(kind: str, _url: str, **kwargs: Any):
+            assert kind == 'api'
+            params = kwargs.get('params') or {}
+            page = int(params.get('page', 1))
+            size = int(params.get('per_page', scenario.page_size))
+            assert size == scenario.page_size
+            # Pages are 1-indexed; return shorter batch to signal stop.
+            if 1 <= page <= len(scenario.pages):
+                return scenario.pages[page - 1]
+            return []
+
+        # Patch extract targets:
+        # - cli_mod.extract: CLI may call extract directly for some paths.
+        # - cmod._extract: paginate now delegates to EndpointClient, which uses
+        #   the client's internal extractor per page.
+        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
+        monkeypatch.setattr(cmod, '_extract', fake_extract)
+
+        # Run CLI.
+        monkeypatch.setattr(
+            sys,
+            'argv',
+            [
+                'etlplus',
+                'pipeline',
+                '--config',
+                cfg,
+                '--run',
+                f'job_{scenario.name}',
+            ],
+        )
+        rc = main()
+        assert rc == 0
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload.get('status') == 'ok'
+
+        # Output should contain 3 aggregated items.
+        data = json.loads(out_path.read_text(encoding='utf-8'))
+        assert [r['id'] for r in data] == scenario.expected_ids
 
     @pytest.mark.parametrize(
         'scenario',
