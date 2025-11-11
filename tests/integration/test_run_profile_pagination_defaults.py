@@ -4,45 +4,23 @@ module.
 
 Integration tests for profile-level pagination defaults.
 
-Moved from unit suite. Verifies `run()` inherits pagination defaults from
-API profile when not overridden.
+Verifies `run()` inherits pagination defaults from API profile when not
+overridden.
 """
 from __future__ import annotations
 
-import importlib
-from typing import Any
-
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
-from etlplus.config import ConnectorApi
-from etlplus.config import ConnectorFile
-from etlplus.config import EndpointConfig
-from etlplus.config import ExtractRef
-from etlplus.config import JobConfig
-from etlplus.config import LoadRef
 from etlplus.config import PaginationConfig
-from etlplus.config import PipelineConfig
-
-
-# SECTION: HELPERS ========================================================== #
-
-
-run_mod = importlib.import_module('etlplus.run')
 
 
 # SECTION: TESTS ============================================================ #
 
 
 def test_profile_pagination_defaults_applied(
-    monkeypatch,
-    tmp_path,
+    pipeline_cfg_factory,
+    fake_endpoint_client,
+    run_patched,
 ):
-    # Assemble an API with profile-level pagination defaults only.
-    prof = ApiProfileConfig(
-        base_url='https://api.example.com',
-        headers={},
-        base_path='/v1',
-        auth={},
+    cfg = pipeline_cfg_factory(
         pagination_defaults=PaginationConfig(
             type='page',
             page_param='page',
@@ -51,83 +29,16 @@ def test_profile_pagination_defaults_applied(
             page_size=50,
         ),
     )
-    api = ApiConfig(
-        base_url=prof.base_url,
-        headers=prof.headers,
-        profiles={'default': prof},
 
-        # No endpoint.pagination.
-        endpoints={'items': EndpointConfig(path='/items')},
-    )
-
-    src = ConnectorApi(name='s', type='api', api='svc', endpoint='items')
-
-    # Source references the API + endpoint (no source.pagination).
-    out_path = tmp_path / 'out.json'
-    tgt = ConnectorFile(
-        name='t', type='file',
-        format='json', path=str(out_path),
-    )
-
-    cfg = PipelineConfig(
-        apis={'svc': api},
-        sources=[src],
-        targets=[tgt],
-        jobs=[
-            JobConfig(
-                name='job',
-                extract=ExtractRef(source='s'),
-                load=LoadRef(target='t'),
-            ),
-        ],
-    )
-
-    # Capture the pagination argument that the client receives.
-    created_clients: list[Any] = []
-
-    class FakeClient:
-        def __init__(
-            self, base_url: str, endpoints: dict[str, str], **_k: Any,
-        ):
-            self.base_url = base_url
-            self.endpoints = endpoints
-            self.seen: dict[str, Any] = {}
-            created_clients.append(self)
-
-        def paginate(
-            self,
-            _endpoint_key: str,
-            *,
-            _params: dict[str, Any] | None = None,
-            _headers: dict[str, str] | None = None,
-            _timeout: float | None = None,
-            pagination: Any | None = None,
-            _sleep_seconds: float | None = None,
-        ) -> Any:
-            self.seen['pagination'] = pagination
-
-            # Return some data; runner will forward to load().
-            return [{'ok': True}]
-
-    # Stub the config loader and the client class.
-    monkeypatch.setattr(run_mod, 'load_pipeline_config', lambda *_a, **_k: cfg)
-    monkeypatch.setattr(run_mod, 'EndpointClient', FakeClient)
-
-    # Stub file load to avoid disk writes.
-    def fake_load(data: Any, _target_type: str, _path: str, **_k: Any) -> Any:
-        count = len(data) if isinstance(data, list) else 0
-        return {'status': 'ok', 'count': count}
-
-    monkeypatch.setattr(run_mod, 'load', fake_load)
-
-    result = run_mod.run('job')
+    FakeClient, created = fake_endpoint_client
+    result = run_patched(cfg, FakeClient)
 
     # Sanity.
     assert result.get('status') == 'ok'
-    assert created_clients, 'Expected client to be constructed'
+    assert created, 'Expected client to be constructed'
 
     # Assert the pagination dict came from the profile defaults.
-    seen_pag = created_clients[0].seen.get('pagination')
+    seen_pag = created[0].seen.get('pagination')
     assert isinstance(seen_pag, dict)
     assert seen_pag.get('type') == 'page'
     assert seen_pag.get('page_param') == 'page'
