@@ -292,7 +292,7 @@ class TestCursorPagination:
                 }
             raise make_http_error(500)
 
-        monkeypatch.setattr('etlplus.api.client._extract', extractor)
+        monkeypatch.setattr(cmod, '_extract', extractor)
 
         cfg = cursor_cfg(
             cursor_param='cursor',
@@ -374,7 +374,7 @@ class TestErrors:
         ):
             raise make_http_error(401)
 
-        monkeypatch.setattr('etlplus.api.client._extract', boom)
+        monkeypatch.setattr(cmod, '_extract', boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
             client.paginate_url(
                 'https://api.example.com/v1/x', None, None, None, None,
@@ -564,7 +564,7 @@ class TestPagePagination:
             return {'items': [{'i': i} for i in range(size)]}
 
         # Return exactly `size` records to force continue until failure.
-        monkeypatch.setattr('etlplus.api.client._extract', extractor)
+        monkeypatch.setattr(cmod, '_extract', extractor)
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -661,7 +661,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             raise make_http_error(503)
 
-        monkeypatch.setattr('etlplus.api.client._extract', boom)
+        monkeypatch.setattr(cmod, '_extract', boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
             client.paginate_url(
