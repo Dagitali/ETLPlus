@@ -1,5 +1,5 @@
 """
-tests.integration.test_cli integration tests module.
+tests.integration.test_it_cli integration tests module.
 
 End-to-end CLI integration tests.
 """
