@@ -75,17 +75,16 @@ class TestApiProfileConfig:
     def test_parses_defaults_blocks(
         self,
         profile_config_factory,
+        api_profile_defaults_factory,
     ) -> None:  # noqa: D401
         obj = {
             'base_url': 'https://api.example.com',
-            'defaults': {
-                'pagination': {
-                    'type': 'page',
-                    'page_param': 'p',
-                    'size_param': 's',
+            'defaults': api_profile_defaults_factory(
+                pagination={
+                    'type': 'page', 'page_param': 'p', 'size_param': 's',
                 },
-                'rate_limit': {'sleep_seconds': 0.1, 'max_per_sec': 5},
-            },
+                rate_limit={'sleep_seconds': 0.1, 'max_per_sec': 5},
+            ),
         }
         prof = profile_config_factory(obj)
 
