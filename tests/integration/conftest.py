@@ -29,7 +29,7 @@ from etlplus.config import RateLimitConfig
 # SECTION: HELPERS ========================================================== #
 
 
-# Mark all tests in this directory as integration tests.
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
 
 
@@ -38,7 +38,8 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def capture_load_to_api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """Capture API load calls by patching the high-level ``load`` wrapper.
+    """
+    Capture API load calls by patching the high-level ``load`` wrapper.
 
     We monkeypatch ``etlplus.load.load`` because the runner invokes
     ``load(data, 'api', url, method=...)`` rather than calling
