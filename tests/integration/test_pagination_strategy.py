@@ -291,3 +291,83 @@ jobs:
         assert payload.get('status') == 'ok'
         data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == ['x', 'y', 'z']
+
+    @pytest.mark.parametrize(
+        'scenario',
+        [
+            {
+                'name': 'page_zero_start_coerces_to_one',
+                'pagination': {
+                    'type': 'page',
+                    'page_param': 'page',
+                    'size_param': 'per_page',
+                    'start_page': 0,
+                    'page_size': 10,
+                },
+                'expect': {'type': 'page', 'start_page': 1, 'page_size': 10},
+            },
+            {
+                'name': 'page_zero_size_coerces_default',
+                'pagination': {
+                    'type': 'page',
+                    'page_param': 'page',
+                    'size_param': 'per_page',
+                    'start_page': 1,
+                    'page_size': 0,
+                },
+                'expect': {'type': 'page', 'start_page': 1, 'page_size': 100},
+            },
+            {
+                'name': 'cursor_zero_size_coerces_default',
+                'pagination': {
+                    'type': 'cursor',
+                    'cursor_param': 'cursor',
+                    'cursor_path': 'next',
+                    'page_size': 0,
+                },
+                'expect': {'type': 'cursor', 'page_size': 100},
+            },
+            {
+                'name': 'limits_pass_through',
+                'pagination': {
+                    'type': 'page',
+                    'page_param': 'page',
+                    'size_param': 'per_page',
+                    'start_page': 1,
+                    'page_size': 5,
+                    'max_pages': 2,
+                    'max_records': 3,
+                },
+                'expect': {'type': 'page', 'max_pages': 2, 'max_records': 3},
+            },
+        ],
+        ids=lambda s: s['name'],
+    )
+    def test_pagination_edge_cases(
+        self,
+        scenario: dict,
+        pipeline_cfg_factory,
+        fake_endpoint_client,
+        run_patched,
+    ) -> None:  # noqa: D401
+        """Edge cases for pagination coalescing using shared fixtures.
+
+        This drives the runner wiring directly (not CLI) to assert the exact
+        pagination mapping seen by the client after defaults/overrides.
+        """
+        cfg = pipeline_cfg_factory()
+        job = cfg.jobs[0]
+        opts = job.extract.options or {}
+        opts.update({'pagination': scenario['pagination']})
+        job.extract.options = opts
+
+        FakeClient, created = fake_endpoint_client
+        result = run_patched(cfg, FakeClient)
+
+        assert result.get('status') in {'ok', 'success'}
+        assert created, 'Expected client to be constructed'
+
+        seen_pag = created[0].seen.get('pagination')
+        assert isinstance(seen_pag, dict)
+        for k, v in scenario['expect'].items():
+            assert seen_pag.get(k) == v
