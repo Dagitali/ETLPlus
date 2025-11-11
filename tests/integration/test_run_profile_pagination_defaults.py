@@ -4,9 +4,14 @@ module.
 
 Integration tests for profile-level pagination defaults.
 
-Verifies `run()` inherits pagination defaults from API profile when not
-overridden and that a job-level `extract.options.pagination` overrides profile
-defaults.
+Validates that ``run()`` inherits pagination defaults from the API profile
+when not overridden and that job-level ``extract.options.pagination`` takes
+precedence over profile defaults.
+
+Notes
+-----
+- Uses in-memory pipeline config factory and a fake endpoint client.
+- Asserts pagination mapping passed to the client matches expectations.
 """
 from __future__ import annotations
 
