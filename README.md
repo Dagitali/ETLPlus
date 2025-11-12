@@ -33,6 +33,7 @@ package and command-line interface for data extraction, validation, transformati
     - [API client docs](#api-client-docs)
     - [Runner internals and connectors](#runner-internals-and-connectors)
     - [Running Tests](#running-tests)
+      - [Test Layers (summary)](#test-layers-summary)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
   - [Links](#links)
@@ -352,6 +353,15 @@ Curious how the pipeline runner composes API requests, pagination, and load call
 ```bash
 pytest tests/ -v
 ```
+
+#### Test Layers (summary)
+
+We split tests into two layers:
+
+- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch (e.g. `etlplus.cli.create_parser`, transform + validate helpers).
+- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`, pagination + rate limit defaults, file/API connector interactions) may touch temp files and use fake clients.
+
+If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default. Full criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
 
 ### Code Coverage
 
