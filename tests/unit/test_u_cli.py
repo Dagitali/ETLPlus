@@ -1,9 +1,12 @@
 """
 ``tests.unit.test_u_cli`` module.
 
-CLI parser unit tests.
+Unit tests for ``etlplus.cli``.
 
-Parser construction and argument parsing only (no end-to-end main()).
+Notes
+-----
+- Verifies command groups and required/optional arguments.
+- Keeps tests hermetic; no file or network I/O.
 """
 from __future__ import annotations
 

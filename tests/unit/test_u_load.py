@@ -1,12 +1,13 @@
 """
 ``tests.unit.test_u_load`` module.
 
-Unit tests for the ETLPlus loading utilities.
+Unit tests for ``etlplus.load``.
 
 Notes
 -----
-Covers file writers (JSON, CSV), directory creation, wrapper dispatch,
-and error paths.
+- Uses temporary files for round-trip verification.
+- Validates ``load_data`` passthrough semantics for dict/list inputs.
+- Ensures error handling for unsupported targets.
 """
 import csv
 import json

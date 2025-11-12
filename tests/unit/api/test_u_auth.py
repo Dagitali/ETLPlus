@@ -1,14 +1,11 @@
 """
 ``tests.unit.api.test_u_auth`` module.
 
-
-Unit tests for ``etlplus.api.auth.EndpointCredentialsBearer``. Exercises token
-acquisition, refresh logic with clock skew, error paths, and header injection
-semantics.
+Unit tests for ``etlplus.api.auth``.
 
 Notes
 -----
-- Uses a lightweight fake response object and monkeypatched session.
+- Uses a lightweight fake response object and monkey-patched session.
 - Simulates expiration and refresh timing windows via ``time.time`` patch.
 - Validates raising behavior for non-200 authentication responses.
 """

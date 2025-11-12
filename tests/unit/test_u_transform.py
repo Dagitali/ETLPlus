@@ -1,12 +1,12 @@
 """
 ``tests.unit.test_u_transform`` module.
 
-Unit tests for the ETLPlus transform utilities.
+Unit tests for ``etlplus.transform``.
 
 Notes
 -----
-Covers filter, map, select, sort, aggregate, and the ``transform()``
-wrapper.
+- Uses small in-memory datasets to validate each operation.
+- Ensures stable behavior for edge cases (empty inputs, missing fields).
 """
 import json
 import tempfile

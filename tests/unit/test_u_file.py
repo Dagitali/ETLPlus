@@ -1,12 +1,12 @@
 """
 ``tests.unit.test_u_file`` module.
 
-Unit tests for the ETLPlus file handling helpers.
+Unit tests for ``etlplus.file``.
 
 Notes
 -----
-These tests cover file format inference from extensions and
-error handling for unknown formats.
+- Uses ``tmp_path`` for filesystem isolation.
+- Exercises JSON detection and safe behavior for unknown extensions.
 """
 from pathlib import Path
 

@@ -1,8 +1,7 @@
 """
 ``tests.unit.api.test_u_transport`` module.
 
-Unit tests for module ``etlplus.api.transport``. Focus on HTTP adapter
-construction and retry configuration coercion for various input shapes.
+Unit tests for ``etlplus.api.transport``.
 
 Notes
 -----

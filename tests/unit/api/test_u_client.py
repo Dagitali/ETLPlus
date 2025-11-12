@@ -1,16 +1,13 @@
 """
 ``tests.unit.api.test_u_client`` module.
 
-Modernized tests for the EndpointClient.
+Unit tests for ``etlplus.api.client``.
 
-Focus: URL composition, pagination, retries, and session handling.
-
-Verify that when a client is constructed with a base URL that includes a path
-prefix (e.g., an API's effective base URL with base_path), calling
-``paginate(endpoint_key, ...)`` builds URLs that include that path.
-
-This is a pure URL-building test; network calls are mocked by patching the
-module-level ``_extract`` function used by ``EndpointClient``.
+Notes
+-----
+- Validates that a base URL with a path prefix is preserved in composed URLs.
+- Mocks network calls by patching module-level helpers used by the client.
+- Includes optional Hypothesis-based property tests when available.
 """
 from __future__ import annotations
 
@@ -86,6 +83,10 @@ def make_http_error(
 
 
 class TestContextManager:
+    """
+    Unit test suite for the :class:`EndpointClient` class.
+    """
+
     def test_closes_factory_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -156,6 +157,9 @@ class TestContextManager:
 
 
 class TestCursorPagination:
+    """
+    Unit test suite for the :class:`EndpointClient` class.
+    """
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
@@ -344,6 +348,10 @@ class TestCursorPagination:
 
 
 class TestErrors:
+    """
+    Unit test suite for the :class:`ApiAuthError` class.
+    """
+
     def test_auth_error_wrapping_on_single_attempt(
         self,
         monkeypatch: pytest.MonkeyPatch,

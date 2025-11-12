@@ -1,13 +1,12 @@
 """
-``tests.unit.config.test_u_ratelimitconfig`` module.
+``tests.unit.config.test_u_ratelimit`` module.
 
-Unit tests for :class:`RateLimitConfig`. Ensure the optional validate_bounds()
-helpers return non-fatal warnings
-for out-of-range numeric parameters.
+Unit tests for ``etlplus.config.rate_limit``.
 
 Notes
 -----
-Focus: constructor / from_obj coercion + non-fatal bounds validation.
+- Verifies equality semantics and defensive copy behavior.
+- Ensures graceful handling of non-mapping inputs.
 """
 from __future__ import annotations
 
@@ -23,6 +22,10 @@ from etlplus.config import RateLimitConfig
 
 
 class TestRateLimitConfig:
+    """
+    Test suite for :class:`RateLimitConfig` class.
+    """
+
     def test_equality_semantics(
         self,
         rate_limit_config_factory,  # type: ignore[no-untyped-def]

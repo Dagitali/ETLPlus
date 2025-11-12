@@ -1,13 +1,12 @@
 """
 ``tests.unit.config.test_u_pipelineconfig`` module.
 
-
-Unit tests for the ETLPlus pipeline configuration models.
+Unit tests for ``etlplus.config.pipeline``.
 
 Notes
 -----
-Covers YAML loading, variable substitution (present and missing vars), and
-multi-source/target handling.
+- Validates profile env is included in substitution.
+- Exercises multiple sources/targets and unresolved variables.
 """
 from __future__ import annotations
 
@@ -16,6 +15,10 @@ from __future__ import annotations
 
 
 class TestPipelineConfig:
+    """
+    Unit test suite for the :class:`PipelineConfig` class.
+    """
+
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         tmp_path,

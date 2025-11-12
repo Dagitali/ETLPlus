@@ -1,12 +1,12 @@
 """
 ``tests.unit.config.test_u_apiconfig`` module.
 
-
-Unit tests for the ETLPlus API profile attributes.
+Unit tests for ``etlplus.config.api``.
 
 Notes
 -----
-These tests cover the wrapping and propagation of API profile attributes.
+- Exercises both flat and profiled API shapes.
+- Verifies precedence and propagation of headers and base_path.
 """
 from __future__ import annotations
 
@@ -17,6 +17,10 @@ import pytest
 
 
 class TestApiConfigProfiles:
+    """
+    Unit test suite for the :class:`ApiConfig` class with profiles.
+    """
+
     def test_effective_base_url_and_build_endpoint_url(
         self,
         api_obj_factory,

@@ -1,11 +1,12 @@
 """
-``tests.unit.config.test_u_apiprofileconfig`` module.
+`tests.unit.config.test_u_apiprofileconfig`` module.
 
-Unit tests for the ETLPlus API profile configuration.
+Unit tests for ``etlplus.config.api``.
 
 Notes
 -----
-These tests cover the wrapping and propagation of API profile configuration.
+- Uses factories for building profile defaults mappings.
+- Verifies precedence (explicit headers override defaults).
 """
 from __future__ import annotations
 
@@ -19,6 +20,9 @@ from etlplus.config import RateLimitConfig
 
 
 class TestApiProfileConfig:
+    """
+    Unit test suite for the :class:`ApiProfileConfig` class.
+    """
     @pytest.mark.parametrize(
         'defaults',
         [

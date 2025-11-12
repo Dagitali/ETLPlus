@@ -1,13 +1,11 @@
 """
 ``tests.unit.config.test_u_endpointconfig`` module.
 
-
-Unit tests for the ETLPlus REST API endpoint configuration models.
+Unit tests for ``etlplus.config.api``.
 
 Notes
 -----
-Negative and positive parsing scenarios for `EndpointConfig` including
-validation of required keys and type expectations.
+- Ensures path/method handling and body/query/path parameter coercion.
 """
 from __future__ import annotations
 
@@ -18,6 +16,10 @@ import pytest
 
 
 class TestEndpointConfig:
+    """
+    Unit test suite for the :class:`EndpointConfig` class.
+    """
+
     def test_captures_path_params_and_body(
         self,
         endpoint_config_factory,

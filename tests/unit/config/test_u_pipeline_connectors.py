@@ -1,8 +1,11 @@
 """
 ``tests.unit.config.test_u_pipeline_connectors`` module.
 
+Unit tests for ``etlplus.config.pipeline``.
 
-Unit tests for the ETLPlus pipeline connector handling.
+Notes
+-----
+- Uses internal ``_build_connectors`` helper to exercise parsing logic.
 """
 from __future__ import annotations
 
@@ -16,6 +19,10 @@ from etlplus.config.pipeline import _build_connectors
 
 
 class TestPipelineConnectors:
+    """
+    Unit test suite for the :func:`_build_connectors` function.
+    """
+
     def test_build_connectors_skips_malformed_and_unsupported(
         self,
     ) -> None:  # noqa: D401

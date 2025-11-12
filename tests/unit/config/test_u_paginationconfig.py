@@ -1,9 +1,11 @@
 """
 ``tests.unit.config.test_u_paginationconfig`` module.
 
+Unit tests for ``etlplus.config.pagination``.
 
-Ensure the optional validate_bounds() helpers return non-fatal warnings
-for out-of-range numeric parameters.
+Notes
+-----
+- Parametrized across page, offset, and cursor pagination styles.
 """
 from __future__ import annotations
 
@@ -17,6 +19,9 @@ import pytest
 
 
 class TestPaginationConfig:
+    """
+    Unit test suite for the :class:`PaginationConfig` class.
+    """
     @pytest.mark.parametrize(
         'tval',
         [None, 'weird', ''],

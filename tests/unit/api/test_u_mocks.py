@@ -1,12 +1,12 @@
 """
 ``tests.unit.api.test_u_mocks`` module.
 
-Lightweight test doubles for ``requests`` objects.
+Reusable mocked objects for API client unit tests.
 
-They intentionally implement only the minimal surface used by the tests so we
-avoid relying on internal ``requests`` behaviours while keeping type
-compatibility with the production client (which expects ``Response`` /
-``Session`` instances).
+Notes
+-----
+- Provides ``MockResponse`` with a simplified ``json`` implementation.
+- Provides ``MockSession`` capturing ``get`` calls and close state.
 """
 from __future__ import annotations
 
