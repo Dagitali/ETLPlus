@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 from .types import RetryPolicy
 
