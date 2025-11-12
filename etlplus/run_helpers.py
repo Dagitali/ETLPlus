@@ -29,7 +29,7 @@ from typing import cast
 from typing import Mapping
 from typing import TypedDict
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 from .api import compute_sleep_seconds
 from .api import EndpointClient
