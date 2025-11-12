@@ -5,8 +5,8 @@ Unit tests for ``etlplus.api.client``.
 
 Notes
 -----
-- Validates that a base URL with a path prefix is preserved in composed URLs.
-- Mocks network calls by patching module-level helpers used by the client.
+- Preserves path prefixes in composed URLs.
+- Mocks network calls via patched extract helpers.
 - Includes optional Hypothesis-based property tests when available.
 """
 from __future__ import annotations

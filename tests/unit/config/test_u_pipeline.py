@@ -7,7 +7,7 @@ Notes
 -----
 - Exercises multiple sources/targets and unresolved variables.
 - Uses internal ``_build_connectors`` helper to exercise parsing logic.
-- Validates profile env is included in substitution.
+- Validates profile environment is included in substitution.
 """
 from __future__ import annotations
 

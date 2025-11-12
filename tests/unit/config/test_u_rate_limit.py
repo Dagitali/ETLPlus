@@ -5,7 +5,6 @@ Unit tests for ``etlplus.config.rate_limit``.
 
 Notes
 -----
-- Verifies equality semantics and defensive copy behavior.
 - Ensures graceful handling of non-mapping inputs.
 """
 from __future__ import annotations

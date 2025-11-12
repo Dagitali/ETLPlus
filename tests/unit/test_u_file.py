@@ -6,7 +6,7 @@ Unit tests for ``etlplus.file``.
 Notes
 -----
 - Uses ``tmp_path`` for filesystem isolation.
-- Exercises JSON detection and safe behavior for unknown extensions.
+- Exercises JSON detection and defers errors for unknown extensions.
 """
 from pathlib import Path
 

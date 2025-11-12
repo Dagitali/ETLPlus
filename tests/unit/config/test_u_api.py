@@ -5,11 +5,9 @@ Unit tests for ``etlplus.config.api``.
 
 Notes
 -----
-- Ensures path/method handling and body/query/path parameter coercion.
 - Exercises both flat and profiled API shapes.
 - Uses factories for building profile defaults mappings.
-- Verifies precedence and propagation of headers and base_path.
-- Verifies precedence (explicit headers override defaults).
+- Verifies precedence and propagation of headers and ``base_path``.
 """
 from __future__ import annotations
 

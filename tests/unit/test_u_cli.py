@@ -5,8 +5,8 @@ Unit tests for ``etlplus.cli``.
 
 Notes
 -----
-- Verifies command groups and required/optional arguments.
-- Keeps tests hermetic; no file or network I/O.
+- Hermetic: no file or network I/O.
+- Uses fixtures from `tests/unit/conftest.py` when needed.
 """
 from __future__ import annotations
 

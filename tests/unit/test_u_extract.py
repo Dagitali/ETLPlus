@@ -5,7 +5,7 @@ Unit tests for ``etlplus.extract``.
 
 Notes
 -----
-- Uses temporary files for each format to validate round-trip parsing.
+- Uses temporary files to validate round-trip parsing.
 - Ensures error handling for unsupported formats.
 """
 import csv
