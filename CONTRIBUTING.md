@@ -13,6 +13,10 @@ email, or any other method with the owners of this repository before making a ch
   - [Code of Conduct](#code-of-conduct)
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
+  - [Testing](#testing)
+    - [Unit vs. Integration](#unit-vs-integration)
+    - [Where to put tests](#where-to-put-tests)
+    - [Common patterns](#common-patterns)
 
 ## Merge Request Process
 
@@ -97,3 +101,37 @@ class ExampleConfig:
 [pull request]: https://github.com/Dagitali/ETLPlus/pulls
 [README]: README.md
 [SemVer]: http://semver.org
+
+## Testing
+
+### Unit vs. Integration
+
+Use these guidelines to decide whether a test belongs in the unit or integration suite:
+
+- Unit tests (put under `tests/unit/`):
+  - Exercise a single function or class in isolation (no orchestration across modules).
+  - No real file system or network I/O. Use in-memory data and stubs.
+  - Examples in this repo: `etlplus.cli.create_parser`, small helpers in `etlplus.utils`, validation and transform functions.
+  - Fast and deterministic; rely on `monkeypatch` to stub collaborators.
+
+- Integration tests (put under `tests/integration/`):
+  - Exercise end-to-end flows across modules and boundaries (CLI `main()`, `run()` pipeline orchestration, file connectors, API client pagination wiring).
+  - Can use temporary files/directories, and stub network with fakes/mocks.
+  - Examples in this repo: CLI end-to-end, pipeline smoke tests, pagination strategy, runner defaults for pagination/rate limits, target URL composition.
+
+If a test calls `etlplus.cli.main()` or `etlplus.run.run()`, it is integration by default.
+
+### Where to put tests
+
+- Unit tests live in `tests/unit/` and should import and test specific functions/classes directly.
+- Integration tests live in `tests/integration/` and may simulate real usage using CLI argv, temporary files, and fake clients.
+- The `tests/integration/conftest.py` applies `@pytest.mark.integration` to all tests in that folder. You don’t need to add the marker per test.
+- Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
+
+### Common patterns
+
+- CLI tests: monkeypatch `sys.argv` and call `etlplus.cli.main()`; capture output with `capsys`.
+- File I/O: use `tmp_path` / `TemporaryDirectory()`; never write to the repo tree.
+- API flows: stub `EndpointClient` or transport layer via `monkeypatch` to avoid real HTTP.
+- Runner tests: monkeypatch `load_pipeline_config` to inject an in-memory `PipelineConfig`.
+- Keep tests small and focused; prefer one behavior per test with clear assertions.
