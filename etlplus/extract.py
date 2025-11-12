@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 from .enums import coerce_data_connector_type
 from .enums import coerce_file_format
