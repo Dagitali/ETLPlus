@@ -13,7 +13,7 @@ from typing import TypedDict
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)

@@ -55,7 +55,7 @@ from urllib.parse import urlencode
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 
 from ..extract import extract as _extract
 from .errors import ApiAuthError
@@ -805,7 +805,11 @@ class EndpointClient:
                     pg.get('start_page', self.DEFAULT_START_PAGE),
                 ),
             )
-            start_page = 1 if start_page < 1 else start_page
+            # Offset allows 0 start (explicit offset); page mode enforces >= 1.
+            if ptype == 'page' and start_page < 1:
+                start_page = 1
+            if ptype == 'offset' and start_page < 0:
+                start_page = 0
 
             page_size = int(
                 cast(
@@ -819,10 +823,18 @@ class EndpointClient:
             pages = 0
             recs = 0
             current = start_page
+            # Track offset separately when ptype == 'offset'.
+            # In 'page' mode, current represents the page number.
+            # In 'offset' mode, current represents the starting offset value.
             while True:
                 req_params = dict(params or {})
-                req_params[str(page_param)] = current
-                req_params[str(size_param)] = page_size
+                if ptype == 'page':
+                    req_params[str(page_param)] = current
+                    req_params[str(size_param)] = page_size
+                else:  # offset
+                    # Offset mode: use offset param; step by page_size.
+                    req_params[str(page_param)] = current
+                    req_params[str(size_param)] = page_size
                 kw = EndpointClient.build_request_kwargs(
                     params=req_params, headers=headers, timeout=timeout,
                 )
@@ -856,7 +868,10 @@ class EndpointClient:
                     break
                 if _stop_limits(pages, recs):
                     break
-                current += 1
+                if ptype == 'page':
+                    current += 1
+                else:  # offset
+                    current += page_size
                 EndpointClient.apply_sleep(effective_sleep)
             return
 
