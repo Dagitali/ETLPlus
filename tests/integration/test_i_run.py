@@ -1,5 +1,5 @@
 """
-``tests.integration.test_run`` module.
+``tests.integration.test_i_run`` module.
 
 Integration tests for runner target URL composition. Validates ``run()``
 orchestration end-to-end for service + endpoint target URL composition under a

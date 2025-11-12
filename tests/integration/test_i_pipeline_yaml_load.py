@@ -1,5 +1,5 @@
 """
-``tests.integration.test_pipeline_yaml_load`` module.
+``tests.integration.test_i_pipeline_yaml_load`` module.
 
 Pipeline YAML load integration test suite. Parametrized checks to ensure the
 repository pipeline YAML parses correctly with and without environment-variable

@@ -1,11 +1,10 @@
 """
-``tests.integration.test_run_profile_pagination_defaults`` module.
+``tests.integration.test_i_run_profile_pagination_defaults`` module.
 
-Integration tests for profile-level pagination defaults.
-
-Validates that ``run()`` inherits pagination defaults from the API profile
-when not overridden and that job-level ``extract.options.pagination`` takes
-precedence over profile defaults.
+Integration tests for profile-level pagination defaults. Validates that
+``run()`` inherits pagination defaults from the API profile when not overridden
+and that job-level ``extract.options.pagination`` takes precedence over profile
+defaults.
 
 Notes
 -----

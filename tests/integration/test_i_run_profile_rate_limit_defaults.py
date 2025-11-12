@@ -1,11 +1,10 @@
 """
-``tests.integration.test_run_profile_rate_limit_defaults`` module.
+``tests.integration.test_i_run_profile_rate_limit_defaults`` module.
 
-Integration tests for profile-level rate limit defaults.
-
-Verifies propagation of rate limit sleep configuration from API profile
-defaults into the runner and ultimately the endpoint client, including
-overrides computed from ``max_per_sec``.
+Integration tests for profile-level rate limit defaults. Verifies propagation
+of rate limit sleep configuration from API profile defaults into the runner and
+ultimately the endpoint client, including overrides computed from
+``max_per_sec``.
 
 Notes
 -----

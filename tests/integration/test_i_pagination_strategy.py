@@ -1,11 +1,9 @@
 """
-``tests.integration.test_pagination_strategy`` module.
+``tests.integration.test_i_pagination_strategy`` module.
 
-Integration tests for pagination strategies.
-
-Modern, class-based pytest suite with parametrized scenarios. We mock API
-extraction for both page/offset and cursor modes and drive the CLI entry point
-to exercise the public path under real configuration semantics.
+Integration tests for pagination strategies. We mock API extraction for both
+page/offset and cursor modes and drive the CLI entry point to exercise the
+public path under real configuration semantics.
 
 Notes
 -----

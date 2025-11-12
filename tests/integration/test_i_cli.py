@@ -1,5 +1,5 @@
 """
-``tests.integration.test_it_cli`` module.
+``tests.integration.test_i_cli`` module.
 
 End-to-end CLI integration test suite. Exercises the ``etlplus`` command for
 core subcommands without external dependencies by operating on temporary files

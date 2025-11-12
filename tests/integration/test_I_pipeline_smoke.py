@@ -1,5 +1,5 @@
 """
-``tests.integration.test_pipeline_smoke`` module.
+``tests.integration.test_i_pipeline_smoke`` module.
 
 Pipeline smoke integration test suite exercising a minimal file→file job via
 the CLI. Parametrized to verify both empty and non-empty inputs.
