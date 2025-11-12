@@ -1,9 +1,8 @@
 """
 ``tests.integration.test_i_run`` module.
 
-Integration tests for runner target URL composition. Validates ``run()``
-orchestration end-to-end for service + endpoint target URL composition under a
-minimal pipeline wiring (file source → API target).
+Validates ``run()`` orchestration end-to-end for service + endpoint URL
+composition under a minimal pipeline wiring (file source → API target).
 
 Notes
 -----
