@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_ratelimit`` module.
+``tests.unit.config.test_u_rate_limit`` module.
 
 Unit tests for ``etlplus.config.rate_limit``.
 
