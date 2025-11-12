@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_paginationconfig`` module.
+``tests.unit.config.test_u_pagination`` module.
 
 Unit tests for ``etlplus.config.pagination``.
 
