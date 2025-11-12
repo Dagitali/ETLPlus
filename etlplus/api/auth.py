@@ -38,7 +38,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-import requests  # type: ignore
+import requests  # type: ignore[import]
 from requests import PreparedRequest  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
