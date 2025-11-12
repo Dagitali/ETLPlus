@@ -1,5 +1,5 @@
 """
-tests.unit.config.test_ratelimitconfig unit tests module.
+``tests.unit.config.test_ratelimitconfig`` module.
 
 Unit tests for :class:`RateLimitConfig`.
 

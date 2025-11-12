@@ -1,10 +1,15 @@
 """
-tests.integration.test_run integration tests module.
+``tests.integration.test_run`` module.
 
-Integration test for runner target composition.
+Integration tests for runner target URL composition. Validates ``run()``
+orchestration end-to-end for service + endpoint target URL composition under a
+minimal pipeline wiring (file source → API target).
 
-Exercises `run()` orchestration end-to-end for service + endpoint target URL
-composition.
+Notes
+-----
+- Ensures profile ``base_path`` is joined with endpoint path.
+- Patches nothing network-related; uses real file source for realism.
+- Asserts composed URL and capture of API load invocation via fixture.
 """
 from __future__ import annotations
 

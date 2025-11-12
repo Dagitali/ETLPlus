@@ -1,5 +1,5 @@
 """
-tests.unit.api.test_client unit tests module.
+``tests.unit.api.test_client`` module.
 
 Modernized tests for the EndpointClient.
 

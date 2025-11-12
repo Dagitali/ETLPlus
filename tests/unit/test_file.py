@@ -1,6 +1,5 @@
 """
-ETLPlus File Tests
-=================
+``tests.unit.test_file`` module.
 
 Unit tests for the ETLPlus file handling helpers.
 

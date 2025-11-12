@@ -1,6 +1,5 @@
 """
-ETLPlus Transform Tests
-=======================
+``tests.unit.test_transform`` module.
 
 Unit tests for the ETLPlus transform utilities.
 

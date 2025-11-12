@@ -1,5 +1,5 @@
 """
-tests.unit.api.test_mocks unit test mocks module.
+``tests.unit.api.test_mocks`` module.
 
 Lightweight test doubles for ``requests`` objects.
 

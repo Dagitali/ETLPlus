@@ -1,7 +1,16 @@
 """
-tests.unit.api.test_auth unit tests module.
+``tests.unit.api.test_auth`` module.
 
-Smoke tests for etlplus.api.auth EndpointCredentialsBearer.
+
+Unit tests for ``etlplus.api.auth.EndpointCredentialsBearer``. Exercises token
+acquisition, refresh logic with clock skew, error paths, and header injection
+semantics.
+
+Notes
+-----
+- Uses a lightweight fake response object and monkeypatched session.
+- Simulates expiration and refresh timing windows via ``time.time`` patch.
+- Validates raising behavior for non-200 authentication responses.
 """
 from __future__ import annotations
 

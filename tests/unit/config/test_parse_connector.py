@@ -1,5 +1,5 @@
 """
-tests.unit.config.test_parse_connector unit tests module.
+``tests.unit.config.test_parse_connector`` module.
 
 
 Unit tests for the ETLPlus connector error handling.

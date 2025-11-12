@@ -1,5 +1,5 @@
 """
-tests.integration.test_pagination_strategy integration tests module.
+``tests.integration.test_pagination_strategy`` module.
 
 Integration tests for pagination strategies.
 

@@ -1,10 +1,14 @@
 """
-tests.integration.test_pipeline_smoke integration tests module.
+``tests.integration.test_pipeline_smoke`` module.
 
-Pipeline smoke tests.
+Pipeline smoke integration test suite exercising a minimal file→file job via
+the CLI. Parametrized to verify both empty and non-empty inputs.
 
-Modernized class-based test that exercises a minimal file→file job via the
-CLI. Parametrized to verify both empty and non-empty inputs.
+Notes
+-----
+- Builds a transient pipeline YAML string per test run.
+- Invokes ``etlplus pipeline --run <job>`` end-to-end.
+- Validates output file contents against input data shape.
 """
 from __future__ import annotations
 

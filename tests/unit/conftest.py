@@ -1,5 +1,5 @@
 """
-tests.unit.conftest pytest configuration module.
+``tests.unit.conftest`` module.
 
 Configures pytest-based unit tests and provides shared fixtures.
 """

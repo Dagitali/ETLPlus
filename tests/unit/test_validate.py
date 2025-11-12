@@ -1,6 +1,5 @@
 """
-ETLPlus Validate Tests
-======================
+``tests.unit.test_validate`` module.
 
 Unit tests for the ETLPlus validation utilities.
 

@@ -1,6 +1,5 @@
 """
-ETLPlus Load Tests
-==================
+``tests.unit.test_load`` module.
 
 Unit tests for the ETLPlus loading utilities.
 

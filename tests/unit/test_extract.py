@@ -1,6 +1,5 @@
 """
-ETLPlus Extract Tests
-=====================
+``tests.unit.test_extract`` module.
 
 Unit tests for the ETLPlus extraction utilities.
 

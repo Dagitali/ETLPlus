@@ -1,5 +1,5 @@
 """
-tests.unit.config.test_paginationconfig unit tests module.
+``tests.unit.config.test_paginationconfig`` module.
 
 
 Ensure the optional validate_bounds() helpers return non-fatal warnings

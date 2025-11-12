@@ -1,5 +1,5 @@
 """
-tests.unit.config.test_pipelineconfig unit tests module.
+``tests.unit.config.test_pipelineconfig`` module.
 
 
 Unit tests for the ETLPlus pipeline configuration models.

@@ -1,7 +1,15 @@
 """
-tests.integration.test_it_cli integration tests module.
+``tests.integration.test_it_cli`` module.
 
-End-to-end CLI integration tests.
+End-to-end CLI integration test suite. Exercises the ``etlplus`` command for
+core subcommands without external dependencies by operating on temporary files
+and in-memory data.
+
+Notes
+-----
+- Verifies usage output when no command is provided.
+- Tests extract/validate/transform/load flows via CLI arguments.
+- Uses ``tempfile`` and ``pathlib.Path`` for filesystem isolation.
 """
 from __future__ import annotations
 

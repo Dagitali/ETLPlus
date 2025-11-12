@@ -1,7 +1,14 @@
 """
-tests.unit.api.test_transport unit tests module.
+``tests.unit.api.test_transport`` module.
 
-Smoke tests for etlplus.api.transport.
+Unit tests for module ``etlplus.api.transport``. Focus on HTTP adapter
+construction and retry configuration coercion for various input shapes.
+
+Notes
+-----
+- Validates mountability on a ``requests.Session``.
+- Exercises integer and mapping forms of ``max_retries``.
+- Ensures list inputs for retry fields are preserved.
 """
 from __future__ import annotations
 

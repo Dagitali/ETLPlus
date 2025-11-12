@@ -1,10 +1,14 @@
 """
-tests.integration.test_pipeline_yaml_load integration tests module.
+``tests.integration.test_pipeline_yaml_load`` module.
 
-Pipeline YAML load tests.
+Pipeline YAML load integration test suite. Parametrized checks to ensure the
+repository pipeline YAML parses correctly with and without environment-variable
+substitution enabled.
 
-Parametrized check to ensure the repository pipeline YAML parses correctly
-with and without environment substitution enabled.
+Notes
+-----
+- Uses ``PipelineConfig.from_yaml`` on the repo's example config.
+- Asserts basic API modeling and presence of expected endpoints.
 """
 from __future__ import annotations
 

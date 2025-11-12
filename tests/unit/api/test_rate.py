@@ -1,7 +1,14 @@
 """
-tests.unit.api.test_rate unit tests module.
+``tests.unit.api.test_rate`` module.
 
-Smoke tests for etlplus.api.rate.
+Unit tests for ``etlplus.api.rate``.
+
+Validates computation of sleep seconds from explicit values and
+``max_per_sec`` fallback rules, including invalid value handling.
+
+Notes
+-----
+- Ensures non-positive and non-numeric inputs result in 0.0 seconds.
 """
 from __future__ import annotations
 

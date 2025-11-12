@@ -1,5 +1,5 @@
 """
-tests.integration.conftest pytest configuration module.
+``tests.integration.conftest`` module.
 
 Configures pytest-based integration tests and provides shared fixtures to
 reduce duplication across integration tests.

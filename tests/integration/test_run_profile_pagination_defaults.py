@@ -1,6 +1,5 @@
 """
-tests.integration.test_run_profile_pagination_defaults integration tests
-module.
+``tests.integration.test_run_profile_pagination_defaults`` module.
 
 Integration tests for profile-level pagination defaults.
 
