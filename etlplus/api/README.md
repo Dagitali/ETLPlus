@@ -3,7 +3,7 @@
 Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for paginated REST endpoints.
 
 - Provides a small `EndpointClient` for calling JSON APIs
-- Supports page-based and cursor-based pagination via `PaginationConfig`
+- Supports page-, offset-, and cursor-based pagination via `PaginationConfig`
 - Simple bearer-auth credentials via `EndpointCredentialsBearer`
 - Convenience helpers to extract records from nested JSON payloads
 
@@ -89,6 +89,37 @@ pg: PaginationConfig = {
 rows = client.paginate("list", pagination=pg)
 for row in rows:
     process(row)
+
+## Offset-based pagination example
+
+```python
+from etlplus.api import EndpointClient, PaginationConfig
+
+client = EndpointClient(
+  base_url="https://api.example.com/v1",
+  endpoints={"list": "/items"},
+)
+
+pg: PaginationConfig = {
+  "type": "offset",
+  # Key holding the offset value on each request
+  "page_param": "offset",
+  # Key holding the page size (limit) on each request
+  "size_param": "limit",
+  # Starting offset (0 is common for offset-based APIs)
+  "start_page": 0,
+  # Number of records per page
+  "page_size": 100,
+  # Optional: where records live in the JSON payload
+  # "records_path": "data.items",
+  # Optional caps
+  # "max_records": 1000,
+}
+
+rows = client.paginate("list", pagination=pg)
+for row in rows:
+  process(row)
+```
 ```
 
 ## Authentication
