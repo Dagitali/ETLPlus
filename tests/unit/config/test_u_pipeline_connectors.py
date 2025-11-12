@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_pipeline_connectors`` module.
+``tests.unit.config.test_u_pipeline_connectors`` module.
 
 
 Unit tests for the ETLPlus pipeline connector handling.

@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_client`` module.
+``tests.unit.api.test_u_client`` module.
 
 Modernized tests for the EndpointClient.
 
@@ -26,7 +26,7 @@ import etlplus.api.client as cmod
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfig
-from tests.unit.api.test_mocks import MockSession
+from tests.unit.api.test_u_mocks import MockSession
 
 
 # SECTION: HELPERS ========================================================== #

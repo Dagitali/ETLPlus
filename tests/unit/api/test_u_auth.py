@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_auth`` module.
+``tests.unit.api.test_u_auth`` module.
 
 
 Unit tests for ``etlplus.api.auth.EndpointCredentialsBearer``. Exercises token

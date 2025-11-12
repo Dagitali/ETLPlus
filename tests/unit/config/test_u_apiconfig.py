@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_apiconfig`` module.
+``tests.unit.config.test_u_apiconfig`` module.
 
 
 Unit tests for the ETLPlus API profile attributes.

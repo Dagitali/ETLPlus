@@ -1,11 +1,12 @@
 """
-``tests.unit.config.test_ratelimitconfig`` module.
+``tests.unit.config.test_u_ratelimitconfig`` module.
 
-Unit tests for :class:`RateLimitConfig`.
-
-Ensure the optional validate_bounds() helpers return non-fatal warnings
+Unit tests for :class:`RateLimitConfig`. Ensure the optional validate_bounds()
+helpers return non-fatal warnings
 for out-of-range numeric parameters.
 
+Notes
+-----
 Focus: constructor / from_obj coercion + non-fatal bounds validation.
 """
 from __future__ import annotations

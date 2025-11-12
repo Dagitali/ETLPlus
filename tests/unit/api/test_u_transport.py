@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_transport`` module.
+``tests.unit.api.test_u_transport`` module.
 
 Unit tests for module ``etlplus.api.transport``. Focus on HTTP adapter
 construction and retry configuration coercion for various input shapes.

@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_rate`` module.
+``tests.unit.api.test_u_rate`` module.
 
 Unit tests for ``etlplus.api.rate``.
 

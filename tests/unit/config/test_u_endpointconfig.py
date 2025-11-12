@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_endpointconfig`` module.
+``tests.unit.config.test_u_endpointconfig`` module.
 
 
 Unit tests for the ETLPlus REST API endpoint configuration models.

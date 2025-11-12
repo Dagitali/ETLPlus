@@ -1,5 +1,5 @@
 """
-``tests.unit.test_file`` module.
+``tests.unit.test_u_file`` module.
 
 Unit tests for the ETLPlus file handling helpers.
 

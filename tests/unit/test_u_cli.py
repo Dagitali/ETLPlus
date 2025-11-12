@@ -1,5 +1,5 @@
 """
-``tests.unit.test_ut_cli`` module.
+``tests.unit.test_u_cli`` module.
 
 CLI parser unit tests.
 
