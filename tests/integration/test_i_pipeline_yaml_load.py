@@ -28,7 +28,8 @@ class TestPipelineYamlLoad:
     ) -> None:  # noqa: D401
         # Ensure the repository pipeline YAML parses under current models.
         cfg = PipelineConfig.from_yaml(
-            'in/pipeline.yml', substitute=substitute,
+            'examples/configs/pipeline.yml',
+            substitute=substitute,
         )
         assert isinstance(cfg, PipelineConfig)
 
