@@ -336,7 +336,8 @@ Example:
 
 ### API Client Docs
 
-Looking for the HTTP client and pagination helpers? See the dedicated docs in `etlplus/api/README.md` for:
+Looking for the HTTP client and pagination helpers?  See the dedicated docs in
+`etlplus/api/README.md` for:
 
 - Quickstart with `EndpointClient`
 - Authentication via `EndpointCredentialsBearer`
@@ -361,10 +362,14 @@ pytest tests/ -v
 
 We split tests into two layers:
 
-- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch (e.g. `etlplus.cli.create_parser`, transform + validate helpers).
-- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`, pagination + rate limit defaults, file/API connector interactions) may touch temp files and use fake clients.
+- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch
+  (e.g.  `etlplus.cli.create_parser`, transform + validate helpers).
+- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`,
+  pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
+  fake clients.
 
-If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default. Full criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
+If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default.  Full
+criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
 
 ### Code Coverage
 
