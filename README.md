@@ -30,24 +30,23 @@ package and command-line interface for data extraction, validation, transformati
     - [Aggregation Functions](#aggregation-functions)
   - [Validation Rules](#validation-rules)
   - [Development](#development)
-    - [API client docs](#api-client-docs)
-    - [Runner internals and connectors](#runner-internals-and-connectors)
+    - [API Client Docs](#api-client-docs)
+    - [Runner Internals and Connectors](#runner-internals-and-connectors)
     - [Running Tests](#running-tests)
-      - [Test Layers (summary)](#test-layers-summary)
+      - [Test Layers](#test-layers)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
   - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
-    - [For code contributors](#for-code-contributors)
   - [Acknowledgments](#acknowledgments)
 
 ## Features
 
 - **Extract** data from multiple sources:
-  - Files (JSON, CSV, XML)
+  - Files (CSV, JSON, XML, YAML)
   - Databases (connection string support)
-  - REST APIs
+  - REST APIs (GET)
 
 - **Validate** data with flexible rules:
   - Type checking
@@ -62,12 +61,12 @@ package and command-line interface for data extraction, validation, transformati
   - Map/rename fields
   - Select specific fields
   - Sort data
-  - Aggregate functions (sum, avg, min, max, count)
+  - Aggregate functions (avg, count, max, min, sum)
 
 - **Load** data to multiple targets:
-  - Files (JSON, CSV)
+  - Files (CSV, JSON, XML, YAML)
   - Databases (connection string support)
-  - REST APIs (POST, PUT, PATCH)
+  - REST APIs (PATCH, POST, PUT)
 
 ## Installation
 
@@ -85,7 +84,7 @@ pip install -e ".[dev]"
 
 Get up and running in under a minute.
 
-Command line:
+[Command line interface](#command-line-interface):
 
 ```bash
 # Inspect help and version
@@ -93,12 +92,12 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file input.csv --format csv \
+etlplus extract file in/input.csv --format csv \
   | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
   -o output.json
 ```
 
-Python:
+[Python API](#python-api):
 
 ```python
 from etlplus import extract, transform, validate, load
@@ -331,7 +330,7 @@ Example:
 
 ## Development
 
-### API client docs
+### API Client Docs
 
 Looking for the HTTP client and pagination helpers? See the dedicated docs in `etlplus/api/README.md` for:
 
@@ -340,7 +339,7 @@ Looking for the HTTP client and pagination helpers? See the dedicated docs in `e
 - Pagination with `PaginationConfig` (page and cursor styles)
 - Tips on `records_path` and `cursor_path`
 
-### Runner internals and connectors
+### Runner Internals and Connectors
 
 Curious how the pipeline runner composes API requests, pagination, and load calls?
 
@@ -354,7 +353,7 @@ Curious how the pipeline runner composes API requests, pagination, and load call
 pytest tests/ -v
 ```
 
-#### Test Layers (summary)
+#### Test Layers
 
 We split tests into two layers:
 
@@ -402,7 +401,7 @@ improve the documentation, please feel free to submit a pull request as follows:
 4. Push to your branch (`git push origin feature-name`).
 5. Submit a pull request with a detailed description.
 
-### For code contributors
+If you choose to be a code contributor, please first refer these documents:
 
 - Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Design notes (Mapping inputs, dict outputs):
