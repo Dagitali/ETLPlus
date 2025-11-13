@@ -52,7 +52,11 @@ def cmd_extract(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-    data = extract(args.source_type, args.source, format=args.format)
+    # For file sources, infer format from extension rather than --format.
+    if args.source_type == 'file':
+        data = extract(args.source_type, args.source)
+    else:
+        data = extract(args.source_type, args.source, format=args.format)
     if args.output:
         File(args.output, FileFormat.JSON).write_json(data)
         print(f'Data extracted and saved to {args.output}')
