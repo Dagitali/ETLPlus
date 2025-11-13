@@ -25,6 +25,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Load Data](#load-data)
     - [Python API](#python-api)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
+    - [Environment Variables](#environment-variables)
   - [Transformation Operations](#transformation-operations)
     - [Filter Operations](#filter-operations)
     - [Aggregation Functions](#aggregation-functions)
@@ -254,6 +255,34 @@ etlplus validate transformed.json \
 
 # 4. Load to CSV
 etlplus load transformed.json file output.csv --format csv
+```
+
+### Environment Variables
+
+ETLPlus honors a small number of environment toggles to refine CLI behavior:
+
+- `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR`: controls what happens when `--format` is provided for
+  file sources (where the format is inferred from the filename extension).
+  - `error|fail|strict`: treat as error (non-zero exit)
+  - `warn` (default): print a warning to stderr
+  - `ignore|silent`: no message
+- Precedence: the CLI flag `--strict-format` overrides the environment.
+
+Examples (zsh):
+
+```zsh
+# Warn (default)
+etlplus extract file data.csv --format csv
+
+# Enforce error via environment
+ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error \
+  etlplus extract file data.csv --format csv
+
+# Equivalent strict behavior via flag (overrides environment)
+etlplus extract file data.csv --format csv --strict-format
+
+# Recommended: rely on extension, no --format needed for files
+etlplus extract file data.csv
 ```
 
 ## Transformation Operations
