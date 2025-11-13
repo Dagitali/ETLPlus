@@ -64,6 +64,7 @@ from .types import StepApplier
 from .types import StepOrSteps
 from .types import StepSpec
 from .types import StrPath
+from .utils import to_number
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -331,18 +332,6 @@ def _resolve_operator(
     TypeError
         If *op* cannot be interpreted as an operator.
     """
-    # Helper: attempt numeric coercion for numeric comparison ops.
-    def _to_number(x: Any) -> float | None:
-        if isinstance(x, (int, float)):
-            return float(x)
-        if isinstance(x, str):
-            sx = x.strip()
-            try:
-                return float(sx)
-            except ValueError:
-                return None
-        return None
-
     def _wrap_numeric(op_name: OperatorName) -> Callable[[Any, Any], bool]:
         base = op_name.func
         if op_name in {
@@ -354,8 +343,8 @@ def _resolve_operator(
             OperatorName.NE,
         }:
             def compare(a: Any, b: Any) -> bool:  # noqa: ANN401 - generic
-                a_num = _to_number(a)
-                b_num = _to_number(b)
+                a_num = to_number(a)
+                b_num = to_number(b)
                 if a_num is not None and b_num is not None:
                     return bool(base(a_num, b_num))
                 return bool(base(a, b))
