@@ -6,7 +6,7 @@ in different formats contain identical records.
 
 Notes
 -----
-- Compares sample CSV and JSON files in the examples/data/in directory.
+- Compares sample CSV and JSON files in the examples/data directory.
 - Normalizes data types for accurate comparison.
 """
 from pathlib import Path
@@ -34,7 +34,7 @@ def _norm_record(
 
 def test_examples_sample_csv_json_parity_integration():
     repo_root = Path(__file__).resolve().parents[2]
-    source_dir = repo_root / 'examples' / 'data' / 'in'
+    source_dir = repo_root / 'examples' / 'data'
     csv_path = source_dir / 'sample.csv'
     json_path = source_dir / 'sample.json'
 

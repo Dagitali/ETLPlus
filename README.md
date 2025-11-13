@@ -93,9 +93,9 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file examples/data/in/sample.csv \
+etlplus extract file examples/data/sample.csv \
   | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o output.json
+  -o temp/sample_output.json
 ```
 
 [Python API](#python-api):
@@ -108,7 +108,7 @@ ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "
 filtered = transform(data, ops)
 rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
 assert validate(filtered, rules)["valid"]
-load(filtered, "file", "output.json", format="json")
+load(filtered, "file", "temp/sample_output.json", format="json")
 ```
 
 ## Usage
@@ -133,17 +133,17 @@ ignored.  To treat passing `--format` as an error for file sources, either set
 
 Extract from JSON file:
 ```bash
-etlplus extract file data.json
+etlplus extract file examples/data/sample.json
 ```
 
 Extract from CSV file:
 ```bash
-etlplus extract file data.csv
+etlplus extract file examples/data/sample.csv
 ```
 
 Extract from XML file:
 ```bash
-etlplus extract file data.xml
+etlplus extract file examples/data/sample.xml
 ```
 
 Extract from REST API:
@@ -153,7 +153,7 @@ etlplus extract api https://api.example.com/data
 
 Save extracted data to file:
 ```bash
-etlplus extract file data.csv -o output.json
+etlplus extract file examples/data/sample.csv -o temp/sample_output.json
 ```
 
 #### Validate Data
@@ -165,7 +165,7 @@ etlplus validate '{"name": "John", "age": 30}' --rules '{"name": {"type": "strin
 
 Validate from file:
 ```bash
-etlplus validate data.json --rules '{"email": {"type": "string", "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$"}}'
+etlplus validate examples/data/sample.json --rules '{"email": {"type": "string", "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$"}}'
 ```
 
 #### Transform Data
@@ -178,34 +178,34 @@ etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
 
 Sort data:
 ```bash
-etlplus transform data.json --operations '{"sort": {"field": "age", "reverse": true}}'
+etlplus transform examples/data/sample.json --operations '{"sort": {"field": "age", "reverse": true}}'
 ```
 
 Aggregate data:
 ```bash
-etlplus transform data.json --operations '{"aggregate": {"field": "price", "func": "sum"}}'
+etlplus transform examples/data/sample.json --operations '{"aggregate": {"field": "price", "func": "sum"}}'
 ```
 
 Map/rename fields:
 ```bash
-etlplus transform data.json --operations '{"map": {"old_name": "new_name"}}'
+etlplus transform examples/data/sample.json --operations '{"map": {"old_name": "new_name"}}'
 ```
 
 #### Load Data
 
 Load to JSON file:
 ```bash
-etlplus load '{"name": "John", "age": 30}' file output.json
+etlplus load '{"name": "John", "age": 30}' file temp/sample_output.json
 ```
 
 Load to CSV file:
 ```bash
-etlplus load '[{"name": "John", "age": 30}]' file output.csv --format csv
+etlplus load '[{"name": "John", "age": 30}]' file temp/sample_output.csv --format csv
 ```
 
 Load to REST API:
 ```bash
-etlplus load data.json api https://api.example.com/endpoint
+etlplus load examples/data/sample.json api https://api.example.com/endpoint
 ```
 
 ### Python API
@@ -235,7 +235,7 @@ operations = {
 transformed = transform(data, operations)
 
 # Load data
-load(transformed, "file", "output.json", format="json")
+load(transformed, "file", "temp/sample_output.json", format="json")
 ```
 
 ### Complete ETL Pipeline Example
@@ -250,11 +250,11 @@ etlplus transform extracted.json \
   -o transformed.json
 
 # 3. Validate transformed data
-etlplus validate transformed.json \
+etlplus validate temp/sample_transformed.json \
   --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
 
 # 4. Load to CSV
-etlplus load transformed.json file output.csv --format csv
+etlplus load temp/sample_transformed.json file temp/sample_output.csv --format csv
 ```
 
 ### Environment Variables
