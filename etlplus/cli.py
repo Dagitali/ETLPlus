@@ -56,16 +56,18 @@ def cmd_extract(args: argparse.Namespace) -> int:
     Raises
     ------
     ValueError
-        If `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR` is set to an error mode and
-        `--format` is provided for a file source.
+        If strict format behavior is enabled and `--format` is provided
+        for a file source.
     """
     # For file sources, infer format from extension rather than --format.
     if args.source_type == 'file':
         # If user explicitly provided --format, warn that it's ignored.
         if getattr(args, '_format_explicit', False):
-            behavior = os.getenv(
+            env_behavior = os.getenv(
                 'ETLPLUS_EXTRACT_FORMAT_BEHAVIOR', 'warn',
             ).lower()
+            behavior = 'error' if getattr(args, 'strict_format', False) \
+                else env_behavior
             message = (
                 '--format is ignored for file sources; inferred from '
                 'filename extension.'
@@ -332,6 +334,14 @@ def create_parser() -> argparse.ArgumentParser:
         help='Output file to save extracted data (JSON format)',
     )
     extract_parser.set_defaults(_format_explicit=False)
+    extract_parser.add_argument(
+        '--strict-format',
+        action='store_true',
+        help=(
+            'Treat providing --format for file sources as an error '
+            '(overrides environment behavior)'
+        ),
+    )
     extract_parser.add_argument(
         '--format',
         choices=['json', 'csv', 'xml'],
