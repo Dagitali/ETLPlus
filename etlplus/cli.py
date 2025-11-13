@@ -16,6 +16,7 @@ Subcommands
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from textwrap import dedent
 
@@ -51,16 +52,28 @@ def cmd_extract(args: argparse.Namespace) -> int:
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    ValueError
+        If `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR` is set to an error mode and
+        `--format` is provided for a file source.
     """
     # For file sources, infer format from extension rather than --format.
     if args.source_type == 'file':
         # If user explicitly provided --format, warn that it's ignored.
         if getattr(args, '_format_explicit', False):
-            print(
-                'Warning: --format is ignored for file sources; '
-                'inferred from filename extension.',
-                file=sys.stderr,
+            behavior = os.getenv(
+                'ETLPLUS_EXTRACT_FORMAT_BEHAVIOR', 'warn',
+            ).lower()
+            message = (
+                '--format is ignored for file sources; inferred from '
+                'filename extension.'
             )
+            if behavior in {'error', 'fail', 'strict'}:
+                raise ValueError(message)
+            if behavior not in {'ignore', 'silent'}:
+                print(f'Warning: {message}', file=sys.stderr)
         data = extract(args.source_type, args.source)
     else:
         data = extract(args.source_type, args.source, format=args.format)
