@@ -23,6 +23,31 @@ from etlplus.transform import transform
 # SECTION: TESTS =========================================================== #
 
 
+def test_apply_filter_callable_operator():
+    """
+    Filter with a custom callable operator.
+
+    Notes
+    -----
+    Keeps records whose ``name`` contains the letter ``'a'``.
+    """
+
+    data = [
+        {'name': 'John'},
+        {'name': 'Jane'},
+        {'name': 'Bob'},
+    ]
+    result = apply_filter(
+        data,
+        {
+            'field': 'name',
+            'op': lambda value, needle: needle in value.lower(),
+            'value': 'a',
+        },
+    )
+    assert [item['name'] for item in result] == ['Jane']
+
+
 def test_apply_filter_equal():
     """
     Filter with the ``eq`` operator.
@@ -82,29 +107,21 @@ def test_apply_filter_in():
     assert len(result) == 2
 
 
-def test_apply_filter_callable_operator():
+def test_apply_filter_numeric_string_coercion():
     """
-    Filter with a custom callable operator.
+    Filter should coerce numeric strings to numbers for numeric ops.
 
     Notes
     -----
-    Keeps records whose ``name`` contains the letter ``'a'``.
+    CSV sources yield strings; '30' > 26 should match after coercion.
     """
-
     data = [
-        {'name': 'John'},
-        {'name': 'Jane'},
-        {'name': 'Bob'},
+        {'name': 'John', 'age': '30'},
+        {'name': 'Jane', 'age': '25'},
     ]
-    result = apply_filter(
-        data,
-        {
-            'field': 'name',
-            'op': lambda value, needle: needle in value.lower(),
-            'value': 'a',
-        },
-    )
-    assert [item['name'] for item in result] == ['Jane']
+    result = apply_filter(data, {'field': 'age', 'op': 'gt', 'value': 26})
+    assert len(result) == 1
+    assert result[0]['name'] == 'John'
 
 
 def test_apply_map():
@@ -163,23 +180,6 @@ def test_apply_sort():
     assert result[2]['age'] == 25
 
 
-def test_apply_aggregate_sum():
-    """
-    Aggregate with ``sum``.
-
-    Notes
-    -----
-    Sums the ``value`` field.
-    """
-    data = [
-        {'name': 'John', 'value': 10},
-        {'name': 'Jane', 'value': 20},
-        {'name': 'Bob', 'value': 15},
-    ]
-    result = apply_aggregate(data, {'field': 'value', 'func': 'sum'})
-    assert result['sum_value'] == 45
-
-
 def test_apply_aggregate_avg():
     """
     Aggregate with ``avg``.
@@ -195,43 +195,6 @@ def test_apply_aggregate_avg():
     ]
     result = apply_aggregate(data, {'field': 'value', 'func': 'avg'})
     assert result['avg_value'] == 15
-
-
-def test_apply_aggregate_min_max():
-    """
-    Aggregate with ``min`` and ``max``.
-
-    Notes
-    -----
-    Computes the minimum and maximum over ``value``.
-    """
-    data = [
-        {'name': 'John', 'value': 10},
-        {'name': 'Jane', 'value': 20},
-        {'name': 'Bob', 'value': 15},
-    ]
-    result = apply_aggregate(data, {'field': 'value', 'func': 'min'})
-    assert result['min_value'] == 10
-
-    result = apply_aggregate(data, {'field': 'value', 'func': 'max'})
-    assert result['max_value'] == 20
-
-
-def test_apply_aggregate_count():
-    """
-    Aggregate with ``count``.
-
-    Notes
-    -----
-    Counts the number of records with the field present.
-    """
-    data = [
-        {'name': 'John', 'value': 10},
-        {'name': 'Jane', 'value': 20},
-        {'name': 'Bob', 'value': 15},
-    ]
-    result = apply_aggregate(data, {'field': 'value', 'func': 'count'})
-    assert result['count_value'] == 3
 
 
 def test_apply_aggregate_callable_with_alias():
@@ -260,6 +223,60 @@ def test_apply_aggregate_callable_with_alias():
         },
     )
     assert result == {'score': 48}
+
+
+def test_apply_aggregate_count():
+    """
+    Aggregate with ``count``.
+
+    Notes
+    -----
+    Counts the number of records with the field present.
+    """
+    data = [
+        {'name': 'John', 'value': 10},
+        {'name': 'Jane', 'value': 20},
+        {'name': 'Bob', 'value': 15},
+    ]
+    result = apply_aggregate(data, {'field': 'value', 'func': 'count'})
+    assert result['count_value'] == 3
+
+
+def test_apply_aggregate_min_max():
+    """
+    Aggregate with ``min`` and ``max``.
+
+    Notes
+    -----
+    Computes the minimum and maximum over ``value``.
+    """
+    data = [
+        {'name': 'John', 'value': 10},
+        {'name': 'Jane', 'value': 20},
+        {'name': 'Bob', 'value': 15},
+    ]
+    result = apply_aggregate(data, {'field': 'value', 'func': 'min'})
+    assert result['min_value'] == 10
+
+    result = apply_aggregate(data, {'field': 'value', 'func': 'max'})
+    assert result['max_value'] == 20
+
+
+def test_apply_aggregate_sum():
+    """
+    Aggregate with ``sum``.
+
+    Notes
+    -----
+    Sums the ``value`` field.
+    """
+    data = [
+        {'name': 'John', 'value': 10},
+        {'name': 'Jane', 'value': 20},
+        {'name': 'Bob', 'value': 15},
+    ]
+    result = apply_aggregate(data, {'field': 'value', 'func': 'sum'})
+    assert result['sum_value'] == 45
 
 
 def test_transform_with_filter():
