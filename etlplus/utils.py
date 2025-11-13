@@ -19,6 +19,8 @@ __all__ = [
     'count_records',
     'json_type',
     'print_json',
+    'to_float',
+    'to_int',
     'to_number',
 ]
 
@@ -82,6 +84,55 @@ def print_json(obj: Any) -> None:
         Object to serialize as JSON.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
+
+
+def to_float(value: Any) -> float | None:
+    """
+    Coerce a value to a float or return ``None``.
+
+    Notes
+    -----
+    For strings, leading/trailing whitespace is ignored. Returns ``None``
+    when coercion fails or when the input is ``None``.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        if isinstance(value, str):
+            s = value.strip()
+            try:
+                return float(s)
+            except ValueError:
+                return None
+        return None
+
+
+def to_int(value: Any) -> int | None:
+    """
+    Coerce a value to an integer or return ``None``.
+
+    Notes
+    -----
+    For strings, leading/trailing whitespace is ignored. Returns ``None``
+    when coercion fails or when the input is ``None``.
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        # Attempt float(string) -> int if string contains decimal .0
+        if isinstance(value, str):
+            s = value.strip()
+            try:
+                f = float(s)
+                # Only return int when it's an exact integer value
+                return int(f) if f.is_integer() else None
+            except ValueError:
+                return None
+        return None
 
 
 def to_number(value: Any) -> float | None:

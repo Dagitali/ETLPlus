@@ -19,6 +19,9 @@ from typing import cast
 from typing import Iterable
 from typing import TYPE_CHECKING
 
+from ..utils import to_float
+from ..utils import to_int
+
 if TYPE_CHECKING:
     from .pagination import PaginationConfig
     from .rate_limit import RateLimitConfig
@@ -235,50 +238,3 @@ def rate_limit_from_defaults(
         sleep_seconds=to_float(sleep_seconds),
         max_per_sec=to_float(max_per_sec),
     )
-
-
-# Small numeric coercion helpers used by config parsers. These are
-# intentionally forgiving: non-coercible values return None.
-
-def to_int(
-    v: Any,
-) -> int | None:
-    """
-    Coerce a value to an integer.
-
-    Parameters
-    ----------
-    v : Any
-        The value to coerce.
-
-    Returns
-    -------
-    int | None
-        The coerced integer value, or None if coercion failed.
-    """
-    try:
-        return int(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
-def to_float(
-    v: Any,
-) -> float | None:
-    """
-    Coerce a value to a float.
-
-    Parameters
-    ----------
-    v : Any
-        The value to coerce.
-
-    Returns
-    -------
-    float | None
-        The coerced float value, or None if coercion failed.
-    """
-    try:
-        return float(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
