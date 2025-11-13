@@ -6,6 +6,7 @@ Helpers to load data into files, databases, and REST APIs.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -103,6 +104,10 @@ def load_data(
         return File(source, FileFormat.JSON).read_json()
 
     if isinstance(source, str):
+        # Special case: '-' means read JSON from stdin (Unix convention).
+        if source == '-':
+            raw = sys.stdin.read()
+            return _parse_json_string(raw)
         candidate = Path(source)
         if candidate.exists():
             try:
