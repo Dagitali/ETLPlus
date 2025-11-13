@@ -102,7 +102,7 @@ etlplus extract file examples/data/in/sample.csv \
 ```python
 from etlplus import extract, transform, validate, load
 
-data = extract("file", "input.csv", format="csv")
+data = extract("file", "input.csv")
 ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}
 filtered = transform(data, ops)
 rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
@@ -126,7 +126,9 @@ etlplus --version
 
 #### Extract Data
 
-Note: For file sources, the format is inferred from the filename extension; the `--format` option is ignored.
+Note: For file sources, the format is inferred from the filename extension; the `--format` option is
+ignored.  To treat passing `--format` as an error for file sources, set
+`ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error`.
 
 Extract from JSON file:
 ```bash
@@ -213,7 +215,7 @@ Use ETLPlus as a Python library:
 from etlplus import extract, validate, transform, load
 
 # Extract data
-data = extract("file", "data.json", format="json")
+data = extract("file", "data.json")
 
 # Validate data
 validation_rules = {
