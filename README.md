@@ -183,12 +183,12 @@ etlplus transform examples/data/sample.json --operations '{"sort": {"field": "ag
 
 Aggregate data:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"aggregate": {"field": "price", "func": "sum"}}'
+etlplus transform examples/data/sample.json --operations '{"aggregate": {"field": "age", "func": "sum"}}'
 ```
 
 Map/rename fields:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"map": {"old_name": "new_name"}}'
+etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_name"}}'
 ```
 
 #### Load Data
@@ -200,7 +200,7 @@ etlplus load '{"name": "John", "age": 30}' file temp/sample_output.json
 
 Load to CSV file:
 ```bash
-etlplus load '[{"name": "John", "age": 30}]' file temp/sample_output.csv --format csv
+etlplus load '[{"name": "John", "age": 30}]' file temp/sample_output.csv
 ```
 
 Load to REST API:
@@ -242,12 +242,12 @@ load(transformed, "file", "temp/sample_output.json", format="json")
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file input.csv -o extracted.json
+etlplus extract file examples/data/sample.csv -o temp/sample_extracted.json
 
 # 2. Transform (filter and select fields)
-etlplus transform extracted.json \
+etlplus transform temp/sample_extracted.json \
   --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o transformed.json
+  -o temp/sample_transformed.json
 
 # 3. Validate transformed data
 etlplus validate temp/sample_transformed.json \
