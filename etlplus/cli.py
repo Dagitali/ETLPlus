@@ -279,15 +279,29 @@ def create_parser() -> argparse.ArgumentParser:
             """
             ETLPlus — A Swiss Army knife for simple ETL operations.
 
-              Provide a subcommand and options. Examples:
+                Provide a subcommand and options. Examples:
 
-              etlplus extract file data.csv -o out.json
-              etlplus validate data.json --rules '{"required": ['id]'}'
-              etlplus transform data.json --operations '{"select": ['id]'}'
-              etlplus load data.json file output.json --format json
+                etlplus extract file data.csv -o out.json
+                etlplus validate data.json --rules '{"required": ['id]'}'
+                etlplus transform data.json --operations '{"select": ['id]'}'
+                etlplus load data.json file output.json --format json
 
-              # Enforce error if --format is provided for file sources
-              etlplus extract file data.csv --format csv --strict-format
+                # Enforce error if --format is provided for file sources
+                etlplus extract file data.csv --format csv --strict-format
+            """,
+        ).strip(),
+        epilog=dedent(
+            """
+            Environment:
+                ETLPLUS_EXTRACT_FORMAT_BEHAVIOR controls
+                    behavior when --format is provided for files.
+                Values:
+                    - error|fail|strict: treat as error
+                    - warn (default): print a warning
+                    - ignore|silent: no message
+
+            Note:
+                --strict-format overrides the environment behavior.
             """,
         ).strip(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
