@@ -122,3 +122,18 @@ class TestCliEndToEnd:
         assert result == 1
         captured = capsys.readouterr()
         assert 'Error:' in captured.err
+
+    def test_main_strict_format_error(self, monkeypatch, capsys) -> None:
+        # Passing --format for a file with --strict-format should error
+        monkeypatch.setattr(
+            sys,
+            'argv',
+            [
+                'etlplus', 'extract', 'file', 'data.csv',
+                '--format', 'csv', '--strict-format',
+            ],
+        )
+        result = main()
+        assert result == 1
+        captured = capsys.readouterr()
+        assert 'Error:' in captured.err
