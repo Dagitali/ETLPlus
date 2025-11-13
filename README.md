@@ -127,8 +127,8 @@ etlplus --version
 #### Extract Data
 
 Note: For file sources, the format is inferred from the filename extension; the `--format` option is
-ignored.  To treat passing `--format` as an error for file sources, set
-`ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error`.
+ignored.  To treat passing `--format` as an error for file sources, either set
+`ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error` or pass the CLI flag `--strict-format`.
 
 Extract from JSON file:
 ```bash
