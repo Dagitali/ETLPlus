@@ -92,7 +92,7 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file in/input.csv --format csv \
+etlplus extract file examples/data/in/sample.csv --format csv \
   | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
   -o output.json
 ```
