@@ -30,7 +30,7 @@ from .types import StrPath
 
 def extract_from_file(
     file_path: StrPath,
-    file_format: FileFormat | str = FileFormat.JSON,
+    file_format: FileFormat | str | None = FileFormat.JSON,
 ) -> JSONData:
     """
     Extract (semi-)structured data from a local file.
@@ -39,8 +39,10 @@ def extract_from_file(
     ----------
     file_path : StrPath
         Source file path.
-    file_format : FileFormat | str, optional
-        File format to parse. Defaults to `'json'`.
+    file_format : FileFormat | str | None, optional
+        File format to parse. If ``None``, infer from the filename
+        extension. Defaults to `'json'` for backward compatibility when
+        explicitly provided.
 
     Returns
     -------
@@ -48,6 +50,10 @@ def extract_from_file(
         Parsed data as a mapping or a list of mappings.
     """
     path = Path(file_path)
+
+    # If no explicit format provided, let File infer from extension.
+    if file_format is None:
+        return File(path, None).read()
     fmt = coerce_file_format(file_format)
 
     # Let file module perform existence and format validation.
@@ -104,8 +110,8 @@ def extract_from_api(
     url : str
         API endpoint URL.
     **kwargs : Any
-        Extra arguments forwarded to `requests.get` (e.g., `timeout`). To
-        use a pre-configured `requests.Session`, provide it via `session`.
+        Extra arguments forwarded to `requests.get` (e.g., `timeout`). To use a
+        pre-configured `requests.Session`, provide it via `session`.
 
     Returns
     -------
@@ -187,9 +193,9 @@ def extract(
     stype = coerce_data_connector_type(source_type)
 
     if stype is DataConnectorType.FILE:
-        file_format = kwargs.pop(
-            'format', kwargs.pop('file_format', FileFormat.JSON),
-        )
+        # Prefer inferring the format from the filename when not explicitly
+        # provided. Passing ``None`` allows the File helper to infer.
+        file_format = kwargs.pop('format', kwargs.pop('file_format', None))
         return extract_from_file(source, file_format)
 
     if stype is DataConnectorType.DATABASE:

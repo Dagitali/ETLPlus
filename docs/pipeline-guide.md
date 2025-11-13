@@ -112,9 +112,9 @@ See `etlplus/api/README.md` for the code-level pagination API.
 
 ### Runner behavior with `base_path` (sources and targets)
 
-When you reference an API service and endpoint in a pipeline (whether in a
-source or an API target), the runner composes the request URL using the API
-model’s helpers, which honor any configured `base_path` automatically.
+When you reference an API service and endpoint in a pipeline (whether in a source or an API target),
+the runner composes the request URL using the API model’s helpers, which honor any configured
+`base_path` automatically.
 
 Example:
 
@@ -229,6 +229,15 @@ sources:
 Tip: You can also override query parameters per job using
 `jobs[].extract.options.query_params: { ... }`.
 
+Environment / format inference note:
+
+When extracting from file sources, ETLPlus infers the format from the filename extension (e.g.
+`.csv`, `.json`, `.xml`, `.yaml`).  Passing an explicit CLI `--format` for files is ignored unless
+strict mode is enabled.  To enforce an error if contributors still specify a redundant `--format`
+flag in scripts or CI runners, set the environment variable `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error`
+or use the CLI flag `--strict-format`.  This keeps pipelines cleaner by relying on naming
+conventions.
+
 Note: When using a service + endpoint in a source, URL composition (including
 `base_path`) is handled automatically. See “Runner behavior with base_path
 (sources and targets)” in the APIs section.
@@ -329,14 +338,13 @@ dataclass:
 Details:
 
 - The pipeline loader uses a unified path for both `sources` and `targets`.
-- Unknown or malformed entries are skipped rather than failing the whole load
-  (keeping pipeline authoring permissive).
+- Unknown or malformed entries are skipped rather than failing the whole load (keeping pipeline
+  authoring permissive).
 - The connector kind is also available as a type-safe literal in code as
   `etlplus.config.ConnectorType` (values: `"file" | "database" | "api"`).
 
-To add new connector kinds in the future, implement a new dataclass in
-`etlplus.config.connector` and extend the internal parser to handle its `type`
-value.
+To add new connector kinds in the future, implement a new dataclass in `etlplus.config.connector`
+and extend the internal parser to handle its `type` value.
 
 ## Jobs
 
@@ -400,12 +408,12 @@ For the HTTP client and pagination API, see `etlplus/api/README.md`.
 ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `PipelineConfig.from_dict`)
 accept `Mapping[str, Any]` rather than `dict[str, Any]` for inputs. Why?
 
-- Flexibility: callers can pass any mapping-like object (e.g., YAML loaders that
-  return custom mappings) without copying into a `dict` first.
-- Clear intent: inputs are treated as read-only; we normalize to concrete `dict`
-  only for internal storage.
-- Lower coupling: depending on the standard Mapping protocol avoids import cycles
-  and keeps modules cohesive.
+- Flexibility: callers can pass any mapping-like object (e.g., YAML loaders that return custom
+  mappings) without copying into a `dict` first.
+- Clear intent: inputs are treated as read-only; we normalize to concrete `dict` only for internal
+  storage.
+- Lower coupling: depending on the standard Mapping protocol avoids import cycles and keeps modules
+  cohesive.
 
 Practically, you can pass a plain `dict` everywhere and it will work.
 
@@ -427,12 +435,11 @@ Header precedence (lowest → highest):
 When adding new config objects or fields:
 
 - Prefer `@dataclass(slots=True)` for models.
-- Add a `@classmethod from_obj(cls, obj: Mapping[str, Any]) -> Self` that is tolerant
-  of missing optional keys and performs minimal type normalization (e.g., cast header
-  values to `str`).
+- Add a `@classmethod from_obj(cls, obj: Mapping[str, Any]) -> Self` that is tolerant of missing
+  optional keys and performs minimal type normalization (e.g., cast header values to `str`).
 - Keep inputs as `Mapping[...]` (non-mutating) and store concrete `dict` internally.
 - Reuse small helpers for repeated casts (e.g., `headers: dict[str, str]`).
 
-Contributors: for the repo-wide typing approach (TypedDicts as editor hints,
-`Mapping[str, Any]` inputs, and overloads imported only under `TYPE_CHECKING`),
-see [`CONTRIBUTING.md#typing-philosophy`](../CONTRIBUTING.md#typing-philosophy).
+Contributors: for the repo-wide typing approach (TypedDicts as editor hints, `Mapping[str, Any]`
+inputs, and overloads imported only under `TYPE_CHECKING`), see
+[`CONTRIBUTING.md#typing-philosophy`](../CONTRIBUTING.md#typing-philosophy).

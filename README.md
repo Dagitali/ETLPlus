@@ -25,6 +25,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Load Data](#load-data)
     - [Python API](#python-api)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
+    - [Environment Variables](#environment-variables)
   - [Transformation Operations](#transformation-operations)
     - [Filter Operations](#filter-operations)
     - [Aggregation Functions](#aggregation-functions)
@@ -92,7 +93,7 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file examples/data/in/sample.csv --format csv \
+etlplus extract file examples/data/in/sample.csv \
   | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
   -o output.json
 ```
@@ -102,7 +103,7 @@ etlplus extract file examples/data/in/sample.csv --format csv \
 ```python
 from etlplus import extract, transform, validate, load
 
-data = extract("file", "input.csv", format="csv")
+data = extract("file", "input.csv")
 ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}
 filtered = transform(data, ops)
 rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
@@ -126,6 +127,10 @@ etlplus --version
 
 #### Extract Data
 
+Note: For file sources, the format is inferred from the filename extension; the `--format` option is
+ignored.  To treat passing `--format` as an error for file sources, either set
+`ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error` or pass the CLI flag `--strict-format`.
+
 Extract from JSON file:
 ```bash
 etlplus extract file data.json
@@ -133,12 +138,12 @@ etlplus extract file data.json
 
 Extract from CSV file:
 ```bash
-etlplus extract file data.csv --format csv
+etlplus extract file data.csv
 ```
 
 Extract from XML file:
 ```bash
-etlplus extract file data.xml --format xml
+etlplus extract file data.xml
 ```
 
 Extract from REST API:
@@ -148,7 +153,7 @@ etlplus extract api https://api.example.com/data
 
 Save extracted data to file:
 ```bash
-etlplus extract file data.csv --format csv -o output.json
+etlplus extract file data.csv -o output.json
 ```
 
 #### Validate Data
@@ -211,7 +216,7 @@ Use ETLPlus as a Python library:
 from etlplus import extract, validate, transform, load
 
 # Extract data
-data = extract("file", "data.json", format="json")
+data = extract("file", "data.json")
 
 # Validate data
 validation_rules = {
@@ -237,7 +242,7 @@ load(transformed, "file", "output.json", format="json")
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file input.csv --format csv -o extracted.json
+etlplus extract file input.csv -o extracted.json
 
 # 2. Transform (filter and select fields)
 etlplus transform extracted.json \
@@ -250,6 +255,34 @@ etlplus validate transformed.json \
 
 # 4. Load to CSV
 etlplus load transformed.json file output.csv --format csv
+```
+
+### Environment Variables
+
+ETLPlus honors a small number of environment toggles to refine CLI behavior:
+
+- `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR`: controls what happens when `--format` is provided for
+  file sources (where the format is inferred from the filename extension).
+  - `error|fail|strict`: treat as error (non-zero exit)
+  - `warn` (default): print a warning to stderr
+  - `ignore|silent`: no message
+- Precedence: the CLI flag `--strict-format` overrides the environment.
+
+Examples (zsh):
+
+```zsh
+# Warn (default)
+etlplus extract file data.csv --format csv
+
+# Enforce error via environment
+ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error \
+  etlplus extract file data.csv --format csv
+
+# Equivalent strict behavior via flag (overrides environment)
+etlplus extract file data.csv --format csv --strict-format
+
+# Recommended: rely on extension, no --format needed for files
+etlplus extract file data.csv
 ```
 
 ## Transformation Operations
@@ -332,7 +365,8 @@ Example:
 
 ### API Client Docs
 
-Looking for the HTTP client and pagination helpers? See the dedicated docs in `etlplus/api/README.md` for:
+Looking for the HTTP client and pagination helpers?  See the dedicated docs in
+`etlplus/api/README.md` for:
 
 - Quickstart with `EndpointClient`
 - Authentication via `EndpointCredentialsBearer`
@@ -357,10 +391,14 @@ pytest tests/ -v
 
 We split tests into two layers:
 
-- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch (e.g. `etlplus.cli.create_parser`, transform + validate helpers).
-- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`, pagination + rate limit defaults, file/API connector interactions) may touch temp files and use fake clients.
+- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch
+  (e.g.  `etlplus.cli.create_parser`, transform + validate helpers).
+- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`,
+  pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
+  fake clients.
 
-If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default. Full criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
+If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default.  Full
+criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
 
 ### Code Coverage
 

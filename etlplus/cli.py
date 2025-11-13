@@ -16,6 +16,7 @@ Subcommands
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from textwrap import dedent
 
@@ -51,8 +52,33 @@ def cmd_extract(args: argparse.Namespace) -> int:
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    ValueError
+        If strict format behavior is enabled and `--format` is provided
+        for a file source.
     """
-    data = extract(args.source_type, args.source, format=args.format)
+    # For file sources, infer format from extension rather than --format.
+    if args.source_type == 'file':
+        # If user explicitly provided --format, warn that it's ignored.
+        if getattr(args, '_format_explicit', False):
+            env_behavior = os.getenv(
+                'ETLPLUS_EXTRACT_FORMAT_BEHAVIOR', 'warn',
+            ).lower()
+            behavior = 'error' if getattr(args, 'strict_format', False) \
+                else env_behavior
+            message = (
+                '--format is ignored for file sources; inferred from '
+                'filename extension.'
+            )
+            if behavior in {'error', 'fail', 'strict'}:
+                raise ValueError(message)
+            if behavior not in {'ignore', 'silent'}:
+                print(f'Warning: {message}', file=sys.stderr)
+        data = extract(args.source_type, args.source)
+    else:
+        data = extract(args.source_type, args.source, format=args.format)
     if args.output:
         File(args.output, FileFormat.JSON).write_json(data)
         print(f'Data extracted and saved to {args.output}')
@@ -253,12 +279,29 @@ def create_parser() -> argparse.ArgumentParser:
             """
             ETLPlus — A Swiss Army knife for simple ETL operations.
 
-            Provide a subcommand and options. Examples:
+                Provide a subcommand and options. Examples:
 
-              etlplus extract file data.csv --format csv -o out.json
-              etlplus validate data.json --rules '{"required": ['id]'}'
-              etlplus transform data.json --operations '{"select": ['id]'}'
-              etlplus load data.json file output.json --format json
+                etlplus extract file data.csv -o out.json
+                etlplus validate data.json --rules '{"required": ['id]'}'
+                etlplus transform data.json --operations '{"select": ['id]'}'
+                etlplus load data.json file output.json --format json
+
+                # Enforce error if --format is provided for file sources
+                etlplus extract file data.csv --format csv --strict-format
+            """,
+        ).strip(),
+        epilog=dedent(
+            """
+            Environment:
+                ETLPLUS_EXTRACT_FORMAT_BEHAVIOR controls
+                    behavior when --format is provided for files.
+                Values:
+                    - error|fail|strict: treat as error
+                    - warn (default): print a warning
+                    - ignore|silent: no message
+
+            Note:
+                --strict-format overrides the environment behavior.
             """,
         ).strip(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -284,6 +327,13 @@ def create_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    # Track if --format was explicitly provided by the user.
+
+    class _StoreWithFlag(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values)
+            setattr(namespace, '_format_explicit', True)
+
     extract_parser.add_argument(
         'source_type',
         choices=['file', 'database', 'api'],
@@ -300,11 +350,25 @@ def create_parser() -> argparse.ArgumentParser:
         '-o', '--output',
         help='Output file to save extracted data (JSON format)',
     )
+    extract_parser.set_defaults(_format_explicit=False)
+    extract_parser.add_argument(
+        '--strict-format',
+        action='store_true',
+        help=(
+            'Treat providing --format for file sources as an error '
+            '(overrides environment behavior)'
+        ),
+    )
     extract_parser.add_argument(
         '--format',
         choices=['json', 'csv', 'xml'],
         default='json',
-        help='Format of the source file to extract (default: json)',
+        action=_StoreWithFlag,
+        help=(
+            'Format of the source when not a file. For file sources, '
+            'this option is ignored and the format is inferred from the '
+            'filename extension.'
+        ),
     )
     extract_parser.set_defaults(func=cmd_extract)
 
