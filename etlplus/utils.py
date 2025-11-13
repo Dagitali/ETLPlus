@@ -19,6 +19,7 @@ __all__ = [
     'count_records',
     'json_type',
     'print_json',
+    'to_number',
 ]
 
 
@@ -81,3 +82,30 @@ def print_json(obj: Any) -> None:
         Object to serialize as JSON.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
+
+
+def to_number(value: Any) -> float | None:
+    """
+    Coerce numeric string to number or return ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value that may be an ``int``, ``float``, or string representing
+        a number (leading/trailing whitespace is ignored).
+
+    Returns
+    -------
+    float | None
+        The coerced numeric value as a ``float`` when possible, else
+        ``None`` if the input is not numeric.
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        s = value.strip()
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    return None
