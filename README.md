@@ -92,7 +92,7 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file examples/data/in/sample.csv --format csv \
+etlplus extract file examples/data/in/sample.csv \
   | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
   -o output.json
 ```
@@ -126,6 +126,8 @@ etlplus --version
 
 #### Extract Data
 
+Note: For file sources, the format is inferred from the filename extension; the `--format` option is ignored.
+
 Extract from JSON file:
 ```bash
 etlplus extract file data.json
@@ -133,12 +135,12 @@ etlplus extract file data.json
 
 Extract from CSV file:
 ```bash
-etlplus extract file data.csv --format csv
+etlplus extract file data.csv
 ```
 
 Extract from XML file:
 ```bash
-etlplus extract file data.xml --format xml
+etlplus extract file data.xml
 ```
 
 Extract from REST API:
@@ -148,7 +150,7 @@ etlplus extract api https://api.example.com/data
 
 Save extracted data to file:
 ```bash
-etlplus extract file data.csv --format csv -o output.json
+etlplus extract file data.csv -o output.json
 ```
 
 #### Validate Data
@@ -237,7 +239,7 @@ load(transformed, "file", "output.json", format="json")
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file input.csv --format csv -o extracted.json
+etlplus extract file input.csv -o extracted.json
 
 # 2. Transform (filter and select fields)
 etlplus transform extracted.json \
