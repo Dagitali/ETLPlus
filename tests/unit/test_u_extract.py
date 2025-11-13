@@ -1,12 +1,12 @@
 """
-ETLPlus Extract Tests
-=====================
+``tests.unit.test_u_extract`` module.
 
-Unit tests for the ETLPlus extraction utilities.
+Unit tests for ``etlplus.extract``.
 
 Notes
 -----
-Covers JSON, CSV, and XML helpers as well as the extract() orchestrator.
+- Uses temporary files to validate round-trip parsing.
+- Ensures error handling for unsupported formats.
 """
 import csv
 import json
