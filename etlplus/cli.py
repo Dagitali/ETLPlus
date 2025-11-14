@@ -16,6 +16,7 @@ Subcommands
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 import sys
 from textwrap import dedent
@@ -104,8 +105,22 @@ def cmd_validate(args: argparse.Namespace) -> int:
     int
         Zero on success.
     """
-    # ``args.rules`` already parsed by ``_json_type`` (defaults to {}).
-    result = validate(args.source, args.rules)
+    source_path = args.source
+    data_to_validate: Any = None
+
+    # If source is a CSV file, load as list of dicts.
+    if (
+        isinstance(source_path, str) and
+        source_path.lower().endswith('.csv') and
+        os.path.isfile(source_path)
+    ):
+        with open(source_path, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            data_to_validate = list(reader)
+    else:
+        data_to_validate = source_path
+
+    result = validate(data_to_validate, args.rules)
     print_json(result)
 
     return 0
