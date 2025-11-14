@@ -1,13 +1,13 @@
 """
-ETLPlus Load Tests
-==================
+``tests.unit.test_u_load`` module.
 
-Unit tests for the ETLPlus loading utilities.
+Unit tests for ``etlplus.load``.
 
 Notes
 -----
-Covers file writers (JSON, CSV), directory creation, wrapper dispatch,
-and error paths.
+- Uses temporary files for round-trip verification.
+- Validates ``load_data`` passthrough semantics for dict/list inputs.
+- Ensures error handling for unsupported targets.
 """
 import csv
 import json
@@ -37,32 +37,6 @@ def test_load_data_from_dict():
     assert result == data
 
 
-def test_load_data_from_list():
-    """
-    Load from a list of dictionaries.
-
-    Notes
-    -----
-    Ensures that lists passed directly are returned unchanged.
-    """
-    data = [{'test': 'data'}]
-    result = load_data(data)
-    assert result == data
-
-
-def test_load_data_from_json_string():
-    """
-    Load from a JSON string.
-
-    Notes
-    -----
-    Parses the JSON string and returns a mapping.
-    """
-    json_str = '{"test": "data"}'
-    result = load_data(json_str)
-    assert result['test'] == 'data'
-
-
 def test_load_data_from_file():
     """
     Load from a JSON file path.
@@ -85,6 +59,67 @@ def test_load_data_from_file():
         Path(temp_path).unlink()
 
 
+def test_load_data_from_json_string():
+    """
+    Load from a JSON string.
+
+    Notes
+    -----
+    Parses the JSON string and returns a mapping.
+    """
+    json_str = '{"test": "data"}'
+    result = load_data(json_str)
+    assert result['test'] == 'data'
+
+
+def test_load_data_from_list():
+    """
+    Load from a list of dictionaries.
+
+    Notes
+    -----
+    Ensures that lists passed directly are returned unchanged.
+    """
+    data = [{'test': 'data'}]
+    result = load_data(data)
+    assert result == data
+
+
+def test_load_data_from_stdin(monkeypatch):
+    """
+    Load JSON from stdin when source is '-'.
+
+    Notes
+    -----
+    Simulates piped stdin input for CLI usage like:
+      etlplus ... | etlplus transform - --operations ...
+    """
+    class _FakeStdin:
+        def read(self):
+            return '{"items": [{"age": 30}, {"age": 20}]}'
+
+    monkeypatch.setattr('sys.stdin', _FakeStdin())
+    result = load_data('-')
+    assert isinstance(result, dict)
+    assert 'items' in result
+
+
+def test_load_data_invalid_source():
+    """
+    Invalid JSON string raises ``ValueError`` when loading.
+    """
+    with pytest.raises(ValueError, match='Invalid data source'):
+        load_data('not a valid json string')
+
+
+def test_load_invalid_target_type():
+    """
+    Invalid target type raises ``ValueError``.
+    """
+    with pytest.raises(ValueError, match='Invalid DataConnectorType'):
+        load({'test': 'data'}, 'invalid', 'target')
+
+
 def test_load_to_json_file():
     """
     Write data to a JSON file.
@@ -101,7 +136,7 @@ def test_load_to_json_file():
         assert result['status'] == 'success'
         assert output_path.exists()
 
-        with open(output_path) as f:
+        with open(output_path, encoding='utf-8') as f:
             loaded_data = json.load(f)
         assert loaded_data == test_data
 
@@ -125,7 +160,7 @@ def test_load_to_csv_file():
         assert result['status'] == 'success'
         assert output_path.exists()
 
-        with open(output_path, newline='') as f:
+        with open(output_path, encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             loaded_data = list(reader)
         assert len(loaded_data) == 2
@@ -182,17 +217,12 @@ def test_load_to_file_creates_directory():
 def test_load_to_file_unsupported_format():
     """
     Unsupported format raises ``ValueError``.
-
-    Raises
-    ------
-    ValueError
-        If an unsupported format name is provided.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / 'output.txt'
         test_data = {'test': 'data'}
 
-        with pytest.raises(ValueError, match='Unsupported format'):
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
             load_to_file(test_data, str(output_path), 'unsupported')
 
 
@@ -208,7 +238,7 @@ def test_load_wrapper_file():
         output_path = Path(tmpdir) / 'output.json'
         test_data = {'test': 'data'}
 
-        result = load(test_data, 'file', str(output_path), format='json')
+        result = load(test_data, 'file', str(output_path), file_format='json')
         assert result['status'] == 'success'
         assert output_path.exists()
 
@@ -224,29 +254,3 @@ def test_load_wrapper_database():
     test_data = {'test': 'data'}
     result = load(test_data, 'database', 'postgresql://localhost/testdb')
     assert result['status'] == 'not_implemented'
-
-
-def test_load_invalid_target_type():
-    """
-    Invalid target type raises ``ValueError``.
-
-    Raises
-    ------
-    ValueError
-        If an unsupported ``target_type`` is provided.
-    """
-    with pytest.raises(ValueError, match='Invalid target type'):
-        load({'test': 'data'}, 'invalid', 'target')
-
-
-def test_load_data_invalid_source():
-    """
-    Invalid JSON string raises ``ValueError`` when loading.
-
-    Raises
-    ------
-    ValueError
-        If the input string is not valid JSON.
-    """
-    with pytest.raises(ValueError, match='Invalid data source'):
-        load_data('not a valid json string')

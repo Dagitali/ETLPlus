@@ -1,13 +1,12 @@
 """
-ETLPlus Transform Tests
-=======================
+``tests.unit.test_u_transform`` module.
 
-Unit tests for the ETLPlus transform utilities.
+Unit tests for ``etlplus.transform``.
 
 Notes
 -----
-Covers filter, map, select, sort, aggregate, and the ``transform()``
-wrapper.
+- Uses small in-memory datasets to validate each operation.
+- Ensures stable behavior for edge cases (empty inputs, missing fields).
 """
 import json
 import tempfile
@@ -22,6 +21,31 @@ from etlplus.transform import transform
 
 
 # SECTION: TESTS =========================================================== #
+
+
+def test_apply_filter_callable_operator():
+    """
+    Filter with a custom callable operator.
+
+    Notes
+    -----
+    Keeps records whose ``name`` contains the letter ``'a'``.
+    """
+
+    data = [
+        {'name': 'John'},
+        {'name': 'Jane'},
+        {'name': 'Bob'},
+    ]
+    result = apply_filter(
+        data,
+        {
+            'field': 'name',
+            'op': lambda value, needle: needle in value.lower(),
+            'value': 'a',
+        },
+    )
+    assert [item['name'] for item in result] == ['Jane']
 
 
 def test_apply_filter_equal():
@@ -83,6 +107,23 @@ def test_apply_filter_in():
     assert len(result) == 2
 
 
+def test_apply_filter_numeric_string_coercion():
+    """
+    Filter should coerce numeric strings to numbers for numeric ops.
+
+    Notes
+    -----
+    CSV sources yield strings; '30' > 26 should match after coercion.
+    """
+    data = [
+        {'name': 'John', 'age': '30'},
+        {'name': 'Jane', 'age': '25'},
+    ]
+    result = apply_filter(data, {'field': 'age', 'op': 'gt', 'value': 26})
+    assert len(result) == 1
+    assert result[0]['name'] == 'John'
+
+
 def test_apply_map():
     """
     Map/rename fields in each record.
@@ -139,23 +180,6 @@ def test_apply_sort():
     assert result[2]['age'] == 25
 
 
-def test_apply_aggregate_sum():
-    """
-    Aggregate with ``sum``.
-
-    Notes
-    -----
-    Sums the ``value`` field.
-    """
-    data = [
-        {'name': 'John', 'value': 10},
-        {'name': 'Jane', 'value': 20},
-        {'name': 'Bob', 'value': 15},
-    ]
-    result = apply_aggregate(data, {'field': 'value', 'func': 'sum'})
-    assert result['sum_value'] == 45
-
-
 def test_apply_aggregate_avg():
     """
     Aggregate with ``avg``.
@@ -171,6 +195,51 @@ def test_apply_aggregate_avg():
     ]
     result = apply_aggregate(data, {'field': 'value', 'func': 'avg'})
     assert result['avg_value'] == 15
+
+
+def test_apply_aggregate_callable_with_alias():
+    """
+    Aggregate with a callable and custom alias.
+
+    Notes
+    -----
+    Computes the sum plus count and stores it under ``'score'``.
+    """
+
+    def score(nums: list[float], present: int) -> float:
+        return sum(nums) + present
+
+    data = [
+        {'value': 10},
+        {'value': 20},
+        {'value': 15},
+    ]
+    result = apply_aggregate(
+        data,
+        {
+            'field': 'value',
+            'func': score,
+            'alias': 'score',
+        },
+    )
+    assert result == {'score': 48}
+
+
+def test_apply_aggregate_count():
+    """
+    Aggregate with ``count``.
+
+    Notes
+    -----
+    Counts the number of records with the field present.
+    """
+    data = [
+        {'name': 'John', 'value': 10},
+        {'name': 'Jane', 'value': 20},
+        {'name': 'Bob', 'value': 15},
+    ]
+    result = apply_aggregate(data, {'field': 'value', 'func': 'count'})
+    assert result['count_value'] == 3
 
 
 def test_apply_aggregate_min_max():
@@ -193,21 +262,21 @@ def test_apply_aggregate_min_max():
     assert result['max_value'] == 20
 
 
-def test_apply_aggregate_count():
+def test_apply_aggregate_sum():
     """
-    Aggregate with ``count``.
+    Aggregate with ``sum``.
 
     Notes
     -----
-    Counts the number of records with the field present.
+    Sums the ``value`` field.
     """
     data = [
         {'name': 'John', 'value': 10},
         {'name': 'Jane', 'value': 20},
         {'name': 'Bob', 'value': 15},
     ]
-    result = apply_aggregate(data, {'field': 'value', 'func': 'count'})
-    assert result['count_value'] == 3
+    result = apply_aggregate(data, {'field': 'value', 'func': 'sum'})
+    assert result['sum_value'] == 45
 
 
 def test_transform_with_filter():
@@ -234,6 +303,37 @@ def test_transform_with_filter():
     )
     assert len(result) == 1
     assert result[0]['name'] == 'John'
+
+
+def test_transform_with_multiple_filters_and_select():
+    """
+    Transform using multiple filters and a select sequence.
+
+    Notes
+    -----
+    Filters twice before selecting fields.
+    """
+
+    data = [
+        {'name': 'John', 'age': 30, 'city': 'New York'},
+        {'name': 'Jane', 'age': 25, 'city': 'Newark'},
+        {'name': 'Bob', 'age': 35, 'city': 'Boston'},
+    ]
+    result = transform(
+        data,
+        {
+            'filter': [
+                {'field': 'age', 'op': 'gte', 'value': 26},
+                {
+                    'field': 'city',
+                    'op': lambda value, prefix: str(value).startswith(prefix),
+                    'value': 'New',
+                },
+            ],
+            'select': [{'fields': ['name']}],
+        },
+    )
+    assert result == [{'name': 'John'}]
 
 
 def test_transform_with_map():
@@ -295,6 +395,32 @@ def test_transform_with_aggregate():
         {'aggregate': {'field': 'value', 'func': 'sum'}},
     )
     assert result['sum_value'] == 30
+
+
+def test_transform_with_multiple_aggregates():
+    """
+    Transform with multiple aggregations.
+
+    Notes
+    -----
+    Produces both sum and count results.
+    """
+
+    data = [
+        {'value': 1},
+        {'value': 2},
+        {'value': 3},
+    ]
+    result = transform(
+        data,
+        {
+            'aggregate': [
+                {'field': 'value', 'func': 'sum'},
+                {'field': 'value', 'func': 'count', 'alias': 'count'},
+            ],
+        },
+    )
+    assert result == {'sum_value': 6, 'count': 3}
 
 
 def test_transform_from_json_string():

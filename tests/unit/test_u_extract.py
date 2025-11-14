@@ -1,12 +1,12 @@
 """
-ETLPlus Extract Tests
-=====================
+``tests.unit.test_u_extract`` module.
 
-Unit tests for the ETLPlus extraction utilities.
+Unit tests for ``etlplus.extract``.
 
 Notes
 -----
-Covers JSON, CSV, and XML helpers as well as the extract() orchestrator.
+- Uses temporary files to validate round-trip parsing.
+- Ensures error handling for unsupported formats.
 """
 import csv
 import json
@@ -100,12 +100,7 @@ def test_extract_from_xml_file():
 
 def test_extract_file_not_found():
     """
-    Extracting a non‑existent file raises.
-
-    Raises
-    ------
-    FileNotFoundError
-        When the file path does not exist.
+    Extracting a non-existent file should raise FileNotFoundError.
     """
     with pytest.raises(FileNotFoundError):
         extract_from_file('/nonexistent/file.json', 'json')
@@ -113,12 +108,7 @@ def test_extract_file_not_found():
 
 def test_extract_unsupported_format():
     """
-    Unsupported format raises.
-
-    Raises
-    ------
-    ValueError
-        If the file format is not supported by the extractor.
+    Unsupported format should raise ValueError.
     """
     with tempfile.NamedTemporaryFile(
         mode='w', suffix='.txt', delete=False,
@@ -127,7 +117,7 @@ def test_extract_unsupported_format():
         temp_path = f.name
 
     try:
-        with pytest.raises(ValueError, match='Unsupported format'):
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
             extract_from_file(temp_path, 'unsupported')
     finally:
         Path(temp_path).unlink()
@@ -157,12 +147,7 @@ def test_extract_wrapper_file():
 
 def test_extract_invalid_source_type():
     """
-    Invalid source type raises.
-
-    Raises
-    ------
-    ValueError
-        When an unsupported ``source_type`` is provided.
+    Invalid source type should raise ValueError.
     """
-    with pytest.raises(ValueError, match='Invalid source type'):
+    with pytest.raises(ValueError, match='Invalid DataConnectorType'):
         extract('invalid', 'source')

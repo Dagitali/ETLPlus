@@ -1,8 +1,7 @@
 """
-ETLPlus Tests
-=============
+``tests`` package.
 
-Test suite for the ETLPlus package.
+Test suites for the ETLPlus package.
 
 Notes
 -----

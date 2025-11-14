@@ -1,0 +1,448 @@
+---
+# ETLPlus Pipeline Configuration
+# --------------------------------
+# A single YAML file that defines sources, validation rules, transformation
+# pipelines, and load targets; plus runnable "jobs" that chain them.
+#
+# Inspired by dbt's structured config and ETLPlus' simple JSON-first APIs.
+# This file is meant as a high-level declarative spec that your orchestration
+# (Makefile task, Python runner, CI job, etc.) can read and execute via
+# etlplus.extract/validate/transform/load.
+#
+# Notes
+# - Source types: file | database | api
+# - File formats: json | csv | xml | yaml
+# - HTTP load methods: post | put | patch
+# - Transform step keys and shapes match etlplus.transform:
+#     filter: { field, op, value }
+#     map: { old_key: new_key, ... }
+#     select: [field1, field2, ...]  OR { fields: [...] }
+#     sort:   field_name             OR { field: name, reverse: bool }
+#     aggregate: { field, func, alias? } or list of those
+#
+# Optional: Use environment variables in your tooling before passing values
+# (e.g., substitute ${GITHUB_TOKEN} when templating this file).
+
+name: ETLPlus Demo Pipeline
+version: "1"
+profile:
+  default_target: local
+  env:
+    GITHUB_ORG: dagitali
+    GITHUB_TOKEN: "${GITHUB_TOKEN}"  # Inject at runtime via your runner
+
+vars:
+  data_dir: in
+  out_dir: out
+
+apis:
+  github:
+    profiles:
+      default: &profile_defaults
+        base_url: "https://api.github.com"
+        base_path: /v1
+        auth:
+          type: bearer
+          token: "${GITHUB_TOKEN}"  # Use env/substitution; avoid plain secrets.
+        defaults:
+          headers:
+            Accept: application/vnd.github+json
+            Authorization: "Bearer ${GITHUB_TOKEN}"
+          pagination:
+            type: cursor             # none | page | offset | cursor | link
+            params:                  # request param names (used if applicable)
+              page: page
+              per_page: per_page
+              cursor: cursor
+              limit: limit
+            response:                # selectors into response
+              items_path: data.items
+              next_cursor_path: meta.next_cursor
+            defaults:
+              per_page: 100
+          rate_limit:
+            bucket: default
+            policy: header_based
+            headers:
+              remaining: X-RateLimit-Remaining
+              reset: X-RateLimit-Reset
+          retries:
+            max: 5
+            backoff: exponential
+            base_ms: 250
+            jitter: true
+            retry_on: [429, 500, 502, 503, 504]
+          ssl_verify: true
+          timeout_s: 30
+      staging:
+        <<: *profile_defaults
+        base_url: "https://staging.api.github.com"
+      prod-v2:
+        <<: *profile_defaults
+        base_url: "https://api.github.com"
+        base_path: /v2
+    endpoints:
+      org_repos:
+        method: GET
+        path: "/orgs/${GITHUB_ORG}/repos"
+        query_params:
+          per_page: 100
+          type: public
+        pagination:
+          type: page           # page | offset | cursor
+          page_param: page     # for page/offset styles
+          size_param: per_page  # for page/offset styles
+          start_page: 1
+          page_size: 100
+          # records_path: items # if your API wraps results inside an object
+          # For cursor style:
+          # cursor_param: cursor
+          # cursor_path: meta.next_cursor  # dotted path to next cursor in response
+          # start_cursor: null
+          # max_pages: 10       # optional safety cap
+          # max_records: 1000   # optional safety cap
+        rate_limit:
+          # Choose one: sleep_seconds or max_per_sec
+          # sleep_seconds: 0.5
+          max_per_sec: 2
+      repo_commits:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/commits"
+      repo_contents:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/contents"
+      repo_issues:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/issues"
+      repo_pull_requests:
+        method: GET
+        path: "/repos/${GITHUB_ORG}/${REPO_NAME}/pulls"
+  my_api:
+    profiles:
+      default:
+        base_url: "https://api.example.com"
+        base_path: /v1
+        auth:
+          type: bearer
+          token: ${MY_API_TOKEN}  # Use env/substitution; avoid plain secrets.
+        defaults:
+          headers:
+            Accept: application/json
+            Content-Type: application/json
+            User-Agent: etlplus/1.0
+    endpoints:
+      list-users:
+        method: GET
+        path: /users
+        query_params:
+          active: true
+      get-user:
+        method: GET
+        path: /users/{id}
+      upload-avatar:
+        method: POST
+        path: /users/{id}/avatar
+        path_params:
+          id: int
+        body:
+          type: file
+          file_path: ./${data_dir}/avatar.png
+      list-events:
+        method: GET
+        path: /events
+
+databases:
+  mssql:
+    default:
+      driver: "ODBC Driver 18 for SQL Server"
+      server: "localhost,1433"
+      database: "Demo"
+      trusted_connection: true
+      # Alternatively, use username/password:
+      # username: "${DB_USER}"
+      # password: "${DB_PASSWORD}"
+      # Optional additional params:
+      options:
+        encrypt: "yes"
+        trust_server_certificate: "yes"
+        connection_timeout: 30
+        application_name: "ETLPlus"
+  sqlite:
+    default:
+      database: "./${data_dir}/demo.db"
+      options:
+        timeout: 30
+  postgres:
+    default:
+      host: "localhost"
+      port: 5432
+      database: "demo"
+      username: "${PG_USER}"
+      password: "${PG_PASSWORD}"
+      options:
+        sslmode: "prefer"
+        connection_timeout: 30
+        application_name: "ETLPlus"
+
+file_systems:
+  local:
+    base_path: "./${data_dir}"
+    folders:
+      in: "./${data_dir}"
+      out: "./${out_dir}"
+  asure:
+    container: "my-etlplus-container"
+    prefix: "data/"
+    connection_string: "${AZURE_STORAGE_CONNECTION_STRING}"
+  s3:
+    bucket: "my-etlplus-bucket"
+    prefix: "data/"
+    region: "us-east-1"
+    access_key_id: "${AWS_ACCESS_KEY_ID}"
+    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+sources:
+  # 1) File sources ---------------------------------------------------------
+  - name: customers_csv
+    type: file
+    format: csv
+    path: "${data_dir}/customers.csv"
+    options:
+      header: true
+      delimiter: ","
+      encoding: utf-8
+
+  - name: customers_json
+    type: file
+    format: json
+    path: "${data_dir}/customers.json"
+
+  # 2) Database source (placeholder extract implementation in ETLPlus) -----
+  - name: customers_db
+    type: database
+    connection_string: >
+      Driver={ODBC Driver 18 for SQL Server};
+      Server=tcp:localhost,1433;
+      Database=Demo;
+      Trusted_Connection=yes;
+    # Optional: When you implement DB extraction, a query can be included.
+    query: |
+      SELECT CustomerId, FirstName, LastName, Email, Status, CreatedAt
+      FROM dbo.Customers
+
+  # 3) REST API source ------------------------------------------------------
+  - name: github_repos
+    type: api
+    service: github
+    endpoint: org_repos
+
+validations:
+  # Validation rule sets keyed by a friendly name. Each rule set is a map of
+  # field -> rules (see etlplus.validate.FieldRules for supported keys).
+
+  customers_basic:
+    CustomerId:
+      required: true
+      type: integer
+      min: 1
+    FirstName:
+      required: true
+      type: string
+      minLength: 1
+    LastName:
+      required: true
+      type: string
+      minLength: 1
+    Email:
+      type: string
+      maxLength: 320
+    Status:
+      required: true
+      type: string
+      enum: [A, I]
+
+  github_repo_minimal:
+    id:
+      required: true
+      type: integer
+      min: 1
+    name:
+      required: true
+      type: string
+      minLength: 1
+    html_url:
+      required: true
+      type: string
+      minLength: 1
+
+transforms:
+  # Named transformation pipelines that can be reused across jobs.
+  # Shapes follow etlplus.transform.PipelineConfig exactly.
+
+  clean_customers:
+    # Keep only rows that have an Email with an '@'
+    filter:
+      field: Email
+      op: contains
+      value: "@"
+    # Rename FirstName/LastName to snake_case
+    map:
+      FirstName: first_name
+      LastName: last_name
+    # Project the final columns
+    select: [CustomerId, first_name, last_name, Email, Status]
+    # Sort by last_name, then first_name (apply two sort steps)
+    sort:
+      - last_name
+      -
+        field: first_name
+        reverse: false
+
+  summarize_customers:
+    # Produce multiple aggregates and merge
+    aggregate:
+      -
+        field: CustomerId
+        func: count
+        alias: row_count
+      -
+        field: CustomerId
+        func: max
+        alias: max_id
+
+  tidy_github_repos:
+    # Only public repos (GitHub API v3 includes 'private' boolean)
+    filter:
+      field: private
+      op: eq
+      value: false
+    # Rename a few keys and keep a subset
+    map:
+      html_url: url
+      created_at: created
+    select: [id, name, url, created]
+    sort:
+      field: name
+
+# Optional: database DDL-like table schema specs (inspired by example.yml)
+# Not used by ETLPlus directly; include if your workflow generates DDL.
+# table_schemas:
+#   - schema: dbo
+#     table: Customers
+#     create_schema: true
+#     columns:
+#       - name: CustomerId
+#         type: int
+#         identity: { seed: 1, increment: 1 }
+#         nullable: false
+#       - name: CustomerGuid
+#         type: uniqueidentifier
+#         default: newsequentialid()
+#         nullable: false
+#       - { name: FirstName,    type: nvarchar(100),    nullable: false }
+#       - { name: LastName,     type: nvarchar(100),    nullable: false }
+#       - { name: Email,        type: nvarchar(320),    nullable: true }
+#       - name: Status
+#         type: char(1)
+#         nullable: false
+#         check: "Status IN ('A','I')"
+#       - name: CreatedAt
+#         type: datetime2(3)
+#         default: sysutcdatetime()
+#         nullable: false
+#       - name: UpdatedAt
+#         type: datetime2(3)
+#         default: sysutcdatetime()
+#         nullable: false
+#       - { name: RowVer,       type: rowversion,       nullable: false }
+#     primary_key: { name: PK_Customers, columns: [CustomerId] }
+#     unique_constraints:
+#       - { name: UQ_Customers_Guid, columns: [CustomerGuid] }
+#     indexes:
+#       - name: UX_Customers_Email
+#         unique: true
+#         columns: [Email]
+#         where: "Email IS NOT NULL"
+#       - name: IX_Customers_Name
+#         columns: [LastName, FirstName]
+#         include: [Email]
+#     foreign_keys: []
+
+# Targets declare where data lands. For files, format applies; for API loads,
+# method applies. Database load is a placeholder in ETLPlus today.
+
+targets:
+  - name: customers_json_out
+    type: file
+    format: json
+    path: "${out_dir}/customers_clean.json"
+
+  - name: customers_csv_out
+    type: file
+    format: csv
+    path: "${out_dir}/customers_clean.csv"
+
+  - name: db_customers_out
+    type: database
+    connection_string: >
+      Driver={ODBC Driver 18 for SQL Server};
+      Server=tcp:localhost,1433;
+      Database=Demo;
+      Trusted_Connection=yes;
+    table: dbo.Customers_Staging
+    # Hint for your runner (ETLPlus DB load is a placeholder today)
+    mode: append
+
+  - name: webhook_out
+    type: api
+    url: "https://httpbin.org/post"
+    method: post
+    headers:
+      Content-Type: application/json
+
+# Jobs orchestrate the extract -> validate -> transform -> load flow.
+# Each job references a source, optional validation, optional transform,
+# and a target. Inline overrides are allowed.
+
+jobs:
+  - name: file_to_file_customers
+    description: "CSV customers -> clean -> JSON"
+    extract:
+      source: customers_csv
+      # Override/augment extract options if needed:
+      options:
+        format: csv
+    validate:
+      ruleset: customers_basic
+    transform:
+      pipeline: clean_customers
+    load:
+      target: customers_json_out
+
+  - name: api_to_file_github_repos
+    description: "GitHub repos -> tidy -> JSON"
+    extract:
+      source: github_repos
+    validate:
+      ruleset: github_repo_minimal
+      # Control behavior and timing of validation failures
+      severity: warn            # warn | error (default)
+      phase: both               # before_transform | after_transform | both
+    transform:
+      pipeline: tidy_github_repos
+    load:
+      target: customers_json_out
+      # Override filename dynamically if your runner supports templating
+      overrides:
+        path: "${out_dir}/github_repos.json"
+
+  - name: db_to_api_summary
+    description: "DB customers -> summarize -> POST to webhook"
+    extract:
+      source: customers_db  # DB extract is a placeholder in ETLPlus currently
+    transform:
+      pipeline: summarize_customers
+    load:
+      target: webhook_out
+
+# End of file.

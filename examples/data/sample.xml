@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<users xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="sample.xsd">
+  <user>
+    <name>John Doe</name>
+    <email>john@example.com</email>
+    <age>30</age>
+    <status>active</status>
+  </user>
+  <user>
+    <name>Jane Smith</name>
+    <email>jane@example.com</email>
+    <age>25</age>
+    <status>inactive</status>
+  </user>
+  <user>
+    <name>Alice Johnson</name>
+    <email>alice@example.com</email>
+    <age>27</age>
+    <status>active</status>
+  </user>
+  <user>
+    <name>Bob Lee</name>
+    <email>bob@example.com</email>
+    <age>22</age>
+    <status>active</status>
+  </user>
+  <user>
+    <name>Maria Garcia</name>
+    <email>maria@example.com</email>
+    <age>40</age>
+    <status>active</status>
+  </user>
+</users>

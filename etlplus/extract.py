@@ -1,134 +1,66 @@
-"""ETLPlus Data Extraction
-=======================
+"""
+etlplus.extract module.
 
-Tools to extract data from files, databases, and REST APIs.
+Helpers to extract data from files, databases, and REST APIs.
 """
 from __future__ import annotations
 
-import csv
-import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from typing import cast
-from typing import Literal
-from typing import TypeAlias
 
-import requests
+import requests  # type: ignore[import]
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-JSONDict: TypeAlias = dict[str, Any]
-JSONList: TypeAlias = list[JSONDict]
-JSONData: TypeAlias = JSONDict | JSONList
+from .enums import coerce_data_connector_type
+from .enums import coerce_file_format
+from .enums import DataConnectorType
+from .enums import FileFormat
+from .file import File
+from .types import JSONData
+from .types import JSONDict
+from .types import JSONList
+from .types import StrPath
 
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# -- File extraction -- #
+# -- File Extraction -- #
 
 
 def extract_from_file(
-    file_path: str,
-    file_format: Literal['json', 'csv', 'xml'] = 'json',
+    file_path: StrPath,
+    file_format: FileFormat | str | None = FileFormat.JSON,
 ) -> JSONData:
     """
-    Extract data from a file.
+    Extract (semi-)structured data from a local file.
 
     Parameters
     ----------
-    file_path : str
-        Path to the file to read.
-    file_format : {'json', 'csv', 'xml'}, optional
-        File format to parse. Defaults to ``'json'``.
+    file_path : StrPath
+        Source file path.
+    file_format : FileFormat | str | None, optional
+        File format to parse. If ``None``, infer from the filename
+        extension. Defaults to `'json'` for backward compatibility when
+        explicitly provided.
 
     Returns
     -------
-    dict[str, Any] | list[dict[str, Any]]
+    JSONData
         Parsed data as a mapping or a list of mappings.
-
-    Raises
-    ------
-    FileNotFoundError
-        If ``file_path`` does not exist.
-    ValueError
-        If ``file_format`` is not supported.
-    TypeError
-        If parsed JSON is not an object or an array of objects.
     """
     path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
 
-    fmt = file_format.lower()
-    if fmt == 'json':
-        with path.open('r', encoding='utf-8') as f:
-            loaded = json.load(f)
-        if isinstance(loaded, dict):
-            return cast(JSONDict, loaded)
-        if isinstance(loaded, list):
-            if all(isinstance(x, dict) for x in loaded):
-                return cast(JSONList, loaded)
-            raise TypeError(
-                'JSON array must contain only objects (dicts)',
-            )
-        raise TypeError('JSON root must be an object or an array of objects')
+    # If no explicit format is provided, let File infer from extension.
+    if file_format is None:
+        return File(path, None).read()
+    fmt = coerce_file_format(file_format)
 
-    if fmt == 'csv':
-        with path.open('r', encoding='utf-8') as f:
-            reader: csv.DictReader[str] = csv.DictReader(f)
-            rows: JSONList = []
-            for row in reader:
-                # Convert row (dict[str, str]) to JSONDict (dict[str, Any])
-                rows.append(cast(JSONDict, dict(row)))
-        return rows
-
-    if fmt == 'xml':
-        tree = ET.parse(path)
-        root = tree.getroot()
-
-        def element_to_dict(element: ET.Element) -> JSONDict:
-            """
-            Convert an XML element to a dictionary.
-
-            Parameters
-            ----------
-            element : xml.etree.ElementTree.Element
-                Root element to convert.
-
-            Returns
-            -------
-            dict[str, Any]
-                A dictionary representing the element, its attributes,
-                children, and text.
-            """
-            result: JSONDict = {}
-            text = (element.text or '').strip()
-            if text:
-                result['text'] = text
-            for child in element:
-                child_data = element_to_dict(child)
-                tag = child.tag
-                if tag in result:
-                    if not isinstance(result[tag], list):
-                        result[tag] = [result[tag]]  # type: ignore[assignment]
-                    cast(list[JSONDict], result[tag]).append(child_data)
-                else:
-                    result[tag] = child_data
-            # include attributes
-            for k, v in element.attrib.items():
-                result[k] = v
-            return result
-
-        return {root.tag: element_to_dict(root)}
-
-    raise ValueError(f"Unsupported format: {file_format}")
+    # Let file module perform existence and format validation.
+    return File(path, fmt).read()
 
 
-# -- Database extraction (placeholder) -- #
+# -- Database Extraction (Placeholder) -- #
 
 
 def extract_from_database(
@@ -149,7 +81,7 @@ def extract_from_database(
 
     Returns
     -------
-    list[dict[str, Any]]
+    JSONList
         Informational message payload.
     """
     return [
@@ -163,7 +95,7 @@ def extract_from_database(
     ]
 
 
-# -- API extraction -- #
+# -- REST API Extraction -- #
 
 
 def extract_from_api(
@@ -178,19 +110,31 @@ def extract_from_api(
     url : str
         API endpoint URL.
     **kwargs : Any
-        Extra arguments forwarded to ``requests.get`` (e.g., ``timeout``).
+        Extra arguments forwarded to `requests.get` (e.g., `timeout`). To use a
+        pre-configured `requests.Session`, provide it via `session`.
 
     Returns
     -------
-    dict[str, Any] | list[dict[str, Any]]
+    JSONData
         Parsed JSON payload, or a fallback object with raw text.
 
     Raises
     ------
-    requests.RequestException
-        If the HTTP request fails or a non-2xx status is returned.
+    TypeError
+        If a provided `session` does not expose a callable `get` method.
     """
-    response = requests.get(url, **kwargs)
+    # Apply a conservative timeout to guard against hanging requests.
+    timeout = kwargs.pop('timeout', 10.0)
+    session = kwargs.pop('session', None)
+    if session is not None:
+        get_method = getattr(session, 'get', None)
+        if not callable(get_method):
+            raise TypeError(
+                'Session must expose a callable "get" method',
+            )
+        response = get_method(url, timeout=timeout, **kwargs)
+    else:
+        response = requests.get(url, timeout=timeout, **kwargs)
     response.raise_for_status()
 
     content_type = response.headers.get('content-type', '').lower()
@@ -216,43 +160,55 @@ def extract_from_api(
     return {'content': response.text, 'content_type': content_type}
 
 
-# -- Orchestrator -- #
+# -- Orchestration -- #
 
 
 def extract(
-    source_type: Literal['file', 'database', 'api'],
-    source: str,
+    source_type: DataConnectorType | str,
+    source: StrPath,
+    file_format: FileFormat | str | None = None,
+    method: str | None = None,
     **kwargs: Any,
 ) -> JSONData:
     """
-    Extract data from a source.
+    Extract data from a source (file, database, or API).
 
     Parameters
     ----------
-    source_type : {'file', 'database', 'api'}
+    source_type : DataConnectorType | str
         Type of source to extract from.
-    source : str
+    source : StrPath
         Source location (file path, connection string, or API URL).
+    file_format : FileFormat | str | None, optional
+        File format for files. If omitted, inferred from filename extension.
+    method : str | None, optional
+        HTTP method for API sources. Defaults to GET if omitted.
     **kwargs : Any
-        Additional arguments; for files, ``format`` may be provided.
+        Additional arguments forwarded to source-specific extractors.
 
     Returns
     -------
-    dict[str, Any] | list[dict[str, Any]]
+    JSONData
         Extracted data.
 
     Raises
     ------
     ValueError
-        If ``source_type`` is not one of the supported values.
+        If `source_type` is not one of the supported values.
     """
-    if source_type == 'file':
-        file_format = cast(
-            Literal['json', 'csv', 'xml'], kwargs.get('format', 'json'),
-        )
+    stype = coerce_data_connector_type(source_type)
+
+    if stype is DataConnectorType.FILE:
+        # Prefer explicit format if provided, else infer from filename.
         return extract_from_file(source, file_format)
-    if source_type == 'database':
-        return extract_from_database(source)
-    if source_type == 'api':
-        return extract_from_api(source, **kwargs)
-    raise ValueError(f"Invalid source type: {source_type}")
+
+    if stype is DataConnectorType.DATABASE:
+        return extract_from_database(str(source))
+
+    if stype is DataConnectorType.API:
+        api_method = method if method is not None else 'GET'
+        return extract_from_api(str(source), method=api_method, **kwargs)
+
+    # `coerce_data_connector_type` covers invalid entries, but keep explicit
+    # guard.
+    raise ValueError(f'Invalid source type: {source_type}')

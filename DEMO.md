@@ -184,7 +184,7 @@ $ etlplus validate transformed.json \
   }'
 
 # Step 4: Load
-$ etlplus load transformed.json file final_output.csv --format csv
+$ etlplus load transformed.json file final_output.csv
 ```
 
 ## Demo 6: Using Python API

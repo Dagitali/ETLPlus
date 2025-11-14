@@ -1,13 +1,12 @@
 """
-ETLPlus Validate Tests
-======================
+``tests.unit.test_u_validate`` module.
 
-Unit tests for the ETLPlus validation utilities.
+Unit tests for ``etlplus.validate``.
 
 Notes
 -----
-Covers field rules, dict/list validation, and loading from strings and
-files.
+- Exercises type, required, and range checks on fields.
+- Uses temporary files to verify load/validate convenience helpers.
 """
 import json
 import tempfile
@@ -216,12 +215,7 @@ def test_validate_from_file():
 
 def test_load_data_invalid_source():
     """
-    Invalid input string raises ``ValueError`` during loading.
-
-    Raises
-    ------
-    ValueError
-        If the input string is not valid JSON.
+    Invalid input string should raise ``ValueError`` during loading.
     """
     with pytest.raises(ValueError, match='Invalid data source'):
         load_data('not a valid json string')
