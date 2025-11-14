@@ -19,6 +19,8 @@ import argparse
 import os
 import sys
 from textwrap import dedent
+from typing import Any
+from typing import Sequence
 
 from . import __version__
 from .config import load_pipeline_config
@@ -355,7 +357,13 @@ def create_parser() -> argparse.ArgumentParser:
     # Track if --format was explicitly provided by the user.
 
     class _StoreWithFlag(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
+        def __call__(
+            self,
+            parser: argparse.ArgumentParser,
+            namespace: argparse.Namespace,
+            values: str | Sequence[Any] | None,
+            option_string: str | None = None,
+        ) -> None:
             setattr(namespace, self.dest, values)
             setattr(namespace, '_format_explicit', True)
 
@@ -462,7 +470,13 @@ def create_parser() -> argparse.ArgumentParser:
     # Track if --format was explicitly provided by the user.
 
     class _LoadStoreWithFlag(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
+        def __call__(
+            self,
+            parser: argparse.ArgumentParser,
+            namespace: argparse.Namespace,
+            values: str | Sequence[Any] | None,
+            option_string: str | None = None,
+        ) -> None:
             setattr(namespace, self.dest, values)
             setattr(namespace, '_format_explicit', True)
 
