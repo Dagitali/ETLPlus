@@ -152,7 +152,6 @@ def cmd_load(args: argparse.Namespace) -> int:
         args.source,
         args.target_type,
         args.target,
-        format=args.format,
     )
     print_json(result)
 
@@ -284,7 +283,7 @@ def create_parser() -> argparse.ArgumentParser:
                 etlplus extract file data.csv -o out.json
                 etlplus validate data.json --rules '{"required": ['id]'}'
                 etlplus transform data.json --operations '{"select": ['id]'}'
-                etlplus load data.json file output.json --format json
+                etlplus load data.json file output.json
 
                 # Enforce error if --format is provided for file sources
                 etlplus extract file data.csv --format csv --strict-format
@@ -434,12 +433,7 @@ def create_parser() -> argparse.ArgumentParser:
             'API URL)'
         ),
     )
-    load_parser.add_argument(
-        '--format',
-        choices=['json', 'csv'],
-        default='json',
-        help='Format for the target file to load (default: json)',
-    )
+    # For file targets, format is inferred from filename extension.
     load_parser.set_defaults(func=cmd_load)
 
     # Define "pipeline" command (reads YAML config).
