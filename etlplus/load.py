@@ -151,7 +151,7 @@ def load_to_file(
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # If no explicit format provided, infer from filename extension.
+    # If no explicit format is provided, let File infer from extension.
     if file_format is None:
         records = File(path).write(data)
         ext = path.suffix.lstrip('.').lower()
@@ -282,10 +282,12 @@ def load(
     source: StrPath | JSONData,
     target_type: DataConnectorType | str,
     target: StrPath,
+    file_format: FileFormat | str | None = None,
+    method: HttpMethod | str | None = None,
     **kwargs: Any,
 ) -> JSONData:
     """
-    Load data to a target.
+    Load data to a target (file, database, or API).
 
     Parameters
     ----------
@@ -295,8 +297,12 @@ def load(
         Type of target to load to.
     target : StrPath
         Target location (file path, connection string, or API URL).
+    file_format : FileFormat | str | None, optional
+        Output format for files. If omitted, inferred from filename extension.
+    method : HttpMethod | str | None, optional
+        HTTP method for API targets. Defaults to POST if omitted.
     **kwargs : Any
-        Additional arguments (e.g., `format` for files, `method` for APIs).
+        Additional arguments forwarded to target-specific loaders.
 
     Returns
     -------
@@ -313,15 +319,14 @@ def load(
 
     if ttype is DataConnectorType.FILE:
         # Prefer explicit format if provided, else infer from filename.
-        file_format = kwargs.pop('format', kwargs.pop('file_format', None))
         return load_to_file(data, target, file_format)
 
     if ttype is DataConnectorType.DATABASE:
         return load_to_database(data, str(target))
 
     if ttype is DataConnectorType.API:
-        method = kwargs.pop('method', HttpMethod.POST)
-        return load_to_api(data, str(target), method, **kwargs)
+        api_method = method if method is not None else HttpMethod.POST
+        return load_to_api(data, str(target), api_method, **kwargs)
 
     # `coerce_data_connector_type` covers invalid entries, but keep explicit
     # guard.
