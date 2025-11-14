@@ -402,6 +402,11 @@ class EndpointClient:
             try:
                 return self.session_factory()
             except Exception:  # pragma: no cover - defensive
+                # Defensive: session_factory may raise any error.
+                # Example: misconfigured factory, runtime error, etc.
+                # Broad catch ensures ETL does not crash due to session
+                # creation issues. Consider narrowing exception if
+                # session_factory implementation is known.
                 return None
         return None
 
