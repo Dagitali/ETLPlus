@@ -36,14 +36,15 @@ def test_infers_json_from_extension(tmp_path: Path):
 
 def test_unknown_extension_defers_error(tmp_path: Path):
     """
-    Test unknown file extension handling.
+    Test unknown file extension handling and error deferral.
+
+    Ensures :class:`FileFormat` is None and reading raises :class:`ValueError`.
 
     Parameters
     ----------
     tmp_path : Path
         Temporary directory path.
     """
-
     p = tmp_path / 'weird.data'
     p.write_text('{}', encoding='utf-8')
     f = File(p)
