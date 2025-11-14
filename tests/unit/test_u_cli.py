@@ -19,12 +19,18 @@ from etlplus.cli import create_parser
 
 
 def test_create_parser() -> None:
+    """
+    Test that the CLI parser is created and configured correctly.
+    """
     parser = create_parser()
     assert parser is not None
     assert parser.prog == 'etlplus'
 
 
 def test_parser_extract_command() -> None:
+    """
+    Test parsing of the 'extract' command and its arguments.
+    """
     parser = create_parser()
     args = parser.parse_args(
         ['extract', 'file', '/path/to/file.json'],
@@ -36,6 +42,10 @@ def test_parser_extract_command() -> None:
 
 
 def test_parser_extract_recognizes_format_option() -> None:
+    """
+    Test that the 'extract' command recognizes the --format option and sets the
+    internal flag.
+    """
     parser = create_parser()
     args = parser.parse_args(
         ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
@@ -50,6 +60,9 @@ def test_parser_extract_recognizes_format_option() -> None:
 
 
 def test_parser_load_command() -> None:
+    """
+    Test parsing of the 'load' command and its arguments.
+    """
     parser = create_parser()
     args = parser.parse_args(
         [
@@ -66,6 +79,10 @@ def test_parser_load_command() -> None:
 
 
 def test_parser_load_recognizes_format_option() -> None:
+    """
+    Test that the 'load' command recognizes the --format option and sets the
+    internal flag.
+    """
     parser = create_parser()
     args = parser.parse_args(
         [
@@ -87,12 +104,18 @@ def test_parser_load_recognizes_format_option() -> None:
 
 
 def test_parser_no_command() -> None:
+    """
+    Test parser behavior when no command is provided.
+    """
     parser = create_parser()
     args = parser.parse_args([])
     assert args.command is None
 
 
 def test_parser_transform_command() -> None:
+    """
+    Test parsing of the 'transform' command and its arguments.
+    """
     parser = create_parser()
     args = parser.parse_args(['transform', '/path/to/file.json'])
     assert args.command == 'transform'
@@ -100,6 +123,9 @@ def test_parser_transform_command() -> None:
 
 
 def test_parser_validate_command() -> None:
+    """
+    Test parsing of the 'validate' command and its arguments.
+    """
     parser = create_parser()
     args = parser.parse_args(['validate', '/path/to/file.json'])
     assert args.command == 'validate'
@@ -107,6 +133,9 @@ def test_parser_validate_command() -> None:
 
 
 def test_parser_version() -> None:
+    """
+    Test that the CLI parser provides version information.
+    """
     parser = create_parser()
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(['--version'])

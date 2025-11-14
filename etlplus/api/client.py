@@ -401,7 +401,7 @@ class EndpointClient:
         if self.session_factory is not None:
             try:
                 return self.session_factory()
-            except Exception:  # pragma: no cover - defensive
+            except (RuntimeError, TypeError):  # pragma: no cover - defensive
                 return None
         return None
 

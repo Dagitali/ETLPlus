@@ -215,12 +215,7 @@ def test_validate_from_file():
 
 def test_load_data_invalid_source():
     """
-    Invalid input string raises ``ValueError`` during loading.
-
-    Raises
-    ------
-    ValueError
-        If the input string is not valid JSON.
+    Invalid input string should raise ``ValueError`` during loading.
     """
     with pytest.raises(ValueError, match='Invalid data source'):
         load_data('not a valid json string')

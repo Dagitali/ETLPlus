@@ -37,7 +37,9 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def capture_load_to_api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+def capture_load_to_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, Any]:
     """
     Capture API load calls by patching the high-level ``load`` wrapper.
 
@@ -46,14 +48,20 @@ def capture_load_to_api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     ``load_to_api`` directly. The stub detects API loads and records
     request details for assertions.
 
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture for patching functions.
+
     Returns
     -------
     dict[str, Any]
         Mutable dictionary populated after a run where API load happens.
     """
-    import importlib as _il
-    _load_mod = _il.import_module('etlplus.load')  # ensure module, not attr
-    _run_mod = _il.import_module('etlplus.run')
+    _load_mod = importlib.import_module(
+        'etlplus.load',
+    )  # ensure module, not attr
+    _run_mod = importlib.import_module('etlplus.run')
 
     seen: dict[str, Any] = {}
     real_load = _load_mod.load
