@@ -190,7 +190,7 @@ file_systems:
     folders:
       in: "./${data_dir}"
       out: "./${out_dir}"
-  asure:
+  azure:
     container: "my-etlplus-container"
     prefix: "data/"
     connection_string: "${AZURE_STORAGE_CONNECTION_STRING}"
