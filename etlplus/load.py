@@ -128,7 +128,7 @@ def load_data(
 def load_to_file(
     data: JSONData,
     file_path: StrPath,
-    file_format: FileFormat | str = FileFormat.JSON,
+    file_format: FileFormat | str | None = None,
 ) -> JSONDict:
     """
     Persist data to a local file.
@@ -139,8 +139,9 @@ def load_to_file(
         Data to write.
     file_path : StrPath
         Target file path.
-    file_format : FileFormat | str, optional
-        Output format. Default is 'json'.
+    file_format : FileFormat | str | None, optional
+        Output format. If omitted (None), the format is inferred from the
+        filename extension.
 
     Returns
     -------
@@ -150,8 +151,14 @@ def load_to_file(
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    fmt = coerce_file_format(file_format)
-    records = File(path, fmt).write(data)
+    # If no explicit format provided, infer from filename extension.
+    if file_format is None:
+        records = File(path).write(data)
+        ext = path.suffix.lstrip('.').lower()
+        fmt = coerce_file_format(ext) if ext else FileFormat.JSON
+    else:
+        fmt = coerce_file_format(file_format)
+        records = File(path, fmt).write(data)
     if fmt is FileFormat.CSV and records == 0:
         message = 'No data to write'
     else:
@@ -305,10 +312,11 @@ def load(
     ttype = coerce_data_connector_type(target_type)
 
     if ttype is DataConnectorType.FILE:
-        file_format = kwargs.pop(
-            'format', kwargs.pop('file_format', FileFormat.JSON),
-        )
-        return load_to_file(data, target, file_format)
+        # Ignore any provided format for files and infer from extension.
+        # (Pop to avoid leaking unexpected kwargs.)
+        kwargs.pop('format', None)
+        kwargs.pop('file_format', None)
+        return load_to_file(data, target, None)
 
     if ttype is DataConnectorType.DATABASE:
         return load_to_database(data, str(target))
