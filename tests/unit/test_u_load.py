@@ -238,7 +238,7 @@ def test_load_wrapper_file():
         output_path = Path(tmpdir) / 'output.json'
         test_data = {'test': 'data'}
 
-        result = load(test_data, 'file', str(output_path), format='json')
+        result = load(test_data, 'file', str(output_path), file_format='json')
         assert result['status'] == 'success'
         assert output_path.exists()
 
