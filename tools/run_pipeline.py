@@ -104,7 +104,7 @@ def _extract_from_source(
     if stype == 'file':
         file_path = resolve(source_cfg.get('path'))
         fmt = ov.get('format', source_cfg.get('format', 'json'))
-        return extract(stype, file_path, format=fmt)
+        return extract(stype, file_path, file_format=fmt)
 
     if stype == 'api':
         url = resolve(source_cfg.get('url'))
@@ -180,7 +180,9 @@ def _extract_from_source(
                 req_kwargs['headers'] = headers
             if 'timeout' in ov:
                 req_kwargs['timeout'] = ov['timeout']
-            return extract(stype, url, **req_kwargs)
+                return extract(
+                    stype, url, file_format=None, method='GET', **req_kwargs,
+                )
 
         results: JSONList = []
         pages = 0
@@ -204,7 +206,9 @@ def _extract_from_source(
                 if 'timeout' in ov:
                     req_kwargs['timeout'] = ov['timeout']
 
-                page_data = extract(stype, url, **req_kwargs)
+                page_data = extract(
+                    stype, url, file_format=None, method='GET', **req_kwargs,
+                )
                 batch = _coalesce_records(page_data)
                 results.extend(batch)
                 pages += 1
@@ -243,7 +247,9 @@ def _extract_from_source(
                 if 'timeout' in ov:
                     req_kwargs['timeout'] = ov['timeout']
 
-                page_data = extract(stype, url, **req_kwargs)
+                page_data = extract(
+                    stype, url, file_format=None, method='GET', **req_kwargs,
+                )
                 batch = _coalesce_records(page_data)
                 results.extend(batch)
                 pages += 1
@@ -286,12 +292,12 @@ def _extract_from_source(
             req_kwargs['headers'] = headers
         if 'timeout' in ov:
             req_kwargs['timeout'] = ov['timeout']
-        return extract(stype, url, **req_kwargs)
+    return extract(stype, url, file_format=None, method='GET', **req_kwargs)
 
     if stype == 'database':
         conn = resolve(source_cfg.get('connection_string', ''))
         # extract() currently returns a placeholder for databases
-        return extract(stype, conn)
+        return extract(stype, conn, method='GET')
 
     raise ValueError(f'Unsupported source type: {stype}')
 
@@ -318,7 +324,7 @@ def _load_to_target(
     if ttype == 'file':
         path = resolve(ov.get('path', target_cfg.get('path')))
         fmt = ov.get('format', target_cfg.get('format', 'json'))
-        return load(data, ttype, path, format=fmt)
+        return load(data, ttype, path, file_format=fmt)
 
     if ttype == 'api':
         url = resolve(ov.get('url', target_cfg.get('url')))
