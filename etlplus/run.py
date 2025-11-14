@@ -351,7 +351,7 @@ def run(
             )
             if not path:
                 raise ValueError('File target missing "path"')
-            result = load(data, 'file', path, format=fmt)
+            result = load(data, 'file', path, file_format=fmt)
         case 'api':
             env_t = compose_api_target_env(cfg, target_obj, overrides)
             url_t = env_t.get('url')

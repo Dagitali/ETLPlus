@@ -234,9 +234,8 @@ Environment / format inference note:
 When extracting from file sources, ETLPlus infers the format from the filename extension (e.g.
 `.csv`, `.json`, `.xml`, `.yaml`).  Passing an explicit CLI `--format` for files is ignored unless
 strict mode is enabled.  To enforce an error if contributors still specify a redundant `--format`
-flag in scripts or CI runners, set the environment variable `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error`
-or use the CLI flag `--strict-format`.  This keeps pipelines cleaner by relying on naming
-conventions.
+flag in scripts or CI runners, set the environment variable `ETLPLUS_FORMAT_BEHAVIOR=error` or use
+the CLI flag `--strict-format`.  This keeps pipelines cleaner by relying on naming conventions.
 
 Note: When using a service + endpoint in a source, URL composition (including
 `base_path`) is handled automatically. See “Runner behavior with base_path

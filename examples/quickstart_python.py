@@ -16,7 +16,7 @@ OUTPUT_PATH = 'examples/sample_output.json'
 def main() -> None:
     data = extract('file', DATA_PATH, format='json')
 
-    # Transform: filter and select
+    # Transform: filter and select.
     ops = cast(
         PipelineConfig, {
             'filter': {'field': 'age', 'op': 'gt', 'value': 25},
@@ -25,7 +25,7 @@ def main() -> None:
     )
     transformed = transform(data, ops)
 
-    # Validate the transformed data
+    # Validate the transformed data.
     rules = cast(
         Mapping[str, FieldRules], {
             'name': {'type': 'string', 'required': True},
@@ -38,7 +38,7 @@ def main() -> None:
         return
 
     # Load to JSON file
-    load(transformed, 'file', OUTPUT_PATH, format='json')
+    load(transformed, 'file', OUTPUT_PATH, file_format='json')
     print(f"Wrote {OUTPUT_PATH}")
 
 
