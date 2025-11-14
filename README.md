@@ -129,7 +129,7 @@ etlplus --version
 
 Note: For file sources, the format is inferred from the filename extension; the `--format` option is
 ignored.  To treat passing `--format` as an error for file sources, either set
-`ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error` or pass the CLI flag `--strict-format`.
+`ETLPLUS_FORMAT_BEHAVIOR=error` or pass the CLI flag `--strict-format`.
 
 Extract from JSON file:
 ```bash
@@ -261,8 +261,9 @@ etlplus load temp/sample_transformed.json file temp/sample_output.csv
 
 ETLPlus honors a small number of environment toggles to refine CLI behavior:
 
-- `ETLPLUS_EXTRACT_FORMAT_BEHAVIOR`: controls what happens when `--format` is provided for
-  file sources (where the format is inferred from the filename extension).
+- `ETLPLUS_FORMAT_BEHAVIOR`: controls what happens when `--format` is provided for
+  file sources or targets (extract/load) where the format is inferred from the
+  filename extension.
   - `error|fail|strict`: treat as error (non-zero exit)
   - `warn` (default): print a warning to stderr
   - `ignore|silent`: no message
@@ -273,16 +274,21 @@ Examples (zsh):
 ```zsh
 # Warn (default)
 etlplus extract file data.csv --format csv
+etlplus load data.json file out.csv --format csv
 
 # Enforce error via environment
-ETLPLUS_EXTRACT_FORMAT_BEHAVIOR=error \
+ETLPLUS_FORMAT_BEHAVIOR=error \
   etlplus extract file data.csv --format csv
+ETLPLUS_FORMAT_BEHAVIOR=error \
+  etlplus load data.json file out.csv --format csv
 
 # Equivalent strict behavior via flag (overrides environment)
 etlplus extract file data.csv --format csv --strict-format
+etlplus load data.json file out.csv --format csv --strict-format
 
 # Recommended: rely on extension, no --format needed for files
 etlplus extract file data.csv
+etlplus load data.json file out.csv
 ```
 
 ## Transformation Operations
