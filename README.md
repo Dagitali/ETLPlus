@@ -254,7 +254,7 @@ etlplus validate temp/sample_transformed.json \
   --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
 
 # 4. Load to CSV
-etlplus load temp/sample_transformed.json file temp/sample_output.csv --format csv
+etlplus load temp/sample_transformed.json file temp/sample_output.csv
 ```
 
 ### Environment Variables
