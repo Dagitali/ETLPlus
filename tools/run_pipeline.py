@@ -292,7 +292,9 @@ def _extract_from_source(
             req_kwargs['headers'] = headers
         if 'timeout' in ov:
             req_kwargs['timeout'] = ov['timeout']
-    return extract(stype, url, file_format=None, method='GET', **req_kwargs)
+        return extract(
+            stype, url, file_format=None, method='GET', **req_kwargs,
+        )
 
     if stype == 'database':
         conn = resolve(source_cfg.get('connection_string', ''))
