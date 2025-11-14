@@ -25,14 +25,117 @@ from etlplus.cli import main
 
 
 class TestCliEndToEnd:
-    def test_main_no_command(self, monkeypatch, capsys) -> None:
+
+    def test_extract_format_error_strict_flag(
+        self, monkeypatch,
+        capsys,
+    ) -> None:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False,
+        ) as f:
+            json.dump({'x': 1}, f)
+            temp_path = f.name
+        try:
+            monkeypatch.setattr(
+                sys,
+                'argv',
+                [
+                    'etlplus', 'extract', 'file', temp_path,
+                    '--format', 'json',  '--strict-format',
+                ],
+            )
+            result = main()
+            assert result == 1
+            captured = capsys.readouterr()
+            assert 'Error:' in captured.err
+        finally:
+            Path(temp_path).unlink()
+
+    def test_extract_format_warns_default(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False,
+        ) as f:
+            json.dump({'x': 1}, f)
+            temp_path = f.name
+        try:
+            monkeypatch.setattr(
+                sys,
+                'argv',
+                [
+                    'etlplus', 'extract', 'file', temp_path,
+                    '--format', 'json',
+                ],
+            )
+            result = main()
+            assert result == 0
+            captured = capsys.readouterr()
+            assert 'Warning:' in captured.err
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_format_error_strict_flag(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / 'output.csv'
+            json_data = '{"name": "John"}'
+            monkeypatch.setattr(
+                sys,
+                'argv',
+                [
+                    'etlplus', 'load', json_data, 'file', str(output_path),
+                    '--format', 'csv', '--strict-format',
+                ],
+            )
+            result = main()
+            assert result == 1
+            captured = capsys.readouterr()
+            assert 'Error:' in captured.err
+            assert not output_path.exists()
+
+    def test_load_format_warns_default(
+        self, monkeypatch,
+        capsys,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / 'output.csv'
+            json_data = '{"name": "John"}'
+            monkeypatch.setattr(
+                sys,
+                'argv',
+                [
+                    'etlplus', 'load', json_data, 'file', str(output_path),
+                    '--format', 'csv',
+                ],
+            )
+            result = main()
+            assert result == 0
+            captured = capsys.readouterr()
+            assert 'Warning:' in captured.err
+            assert output_path.exists()
+
+    def test_main_no_command(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         monkeypatch.setattr(sys, 'argv', ['etlplus'])
         result = main()
         assert result == 0
         captured = capsys.readouterr()
         assert 'usage:' in captured.out.lower()
 
-    def test_main_extract_file(self, monkeypatch, capsys) -> None:
+    def test_main_extract_file(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -53,7 +156,11 @@ class TestCliEndToEnd:
         finally:
             Path(temp_path).unlink()
 
-    def test_main_validate_data(self, monkeypatch, capsys) -> None:
+    def test_main_validate_data(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         json_data = '{"name": "John", "age": 30}'
         monkeypatch.setattr(sys, 'argv', ['etlplus', 'validate', json_data])
         result = main()
@@ -61,7 +168,11 @@ class TestCliEndToEnd:
         output = json.loads(capsys.readouterr().out)
         assert output['valid'] is True
 
-    def test_main_transform_data(self, monkeypatch, capsys) -> None:
+    def test_main_transform_data(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         json_data = '[{"name": "John", "age": 30}]'
         operations = '{"select": ["name"]}'
         monkeypatch.setattr(
@@ -74,7 +185,10 @@ class TestCliEndToEnd:
         output = json.loads(capsys.readouterr().out)
         assert len(output) == 1 and 'age' not in output[0]
 
-    def test_main_load_file(self, monkeypatch) -> None:
+    def test_main_load_file(
+        self,
+        monkeypatch,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / 'output.json'
             json_data = '{"name": "John", "age": 30}'
@@ -87,7 +201,10 @@ class TestCliEndToEnd:
             assert result == 0
             assert output_path.exists()
 
-    def test_main_extract_with_output(self, monkeypatch) -> None:
+    def test_main_extract_with_output(
+        self,
+        monkeypatch,
+    ) -> None:
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -112,7 +229,11 @@ class TestCliEndToEnd:
             finally:
                 Path(temp_path).unlink()
 
-    def test_main_error_handling(self, monkeypatch, capsys) -> None:
+    def test_main_error_handling(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         monkeypatch.setattr(
             sys,
             'argv',
@@ -123,7 +244,11 @@ class TestCliEndToEnd:
         captured = capsys.readouterr()
         assert 'Error:' in captured.err
 
-    def test_main_strict_format_error(self, monkeypatch, capsys) -> None:
+    def test_main_strict_format_error(
+        self,
+        monkeypatch,
+        capsys,
+    ) -> None:
         # Passing --format for a file with --strict-format should error
         monkeypatch.setattr(
             sys,
