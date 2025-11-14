@@ -106,7 +106,7 @@ def test_parser_validate_command() -> None:
     assert args.source == '/path/to/file.json'
 
 
-def test_parser_version(capsys: pytest.CaptureFixture[str]) -> None:
+def test_parser_version() -> None:
     parser = create_parser()
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(['--version'])
