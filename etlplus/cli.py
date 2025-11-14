@@ -394,7 +394,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     extract_parser.add_argument(
         '--format',
-        choices=['json', 'csv', 'xml'],
+        choices=['json', 'csv', 'xml', 'yaml'],
         default='json',
         action=_StoreWithFlag,
         help=(
@@ -491,7 +491,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     load_parser.add_argument(
         '--format',
-        choices=['json', 'csv', 'xml'],
+        choices=['json', 'csv', 'xml', 'yaml'],
         default='json',
         action=_LoadStoreWithFlag,
         help=(
