@@ -175,7 +175,7 @@ def cmd_load(args: argparse.Namespace) -> int:
         # Non-file targets: pass through format if supplied (future use).
         result = load(
             args.source, args.target_type, args.target,
-            format=getattr(args, 'format', None),
+            file_format=getattr(args, 'format', None),
         )
     print_json(result)
 
