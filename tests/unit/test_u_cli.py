@@ -35,6 +35,20 @@ def test_parser_extract_command() -> None:
     assert args.format == 'json'
 
 
+def test_parser_extract_recognizes_format_option() -> None:
+    parser = create_parser()
+    args = parser.parse_args(
+        ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
+    )
+    assert args.command == 'extract'
+    assert args.source_type == 'file'
+    assert args.source == '/path/to/file.csv'
+    assert args.format == 'csv'
+
+    # Internal flag set when user provided --format explicitly.
+    assert getattr(args, '_format_explicit', False) is True
+
+
 def test_parser_load_command() -> None:
     parser = create_parser()
     args = parser.parse_args(
@@ -49,6 +63,27 @@ def test_parser_load_command() -> None:
     assert args.source == '/path/to/file.json'
     assert args.target_type == 'file'
     assert args.target == '/path/to/output.json'
+
+
+def test_parser_load_recognizes_format_option() -> None:
+    parser = create_parser()
+    args = parser.parse_args(
+        [
+            'load',
+            '/path/to/file.json',
+            'file',
+            '/path/to/output.csv',
+            '--format', 'csv',
+        ],
+    )
+    assert args.command == 'load'
+    assert args.source == '/path/to/file.json'
+    assert args.target_type == 'file'
+    assert args.target == '/path/to/output.csv'
+    assert args.format == 'csv'
+
+    # Internal flag set when user provided --format explicitly
+    assert getattr(args, '_format_explicit', False) is True
 
 
 def test_parser_no_command() -> None:
