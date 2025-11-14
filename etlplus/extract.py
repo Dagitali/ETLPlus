@@ -51,7 +51,7 @@ def extract_from_file(
     """
     path = Path(file_path)
 
-    # If no explicit format provided, let File infer from extension.
+    # If no explicit format is provided, let File infer from extension.
     if file_format is None:
         return File(path, None).read()
     fmt = coerce_file_format(file_format)
@@ -166,10 +166,12 @@ def extract_from_api(
 def extract(
     source_type: DataConnectorType | str,
     source: StrPath,
+    file_format: FileFormat | str | None = None,
+    method: str | None = None,
     **kwargs: Any,
 ) -> JSONData:
     """
-    Extract data from a source.
+    Extract data from a source (file, database, or API).
 
     Parameters
     ----------
@@ -177,8 +179,12 @@ def extract(
         Type of source to extract from.
     source : StrPath
         Source location (file path, connection string, or API URL).
+    file_format : FileFormat | str | None, optional
+        File format for files. If omitted, inferred from filename extension.
+    method : str | None, optional
+        HTTP method for API sources. Defaults to GET if omitted.
     **kwargs : Any
-        Additional arguments (e.g., `format` for files, `method` for APIs).
+        Additional arguments forwarded to source-specific extractors.
 
     Returns
     -------
@@ -193,16 +199,15 @@ def extract(
     stype = coerce_data_connector_type(source_type)
 
     if stype is DataConnectorType.FILE:
-        # Prefer inferring the format from the filename when not explicitly
-        # provided. Passing ``None`` allows the File helper to infer.
-        file_format = kwargs.pop('format', kwargs.pop('file_format', None))
+        # Prefer explicit format if provided, else infer from filename.
         return extract_from_file(source, file_format)
 
     if stype is DataConnectorType.DATABASE:
         return extract_from_database(str(source))
 
     if stype is DataConnectorType.API:
-        return extract_from_api(str(source), **kwargs)
+        api_method = method if method is not None else 'GET'
+        return extract_from_api(str(source), method=api_method, **kwargs)
 
     # `coerce_data_connector_type` covers invalid entries, but keep explicit
     # guard.
