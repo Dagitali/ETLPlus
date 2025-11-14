@@ -312,11 +312,9 @@ def load(
     ttype = coerce_data_connector_type(target_type)
 
     if ttype is DataConnectorType.FILE:
-        # Ignore any provided format for files and infer from extension.
-        # (Pop to avoid leaking unexpected kwargs.)
-        kwargs.pop('format', None)
-        kwargs.pop('file_format', None)
-        return load_to_file(data, target, None)
+        # Prefer explicit format if provided, else infer from filename.
+        file_format = kwargs.pop('format', kwargs.pop('file_format', None))
+        return load_to_file(data, target, file_format)
 
     if ttype is DataConnectorType.DATABASE:
         return load_to_database(data, str(target))
