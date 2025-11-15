@@ -84,7 +84,10 @@ def cmd_extract(
     if args.source_type == 'file':
         result = extract(args.source_type, args.source)
     else:
-        result = extract(args.source_type, args.source, format=format_value)
+        result = extract(
+            args.source_type, args.source,
+            file_format=format_value,
+        )
 
     if getattr(args, 'output', None):
         File(args.output, FileFormat.JSON).write_json(result)
