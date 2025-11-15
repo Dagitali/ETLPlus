@@ -294,11 +294,11 @@ def load(
     source : StrPath | JSONData
         Data source to load.
     target_type : DataConnectorType | str
-        Type of target to load to.
+        Type of data target.
     target : StrPath
         Target location (file path, connection string, or API URL).
     file_format : FileFormat | str | None, optional
-        Output format for files. If omitted, inferred from filename extension.
+        File format, inferred from filename extension if omitted.
     method : HttpMethod | str | None, optional
         HTTP method for API targets. Defaults to POST if omitted.
     **kwargs : Any
@@ -312,22 +312,24 @@ def load(
     Raises
     ------
     ValueError
-        If `target_type` or options are invalid.
+        If `target_type` is not one of the supported values.
     """
     data = load_data(source)
-    ttype = coerce_data_connector_type(target_type)
 
-    if ttype is DataConnectorType.FILE:
-        # Prefer explicit format if provided, else infer from filename.
-        return load_to_file(data, target, file_format)
-
-    if ttype is DataConnectorType.DATABASE:
-        return load_to_database(data, str(target))
-
-    if ttype is DataConnectorType.API:
-        api_method = method if method is not None else HttpMethod.POST
-        return load_to_api(data, str(target), api_method, **kwargs)
-
-    # `coerce_data_connector_type` covers invalid entries, but keep explicit
-    # guard.
-    raise ValueError(f'Invalid target type: {target_type}')
+    match coerce_data_connector_type(target_type):
+        case DataConnectorType.FILE:
+            # Prefer explicit format if provided, else infer from filename.
+            return load_to_file(data, target, file_format)
+        case DataConnectorType.DATABASE:
+            return load_to_database(data, str(target))
+        case DataConnectorType.API:
+            api_method = method if method is not None else HttpMethod.POST
+            return load_to_api(
+                data, str(target),
+                method=api_method,
+                **kwargs,
+            )
+        case _:
+            # `coerce_data_connector_type` covers invalid entries, but keep
+            # explicit guard.
+            raise ValueError(f'Invalid target type: {target_type}')
