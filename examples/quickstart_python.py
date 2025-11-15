@@ -14,7 +14,7 @@ OUTPUT_PATH = 'examples/sample_output.json'
 
 
 def main() -> None:
-    data = extract('file', DATA_PATH, format='json')
+    data = extract('file', DATA_PATH, file_format='json')
 
     # Transform: filter and select.
     ops = cast(
