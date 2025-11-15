@@ -42,7 +42,9 @@ from .validate import validate
 # -- Command Handlers -- #
 
 
-def cmd_extract(args: argparse.Namespace) -> int:
+def cmd_extract(
+    args: argparse.Namespace,
+) -> int:
     """
     Extract data from a source.
 
@@ -59,30 +61,32 @@ def cmd_extract(args: argparse.Namespace) -> int:
     Raises
     ------
     ValueError
-        If strict format behavior is enabled and `--format` is provided
-        for a file source.
+        If strict format behavior is enabled and `--format` is provided for a
+        file source.
     """
-    # For file sources, infer format from extension rather than --format.
+    format_explicit = getattr(args, '_format_explicit', False)
+    format_value = getattr(args, 'format', None)
+    strict_format = getattr(args, 'strict_format', False)
+    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
+    behavior = 'error' if strict_format else env_behavior
+
+    # For file sources, infer format from extension, and ignore --format.
+    if args.source_type == 'file' and format_explicit:
+        message = (
+            '--format is ignored for file sources; '
+            'inferred from filename extension.'
+        )
+        if behavior in {'error', 'fail', 'strict'}:
+            raise ValueError(message)
+        if behavior not in {'ignore', 'silent'}:
+            print(f'Warning: {message}', file=sys.stderr)
+
     if args.source_type == 'file':
-        # If user explicitly provided --format, warn that it's ignored.
-        if getattr(args, '_format_explicit', False):
-            env_behavior = os.getenv(
-                'ETLPLUS_FORMAT_BEHAVIOR', 'warn',
-            ).lower()
-            behavior = 'error' if getattr(args, 'strict_format', False) \
-                else env_behavior
-            message = (
-                '--format is ignored for file sources; inferred from '
-                'filename extension.'
-            )
-            if behavior in {'error', 'fail', 'strict'}:
-                raise ValueError(message)
-            if behavior not in {'ignore', 'silent'}:
-                print(f'Warning: {message}', file=sys.stderr)
         result = extract(args.source_type, args.source)
     else:
-        result = extract(args.source_type, args.source, format=args.format)
-    if args.output:
+        result = extract(args.source_type, args.source, format=format_value)
+
+    if getattr(args, 'output', None):
         File(args.output, FileFormat.JSON).write_json(result)
         print(f'Data extracted and saved to {args.output}')
     else:
@@ -91,7 +95,9 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
+def cmd_validate(
+    args: argparse.Namespace,
+) -> int:
     """
     Validate data from a source.
 
@@ -104,10 +110,37 @@ def cmd_validate(args: argparse.Namespace) -> int:
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    ValueError
+        If strict format behavior is enabled and `--format` is provided for a
+        file source.
     """
+    format_explicit = getattr(args, '_format_explicit', False)
+    # format_value = getattr(args, 'format', None)
+    strict_format = getattr(args, 'strict_format', False)
+    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
+    behavior = 'error' if strict_format else env_behavior
+
     source_path = args.source
 
-    # If source is a CSV file, load as list of dicts.
+    # For file sources, infer format from extension, and ignore --format.
+    if (
+        isinstance(source_path, str)
+        and source_path.lower().endswith('.csv')
+        and format_explicit
+    ):
+        message = (
+            '--format is ignored for file sources; '
+            'inferred from filename extension.'
+        )
+        if behavior in {'error', 'fail', 'strict'}:
+            raise ValueError(message)
+        if behavior not in {'ignore', 'silent'}:
+            print(f'Warning: {message}', file=sys.stderr)
+
+    # CSV support
     if (
         isinstance(source_path, str)
         and source_path.lower().endswith('.csv')
@@ -120,12 +153,25 @@ def cmd_validate(args: argparse.Namespace) -> int:
     else:
         result = validate(source_path, args.rules)
 
-    print_json(result)
+    if getattr(args, 'output', None):
+        validated_data = result.get('data')
+        if validated_data is not None:
+            File(args.output, FileFormat.JSON).write_json(validated_data)
+            print(f'Validation result saved to {args.output}')
+        else:
+            print(
+                f'Validation failed, no data to save for {args.output}',
+                file=sys.stderr,
+            )
+    else:
+        print_json(result)
 
     return 0
 
 
-def cmd_transform(args: argparse.Namespace) -> int:
+def cmd_transform(
+    args: argparse.Namespace,
+) -> int:
     """
     Transform data from a source.
 
@@ -138,10 +184,49 @@ def cmd_transform(args: argparse.Namespace) -> int:
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    ValueError
+        If strict format behavior is enabled and `--format` is provided for a
+        file source.
     """
-    # ``args.operations`` already parsed by ``_json_type`` (defaults to {}).
-    data = transform(args.source, args.operations)
-    if args.output:
+    format_explicit = getattr(args, '_format_explicit', False)
+    # format_value = getattr(args, 'format', None)
+    strict_format = getattr(args, 'strict_format', False)
+    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
+    behavior = 'error' if strict_format else env_behavior
+
+    source_path = args.source
+    # For file sources, infer format from extension, and ignore --format.
+    if (
+        isinstance(source_path, str)
+        and source_path.lower().endswith('.csv')
+        and format_explicit
+    ):
+        message = (
+            '--format is ignored for file sources; '
+            'inferred from filename extension.'
+        )
+        if behavior in {'error', 'fail', 'strict'}:
+            raise ValueError(message)
+        if behavior not in {'ignore', 'silent'}:
+            print(f'Warning: {message}', file=sys.stderr)
+
+    # CSV support
+    if (
+        isinstance(source_path, str)
+        and source_path.lower().endswith('.csv')
+        and os.path.isfile(source_path)
+    ):
+        with open(source_path, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            data_to_transform = [dict(row) for row in reader]
+        data = transform(data_to_transform, args.operations)
+    else:
+        data = transform(source_path, args.operations)
+
+    if getattr(args, 'output', None):
         File(args.output, FileFormat.JSON).write_json(data)
         print(f'Data transformed and saved to {args.output}')
     else:
@@ -150,7 +235,9 @@ def cmd_transform(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_load(args: argparse.Namespace) -> int:
+def cmd_load(
+    args: argparse.Namespace,
+) -> int:
     """
     Load data into a target.
 
@@ -167,33 +254,39 @@ def cmd_load(args: argparse.Namespace) -> int:
     Raises
     ------
     ValueError
-        If strict format behavior is enabled and `--format` is provided
-        for a file target.
+        If strict format behavior is enabled and `--format` is provided for a
+        file target.
     """
-    # For file targets, infer format from extension rather than --format.
+    format_explicit = getattr(args, '_format_explicit', False)
+    format_value = getattr(args, 'format', None)
+    strict_format = getattr(args, 'strict_format', False)
+    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
+    behavior = 'error' if strict_format else env_behavior
+
+    # For file targets, infer format from extension, and ignore --format.
+    if args.target_type == 'file' and format_explicit:
+        message = (
+            '--format is ignored for file targets; '
+            'inferred from filename extension.'
+        )
+        if behavior in {'error', 'fail', 'strict'}:
+            raise ValueError(message)
+        if behavior not in {'ignore', 'silent'}:
+            print(f'Warning: {message}', file=sys.stderr)
+
     if args.target_type == 'file':
-        if getattr(args, '_format_explicit', False):
-            env_behavior = os.getenv(
-                'ETLPLUS_FORMAT_BEHAVIOR', 'warn',
-            ).lower()
-            behavior = 'error' if getattr(args, 'strict_format', False) \
-                else env_behavior
-            message = (
-                '--format is ignored for file targets; inferred from '
-                'filename extension.'
-            )
-            if behavior in {'error', 'fail', 'strict'}:
-                raise ValueError(message)
-            if behavior not in {'ignore', 'silent'}:
-                print(f'Warning: {message}', file=sys.stderr)
         result = load(args.source, args.target_type, args.target)
     else:
-        # Non-file targets: pass through format if supplied (future use).
         result = load(
             args.source, args.target_type, args.target,
-            file_format=getattr(args, 'format', None),
+            file_format=format_value,
         )
-    print_json(result)
+
+    if getattr(args, 'output', None):
+        File(args.output, FileFormat.JSON).write_json(result)
+        print(f'Data loaded and saved to {args.output}')
+    else:
+        print_json(result)
 
     return 0
 
