@@ -139,7 +139,7 @@ def test_extract_wrapper_file():
         temp_path = f.name
 
     try:
-        result = extract('file', temp_path, format='json')
+        result = extract('file', temp_path, file_format='json')
         assert result == test_data
     finally:
         Path(temp_path).unlink()
