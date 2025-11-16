@@ -30,7 +30,7 @@ from etlplus.extract import extract_from_file
 @pytest.fixture
 def csv_writer():
     """
-    Pytest fixture that writes a small CSV file for testing.
+    Write a small CSV file for testing.
     """
     def _write(path):
         with open(path, 'w', newline='', encoding='utf-8') as f:
@@ -40,6 +40,7 @@ def csv_writer():
                 {'name': 'John', 'age': '30'},
                 {'name': 'Jane', 'age': '25'},
             ])
+
     return _write
 
 
@@ -124,7 +125,7 @@ class TestExtract:
         file_format: str,
         write: Callable | None,
         expected: Any,
-        csv_writer,
+        csv_writer: Callable,
     ):
         """
         Test extracting data from a file with a supported format.
