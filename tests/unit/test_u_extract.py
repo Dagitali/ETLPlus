@@ -28,7 +28,7 @@ from etlplus.extract import extract_from_file
 
 class TestExtract:
     """
-    Unit test suite for the :func:`etlplus.extract.extract` function.
+    Unit test suite for :func:`etlplus.extract.extract`.
     """
 
     @pytest.mark.parametrize(
