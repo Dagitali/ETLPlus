@@ -6,6 +6,8 @@ Configures pytest-based unit tests and provides shared fixtures.
 from __future__ import annotations
 
 import csv
+import json
+import tempfile
 import types
 from os import PathLike
 from pathlib import Path
@@ -495,7 +497,7 @@ def sample_headers() -> dict[str, str]:
 
 
 @pytest.fixture
-def csv_writer():
+def csv_writer() -> Callable[[str], None]:
     """
     Write a small CSV file for testing.
 
@@ -512,4 +514,25 @@ def csv_writer():
                 {'name': 'John', 'age': '30'},
                 {'name': 'Jane', 'age': '25'},
             ])
+
+    return _write
+
+
+@pytest.fixture
+def temp_json_file() -> Callable[[dict[str, Any]], str]:
+    """
+    Create a temporary JSON file and return its path.
+
+    Returns
+    -------
+    Callable[[dict[str, Any]], str]
+        Function that writes a dict to a temp JSON file and returns the path.
+    """
+    def _write(data: dict):
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False,
+        ) as f:
+            json.dump(data, f)
+            return f.name
+
     return _write
