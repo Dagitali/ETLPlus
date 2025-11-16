@@ -221,7 +221,7 @@ def run(
             )
             if not path:
                 raise ValueError('File source missing "path"')
-            data = extract('file', path, format=fmt)
+            data = extract('file', path, file_format=fmt)
         case 'database':
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)

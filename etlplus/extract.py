@@ -15,6 +15,7 @@ from .enums import coerce_data_connector_type
 from .enums import coerce_file_format
 from .enums import DataConnectorType
 from .enums import FileFormat
+from .enums import HttpMethod
 from .file import File
 from .types import JSONData
 from .types import JSONDict
@@ -167,7 +168,6 @@ def extract(
     source_type: DataConnectorType | str,
     source: StrPath,
     file_format: FileFormat | str | None = None,
-    method: str | None = None,
     **kwargs: Any,
 ) -> JSONData:
     """
@@ -176,13 +176,11 @@ def extract(
     Parameters
     ----------
     source_type : DataConnectorType | str
-        Type of source to extract from.
+        Type of data source.
     source : StrPath
         Source location (file path, connection string, or API URL).
     file_format : FileFormat | str | None, optional
-        File format for files. If omitted, inferred from filename extension.
-    method : str | None, optional
-        HTTP method for API sources. Defaults to GET if omitted.
+        File format, inferred from filename extension if omitted.
     **kwargs : Any
         Additional arguments forwarded to source-specific extractors.
 
@@ -196,19 +194,19 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
-    stype = coerce_data_connector_type(source_type)
-
-    if stype is DataConnectorType.FILE:
-        # Prefer explicit format if provided, else infer from filename.
-        return extract_from_file(source, file_format)
-
-    if stype is DataConnectorType.DATABASE:
-        return extract_from_database(str(source))
-
-    if stype is DataConnectorType.API:
-        api_method = method if method is not None else 'GET'
-        return extract_from_api(str(source), method=api_method, **kwargs)
-
-    # `coerce_data_connector_type` covers invalid entries, but keep explicit
-    # guard.
-    raise ValueError(f'Invalid source type: {source_type}')
+    match coerce_data_connector_type(source_type):
+        case DataConnectorType.FILE:
+            # Prefer explicit format if provided, else infer from filename.
+            return extract_from_file(source, file_format)
+        case DataConnectorType.DATABASE:
+            return extract_from_database(str(source))
+        case DataConnectorType.API:
+            return extract_from_api(
+                str(source),
+                method=HttpMethod.GET,
+                **kwargs,
+            )
+        case _:
+            # `coerce_data_connector_type` covers invalid entries, but keep
+            # explicit guard.
+            raise ValueError(f'Invalid source type: {source_type}')

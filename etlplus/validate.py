@@ -36,7 +36,6 @@ from typing import TypedDict
 from .load import load_data
 from .types import JSONData
 from .types import Record
-from .types import Records
 from .types import StrAnyMap
 from .types import StrPath
 
@@ -424,7 +423,7 @@ def validate_field(
 
 
 def validate(
-    source: StrPath | Record | Records,
+    source: StrPath | JSONData,
     rules: RulesMap | None = None,
 ) -> Validation:
     """
@@ -432,7 +431,7 @@ def validate(
 
     Parameters
     ----------
-    source : StrPath | Record | Records
+    source : StrPath | JSONData
         Data source to validate.
     rules : RulesMap | None, optional
         Field rules keyed by field name. If ``None``, data is considered

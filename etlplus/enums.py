@@ -2,29 +2,6 @@
 etlplus.enums module.
 
 Shared enumeration types used across ETLPlus modules.
-
-Public API
-----------
-- AggregateName : CoercibleStrEnum
-    Enum of supported aggregation functions.
-- CoercibleStrEnum : enum.StrEnum
-    Base class for string enums with coercion helpers.
-- DataConnectorType : CoercibleStrEnum
-    Enum of supported data connector types.
-- FileFormat : CoercibleStrEnum
-    Enum of supported file formats.
-- HttpMethod : CoercibleStrEnum
-    Enum of supported HTTP methods.
-- OperatorName : CoercibleStrEnum
-    Enum of supported comparison operators.
-- PipelineStep : CoercibleStrEnum
-    Enum of pipeline step names.
-- coerce_data_connector_type : callable
-    Normalize textual data connector values to :class:`DataConnectorType`.
-- coerce_file_format : callable
-    Normalize textual file format values to :class:`FileFormat`.
-- coerce_http_method : callable
-    Normalize textual HTTP method values to :class:`HttpMethod`.
 """
 from __future__ import annotations
 
@@ -249,10 +226,13 @@ class FileFormat(CoercibleStrEnum):
             A mapping of alias names to their corresponding enum member names.
         """
         return {
+            # Common shorthand
+            'yml': 'yaml',
+
+            # MIME types
             'text/csv': 'csv',
             'application/json': 'json',
             'application/xml': 'xml',
-            'yml': 'yaml',
         }
 
 
@@ -261,9 +241,15 @@ class HttpMethod(CoercibleStrEnum):
 
     # -- Constants -- #
 
+    CONNECT = 'connect'
+    DELETE = 'delete'
+    GET = 'get'
+    HEAD = 'head'
+    OPTIONS = 'options'
     PATCH = 'patch'
     POST = 'post'
     PUT = 'put'
+    TRACE = 'trace'
 
     # -- Getters -- #
 
