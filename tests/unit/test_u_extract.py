@@ -47,9 +47,10 @@ class TestExtract:
         Supported format should not raise an error.
         """
         path = tmp_path / 'data.json'
-        json.dump({'test': 'data'}, open(path, 'w', encoding='utf-8'))
+        mock_data = {'test': 'data'}
+        json.dump(mock_data, open(path, 'w', encoding='utf-8'))
         result = extract('file', str(path), file_format='json')
-        assert result == {'test': 'data'}
+        assert result == mock_data
 
 
 class TestExtractErrors:
