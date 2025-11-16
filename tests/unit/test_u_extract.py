@@ -30,6 +30,33 @@ class TestExtract:
     Unit test suite for :func:`etlplus.extract.extract`.
     """
 
+    def test_wrapper_file(
+        self,
+        tmp_path: Path,
+    ):
+        """
+        Test extracting data from a file with a supported format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+
+        Notes
+        -----
+        Supported format should not raise an error.
+        """
+        path = tmp_path / 'data.json'
+        json.dump({'test': 'data'}, open(path, 'w', encoding='utf-8'))
+        result = extract('file', str(path), file_format='json')
+        assert result == {'test': 'data'}
+
+
+class TestExtractErrors:
+    """
+    Unit test suite for ``etlplus.extract`` function errors.
+    """
+
     @pytest.mark.parametrize(
         'exc_type,call,args,err_msg',
         [
@@ -67,17 +94,23 @@ class TestExtract:
         err_msg : str | None
             Expected error message substring, if applicable.
         """
-        with pytest.raises(exc_type) as exc:
+        with pytest.raises(exc_type) as e:
             call(*args)
-        match exc.value:
+        match e.value:
             case FileNotFoundError():
                 pass
-            case ValueError() if err_msg and err_msg in str(exc.value):
+            case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
                 assert \
                     False, \
                     f'Expected {exc_type.__name__} with message: {err_msg}'
+
+
+class TestExtractFromFile:
+    """
+    Unit test suite for :func:`etlplus.extract.extract_from_file`.
+    """
 
     @pytest.mark.parametrize(
         'file_format,write,expected',
@@ -199,24 +232,3 @@ class TestExtract:
         with pytest.raises(ValueError) as e:
             extract_from_file(str(path), file_format)
         assert err_msg in str(e.value)
-
-    def test_wrapper_file(
-        self,
-        tmp_path: Path,
-    ):
-        """
-        Test extracting data from a file with a supported format.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-
-        Notes
-        -----
-        Supported format should not raise an error.
-        """
-        path = tmp_path / 'data.json'
-        json.dump({'test': 'data'}, open(path, 'w', encoding='utf-8'))
-        result = extract('file', str(path), file_format='json')
-        assert result == {'test': 'data'}
