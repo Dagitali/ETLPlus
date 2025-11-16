@@ -12,7 +12,6 @@ Notes
 - Applies Python 3.13 match/case for error assertions.
 - Class-based suite for clarity and DRYness.
 """
-import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -22,26 +21,6 @@ import pytest
 
 from etlplus.extract import extract
 from etlplus.extract import extract_from_file
-
-
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture
-def csv_writer():
-    """
-    Write a small CSV file for testing.
-    """
-    def _write(path):
-        with open(path, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['name', 'age'])
-            writer.writeheader()
-            writer.writerows([
-                {'name': 'John', 'age': '30'},
-                {'name': 'Jane', 'age': '25'},
-            ])
-
-    return _write
 
 
 # SECTION: TESTS ============================================================ #
@@ -71,11 +50,24 @@ class TestExtract:
     )
     def test_error_cases(
         self,
-        exc_type,
-        call,
-        args,
-        err_msg,
+        exc_type: type[Exception],
+        call: Callable,
+        args: list[Any],
+        err_msg: str | None,
     ):
+        """
+        Test parametrized error case tests for extract/extract_from_file.
+        Parameters
+        ----------
+        exc_type : type[Exception]
+            Expected exception type.
+        call : Callable
+            Function to call.
+        args : list[Any]
+            Arguments to pass to the function.
+        err_msg : str | None
+            Expected error message substring, if applicable.
+        """
         with pytest.raises(exc_type) as exc:
             call(*args)
         match exc.value:
@@ -86,7 +78,7 @@ class TestExtract:
             case _:
                 assert \
                     False, \
-                    f"Expected {exc_type.__name__} with message: {err_msg}"
+                    f'Expected {exc_type.__name__} with message: {err_msg}'
 
     @pytest.mark.parametrize(
         'file_format,write,expected',
@@ -101,7 +93,7 @@ class TestExtract:
             ),
             (
                 'csv',
-                None,
+                pytest.fixture(lambda csv_writer: csv_writer),
                 [
                     {'name': 'John', 'age': '30'},
                     {'name': 'Jane', 'age': '25'},
