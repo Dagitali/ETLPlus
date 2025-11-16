@@ -125,7 +125,7 @@ class TestExtract:
         file_format: str,
         write: Callable | None,
         expected: Any,
-        csv_writer: Callable,
+        request: pytest.FixtureRequest,
     ):
         """
         Test extracting data from a file with a supported format.
@@ -141,11 +141,14 @@ class TestExtract:
             ``csv_writer`` fixture is used instead.
         expected : Any
             Expected extracted data.
-        csv_writer : Callable
-            Pytest fixture that writes a small CSV file for testing.
+        request : pytest.FixtureRequest
+            Pytest fixture request object used to access other fixtures.
         """
         path = tmp_path / f"data.{file_format}"
-        write_fn = csv_writer if file_format == 'csv' else write
+        if file_format == 'csv':
+            write_fn = request.getfixturevalue('csv_writer')
+        else:
+            write_fn = write
         assert write_fn is not None
         write_fn(str(path))
         result = extract_from_file(str(path), file_format)
