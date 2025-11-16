@@ -8,8 +8,7 @@ Notes
 - Validates extraction logic for JSON, CSV, XML, and error paths using
     temporary files and orchestrator dispatch.
 - Uses parameterized cases for supported formats and error scenarios.
-- Centralizes temp file creation via fixture.
-- Applies Python 3.13 match/case for error assertions.
+- Centralizes temporary file creation via fixture.
 - Class-based suite for clarity and DRYness.
 """
 import json
