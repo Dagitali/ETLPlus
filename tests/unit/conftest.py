@@ -5,6 +5,7 @@ Configures pytest-based unit tests and provides shared fixtures.
 """
 from __future__ import annotations
 
+import csv
 import types
 from os import PathLike
 from pathlib import Path
@@ -28,6 +29,7 @@ from etlplus.config import RateLimitConfig
 from etlplus.config.types import PaginationConfigMap
 from etlplus.config.types import RateLimitConfigMap
 from etlplus.enums import DataConnectorType
+from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
 
 
@@ -233,10 +235,17 @@ def extract_stub_factory() -> Callable[..., Any]:
         def _fake_extract(
             source_type: DataConnectorType | str,
             source: str | Path | PathLike[str],
+            file_format: FileFormat | str | None = None,
             **kwargs: Any,
         ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
             calls['urls'].append(str(source))
-            calls['kwargs'].append({'source_type': source_type, **kwargs})
+            calls['kwargs'].append(
+                {
+                    'source_type': source_type,
+                    'file_format': file_format,
+                    **kwargs,
+                },
+            )
             return {'ok': True} if return_value is None else return_value
 
         saved = getattr(cmod, '_extract')
@@ -480,3 +489,27 @@ def sample_endpoints() -> dict[str, dict[str, Any]]:
 def sample_headers() -> dict[str, str]:
     """Common headers mapping for config tests."""
     return {'Accept': 'application/json'}
+
+
+# SECTION: FIXTURES (FILES) ================================================= #
+
+
+@pytest.fixture
+def csv_writer():
+    """
+    Write a small CSV file for testing.
+
+    Returns
+    -------
+    Callable[[str], None]
+        Function that writes a sample CSV file to the given path.
+    """
+    def _write(path: str) -> None:
+        with open(path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=['name', 'age'])
+            writer.writeheader()
+            writer.writerows([
+                {'name': 'John', 'age': '30'},
+                {'name': 'Jane', 'age': '25'},
+            ])
+    return _write
