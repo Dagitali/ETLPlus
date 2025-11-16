@@ -100,6 +100,10 @@ def test_extract_from_xml_file():
 
 def test_extract_file_not_found():
     """
+    Attempt to extract data from a non-existent file.
+
+    Notes
+    -----
     Extracting a non-existent file should raise FileNotFoundError.
     """
     with pytest.raises(FileNotFoundError):
@@ -108,6 +112,10 @@ def test_extract_file_not_found():
 
 def test_extract_unsupported_format():
     """
+    Attempt to extract data from a file with an unsupported format.
+
+    Notes
+    -----
     Unsupported format should raise ValueError.
     """
     with tempfile.NamedTemporaryFile(
@@ -147,6 +155,10 @@ def test_extract_wrapper_file():
 
 def test_extract_invalid_source_type():
     """
+    Attempt to extract data with an invalid source type.
+
+    Notes
+    -----
     Invalid source type should raise ValueError.
     """
     with pytest.raises(ValueError, match='Invalid DataConnectorType'):
