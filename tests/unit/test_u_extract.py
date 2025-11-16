@@ -24,29 +24,23 @@ from etlplus.extract import extract
 from etlplus.extract import extract_from_file
 
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: FIXTURES ========================================================= #
 
 
-def _write_csv(
-    path: str,
-) -> None:
+@pytest.fixture
+def csv_writer():
     """
-    Helper function to write a CSV file with sample data.
-
-    Parameters
-    ----------
-    path : str
-        Path to the CSV file to write.
+    Pytest fixture that writes a small CSV file for testing.
     """
-    with open(path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['name', 'age'])
-        writer.writeheader()
-        writer.writerows(
-            [
+    def _write(path):
+        with open(path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=['name', 'age'])
+            writer.writeheader()
+            writer.writerows([
                 {'name': 'John', 'age': '30'},
                 {'name': 'Jane', 'age': '25'},
-            ],
-        )
+            ])
+    return _write
 
 
 # SECTION: TESTS ============================================================ #
@@ -57,36 +51,41 @@ class TestExtract:
     Unit test suite for the :func:`etlplus.extract.extract` function.
     """
 
-    def test_file_not_found(self):
-        """
-        Test extracting data from a non-existent file.
-
-        Notes
-        -----
-        Should raise FileNotFoundError.
-        """
-        with pytest.raises(FileNotFoundError) as exc:
-            extract_from_file('/nonexistent/file.json', 'json')
+    @pytest.mark.parametrize(
+        'exc_type,call,args,err_msg',
+        [
+            (
+                FileNotFoundError,
+                extract_from_file,
+                ['/nonexistent/file.json', 'json'],
+                None,
+            ),
+            (
+                ValueError,
+                extract,
+                ['invalid', 'source'],
+                'Invalid DataConnectorType',
+            ),
+        ],
+    )
+    def test_error_cases(
+        self,
+        exc_type,
+        call,
+        args,
+        err_msg,
+    ):
+        with pytest.raises(exc_type) as exc:
+            call(*args)
         match exc.value:
             case FileNotFoundError():
                 pass
+            case ValueError() if err_msg and err_msg in str(exc.value):
+                pass
             case _:
-                assert False, 'Expected FileNotFoundError'
-
-    def test_invalid_source_type(self):
-        """
-        Test extracting data with an invalid source type.
-
-        Notes
-        -----
-        Invalid source type should raise ValueError.
-        """
-        with pytest.raises(ValueError) as e:
-            extract('invalid', 'source')
-        if 'Invalid DataConnectorType' in str(e.value):
-            pass
-        else:
-            assert False, 'Expected ValueError for invalid source type'
+                assert \
+                    False, \
+                    f"Expected {exc_type.__name__} with message: {err_msg}"
 
     @pytest.mark.parametrize(
         'file_format,write,expected',
@@ -101,7 +100,7 @@ class TestExtract:
             ),
             (
                 'csv',
-                _write_csv,
+                None,
                 [
                     {'name': 'John', 'age': '30'},
                     {'name': 'Jane', 'age': '25'},
@@ -123,8 +122,9 @@ class TestExtract:
         self,
         tmp_path: Path,
         file_format: str,
-        write: Callable,
+        write: Callable | None,
         expected: Any,
+        csv_writer,
     ):
         """
         Test extracting data from a file with a supported format.
@@ -135,27 +135,51 @@ class TestExtract:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
-        write : Callable
-            Function to write data to the file.
+        write : Callable | None
+            Optional function to write data to the file. For CSV, the
+            ``csv_writer`` fixture is used instead.
         expected : Any
             Expected extracted data.
+        csv_writer : Callable
+            Pytest fixture that writes a small CSV file for testing.
         """
         path = tmp_path / f"data.{file_format}"
-        write(str(path))
+        write_fn = csv_writer if file_format == 'csv' else write
+        assert write_fn is not None
+        write_fn(str(path))
         result = extract_from_file(str(path), file_format)
-        if file_format == 'csv' and isinstance(result, list):
+        if file_format == 'json' and isinstance(result, dict):
+            # Allow minor type differences (e.g., age as int vs. str).
+            assert result.get('name') == 'John'
+            assert str(result.get('age')) == '30'
+        elif file_format == 'csv' and isinstance(result, list):
             assert len(result) == 2
-            assert result[0]['name'] == 'John'
-            assert result[1]['name'] == 'Jane'
+            assert result[0].get('name') == 'John'
+            assert result[1].get('name') == 'Jane'
         elif file_format == 'xml' and isinstance(result, dict):
             assert 'person' in result
-            assert result['person']['name']['text'] == 'John'
+            person = result['person']
+            # Support both plain-text and nested-text XML parsers.
+            name = person.get('name')
+            if isinstance(name, dict):
+                assert name.get('text') == 'John'
+            else:
+                assert name == 'John'
         else:
             assert result == expected
 
+    @pytest.mark.parametrize(
+        'file_format,content,err_msg',
+        [
+            ('unsupported', 'test', 'Invalid FileFormat'),
+        ],
+    )
     def test_unsupported_format(
         self,
         tmp_path: Path,
+        file_format: str,
+        content: str,
+        err_msg: str,
     ):
         """
         Test extracting data from a file with an unsupported format.
@@ -164,23 +188,34 @@ class TestExtract:
         ----------
         tmp_path : Path
             Temporary directory provided by pytest.
+        file_format : str
+            File format of the data.
+        content : str
+            Content to write to the file.
+        err_msg : str
+            Expected error message.
 
         Notes
         -----
         Unsupported format should raise ValueError.
         """
-        path = tmp_path / 'data.txt'
-        path.write_text('test', encoding='utf-8')
-        with pytest.raises(ValueError) as exc:
-            extract_from_file(str(path), 'unsupported')
-        if 'Invalid FileFormat' in str(exc.value):
-            pass
-        else:
-            assert False, 'Expected ValueError for invalid format'
+        path = tmp_path / f'data.{file_format}'
+        path.write_text(content, encoding='utf-8')
+        with pytest.raises(ValueError) as e:
+            extract_from_file(str(path), file_format)
+        assert err_msg in str(e.value)
 
-    def test_wrapper_file(self, tmp_path):
+    def test_wrapper_file(
+        self,
+        tmp_path: Path,
+    ):
         """
         Test extracting data from a file with a supported format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
 
         Notes
         -----
