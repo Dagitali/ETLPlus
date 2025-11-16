@@ -13,6 +13,9 @@ Notes
 """
 import csv
 import json
+from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -34,19 +37,46 @@ class TestLoad:
             load({'test': 'data'}, 'invalid', 'target')
 
     def test_wrapper_database(self):
-        test_data = {'test': 'data'}
-        result = load(test_data, 'database', 'postgresql://localhost/testdb')
+        """
+        Test loading data to a database with a supported format.
+
+        Notes
+        -----
+        Supported format should not raise an error.
+        """
+        mock_data = {'test': 'data'}
+        result = cast(
+            dict[str, Any], load(
+                mock_data, 'database', 'postgresql://localhost/testdb',
+            ),
+        )
         assert result['status'] == 'not_implemented'
 
     def test_wrapper_file(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
-        output_path = tmp_path / 'output.json'
-        test_data = {'test': 'data'}
-        result = load(test_data, 'file', str(output_path), file_format='json')
+        """
+        Test loading data to a file with a supported format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+
+        Notes
+        -----
+        Supported format should not raise an error.
+        """
+        path = tmp_path / 'output.json'
+        mock_data = {'test': 'data'}
+        result = cast(
+            dict[str, Any], load(
+                mock_data, 'file', str(path), file_format='json',
+            ),
+        )
         assert result['status'] == 'success'
-        assert output_path.exists()
+        assert path.exists()
 
 
 class TestLoadData:
@@ -73,10 +103,10 @@ class TestLoadData:
         self,
         temp_json_file,
     ):
-        test_data = {'test': 'data'}
-        temp_path = temp_json_file(test_data)
+        mock_data = {'test': 'data'}
+        temp_path = temp_json_file(mock_data)
         result = load_data(temp_path)
-        assert result == test_data
+        assert result == mock_data
 
     def test_data_from_json_string(self):
         json_str = '{"test": "data"}'
@@ -108,17 +138,17 @@ class TestLoadToFile:
 
     def test_to_csv_file(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
-        output_path = tmp_path / 'output.csv'
-        test_data = [
+        path = tmp_path / 'output.csv'
+        mock_data = [
             {'name': 'John', 'age': 30},
             {'name': 'Jane', 'age': 25},
         ]
-        result = load_to_file(test_data, str(output_path), 'csv')
+        result: dict[str, Any] = load_to_file(mock_data, str(path), 'csv')
         assert result['status'] == 'success'
-        assert output_path.exists()
-        with open(output_path, encoding='utf-8', newline='') as f:
+        assert path.exists()
+        with open(path, encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             loaded_data = list(reader)
         assert len(loaded_data) == 2
@@ -126,21 +156,23 @@ class TestLoadToFile:
 
     def test_to_csv_file_empty_list(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
         output_path = tmp_path / 'output.csv'
-        test_data = []
-        result = load_to_file(test_data, str(output_path), 'csv')
+        mock_data: list[dict[str, Any]] = []
+        result = load_to_file(mock_data, str(output_path), 'csv')
         assert result['status'] == 'success'
         assert result['records'] == 0
 
     def test_to_csv_file_single_dict(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
         output_path = tmp_path / 'output.csv'
-        test_data = {'name': 'John', 'age': 30}
-        result = load_to_file(test_data, str(output_path), 'csv')
+        mock_data = {'name': 'John', 'age': 30}
+        result: dict[str, Any] = load_to_file(
+            mock_data, str(output_path), 'csv',
+        )
         assert result['status'] == 'success'
         assert output_path.exists()
 
@@ -149,8 +181,10 @@ class TestLoadToFile:
         tmp_path,
     ):
         output_path = tmp_path / 'subdir' / 'output.json'
-        test_data = {'test': 'data'}
-        result = load_to_file(test_data, str(output_path), 'json')
+        mock_data = {'test': 'data'}
+        result: dict[str, Any] = load_to_file(
+            mock_data, str(output_path), 'json',
+        )
         assert result['status'] == 'success'
         assert output_path.exists()
 
@@ -159,19 +193,21 @@ class TestLoadToFile:
         tmp_path,
     ):
         output_path = tmp_path / 'output.txt'
-        test_data = {'test': 'data'}
+        mock_data = {'test': 'data'}
         with pytest.raises(ValueError, match='Invalid FileFormat'):
-            load_to_file(test_data, str(output_path), 'unsupported')
+            load_to_file(mock_data, str(output_path), 'unsupported')
 
     def test_to_json_file(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
         output_path = tmp_path / 'output.json'
-        test_data = {'name': 'John', 'age': 30}
-        result = load_to_file(test_data, str(output_path), 'json')
+        mock_data = {'name': 'John', 'age': 30}
+        result: dict[str, Any] = load_to_file(
+            mock_data, str(output_path), 'json',
+        )
         assert result['status'] == 'success'
         assert output_path.exists()
         with open(output_path, encoding='utf-8') as f:
             loaded_data = json.load(f)
-        assert loaded_data == test_data
+        assert loaded_data == mock_data
