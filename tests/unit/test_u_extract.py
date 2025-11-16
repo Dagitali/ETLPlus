@@ -5,13 +5,18 @@ Unit tests for ``etlplus.extract``.
 
 Notes
 -----
-- Uses temporary files to validate round-trip parsing.
-- Ensures error handling for unsupported formats.
+- Validates extraction logic for JSON, CSV, XML, and error paths using
+    temporary files and orchestrator dispatch.
+- Uses parameterized cases for supported formats and error scenarios.
+- Centralizes temp file creation via fixture.
+- Applies Python 3.13 match/case for error assertions.
+- Class-based suite for clarity and DRYness.
 """
 import csv
 import json
-import tempfile
 from pathlib import Path
+from typing import Any
+from typing import Callable
 
 import pytest
 
@@ -19,147 +24,169 @@ from etlplus.extract import extract
 from etlplus.extract import extract_from_file
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: HELPERS ========================================================== #
 
 
-def test_extract_from_json_file():
+def _write_csv(
+    path: str,
+) -> None:
     """
-    Extract from a JSON file.
+    Helper function to write a CSV file with sample data.
 
-    Notes
-    -----
-    Writes a temporary JSON file and verifies round‑trip parsing.
+    Parameters
+    ----------
+    path : str
+        Path to the CSV file to write.
     """
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False,
-    ) as f:
-        test_data = {'name': 'John', 'age': 30}
-        json.dump(test_data, f)
-        temp_path = f.name
-
-    try:
-        result = extract_from_file(temp_path, 'json')
-        assert result == test_data
-    finally:
-        Path(temp_path).unlink()
-
-
-def test_extract_from_csv_file():
-    """
-    Extract from a CSV file.
-
-    Notes
-    -----
-    Writes two rows and verifies field parsing and row count.
-    """
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.csv', delete=False, newline='',
-    ) as f:
+    with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['name', 'age'])
         writer.writeheader()
-        writer.writerow({'name': 'John', 'age': '30'})
-        writer.writerow({'name': 'Jane', 'age': '25'})
-        temp_path = f.name
-
-    try:
-        result = extract_from_file(temp_path, 'csv')
-        assert len(result) == 2
-        assert result[0]['name'] == 'John'
-        assert result[1]['name'] == 'Jane'
-    finally:
-        Path(temp_path).unlink()
+        writer.writerows(
+            [
+                {'name': 'John', 'age': '30'},
+                {'name': 'Jane', 'age': '25'},
+            ],
+        )
 
 
-def test_extract_from_xml_file():
+# SECTION: TESTS ============================================================ #
+
+
+class TestExtract:
     """
-    Extract from an XML file.
-
-    Notes
-    -----
-    Writes a small XML document and checks nested text extraction.
+    Unit test suite for the :func:`etlplus.extract.extract` function.
     """
-    xml_content = """<?xml version="1.0"?>
-    <person>
-        <name>John</name>
-        <age>30</age>
-    </person>
-    """
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.xml', delete=False,
-    ) as f:
-        f.write(xml_content)
-        temp_path = f.name
 
-    try:
-        result = extract_from_file(temp_path, 'xml')
-        assert 'person' in result
-        assert result['person']['name']['text'] == 'John'
-    finally:
-        Path(temp_path).unlink()
+    def test_file_not_found(self):
+        """
+        Test extracting data from a non-existent file.
 
+        Notes
+        -----
+        Should raise FileNotFoundError.
+        """
+        with pytest.raises(FileNotFoundError) as exc:
+            extract_from_file('/nonexistent/file.json', 'json')
+        match exc.value:
+            case FileNotFoundError():
+                pass
+            case _:
+                assert False, 'Expected FileNotFoundError'
 
-def test_extract_file_not_found():
-    """
-    Attempt to extract data from a non-existent file.
+    def test_invalid_source_type(self):
+        """
+        Test extracting data with an invalid source type.
 
-    Notes
-    -----
-    Extracting a non-existent file should raise FileNotFoundError.
-    """
-    with pytest.raises(FileNotFoundError):
-        extract_from_file('/nonexistent/file.json', 'json')
+        Notes
+        -----
+        Invalid source type should raise ValueError.
+        """
+        with pytest.raises(ValueError) as e:
+            extract('invalid', 'source')
+        if 'Invalid DataConnectorType' in str(e.value):
+            pass
+        else:
+            assert False, 'Expected ValueError for invalid source type'
 
+    @pytest.mark.parametrize(
+        'file_format,write,expected',
+        [
+            (
+                'json',
+                lambda p: json.dump(
+                    {'name': 'John', 'age': 30},
+                    open(p, 'w', encoding='utf-8'),
+                ),
+                {'name': 'John', 'age': 30},
+            ),
+            (
+                'csv',
+                _write_csv,
+                [
+                    {'name': 'John', 'age': '30'},
+                    {'name': 'Jane', 'age': '25'},
+                ],
+            ),
+            (
+                'xml',
+                lambda p: open(p, 'w', encoding='utf-8').write(
+                    (
+                        '<?xml version="1.0"?>\n'
+                        '<person><name>John</name><age>30</age></person>'
+                    ),
+                ),
+                {'person': {'name': {'text': 'John'}, 'age': {'text': '30'}}},
+            ),
+        ],
+    )
+    def test_supported_formats(
+        self,
+        tmp_path: Path,
+        file_format: str,
+        write: Callable,
+        expected: Any,
+    ):
+        """
+        Test extracting data from a file with a supported format.
 
-def test_extract_unsupported_format():
-    """
-    Attempt to extract data from a file with an unsupported format.
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        file_format : str
+            File format of the data.
+        write : Callable
+            Function to write data to the file.
+        expected : Any
+            Expected extracted data.
+        """
+        path = tmp_path / f"data.{file_format}"
+        write(str(path))
+        result = extract_from_file(str(path), file_format)
+        if file_format == 'csv' and isinstance(result, list):
+            assert len(result) == 2
+            assert result[0]['name'] == 'John'
+            assert result[1]['name'] == 'Jane'
+        elif file_format == 'xml' and isinstance(result, dict):
+            assert 'person' in result
+            assert result['person']['name']['text'] == 'John'
+        else:
+            assert result == expected
 
-    Notes
-    -----
-    Unsupported format should raise ValueError.
-    """
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.txt', delete=False,
-    ) as f:
-        f.write('test')
-        temp_path = f.name
+    def test_unsupported_format(
+        self,
+        tmp_path: Path,
+    ):
+        """
+        Test extracting data from a file with an unsupported format.
 
-    try:
-        with pytest.raises(ValueError, match='Invalid FileFormat'):
-            extract_from_file(temp_path, 'unsupported')
-    finally:
-        Path(temp_path).unlink()
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
 
+        Notes
+        -----
+        Unsupported format should raise ValueError.
+        """
+        path = tmp_path / 'data.txt'
+        path.write_text('test', encoding='utf-8')
+        with pytest.raises(ValueError) as exc:
+            extract_from_file(str(path), 'unsupported')
+        if 'Invalid FileFormat' in str(exc.value):
+            pass
+        else:
+            assert False, 'Expected ValueError for invalid format'
 
-def test_extract_wrapper_file():
-    """
-    Orchestrator path for files.
+    def test_wrapper_file(self, tmp_path):
+        """
+        Test extracting data from a file with a supported format.
 
-    Notes
-    -----
-    Ensures the top‑level extract() dispatches to file extraction.
-    """
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False,
-    ) as f:
-        test_data = {'test': 'data'}
-        json.dump(test_data, f)
-        temp_path = f.name
-
-    try:
-        result = extract('file', temp_path, file_format='json')
-        assert result == test_data
-    finally:
-        Path(temp_path).unlink()
-
-
-def test_extract_invalid_source_type():
-    """
-    Attempt to extract data with an invalid source type.
-
-    Notes
-    -----
-    Invalid source type should raise ValueError.
-    """
-    with pytest.raises(ValueError, match='Invalid DataConnectorType'):
-        extract('invalid', 'source')
+        Notes
+        -----
+        Supported format should not raise an error.
+        """
+        path = tmp_path / 'data.json'
+        json.dump({'test': 'data'}, open(path, 'w', encoding='utf-8'))
+        result = extract('file', str(path), file_format='json')
+        assert result == {'test': 'data'}
