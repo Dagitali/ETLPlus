@@ -28,6 +28,7 @@ from etlplus.load import load_to_file
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestLoad:
     """
     Unit test suite for :func:`etlplus.load.load`.
@@ -85,6 +86,7 @@ class TestLoad:
         assert path.exists()
 
 
+@pytest.mark.unit
 class TestLoadData:
     """
     Unit test suite for :func:`etlplus.load.load_data`.
@@ -177,6 +179,7 @@ class TestLoadData:
             load_data('not a valid json string')
 
 
+@pytest.mark.unit
 class TestLoadToFile:
     """
     Unit test suite for :func:`etlplus.load.load_to_file`.
