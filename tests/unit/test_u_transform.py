@@ -24,9 +24,65 @@ from etlplus.transform import transform
 
 
 @pytest.mark.unit
-class TestTransform:
+class TestApplyAggregate:
     """
-    Unit test suite for :func:`etlplus.transform`.
+    Unit test suite for :func:`etlplus.transform.apply_aggregate`.
+    """
+
+    @pytest.mark.parametrize(
+        'func, expected',
+        [
+            ('avg', 15),
+            ('count', 3),
+            ('min', 10),
+            ('max', 20),
+            ('sum', 45),
+        ],
+    )
+    def test_apply_aggregate(
+        self,
+        func: str,
+        expected,
+    ):
+        """
+        Aggregate the ``value`` field with built-in functions.
+        """
+        data = [
+            {'name': 'John', 'value': 10},
+            {'name': 'Jane', 'value': 20},
+            {'name': 'Bob', 'value': 15},
+        ]
+        result = apply_aggregate(data, {'field': 'value', 'func': func})
+        key = f"{func}_value" if func != 'count' else 'count_value'
+        assert result[key] == expected
+
+    def test_apply_aggregate_callable_with_alias(self):
+        """
+        Aggregate with a callable and custom alias.
+        """
+        def score(nums: list[float], present: int) -> float:
+            return sum(nums) + present
+
+        data = [
+            {'value': 10},
+            {'value': 20},
+            {'value': 15},
+        ]
+        result = apply_aggregate(
+            data,
+            {
+                'field': 'value',
+                'func': score,
+                'alias': 'score',
+            },
+        )
+        assert result == {'score': 48}
+
+
+@pytest.mark.unit
+class TestApplyFilter:
+    """
+    Unit test suite for :func:`etlplus.transform.apply_filter`.
     """
 
     @pytest.mark.parametrize(
@@ -145,6 +201,13 @@ class TestTransform:
         )
         assert len(result) == 2
 
+
+@pytest.mark.unit
+class TestApplyMap:
+    """
+    Unit test suite for :func:`etlplus.transform.apply_map`.
+    """
+
     def test_apply_map(self):
         """
         Map/rename fields in each record.
@@ -157,6 +220,13 @@ class TestTransform:
         assert all('new_name' in item for item in result)
         assert all('old_name' not in item for item in result)
         assert result[0]['new_name'] == 'John'
+
+
+@pytest.mark.unit
+class TestApplySelect:
+    """
+    Unit test suite for :func:`etlplus.transform.apply_select`.
+    """
 
     def test_apply_select(self):
         """
@@ -172,6 +242,13 @@ class TestTransform:
         ]
         result = apply_select(data, ['name', 'age'])
         assert all(set(item.keys()) == {'name', 'age'} for item in result)
+
+
+@pytest.mark.unit
+class TestApplySort:
+    """
+    Unit test suite for :func:`etlplus.transform.apply_sort`.
+    """
 
     @pytest.mark.parametrize(
         'reverse, expected',
@@ -200,54 +277,12 @@ class TestTransform:
         result = apply_sort(data, 'age', reverse=reverse)
         assert [item['age'] for item in result] == expected
 
-    @pytest.mark.parametrize(
-        'func, expected',
-        [
-            ('avg', 15),
-            ('count', 3),
-            ('min', 10),
-            ('max', 20),
-            ('sum', 45),
-        ],
-    )
-    def test_apply_aggregate(
-        self,
-        func: str,
-        expected,
-    ):
-        """
-        Aggregate the ``value`` field with built-in functions.
-        """
-        data = [
-            {'name': 'John', 'value': 10},
-            {'name': 'Jane', 'value': 20},
-            {'name': 'Bob', 'value': 15},
-        ]
-        result = apply_aggregate(data, {'field': 'value', 'func': func})
-        key = f"{func}_value" if func != 'count' else 'count_value'
-        assert result[key] == expected
 
-    def test_apply_aggregate_callable_with_alias(self):
-        """
-        Aggregate with a callable and custom alias.
-        """
-        def score(nums: list[float], present: int) -> float:
-            return sum(nums) + present
-
-        data = [
-            {'value': 10},
-            {'value': 20},
-            {'value': 15},
-        ]
-        result = apply_aggregate(
-            data,
-            {
-                'field': 'value',
-                'func': score,
-                'alias': 'score',
-            },
-        )
-        assert result == {'score': 48}
+@pytest.mark.unit
+class TestTransform:
+    """
+    Unit test suite for :func:`etlplus.transform.transform`.
+    """
 
     def test_transform_with_filter(self):
         """
