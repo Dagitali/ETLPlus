@@ -53,7 +53,7 @@ class TestLoadData:
     Unit test suite for :func:`etlplus.validate.load_data`.
     """
 
-    def test_load_data_invalid_source(self):
+    def test_nvalid_source(self):
         """
         Invalid input string should raise ValueError during loading.
         """
@@ -162,7 +162,7 @@ class TestValidate:
             ),
         ],
     )
-    def test_validate_dict_and_list(
+    def test_dict_and_list(
         self,
         data,
         rules,
@@ -174,7 +174,7 @@ class TestValidate:
         result = validate(data, rules)
         assert result['valid'] is expected_valid
 
-    def test_validate_no_rules(self):
+    def test_no_rules(self):
         """
         Validate without rules returns the data unchanged.
         """
@@ -183,7 +183,7 @@ class TestValidate:
         assert result['valid']
         assert result['data'] == data
 
-    def test_validate_from_file(
+    def test_from_file(
         self,
         temp_json_file,
     ):
@@ -199,7 +199,7 @@ class TestValidate:
         finally:
             Path(temp_path).unlink()
 
-    def test_validate_from_json_string(self):
+    def test_from_json_string(self):
         """
         Validate from a JSON string.
         """
