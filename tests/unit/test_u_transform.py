@@ -284,6 +284,56 @@ class TestTransform:
     Unit test suite for :func:`etlplus.transform.transform`.
     """
 
+    def test_from_json_string(self):
+        """
+        Transform from a JSON string.
+
+        Notes
+        -----
+        Selects only ``name`` from the provided JSON array string.
+        """
+        json_str = '[{"name": "John", "age": 30}]'
+        result = transform(json_str, {'select': ['name']})
+        assert len(result) == 1
+        assert 'age' not in result[0]
+
+    def test_from_file(self, temp_json_file):
+        """
+        Transform from a JSON file.
+
+        Notes
+        -----
+        Writes a temporary JSON file and selects only ``name``.
+        """
+        temp_path = temp_json_file([{'name': 'John', 'age': 30}])
+        result = transform(temp_path, {'select': ['name']})
+        assert len(result) == 1
+        assert 'age' not in result[0]
+
+    def test_no_operations(self):
+        """Transform without operations returns input unchanged."""
+        data = [{'name': 'John'}]
+        result = transform(data)
+        assert result == data
+
+    def test_with_aggregate(self):
+        """
+        Transform using an aggregate operation.
+
+        Notes
+        -----
+        Sums the ``value`` field across records.
+        """
+        data = [
+            {'name': 'John', 'value': 10},
+            {'name': 'Jane', 'value': 20},
+        ]
+        result = transform(
+            data,
+            {'aggregate': {'field': 'value', 'func': 'sum'}},
+        )
+        assert result['sum_value'] == 30
+
     def test_with_filter(self):
         """
         Transform using a filter operation.
@@ -308,6 +358,42 @@ class TestTransform:
         )
         assert len(result) == 1
         assert result[0]['name'] == 'John'
+
+    def test_with_map(self):
+        """
+        Transform using a map operation.
+
+        Notes
+        -----
+        Renames ``old_field`` to ``new_field``.
+        """
+        data = [{'old_field': 'value'}]
+        result = transform(data, {'map': {'old_field': 'new_field'}})
+        assert 'new_field' in result[0]
+
+    def test_with_multiple_aggregates(self):
+        """
+        Transform with multiple aggregations.
+
+        Notes
+        -----
+        Produces both sum and count results.
+        """
+        data = [
+            {'value': 1},
+            {'value': 2},
+            {'value': 3},
+        ]
+        result = transform(
+            data,
+            {
+                'aggregate': [
+                    {'field': 'value', 'func': 'sum'},
+                    {'field': 'value', 'func': 'count', 'alias': 'count'},
+                ],
+            },
+        )
+        assert result == {'sum_value': 6, 'count': 3}
 
     def test_with_multiple_filters_and_select(self):
         """
@@ -341,18 +427,6 @@ class TestTransform:
         )
         assert result == [{'name': 'John'}]
 
-    def test_with_map(self):
-        """
-        Transform using a map operation.
-
-        Notes
-        -----
-        Renames ``old_field`` to ``new_field``.
-        """
-        data = [{'old_field': 'value'}]
-        result = transform(data, {'map': {'old_field': 'new_field'}})
-        assert 'new_field' in result[0]
-
     def test_with_select(self):
         """
         Transform using a select operation.
@@ -379,77 +453,3 @@ class TestTransform:
         ]
         result = transform(data, {'sort': {'field': 'age'}})
         assert result[0]['age'] == 25
-
-    def test_with_aggregate(self):
-        """
-        Transform using an aggregate operation.
-
-        Notes
-        -----
-        Sums the ``value`` field across records.
-        """
-        data = [
-            {'name': 'John', 'value': 10},
-            {'name': 'Jane', 'value': 20},
-        ]
-        result = transform(
-            data,
-            {'aggregate': {'field': 'value', 'func': 'sum'}},
-        )
-        assert result['sum_value'] == 30
-
-    def test_with_multiple_aggregates(self):
-        """
-        Transform with multiple aggregations.
-
-        Notes
-        -----
-        Produces both sum and count results.
-        """
-        data = [
-            {'value': 1},
-            {'value': 2},
-            {'value': 3},
-        ]
-        result = transform(
-            data,
-            {
-                'aggregate': [
-                    {'field': 'value', 'func': 'sum'},
-                    {'field': 'value', 'func': 'count', 'alias': 'count'},
-                ],
-            },
-        )
-        assert result == {'sum_value': 6, 'count': 3}
-
-    def test_from_json_string(self):
-        """
-        Transform from a JSON string.
-
-        Notes
-        -----
-        Selects only ``name`` from the provided JSON array string.
-        """
-        json_str = '[{"name": "John", "age": 30}]'
-        result = transform(json_str, {'select': ['name']})
-        assert len(result) == 1
-        assert 'age' not in result[0]
-
-    def test_from_file(self, temp_json_file):
-        """
-        Transform from a JSON file.
-
-        Notes
-        -----
-        Writes a temporary JSON file and selects only ``name``.
-        """
-        temp_path = temp_json_file([{'name': 'John', 'age': 30}])
-        result = transform(temp_path, {'select': ['name']})
-        assert len(result) == 1
-        assert 'age' not in result[0]
-
-    def test_no_operations(self):
-        """Transform without operations returns input unchanged."""
-        data = [{'name': 'John'}]
-        result = transform(data)
-        assert result == data
