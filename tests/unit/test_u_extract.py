@@ -25,6 +25,7 @@ from etlplus.extract import extract_from_file
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestExtract:
     """
     Unit test suite for :func:`etlplus.extract.extract`.
@@ -58,6 +59,7 @@ class TestExtract:
         assert result == mock_data
 
 
+@pytest.mark.unit
 class TestExtractErrors:
     """
     Unit test suite for ``etlplus.extract`` function errors.
@@ -118,6 +120,7 @@ class TestExtractErrors:
                     f'Expected {exc_type.__name__} with message: {err_msg}'
 
 
+@pytest.mark.unit
 class TestExtractFromFile:
     """
     Unit test suite for :func:`etlplus.extract.extract_from_file`.
