@@ -66,6 +66,13 @@ class TestValidateField:
     Unit test suite for :func:`etlplus.validate.validate_field`.
     """
 
+    def test_required_error_message(self):
+        """
+        Validate error message for required field.
+        """
+        result = validate_field(None, {'required': True})
+        assert 'required' in result['errors'][0].lower()
+
     @pytest.mark.parametrize(
         'value, rule, expected_valid', [
             (None, {'required': True}, False),
@@ -104,13 +111,6 @@ class TestValidateField:
         """
         result = validate_field(value, rule)
         assert result['valid'] is expected_valid
-
-    def test_required_error_message(self):
-        """
-        Validate error message for required field.
-        """
-        result = validate_field(None, {'required': True})
-        assert 'required' in result['errors'][0].lower()
 
 
 class TestValidate:
@@ -174,15 +174,6 @@ class TestValidate:
         result = validate(data, rules)
         assert result['valid'] is expected_valid
 
-    def test_no_rules(self):
-        """
-        Validate without rules returns the data unchanged.
-        """
-        data = {'test': 'data'}
-        result = validate(data)
-        assert result['valid']
-        assert result['data'] == data
-
     def test_from_file(
         self,
         temp_json_file,
@@ -207,3 +198,12 @@ class TestValidate:
         result = validate(json_str)
         assert result['valid']
         assert result['data']['name'] == 'John'
+
+    def test_no_rules(self):
+        """
+        Validate without rules returns the data unchanged.
+        """
+        data = {'test': 'data'}
+        result = validate(data)
+        assert result['valid']
+        assert result['data'] == data
