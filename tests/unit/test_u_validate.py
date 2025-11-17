@@ -35,7 +35,22 @@ def temp_json_file() -> Callable[[dict[str, Any]], str]:
         Function that writes a dict to a temporary JSON file and returns its
         path.
     """
-    def _write(data: dict) -> str:
+    def _write(
+        data: dict,
+    ) -> str:
+        """
+        Write data to a temporary JSON file.
+
+        Parameters
+        ----------
+        data : dict
+            Data to write to the JSON file.
+
+        Returns
+        -------
+        str
+            Path to the temporary JSON file.
+        """
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -170,6 +185,15 @@ class TestValidate:
     ) -> None:
         """
         Validate dict and list data against rules.
+
+        Parameters
+        ----------
+        data : Any
+            Data to validate.
+        rules : dict[str, Any]
+            Validation rules.
+        expected_valid : bool
+            Expected validity result.
         """
         result = validate(data, rules)
         assert result['valid'] is expected_valid
@@ -180,6 +204,11 @@ class TestValidate:
     ) -> None:
         """
         Validate from a JSON file path.
+
+        Parameters
+        ----------
+        temp_json_file : Callable[[dict[str, Any]], str]
+            Fixture to create a temporary JSON file.
         """
         test_data = {'name': 'John', 'age': 30}
         temp_path = temp_json_file(test_data)
