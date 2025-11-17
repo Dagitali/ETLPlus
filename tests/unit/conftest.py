@@ -130,6 +130,11 @@ def capture_sleeps(
     Patches :meth:`EndpointClient.apply_sleep` so tests can assert
     jitter/backoff behavior without actually waiting.
 
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
     Returns
     -------
     list[float]
@@ -310,7 +315,12 @@ def jitter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> Callable[[list[float]], list[float]]:
     """
-    Control retry jitter deterministically by supplying a sequence of values.
+    Set retry jitter sequence deterministically.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
 
     Returns
     -------
@@ -369,7 +379,8 @@ def page_cfg() -> Callable[..., PagePaginationConfig]:
 @pytest.fixture
 def retry_cfg() -> Callable[..., dict[str, Any]]:
     """
-    Create a factory to build retry configuration dictionaries.
+    Create a factory to build retry configuration dictionaries for
+    :class:`EndpointClient`.
 
     Returns
     -------
@@ -682,7 +693,8 @@ def csv_writer() -> Callable[[str], None]:
 @pytest.fixture
 def temp_json_file() -> Callable[[dict[str, Any]], str]:
     """
-    Create a factory for writing a temporary JSON file and returning its path.
+    Create a factory for writing a dictionary to a temporary JSON file and
+    return its path.
 
     Returns
     -------
