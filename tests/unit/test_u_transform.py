@@ -39,7 +39,7 @@ class TestApplyAggregate:
             ('sum', 45),
         ],
     )
-    def test_apply_aggregate(
+    def test_aggregate(
         self,
         func: str,
         expected,
@@ -56,7 +56,7 @@ class TestApplyAggregate:
         key = f"{func}_value" if func != 'count' else 'count_value'
         assert result[key] == expected
 
-    def test_apply_aggregate_callable_with_alias(self):
+    def test_aggregate_callable_with_alias(self):
         """
         Aggregate with a callable and custom alias.
         """
@@ -100,7 +100,7 @@ class TestApplyFilter:
             ),
         ],
     )
-    def test_apply_filter_callable_operator(
+    def test_filter_callable_operator(
         self,
         data: list[dict[str, str]],
         op: Callable[[str, str], bool],
@@ -165,7 +165,7 @@ class TestApplyFilter:
             ),
         ],
     )
-    def test_apply_filter_numeric_ops(
+    def test_filter_numeric_ops(
         self,
         data: list[dict],
         op: str,
@@ -208,7 +208,7 @@ class TestApplyMap:
     Unit test suite for :func:`etlplus.transform.apply_map`.
     """
 
-    def test_apply_map(self):
+    def test_map(self):
         """
         Map/rename fields in each record.
         """
@@ -228,7 +228,7 @@ class TestApplySelect:
     Unit test suite for :func:`etlplus.transform.apply_select`.
     """
 
-    def test_apply_select(self):
+    def test_select(self):
         """
         Select a subset of fields from each record.
 
@@ -257,7 +257,7 @@ class TestApplySort:
             (True, [35, 30, 25]),
         ],
     )
-    def test_apply_sort(
+    def test_sort(
         self,
         reverse: bool,
         expected: list[int],
@@ -284,7 +284,7 @@ class TestTransform:
     Unit test suite for :func:`etlplus.transform.transform`.
     """
 
-    def test_transform_with_filter(self):
+    def test_with_filter(self):
         """
         Transform using a filter operation.
 
@@ -309,7 +309,7 @@ class TestTransform:
         assert len(result) == 1
         assert result[0]['name'] == 'John'
 
-    def test_transform_with_multiple_filters_and_select(self):
+    def test_with_multiple_filters_and_select(self):
         """
         Transform using multiple filters and a select sequence.
 
@@ -341,7 +341,7 @@ class TestTransform:
         )
         assert result == [{'name': 'John'}]
 
-    def test_transform_with_map(self):
+    def test_with_map(self):
         """
         Transform using a map operation.
 
@@ -353,7 +353,7 @@ class TestTransform:
         result = transform(data, {'map': {'old_field': 'new_field'}})
         assert 'new_field' in result[0]
 
-    def test_transform_with_select(self):
+    def test_with_select(self):
         """
         Transform using a select operation.
 
@@ -365,7 +365,7 @@ class TestTransform:
         result = transform(data, {'select': ['name', 'age']})
         assert set(result[0].keys()) == {'name', 'age'}
 
-    def test_transform_with_sort(self):
+    def test_with_sort(self):
         """
         Transform using a sort operation.
 
@@ -380,7 +380,7 @@ class TestTransform:
         result = transform(data, {'sort': {'field': 'age'}})
         assert result[0]['age'] == 25
 
-    def test_transform_with_aggregate(self):
+    def test_with_aggregate(self):
         """
         Transform using an aggregate operation.
 
@@ -398,7 +398,7 @@ class TestTransform:
         )
         assert result['sum_value'] == 30
 
-    def test_transform_with_multiple_aggregates(self):
+    def test_with_multiple_aggregates(self):
         """
         Transform with multiple aggregations.
 
@@ -422,7 +422,7 @@ class TestTransform:
         )
         assert result == {'sum_value': 6, 'count': 3}
 
-    def test_transform_from_json_string(self):
+    def test_from_json_string(self):
         """
         Transform from a JSON string.
 
@@ -435,7 +435,7 @@ class TestTransform:
         assert len(result) == 1
         assert 'age' not in result[0]
 
-    def test_transform_from_file(self, temp_json_file):
+    def test_from_file(self, temp_json_file):
         """
         Transform from a JSON file.
 
@@ -448,7 +448,7 @@ class TestTransform:
         assert len(result) == 1
         assert 'age' not in result[0]
 
-    def test_transform_no_operations(self):
+    def test_no_operations(self):
         """Transform without operations returns input unchanged."""
         data = [{'name': 'John'}]
         result = transform(data)
