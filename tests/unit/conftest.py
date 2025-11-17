@@ -97,13 +97,13 @@ def api_profile_defaults_factory() -> Callable[..., dict[str, Any]]:
     Callable[..., dict[str, Any]]
         Function that builds defaults mapping.
 
-    Example
-    -------
-    defaults = api_profile_defaults_factory(
-        pagination={'type': 'page', 'page_param': 'p', 'size_param': 's'},
-        rate_limit={'sleep_seconds': 0.1, 'max_per_sec': 5},
-        headers={'X': '1'},
-    )
+    Examples
+    --------
+    >>> defaults = api_profile_defaults_factory(
+    ...     pagination={'type': 'page', 'page_param': 'p', 'size_param': 's'},
+    ...     rate_limit={'sleep_seconds': 0.1, 'max_per_sec': 5},
+    ...     headers={'X': '1'},
+    ... )
     """
     def _make(
         *,
@@ -546,7 +546,7 @@ def temp_json_file() -> Callable[[dict[str, Any]], str]:
     Callable[[dict[str, Any]], str]
         Function that writes a dict to a temp JSON file and returns the path.
     """
-    def _write(data: dict):
+    def _write(data: dict | list) -> str:
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
