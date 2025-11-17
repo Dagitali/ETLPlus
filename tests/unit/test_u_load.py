@@ -33,6 +33,7 @@ class TestLoad:
     """
 
     def test_invalid_target_type(self):
+        """Test error raised for invalid target type."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
             load({'test': 'data'}, 'invalid', 'target')
 
@@ -81,8 +82,7 @@ class TestLoad:
 
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.load.load` and
-    :func:`etlplus.load.load_data`.
+    Unit test suite for :func:`etlplus.load.load`.
     """
 
     @pytest.mark.parametrize(
@@ -97,18 +97,48 @@ class TestLoadData:
         input_data,
         expected,
     ):
+        """
+        Test passthrough for dict and list input.
+
+        Parameters
+        ----------
+        input_data : dict or list
+            Input data to load.
+        expected : dict or list
+            Expected output.
+
+        Asserts
+        -------
+        Output matches expected.
+        """
         assert load_data(input_data) == expected
 
-    def test_data_from_file(
-        self,
-        temp_json_file,
-    ):
+    def test_data_from_file(self, temp_json_file):
+        """
+        Test loading from a temporary JSON file.
+
+        Parameters
+        ----------
+        temp_json_file : fixture
+            Fixture to create a temp JSON file.
+
+        Asserts
+        -------
+        Output matches original data.
+        """
         mock_data = {'test': 'data'}
         temp_path = temp_json_file(mock_data)
         result = load_data(temp_path)
         assert result == mock_data
 
     def test_data_from_json_string(self):
+        """
+        Test loading from a JSON string.
+
+        Asserts
+        -------
+        Output matches expected dict.
+        """
         json_str = '{"test": "data"}'
         result = load_data(json_str)
         assert result['test'] == 'data'
@@ -118,6 +148,18 @@ class TestLoadData:
         self,
         monkeypatch,
     ):
+        """
+        Test loading from stdin using monkeypatch.
+
+        Parameters
+        ----------
+        monkeypatch : fixture
+            Pytest monkeypatch fixture.
+
+        Asserts
+        -------
+        Output is a dict containing 'items'.
+        """
         class _FakeStdin:
             def read(self):
                 return '{"items": [{"age": 30}, {"age": 20}]}'
@@ -127,6 +169,9 @@ class TestLoadData:
         assert 'items' in result
 
     def test_data_invalid_source(self):
+        """
+        Test error raised for invalid JSON source string.
+        """
         with pytest.raises(ValueError, match='Invalid data source'):
             load_data('not a valid json string')
 
@@ -140,6 +185,14 @@ class TestLoadToFile:
         self,
         tmp_path: Path,
     ):
+        """
+        Test writing a list of dicts to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         path = tmp_path / 'output.csv'
         mock_data = [
             {'name': 'John', 'age': 30},
@@ -158,6 +211,14 @@ class TestLoadToFile:
         self,
         tmp_path: Path,
     ):
+        """
+        Test writing an empty list to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         output_path = tmp_path / 'output.csv'
         mock_data: list[dict[str, Any]] = []
         result = load_to_file(mock_data, str(output_path), 'csv')
@@ -168,6 +229,14 @@ class TestLoadToFile:
         self,
         tmp_path: Path,
     ):
+        """
+        Test writing a single dict to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         output_path = tmp_path / 'output.csv'
         mock_data = {'name': 'John', 'age': 30}
         result: dict[str, Any] = load_to_file(
@@ -178,8 +247,16 @@ class TestLoadToFile:
 
     def test_to_file_creates_directory(
         self,
-        tmp_path,
+        tmp_path: Path,
     ):
+        """
+        Test that parent directories are created for file targets.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         output_path = tmp_path / 'subdir' / 'output.json'
         mock_data = {'test': 'data'}
         result: dict[str, Any] = load_to_file(
@@ -189,9 +266,16 @@ class TestLoadToFile:
         assert output_path.exists()
 
     def test_to_file_unsupported_format(
-        self,
-        tmp_path,
+        self, tmp_path: Path,
     ):
+        """
+        Test error raised for unsupported file format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         output_path = tmp_path / 'output.txt'
         mock_data = {'test': 'data'}
         with pytest.raises(ValueError, match='Invalid FileFormat'):
@@ -201,6 +285,14 @@ class TestLoadToFile:
         self,
         tmp_path: Path,
     ):
+        """
+        Test writing a dict to a JSON file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
         output_path = tmp_path / 'output.json'
         mock_data = {'name': 'John', 'age': 30}
         result: dict[str, Any] = load_to_file(
