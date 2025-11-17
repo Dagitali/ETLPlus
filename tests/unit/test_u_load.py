@@ -8,13 +8,14 @@ Notes
 - Validates load and load_data logic for dict, list, file, and error paths
     using temporary files and orchestrator dispatch.
 - Uses parameterized cases for supported formats and error scenarios.
-- Centralizes temporary file creation via fixture.
+- Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
 import csv
 import json
 from pathlib import Path
 from typing import Any
+from typing import Callable
 from typing import cast
 
 import pytest
@@ -30,6 +31,10 @@ from etlplus.load import load_to_file
 class TestLoad:
     """
     Unit test suite for :func:`etlplus.load.load`.
+
+    Notes
+    -----
+    - Tests error handling and supported target types.
     """
 
     def test_invalid_target_type(self) -> None:
@@ -82,7 +87,11 @@ class TestLoad:
 
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.load.load`.
+    Unit test suite for :func:`etlplus.load.load_data`.
+
+    Notes
+    -----
+    - Tests passthrough, file, string, stdin, and error cases.
     """
 
     @pytest.mark.parametrize(
@@ -111,14 +120,14 @@ class TestLoadData:
 
     def test_data_from_file(
         self,
-        temp_json_file: Any,
+        temp_json_file: Callable[[dict[str, Any]], str],
     ) -> None:
         """
         Test loading from a temporary JSON file.
 
         Parameters
         ----------
-        temp_json_file : Any
+        temp_json_file : Callable[[dict[str, Any]], str]
             Fixture to create a temp JSON file.
         """
         mock_data = {'test': 'data'}
@@ -129,6 +138,10 @@ class TestLoadData:
     def test_data_from_json_string(self) -> None:
         """
         Test loading from a JSON string.
+
+        Notes
+        -----
+        Ensures JSON string is parsed to dict.
         """
         json_str = '{"test": "data"}'
         result = load_data(json_str)
@@ -138,14 +151,14 @@ class TestLoadData:
     # Already covered by test_load_data_passthrough
     def test_data_from_stdin(
         self,
-        monkeypatch: Any,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Test loading from stdin using monkeypatch.
 
         Parameters
         ----------
-        monkeypatch : Any
+        monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
         class _FakeStdin:
@@ -167,6 +180,11 @@ class TestLoadData:
 class TestLoadToFile:
     """
     Unit test suite for :func:`etlplus.load.load_to_file`.
+
+    Notes
+    -----
+        - Tests writing to CSV and JSON files,
+            directory creation, and error handling.
     """
 
     def test_to_csv_file(
