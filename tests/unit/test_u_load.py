@@ -32,12 +32,12 @@ class TestLoad:
     Unit test suite for :func:`etlplus.load.load`.
     """
 
-    def test_invalid_target_type(self):
+    def test_invalid_target_type(self) -> None:
         """Test error raised for invalid target type."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
             load({'test': 'data'}, 'invalid', 'target')
 
-    def test_wrapper_database(self):
+    def test_wrapper_database(self) -> None:
         """
         Test loading data to a database with a supported format.
 
@@ -56,7 +56,7 @@ class TestLoad:
     def test_wrapper_file(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test loading data to a file with a supported format.
 
@@ -94,71 +94,59 @@ class TestLoadData:
     )
     def test_data_passthrough(
         self,
-        input_data,
-        expected,
-    ):
+        input_data: dict[str, Any] | list[dict[str, Any]],
+        expected: dict[str, Any] | list[dict[str, Any]],
+    ) -> None:
         """
         Test passthrough for dict and list input.
 
         Parameters
         ----------
-        input_data : dict or list
+        input_data : dict[str, Any] | list[dict[str, Any]]
             Input data to load.
-        expected : dict or list
+        expected : dict[str, Any] | list[dict[str, Any]]
             Expected output.
-
-        Asserts
-        -------
-        Output matches expected.
         """
         assert load_data(input_data) == expected
 
-    def test_data_from_file(self, temp_json_file):
+    def test_data_from_file(
+        self,
+        temp_json_file: Any,
+    ) -> None:
         """
         Test loading from a temporary JSON file.
 
         Parameters
         ----------
-        temp_json_file : fixture
+        temp_json_file : Any
             Fixture to create a temp JSON file.
-
-        Asserts
-        -------
-        Output matches original data.
         """
         mock_data = {'test': 'data'}
         temp_path = temp_json_file(mock_data)
         result = load_data(temp_path)
         assert result == mock_data
 
-    def test_data_from_json_string(self):
+    def test_data_from_json_string(self) -> None:
         """
         Test loading from a JSON string.
-
-        Asserts
-        -------
-        Output matches expected dict.
         """
         json_str = '{"test": "data"}'
         result = load_data(json_str)
+        assert isinstance(result, dict)
         assert result['test'] == 'data'
 
     # Already covered by test_load_data_passthrough
     def test_data_from_stdin(
         self,
-        monkeypatch,
-    ):
+        monkeypatch: Any,
+    ) -> None:
         """
         Test loading from stdin using monkeypatch.
 
         Parameters
         ----------
-        monkeypatch : fixture
+        monkeypatch : Any
             Pytest monkeypatch fixture.
-
-        Asserts
-        -------
-        Output is a dict containing 'items'.
         """
         class _FakeStdin:
             def read(self):
@@ -168,7 +156,7 @@ class TestLoadData:
         assert isinstance(result, dict)
         assert 'items' in result
 
-    def test_data_invalid_source(self):
+    def test_data_invalid_source(self) -> None:
         """
         Test error raised for invalid JSON source string.
         """
@@ -184,7 +172,7 @@ class TestLoadToFile:
     def test_to_csv_file(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test writing a list of dicts to a CSV file.
 
@@ -203,14 +191,17 @@ class TestLoadToFile:
         assert path.exists()
         with open(path, encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
-            loaded_data = list(reader)
+            loaded_data: list[dict[str, Any]] = list(reader)
         assert len(loaded_data) == 2
-        assert loaded_data[0]['name'] == 'John'
+        # loaded_data is a list of dicts, so index with integer then key
+        first_row = loaded_data[0]
+        assert isinstance(first_row, dict)
+        assert first_row['name'] == 'John'
 
     def test_to_csv_file_empty_list(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test writing an empty list to a CSV file.
 
@@ -228,7 +219,7 @@ class TestLoadToFile:
     def test_to_csv_file_single_dict(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test writing a single dict to a CSV file.
 
@@ -248,7 +239,7 @@ class TestLoadToFile:
     def test_to_file_creates_directory(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test that parent directories are created for file targets.
 
@@ -267,7 +258,7 @@ class TestLoadToFile:
 
     def test_to_file_unsupported_format(
         self, tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test error raised for unsupported file format.
 
@@ -284,7 +275,7 @@ class TestLoadToFile:
     def test_to_json_file(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test writing a dict to a JSON file.
 
