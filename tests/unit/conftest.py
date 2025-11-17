@@ -671,7 +671,7 @@ def sample_headers() -> dict[str, str]:
 @pytest.fixture
 def csv_writer() -> Callable[[str], None]:
     """
-    Create a factory for writing a small CSV file for testing.
+    Create a factory for writing a small CSV file and return its path.
 
     Returns
     -------
