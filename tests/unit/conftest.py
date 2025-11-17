@@ -65,7 +65,22 @@ class _PageKw(TypedDict, total=False):
     max_records: int
 
 
-def _freeze(d: dict[str, Any]) -> types.MappingProxyType:  # pragma: no cover
+def _freeze(
+    d: dict[str, Any],
+) -> types.MappingProxyType:
+    """
+    Return an immutable mapping proxy for a dictionary.
+
+    Parameters
+    ----------
+    d : dict[str, Any]
+        Dictionary to freeze.
+
+    Returns
+    -------
+    types.MappingProxyType
+        Immutable mapping proxy.
+    """
     return types.MappingProxyType(d)
 
 
@@ -190,9 +205,12 @@ def extract_stub(
     """
     Patch EndpointClient's module-level _extract and capture calls.
 
-    Returns dict with:
-      urls: list[str]
-      kwargs: list[dict[str, Any]]
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary with:
+          urls: list[str]
+          kwargs: list[dict[str, Any]]
     """
     import etlplus.api.client as cmod  # local import to avoid cycles
 
