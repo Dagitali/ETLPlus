@@ -8,7 +8,7 @@ Notes
 - Validates extraction logic for JSON, CSV, XML, and error paths using
     temporary files and orchestrator dispatch.
 - Uses parameterized cases for supported formats and error scenarios.
-- Centralizes temporary file creation via fixture.
+- Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
 import json
@@ -28,12 +28,16 @@ from etlplus.extract import extract_from_file
 class TestExtract:
     """
     Unit test suite for :func:`etlplus.extract.extract`.
+
+    Notes
+    -----
+    - Tests file extraction for supported formats.
     """
 
     def test_wrapper_file(
         self,
         tmp_path: Path,
-    ):
+    ) -> None:
         """
         Test extracting data from a file with a supported format.
 
@@ -48,7 +52,8 @@ class TestExtract:
         """
         path = tmp_path / 'data.json'
         mock_data = {'test': 'data'}
-        json.dump(mock_data, open(path, 'w', encoding='utf-8'))
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(mock_data, f)
         result = extract('file', str(path), file_format='json')
         assert result == mock_data
 
@@ -56,6 +61,10 @@ class TestExtract:
 class TestExtractErrors:
     """
     Unit test suite for ``etlplus.extract`` function errors.
+
+    Notes
+    -----
+    - Tests error handling for extract and extract_from_file.
     """
 
     @pytest.mark.parametrize(
@@ -80,10 +89,11 @@ class TestExtractErrors:
         exc_type: type[Exception],
         call: Callable,
         args: list[Any],
-        err_msg: str | None,
-    ):
+        err_msg: Any,
+    ) -> None:
         """
         Test parametrized error case tests for extract/extract_from_file.
+
         Parameters
         ----------
         exc_type : type[Exception]
@@ -111,6 +121,10 @@ class TestExtractErrors:
 class TestExtractFromFile:
     """
     Unit test suite for :func:`etlplus.extract.extract_from_file`.
+
+    Notes
+    -----
+    - Tests supported and unsupported file formats.
     """
 
     @pytest.mark.parametrize(
@@ -151,7 +165,7 @@ class TestExtractFromFile:
         write: Callable | None,
         expected: Any,
         request: pytest.FixtureRequest,
-    ):
+    ) -> None:
         """
         Test extracting data from a file with a supported format.
 
@@ -209,7 +223,7 @@ class TestExtractFromFile:
         file_format: str,
         content: str,
         err_msg: str,
-    ):
+    ) -> None:
         """
         Test extracting data from a file with an unsupported format.
 
