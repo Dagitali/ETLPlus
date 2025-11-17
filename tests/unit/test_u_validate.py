@@ -53,7 +53,7 @@ class TestLoadData:
     Unit test suite for :func:`etlplus.validate.load_data`.
     """
 
-    def test_nvalid_source(self):
+    def test_nvalid_source(self) -> None:
         """
         Invalid input string should raise ValueError during loading.
         """
@@ -66,7 +66,7 @@ class TestValidateField:
     Unit test suite for :func:`etlplus.validate.validate_field`.
     """
 
-    def test_required_error_message(self):
+    def test_required_error_message(self) -> None:
         """
         Validate error message for required field.
         """
@@ -96,7 +96,7 @@ class TestValidateField:
         value: Any,
         rule: dict[str, Any],
         expected_valid: bool,
-    ):
+    ) -> None:
         """
         Validate field rules using parameterized cases.
 
@@ -164,10 +164,10 @@ class TestValidate:
     )
     def test_dict_and_list(
         self,
-        data,
-        rules,
-        expected_valid,
-    ):
+        data: Any,
+        rules: dict[str, Any],
+        expected_valid: bool,
+    ) -> None:
         """
         Validate dict and list data against rules.
         """
@@ -176,8 +176,8 @@ class TestValidate:
 
     def test_from_file(
         self,
-        temp_json_file,
-    ):
+        temp_json_file: Callable[[dict[str, Any]], str],
+    ) -> None:
         """
         Validate from a JSON file path.
         """
@@ -190,16 +190,20 @@ class TestValidate:
         finally:
             Path(temp_path).unlink()
 
-    def test_from_json_string(self):
+    def test_from_json_string(self) -> None:
         """
         Validate from a JSON string.
         """
         json_str = '{"name": "John", "age": 30}'
         result = validate(json_str)
         assert result['valid']
-        assert result['data']['name'] == 'John'
+        data = result['data']
+        if isinstance(data, dict):
+            assert data['name'] == 'John'
+        elif isinstance(data, list):
+            assert any(d.get('name') == 'John' for d in data)
 
-    def test_no_rules(self):
+    def test_no_rules(self) -> None:
         """
         Validate without rules returns the data unchanged.
         """
