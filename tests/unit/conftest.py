@@ -66,7 +66,7 @@ def _freeze(
     d: dict[str, Any],
 ) -> types.MappingProxyType:
     """
-    Return an immutable, read-only mapping proxy for a dictionary.
+    Create an immutable, read-only mapping proxy for a dictionary.
 
     Parameters
     ----------
@@ -87,7 +87,7 @@ def _freeze(
 @pytest.fixture
 def api_profile_defaults_factory() -> Callable[..., dict[str, Any]]:
     """
-    Return a factory to build profile defaults block dicts.
+    Create a factory to build API profile defaults block dictionaries.
 
     Returns
     -------
@@ -125,10 +125,10 @@ def capture_sleeps(
     monkeypatch: pytest.MonkeyPatch,
 ) -> list[float]:
     """
-    Capture applied sleep durations from retry backoff logic.
+    Capture sleep durations from retry/backoff logic.
 
-    Patches `EndpointClient.apply_sleep` so tests can assert jitter/backoff
-    behavior without actually waiting.
+    Patches :meth:`EndpointClient.apply_sleep` so tests can assert
+    jitter/backoff behavior without actually waiting.
 
     Returns
     -------
@@ -153,15 +153,15 @@ def capture_sleeps(
 @pytest.fixture
 def client_factory() -> Callable[..., EndpointClient]:
     """
-    Return a factory to build `EndpointClient` instances.
+    Create a factory to build :class:`EndpointClient` instances.
 
     Parameters can be overridden per test. Endpoints default to an empty
-    mapping to simplify most calls.
+    mapping for convenience.
 
     Returns
     -------
     Callable[..., EndpointClient]
-        Function that builds `EndpointClient` instances.
+        Function that builds :class:`EndpointClient` instances.
     """
     def _make(
         *,
@@ -181,12 +181,12 @@ def client_factory() -> Callable[..., EndpointClient]:
 @pytest.fixture
 def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
     """
-    Return a factory to build immutable cursor pagination config objects.
+    Create a factory for building immutable cursor pagination config objects.
 
     Returns
     -------
     Callable[..., CursorPaginationConfig]
-        Function that builds `CursorPaginationConfig` instances.
+        Function that builds CursorPaginationConfig instances.
     """
     def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfig:
         base: dict[str, Any] = {'type': 'cursor'}
@@ -199,12 +199,12 @@ def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
 @pytest.fixture
 def offset_cfg() -> Callable[..., PagePaginationConfig]:
     """
-    Return a factory to build immutable offset pagination config objects.
+    Create a factory for building immutable offset pagination config objects.
 
     Returns
     -------
     Callable[..., PagePaginationConfig]
-        Function that builds `PagePaginationConfig` instances.
+        Function that builds PagePaginationConfig instances.
     """
     def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
         base: dict[str, Any] = {'type': 'offset'}
@@ -219,20 +219,19 @@ def extract_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
-    Patch EndpointClient's module-level :func:`_extract` and capture calls for
-    assertion.
+    Patch :func:`EndpointClient._extract` and capture calls for assertion.
 
     Parameters
     ----------
     monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
+        Pytest monkeypatch fixture for patching.
 
     Returns
     -------
     dict[str, Any]
         Dictionary with:
-          urls: list[str]
-          kwargs: list[dict[str, Any]]
+            urls: list[str]
+            kwargs: list[dict[str, Any]]
     """
     import etlplus.api.client as cmod  # local import to avoid cycles
 
@@ -252,16 +251,17 @@ def extract_stub(
 @pytest.fixture(scope='session')
 def extract_stub_factory() -> Callable[..., Any]:
     """
-    Return a factory to build a per-use stub factory for ``_extract`` without
-    relying on function-scoped fixtures (Hypothesis-friendly).
+    Create a factory to build a per-use stub factory for patching
+    :func:`_extract` without relying on function-scoped fixtures
+    (Hypothesis-friendly).
 
-    Each invocation patches ``etlplus.api.client._extract`` for the duration
-    of the context manager and restores the original afterwards.
+    Each invocation patches :func:`etlplus.api.client._extract` for the
+    duration of the context manager and restores the original afterwards.
 
     Returns
     -------
     Callable[..., Any]
-        Context manager that yields a call capture dictionary.
+        Function that builds a call capture dictionary.
 
     Examples
     --------
@@ -315,7 +315,7 @@ def jitter(
     Returns
     -------
     Callable[[list[float]], list[float]]
-        Function that sets the sequence of jitter values.
+        Function that sets the sequence of jitter values for random.uniform.
 
     Examples
     --------
@@ -335,15 +335,15 @@ def jitter(
 @pytest.fixture
 def mock_session() -> MockSession:
     """
-    Provide a fresh ``MockSession`` per test.
+    Provide a fresh :class:`MockSession` per test.
 
-    Useful for tests that need to pass a raw session into ``EndpointClient``
+    Use for tests that need to pass a raw session into :class:`EndpointClient`
     or verify close semantics.
 
     Returns
     -------
     MockSession
-        New `MockSession` instance.
+        New :class:`MockSession` instance.
     """
     return MockSession()
 
@@ -351,7 +351,7 @@ def mock_session() -> MockSession:
 @pytest.fixture
 def page_cfg() -> Callable[..., PagePaginationConfig]:
     """
-    Return a factory to build immutable page-number pagination config objects.
+    Create a factory to build immutable page-number pagination config objects.
 
     Returns
     -------
@@ -369,12 +369,13 @@ def page_cfg() -> Callable[..., PagePaginationConfig]:
 @pytest.fixture
 def retry_cfg() -> Callable[..., dict[str, Any]]:
     """
-    Return a factory to build retry configuration dictionaries.
+    Create a factory to build retry configuration dictionaries.
 
     Returns
     -------
     Callable[..., dict[str, Any]]
-        Function that builds retry configuration dicts.
+        Function that builds retry configuration dicts for
+        :class:`EndpointClient`.
     """
     def _make(**kwargs: Any) -> dict[str, Any]:
         base: dict[str, Any] = {
@@ -393,12 +394,12 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
 @pytest.fixture
 def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
     """
-    Return a factory to build :class:`ApiConfig` from a dict.
+    Create a factory for building ApiConfig from a dictionary.
 
     Returns
     -------
     Callable[[dict[str, Any]], ApiConfig]
-        Function that builds :class:`ApiConfig` instances.
+        Function that builds ApiConfig instances from dicts.
     """
     def _make(obj: dict[str, Any]) -> ApiConfig:
         return ApiConfig.from_obj(obj)
@@ -412,7 +413,8 @@ def api_obj_factory(
     sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
     """
-    Return a factory to build API configuration dicts.
+    Create a factory for building API configuration dicts for
+    :meth:`ApiConfig.from_obj`.
 
     Parameters
     ----------
@@ -424,12 +426,12 @@ def api_obj_factory(
     Returns
     -------
     Callable[..., dict[str, Any]]
-        Function that builds API configuration dicts.
+        Function that builds API configuration dicts for ApiConfig.
 
     Examples
     --------
     >>> obj = api_obj_factory(base_path='/v1', headers={'X': '1'})
-    >>> cfg = ApiConfig.from_obj(obj)
+    ... cfg = ApiConfig.from_obj(obj)
     """
     def _make(
         *,
@@ -466,7 +468,7 @@ def api_obj_factory(
 @pytest.fixture
 def base_url_() -> str:
     """
-    Return a common base URL used across config tests.
+    Return a common base URL string for config tests.
 
     Returns
     -------
@@ -479,7 +481,7 @@ def base_url_() -> str:
 @pytest.fixture
 def endpoint_config_factory() -> Callable[[str], EndpointConfig]:
     """
-    Return a factory to build :class:`EndpointConfig` from a string path.
+    Create a factory to build :class:`EndpointConfig` from a string path.
 
     Returns
     -------
@@ -495,7 +497,7 @@ def endpoint_config_factory() -> Callable[[str], EndpointConfig]:
 @pytest.fixture
 def pagination_config_factory() -> Callable[..., PaginationConfig]:
     """
-    Return a factory to build :class:`PaginationConfig` via constructor (typed
+    Create a factory to build :class:`PaginationConfig` via constructor (typed
     kwargs).
 
     Returns
@@ -514,7 +516,7 @@ def pagination_from_obj_factory() -> Callable[
     [Any], PaginationConfig,
 ]:
     """
-    Return a factory to build :class:`PaginationConfig` via `from_obj` mapping.
+    Create a factory to build :class:`PaginationConfig` via `from_obj` mapping.
 
     Returns
     -------
@@ -530,13 +532,13 @@ def pagination_from_obj_factory() -> Callable[
 @pytest.fixture
 def pipeline_yaml_factory() -> Callable[[str, Path], Path]:
     """
-    Return a factory to build YAML content to a temporary file and return its
+    Create a factory to write YAML content to a temporary file and return its
     path.
 
     Returns
     -------
     Callable[[str, Path], Path]
-        Function that writes YAML to a temporary file and returns its path.
+        Function that writes YAML to a temporary file and returns the path.
     """
     def _make(yaml_text: str, tmp_dir: Path) -> Path:
         p = tmp_dir / 'cfg.yml'
@@ -549,12 +551,12 @@ def pipeline_yaml_factory() -> Callable[[str, Path], Path]:
 @pytest.fixture
 def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
     """
-    Return a factory to build :class:`PipelineConfig` from a YAML path.
+    Create a factory to build :class:`PipelineConfig` from a YAML file path.
 
     Returns
     -------
     Callable[..., PipelineConfig]
-        Function that builds :class:`PipelineConfig` instances.
+        Function that builds :class:`PipelineConfig` from a YAML file.
     """
     def _make(
         path: Path,
@@ -574,7 +576,7 @@ def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
 @pytest.fixture
 def profile_config_factory() -> Callable[[dict[str, Any]], ApiProfileConfig]:
     """
-    Return a factory to build :class:`ApiProfileConfig` from a dict.
+    Create a factory to build :class:`ApiProfileConfig` from a dictionary.
 
     Returns
     -------
@@ -590,7 +592,7 @@ def profile_config_factory() -> Callable[[dict[str, Any]], ApiProfileConfig]:
 @pytest.fixture
 def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
     """
-    Return a factory to build :class:`RateLimitConfig` via constructor (typed
+    Create a factory to build :class:`RateLimitConfig` via constructor (typed
     kwargs).
 
     Returns
@@ -609,12 +611,12 @@ def rate_limit_from_obj_factory() -> Callable[
     [RateLimitConfigMap], RateLimitConfig,
 ]:
     """
-    Return a factory to build :class:`RateLimitConfig` via `from_obj` mapping.
+    Create a factory to build :class:`RateLimitConfig` via `from_obj` mapping.
 
     Returns
     -------
     Callable[[RateLimitConfigMap], RateLimitConfig]
-        Function that builds :class:`RateLimitConfig` instances from mapping.
+        Function that builds :class:`RateLimitConfig` from mapping.
     """
     def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
         return RateLimitConfig.from_obj(obj)
@@ -625,7 +627,7 @@ def rate_limit_from_obj_factory() -> Callable[
 @pytest.fixture
 def sample_endpoints_() -> dict[str, dict[str, Any]]:
     """
-    Return common endpoints mapping for config tests.
+    Return a common endpoints mapping for config tests.
 
     Returns
     -------
@@ -642,7 +644,7 @@ def sample_endpoints_() -> dict[str, dict[str, Any]]:
 @pytest.fixture
 def sample_headers() -> dict[str, str]:
     """
-    Return common headers mapping for config tests.
+    Return a common headers mapping for config tests.
 
     Returns
     -------
@@ -658,7 +660,7 @@ def sample_headers() -> dict[str, str]:
 @pytest.fixture
 def csv_writer() -> Callable[[str], None]:
     """
-    Return a factory to build a small CSV file for testing.
+    Create a factory for writing a small CSV file for testing.
 
     Returns
     -------
@@ -680,7 +682,7 @@ def csv_writer() -> Callable[[str], None]:
 @pytest.fixture
 def temp_json_file() -> Callable[[dict[str, Any]], str]:
     """
-    Return a factory to build a temporary JSON file and return its path.
+    Create a factory for writing a temporary JSON file and returning its path.
 
     Returns
     -------
@@ -688,7 +690,7 @@ def temp_json_file() -> Callable[[dict[str, Any]], str]:
         Function that writes a dict to a temporary JSON file and returns its
         path.
     """
-    def _write(data: dict | list) -> str:
+    def _write(data: dict[str, Any]) -> str:
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
