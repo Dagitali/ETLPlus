@@ -10,7 +10,7 @@ Notes
 """
 from typing import Callable
 
-from pytest import mark
+import pytest
 
 from etlplus.transform import apply_aggregate
 from etlplus.transform import apply_filter
@@ -23,13 +23,13 @@ from etlplus.transform import transform
 # SECTION: TESTS =========================================================== #
 
 
-@mark.unit
+@pytest.mark.unit
 class TestTransform:
     """
-    Test suite for etlplus.transform
+    Unit test suite for :func:`etlplus.transform`.
     """
 
-    @mark.parametrize(
+    @pytest.mark.parametrize(
         'data, op, value, expected',
         [
             (
@@ -75,7 +75,7 @@ class TestTransform:
         )
         assert [item['name'] for item in result] == expected
 
-    @mark.parametrize(
+    @pytest.mark.parametrize(
         'data, op, value, expected',
         [
             (
@@ -173,7 +173,7 @@ class TestTransform:
         result = apply_select(data, ['name', 'age'])
         assert all(set(item.keys()) == {'name', 'age'} for item in result)
 
-    @mark.parametrize(
+    @pytest.mark.parametrize(
         'reverse, expected',
         [
             (False, [25, 30, 35]),
@@ -200,7 +200,7 @@ class TestTransform:
         result = apply_sort(data, 'age', reverse=reverse)
         assert [item['age'] for item in result] == expected
 
-    @mark.parametrize(
+    @pytest.mark.parametrize(
         'func, expected',
         [
             ('avg', 15),
