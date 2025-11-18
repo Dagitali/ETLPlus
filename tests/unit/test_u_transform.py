@@ -8,6 +8,8 @@ Notes
 - Uses small in-memory datasets to validate each operation.
 - Ensures stable behavior for edge cases (empty inputs, missing fields).
 """
+from __future__ import annotations
+
 from typing import Callable
 
 import pytest
@@ -25,9 +27,7 @@ from etlplus.transform import transform
 
 @pytest.mark.unit
 class TestApplyAggregate:
-    """
-    Unit test suite for :func:`etlplus.transform.apply_aggregate`.
-    """
+    """Unit test suite for :func:`etlplus.transform.apply_aggregate`."""
 
     @pytest.mark.parametrize(
         'func, expected',
@@ -45,7 +45,7 @@ class TestApplyAggregate:
         expected: int,
     ) -> None:
         """
-        Aggregate the ``value`` field with built-in functions.
+        Test aggregating the ``value`` field with built-in functions.
 
         Parameters
         ----------
@@ -65,7 +65,7 @@ class TestApplyAggregate:
 
     def test_aggregate_callable_with_alias(self) -> None:
         """
-        Aggregate with a callable and custom alias.
+        Test aggregating with a callable and custom alias.
         """
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
@@ -88,9 +88,7 @@ class TestApplyAggregate:
 
 @pytest.mark.unit
 class TestApplyFilter:
-    """
-    Unit test suite for :func:`etlplus.transform.apply_filter`.
-    """
+    """Unit test suite for :func:`etlplus.transform.apply_filter`."""
 
     @pytest.mark.parametrize(
         'data, op, value, expected',
@@ -113,9 +111,9 @@ class TestApplyFilter:
         op: Callable[[str, str], bool],
         value: str,
         expected: list[str],
-    ):
+    ) -> None:
         """
-        Filter with a custom callable operator.
+        Test filtering with a custom callable operator.
 
         Parameters
         ----------
@@ -176,22 +174,33 @@ class TestApplyFilter:
         self,
         data: list[dict],
         op: str,
-        value,
+        value: int | str,
         expected: int,
-    ):
+    ) -> None:
         """
-        Filter with numeric operators.
+        Test filtering with numeric operators.
+
+        Parameters
+        ----------
+        data : list[dict]
+            Input records.
+        op : str
+            Operator name.
+        value : int | str
+            Value to filter by.
+        expected : int
+            Expected number of filtered records.
         """
         result = apply_filter(data, {'field': 'age', 'op': op, 'value': value})
         assert len(result) == expected
 
-    def test_apply_filter_in(self):
+    def test_apply_filter_in(self) -> None:
         """
-        Filter with the ``in`` operator.
+        Test filtering with the ``in`` operator.
 
-    Notes
-    -----
-    Keeps records whose ``status`` is in the provided list.
+        Notes
+        -----
+        Keeps records whose ``status`` is in the provided list.
         """
         data = [
             {'name': 'John', 'status': 'active'},
@@ -211,13 +220,11 @@ class TestApplyFilter:
 
 @pytest.mark.unit
 class TestApplyMap:
-    """
-    Unit test suite for :func:`etlplus.transform.apply_map`.
-    """
+    """Unit test suite for :func:`etlplus.transform.apply_map`."""
 
-    def test_map(self):
+    def test_map(self) -> None:
         """
-        Map/rename fields in each record.
+        Test mapping/renaming fields in each record.
         """
         data = [
             {'old_name': 'John', 'age': 30},
@@ -231,13 +238,11 @@ class TestApplyMap:
 
 @pytest.mark.unit
 class TestApplySelect:
-    """
-    Unit test suite for :func:`etlplus.transform.apply_select`.
-    """
+    """Unit test suite for :func:`etlplus.transform.apply_select`."""
 
-    def test_select(self):
+    def test_select(self) -> None:
         """
-        Select a subset of fields from each record.
+        Test selecting a subset of fields from each record.
 
         Notes
         -----
@@ -253,9 +258,7 @@ class TestApplySelect:
 
 @pytest.mark.unit
 class TestApplySort:
-    """
-    Unit test suite for :func:`etlplus.transform.apply_sort`.
-    """
+    """Unit test suite for :func:`etlplus.transform.apply_sort`."""
 
     @pytest.mark.parametrize(
         'reverse, expected',
@@ -268,9 +271,16 @@ class TestApplySort:
         self,
         reverse: bool,
         expected: list[int],
-    ):
+    ) -> None:
         """
-        Sort records by a field.
+        Test sorting records by a field.
+
+        Parameters
+        ----------
+        reverse : bool
+            Whether to sort in descending order.
+        expected : list[int]
+            Expected sorted ages.
 
         Notes
         -----
@@ -287,13 +297,11 @@ class TestApplySort:
 
 @pytest.mark.unit
 class TestTransform:
-    """
-    Unit test suite for :func:`etlplus.transform.transform`.
-    """
+    """Unit test suite for :func:`etlplus.transform.transform`."""
 
-    def test_from_json_string(self):
+    def test_from_json_string(self) -> None:
         """
-        Transform from a JSON string.
+        Test transforming from a JSON string.
 
         Notes
         -----
@@ -302,11 +310,19 @@ class TestTransform:
         json_str = '[{"name": "John", "age": 30}]'
         result = transform(json_str, {'select': ['name']})
         assert len(result) == 1
-        assert 'age' not in result[0]
+        assert 'age' not in result
 
-    def test_from_file(self, temp_json_file):
+    def test_from_file(
+        self,
+        temp_json_file: Callable[[list[dict]], str],
+    ) -> None:
         """
-        Transform from a JSON file.
+        Test transforming from a JSON file.
+
+        Parameters
+        ----------
+        temp_json_file : Callable[[list[dict]], str]
+            Fixture to create a temp JSON file.
 
         Notes
         -----
@@ -315,17 +331,17 @@ class TestTransform:
         temp_path = temp_json_file([{'name': 'John', 'age': 30}])
         result = transform(temp_path, {'select': ['name']})
         assert len(result) == 1
-        assert 'age' not in result[0]
+        assert 'age' not in result
 
-    def test_no_operations(self):
-        """Transform without operations returns input unchanged."""
+    def test_no_operations(self) -> None:
+        """Test transforming without operations returns input unchanged."""
         data = [{'name': 'John'}]
         result = transform(data)
         assert result == data
 
-    def test_with_aggregate(self):
+    def test_with_aggregate(self) -> None:
         """
-        Transform using an aggregate operation.
+        Test transforming using an aggregate operation.
 
         Notes
         -----
@@ -339,11 +355,13 @@ class TestTransform:
             data,
             {'aggregate': {'field': 'value', 'func': 'sum'}},
         )
+        assert isinstance(result, dict)
+        assert len(result) == 1
         assert result['sum_value'] == 30
 
-    def test_with_filter(self):
+    def test_with_filter(self) -> None:
         """
-        Transform using a filter operation.
+        Test transforming using a filter operation.
 
         Notes
         -----
@@ -363,12 +381,13 @@ class TestTransform:
                 },
             },
         )
+        assert isinstance(result, list)
         assert len(result) == 1
         assert result[0]['name'] == 'John'
 
-    def test_with_map(self):
+    def test_with_map(self) -> None:
         """
-        Transform using a map operation.
+        Test transforming using a map operation.
 
         Notes
         -----
@@ -376,9 +395,11 @@ class TestTransform:
         """
         data = [{'old_field': 'value'}]
         result = transform(data, {'map': {'old_field': 'new_field'}})
+        assert isinstance(result, list)
+        assert len(result) == 1
         assert 'new_field' in result[0]
 
-    def test_with_multiple_aggregates(self):
+    def test_with_multiple_aggregates(self) -> None:
         """
         Transform with multiple aggregations.
 
@@ -402,9 +423,9 @@ class TestTransform:
         )
         assert result == {'sum_value': 6, 'count': 3}
 
-    def test_with_multiple_filters_and_select(self):
+    def test_with_multiple_filters_and_select(self) -> None:
         """
-        Transform using multiple filters and a select sequence.
+        Test transforming using multiple filters and a select sequence.
 
         Notes
         -----
@@ -434,9 +455,9 @@ class TestTransform:
         )
         assert result == [{'name': 'John'}]
 
-    def test_with_select(self):
+    def test_with_select(self) -> None:
         """
-        Transform using a select operation.
+        Test transforming using a select operation.
 
         Notes
         -----
@@ -444,11 +465,13 @@ class TestTransform:
         """
         data = [{'name': 'John', 'age': 30, 'city': 'NYC'}]
         result = transform(data, {'select': ['name', 'age']})
+        assert isinstance(result, list)
+        assert len(result) == 1
         assert set(result[0].keys()) == {'name', 'age'}
 
-    def test_with_sort(self):
+    def test_with_sort(self) -> None:
         """
-        Transform using a sort operation.
+        Test transforming using a sort operation.
 
         Notes
         -----
@@ -459,4 +482,6 @@ class TestTransform:
             {'name': 'Jane', 'age': 25},
         ]
         result = transform(data, {'sort': {'field': 'age'}})
+        assert isinstance(result, list)
+        assert len(result) == 2
         assert result[0]['age'] == 25
