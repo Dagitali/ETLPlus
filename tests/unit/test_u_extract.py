@@ -11,6 +11,8 @@ Notes
 - Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
+from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any
