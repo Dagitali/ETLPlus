@@ -202,7 +202,7 @@ class TestLoadErrors:
     def test_error_cases(
         self,
         exc_type: type[Exception],
-        call: Callable,
+        call: Callable[..., Any],
         args: list[Any],
         err_msg: str | None,
     ) -> None:
@@ -213,7 +213,7 @@ class TestLoadErrors:
         ----------
         exc_type : type[Exception]
             Expected exception type.
-        call : Callable
+        call : Callable[..., Any]
             Function to call.
         args : list[Any]
             Arguments to pass to the function.
@@ -228,9 +228,9 @@ class TestLoadErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert \
-                    False, \
+                assert False, (
                     f'Expected {exc_type.__name__} with message: {err_msg}'
+                )
 
 
 @pytest.mark.unit
@@ -311,7 +311,7 @@ class TestLoadData:
             Pytest monkeypatch fixture.
         """
         class _FakeStdin:
-            def read(self):
+            def read(self) -> str:
                 return '{"items": [{"age": 30}, {"age": 20}]}'
         monkeypatch.setattr('sys.stdin', _FakeStdin())
         result = load_data('-')
@@ -361,8 +361,7 @@ class TestLoadToFile:
             reader = csv.DictReader(f)
             loaded_data: list[dict[str, Any]] = list(reader)
         assert len(loaded_data) == 2
-        # loaded_data is a list of dicts, so index with integer then key
-        first_row = loaded_data[0]
+        first_row: dict[str, Any] = loaded_data[0]
         assert isinstance(first_row, dict)
         assert first_row['name'] == 'John'
 
