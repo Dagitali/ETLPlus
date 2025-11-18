@@ -14,12 +14,14 @@ from __future__ import annotations
 import types
 import urllib.parse as urlparse
 from typing import Any
+from typing import Callable
 from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
 
 import etlplus.api.client as cmod
+from etlplus.api import CursorPaginationConfig
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfig
@@ -167,7 +169,7 @@ class TestCursorPagination:
     def test_page_size_normalizes(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg,  # fixture from conftest
+        cursor_cfg: Callable[..., CursorPaginationConfig],
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -212,7 +214,7 @@ class TestCursorPagination:
     def test_adds_limit_and_advances_cursor(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg,  # fixture from conftest
+        cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
         calls: list[dict[str, Any]] = []
 
@@ -257,7 +259,7 @@ class TestCursorPagination:
     def test_error_includes_page_number(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg,  # fixture from conftest
+        cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
         """
         When a cursor-paginated request fails, PaginationError includes page.
@@ -300,9 +302,9 @@ class TestCursorPagination:
     def test_retry_backoff_sleeps(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg,  # fixture from conftest
+        cursor_cfg: Callable[..., CursorPaginationConfig],
         capture_sleeps: list[float],
-        jitter,
+        jitter: Callable[[list[float]], list[float]],
     ) -> None:
         """Cursor pagination applies retry backoff sleep on failure."""
         jitter([0.05])
@@ -421,7 +423,7 @@ class TestOffsetPagination:
             cfg,
         )
 
-        # Expected behavior: collects up to max_records using offset stepping
+        # Expected behavior: collects up to max_records using offset stepping.
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
 
 
@@ -429,7 +431,7 @@ class TestPagePagination:
     def test_stops_on_short_final_batch(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg,  # fixture from conftest
+        page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         def fake_extract(
             kind: str,
@@ -466,7 +468,7 @@ class TestPagePagination:
     def test_max_records_cap(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg,  # fixture from conftest
+        page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         def fake_extract(
             kind: str,
@@ -502,7 +504,7 @@ class TestPagePagination:
     def test_page_size_normalization(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg,  # fixture from conftest
+        page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         def fake_extract(kind: str, _url: str, **kw: Any):
             assert kind == 'api'
@@ -537,7 +539,7 @@ class TestPagePagination:
     def test_error_includes_page_number(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg,  # fixture from conftest
+        page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         client = EndpointClient(
             base_url='https://api.example.com/v1',
@@ -778,8 +780,7 @@ class TestUrlComposition:
     )
     def test_base_path_variants(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        extract_stub: dict[str, Any],
         base_url: str,
         base_path: str,
         endpoint: str,
@@ -796,10 +797,8 @@ class TestUrlComposition:
 
     def test_query_merging_and_path_encoding(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        extract_stub: dict[str, Any],
     ) -> None:
-
         client = EndpointClient(
             base_url='https://api.example.com/v1?existing=a&dup=1',
             endpoints={'item': '/users/{id}'},
@@ -819,10 +818,8 @@ class TestUrlComposition:
 
     def test_query_merging_duplicate_base_params(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        extract_stub: dict[str, Any],
     ) -> None:
-
         client = EndpointClient(
             base_url='https://api.example.com/v1?dup=1&dup=2&z=9',
             endpoints={'e': '/ep'},
@@ -837,10 +834,9 @@ class TestUrlComposition:
         )
 
     def test_query_param_ordering(
-        self, monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
+        self,
+        extract_stub: dict[str, Any],
     ) -> None:
-
         client = EndpointClient(
             base_url='https://api.example.com/v1?z=9&dup=1',
             endpoints={'e': '/ep'},
