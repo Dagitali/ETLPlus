@@ -52,7 +52,7 @@ class TestPipelineBuildConnectors:
         assert any(isinstance(c, ConnectorApi) for c in items)
         assert any(isinstance(c, ConnectorDb) for c in items)
 
-    def test_build_connectors_for_targets_key(self):  # noqa: D401
+    def test_build_connectors_for_targets_key(self) -> None:  # noqa: D401
         raw = {
             'targets': [
                 {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
