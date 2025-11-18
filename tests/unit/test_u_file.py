@@ -42,7 +42,7 @@ class TestFile:
         tmp_path: Path,
         filename: str,
         expected_format: FileFormat,
-        expected_content: dict,
+        expected_content: dict[str, object],
     ) -> None:
         """
         Test JSON file inference from extension.
@@ -55,12 +55,8 @@ class TestFile:
             Name of the file to create.
         expected_format : FileFormat
             Expected file format.
-        expected_content : dict
+        expected_content : dict[str, object]
             Expected content after reading the file.
-
-        Returns
-        -------
-        None
         """
         p = tmp_path / filename
         p.write_text('{}', encoding='utf-8')
@@ -94,10 +90,6 @@ class TestFile:
             Name of the file to create.
         expected_format : FileFormat | None
             Expected file format (should be None).
-
-        Returns
-        -------
-        None
         """
         p = tmp_path / filename
         p.write_text('{}', encoding='utf-8')
