@@ -46,7 +46,11 @@ class TestLoad:
     @pytest.mark.parametrize(
         'target_type,target,expected_status',
         [
-            ('database', 'postgresql://localhost/testdb', 'not_implemented'),
+            (
+                'database',
+                'postgresql://localhost/testdb',
+                'not_implemented',
+            ),
         ],
     )
     def test_wrapper_database(
