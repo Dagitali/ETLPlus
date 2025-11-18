@@ -10,6 +10,8 @@ Notes
 """
 from pathlib import Path
 
+import pytest
+
 from etlplus.enums import FileFormat
 from etlplus.file import File
 
@@ -17,39 +19,87 @@ from etlplus.file import File
 # SECTION: TESTS =========================================================== #
 
 
-def test_infers_json_from_extension(tmp_path: Path):
+class TestFile:
     """
-    Test JSON file inference from extension.
+    Unit test suite for :class:`etlplus.file.File`.
 
-    Parameters
-    ----------
-    tmp_path : Path
-        Temporary directory path.
+    Notes
+    -----
+    - Exercises JSON detection and defers errors for unknown extensions.
     """
 
-    p = tmp_path / 'data.json'
-    p.write_text('{}', encoding='utf-8')
-    f = File(p)
-    assert f.file_format == FileFormat.JSON
-    assert f.read() == {}
+    @pytest.mark.parametrize(
+        'filename,expected_format,expected_content',
+        [
+            ('data.json', FileFormat.JSON, {}),
+        ],
+    )
+    def test_infers_json_from_extension(
+        self,
+        tmp_path: Path,
+        filename: str,
+        expected_format: FileFormat,
+        expected_content: dict,
+    ) -> None:
+        """
+        Test JSON file inference from extension.
 
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory path.
+        filename : str
+            Name of the file to create.
+        expected_format : FileFormat
+            Expected file format.
+        expected_content : dict
+            Expected content after reading the file.
 
-def test_unknown_extension_defers_error(tmp_path: Path):
-    """
-    Test unknown file extension handling and error deferral.
+        Returns
+        -------
+        None
+        """
+        p = tmp_path / filename
+        p.write_text('{}', encoding='utf-8')
+        f = File(p)
+        assert f.file_format == expected_format
+        assert f.read() == expected_content
 
-    Ensures :class:`FileFormat` is None and reading raises :class:`ValueError`.
+    @pytest.mark.parametrize(
+        'filename,expected_format',
+        [
+            ('weird.data', None),
+        ],
+    )
+    def test_unknown_extension_defers_error(
+        self,
+        tmp_path: Path,
+        filename: str,
+        expected_format: None,
+    ) -> None:
+        """
+        Test unknown file extension handling and error deferral.
 
-    Parameters
-    ----------
-    tmp_path : Path
-        Temporary directory path.
-    """
-    p = tmp_path / 'weird.data'
-    p.write_text('{}', encoding='utf-8')
-    f = File(p)
-    assert f.file_format is None
-    try:
-        f.read()
-    except ValueError as e:
-        assert 'Cannot infer file format' in str(e)
+        Ensures :class:`FileFormat` is None and reading raises
+        :class:`ValueError`.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory path.
+        filename : str
+            Name of the file to create.
+        expected_format : FileFormat or None
+            Expected file format (should be None).
+
+        Returns
+        -------
+        None
+        """
+        p = tmp_path / filename
+        p.write_text('{}', encoding='utf-8')
+        f = File(p)
+        assert f.file_format is expected_format
+        with pytest.raises(ValueError) as e:
+            f.read()
+        assert 'Cannot infer file format' in str(e.value)
