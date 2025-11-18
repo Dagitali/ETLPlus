@@ -8,6 +8,8 @@ Notes
 - Uses ``tmp_path`` for filesystem isolation.
 - Exercises JSON detection and defers errors for unknown extensions.
 """
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
@@ -75,7 +77,7 @@ class TestFile:
         self,
         tmp_path: Path,
         filename: str,
-        expected_format: None,
+        expected_format: FileFormat | None,
     ) -> None:
         """
         Test unknown file extension handling and error deferral.
@@ -89,7 +91,7 @@ class TestFile:
             Temporary directory path.
         filename : str
             Name of the file to create.
-        expected_format : FileFormat or None
+        expected_format : FileFormat | None
             Expected file format (should be None).
 
         Returns
