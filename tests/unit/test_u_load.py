@@ -43,21 +43,37 @@ class TestLoad:
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
             load({'test': 'data'}, 'invalid', 'target')
 
-    def test_wrapper_database(self) -> None:
+    @pytest.mark.parametrize(
+        'target_type,target,expected_status',
+        [
+            ('database', 'postgresql://localhost/testdb', 'not_implemented'),
+        ],
+    )
+    def test_wrapper_database(
+        self,
+        target_type: str,
+        target: str,
+        expected_status: str,
+    ) -> None:
         """
         Test loading data to a database with a supported format.
 
-        Notes
-        -----
-        Supported format should not raise an error.
+        Parameters
+        ----------
+        target_type : str
+            Type of target (e.g., 'database').
+        target : str
+            Target connection string.
+        expected_status : str
+            Expected status in result.
         """
         mock_data = {'test': 'data'}
         result = cast(
             dict[str, Any], load(
-                mock_data, 'database', 'postgresql://localhost/testdb',
+                mock_data, target_type, target,
             ),
         )
-        assert result['status'] == 'not_implemented'
+        assert result['status'] == expected_status
 
     def test_wrapper_file(
         self,
