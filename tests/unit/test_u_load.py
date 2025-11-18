@@ -11,6 +11,8 @@ Notes
 - Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
+from __future__ import annotations
+
 import csv
 import json
 from pathlib import Path
@@ -80,10 +82,14 @@ class TestLoad:
         assert result['status'] == expected_status
 
     @pytest.mark.parametrize(
-        'file_format,expected',
+        'file_format,write,expected',
         [
             (
                 'json',
+                lambda p, d: json.dump(
+                    d,
+                    open(p, 'w', encoding='utf-8'),
+                ),
                 {'test': 'data'},
             ),
         ],
@@ -92,6 +98,7 @@ class TestLoad:
         self,
         tmp_path: Path,
         file_format: str,
+        write: Callable,
         expected: Any,
     ) -> None:
         """
@@ -103,6 +110,8 @@ class TestLoad:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
+        write : Callable
+            Function to write data to the file.
         expected : Any
             Expected data to write and read.
 
@@ -112,6 +121,7 @@ class TestLoad:
         """
         path = tmp_path / f'output.{file_format}'
         mock_data = expected
+        write(str(path), mock_data)
         result = cast(
             dict[str, Any], load(
                 mock_data, 'file', str(path), file_format=file_format,
@@ -119,6 +129,35 @@ class TestLoad:
         )
         assert result['status'] == 'success'
         assert path.exists()
+
+    @pytest.mark.parametrize(
+        'file_format,expected_error',
+        [
+            ('unsupported', 'Invalid FileFormat'),
+        ],
+    )
+    def test_wrapper_file_unsupported_format(
+        self,
+        tmp_path: Path,
+        file_format: str,
+        expected_error: str,
+    ) -> None:
+        """
+        Test error raised for unsupported file format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        file_format : str
+            Unsupported file format.
+        expected_error : str
+            Expected error message.
+        """
+        path = tmp_path / f'output.{file_format}'
+        mock_data = {'test': 'data'}
+        with pytest.raises(ValueError, match=expected_error):
+            load(mock_data, 'file', str(path), file_format=file_format)
 
 
 @pytest.mark.unit
