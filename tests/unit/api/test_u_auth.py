@@ -72,9 +72,16 @@ def token_sequence(monkeypatch: pytest.MonkeyPatch):
 # SECTION: TESTS ============================================================ #
 
 
-def test_bearer_fetches_and_caches(
-    token_sequence,
-):  # noqa: ANN001
+def test_bearer_fetches_and_caches(token_sequence: dict[str, int]) -> None:
+    """
+    Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
+    correctly.
+
+    Parameters
+    ----------
+    token_sequence : dict[str, int]
+        Fixture tracking token fetch count.
+    """
     auth = EndpointCredentialsBearer(
         token_url='https://auth.example.com/token',
         client_id='id',
@@ -97,7 +104,15 @@ def test_bearer_fetches_and_caches(
 
 def test_bearer_refreshes_when_expiring(
     monkeypatch: pytest.MonkeyPatch,
-):  # noqa: D401
+) -> None:
+    """
+    Test that EndpointCredentialsBearer refreshes token when expiring.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+    """
     calls = {'n': 0}
 
     def fake_post(
@@ -145,6 +160,14 @@ def test_bearer_refreshes_when_expiring(
 def test_http_error_path_raises_http_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """
+    Test that HTTP error path raises HTTPError.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+    """
     def fake_post(
         url: str,
         data,
@@ -180,6 +203,14 @@ def test_http_error_path_raises_http_error(
 def test_missing_access_token_raises_runtime_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """
+    Test that missing access_token raises RuntimeError.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+    """
     def fake_post(
         url: str,
         data: dict[str, Any],
@@ -204,6 +235,14 @@ def test_missing_access_token_raises_runtime_error(
 def test_non_json_body_raises_value_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """
+    Test that non-JSON body raises ValueError.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+    """
     class _R:
         status_code = 200
         text = 'not json'
