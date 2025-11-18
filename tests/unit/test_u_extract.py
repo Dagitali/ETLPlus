@@ -120,7 +120,7 @@ class TestExtractErrors:
         exc_type: type[Exception],
         call: Callable,
         args: list[Any],
-        err_msg: Any,
+        err_msg: str | None,
     ) -> None:
         """
         Test parametrized error case tests for extract/extract_from_file.
