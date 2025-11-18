@@ -202,8 +202,8 @@ class TestLoadToFile:
 
     Notes
     -----
-        - Tests writing to CSV and JSON files,
-            directory creation, and error handling.
+    - Tests writing to CSV and JSON files,
+        directory creation, and error handling.
     """
 
     def test_to_csv_file(
