@@ -19,9 +19,35 @@ from etlplus.config import parse_connector
 
 class TestParseConnector:
     """
-    Unit test suite for the :func:`parse_connector` function.
+    Unit test suite for :func:`parse_connector`.
     """
 
-    def test_unsupported_type_raises(self):  # noqa: D401
-        with pytest.raises(TypeError):
-            parse_connector({'name': 'x', 'type': 'unknown'})
+    @pytest.mark.parametrize(
+        'payload,expected_exception',
+        [
+            ({'name': 'x', 'type': 'unknown'}, TypeError),
+            ({'type': 'unknown'}, TypeError),
+        ],
+        ids=['unsupported_type', 'missing_name'],
+    )
+    def test_unsupported_type_raises(
+        self,
+        payload: dict[str, object],
+        expected_exception: type[Exception],
+    ) -> None:
+        """
+        Test that unsupported connector types raise the expected exception.
+
+        Parameters
+        ----------
+        payload : dict[str, object]
+            Connector payload to test.
+        expected_exception : type[Exception]
+            Expected exception type.
+
+        Returns
+        -------
+        None
+        """
+        with pytest.raises(expected_exception):
+            parse_connector(payload)
