@@ -61,10 +61,6 @@ class TestUtils:
             Input value to coerce to float.
         expected : float | None
             Expected result after coercion.
-
-        Returns
-        -------
-        None
         """
         assert to_float(value) == expected
 
@@ -94,10 +90,6 @@ class TestUtils:
             Input value to coerce to int.
         expected : int | None
             Expected result after coercion.
-
-        Returns
-        -------
-        None
         """
         assert to_int(value) == expected
 
@@ -116,10 +108,6 @@ class TestUtils:
         ----------
         value : str
             Input string to test.
-
-        Returns
-        -------
-        None
         """
         assert to_number(value) is None
 
@@ -144,10 +132,6 @@ class TestUtils:
             Input string to test.
         expected : float
             Expected result after conversion.
-
-        Returns
-        -------
-        None
         """
         assert to_number(value) == expected
 
@@ -172,9 +156,5 @@ class TestUtils:
             Input value to test.
         expected : float
             Expected result after conversion.
-
-        Returns
-        -------
-        None
         """
         assert to_number(value) == expected
