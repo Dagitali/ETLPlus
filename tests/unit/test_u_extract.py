@@ -194,7 +194,7 @@ class TestExtractFromFile:
         self,
         tmp_path: Path,
         file_format: str,
-        write: Callable | None,
+        write: Callable[[str], None] | None,
         expected: Any,
         request: pytest.FixtureRequest,
     ) -> None:
@@ -207,7 +207,7 @@ class TestExtractFromFile:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
-        write : Callable | None
+        write : Callable[[str], None] | None
             Optional function to write data to the file. For CSV, the
             ``csv_writer`` fixture is used instead.
         expected : Any
