@@ -59,7 +59,7 @@ class TestExtract:
         self,
         tmp_path: Path,
         file_format: str,
-        write: Callable,
+        write: Callable[[str], None],
         expected: Any,
     ) -> None:
         """
@@ -71,7 +71,7 @@ class TestExtract:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
-        write : Callable
+        write : Callable[[str], None]
             Function to write data to the file.
         expected : Any
             Expected extracted data.
@@ -118,7 +118,7 @@ class TestExtractErrors:
     def test_error_cases(
         self,
         exc_type: type[Exception],
-        call: Callable,
+        call: Callable[..., Any],
         args: list[Any],
         err_msg: str | None,
     ) -> None:
@@ -129,7 +129,7 @@ class TestExtractErrors:
         ----------
         exc_type : type[Exception]
             Expected exception type.
-        call : Callable
+        call : Callable[..., Any]
             Function to call.
         args : list[Any]
             Arguments to pass to the function.
