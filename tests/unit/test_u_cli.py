@@ -20,19 +20,11 @@ from etlplus.cli import create_parser
 
 class TestCreateParser:
     """
-    Test suite for :func:`etlplus.cli.create_parser`.
+    Unit test suite for :func:`etlplus.cli.create_parser`.
 
-    Methods
-    -------
-    test_create_parser
-    test_parser_extract_command
-    test_parser_extract_recognizes_format_option
-    test_parser_load_command
-    test_parser_load_recognizes_format_option
-    test_parser_no_command
-    test_parser_transform_command
-    test_parser_validate_command
-    test_parser_version
+    Notes
+    -----
+    - Tests CLI parser creation and argument parsing for all commands.
     """
 
     def test_create_parser(self) -> None:
@@ -116,10 +108,6 @@ class TestCreateParser:
             CLI arguments to parse.
         expected : dict[str, object]
             Expected parsed argument values.
-
-        Returns
-        -------
-        None
         """
         parser = create_parser()
         args = parser.parse_args(cmd_args)
@@ -127,9 +115,7 @@ class TestCreateParser:
             assert getattr(args, key, None) == val
 
     def test_parser_version(self) -> None:
-        """
-        Test that the CLI parser provides version information.
-        """
+        """Test that the CLI parser provides version information."""
         parser = create_parser()
         with pytest.raises(SystemExit) as exc_info:
             parser.parse_args(['--version'])
