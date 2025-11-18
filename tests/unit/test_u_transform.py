@@ -42,10 +42,17 @@ class TestApplyAggregate:
     def test_aggregate(
         self,
         func: str,
-        expected,
-    ):
+        expected: int,
+    ) -> None:
         """
         Aggregate the ``value`` field with built-in functions.
+
+        Parameters
+        ----------
+        func : str
+            Aggregation function to apply.
+        expected : int
+            Expected result of the aggregation.
         """
         data = [
             {'name': 'John', 'value': 10},
@@ -56,7 +63,7 @@ class TestApplyAggregate:
         key = f"{func}_value" if func != 'count' else 'count_value'
         assert result[key] == expected
 
-    def test_aggregate_callable_with_alias(self):
+    def test_aggregate_callable_with_alias(self) -> None:
         """
         Aggregate with a callable and custom alias.
         """
@@ -112,13 +119,13 @@ class TestApplyFilter:
 
         Parameters
         ----------
-        data : list of dict
+        data : list[dict[str, str]]
             Input records.
         op : Callable[[str, str], bool]
             Operator function.
         value : str
             Value to filter by.
-        expected : list
+        expected : list[str]
             Expected names after filter.
         """
         result = apply_filter(
