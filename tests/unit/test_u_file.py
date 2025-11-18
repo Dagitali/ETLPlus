@@ -21,6 +21,7 @@ from etlplus.file import File
 # SECTION: TESTS =========================================================== #
 
 
+@pytest.mark.unit
 class TestFile:
     """
     Unit test suite for :class:`etlplus.file.File`.
