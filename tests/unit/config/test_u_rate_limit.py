@@ -52,16 +52,17 @@ class TestRateLimitConfig:
     )
     def test_from_obj_coercion(
         self,
-        # type: ignore[no-untyped-def]
-        rate_limit_from_obj_factory, obj, expect,
-    ):
+        rate_limit_from_obj_factory,
+        obj,
+        expect,
+    ) -> None:
         rl: RateLimitConfig = rate_limit_from_obj_factory(obj)
         assert (rl.sleep_seconds, rl.max_per_sec) == expect
 
     def test_from_obj_non_mapping_iterable_returns_none(
         self,
-        rate_limit_from_obj_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_from_obj_factory,
+    ) -> None:
         class Weird(Iterable):  # noqa: D401
             def __iter__(self):  # type: ignore[override]
                 yield 'sleep_seconds'
@@ -73,8 +74,8 @@ class TestRateLimitConfig:
 
     def test_no_side_effects_on_input_mapping(
         self,
-        rate_limit_from_obj_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_from_obj_factory,
+    ) -> None:
         obj = {'sleep_seconds': '1', 'max_per_sec': '3'}
         _ = rate_limit_from_obj_factory(obj)
         # Original mapping should remain unchanged (defensive copy behavior)
@@ -82,8 +83,8 @@ class TestRateLimitConfig:
 
     def test_repr_roundtrip(
         self,
-        rate_limit_config_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_config_factory,
+    ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=0.5, max_per_sec=2.0)
         # Best-effort: repr should mention field names & values
         r = repr(rl)
@@ -92,8 +93,8 @@ class TestRateLimitConfig:
 
     def test_unhashable_dataclass(
         self,
-        rate_limit_config_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_config_factory,
+    ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         # dataclass(slots=True) without frozen=True should be unhashable
         with pytest.raises(TypeError):
@@ -101,8 +102,8 @@ class TestRateLimitConfig:
 
     def test_validate_bounds_contains_only_known_messages(
         self,
-        rate_limit_config_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_config_factory,
+    ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=-5, max_per_sec=-1)
         allowed = {
             'sleep_seconds should be >= 0',
@@ -131,8 +132,8 @@ class TestRateLimitConfig:
         self,
         rate_limit_config_factory,
         kwargs,
-        expected_warnings,  # type: ignore[no-untyped-def]
-    ):
+        expected_warnings,
+    ) -> None:
         rl: RateLimitConfig = rate_limit_config_factory(**kwargs)
         warnings = rl.validate_bounds()
         # Order not guaranteed; compare as sets
