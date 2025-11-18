@@ -64,9 +64,7 @@ class TestApplyAggregate:
         assert result[key] == expected
 
     def test_aggregate_callable_with_alias(self) -> None:
-        """
-        Test aggregating with a callable and custom alias.
-        """
+        """Test aggregating with a callable and custom alias."""
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
 
@@ -223,9 +221,7 @@ class TestApplyMap:
     """Unit test suite for :func:`etlplus.transform.apply_map`."""
 
     def test_map(self) -> None:
-        """
-        Test mapping/renaming fields in each record.
-        """
+        """Test mapping/renaming fields in each record."""
         data = [
             {'old_name': 'John', 'age': 30},
             {'old_name': 'Jane', 'age': 25},
