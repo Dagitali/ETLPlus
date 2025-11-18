@@ -25,7 +25,16 @@ class TestUtils:
 
     Notes
     -----
-    - Unit tests for shared numeric coercion helpers.
+    - Validates shared numeric coercion helpers.
+
+    Examples
+    --------
+    >>> to_float('2.5')
+    2.5
+    >>> to_int('10')
+    10
+    >>> to_number('3.14')
+    3.14
     """
 
     @pytest.mark.parametrize(
