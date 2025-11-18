@@ -79,9 +79,20 @@ class TestLoad:
         )
         assert result['status'] == expected_status
 
+    @pytest.mark.parametrize(
+        'file_format,expected',
+        [
+            (
+                'json',
+                {'test': 'data'},
+            ),
+        ],
+    )
     def test_wrapper_file(
         self,
         tmp_path: Path,
+        file_format: str,
+        expected: Any,
     ) -> None:
         """
         Test loading data to a file with a supported format.
@@ -90,16 +101,20 @@ class TestLoad:
         ----------
         tmp_path : Path
             Temporary directory provided by pytest.
+        file_format : str
+            File format of the data.
+        expected : Any
+            Expected data to write and read.
 
         Notes
         -----
         Supported format should not raise an error.
         """
-        path = tmp_path / 'output.json'
-        mock_data = {'test': 'data'}
+        path = tmp_path / f'output.{file_format}'
+        mock_data = expected
         result = cast(
             dict[str, Any], load(
-                mock_data, 'file', str(path), file_format='json',
+                mock_data, 'file', str(path), file_format=file_format,
             ),
         )
         assert result['status'] == 'success'
