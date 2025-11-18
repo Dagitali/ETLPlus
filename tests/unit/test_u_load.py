@@ -131,33 +131,45 @@ class TestLoad:
         assert path.exists()
 
     @pytest.mark.parametrize(
-        'file_format,expected_error',
+        'exc_type,call,args,err_msg',
         [
-            ('unsupported', 'Invalid FileFormat'),
+            (
+                ValueError,
+                load,
+                [
+                    {'test': 'data'},
+                    'file',
+                    'output.unsupported',
+                    'unsupported',
+                ],
+                'Invalid FileFormat',
+            ),
         ],
     )
     def test_wrapper_file_unsupported_format(
         self,
-        tmp_path: Path,
-        file_format: str,
-        expected_error: str,
+        exc_type: type[Exception],
+        call: Callable,
+        args: list[Any],
+        err_msg: str,
     ) -> None:
         """
         Test error raised for unsupported file format.
 
         Parameters
         ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        file_format : str
-            Unsupported file format.
-        expected_error : str
-            Expected error message.
+        exc_type : type[Exception]
+            Expected exception type.
+        call : Callable
+            Function to call.
+        args : list[Any]
+            Arguments to pass to the function.
+        err_msg : str
+            Expected error message substring.
         """
-        path = tmp_path / f'output.{file_format}'
-        mock_data = {'test': 'data'}
-        with pytest.raises(ValueError, match=expected_error):
-            load(mock_data, 'file', str(path), file_format=file_format)
+        with pytest.raises(exc_type) as e:
+            call(*args)
+        assert err_msg in str(e.value)
 
 
 @pytest.mark.unit
