@@ -98,7 +98,7 @@ class TestLoad:
         self,
         tmp_path: Path,
         file_format: str,
-        write: Callable,
+        write: Callable[[str, Any], None],
         expected: Any,
     ) -> None:
         """
@@ -110,7 +110,7 @@ class TestLoad:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
-        write : Callable
+        write : Callable[[str, Any], None]
             Function to write data to the file.
         expected : Any
             Expected data to write and read.
