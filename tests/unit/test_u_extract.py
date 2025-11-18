@@ -35,9 +35,25 @@ class TestExtract:
     - Tests file extraction for supported formats.
     """
 
+    @pytest.mark.parametrize(
+        'file_format,write,expected',
+        [
+            (
+                'json',
+                lambda p: json.dump(
+                    {'test': 'data'},
+                    open(p, 'w', encoding='utf-8'),
+                ),
+                {'test': 'data'},
+            ),
+        ],
+    )
     def test_wrapper_file(
         self,
         tmp_path: Path,
+        file_format: str,
+        write: Callable,
+        expected: Any,
     ) -> None:
         """
         Test extracting data from a file with a supported format.
@@ -46,17 +62,21 @@ class TestExtract:
         ----------
         tmp_path : Path
             Temporary directory provided by pytest.
+        file_format : str
+            File format of the data.
+        write : Callable
+            Function to write data to the file.
+        expected : Any
+            Expected extracted data.
 
         Notes
         -----
         Supported format should not raise an error.
         """
-        path = tmp_path / 'data.json'
-        mock_data = {'test': 'data'}
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(mock_data, f)
-        result = extract('file', str(path), file_format='json')
-        assert result == mock_data
+        path = tmp_path / f'data.{file_format}'
+        write(str(path))
+        result = extract('file', str(path), file_format=file_format)
+        assert result == expected
 
 
 @pytest.mark.unit
@@ -186,7 +206,7 @@ class TestExtractFromFile:
         request : pytest.FixtureRequest
             Pytest fixture request object used to access other fixtures.
         """
-        path = tmp_path / f"data.{file_format}"
+        path = tmp_path / f'data.{file_format}'
         if file_format == 'csv':
             write_fn = request.getfixturevalue('csv_writer')
         else:
