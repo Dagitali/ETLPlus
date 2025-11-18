@@ -8,8 +8,6 @@ Notes
 - Exercises type, required, and range checks on fields.
 - Uses temporary files to verify load/validate convenience helpers.
 """
-import json
-import tempfile
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -19,45 +17,6 @@ import pytest
 from etlplus.validate import load_data
 from etlplus.validate import validate
 from etlplus.validate import validate_field
-
-
-# SECTION: HELPERS ========================================================== #
-
-
-@pytest.fixture
-def temp_json_file() -> Callable[[dict[str, Any]], str]:
-    """
-    Write a dictionary to a temporary JSON file and return its path.
-
-    Returns
-    -------
-    Callable[[dict[str, Any]], str]
-        Function that writes a dict to a temporary JSON file and returns its
-        path.
-    """
-    def _write(
-        data: dict,
-    ) -> str:
-        """
-        Write data to a temporary JSON file.
-
-        Parameters
-        ----------
-        data : dict
-            Data to write to the JSON file.
-
-        Returns
-        -------
-        str
-            Path to the temporary JSON file.
-        """
-        with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
-        ) as f:
-            json.dump(data, f)
-            return f.name
-
-    return _write
 
 
 # SECTION: TESTS =========================================================== #
