@@ -80,7 +80,9 @@ class TestExtract:
         """
         path = tmp_path / f'data.{file_format}'
         write(str(path))
-        result = extract('file', str(path), file_format=file_format)
+        result = extract(
+            'file', str(path), file_format=file_format,
+        )
         assert result == expected
 
 
