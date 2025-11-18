@@ -35,6 +35,11 @@ class TestExtract:
     - Tests file extraction for supported formats.
     """
 
+    def test_invalid_source_type(self) -> None:
+        """Test error raised for invalid source type."""
+        with pytest.raises(ValueError, match='Invalid DataConnectorType'):
+            extract('invalid', 'source')
+
     @pytest.mark.parametrize(
         'file_format,write,expected',
         [
