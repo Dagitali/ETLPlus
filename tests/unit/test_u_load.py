@@ -173,6 +173,67 @@ class TestLoad:
 
 
 @pytest.mark.unit
+class TestLoadErrors:
+    """
+    Unit test suite for ``etlplus.load`` function errors.
+
+    Notes
+    -----
+    - Tests error handling for load and load_data.
+    """
+
+    @pytest.mark.parametrize(
+        'exc_type,call,args,err_msg',
+        [
+            (
+                ValueError,
+                load_data,
+                ['/nonexistent/file.json'],
+                'Invalid data source',
+            ),
+            (
+                ValueError,
+                load,
+                ['/nonexistent/file.json', 'invalid', 'source', 'json'],
+                'Invalid data source',
+            ),
+        ],
+    )
+    def test_error_cases(
+        self,
+        exc_type: type[Exception],
+        call: Callable,
+        args: list[Any],
+        err_msg: str | None,
+    ) -> None:
+        """
+        Test parametrized error case tests for load/load_data.
+
+        Parameters
+        ----------
+        exc_type : type[Exception]
+            Expected exception type.
+        call : Callable
+            Function to call.
+        args : list[Any]
+            Arguments to pass to the function.
+        err_msg : str | None
+            Expected error message substring, if applicable.
+        """
+        with pytest.raises(exc_type) as e:
+            call(*args)
+        match e.value:
+            case AssertionError():
+                pass
+            case ValueError() if err_msg and err_msg in str(e.value):
+                pass
+            case _:
+                assert \
+                    False, \
+                    f'Expected {exc_type.__name__} with message: {err_msg}'
+
+
+@pytest.mark.unit
 class TestLoadData:
     """
     Unit test suite for :func:`etlplus.load.load_data`.
