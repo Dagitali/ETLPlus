@@ -10,6 +10,7 @@ Notes
 from __future__ import annotations
 
 from typing import Any
+from typing import Callable
 from typing import Literal
 
 import pytest
@@ -29,9 +30,19 @@ class TestPaginationConfig:
     )
     def test_unknown_type_general_warnings_only(
         self,
-        tval,
-        pagination_config_factory,
+        tval: str | None,
+        pagination_config_factory: Callable[..., Any],
     ) -> None:
+        """
+        Test that unknown pagination types only yield general warnings.
+
+        Parameters
+        ----------
+        tval : str | None
+            Pagination type value to test.
+        pagination_config_factory : Callable[..., Any]
+            Factory for PaginationConfig.
+        """
         pc = pagination_config_factory(
             type=tval,
             start_page=0,
