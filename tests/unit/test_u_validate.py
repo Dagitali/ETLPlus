@@ -22,12 +22,13 @@ from etlplus.validate import validate_field
 # SECTION: TESTS =========================================================== #
 
 
+@pytest.mark.unit
 class TestLoadData:
     """
     Unit test suite for :func:`etlplus.validate.load_data`.
     """
 
-    def test_nvalid_source(self) -> None:
+    def test_invalid_source(self) -> None:
         """
         Invalid input string should raise ValueError during loading.
         """
