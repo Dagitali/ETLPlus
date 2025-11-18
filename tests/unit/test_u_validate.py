@@ -29,22 +29,16 @@ class TestLoadData:
     """
 
     def test_invalid_source(self) -> None:
-        """
-        Invalid input string should raise ValueError during loading.
-        """
+        """Invalid input string should raise ValueError during loading."""
         with pytest.raises(ValueError, match='Invalid data source'):
             load_data('not a valid json string')
 
 
 class TestValidateField:
-    """
-    Unit test suite for :func:`etlplus.validate.validate_field`.
-    """
+    """Unit test suite for :func:`etlplus.validate.validate_field`."""
 
     def test_required_error_message(self) -> None:
-        """
-        Validate error message for required field.
-        """
+        """Validate error message for required field."""
         result = validate_field(None, {'required': True})
         assert 'required' in result['errors'][0].lower()
 
@@ -89,9 +83,7 @@ class TestValidateField:
 
 
 class TestValidate:
-    """
-    Test suite for validate function.
-    """
+    """Test suite for validate function."""
 
     @pytest.mark.parametrize(
         'data, rules, expected_valid',
@@ -180,9 +172,7 @@ class TestValidate:
             Path(temp_path).unlink()
 
     def test_from_json_string(self) -> None:
-        """
-        Validate from a JSON string.
-        """
+        """Validate from a JSON string."""
         json_str = '{"name": "John", "age": 30}'
         result = validate(json_str)
         assert result['valid']
@@ -193,9 +183,7 @@ class TestValidate:
             assert any(d.get('name') == 'John' for d in data)
 
     def test_no_rules(self) -> None:
-        """
-        Validate without rules returns the data unchanged.
-        """
+        """Validate without rules returns the data unchanged."""
         data = {'test': 'data'}
         result = validate(data)
         assert result['valid']
