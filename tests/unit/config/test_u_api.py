@@ -11,8 +11,11 @@ Notes
 """
 from __future__ import annotations
 
+from typing import Callable
+
 import pytest
 
+from etlplus.config import ApiConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
 
@@ -35,10 +38,26 @@ class TestApiConfig:
     )
     def test_api_profile_defaults_rate_limit_mapped(
         self,
-        api_config_factory,
-        sleep,
-        max_per,
+        api_config_factory: Callable[[dict], ApiConfig],
+        sleep: float,
+        max_per: int,
     ) -> None:
+        """
+        Test that API profile defaults for rate limit are mapped correctly.
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict], ApiConfig]
+            Factory for building ApiConfig from dicts.
+        sleep : float
+            Sleep seconds for rate limit.
+        max_per : int
+            Max per second for rate limit.
+
+        Returns
+        -------
+        None
+        """
         obj = {
             'profiles': {
                 'default': {
