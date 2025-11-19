@@ -3,6 +3,10 @@
 
 Configures pytest-based integration tests and provides shared fixtures to
 reduce duplication across integration tests.
+
+Notes
+-----
+- Fixtures are designed for reuse and DRY test setup.
 """
 from __future__ import annotations
 
@@ -58,9 +62,8 @@ def capture_load_to_api(
     dict[str, Any]
         Mutable dictionary populated after a run where API load happens.
     """
-    _load_mod = importlib.import_module(
-        'etlplus.load',
-    )  # ensure module, not attr
+    # Ensure module, not attr.
+    _load_mod = importlib.import_module('etlplus.load')
     _run_mod = importlib.import_module('etlplus.run')
 
     seen: dict[str, Any] = {}
@@ -78,17 +81,19 @@ def capture_load_to_api(
             seen['headers'] = kwargs.get('headers')
             seen['timeout'] = kwargs.get('timeout')
             seen['session'] = kwargs.get('session')
-            # Return a minimal success envelope similar to real load_to_api
+
+            # Return a minimal success envelope similar to real load_to_api.
             return {
                 'status': 'ok',
                 'url': target,
                 'count': len(data) if isinstance(data, list) else 0,
             }
+
         return real_load(data, target_type, target, **kwargs)
 
-    # Patch both the load module and the run module reference
     monkeypatch.setattr(_load_mod, 'load', _fake_load)
     monkeypatch.setattr(_run_mod, 'load', _fake_load)
+
     return seen
 
 
@@ -111,7 +116,10 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
 
     class FakeClient:
         def __init__(
-            self, base_url: str, endpoints: dict[str, str], **_k: Any,
+            self,
+            base_url: str,
+            endpoints: dict[str, str],
+            **kwargs,
         ):
             self.base_url = base_url
             self.endpoints = endpoints
@@ -154,9 +162,8 @@ def pipeline_cfg_factory(
     Returns
     -------
     Callable[..., PipelineConfig]
-        A factory function to create PipelineConfig instances.
+        Factory function to create :class:`PipelineConfig` instances.
     """
-
     def _make(
         *,
         pagination_defaults: PaginationConfig | None = None,
@@ -212,13 +219,12 @@ def run_patched(
     Returns
     -------
     Callable[..., dict[str, Any]]
-        A factory function to run the pipeline with patched dependencies.
+        Factory function to run the pipeline with patched dependencies.
 
     Example
     -------
     result = run_patched(cfg, FakeClient, sleep_seconds=1.23)
     """
-
     run_mod = importlib.import_module('etlplus.run')
 
     def _run(
@@ -227,13 +233,15 @@ def run_patched(
         *,
         sleep_seconds: float | None = None,
     ) -> dict[str, Any]:
-        # Patch config loader and EndpointClient
+        # Patch config loader and EndpointClient.
         monkeypatch.setattr(
-            run_mod, 'load_pipeline_config', lambda *_a, **_k: cfg,
+            run_mod,
+            'load_pipeline_config',
+            lambda *_a, **_k: cfg,
         )
         monkeypatch.setattr(run_mod, 'EndpointClient', endpoint_client_cls)
 
-        # Optionally force compute_sleep_seconds to a constant
+        # Optionally force compute_sleep_seconds to a constant.
         if sleep_seconds is not None:
             monkeypatch.setattr(
                 run_mod,
@@ -241,7 +249,7 @@ def run_patched(
                 lambda *_a, **_k: sleep_seconds,
             )
 
-        # Avoid real IO in load()
+        # Avoid real IO in load().
         def _fake_load(data: Any, *_a: Any, **_k: Any) -> dict[str, Any]:
             n = len(data) if isinstance(data, list) else 0
             return {'status': 'ok', 'count': n}
