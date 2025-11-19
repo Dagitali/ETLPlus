@@ -18,6 +18,7 @@ from etlplus.cli import create_parser
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestCreateParser:
     """
     Unit test suite for :func:`etlplus.cli.create_parser`.

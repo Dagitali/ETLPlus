@@ -22,6 +22,7 @@ from etlplus.config.types import RateLimitConfigMap
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestRateLimitConfig:
     """
     Test suite for :class:`RateLimitConfig`.

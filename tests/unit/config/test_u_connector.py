@@ -17,6 +17,7 @@ from etlplus.config import parse_connector
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestParseConnector:
     """
     Unit test suite for :func:`parse_connector`.

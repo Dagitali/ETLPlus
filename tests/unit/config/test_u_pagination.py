@@ -19,6 +19,7 @@ import pytest
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestPaginationConfig:
     """
     Unit test suite for :class:`PaginationConfig`.

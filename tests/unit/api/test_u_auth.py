@@ -102,6 +102,7 @@ def token_sequence(
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestEndpointCredentialsBearer:
     """
     Unit test suite for :class:`EndpointCredentialsBearer`.

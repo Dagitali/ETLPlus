@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from requests import Response                        # type: ignore[import]
 from requests import Session                         # type: ignore[import]
 from requests.structures import CaseInsensitiveDict  # type: ignore[import]
@@ -26,6 +27,7 @@ __all__ = ['MockResponse', 'MockSession']
 # SECTION: CLASSES ========================================================== #
 
 
+@pytest.mark.unit
 class MockResponse(Response):  # pragma: no cover - behaviour trivial
     """
     Minimal ``Response`` subclass returning a provided JSON payload.
@@ -66,6 +68,7 @@ class MockResponse(Response):  # pragma: no cover - behaviour trivial
         return self._payload
 
 
+@pytest.mark.unit
 class MockSession(Session):  # pragma: no cover - exercised indirectly
     """
     ``Session`` test double capturing ``get`` calls and close state.

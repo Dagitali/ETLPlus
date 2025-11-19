@@ -14,6 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
+import pytest
+
 from etlplus.config.connector import ConnectorApi
 from etlplus.config.connector import ConnectorDb
 from etlplus.config.connector import ConnectorFile
@@ -24,6 +26,7 @@ from etlplus.config.pipeline import PipelineConfig
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestPipelineBuildConnectors:
     """
     Unit test suite for :func:`_build_connectors`.

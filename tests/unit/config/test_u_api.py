@@ -26,6 +26,7 @@ from etlplus.config import RateLimitConfig
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestApiConfig:
     """
     Unit test suite for :class:`ApiConfig`.
@@ -332,6 +333,7 @@ class TestApiConfig:
         assert pdef.max_pages == 10
 
 
+@pytest.mark.unit
 class TestApiProfileConfig:
     """
     Unit test suite for :class:`ApiProfileConfig`.
@@ -491,6 +493,7 @@ class TestApiProfileConfig:
             profile_config_factory({})
 
 
+@pytest.mark.unit
 class TestEndpointConfig:
     """
     Unit test suite for :class:`EndpointConfig`.

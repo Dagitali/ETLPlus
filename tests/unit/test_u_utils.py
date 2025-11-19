@@ -19,6 +19,7 @@ from etlplus.utils import to_number
 # SECTION: TESTS =========================================================== #
 
 
+@pytest.mark.unit
 class TestUtils:
     """
     Unit test suite for ``etlplus.utils``.

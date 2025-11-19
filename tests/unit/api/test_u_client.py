@@ -84,6 +84,7 @@ def make_http_error(
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestContextManager:
     """
     Unit test suite for the :class:`EndpointClient` class.
@@ -158,6 +159,7 @@ class TestContextManager:
         assert sess.closed is False
 
 
+@pytest.mark.unit
 class TestCursorPagination:
     """
     Unit test suite for the :class:`EndpointClient` class.
