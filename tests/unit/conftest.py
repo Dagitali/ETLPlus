@@ -2,6 +2,10 @@
 ``tests.unit.conftest`` module.
 
 Configures pytest-based unit tests and provides shared fixtures.
+
+Notes
+-----
+- Fixtures are designed for reuse and DRY test setup.
 """
 from __future__ import annotations
 
