@@ -25,7 +25,7 @@ from etlplus.api import CursorPaginationConfig
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfig
-from etlplus.api.client import RetryPolicy
+from etlplus.api import RetryPolicy
 from tests.unit.api.test_u_mocks import MockSession
 
 
@@ -458,6 +458,13 @@ class TestErrors:
 
 
 class TestOffsetPagination:
+    """
+    Unit test suite for offset pagination in :class:`EndpointClient`.
+
+    Tests offset-based pagination logic, including correct offset stepping,
+    limit handling, and record truncation.
+    """
+
     def test_offset_pagination_behaves_like_offset(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -511,6 +518,13 @@ class TestOffsetPagination:
 
 
 class TestPagePagination:
+    """
+    Unit test suite for page-based pagination in :class:`EndpointClient`.
+
+    Tests page-based pagination logic, including batch handling, page size
+    normalization, error propagation, and query parameter merging.
+    """
+
     def test_stops_on_short_final_batch(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -726,6 +740,13 @@ class TestPagePagination:
 
 
 class TestRateLimitPrecedence:
+    """
+    Unit test suite for rate limit precedence in :class:`EndpointClient`.
+
+    Tests explicit sleep_seconds override, rate_limit config precedence, and
+    correct sleep duration application during pagination.
+    """
+
     def test_overrides_sleep_seconds_wins(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -778,6 +799,13 @@ class TestRateLimitPrecedence:
 
 
 class TestRetryLogic:
+    """
+    Unit test suite for retry logic in :class:`EndpointClient`.
+
+    Tests retry behavior for request errors, jitter backoff, and network error
+    handling, ensuring correct retry policy application and error propagation.
+    """
+
     def test_request_error_after_retries_exhausted(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -941,6 +969,12 @@ class TestRetryLogic:
 
 
 class TestUrlComposition:
+    """
+    Unit test suite for URL composition in :class:`EndpointClient`.
+
+    Tests base path variants, query parameter merging, path encoding, and
+    query parameter ordering in composed URLs.
+    """
     @pytest.mark.parametrize(
         'base_url,base_path,endpoint,expected',
         [
