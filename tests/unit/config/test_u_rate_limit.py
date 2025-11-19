@@ -16,7 +16,7 @@ from typing import Callable
 import pytest
 
 from etlplus.config import RateLimitConfig
-from etlplus.config.rate_limit import RateLimitConfigMap
+from etlplus.config.types import RateLimitConfigMap
 
 
 # SECTION: TESTS ============================================================ #
