@@ -11,10 +11,14 @@ Notes
 """
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Callable
+
 from etlplus.config.connector import ConnectorApi
 from etlplus.config.connector import ConnectorDb
 from etlplus.config.connector import ConnectorFile
 from etlplus.config.pipeline import _build_connectors
+from etlplus.config.pipeline import PipelineConfig
 
 
 # SECTION: TESTS ============================================================ #
@@ -22,12 +26,19 @@ from etlplus.config.pipeline import _build_connectors
 
 class TestPipelineBuildConnectors:
     """
-    Unit test suite for the :func:`_build_connectors` function.
+    Unit test suite for :func:`_build_connectors`.
+
+    Notes
+    -----
+    Tests connector parsing for sources and targets, including skipping
+    malformed and unsupported entries.
     """
 
-    def test_build_connectors_skips_malformed_and_unsupported(
-        self,
-    ) -> None:  # noqa: D401
+    def test_build_connectors_skips_malformed_and_unsupported(self) -> None:
+        """
+        Test that :func:`_build_connectors` skips malformed and unsupported
+        entries.
+        """
         raw = {
             'sources': [
                 {'name': 'csv_in', 'type': 'file', 'path': '/tmp/in.csv'},
@@ -52,7 +63,10 @@ class TestPipelineBuildConnectors:
         assert any(isinstance(c, ConnectorApi) for c in items)
         assert any(isinstance(c, ConnectorDb) for c in items)
 
-    def test_build_connectors_for_targets_key(self) -> None:  # noqa: D401
+    def test_build_connectors_for_targets_key(self) -> None:
+        """
+        Test that _build_connectors parses connectors for the 'targets' key.
+        """
         raw = {
             'targets': [
                 {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
@@ -76,15 +90,28 @@ class TestPipelineBuildConnectors:
 
 class TestPipelineConfig:
     """
-    Unit test suite for the :class:`PipelineConfig` class.
+    Unit test suite for :class:`PipelineConfig`.
     """
 
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
-        tmp_path,
-        pipeline_yaml_factory,
-        pipeline_from_yaml_factory,
+        tmp_path: Path,
+        pipeline_yaml_factory: Callable[[str, Path], Path],
+        pipeline_from_yaml_factory: Callable[..., PipelineConfig],
     ) -> None:  # noqa: D401
+        """
+        Test that :class:`PipelineConfig` includes profile environment
+        variables in substitution when loaded from YAML.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory path.
+        pipeline_yaml_factory : Callable[[str, Path], Path]
+            Factory to create a pipeline YAML file.
+        pipeline_from_yaml_factory : Callable[..., PipelineConfig]
+            Factory to create a PipelineConfig from YAML.
+        """
         yml = (
             """
 name: Test
@@ -112,10 +139,23 @@ jobs: []
 
     def test_multiple_sources_targets_and_missing_vars(
         self,
-        tmp_path,
-        pipeline_yaml_factory,
-        pipeline_from_yaml_factory,
+        tmp_path: Path,
+        pipeline_yaml_factory: Callable[[str, Path], Path],
+        pipeline_from_yaml_factory: Callable[..., PipelineConfig],
     ) -> None:
+        """
+        Test that :class:`PipelineConfig` correctly handles multiple sources,
+        targets, and missing variables during substitution.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory path.
+        pipeline_yaml_factory : Callable[[str, Path], Path]
+            Factory to create a pipeline YAML file.
+        pipeline_from_yaml_factory : Callable[..., PipelineConfig]
+            Factory to create a PipelineConfig from YAML.
+        """
         yml = (
             """
 name: TestMulti
