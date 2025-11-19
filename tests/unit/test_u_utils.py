@@ -9,6 +9,8 @@ Notes
 """
 from __future__ import annotations
 
+import pytest
+
 from etlplus.utils import to_float
 from etlplus.utils import to_int
 from etlplus.utils import to_number
@@ -17,64 +19,143 @@ from etlplus.utils import to_number
 # SECTION: TESTS =========================================================== #
 
 
-def test_to_float_coercion():
+@pytest.mark.unit
+class TestUtils:
     """
-    Test float coercion for various input types.
+    Unit test suite for ``etlplus.utils``.
 
-    Ensures correct conversion for int, float, string, and None values.
+    Notes
+    -----
+    - Validates shared numeric coercion helpers.
+
+    Examples
+    --------
+    >>> to_float('2.5')
+    2.5
+    >>> to_int('10')
+    10
+    >>> to_number('3.14')
+    3.14
     """
-    assert to_float(2) == 2.0
-    assert to_float(2.5) == 2.5
-    assert to_float(' 2.5 ') == 2.5
-    assert to_float('abc') is None
-    assert to_float(None) is None
 
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            (2, 2.0),
+            (2.5, 2.5),
+            (' 2.5 ', 2.5),
+            ('abc', None),
+            (None, None),
+        ],
+    )
+    def test_to_float_coercion(
+        self,
+        value: int | float | str | None,
+        expected: float | None,
+    ) -> None:
+        """
+        Test float coercion for various input types.
 
-def test_to_int_coercion():
-    """
-    Test int coercion for various input types.
+        Parameters
+        ----------
+        value : int | float | str | None
+            Input value to coerce to float.
+        expected : float | None
+            Expected result after coercion.
+        """
+        assert to_float(value) == expected
 
-    Ensures correct conversion for int, string, decimal string, and None
-    values.
-    """
-    assert to_int(10) == 10
-    assert to_int('10') == 10
-    assert to_int('  7  ') == 7
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            (10, 10),
+            ('10', 10),
+            ('  7  ', 7),
+            ('3.0', 3),
+            ('3.5', None),
+            (None, None),
+            ('abc', None),
+        ],
+    )
+    def test_to_int_coercion(
+        self,
+        value: int | str | None,
+        expected: int | None,
+    ) -> None:
+        """
+        Test int coercion for various input types.
 
-    # Decimal numeric string coerces only if exact integer.
-    assert to_int('3.0') == 3
-    assert to_int('3.5') is None
+        Parameters
+        ----------
+        value : int | str | None
+            Input value to coerce to int.
+        expected : int | None
+            Expected result after coercion.
+        """
+        assert to_int(value) == expected
 
-    assert to_int(None) is None
-    assert to_int('abc') is None
+    @pytest.mark.parametrize(
+        'value',
+        ['abc', '', '3.14.15'],
+    )
+    def test_to_number_with_invalid_strings(
+        self,
+        value: str,
+    ) -> None:
+        """
+        Test to_number with invalid string inputs.
 
+        Parameters
+        ----------
+        value : str
+            Input string to test.
+        """
+        assert to_number(value) is None
 
-def test_to_number_with_invalid_strings():
-    """
-    Test to_number with invalid string inputs.
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            ('42', 42.0),
+            ('  10.5 ', 10.5),
+        ],
+    )
+    def test_to_number_with_numeric_strings(
+        self,
+        value: str,
+        expected: float,
+    ) -> None:
+        """
+        Test to_number with valid numeric string inputs.
 
-    Ensures None is returned for non-numeric strings and malformed numbers.
-    """
-    assert to_number('abc') is None
-    assert to_number('') is None
-    assert to_number('3.14.15') is None
+        Parameters
+        ----------
+        value : str
+            Input string to test.
+        expected : float
+            Expected result after conversion.
+        """
+        assert to_number(value) == expected
 
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            (5, 5.0),
+            (3.14, 3.14),
+        ],
+    )
+    def test_to_number_with_numeric_types(
+        self,
+        value: int | float,
+        expected: float,
+    ) -> None:
+        """
+        Test to_number with numeric types (int, float).
 
-def test_to_number_with_numeric_strings():
-    """
-    Test to_number with valid numeric string inputs.
-
-    Ensures correct conversion for integer and float strings.
-    """
-    assert to_number('42') == 42.0
-    assert to_number('  10.5 ') == 10.5
-
-
-def test_to_number_with_numeric_types():
-    """
-    Test to_number with numeric types (int, float).
-
-    Ensures correct conversion for int and float values.
-    """
-    assert to_number(5) == 5.0
-    assert to_number(3.14) == 3.14
+        Parameters
+        ----------
+        value : int | float
+            Input value to test.
+        expected : float
+            Expected result after conversion.
+        """
+        assert to_number(value) == expected

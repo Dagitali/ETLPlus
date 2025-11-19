@@ -8,6 +8,10 @@ Notes
 - Uses a lightweight fake response object and monkey-patched session.
 - Simulates expiration and refresh timing windows via ``time.time`` patch.
 - Validates raising behavior for non-200 authentication responses.
+
+Examples
+--------
+>>> pytest tests/unit/api/test_u_auth.py
 """
 from __future__ import annotations
 
@@ -26,6 +30,17 @@ from etlplus.api.auth import EndpointCredentialsBearer
 
 
 class _Resp:
+    """
+    Lightweight fake response object for simulating requests.Response.
+
+    Parameters
+    ----------
+    payload : dict[str, Any]
+        JSON payload to return.
+    status : int, optional
+        HTTP status code (default: 200).
+    """
+
     def __init__(
         self,
         payload: dict[str, Any],
@@ -52,8 +67,23 @@ class _Resp:
 
 
 @pytest.fixture
-def token_sequence(monkeypatch: pytest.MonkeyPatch):
-    calls = {'n': 0}
+def token_sequence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, int]:
+    """
+    Track token fetch count and patch requests.post for token acquisition.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    dict[str, int]
+        Dictionary tracking token fetch count.
+    """
+    calls: dict[str, int] = {'n': 0}
 
     def fake_post(
         url: str,
@@ -61,7 +91,7 @@ def token_sequence(monkeypatch: pytest.MonkeyPatch):
         auth,
         headers,
         timeout,
-    ):  # noqa: D401, ANN001
+    ) -> _Resp:
         calls['n'] += 1
         return _Resp({'access_token': f"t{calls['n']}", 'expires_in': 60})
 
@@ -72,156 +102,214 @@ def token_sequence(monkeypatch: pytest.MonkeyPatch):
 # SECTION: TESTS ============================================================ #
 
 
-def test_bearer_fetches_and_caches(
-    token_sequence,
-):  # noqa: ANN001
-    auth = EndpointCredentialsBearer(
-        token_url='https://auth.example.com/token',
-        client_id='id',
-        client_secret='secret',
-        scope='read',
-    )
-    s = requests.Session()
-    s.auth = auth
+@pytest.mark.unit
+@pytest.mark.usefixtures()
+class TestEndpointCredentialsBearer:
+    """
+    Unit test suite for :class:`EndpointCredentialsBearer`.
 
-    r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
-    s.auth(r1)
-    assert r1.headers.get('Authorization') == 'Bearer t1'
+    Notes
+    -----
+    - Tests authentication logic.
+    - Uses monkeypatching to simulate token fetch, expiration, and error paths.
+    - Validates caching, refresh, and error handling behavior.
+    """
 
-    # Second call should not fetch a new token (still valid)
-    r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
-    s.auth(r2)
-    assert r2.headers.get('Authorization') == 'Bearer t1'
-    assert token_sequence['n'] == 1
+    def test_fetches_and_caches(
+        self,
+        token_sequence: dict[str, int],
+    ) -> None:
+        """
+        Test that EndpointCredentialsBearer fetches and caches tokens
+        correctly.
 
+        Parameters
+        ----------
+        token_sequence : dict[str, int]
+            Fixture tracking token fetch count.
+        """
+        auth = EndpointCredentialsBearer(
+            token_url='https://auth.example.com/token',
+            client_id='id',
+            client_secret='secret',
+            scope='read',
+        )
+        s = requests.Session()
+        s.auth = auth
 
-def test_bearer_refreshes_when_expiring(
-    monkeypatch: pytest.MonkeyPatch,
-):  # noqa: D401
-    calls = {'n': 0}
+        r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
+        s.auth(r1)
+        assert r1.headers.get('Authorization') == 'Bearer t1'
 
-    def fake_post(
-        url: str,
-        data: dict[str, Any],
-        auth,
-        headers,
-        timeout,
-    ):  # noqa: D401, ANN001
-        calls['n'] += 1
-        # First token almost expired; second token longer lifetime
-        if calls['n'] == 1:
-            return _Resp(
-                {'access_token': 'short', 'expires_in': CLOCK_SKEW_SEC - 1},
-            )
-        return _Resp({'access_token': 'long', 'expires_in': 120})
+        # Second call should not fetch a new token (still valid)
+        r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
+        s.auth(r2)
+        assert r2.headers.get('Authorization') == 'Bearer t1'
+        assert token_sequence['n'] == 1
 
-    monkeypatch.setattr(requests, 'post', fake_post)
+    def test_refreshes_when_expiring(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that EndpointCredentialsBearer refreshes token when expiring.
 
-    auth = EndpointCredentialsBearer(
-        token_url='https://auth.example.com/token',
-        client_id='id',
-        client_secret='secret',
-        scope='read',
-    )
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
+        calls: dict[str, int] = {'n': 0}
 
-    # First call obtains short token
-    r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
-    auth(r1)
-    assert r1.headers['Authorization'] == 'Bearer short'
+        def fake_post(
+            url: str,
+            data: dict[str, Any],
+            auth,
+            headers,
+            timeout,
+        ) -> _Resp:
+            calls['n'] += 1
+            # First token almost expired; second token longer lifetime
+            if calls['n'] == 1:
+                return _Resp(
+                    {
+                        'access_token': 'short',
+                        'expires_in': CLOCK_SKEW_SEC - 1,
+                    },
+                )
+            return _Resp({'access_token': 'long', 'expires_in': 120})
 
-    # Force time forward to trigger refresh logic
-    monkeypatch.setattr(
-        time,
-        'time',
-        lambda: auth.expiry - (CLOCK_SKEW_SEC / 2),
-    )
+        monkeypatch.setattr(requests, 'post', fake_post)
 
-    r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
-    auth(r2)
-    assert r2.headers['Authorization'] == 'Bearer long'
-    assert calls['n'] == 2
+        auth = EndpointCredentialsBearer(
+            token_url='https://auth.example.com/token',
+            client_id='id',
+            client_secret='secret',
+            scope='read',
+        )
 
+        # First call obtains short token
+        r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
+        auth(r1)
+        assert r1.headers['Authorization'] == 'Bearer short'
 
-def test_http_error_path_raises_http_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def fake_post(
-        url: str,
-        data,
-        auth,
-        headers,
-        timeout,
-    ):  # noqa: D401, ANN001
-        # Simulate HTTP 401 with body; requests raises on raise_for_status
-        resp = requests.Response()
-        resp.status_code = 401
-        resp._content = b'Unauthorized'  # type: ignore[attr-defined]
+        # Force time forward to trigger refresh logic
+        monkeypatch.setattr(
+            time,
+            'time',
+            lambda: auth.expiry - (CLOCK_SKEW_SEC / 2),
+        )
 
+        r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
+        auth(r2)
+        assert r2.headers['Authorization'] == 'Bearer long'
+        assert calls['n'] == 2
+
+    def test_http_error_path_raises_http_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that HTTP error path raises HTTPError.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
+        def fake_post(
+            url: str,
+            data,
+            auth,
+            headers,
+            timeout,
+        ):
+            # Simulate HTTP 401 with body; requests raises on raise_for_status
+            resp = requests.Response()
+            resp.status_code = 401
+            resp._content = b'Unauthorized'  # type: ignore[attr-defined]
+
+            class _R:
+                def raise_for_status(self):
+                    e = requests.HTTPError('401')
+                    e.response = resp  # type: ignore[attr-defined]
+                    raise e
+
+            return _R()
+
+        monkeypatch.setattr(requests, 'post', fake_post)
+        auth = EndpointCredentialsBearer(
+            token_url='https://auth.example.com/token',
+            client_id='id',
+            client_secret='secret',
+            scope='read',
+        )
+        r = requests.Request('GET', 'https://api.example.com/x').prepare()
+        with pytest.raises(requests.HTTPError):
+            auth(r)
+
+    def test_missing_access_token_raises_runtime_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that missing access_token raises RuntimeError.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
+        def fake_post(
+            url: str,
+            data: dict[str, Any],
+            auth,
+            headers,
+            timeout,
+        ) -> _Resp:
+            return _Resp({'expires_in': 60})  # no access_token
+
+        monkeypatch.setattr(requests, 'post', fake_post)
+        auth = EndpointCredentialsBearer(
+            token_url='https://auth.example.com/token',
+            client_id='id',
+            client_secret='secret',
+            scope='read',
+        )
+        r = requests.Request('GET', 'https://api.example.com/x').prepare()
+        with pytest.raises(RuntimeError):
+            auth(r)
+
+    def test_non_json_body_raises_value_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that non-JSON body raises ValueError.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
         class _R:
-            def raise_for_status(self):  # noqa: D401
-                e = requests.HTTPError('401')
-                e.response = resp  # type: ignore[attr-defined]
-                raise e
+            status_code = 200
+            text = 'not json'
 
-        return _R()
+            def raise_for_status(self):
+                return None
 
-    monkeypatch.setattr(requests, 'post', fake_post)
-    auth = EndpointCredentialsBearer(
-        token_url='https://auth.example.com/token',
-        client_id='id',
-        client_secret='secret',
-        scope='read',
-    )
-    r = requests.Request('GET', 'https://api.example.com/x').prepare()
-    with pytest.raises(requests.HTTPError):
-        auth(r)
+            def json(self):
+                raise ValueError('invalid json')
 
+        monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())
 
-def test_missing_access_token_raises_runtime_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def fake_post(
-        url: str,
-        data: dict[str, Any],
-        auth,
-        headers,
-        timeout,
-    ):  # noqa: D401, ANN001
-        return _Resp({'expires_in': 60})  # no access_token
-
-    monkeypatch.setattr(requests, 'post', fake_post)
-    auth = EndpointCredentialsBearer(
-        token_url='https://auth.example.com/token',
-        client_id='id',
-        client_secret='secret',
-        scope='read',
-    )
-    r = requests.Request('GET', 'https://api.example.com/x').prepare()
-    with pytest.raises(RuntimeError):
-        auth(r)
-
-
-def test_non_json_body_raises_value_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class _R:
-        status_code = 200
-        text = 'not json'
-
-        def raise_for_status(self):  # noqa: D401
-            return None
-
-        def json(self):  # noqa: D401
-            raise ValueError('invalid json')
-
-    monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())
-
-    auth = EndpointCredentialsBearer(
-        token_url='https://auth.example.com/token',
-        client_id='id',
-        client_secret='secret',
-        scope='read',
-    )
-    r = requests.Request('GET', 'https://api.example.com/x').prepare()
-    with pytest.raises(ValueError):
-        auth(r)
+        auth = EndpointCredentialsBearer(
+            token_url='https://auth.example.com/token',
+            client_id='id',
+            client_secret='secret',
+            scope='read',
+        )
+        r = requests.Request('GET', 'https://api.example.com/x').prepare()
+        with pytest.raises(ValueError):
+            auth(r)
