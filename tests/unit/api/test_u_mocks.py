@@ -46,12 +46,39 @@ class MockResponse(Response):  # pragma: no cover - behaviour trivial
 
     # -- Instance Methods -- #
 
-    def json(self, **_kw: Any) -> Any:  # noqa: D401 - simple override
+    def json(
+        self,
+        **kwargss: Any,
+    ) -> Any:
+        """
+        Return the provided JSON payload.
+
+        Parameters
+        ----------
+        **kwargss : Any
+            Ignored keyword arguments for compatibility.
+
+        Returns
+        -------
+        Any
+            The payload passed to the constructor.
+        """
         return self._payload
 
 
 class MockSession(Session):  # pragma: no cover - exercised indirectly
-    """``Session`` test double capturing ``get`` calls and close state."""
+    """
+    ``Session`` test double capturing ``get`` calls and close state.
+
+    Notes
+    -----
+    Captures arguments to ``get`` and tracks close state for test assertions.
+
+    Methods
+    -------
+    __init__()
+        Initializes a MockSession.
+    """
 
     # -- Magic Methods (Object Lifecycle) -- #
 
@@ -89,6 +116,46 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         checking while keeping implementation intentionally lightweight.
         Unused parameters are accepted for compatibility and recorded only if
         provided.
+
+        Parameters
+        ----------
+        url : str | bytes
+            The URL for the GET request.
+        params : Any, optional
+            Query parameters for the request.
+        data : Any, optional
+            Data to send in the body of the request.
+        headers : Any, optional
+            Headers to include in the request.
+        cookies : Any, optional
+            Cookies to include in the request.
+        files : Any, optional
+            Files to upload in the request.
+        auth : Any, optional
+            Authentication credentials.
+        timeout : Any, optional
+            Timeout for the request.
+        allow_redirects : bool, optional
+            Whether to follow redirects (default: True).
+        proxies : Any, optional
+            Proxy servers to use for the request.
+        hooks : Any, optional
+            Event hooks for the request.
+        stream : Any, optional
+            Whether to stream the response.
+        verify : Any, optional
+            Whether to verify SSL certificates.
+        cert : Any, optional
+            Client certificate to use.
+        json : Any, optional
+            JSON data to send in the request body.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Response
+            A MockResponse with a simple JSON payload.
         """
         call_kwargs: dict[str, Any] = {}
         # Persist only explicitly provided (non-None) values for readability.
@@ -127,6 +194,7 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         self.calls.append((str(url), call_kwargs))
         return MockResponse({'ok': True})
 
-    def close(self) -> None:  # noqa: D401
+    def close(self) -> None:
+        """Mark the session as closed."""
         super().close()
         self.closed = True
