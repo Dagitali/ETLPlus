@@ -21,7 +21,12 @@ import pytest
 
 class TestPaginationConfig:
     """
-    Unit test suite for the :class:`PaginationConfig` class.
+    Unit test suite for :class:`PaginationConfig`.
+
+    Notes
+    -----
+    Tests validation and parsing of pagination configuration for different
+    pagination styles.
     """
     @pytest.mark.parametrize(
         'tval',
