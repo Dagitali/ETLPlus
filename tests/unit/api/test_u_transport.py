@@ -20,6 +20,10 @@ from etlplus.api.transport import build_http_adapter
 
 
 def test_build_http_adapter_basic_mountable() -> None:
+    """
+    Test that build_http_adapter returns a mountable adapter and handles
+    mapping max_retries.
+    """
     cfg = {
         'pool_connections': 5,
         'pool_maxsize': 5,
@@ -29,21 +33,24 @@ def test_build_http_adapter_basic_mountable() -> None:
     adapter = build_http_adapter(cfg)
     assert adapter is not None
 
-    # Should be mountable on a requests Session
+    # Should be mountable on :class:`requests.Session`.
     s = requests.Session()
     s.mount('https://', adapter)
 
-    # max_retries is either an int or a urllib3 Retry instance
+    # max_retries is either an int or a urllib3 Retry instance.
     mr = adapter.max_retries
     if isinstance(mr, int):
         assert mr == 3 or mr == 0
     else:
-        # Retry object exposes total when urllib3 is available
+        # Retry object exposes total when urllib3 is available.
         total = getattr(mr, 'total', None)
         assert total in (0, 3)
 
 
 def test_build_http_adapter_integer_retries_fallback() -> None:
+    """
+    Test that build_http_adapter handles integer max_retries fallback.
+    """
     cfg = {
         'pool_connections': 2,
         'pool_maxsize': 2,
@@ -63,6 +70,11 @@ def test_build_http_adapter_integer_retries_fallback() -> None:
 
 
 def test_build_http_adapter_retry_coercion_lists() -> None:
+    """
+    Test that build_http_adapter handles list inputs for allowed_methods
+    and status_forcelist, ensuring they map onto the Retry object irrespective
+    of concrete container type.
+    """
     # Provide lists for allowed_methods & status_forcelist; ensure they
     # map onto the Retry object irrespective of concrete container type.
     cfg = {
@@ -97,6 +109,11 @@ def test_build_http_adapter_retry_coercion_lists() -> None:
 
 
 def test_build_http_adapter_retry_coercion_sets() -> None:
+    """
+    Test that build_http_adapter handles set and frozenset inputs for
+    allowed_methods and status_forcelist, ensuring they map onto the Retry
+    object irrespective of concrete container type.
+    """
     # Provide sets to exercise set and frozenset handling in mapping.
     cfg = {
         'pool_connections': 2,
