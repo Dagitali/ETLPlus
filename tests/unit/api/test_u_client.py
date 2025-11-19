@@ -86,14 +86,11 @@ def make_http_error(
 
 @pytest.mark.unit
 class TestContextManager:
-    """
-    Unit test suite for the :class:`EndpointClient` class.
-    """
+    """Unit test suite :class:`EndpointClient`."""
 
     def test_closes_factory_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
         mock_session: MockSession,
     ) -> None:
         sess = mock_session
@@ -112,7 +109,6 @@ class TestContextManager:
     def test_creates_and_closes_default_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
         # Patch extract to avoid network and capture params.
 
@@ -142,7 +138,6 @@ class TestContextManager:
     def test_does_not_close_external_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
         mock_session: MockSession,
     ) -> None:
         sess = mock_session
@@ -161,9 +156,7 @@ class TestContextManager:
 
 @pytest.mark.unit
 class TestCursorPagination:
-    """
-    Unit test suite for the :class:`EndpointClient` class.
-    """
+    """Unit test suite for :class:`EndpointClient`."""
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
@@ -353,7 +346,7 @@ class TestCursorPagination:
 
 class TestErrors:
     """
-    Unit test suite for the :class:`ApiAuthError` class.
+    Unit test suite for :class:`ApiAuthError`.
     """
 
     def test_auth_error_wrapping_on_single_attempt(
