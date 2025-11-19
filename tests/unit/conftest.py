@@ -18,6 +18,7 @@ from typing import TypedDict
 from typing import Unpack
 
 import pytest
+import requests  # type: ignore[import]
 
 from etlplus.api import CursorPaginationConfig
 from etlplus.api import PagePaginationConfig
@@ -397,6 +398,41 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
         return base
 
     return _make
+
+
+@pytest.fixture
+def token_sequence(
+    monkeypatch: pytest.MonkeyPatc,
+) -> dict[str, int]:
+    """
+    Track token fetch count and patch requests.post for token acquisition.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    dict[str, int]
+        Dictionary tracking token fetch count.
+    """
+    calls: dict[str, int] = {'n': 0}
+
+    def fake_post(
+        url: str,
+        data: dict[str, Any],
+        auth,
+        headers,
+        timeout,
+    ) -> object:
+        calls['n'] += 1
+        # _Resp is defined in test_u_auth.py, so return a dict for generality.
+        return {'access_token': f"t{calls['n']}", 'expires_in': 60}
+
+    monkeypatch.setattr(requests, 'post', fake_post)
+
+    return calls
 
 
 # SECTION: FIXTURES (CONFIG) ================================================ #
