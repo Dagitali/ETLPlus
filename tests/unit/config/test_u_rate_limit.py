@@ -94,8 +94,7 @@ class TestRateLimitConfig:
 
         Parameters
         ----------
-        rate_limit_from_obj_factory : Callable[[RateLimitConfigMap],
-            RateLimitConfig]
+        rate_limit_from_obj_factory : Callable[[object], object]
             Factory for creating RateLimitConfig from mapping or iterable.
         """
         class Weird(Iterable):
@@ -109,15 +108,14 @@ class TestRateLimitConfig:
 
     def test_no_side_effects_on_input_mapping(
         self,
-        rate_limit_from_obj_factory: Callable[[dict], object],
+        rate_limit_from_obj_factory: Callable[[dict[str, str]], object],
     ) -> None:
         """
         Test that input mapping is not mutated by from_obj (defensive copy).
 
         Parameters
         ----------
-        rate_limit_from_obj_factory : Callable[[dict[str, str]],
-            RateLimitConfig]
+        rate_limit_from_obj_factory : Callable[[dict[str, str]], object]
             Factory for creating RateLimitConfig from dict.
         """
         obj = {'sleep_seconds': '1', 'max_per_sec': '3'}
