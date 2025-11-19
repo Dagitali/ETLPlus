@@ -11,11 +11,14 @@ Notes
 """
 from __future__ import annotations
 
+from typing import Any
 from typing import Callable
 
 import pytest
 
 from etlplus.config import ApiConfig
+from etlplus.config import ApiProfileConfig
+from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
 
@@ -25,7 +28,7 @@ from etlplus.config import RateLimitConfig
 
 class TestApiConfig:
     """
-    Unit test suite for the :class:`ApiConfig`.
+    Unit test suite for :class:`ApiConfig`.
     """
 
     @pytest.mark.parametrize(
@@ -81,9 +84,19 @@ class TestApiConfig:
 
     def test_effective_base_url_and_build_endpoint_url(
         self,
-        api_obj_factory,
-        api_config_factory,
+        api_obj_factory: Callable[..., dict[str, Any]],
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_obj_factory : Callable[..., dict[str, Any]]
+            _description_
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = api_obj_factory(
             use_profiles=True,
             base_path='/v1',
@@ -98,9 +111,19 @@ class TestApiConfig:
 
     def test_flat_shape_supported(
         self,
-        api_obj_factory,
-        api_config_factory,
+        api_obj_factory: Callable[..., dict[str, Any]],
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_obj_factory : Callable[..., dict[str, Any]]
+            _description_
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = api_obj_factory(
             use_profiles=False,
             base_path=None,
@@ -114,8 +137,16 @@ class TestApiConfig:
 
     def test_parses_profiles_and_sets_defaults(
         self,
-        api_config_factory,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = {
             'profiles': {
                 'default': {
@@ -143,7 +174,18 @@ class TestApiConfig:
         # Endpoint should parse.
         assert 'list' in cfg.endpoints
 
-    def test_profile_attr_with_default(self, api_config_factory) -> None:
+    def test_profile_attr_with_default(
+        self,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+    ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = {
             'profiles': {
                 'default': {
@@ -166,16 +208,32 @@ class TestApiConfig:
 
     def test_profile_attr_without_profiles_returns_none(
         self,
-        api_config_factory,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = {'base_url': 'https://api.example.com', 'endpoints': {}}
         cfg = api_config_factory(obj)
         assert cfg.effective_base_path() is None
 
     def test_profile_defaults_headers_and_fields(
         self,
-        api_config_factory,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = {
             'profiles': {
                 'default': {
@@ -216,8 +274,16 @@ class TestApiConfig:
 
     def test_profile_defaults_pagination_mapped(
         self,
-        api_config_factory,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
+            _description_
+        """
         obj = {
             'profiles': {
                 'default': {
@@ -259,9 +325,7 @@ class TestApiConfig:
 
 
 class TestApiProfileConfig:
-    """
-    Unit test suite for the :class:`ApiProfileConfig` class.
-    """
+    """Unit test suite for :class:`ApiProfileConfig`."""
     @pytest.mark.parametrize(
         'defaults',
         [
@@ -280,8 +344,18 @@ class TestApiProfileConfig:
     def test_invalid_defaults_blocks(
         self,
         defaults: dict[str, object],
-        profile_config_factory,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        defaults : dict[str, object]
+            _description_
+        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
+            _description_
+        """
         obj = {
             'base_url': 'https://api.example.com',
             'defaults': defaults,
@@ -303,8 +377,16 @@ class TestApiProfileConfig:
 
     def test_merges_headers_defaults_low_precedence(
         self,
-        profile_config_factory,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
+            _description_
+        """
         obj = {
             'base_url': 'https://api.example.com',
             'headers': {'B': '2', 'A': '9'},
@@ -316,9 +398,19 @@ class TestApiProfileConfig:
 
     def test_parses_defaults_blocks(
         self,
-        profile_config_factory,
-        api_profile_defaults_factory,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        api_profile_defaults_factory: Callable[..., dict[str, Any]],
     ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
+            _description_
+        api_profile_defaults_factory : Callable[..., dict[str, Any]]
+            _description_
+        """
         obj = {
             'base_url': 'https://api.example.com',
             'defaults': api_profile_defaults_factory(
@@ -347,7 +439,18 @@ class TestApiProfileConfig:
             assert prof.rate_limit_defaults.sleep_seconds == 0.1
             assert prof.rate_limit_defaults.max_per_sec == 5
 
-    def test_passthrough_fields(self, profile_config_factory):  # noqa: D401
+    def test_passthrough_fields(
+        self,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+    ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
+            _description_
+        """
         obj = {
             'base_url': 'https://api.example.com',
             'base_path': '/v1',
@@ -357,20 +460,37 @@ class TestApiProfileConfig:
         assert prof.base_path == '/v1'
         assert prof.auth == {'token': 'abc'}
 
-    def test_requires_base_url(self, profile_config_factory):  # noqa: D401
+    def test_requires_base_url(
+        self,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+    ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
+            _description_
+        """
         with pytest.raises(TypeError):
             profile_config_factory({})
 
 
 class TestEndpointConfig:
-    """
-    Unit test suite for the :class:`EndpointConfig` class.
-    """
+    """Unit test suite for :class:`EndpointConfig`."""
 
     def test_captures_path_params_and_body(
         self,
-        endpoint_config_factory,
+        endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
     ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
+            _description_
+        """
         ep = endpoint_config_factory({
             'method': 'POST',
             'path': '/users/{id}/avatar',
@@ -385,8 +505,16 @@ class TestEndpointConfig:
 
     def test_from_str_sets_no_method(
         self,
-        endpoint_config_factory,
+        endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        endpoint_config_factory : Callable[[str], EndpointConfig]
+            _description_
+        """
         ep = endpoint_config_factory('/ping')
         assert ep.path == '/ping'
         assert ep.method is None
@@ -414,16 +542,36 @@ class TestEndpointConfig:
         self,
         payload: dict[str, object],
         expected_exc: type[Exception],
-        endpoint_config_factory,
+        endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:
+        """
+        Test...
+
+        Parameters
+        ----------
+        payload : dict[str, object]
+            _description_
+        expected_exc : type[Exception]
+            _description_
+        endpoint_config_factory : Callable[[str], EndpointConfig]
+            _description_
+        """
         with pytest.raises(expected_exc):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
 
     def test_lenient_fields_do_not_raise(
         self,
-        endpoint_config_factory,
+        endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
     ) -> None:
-        """Lenient fields (method/body) accept any type and pass through."""
+        """
+        Test...
+
+        Parameters
+        ----------
+        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
+            _description_
+        """
+        # Lenient fields (method/body) accept any type and pass through.
         ep_method = endpoint_config_factory({'method': 200, 'path': '/x'})
         assert ep_method.method == 200  # library currently permissive
         ep_body = endpoint_config_factory({'path': '/x', 'body': 'json'})
@@ -431,8 +579,16 @@ class TestEndpointConfig:
 
     def test_parses_method(
         self,
-        endpoint_config_factory,
+        endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
     ) -> None:  # noqa: D401
+        """
+        Test...
+
+        Parameters
+        ----------
+        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
+            _description_
+        """
         ep = endpoint_config_factory({
             'method': 'GET',
             'path': '/users',
