@@ -5,16 +5,18 @@ Unit tests for ``etlplus.config.rate_limit``.
 
 Notes
 -----
-- Ensures graceful handling of non-mapping inputs.
+- Ensures graceful handling of non-mapping inputs and type coercion for
+    rate limit configuration.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any  # noqa: F401  # reserved for future extensions
+from typing import Callable
 
 import pytest
 
 from etlplus.config import RateLimitConfig
+from etlplus.config.rate_limit import RateLimitConfigMap
 
 
 # SECTION: TESTS ============================================================ #
@@ -22,13 +24,25 @@ from etlplus.config import RateLimitConfig
 
 class TestRateLimitConfig:
     """
-    Test suite for :class:`RateLimitConfig` class.
+    Test suite for :class:`RateLimitConfig`.
+
+    Notes
+    -----
+    Tests equality semantics and type coercion for rate limit configuration.
     """
 
     def test_equality_semantics(
         self,
-        rate_limit_config_factory,  # type: ignore[no-untyped-def]
-    ):
+        rate_limit_config_factory: Callable[..., RateLimitConfig],
+    ) -> None:
+        """
+        Test equality semantics for RateLimitConfig instances.
+
+        Parameters
+        ----------
+        rate_limit_config_factory : Callable[..., RateLimitConfig]
+            Factory for creating RateLimitConfig instances.
+        """
         a = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         b = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         c = rate_limit_config_factory(sleep_seconds=None, max_per_sec=3.0)
@@ -52,16 +66,30 @@ class TestRateLimitConfig:
     )
     def test_from_obj_coercion(
         self,
-        rate_limit_from_obj_factory,
-        obj,
-        expect,
+        rate_limit_from_obj_factory: Callable[[dict], RateLimitConfig],
+        obj: dict,
+        expect: tuple,
     ) -> None:
-        rl: RateLimitConfig = rate_limit_from_obj_factory(obj)
+        """
+        Test that RateLimitConfig correctly coerces types from input objects.
+
+        Parameters
+        ----------
+        rate_limit_from_obj_factory : Callable[[dict], RateLimitConfig]
+            Factory for creating RateLimitConfig from dicts.
+        obj : dict
+            Input dictionary for rate limit configuration.
+        expect : tuple
+            Expected (sleep_seconds, max_per_sec) values.
+        """
+        rl = rate_limit_from_obj_factory(obj)
         assert (rl.sleep_seconds, rl.max_per_sec) == expect
 
     def test_from_obj_non_mapping_iterable_returns_none(
         self,
-        rate_limit_from_obj_factory,
+        rate_limit_from_obj_factory: Callable[
+            [RateLimitConfigMap], RateLimitConfig,
+        ],
     ) -> None:
         class Weird(Iterable):  # noqa: D401
             def __iter__(self):  # type: ignore[override]
@@ -74,7 +102,9 @@ class TestRateLimitConfig:
 
     def test_no_side_effects_on_input_mapping(
         self,
-        rate_limit_from_obj_factory,
+        rate_limit_from_obj_factory: Callable[
+            [dict[str, str]], RateLimitConfig,
+        ],
     ) -> None:
         obj = {'sleep_seconds': '1', 'max_per_sec': '3'}
         _ = rate_limit_from_obj_factory(obj)
@@ -83,7 +113,7 @@ class TestRateLimitConfig:
 
     def test_repr_roundtrip(
         self,
-        rate_limit_config_factory,
+        rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=0.5, max_per_sec=2.0)
         # Best-effort: repr should mention field names & values
@@ -93,7 +123,7 @@ class TestRateLimitConfig:
 
     def test_unhashable_dataclass(
         self,
-        rate_limit_config_factory,
+        rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         # dataclass(slots=True) without frozen=True should be unhashable
@@ -102,7 +132,7 @@ class TestRateLimitConfig:
 
     def test_validate_bounds_contains_only_known_messages(
         self,
-        rate_limit_config_factory,
+        rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         rl = rate_limit_config_factory(sleep_seconds=-5, max_per_sec=-1)
         allowed = {
@@ -130,11 +160,11 @@ class TestRateLimitConfig:
     )
     def test_validate_bounds_param(
         self,
-        rate_limit_config_factory,
-        kwargs,
-        expected_warnings,
+        rate_limit_config_factory: Callable[..., RateLimitConfig],
+        kwargs: dict[str, float],
+        expected_warnings: list[str],
     ) -> None:
-        rl: RateLimitConfig = rate_limit_config_factory(**kwargs)
+        rl = rate_limit_config_factory(**kwargs)
         warnings = rl.validate_bounds()
         # Order not guaranteed; compare as sets
         assert set(warnings) == set(expected_warnings)
