@@ -20,6 +20,10 @@ from etlplus.config import parse_connector
 class TestParseConnector:
     """
     Unit test suite for :func:`parse_connector`.
+
+    Notes
+    -----
+    Tests error handling for unsupported connector types and missing fields.
     """
 
     @pytest.mark.parametrize(
@@ -44,10 +48,6 @@ class TestParseConnector:
             Connector payload to test.
         expected_exception : type[Exception]
             Expected exception type.
-
-        Returns
-        -------
-        None
         """
         with pytest.raises(expected_exception):
             parse_connector(payload)
