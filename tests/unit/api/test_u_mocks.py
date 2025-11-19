@@ -50,14 +50,14 @@ class MockResponse(Response):  # pragma: no cover - behaviour trivial
 
     def json(
         self,
-        **kwargss: Any,
+        **kwargs: Any,
     ) -> Any:
         """
         Return the provided JSON payload.
 
         Parameters
         ----------
-        **kwargss : Any
+        **kwargs : Any
             Ignored keyword arguments for compatibility.
 
         Returns
