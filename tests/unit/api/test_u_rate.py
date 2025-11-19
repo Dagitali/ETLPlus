@@ -25,6 +25,7 @@ from etlplus.api.types import RateLimitConfig
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures()
 class TestComputeSleepSeconds:
     """
     Unit test suite for :func:`compute_sleep_seconds`.
