@@ -1,8 +1,7 @@
 """
 ``tests.integration.conftest`` module.
 
-Configures pytest-based integration tests and provides shared fixtures to
-reduce duplication across integration tests.
+Configures pytest-based integration tests and provides shared fixtures.
 
 Notes
 -----
@@ -145,7 +144,7 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
 
 @pytest.fixture
 def pipeline_cfg_factory(
-    tmp_path: pathlib.Path,  # pytest tmp_path fixture
+    tmp_path: pathlib.Path,
 ) -> Callable[..., PipelineConfig]:
     """
     Factory to build a minimal PipelineConfig for runner tests.
@@ -250,7 +249,11 @@ def run_patched(
             )
 
         # Avoid real IO in load().
-        def _fake_load(data: Any, *_a: Any, **_k: Any) -> dict[str, Any]:
+        def _fake_load(
+            data: Any,
+            *args,
+            **kwargs,
+        ) -> dict[str, Any]:
             n = len(data) if isinstance(data, list) else 0
             return {'status': 'ok', 'count': n}
 
