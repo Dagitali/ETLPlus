@@ -71,7 +71,8 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .rate import compute_sleep_seconds
+from .rate_limiter import compute_sleep_seconds
+from .rate_limiter import RateLimiter
 from .transport import build_http_adapter
 from .types import CursorPaginationConfig
 from .types import HTTPAdapterMountConfig
@@ -85,12 +86,16 @@ from .types import RateLimitConfig
 from .types import RetryPolicy
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
     'EndpointClient',
     'EndpointCredentialsBearer',
+    'RateLimiter',
+
+    # Functions
     'build_http_adapter',
     'compute_sleep_seconds',
 
