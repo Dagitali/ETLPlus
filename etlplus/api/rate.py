@@ -65,7 +65,6 @@ def compute_sleep_seconds(
     float
         The computed sleep seconds (>= 0.0).
     """
-
     # Precedence: overrides > rate_limit
     cfg = overrides if overrides else rate_limit
     limiter = RateLimiter.from_config(cfg or {})
