@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Mapping
 
+from .rate_limiter import RateLimiter
 from .types import RateLimitConfig
 
 
@@ -65,33 +66,7 @@ def compute_sleep_seconds(
         The computed sleep seconds (>= 0.0).
     """
 
-    def _from_cfg(cfg: Mapping[str, Any] | None) -> float | None:
-        if not cfg:
-            return None
-
-        # Prefer explicit positive sleep_seconds if numeric.
-        if 'sleep_seconds' in cfg:
-            try:
-                ss = float(cfg['sleep_seconds'])
-                if ss > 0:
-                    return ss
-            except (TypeError, ValueError):
-                pass
-
-        # Else derive from positive max_per_sec.
-        if 'max_per_sec' in cfg:
-            try:
-                mps = float(cfg['max_per_sec'])
-                if mps > 0:
-                    return 1.0 / mps
-            except (TypeError, ValueError):
-                pass
-
-        return None
-
     # Precedence: overrides > rate_limit
-    value = _from_cfg(overrides)
-    if value is None:
-        value = _from_cfg(rate_limit)
-
-    return float(value) if value is not None else 0.0
+    cfg = overrides if overrides else rate_limit
+    limiter = RateLimiter.from_config(cfg or {})
+    return limiter.sleep_seconds if limiter.enabled else 0.0
