@@ -133,10 +133,10 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
             _headers: dict[str, str] | None = None,
             _timeout: float | None = None,
             pagination: Any | None = None,
-            _sleep_seconds: float | None = None,
+            sleep_seconds: float | None = None,
         ) -> Any:
             self.seen['pagination'] = pagination
-            self.seen['sleep_seconds'] = _sleep_seconds
+            self.seen['sleep_seconds'] = sleep_seconds
             return [{'ok': True}]
 
     return FakeClient, created
