@@ -107,7 +107,7 @@ def compute_sleep_seconds(
 
     Examples
     --------
-    >>> from etlplus.api.rate import compute_sleep_seconds
+    >>> from etlplus.api.rate_limiter import compute_sleep_seconds
     >>> compute_sleep_seconds({"sleep_seconds": 0.2}, None)
     0.2
     >>> compute_sleep_seconds({"max_per_sec": 4}, None)
