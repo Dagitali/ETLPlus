@@ -29,10 +29,41 @@ from typing import Mapping
 from typing import Self
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['RateLimiter']
+
+
 # SECTION: TYPE ALIASES ===================================================== #
 
 
 RateLimitConfig = Mapping[str, Any]
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _to_positive_float(value: Any) -> float | None:
+    """
+    Convert a value to a positive float or ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value to convert.
+
+    Returns
+    -------
+    float | None
+        Positive float if conversion succeeds and the value is > 0;
+        otherwise ``None``.
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
 
 
 # SECTION: CLASSES ========================================================== #
@@ -47,6 +78,9 @@ class RateLimiter:
     ----------
     sleep_seconds : float, optional
         Fixed delay between requests. Defaults to 0.0.
+    max_per_sec : float | None, optional
+        Maximum requests-per-second rate; converted to ``1 / max_per_sec``
+        seconds between requests when positive. Defaults to ``None``.
     """
 
     # -- Attributes -- #
@@ -57,49 +91,34 @@ class RateLimiter:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
-        """Normalize ``sleep_seconds`` to a non-negative float."""
-        try:
-            self.sleep_seconds = float(self.sleep_seconds)
-        except (TypeError, ValueError):
-            self.sleep_seconds = 0.0
+        """
+        Normalize internal state and keep ``sleep_seconds`` and
+        ``max_per_sec`` consistent.
 
-        if self.sleep_seconds < 0:
-            self.sleep_seconds = 0.0
+        Precedence:
+        - If ``sleep_seconds`` is positive, it is treated as canonical.
+        - Else if ``max_per_sec`` is positive, it is used to derive
+          ``sleep_seconds``.
+        - Otherwise the limiter is disabled.
+        """
+        sleep = _to_positive_float(self.sleep_seconds)
+        rate = _to_positive_float(self.max_per_sec)
 
-        if not self.max_per_sec:
-            self.max_per_sec = self._max_per_sec
+        if sleep is not None:
+            self.sleep_seconds = sleep
+            self.max_per_sec = 1.0 / sleep
+        elif rate is not None:
+            self.max_per_sec = rate
+            self.sleep_seconds = 1.0 / rate
+        else:
+            self.sleep_seconds = 0.0
+            self.max_per_sec = None
 
     # -- Magic Methods (Object Representation) -- #
 
     def __bool__(self) -> bool:
         """Check if the limiter is enabled."""
         return self.enabled
-
-    # -- Getters (Protected) -- #
-
-    @property
-    def _max_per_sec(self) -> float | None:
-        """
-        Maximum requests-per-second rate.
-
-        Compute the maximum requests-per-second rate if ``sleep_seconds`` is
-        positive, or return ``None`` if not.
-
-        Returns
-        -------
-        float | None
-            Requests-per-second rate if computable and positive; ``None``
-            otherwise.
-        """
-        if self.sleep_seconds <= 0:
-            return None
-
-        try:
-            rate = 1.0 / float(self.sleep_seconds)
-        except (TypeError, ValueError, ZeroDivisionError):
-            return None
-
-        return rate if rate > 0 else None
 
     # -- Getters -- #
 
@@ -162,39 +181,14 @@ class RateLimiter:
         if not cfg:
             return cls()
 
-        def _pos_float(value: Any) -> float | None:
-            try:
-                f = float(value)
-            except (TypeError, ValueError):
-                return None
-            return f if f > 0 else None
+        sleep_val = _to_positive_float(cfg.get('sleep_seconds'))
+        rate_val = _to_positive_float(cfg.get('max_per_sec'))
 
-        sleep_val = _pos_float(cfg.get('sleep_seconds'))
-        if sleep_val is not None:
-            return cls(sleep_seconds=sleep_val)
-
-        max_per_sec_val = _pos_float(cfg.get('max_per_sec'))
-        if max_per_sec_val is not None:
-            return cls(sleep_seconds=1.0 / max_per_sec_val)
+        # Let __post_init__ enforce invariants and precedence rules.
+        if sleep_val is not None or rate_val is not None:
+            return cls(
+                sleep_seconds=sleep_val if sleep_val is not None else 0.0,
+                max_per_sec=rate_val,
+            )
 
         return cls()
-
-    @classmethod
-    def from_max_per_sec(cls, max_per_sec: float) -> Self:
-        """
-        Build :class:`RateLimiter` from a maximum requests-per-second rate.
-
-        Compute the sleep interval (in seconds) from the given rate.
-
-        Parameters
-        ----------
-        max_per_sec : float
-            Maximum requests per second; converted to ``1 / max_per_sec``
-            seconds between requests when positive.
-
-        Returns
-        -------
-        Self
-            Instance with computed ``sleep_seconds``.
-        """
-        return cls.from_config({'max_per_sec': max_per_sec})
