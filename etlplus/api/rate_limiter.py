@@ -52,6 +52,7 @@ class RateLimiter:
     # -- Attributes -- #
 
     sleep_seconds: float = 0.0
+    max_per_sec: float | None = None
 
     # -- Magic Methods (Object Lifecycle) -- #
 
@@ -65,21 +66,19 @@ class RateLimiter:
         if self.sleep_seconds < 0:
             self.sleep_seconds = 0.0
 
+        if not self.max_per_sec:
+            self.max_per_sec = self._max_per_sec
+
     # -- Magic Methods (Object Representation) -- #
 
     def __bool__(self) -> bool:
         """Check if the limiter is enabled."""
         return self.enabled
 
-    # -- Getters -- #
+    # -- Getters (Protected) -- #
 
     @property
-    def enabled(self) -> bool:
-        """Check if the limiter currently applies any delay."""
-        return self.sleep_seconds > 0
-
-    @property
-    def max_per_sec(self) -> float | None:
+    def _max_per_sec(self) -> float | None:
         """
         Maximum requests-per-second rate.
 
@@ -101,6 +100,13 @@ class RateLimiter:
             return None
 
         return rate if rate > 0 else None
+
+    # -- Getters -- #
+
+    @property
+    def enabled(self) -> bool:
+        """Check if the limiter currently applies any delay."""
+        return self.sleep_seconds > 0
 
     # -- Instance Methods -- #
 
