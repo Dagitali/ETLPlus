@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from etlplus.api.rate import compute_sleep_seconds
+from etlplus.api import compute_sleep_seconds
 from etlplus.api.types import RateLimitConfig
 
 
