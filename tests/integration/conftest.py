@@ -118,6 +118,7 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
             self,
             base_url: str,
             endpoints: dict[str, str],
+            *args,
             **kwargs,
         ):
             self.base_url = base_url
@@ -127,13 +128,10 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
 
         def paginate(
             self,
-            _endpoint_key: str,
-            *,
-            _params: dict[str, Any] | None = None,
-            _headers: dict[str, str] | None = None,
-            _timeout: float | None = None,
+            *argsrgs,
             pagination: Any | None = None,
-            sleep_seconds: float | None = None,
+            sleep_seconds: float = 0.0,
+            **kwargs,
         ) -> Any:
             self.seen['pagination'] = pagination
             self.seen['sleep_seconds'] = sleep_seconds
