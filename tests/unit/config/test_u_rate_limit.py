@@ -16,7 +16,6 @@ from typing import Callable
 import pytest
 
 from etlplus.config import RateLimitConfig
-from etlplus.config.types import RateLimitConfigMap
 
 
 # SECTION: TESTS ============================================================ #
@@ -88,17 +87,14 @@ class TestRateLimitConfig:
 
     def test_from_obj_non_mapping_iterable_returns_none(
         self,
-        rate_limit_from_obj_factory: Callable[
-            [RateLimitConfigMap], RateLimitConfig,
-        ],
+        rate_limit_from_obj_factory: Callable[[object], object],
     ) -> None:
         """
         Test that from_obj returns None for non-mapping iterable inputs.
 
         Parameters
         ----------
-        rate_limit_from_obj_factory : Callable[[RateLimitConfigMap],
-            RateLimitConfig]
+        rate_limit_from_obj_factory : Callable[[object], object]
             Factory for creating RateLimitConfig from mapping or iterable.
         """
         class Weird(Iterable):
@@ -112,15 +108,14 @@ class TestRateLimitConfig:
 
     def test_no_side_effects_on_input_mapping(
         self,
-        rate_limit_from_obj_factory: Callable[[dict], RateLimitConfig],
+        rate_limit_from_obj_factory: Callable[[dict[str, str]], object],
     ) -> None:
         """
         Test that input mapping is not mutated by from_obj (defensive copy).
 
         Parameters
         ----------
-        rate_limit_from_obj_factory : Callable[[dict[str, str]],
-            RateLimitConfig]
+        rate_limit_from_obj_factory : Callable[[dict[str, str]], object]
             Factory for creating RateLimitConfig from dict.
         """
         obj = {'sleep_seconds': '1', 'max_per_sec': '3'}

@@ -86,11 +86,8 @@ def token_sequence(
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
-        url: str,
-        data: dict[str, Any],
-        auth,
-        headers,
-        timeout,
+        *args,
+        **kwargs,
     ) -> _Resp:
         calls['n'] += 1
         return _Resp({'access_token': f"t{calls['n']}", 'expires_in': 60})
@@ -141,7 +138,7 @@ class TestEndpointCredentialsBearer:
         s.auth(r1)
         assert r1.headers.get('Authorization') == 'Bearer t1'
 
-        # Second call should not fetch a new token (still valid)
+        # Second call should not fetch a new token (still valid).
         r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
         s.auth(r2)
         assert r2.headers.get('Authorization') == 'Bearer t1'
@@ -162,14 +159,12 @@ class TestEndpointCredentialsBearer:
         calls: dict[str, int] = {'n': 0}
 
         def fake_post(
-            url: str,
-            data: dict[str, Any],
-            auth,
-            headers,
-            timeout,
+            *args,
+            **kwargs,
         ) -> _Resp:
             calls['n'] += 1
-            # First token almost expired; second token longer lifetime
+
+            # First token almost expired; second token longer lifetime.
             if calls['n'] == 1:
                 return _Resp(
                     {
@@ -188,7 +183,7 @@ class TestEndpointCredentialsBearer:
             scope='read',
         )
 
-        # First call obtains short token
+        # First call obtains short token.
         r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
         auth(r1)
         assert r1.headers['Authorization'] == 'Bearer short'
@@ -218,13 +213,10 @@ class TestEndpointCredentialsBearer:
             Pytest monkeypatch fixture.
         """
         def fake_post(
-            url: str,
-            data,
-            auth,
-            headers,
-            timeout,
+            *args,
+            **kwargs,
         ):
-            # Simulate HTTP 401 with body; requests raises on raise_for_status
+            # Simulate HTTP 401 with body; requests raises on raise_for_status.
             resp = requests.Response()
             resp.status_code = 401
             resp._content = b'Unauthorized'  # type: ignore[attr-defined]
@@ -261,13 +253,10 @@ class TestEndpointCredentialsBearer:
             Pytest monkeypatch fixture.
         """
         def fake_post(
-            url: str,
-            data: dict[str, Any],
-            auth,
-            headers,
-            timeout,
+            *args,
+            **kwargs,
         ) -> _Resp:
-            return _Resp({'expires_in': 60})  # no access_token
+            return _Resp({'expires_in': 60})  # No access_token.
 
         monkeypatch.setattr(requests, 'post', fake_post)
         auth = EndpointCredentialsBearer(

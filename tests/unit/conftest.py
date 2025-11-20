@@ -2,6 +2,10 @@
 ``tests.unit.conftest`` module.
 
 Configures pytest-based unit tests and provides shared fixtures.
+
+Notes
+-----
+- Fixtures are designed for reuse and DRY test setup.
 """
 from __future__ import annotations
 
@@ -402,7 +406,7 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
 
 @pytest.fixture
 def token_sequence(
-    monkeypatch: pytest.MonkeyPatc,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, int]:
     """
     Track token fetch count and patch requests.post for token acquisition.
@@ -420,11 +424,8 @@ def token_sequence(
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
-        url: str,
-        data: dict[str, Any],
-        auth,
-        headers,
-        timeout,
+        *args,
+        **kwargs,
     ) -> object:
         calls['n'] += 1
         # _Resp is defined in test_u_auth.py, so return a dict for generality.

@@ -25,6 +25,7 @@ from etlplus.api import CursorPaginationConfig
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfig
+from etlplus.api import RetryPolicy
 from tests.unit.api.test_u_mocks import MockSession
 
 
@@ -86,16 +87,20 @@ def make_http_error(
 
 @pytest.mark.unit
 class TestContextManager:
-    """
-    Unit test suite for the :class:`EndpointClient` class.
-    """
+    """Unit test suite :class:`EndpointClient`."""
 
     def test_closes_factory_session(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
         mock_session: MockSession,
     ) -> None:
+        """
+        Test that EndpointClient closes a session created by a factory.
+
+        Parameters
+        ----------
+        mock_session : MockSession
+            Mocked session object.
+        """
         sess = mock_session
         client = EndpointClient(
             base_url='https://api.example.com',
@@ -112,9 +117,15 @@ class TestContextManager:
     def test_creates_and_closes_default_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
     ) -> None:
-        # Patch extract to avoid network and capture params.
+        """
+        Test that EndpointClient creates and closes a default session.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
 
         # Substitute Session with MockSession to observe close()
         created: dict[str, MockSession] = {}
@@ -124,6 +135,7 @@ class TestContextManager:
             created['s'] = s
             return s
 
+        # Patch extract to avoid network and capture params.
         monkeypatch.setattr(cmod.requests, 'Session', ctor)
 
         client = EndpointClient(
@@ -141,10 +153,16 @@ class TestContextManager:
 
     def test_does_not_close_external_session(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        extract_stub: dict[str, Any],  # noqa: ARG001 - _extract patched
         mock_session: MockSession,
     ) -> None:
+        """
+        Test that EndpointClient does not close an externally provided session.
+
+        Parameters
+        ----------
+        mock_session : MockSession
+            Mocked session object.
+        """
         sess = mock_session
         client = EndpointClient(
             base_url='https://api.example.com',
@@ -161,9 +179,7 @@ class TestContextManager:
 
 @pytest.mark.unit
 class TestCursorPagination:
-    """
-    Unit test suite for the :class:`EndpointClient` class.
-    """
+    """Unit test suite for :class:`EndpointClient`."""
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
@@ -175,6 +191,20 @@ class TestCursorPagination:
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
+        """
+        Test that page_size is normalized to a valid integer.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        cursor_cfg : Callable[..., CursorPaginationConfig]
+            Factory for cursor pagination config.
+        raw_page_size : Any
+            Raw page size input.
+        expected_limit : int
+            Expected normalized limit.
+        """
         calls: list[dict[str, Any]] = []
 
         def fake_extract(
@@ -218,6 +248,16 @@ class TestCursorPagination:
         monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
+        """
+        Test that limit is added and cursor advances correctly.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        cursor_cfg : Callable[..., CursorPaginationConfig]
+            Factory for cursor pagination config.
+        """
         calls: list[dict[str, Any]] = []
 
         def fake_extract(
@@ -264,7 +304,16 @@ class TestCursorPagination:
         cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
         """
+        Test that PaginationError includes the page number on failure.
+
         When a cursor-paginated request fails, PaginationError includes page.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        cursor_cfg : Callable[..., CursorPaginationConfig]
+            Factory for cursor pagination config.
         """
         client = EndpointClient(
             base_url='https://api.example.com/v1',
@@ -308,7 +357,22 @@ class TestCursorPagination:
         capture_sleeps: list[float],
         jitter: Callable[[list[float]], list[float]],
     ) -> None:
-        """Cursor pagination applies retry backoff sleep on failure."""
+        """
+        Test that cursor pagination applies retry backoff sleep on failure.
+
+        Cursor pagination applies retry backoff sleep on failure
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        cursor_cfg : Callable[..., CursorPaginationConfig]
+            Factory for cursor pagination config.
+        capture_sleeps : list[float]
+            List to capture sleep durations.
+        jitter : Callable[[list[float]], list[float]]
+            Jitter function for sleep values.
+        """
         jitter([0.05])
 
         attempts = {'n': 0}
@@ -353,13 +417,22 @@ class TestCursorPagination:
 
 class TestErrors:
     """
-    Unit test suite for the :class:`ApiAuthError` class.
+    Unit test suite for :class:`ApiAuthError`.
     """
 
     def test_auth_error_wrapping_on_single_attempt(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """
+        Test that ApiAuthError is raised and wrapped on a single attempt.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1',
             endpoints={'x': '/x'},
@@ -385,10 +458,25 @@ class TestErrors:
 
 
 class TestOffsetPagination:
+    """
+    Unit test suite for offset pagination in :class:`EndpointClient`.
+
+    Tests offset-based pagination logic, including correct offset stepping,
+    limit handling, and record truncation.
+    """
+
     def test_offset_pagination_behaves_like_offset(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """
+        Test that offset pagination behaves as expected.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
         calls: list[dict[str, Any]] = []
 
         def fake_extract(kind: str, _url: str, **kwargs: dict[str, Any]):
@@ -430,11 +518,28 @@ class TestOffsetPagination:
 
 
 class TestPagePagination:
+    """
+    Unit test suite for page-based pagination in :class:`EndpointClient`.
+
+    Tests page-based pagination logic, including batch handling, page size
+    normalization, error propagation, and query parameter merging.
+    """
+
     def test_stops_on_short_final_batch(
         self,
         monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
+        """
+        Test that pagination stops on a short final batch.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        page_cfg : Callable[..., PagePaginationConfig]
+            Factory for page pagination config.
+        """
         def fake_extract(
             kind: str,
             _url: str,
@@ -472,6 +577,16 @@ class TestPagePagination:
         monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
+        """
+        Test that max_records parameter truncates results as expected.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        page_cfg : Callable[..., PagePaginationConfig]
+            Factory for page pagination config.
+        """
         def fake_extract(
             kind: str,
             _url: str,
@@ -508,6 +623,16 @@ class TestPagePagination:
         monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
+        """
+        Test that page_size is normalized to 1 if set to 0.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        page_cfg : Callable[..., PagePaginationConfig]
+            Factory for page pagination config.
+        """
         def fake_extract(kind: str, _url: str, **kw: Any):
             assert kind == 'api'
             params = kw.get('params') or {}
@@ -543,6 +668,16 @@ class TestPagePagination:
         monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
+        """
+        Test that PaginationError includes the page number on failure.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        page_cfg : Callable[..., PagePaginationConfig]
+            Factory for page pagination config.
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1',
             endpoints={'list': '/items'},
@@ -579,6 +714,14 @@ class TestPagePagination:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """
+        Test that unknown pagination type returns raw output.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
         monkeypatch.setattr(
             cmod,
             '_extract',
@@ -597,11 +740,28 @@ class TestPagePagination:
 
 
 class TestRateLimitPrecedence:
+    """
+    Unit test suite for rate limit precedence in :class:`EndpointClient`.
+
+    Tests explicit sleep_seconds override, rate_limit config precedence, and
+    correct sleep duration application during pagination.
+    """
+
     def test_overrides_sleep_seconds_wins(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
     ) -> None:
+        """
+        Test that explicit sleep_seconds overrides rate_limit config.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        capture_sleeps : list[float]
+            List to capture sleep durations.
+        """
         # Simulate apply_sleep capturing values already via capture_sleeps.
         client = EndpointClient(
             base_url='https://api.example.com/v1',
@@ -639,15 +799,36 @@ class TestRateLimitPrecedence:
 
 
 class TestRetryLogic:
+    """
+    Unit test suite for retry logic in :class:`EndpointClient`.
+
+    Tests retry behavior for request errors, jitter backoff, and network error
+    handling, ensuring correct retry policy application and error propagation.
+    """
+
     def test_request_error_after_retries_exhausted(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        retry_cfg,
+        retry_cfg: Callable[..., dict[str, Any]],
     ) -> None:
+        """
+        Test that ApiRequestError is raised after retries are exhausted.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        retry_cfg : Callable[..., dict[str, Any]]
+            Factory for retry configuration.
+
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1',
             endpoints={'x': '/x'},
-            retry=retry_cfg(max_attempts=2, backoff=0.0, retry_on=[503]),
+            retry=cast(
+                RetryPolicy,
+                retry_cfg(max_attempts=2, backoff=0.0, retry_on=[503]),
+            ),
         )
         attempts = {'n': 0}
 
@@ -675,9 +856,23 @@ class TestRetryLogic:
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
-        retry_cfg,
-        jitter,
+        retry_cfg: Callable[..., dict[str, Any]],
+        jitter: Callable[[list[float]], list[float]],
     ) -> None:
+        """
+        Test that full jitter backoff is applied on retries.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        capture_sleeps : list[float]
+            List to capture sleep durations.
+        retry_cfg : Callable[..., dict[str, Any]]
+            Factory for retry configuration.
+        jitter : Callable[[list[float]], list[float]]
+            Jitter function for sleep values.
+        """
         jitter([0.1, 0.2])
 
         # Patch _extract in client module to fail with 503 twice, then succeed.
@@ -702,7 +897,10 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry=retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
+            retry=cast(
+                RetryPolicy,
+                retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
+            ),
         )
         out = client.paginate_url(
             'https://api.example.com/items', None, None, None, None,
@@ -717,9 +915,23 @@ class TestRetryLogic:
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
-        retry_cfg,
-        jitter,
+        retry_cfg: Callable[..., dict[str, Any]],
+        jitter: Callable[[list[float]], list[float]],
     ) -> None:
+        """
+        Test that network errors are retried and sleep durations are captured.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        capture_sleeps : list[float]
+            List to capture sleep durations.
+        retry_cfg : Callable[..., dict[str, Any]]
+            Factory for retry configuration.
+        jitter : Callable[[list[float]], list[float]]
+            Jitter function for sleep values.
+        """
         jitter([0.12, 0.18])
         attempts = {'n': 0}
 
@@ -740,7 +952,10 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry=retry_cfg(max_attempts=4, backoff=0.5),
+            retry=cast(
+                RetryPolicy,
+                retry_cfg(max_attempts=4, backoff=0.5),
+            ),
             retry_network_errors=True,
         )
         out = client.paginate_url(
@@ -754,6 +969,12 @@ class TestRetryLogic:
 
 
 class TestUrlComposition:
+    """
+    Unit test suite for URL composition in :class:`EndpointClient`.
+
+    Tests base path variants, query parameter merging, path encoding, and
+    query parameter ordering in composed URLs.
+    """
     @pytest.mark.parametrize(
         'base_url,base_path,endpoint,expected',
         [
@@ -788,6 +1009,22 @@ class TestUrlComposition:
         endpoint: str,
         expected: str,
     ) -> None:
+        """
+        Test that base_path variants are composed correctly in URLs.
+
+        Parameters
+        ----------
+        extract_stub : dict[str, Any]
+            Stub for capturing extracted URLs.
+        base_url : str
+            Base URL for the API.
+        base_path : str
+            Base path for the API.
+        endpoint : str
+            Endpoint path.
+        expected : str
+            Expected composed URL.
+        """
         client = EndpointClient(
             base_url=base_url,
             endpoints={'list': endpoint},
@@ -801,6 +1038,14 @@ class TestUrlComposition:
         self,
         extract_stub: dict[str, Any],
     ) -> None:
+        """
+        Test that query parameters are merged and path parameters are encoded.
+
+        Parameters
+        ----------
+        extract_stub : dict[str, Any]
+            Stub for capturing extracted URLs.
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1?existing=a&dup=1',
             endpoints={'item': '/users/{id}'},
@@ -822,6 +1067,14 @@ class TestUrlComposition:
         self,
         extract_stub: dict[str, Any],
     ) -> None:
+        """
+        Test that duplicate base query parameters are merged correctly.
+
+        Parameters
+        ----------
+        extract_stub : dict[str, Any]
+            Stub for capturing extracted URLs.
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1?dup=1&dup=2&z=9',
             endpoints={'e': '/ep'},
@@ -839,6 +1092,14 @@ class TestUrlComposition:
         self,
         extract_stub: dict[str, Any],
     ) -> None:
+        """
+        Test that query parameter ordering is preserved in composed URLs.
+
+        Parameters
+        ----------
+        extract_stub : dict[str, Any]
+            Stub for capturing extracted URLs.
+        """
         client = EndpointClient(
             base_url='https://api.example.com/v1?z=9&dup=1',
             endpoints={'e': '/ep'},
@@ -864,8 +1125,18 @@ class TestUrlCompositionProperty:
     def test_path_parameter_encoding_property(
         self,
         id_value: str,
-        extract_stub_factory,  # session-scoped factory, Hypothesis-safe
+        extract_stub_factory: Callable[..., Any],
     ) -> None:
+        """
+        Property-based test for path parameter encoding in URLs.
+
+        Parameters
+        ----------
+        id_value : str
+            Path parameter value to encode.
+        extract_stub_factory : Callable[..., Any]
+            Factory for extract stub (Hypothesis-safe).
+        """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
                 base_url='https://api.example.com/v1',
@@ -891,8 +1162,18 @@ class TestUrlCompositionProperty:
     def test_query_encoding_property(
         self,
         params: dict[str, str],
-        extract_stub_factory,  # session-scoped factory, Hypothesis-safe
+        extract_stub_factory: Callable[..., Any],
     ) -> None:
+        """
+        Property-based test for query parameter encoding in URLs.
+
+        Parameters
+        ----------
+        params : dict[str, str]
+            Query parameters to encode.
+        extract_stub_factory : Callable[..., Any]
+            Factory for extract stub (Hypothesis-safe).
+        """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
                 base_url='https://api.example.com/v1',
