@@ -13,6 +13,7 @@ import importlib
 import pathlib
 from typing import Any
 from typing import Callable
+from typing import Protocol
 
 import pytest
 
@@ -34,6 +35,20 @@ from etlplus.config import RateLimitConfig
 
 # Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
+
+
+# Protocol describing the fake endpoint client shape for type checking.
+class FakeEndpointClientProtocol(Protocol):
+    """
+    Protocol for fake endpoint clients used in integration tests.
+
+    Attributes
+    ----------
+    seen : dict[str, Any]
+        Dictionary capturing values observed during pagination.
+    """
+
+    seen: dict[str, Any]
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -97,7 +112,10 @@ def capture_load_to_api(
 
 
 @pytest.fixture
-def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
+def fake_endpoint_client() -> tuple[
+    type[FakeEndpointClientProtocol],
+    list[FakeEndpointClientProtocol],
+]:  # noqa: ANN201
     """
     Provide a Fake EndpointClient class and capture list.
 
@@ -107,36 +125,36 @@ def fake_endpoint_client() -> tuple[type, list[object]]:  # noqa: ANN201
 
     Returns
     -------
-    tuple[type, list[object]]
+    tuple[type[FakeEndpointClientProtocol], list[FakeEndpointClientProtocol]]
         A tuple where the first element is the FakeClient class and the
         second element is the list of created instances.
     """
-    created: list[object] = []
+    created: list[FakeEndpointClientProtocol] = []
 
     class FakeClient:
+        seen: dict[str, Any]
+
         def __init__(
             self,
             base_url: str,
             endpoints: dict[str, str],
+            *args,
             **kwargs,
         ):
             self.base_url = base_url
             self.endpoints = endpoints
-            self.seen: dict[str, Any] = {}
+            self.seen = {}
             created.append(self)
 
         def paginate(
             self,
-            _endpoint_key: str,
-            *,
-            _params: dict[str, Any] | None = None,
-            _headers: dict[str, str] | None = None,
-            _timeout: float | None = None,
+            *argsrgs,
             pagination: Any | None = None,
-            _sleep_seconds: float | None = None,
+            sleep_seconds: float = 0.0,
+            **kwargs,
         ) -> Any:
             self.seen['pagination'] = pagination
-            self.seen['sleep_seconds'] = _sleep_seconds
+            self.seen['sleep_seconds'] = sleep_seconds
             return [{'ok': True}]
 
     return FakeClient, created
