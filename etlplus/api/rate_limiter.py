@@ -25,6 +25,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
+from typing import NotRequired
+from typing import TypedDict
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -32,6 +34,7 @@ from typing import Mapping
 
 __all__ = [
     # Classes
+    'RateLimitConfig',
     'RateLimiter',
 
     # Functions
@@ -42,7 +45,38 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-RateLimitConfig = Mapping[str, Any]
+_RateLimitConfig = Mapping[str, Any]
+
+# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
+
+
+class RateLimitConfig(TypedDict):
+    """
+    Optional rate limit configuration.
+
+    Summary
+    -------
+    Provides either a fixed delay (``sleep_seconds``) or derives one from a
+    maximum requests-per-second value (``max_per_sec``).
+
+    Attributes
+    ----------
+    sleep_seconds : NotRequired[float | int]
+        Fixed delay between requests.
+    max_per_sec : NotRequired[float | int]
+        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
+        between requests when positive.
+
+    Examples
+    --------
+    >>> rl: RateLimitConfig = {'max_per_sec': 4}
+    ... # sleep ~= 0.25s between calls
+    """
+
+    # -- Attributes -- #
+
+    sleep_seconds: NotRequired[float | int]
+    max_per_sec: NotRequired[float | int]
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -61,7 +95,7 @@ def _to_positive_float(
 
     Returns
     -------
-    float or None
+    float | None
         Positive float if conversion succeeds and the value is greater than
         zero; ``None`` if not.
     """
@@ -267,7 +301,7 @@ class RateLimiter:
     @classmethod
     def from_config(
         cls,
-        cfg: RateLimitConfig | None,
+        cfg: _RateLimitConfig | None,
     ) -> RateLimiter:
         """
         Build a :class:`RateLimiter` from a configuration mapping.
@@ -283,7 +317,7 @@ class RateLimiter:
 
         Parameters
         ----------
-        cfg : RateLimitConfig or None
+        cfg : _RateLimitConfig | None
             Configuration mapping from which to derive rate-limit settings.
 
         Returns
