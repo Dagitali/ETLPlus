@@ -71,7 +71,9 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .rate import compute_sleep_seconds
+from .rate_limiter import compute_sleep_seconds
+from .rate_limiter import RateLimitConfig
+from .rate_limiter import RateLimiter
 from .transport import build_http_adapter
 from .types import CursorPaginationConfig
 from .types import HTTPAdapterMountConfig
@@ -81,16 +83,20 @@ from .types import JSONDict
 from .types import JSONList
 from .types import PagePaginationConfig
 from .types import PaginationConfig
-from .types import RateLimitConfig
 from .types import RetryPolicy
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
     'EndpointClient',
     'EndpointCredentialsBearer',
+    'RateLimitConfig',
+    'RateLimiter',
+
+    # Functions
     'build_http_adapter',
     'compute_sleep_seconds',
 
@@ -98,5 +104,5 @@ __all__ = [
     'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
     'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
     'CursorPaginationConfig', 'PagePaginationConfig',
-    'RateLimitConfig', 'RetryPolicy',
+    'RetryPolicy',
 ]

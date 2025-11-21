@@ -61,13 +61,13 @@ from ..extract import extract as _extract
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .rate import compute_sleep_seconds
+from .rate_limiter import compute_sleep_seconds
+from .rate_limiter import RateLimitConfig
 from .transport import build_http_adapter
 from .types import HTTPAdapterMountConfig
 from .types import JSONData
 from .types import JSONList
 from .types import PaginationConfig
-from .types import RateLimitConfig
 from .types import RetryPolicy
 
 
