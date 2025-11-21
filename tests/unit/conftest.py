@@ -25,8 +25,8 @@ import pytest
 import requests  # type: ignore[import]
 
 from etlplus.api import CursorPaginationConfig
+from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfig
-from etlplus.api.client import EndpointClient
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
