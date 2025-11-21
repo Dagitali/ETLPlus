@@ -48,6 +48,9 @@ from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
+from .errors import ApiRequestError
+from .errors import PaginationError
+
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -368,10 +371,9 @@ class Paginator:
                 req_params[self.page_param] = current
                 req_params[self.size_param] = self.page_size
 
-                page_data = self.fetch(
+                page_data = self._fetch_page(
                     url,
                     req_params,
-                    self.last_page,
                 )
                 batch = self.coalesce_records(
                     page_data,
@@ -416,10 +418,9 @@ class Paginator:
                     req_params[self.cursor_param] = cursor
                 req_params.setdefault(self.limit_param, self.page_size)
 
-                page_data = self.fetch(
+                page_data = self._fetch_page(
                     url,
                     req_params,
-                    self.last_page,
                 )
                 batch = self.coalesce_records(
                     page_data,
@@ -456,17 +457,82 @@ class Paginator:
 
         # Fallback: single page, coalesce. and yield.
         self.last_page = 1
-        page_data = self.fetch(url, params, self.last_page)
+        page_data = self._fetch_page(url, params)
         yield from self.coalesce_records(page_data, self.records_path)
 
-    def _stop_limits(self, pages: int, recs: int) -> bool:
+    # -- Protected Instance Methods -- #
+
+    def _fetch_page(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None,
+    ) -> Any:
+        """
+        Fetch a single page and attach page index on failure.
+
+        When the underlying ``fetch`` raises :class:`ApiRequestError`, this
+        helper re-raises :class:`PaginationError` with the current
+        ``last_page`` value populated so callers can inspect the failing
+        page index.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL of the endpoint to fetch.
+        params : Mapping[str, Any] | None
+            Optional query parameters for the request.
+
+        Returns
+        -------
+        Any
+            Parsed JSON payload of the fetched page.
+        """
+        if self.fetch is None:
+            raise ValueError('Paginator.fetch must be provided')
+        try:
+            return self.fetch(url, params, self.last_page)
+        except ApiRequestError as exc:
+            raise PaginationError(
+                url=exc.url,
+                status=exc.status,
+                attempts=exc.attempts,
+                retried=exc.retried,
+                retry_policy=exc.retry_policy,
+                cause=exc,
+                page=self.last_page,
+            ) from exc
+
+    def _stop_limits(
+        self, pages: int,
+        recs: int,
+    ) -> bool:
+        """
+        Check if pagination limits have been reached.
+
+        Parameters
+        ----------
+        pages : int
+            Number of pages fetched so far.
+        recs : int
+            Number of records fetched so far.
+
+        Returns
+        -------
+        bool
+            True if any limit has been reached, False otherwise.
+        """
         if isinstance(self.max_pages, int) and pages >= self.max_pages:
             return True
         if isinstance(self.max_records, int) and recs >= self.max_records:
             return True
         return False
 
+    # TODO: Replace with RateLimiter.
     def _sleep(self) -> None:
+        """
+        Sleep for the configured number of seconds using the provided sleep
+        function.
+        """
         if self.sleep_func is None:
             return
         if self.sleep_seconds > 0:
