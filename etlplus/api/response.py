@@ -69,8 +69,6 @@ class CursorPaginationConfig(TypedDict):
     """
     Configuration for cursor-based pagination.
 
-    Summary
-    -------
     Supports fetching successive result pages using a cursor token returned in
     each response. Values are all optional except ``type``.
 
@@ -120,8 +118,6 @@ class PagePaginationConfig(TypedDict):
     """
     Configuration for 'page' and 'offset' pagination types.
 
-    Summary
-    -------
     Controls page-number or offset-based pagination. Values are optional
     except ``type``.
 
@@ -169,6 +165,41 @@ class PagePaginationConfig(TypedDict):
 
 
 class PaginationConfig(TypedDict, total=False):
+    """
+    Configuration for REST API endpoint pagination.
+
+    Combines settings for page/offset and cursor-based pagination. All fields
+    are optional.
+
+    Attributes
+    ----------
+    type : str
+        Pagination type: 'page', 'offset', or 'cursor'.
+    page_size : int
+        Number of records per page.
+    start_page : int
+        Starting page number or offset.
+    start_cursor : str | None
+        Initial cursor value for cursor-based pagination.
+    records_path : str | None
+        Dotted path to the records list inside each page payload.
+    cursor_path : str | None
+        Dotted path to the next-cursor value inside each page payload.
+    max_pages : int | None
+        Optional maximum number of pages to fetch.
+    max_records : int | None
+        Optional maximum number of records to fetch.
+    page_param : str | None
+        Query parameter name carrying the page number or offset.
+    size_param : str | None
+        Query parameter name carrying the page size.
+    cursor_param : str | None
+        Query parameter name carrying the cursor.
+    limit_param : str | None
+        Query parameter name carrying the page size for cursor-based
+        pagination when the API uses a separate limit field.
+    """
+
     type: str  # 'page', 'offset', 'cursor'
     page_size: int
     start_page: int
@@ -196,11 +227,16 @@ type PaginationType = Literal['page', 'offset', 'cursor']
 @dataclass(slots=True)
 class Paginator:
     """
-    REST API endpoint response pagination engine for page/offset/cursor
-    strategies.
+    REST API endpoint response pagination engine.
 
     The caller supplies a ``fetch`` function that retrieves a JSON page
-    given an absolute URL and request params.
+    given an absolute URL and request params.  The paginator handles iterating
+    over pages according to the configured strategy, extracting records from
+    each page, and yielding them one by one.  Pagination strategies supported
+    are:
+    - Cursor/token based (``type='cursor'``)
+    - Offset based (``type='offset'``)
+    - Page-number based (``type='page'``)
 
     Attributes
     ----------
@@ -486,21 +522,28 @@ class Paginator:
         -------
         Any
             Parsed JSON payload of the fetched page.
+
+        Raises
+        ------
+        PaginationError
+            When the underlying ``fetch`` fails with :class:`ApiRequestError`.
+        ValueError
+            When ``fetch`` is not provided.
         """
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
         try:
             return self.fetch(url, params, self.last_page)
-        except ApiRequestError as exc:
+        except ApiRequestError as e:
             raise PaginationError(
-                url=exc.url,
-                status=exc.status,
-                attempts=exc.attempts,
-                retried=exc.retried,
-                retry_policy=exc.retry_policy,
-                cause=exc,
+                url=e.url,
+                status=e.status,
+                attempts=e.attempts,
+                retried=e.retried,
+                retry_policy=e.retry_policy,
+                cause=e,
                 page=self.last_page,
-            ) from exc
+            ) from e
 
     def _stop_limits(
         self, pages: int,
@@ -530,8 +573,9 @@ class Paginator:
     # TODO: Replace with RateLimiter.
     def _sleep(self) -> None:
         """
-        Sleep for the configured number of seconds using the provided sleep
-        function.
+        Sleep for the configured number of seconds.
+
+        Uses the provided sleep function.
         """
         if self.sleep_func is None:
             return
