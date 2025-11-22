@@ -381,32 +381,6 @@ class EndpointClient:
             object.__setattr__(self, '_ctx_session', None)
             object.__setattr__(self, '_ctx_owns_session', False)
 
-    # -- Private Helpers -------------------------------------------------- #
-
-    def _get_active_session(self) -> requests.Session | None:
-        """
-        Return the currently active session if available.
-
-        Prefers the context-managed session, then an explicit bound
-        ``session``, then lazily creates one via ``session_factory`` when
-        available. Returns ``None`` when no session can be obtained.
-
-        Returns
-        -------
-        requests.Session | None
-            The session to use for an outgoing request, if any.
-        """
-        if self._ctx_session is not None:
-            return self._ctx_session
-        if self.session is not None:
-            return self.session
-        if self.session_factory is not None:
-            try:
-                return self.session_factory()
-            except (RuntimeError, TypeError):  # pragma: no cover - defensive
-                return None
-        return None
-
     # -- Protected Instance Methods -- #
 
     def _extract_with_retry(
@@ -547,6 +521,30 @@ class EndpointClient:
                     sleep = 0.0
                 EndpointClient.apply_sleep(sleep)
                 attempt += 1
+
+    def _get_active_session(self) -> requests.Session | None:
+        """
+        Return the currently active session if available.
+
+        Prefers the context-managed session, then an explicit bound
+        ``session``, then lazily creates one via ``session_factory`` when
+        available. Returns ``None`` when no session can be obtained.
+
+        Returns
+        -------
+        requests.Session | None
+            The session to use for an outgoing request, if any.
+        """
+        if self._ctx_session is not None:
+            return self._ctx_session
+        if self.session is not None:
+            return self.session
+        if self.session_factory is not None:
+            try:
+                return self.session_factory()
+            except (RuntimeError, TypeError):  # pragma: no cover - defensive
+                return None
+        return None
 
     # -- Instance Methods -- #
 
