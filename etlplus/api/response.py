@@ -2,8 +2,8 @@
 ``etlplus.api.response`` module.
 
 Centralized logic for handling REST API endpoint responses, including:
-- Pagination strategies (page, offset, cursor)
-- Record extraction from JSON payloads
+- Pagination strategies (page, offset, cursor).
+- Record extraction from JSON payloads.
 
 This module provides a :class:`Paginator` class that encapsulates pagination
 configuration and behavior. It supports instantiation from a configuration
@@ -33,7 +33,7 @@ endpoint:
 ...     sleep_func=time.sleep,
 ...     sleep_seconds=0.5,
 ... )
->>> all_records = paginator.paginate("https://api.example.com/v1/items")
+>>> all_records = paginator.paginate('https://api.example.com/v1/items')
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ from typing import TypedDict
 
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .utils import to_maximum_int
+from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -345,28 +345,35 @@ class Paginator:
             absolute URL, the request params mapping, and the 1-based page
             index.
         sleep_func : Callable[[float], None] | None, optional
-            Sleep function used between pages. Defaults to no-op when ``None``.
+            Sleep function used between pages. Defaults to no-op when
+            ``None``.
         sleep_seconds : float, optional
-            Number of seconds to sleep between page fetches. Defaults to 0.0.
-            When non-positive, no sleeping occurs.
+            Number of seconds to sleep between page fetches. Defaults to
+            ``0.0``. When non-positive, no sleeping occurs.
+
+        Returns
+        -------
+        Paginator
+            Configured paginator instance.
         """
         ptype_raw = (config.get('type') or 'page').strip().lower()
+        if ptype_raw not in ('page', 'offset', 'cursor'):
+            ptype_raw = 'page'
         ptype: PaginationType = cast(PaginationType, ptype_raw)
 
-        page_size = to_maximum_int(
-            config.get('page_size'), cls.PAGE_SIZE,
+        page_size = to_positive_int(
+            config.get('page_size'),
+            cls.PAGE_SIZE,
+            minimum=1,
         )
-        page_size = max(page_size, 1)
 
-        start_page: int = to_maximum_int(
+        start_page = to_positive_int(
             config.get('start_page'),
             cls.START_PAGE,
+            minimum=0,
         )
-        match ptype:
-            case 'offset':
-                start_page = max(start_page, 0)
-            case 'page':
-                start_page = max(start_page, 1)
+        if ptype == 'page' and start_page < 1:
+            start_page = 1
 
         return cls(
             type=ptype,
@@ -437,7 +444,7 @@ class Paginator:
                 ):
                     take = max(
                         0,
-                        int(self.max_records) - (recs - n),
+                        self.max_records - (recs - n),
                     )
                     yield from batch[:take]
                     break
@@ -484,7 +491,7 @@ class Paginator:
                 ):
                     take = max(
                         0,
-                        int(self.max_records) - (recs - n),
+                        self.max_records - (recs - n),
                     )
                     yield from batch[:take]
                     break
@@ -601,10 +608,25 @@ class Paginator:
         x: Any,
         records_path: str | None,
     ) -> list[dict]:
-        """Coalesce JSON page payloads into a list of dicts.
+        """
+        Coalesce JSON page payloads into a list of dicts.
 
+        Parameters
+        ----------
+        x : Any
+            The JSON payload from an API response.
+        records_path : str | None
+            Optional dotted path to the records within the payload.
+
+        Returns
+        -------
+        list[dict]
+            List of record dicts extracted from the payload.
+
+        Notes
+        -----
         Supports dotted path extraction via ``records_path`` and handles
-        lists, maps, and scalars by coercing non-dict items into
+        lists, mappings, and scalars by coercing non-dict items into
         ``{"value": x}``.
         """
         def _get_path(obj: Any, path: str) -> Any:
@@ -641,7 +663,22 @@ class Paginator:
         data_obj: Any,
         path: str | None,
     ) -> str | int | None:
-        """Extract a cursor value from a JSON payload using a dotted path."""
+        """
+        Extract a cursor value from a JSON payload using a dotted path.
+
+        Parameters
+        ----------
+        data_obj : Any
+            The JSON payload object (expected to be a mapping).
+        path : str | None
+            Dotted path within the payload that points to the next cursor.
+
+        Returns
+        -------
+        str | int | None
+            The extracted cursor value if present and of type ``str`` or
+            ``int``; otherwise ``None``.
+        """
         if not (
             isinstance(path, str)
             and path
