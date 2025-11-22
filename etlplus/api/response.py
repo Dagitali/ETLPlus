@@ -50,6 +50,7 @@ from typing import TypedDict
 
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .utils import to_maximum_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -332,32 +333,43 @@ class Paginator:
         sleep_func: Callable[[float], None] | None = None,
         sleep_seconds: float = 0.0,
     ) -> Paginator:
-        """Normalize config and build a paginator instance."""
-        ptype_raw = config.get('type') or 'page'
-        ptype = ptype_raw.strip().lower()
-        if ptype not in ('page', 'offset', 'cursor'):
-            ptype = 'page'
+        """
+        Normalize config and build a paginator instance.
 
-        def _int(name: str, default: int) -> int:
-            raw = config.get(name, default)
-            try:
-                val = int(cast(int | float | str, raw))
-            except (TypeError, ValueError):
-                return default
-            return val
+        Parameters
+        ----------
+        config : PaginationConfig
+            Pagination configuration mapping.
+        fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any]
+            Callback used to fetch a single page for a request given the
+            absolute URL, the request params mapping, and the 1-based page
+            index.
+        sleep_func : Callable[[float], None] | None, optional
+            Sleep function used between pages. Defaults to no-op when ``None``.
+        sleep_seconds : float, optional
+            Number of seconds to sleep between page fetches. Defaults to 0.0.
+            When non-positive, no sleeping occurs.
+        """
+        ptype_raw = (config.get('type') or 'page').strip().lower()
+        ptype: PaginationType = cast(PaginationType, ptype_raw)
 
-        page_size = _int('page_size', cls.PAGE_SIZE)
-        if page_size < 1:
-            page_size = 1
+        page_size = to_maximum_int(
+            config.get('page_size'), cls.PAGE_SIZE,
+        )
+        page_size = max(page_size, 1)
 
-        start_page = _int('start_page', cls.START_PAGE)
-        if ptype == 'page' and start_page < 1:
-            start_page = 1
-        if ptype == 'offset' and start_page < 0:
-            start_page = 0
+        start_page: int = to_maximum_int(
+            config.get('start_page'),
+            cls.START_PAGE,
+        )
+        match ptype:
+            case 'offset':
+                start_page = max(start_page, 0)
+            case 'page':
+                start_page = max(start_page, 1)
 
         return cls(
-            type=ptype,  # type: ignore[arg-type]
+            type=ptype,
             page_size=page_size,
             start_page=start_page,
             start_cursor=config.get('start_cursor'),
