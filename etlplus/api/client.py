@@ -26,11 +26,11 @@ Examples
 
 >>> # Cursor-based pagination
 >>> pg = {
-...   "type": "cursor",
-...   "records_path": "data.items",
-...   "cursor_param": "cursor",
-...   "cursor_path": "data.nextCursor",
-...   "page_size": 100,
+...     "type": "cursor",
+...     "records_path": "data.items",
+...     "cursor_param": "cursor",
+...     "cursor_path": "data.nextCursor",
+...     "page_size": 100,
 ... }
 >>> rows = client.paginate("list", pagination=pg)
 """
@@ -400,23 +400,26 @@ class EndpointClient:
         url : str
             Absolute URL to fetch.
         **kw : Any
-            Keyword arguments forwarded to ``requests.get`` via ``extract``.
+            Keyword arguments forwarded to ``requests.get`` via
+            :func:`etlplus.extract.extract`.
 
         Returns
         -------
         JSONData
-            The parsed JSON payload or a fallback object when appropriate.
+            Parsed JSON payload.
 
         Raises
         ------
         ApiAuthError
-            If authentication/authorization ultimately fails (e.g., 401/403).
+            If authentication or authorization ultimately fails
+            (for example, with a 401 or 403 status).
         ApiRequestError
-            If all retry attempts fail (or a single attempt fails with no retry
-            policy configured) for other HTTP statuses or network errors.
+            If all retry attempts fail (or a single attempt fails with no
+            retry policy configured) for other HTTP statuses or network
+            errors.
         """
         # Determine session to use for this request.
-        # Prefer context-managed session when present
+        # Prefer context-managed session when present.
         sess = self._get_active_session()
 
         policy: RetryPolicy | None = self.retry
@@ -428,7 +431,9 @@ class EndpointClient:
                 return _extract('api', url, **kw)
             except requests.RequestException as e:  # pragma: no cover (net)
                 status = getattr(
-                    getattr(e, 'response', None), 'status_code', None,
+                    getattr(e, 'response', None),
+                    'status_code',
+                    None,
                 )
                 retried = False
                 if status in {401, 403}:
@@ -480,14 +485,16 @@ class EndpointClient:
                 return _extract('api', url, **call_kw)
             except requests.RequestException as e:  # pragma: no cover (net)
                 status = getattr(
-                    getattr(e, 'response', None), 'status_code', None,
+                    getattr(e, 'response', None),
+                    'status_code',
+                    None,
                 )
-                # HTTP status-based retry
+                # HTTP status-based retry.
                 should_retry = (
                     isinstance(status, int) and status in retry_on_codes
                 )
 
-                # Network error retry (timeouts/connection failures)
+                # Network error retry (timeouts/connection failures).
                 if not should_retry and self.retry_network_errors:
                     is_timeout = isinstance(e, requests.Timeout)
                     is_conn = isinstance(e, requests.ConnectionError)
@@ -513,14 +520,14 @@ class EndpointClient:
                     ) from e
 
                 # Exponential backoff with Full Jitter to reduce herding:
-                #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1)))
+                #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1))).
                 if backoff > 0:
                     exp = backoff * (2 ** (attempt - 1))
                     upper = exp if exp < cap else cap
-                    sleep = random.uniform(0.0, upper)
+                    sleep_for = random.uniform(0.0, upper)
                 else:
-                    sleep = 0.0
-                EndpointClient.apply_sleep(sleep)
+                    sleep_for = 0.0
+                EndpointClient.apply_sleep(sleep_for)
                 attempt += 1
 
     def _get_active_session(self) -> requests.Session | None:
