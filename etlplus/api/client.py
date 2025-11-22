@@ -71,6 +71,7 @@ from .types import JSONData
 from .types import JSONList
 from .types import PaginationConfig
 from .types import RetryPolicy
+from .utils import to_positive_int
 
 
 # SECTION: CLASSES ========================================================== #
@@ -448,23 +449,23 @@ class EndpointClient:
                     cause=e,
                 ) from e
 
-        max_attempts = int(
-            cast(int | float | str | None, policy.get('max_attempts', 0))
-            or self.DEFAULT_RETRY_MAX_ATTEMPTS,
+        max_attempts = to_positive_int(
+            policy.get('max_attempts'),
+            self.DEFAULT_RETRY_MAX_ATTEMPTS,
+            minimum=1,
         )
-        if max_attempts < 1:
-            max_attempts = 1
 
         try:
             backoff = float(policy.get('backoff', self.DEFAULT_RETRY_BACKOFF))
         except (TypeError, ValueError):
             backoff = self.DEFAULT_RETRY_BACKOFF
-        backoff = 0.0 if backoff < 0 else backoff
+        backoff = max(backoff, 0.0)
 
         retry_on = policy.get('retry_on')
         if not retry_on:
             retry_on_codes = set(self.DEFAULT_RETRY_ON)
         else:
+            # Best-effort coercion; ignore unparseable entries.
             retry_on_codes = {int(c) for c in retry_on}
 
         attempt = 1
