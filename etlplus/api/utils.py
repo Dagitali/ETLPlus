@@ -7,10 +7,18 @@ Small shared helpers for :mod:`etlplus.api` modules.
 
 
 __all__ = [
+    # Float coercion
     'to_float',
+    'to_maximum_float',
+    'to_minimum_float',
+
+    # Integer coercion
     'to_int',
+    'to_maximum_int',
+    'to_minimum_int',
     'to_positive_int',
 ]
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -70,6 +78,62 @@ def to_float(
         if maximum is not None:
             result = min(result, maximum)
     return result
+
+
+def to_maximum_float(
+    value: object,
+    default: float,
+) -> float:
+    """
+    Return the maximum float value between a coerced value and a default.
+
+    Parameters
+    ----------
+    value : object
+        Value to coerce to float.
+    default : float
+        Fallback value if coercion fails.
+
+    Returns
+    -------
+    float
+        The maximum of the coerced float value and the default.
+
+    Notes
+    -----
+    - Uses :func:`to_float` for coercion.
+    - If coercion fails, uses `default`.
+    """
+    coerced = to_float(value, default)
+    return max(coerced if coerced is not None else default, default)
+
+
+def to_minimum_float(
+    value: object,
+    default: float,
+) -> float:
+    """
+    Return the minimum float value between a coerced value and a default.
+
+    Parameters
+    ----------
+    value : object
+        Value to coerce to float.
+    default : float
+        Fallback value if coercion fails.
+
+    Returns
+    -------
+    float
+        The minimum of the coerced float value and the default.
+
+    Notes
+    -----
+    - Uses :func:`to_float` for coercion.
+    - If coercion fails, uses `default`.
+    """
+    coerced = to_float(value, default)
+    return min(coerced if coerced is not None else default, default)
 
 
 def to_int(
@@ -132,6 +196,62 @@ def to_int(
         if maximum is not None:
             result = min(result, maximum)
     return result
+
+
+def to_maximum_int(
+    value: object,
+    default: int,
+) -> int:
+    """
+    Return the maximum integer value between a coerced value and a default.
+
+    Parameters
+    ----------
+    value : object
+        Value to coerce to integer.
+    default : int
+        Fallback value if coercion fails.
+
+    Returns
+    -------
+    int
+        The maximum of the coerced integer value and the default.
+
+    Notes
+    -----
+    - Uses :func:`to_int` for coercion.
+    - If coercion fails, uses `default`.
+    """
+    coerced = to_int(value, default)
+    return max(coerced if coerced is not None else default, default)
+
+
+def to_minimum_int(
+    value: object,
+    default: int,
+) -> int:
+    """
+    Return the minimum integer value between a coerced value and a default.
+
+    Parameters
+    ----------
+    value : object
+        Value to coerce to integer.
+    default : int
+        Fallback value if coercion fails.
+
+    Returns
+    -------
+    int
+        The minimum of the coerced integer value and the default.
+
+    Notes
+    -----
+    - Uses :func:`to_int` for coercion.
+    - If coercion fails, uses `default`.
+    """
+    coerced = to_int(value, default)
+    return min(coerced if coerced is not None else default, default)
 
 
 def to_positive_int(
