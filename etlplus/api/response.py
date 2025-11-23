@@ -38,9 +38,9 @@ endpoint:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import ClassVar
 from typing import Iterator
 from typing import Literal
@@ -62,6 +62,15 @@ __all__ = [
 ]
 
 
+# SECTION: ENUMS ============================================================ #
+
+
+class PaginationType(StrEnum):
+    PAGE = 'page'
+    OFFSET = 'offset'
+    CURSOR = 'cursor'
+
+
 # SECTION: TYPED DICTS ====================================================== #
 
 
@@ -74,7 +83,7 @@ class CursorPaginationConfig(TypedDict):
 
     Attributes
     ----------
-    type : Literal['cursor']
+    type : Literal[PaginationType.CURSOR]
         Pagination type discriminator.
     records_path : NotRequired[str]
         Dotted path to the records list in each page payload.
@@ -104,7 +113,7 @@ class CursorPaginationConfig(TypedDict):
 
     # -- Attributes -- #
 
-    type: Literal['cursor']
+    type: Literal[PaginationType.CURSOR]
     records_path: NotRequired[str]
     max_pages: NotRequired[int]
     max_records: NotRequired[int]
@@ -123,7 +132,7 @@ class PagePaginationConfig(TypedDict):
 
     Attributes
     ----------
-    type : Literal['page', 'offset']
+    type : Literal[PaginationType.PAGE, PaginationType.OFFSET]
         Pagination type discriminator.
     records_path : NotRequired[str]
         Dotted path to the records list in each page payload.
@@ -154,7 +163,7 @@ class PagePaginationConfig(TypedDict):
 
     # -- Attributes -- #
 
-    type: Literal['page', 'offset']
+    type: Literal[PaginationType.PAGE, PaginationType.OFFSET]
     records_path: NotRequired[str]
     max_pages: NotRequired[int]
     max_records: NotRequired[int]
@@ -212,13 +221,6 @@ class PaginationConfig(TypedDict, total=False):
     size_param: str | None
     cursor_param: str | None
     limit_param: str | None
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# Literal type for supported pagination kinds
-type PaginationType = Literal['page', 'offset', 'cursor']
 
 
 # SECTION: CLASSES ========================================================== #
@@ -297,29 +299,29 @@ class Paginator:
     # Pagination defaults
     START_PAGE: ClassVar[int] = 1
     PAGE_SIZE: ClassVar[int] = 100
-    CURSOR_PARAM: ClassVar[str] = 'cursor'
+    CURSOR_PARAM: ClassVar[str] = PaginationType.CURSOR
     LIMIT_PARAM: ClassVar[str] = 'limit'
 
     # Mapped pagination defaults
     PAGE_PARAMS: ClassVar[dict[PaginationType, str]] = {
-        'page': 'page',
-        'offset': 'offset',
-        'cursor': 'page',
+        PaginationType.PAGE: 'page',
+        PaginationType.OFFSET: 'offset',
+        PaginationType.CURSOR: 'page',
     }
     SIZE_PARAMS: ClassVar[dict[PaginationType, str]] = {
-        'page': 'per_page',
-        'offset': 'limit',
-        'cursor': 'limit',
+        PaginationType.PAGE: 'per_page',
+        PaginationType.OFFSET: 'limit',
+        PaginationType.CURSOR: 'limit',
     }
     START_PAGES: ClassVar[dict[PaginationType, int]] = {
-        'page': 1,
-        'offset': 0,
-        'cursor': 1,
+        PaginationType.PAGE: 1,
+        PaginationType.OFFSET: 0,
+        PaginationType.CURSOR: 1,
     }
 
     # -- Attributes -- #
 
-    type: PaginationType = 'page'
+    type: PaginationType = PaginationType.PAGE
     page_size: int = PAGE_SIZE
     start_page: int = START_PAGE
     start_cursor: str | int | None = None
@@ -336,12 +338,16 @@ class Paginator:
 
     def __post_init__(self):
         # Normalize type to supported PaginationType.
-        if self.type not in ('page', 'offset', 'cursor'):
-            self.type = 'page'
+        if self.type not in (
+            PaginationType.PAGE,
+            PaginationType.OFFSET,
+            PaginationType.CURSOR,
+        ):
+            self.type = PaginationType.PAGE
         # Normalize start_page based on type.
         if self.start_page < 0:
             self.start_page = self.START_PAGES[self.type]
-        if self.type == 'page' and self.start_page < 1:
+        if self.type == PaginationType.PAGE and self.start_page < 1:
             self.start_page = 1
         # Enforce minimum page_size.
         if self.page_size < 1:
@@ -397,8 +403,11 @@ class Paginator:
         Paginator
             Configured paginator instance.
         """
-        ptype_raw = (config.get('type') or 'page').strip().lower()
-        ptype = cast(PaginationType, ptype_raw) or 'page'
+        ptype_raw = str(config.get('type', 'page')).strip().lower()
+        try:
+            ptype = PaginationType(ptype_raw)
+        except ValueError:
+            ptype = PaginationType.PAGE
 
         return cls(
             type=ptype,
@@ -439,11 +448,10 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        ptype = self.type
         pages = 0
         recs = 0
 
-        if ptype in ('page', 'offset'):
+        if self.type in (PaginationType.PAGE, PaginationType.OFFSET):
             current = self.start_page
             while True:
                 self.last_page = pages + 1
@@ -481,7 +489,7 @@ class Paginator:
                 if self._stop_limits(pages, recs):
                     break
 
-                if ptype == 'page':
+                if self.type == PaginationType.PAGE:
                     current += 1
                 else:
                     current += self.page_size
@@ -489,7 +497,7 @@ class Paginator:
                 self._sleep()
             return
 
-        if ptype == 'cursor':
+        if self.type == PaginationType.CURSOR:
             cursor = self.start_cursor
             while True:
                 self.last_page = pages + 1
