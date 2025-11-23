@@ -345,7 +345,7 @@ class Paginator:
             self.start_page = 1
         # Enforce minimum page_size.
         if self.page_size < 1:
-            self.page_size = self.PAGE_SIZE
+            self.page_size = 1
         # Normalize parameter names by type-specific defaults.
         if not self.page_param:
             self.page_param = self.PAGE_PARAMS[self.type]
@@ -402,17 +402,17 @@ class Paginator:
 
         return cls(
             type=ptype,
-            page_size=config.get('page_size') or cls.PAGE_SIZE,
-            start_page=config.get('start_page') or cls.START_PAGES[ptype],
+            page_size=int(config.get('page_size', cls.PAGE_SIZE)),
+            start_page=int(config.get('start_page', cls.START_PAGES[ptype])),
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
             cursor_path=config.get('cursor_path'),
             max_pages=config.get('max_pages'),
             max_records=config.get('max_records'),
-            page_param=config.get('page_param') or '',
-            size_param=config.get('size_param') or '',
-            cursor_param=config.get('cursor_param') or '',
-            limit_param=config.get('limit_param') or '',
+            page_param=str(config.get('page_param', '')),
+            size_param=str(config.get('size_param', '')),
+            cursor_param=str(config.get('cursor_param', '')),
+            limit_param=str(config.get('limit_param', '')),
             fetch=fetch,
             sleep_seconds=sleep_seconds,
             sleep_func=sleep_func,
