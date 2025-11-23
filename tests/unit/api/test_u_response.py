@@ -15,14 +15,19 @@ Examples
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
+from typing import cast
 from typing import Mapping
 
 import pytest
 
-from etlplus.api.response import PaginationConfig
+from etlplus.api.client import EndpointClient
+from etlplus.api.response import PaginationConfig as PaginatorConfig
 from etlplus.api.response import PaginationType
 from etlplus.api.response import Paginator
+from etlplus.api.types import PagePaginationConfig
+from etlplus.api.types import PaginationConfig
 
 
 # SECTION: HELPERS ========================================================== #
@@ -35,6 +40,64 @@ def _dummy_fetch(
 ) -> Mapping[str, Any]:
     """Simple fetch stub that echoes input for Paginator construction."""
     return {'url': url, 'params': params or {}, 'page': page}
+
+
+class RecordingClient(EndpointClient):
+    """EndpointClient subclass that records paginate_url_iter calls.
+
+    Used to verify that ``paginate`` and ``paginate_iter`` are thin shims
+    over ``paginate_url_iter``.
+    """
+
+    _paginate_calls: list[dict[str, Any]] = []
+
+    @property
+    def paginate_calls(self) -> list[dict[str, Any]]:
+        return type(self)._paginate_calls
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        type(self)._paginate_calls.clear()
+
+    def paginate_url_iter(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None,
+        headers: Mapping[str, Any] | None,
+        timeout: float | int | None,
+        pagination: PaginationConfig | None,
+        *,
+        sleep_seconds: float = 0.0,
+    ) -> Iterator[dict]:
+        """Record arguments and yield a single marker record."""
+        type(self)._paginate_calls.append(
+            {
+                'url': url,
+                'params': params,
+                'headers': headers,
+                'timeout': timeout,
+                'pagination': pagination,
+                'sleep_seconds': sleep_seconds,
+            },
+        )
+        yield {'marker': 'ok'}
+
+
+class FakePageClient(EndpointClient):
+    def paginate_url_iter(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None,
+        headers: Mapping[str, Any] | None,
+        timeout: float | int | None,
+        pagination: PaginationConfig | None,
+        *,
+        sleep_seconds: float = 0.0,
+    ) -> Iterator[dict]:
+        # Ignore all arguments; just simulate three records from two pages.
+        yield {'id': 1}
+        yield {'id': 2}
+        yield {'id': 3}
 
 
 # SECTION: TESTS ============================================================ #
@@ -53,7 +116,7 @@ class TestPaginator:
         paginator should fall back to its class-level defaults.
         """
         type_ = PaginationType.PAGE
-        cfg: PaginationConfig = {'type': type_}
+        cfg: PaginatorConfig = {'type': type_}
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
@@ -92,7 +155,7 @@ class TestPaginator:
         expected : int
             Expected normalized page size.
         """
-        cfg: PaginationConfig = {'type': 'page'}
+        cfg: PaginatorConfig = {'type': 'page'}
         if actual is not None:
             cfg['page_size'] = actual
 
@@ -131,7 +194,7 @@ class TestPaginator:
         expected_start : int
             Expected normalized start page value.
         """
-        cfg: PaginationConfig = {'type': ptype}
+        cfg: PaginatorConfig = {'type': ptype}
         if actual is not None:
             cfg['start_page'] = actual
 
@@ -143,3 +206,59 @@ class TestPaginator:
             assert paginator.type == ptype
 
         assert paginator.start_page == expected_start
+
+    def test_page_integration(self) -> None:
+        """Exercise paginate over a multi-record iterator.
+
+        Uses a lightweight EndpointClient subclass that overrides
+        ``paginate_url_iter`` to simulate multiple pages of results and
+        verifies that ``paginate`` flattens them into a single record stream.
+        """
+
+        client = FakePageClient(
+            base_url='https://example.test/api',
+            endpoints={'items': '/items'},
+        )
+
+        pg: PagePaginationConfig = {
+            'type': 'page',
+            'page_param': 'page',
+            'size_param': 'per_page',
+            'page_size': 2,
+            'records_path': 'items',
+        }
+
+        records = cast(
+            list[dict[str, Any]],
+            list(client.paginate('items', pagination=pg)),
+        )
+
+        assert [r['id'] for r in records] == [1, 2, 3]
+
+    def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
+        """Ensure paginate and paginate_iter delegate to paginate_url_iter."""
+        client = RecordingClient(
+            base_url='https://example.test/api',
+            endpoints={'items': '/items'},
+        )
+
+        pg: PagePaginationConfig = {'type': 'page'}
+
+        # Both helpers should route through paginate_url_iter.
+        list(client.paginate('items', pagination=pg))
+        list(client.paginate_iter('items', pagination=pg))
+
+        # Both calls should have gone through paginate_url_iter exactly once
+        # each.
+        assert len(client._paginate_calls) == 2
+
+        calls: list[dict[str, Any]] = client._paginate_calls
+
+        urls = [call['url'] for call in calls]
+        assert urls == [
+            'https://example.test/api/items',
+            'https://example.test/api/items',
+        ]
+
+        paginations = [call['pagination'] for call in calls]
+        assert paginations == [pg, pg]
