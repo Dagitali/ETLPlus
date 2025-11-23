@@ -50,7 +50,6 @@ from typing import TypedDict
 
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -241,10 +240,6 @@ class Paginator:
 
     Attributes
     ----------
-    PAGE_PARAM : ClassVar[str]
-        Default query parameter name for page number.
-    SIZE_PARAM : ClassVar[str]
-        Default query parameter name for page size.
     START_PAGE : ClassVar[int]
         Default starting page number.
     PAGE_SIZE : ClassVar[int]
@@ -253,6 +248,12 @@ class Paginator:
         Default query parameter name for cursor value.
     LIMIT_PARAM : ClassVar[str]
         Default query parameter name for page size in cursor pagination.
+    PAGE_PARAMS : ClassVar[dict[PaginationType, str]]
+        Default query parameter name for page number per pagination type.
+    SIZE_PARAMS : ClassVar[dict[PaginationType, str]]
+        Default query parameter name for page size per pagination type.
+    START_PAGES : ClassVar[dict[PaginationType, int]]
+        Default starting page number per pagination type.
     type : PaginationType
         Pagination type: ``"page"``, ``"offset"``, or ``"cursor"``.
     page_size : int
@@ -293,12 +294,28 @@ class Paginator:
 
     # -- Constants -- #
 
-    PAGE_PARAM: ClassVar[str] = 'page'
-    SIZE_PARAM: ClassVar[str] = 'per_page'
+    # Pagination defaults
     START_PAGE: ClassVar[int] = 1
     PAGE_SIZE: ClassVar[int] = 100
     CURSOR_PARAM: ClassVar[str] = 'cursor'
     LIMIT_PARAM: ClassVar[str] = 'limit'
+
+    # Mapped pagination defaults
+    PAGE_PARAMS: ClassVar[dict[PaginationType, str]] = {
+        'page': 'page',
+        'offset': 'offset',
+        'cursor': 'page',
+    }
+    SIZE_PARAMS: ClassVar[dict[PaginationType, str]] = {
+        'page': 'per_page',
+        'offset': 'limit',
+        'cursor': 'limit',
+    }
+    START_PAGES: ClassVar[dict[PaginationType, int]] = {
+        'page': 1,
+        'offset': 0,
+        'cursor': 1,
+    }
 
     # -- Attributes -- #
 
@@ -310,10 +327,34 @@ class Paginator:
     cursor_path: str | None = None
     max_pages: int | None = None
     max_records: int | None = None
-    page_param: str = PAGE_PARAM
-    size_param: str = SIZE_PARAM
-    cursor_param: str = CURSOR_PARAM
-    limit_param: str = LIMIT_PARAM
+    page_param: str = ''
+    size_param: str = ''
+    cursor_param: str = ''
+    limit_param: str = ''
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self):
+        # Normalize type to supported PaginationType.
+        if self.type not in ('page', 'offset', 'cursor'):
+            self.type = 'page'
+        # Normalize start_page based on type.
+        if self.start_page < 0:
+            self.start_page = self.START_PAGES[self.type]
+        if self.type == 'page' and self.start_page < 1:
+            self.start_page = 1
+        # Enforce minimum page_size.
+        if self.page_size < 1:
+            self.page_size = self.PAGE_SIZE
+        # Normalize parameter names by type-specific defaults.
+        if not self.page_param:
+            self.page_param = self.PAGE_PARAMS[self.type]
+        if not self.size_param:
+            self.size_param = self.SIZE_PARAMS[self.type]
+        if not self.cursor_param:
+            self.cursor_param = self.CURSOR_PARAM
+        if not self.limit_param:
+            self.limit_param = self.LIMIT_PARAM
 
     fetch: Callable[
         [str, Mapping[str, Any] | None, int | None], Any,
@@ -357,37 +398,21 @@ class Paginator:
             Configured paginator instance.
         """
         ptype_raw = (config.get('type') or 'page').strip().lower()
-        if ptype_raw not in ('page', 'offset', 'cursor'):
-            ptype_raw = 'page'
-        ptype: PaginationType = cast(PaginationType, ptype_raw)
-
-        page_size = to_positive_int(
-            config.get('page_size'),
-            cls.PAGE_SIZE,
-            minimum=1,
-        )
-
-        start_page = to_positive_int(
-            config.get('start_page'),
-            cls.START_PAGE,
-            minimum=0,
-        )
-        if ptype == 'page' and start_page < 1:
-            start_page = 1
+        ptype = cast(PaginationType, ptype_raw) or 'page'
 
         return cls(
             type=ptype,
-            page_size=page_size,
-            start_page=start_page,
+            page_size=config.get('page_size') or cls.PAGE_SIZE,
+            start_page=config.get('start_page') or cls.START_PAGES[ptype],
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
             cursor_path=config.get('cursor_path'),
             max_pages=config.get('max_pages'),
             max_records=config.get('max_records'),
-            page_param=config.get('page_param') or cls.PAGE_PARAM,
-            size_param=config.get('size_param') or cls.SIZE_PARAM,
-            cursor_param=config.get('cursor_param') or cls.CURSOR_PARAM,
-            limit_param=config.get('limit_param') or cls.LIMIT_PARAM,
+            page_param=config.get('page_param') or '',
+            size_param=config.get('size_param') or '',
+            cursor_param=config.get('cursor_param') or '',
+            limit_param=config.get('limit_param') or '',
             fetch=fetch,
             sleep_seconds=sleep_seconds,
             sleep_func=sleep_func,
