@@ -23,7 +23,6 @@ Examples
 from __future__ import annotations
 
 from typing import Any
-from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
 
@@ -33,13 +32,10 @@ from typing import TypedDict
 
 __all__ = [
     # Aliases
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+    'JSONDict', 'JSONList', 'JSONData',
 
     # HTTP adapter config
     'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
-
-    # Pagination configs
-    'CursorPaginationConfig', 'PagePaginationConfig',
 
     # Rate limit / retry
     'RateLimitConfig', 'RetryPolicy',
@@ -156,112 +152,6 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries: int | HTTPAdapterRetryConfig
 
 
-# SECTION: TYPED DICTS (Pagination) ========================================= #
-
-
-class CursorPaginationConfig(TypedDict):
-    """
-    Configuration for cursor-based pagination.
-
-    Summary
-    -------
-    Supports fetching successive result pages using a cursor token returned in
-    each response. Values are all optional except ``type``.
-
-    Attributes
-    ----------
-    type : Literal['cursor']
-        Pagination type discriminator.
-    records_path : NotRequired[str]
-        Dotted path to the records list in each page payload.
-    max_pages : NotRequired[int]
-        Maximum number of pages to fetch.
-    max_records : NotRequired[int]
-        Maximum number of records to fetch across all pages.
-    cursor_param : NotRequired[str]
-        Query parameter name carrying the cursor value.
-    cursor_path : NotRequired[str]
-        Dotted path inside the payload pointing to the next cursor.
-    start_cursor : NotRequired[str | int]
-        Initial cursor value used for the first request.
-    page_size : NotRequired[int]
-        Number of records per page.
-
-    Examples
-    --------
-    >>> cfg: CursorPaginationConfig = {
-    ...     'type': 'cursor',
-    ...     'records_path': 'data.items',
-    ...     'cursor_param': 'cursor',
-    ...     'cursor_path': 'data.nextCursor',
-    ...     'page_size': 100,
-    ... }
-    """
-
-    # -- Attributes -- #
-
-    type: Literal['cursor']
-    records_path: NotRequired[str]
-    max_pages: NotRequired[int]
-    max_records: NotRequired[int]
-    cursor_param: NotRequired[str]
-    cursor_path: NotRequired[str]
-    start_cursor: NotRequired[str | int]
-    page_size: NotRequired[int]
-
-
-class PagePaginationConfig(TypedDict):
-    """
-    Configuration for 'page' and 'offset' pagination types.
-
-    Summary
-    -------
-    Controls page-number or offset-based pagination. Values are optional
-    except ``type``.
-
-    Attributes
-    ----------
-    type : Literal['page', 'offset']
-        Pagination type discriminator.
-    records_path : NotRequired[str]
-        Dotted path to the records list in each page payload.
-    max_pages : NotRequired[int]
-        Maximum number of pages to fetch.
-    max_records : NotRequired[int]
-        Maximum number of records to fetch across all pages.
-    page_param : NotRequired[str]
-        Query parameter name carrying the page number.
-    size_param : NotRequired[str]
-        Query parameter name carrying the page size.
-    start_page : NotRequired[int]
-        Starting page number (1-based).
-    page_size : NotRequired[int]
-        Number of records per page.
-
-    Examples
-    --------
-    >>> cfg: PagePaginationConfig = {
-    ...     'type': 'page',
-    ...     'records_path': 'data.items',
-    ...     'page_param': 'page',
-    ...     'size_param': 'per_page',
-    ...     'start_page': 1,
-    ...     'page_size': 100,
-    ... }
-    """
-
-    # -- Attributes -- #
-
-    type: Literal['page', 'offset']
-    records_path: NotRequired[str]
-    max_pages: NotRequired[int]
-    max_records: NotRequired[int]
-    page_param: NotRequired[str]
-    size_param: NotRequired[str]
-    start_page: NotRequired[int]
-    page_size: NotRequired[int]
-
-
 # SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
 
 
@@ -339,5 +229,3 @@ type JSONData = JSONDict | JSONList
 
 type JSONRecord = dict[str, bool | float | int | str | None]
 type JSONRecords = list[JSONRecord]
-
-type PaginationConfig = PagePaginationConfig | CursorPaginationConfig
