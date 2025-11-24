@@ -1,5 +1,5 @@
 """
-``etlplus.api.rate_limiter`` module.
+``etlplus.api.request`` module.
 
 Centralized rate limiting logic for REST API requests.
 
@@ -47,7 +47,8 @@ __all__ = [
 
 _RateLimitConfig = Mapping[str, Any]
 
-# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
+
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class RateLimitConfig(TypedDict):
