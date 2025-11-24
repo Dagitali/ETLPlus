@@ -59,6 +59,8 @@ from .utils import to_positive_int
 
 __all__ = [
     # Classes
+    'CursorPaginationConfig',
+    'PagePaginationConfig',
     'PaginationConfig',
     'Paginator',
 ]

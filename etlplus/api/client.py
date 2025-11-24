@@ -63,13 +63,12 @@ from .errors import ApiRequestError
 from .errors import PaginationError
 from .rate_limiter import compute_sleep_seconds
 from .rate_limiter import RateLimitConfig
-from .response import PaginationConfig as PaginatorConfig
+from .response import PaginationConfig
 from .response import Paginator
 from .transport import build_http_adapter
 from .types import HTTPAdapterMountConfig
 from .types import JSONData
 from .types import JSONList
-from .types import PaginationConfig
 from .types import RetryPolicy
 from .utils import to_positive_int
 
@@ -821,7 +820,7 @@ class EndpointClient:
                 ) from e
 
         paginator = Paginator.from_config(
-            cast(PaginatorConfig, pg),
+            cast(PaginationConfig, pg),
             fetch=_fetch,
             sleep_func=EndpointClient.apply_sleep,
             sleep_seconds=effective_sleep,
