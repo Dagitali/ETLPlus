@@ -78,7 +78,7 @@ class PaginationType(StrEnum):
 
 class CursorPaginationConfig(TypedDict):
     """
-    Configuration for cursor-based pagination.
+    Configuration for cursor-based REST API pagination.
 
     Supports fetching successive result pages using a cursor token returned in
     each response. Values are all optional except ``type``.
@@ -96,11 +96,14 @@ class CursorPaginationConfig(TypedDict):
     cursor_param : NotRequired[str]
         Query parameter name carrying the cursor value.
     cursor_path : NotRequired[str]
-        Dotted path inside the payload pointing to the next cursor.
+        Dotted path inside the payload to the next cursor.
     start_cursor : NotRequired[str | int]
         Initial cursor value used for the first request.
     page_size : NotRequired[int]
         Number of records per page.
+    limit_param : NotRequired[str]
+        Query parameter name carrying the page size for cursor-based
+        pagination when the API uses a separate limit field.
 
     Examples
     --------
@@ -123,11 +126,12 @@ class CursorPaginationConfig(TypedDict):
     cursor_path: NotRequired[str]
     start_cursor: NotRequired[str | int]
     page_size: NotRequired[int]
+    limit_param: NotRequired[str]
 
 
 class PagePaginationConfig(TypedDict):
     """
-    Configuration for 'page' and 'offset' pagination types.
+    Configuration for page-based and offset-based REST API pagination types.
 
     Controls page-number or offset-based pagination. Values are optional
     except ``type``.
@@ -143,11 +147,11 @@ class PagePaginationConfig(TypedDict):
     max_records : NotRequired[int]
         Maximum number of records to fetch across all pages.
     page_param : NotRequired[str]
-        Query parameter name carrying the page number.
+        Query parameter name carrying the page number or offset.
     size_param : NotRequired[str]
         Query parameter name carrying the page size.
     start_page : NotRequired[int]
-        Starting page number (1-based).
+        Starting page number or offset (1-based).
     page_size : NotRequired[int]
         Number of records per page.
 
@@ -175,54 +179,10 @@ class PagePaginationConfig(TypedDict):
     page_size: NotRequired[int]
 
 
-class PaginationConfig(TypedDict, total=False):
-    """
-    Configuration for REST API endpoint pagination.
+# SECTION: TYPE ALIASES ===================================================== #
 
-    Combines settings for page/offset and cursor-based pagination. All fields
-    are optional.
 
-    Attributes
-    ----------
-    type : str
-        Pagination type: 'page', 'offset', or 'cursor'.
-    page_size : int
-        Number of records per page.
-    start_page : int
-        Starting page number or offset.
-    start_cursor : str | None
-        Initial cursor value for cursor-based pagination.
-    records_path : str | None
-        Dotted path to the records list inside each page payload.
-    cursor_path : str | None
-        Dotted path to the next-cursor value inside each page payload.
-    max_pages : int | None
-        Optional maximum number of pages to fetch.
-    max_records : int | None
-        Optional maximum number of records to fetch.
-    page_param : str | None
-        Query parameter name carrying the page number or offset.
-    size_param : str | None
-        Query parameter name carrying the page size.
-    cursor_param : str | None
-        Query parameter name carrying the cursor.
-    limit_param : str | None
-        Query parameter name carrying the page size for cursor-based
-        pagination when the API uses a separate limit field.
-    """
-
-    type: str  # 'page', 'offset', 'cursor'
-    page_size: int
-    start_page: int
-    start_cursor: str | None
-    records_path: str | None
-    cursor_path: str | None
-    max_pages: int | None
-    max_records: int | None
-    page_param: str | None
-    size_param: str | None
-    cursor_param: str | None
-    limit_param: str | None
+PaginationConfig = PagePaginationConfig | CursorPaginationConfig
 
 
 # SECTION: CLASSES ========================================================== #
@@ -264,7 +224,7 @@ class Paginator:
         Number of records per page (minimum of 1).
     start_page : int
         Starting page number or offset, depending on ``type``.
-    start_cursor : str | int | None
+    start_cursor : object | None
         Initial cursor value for cursor-based pagination.
     records_path : str | None
         Dotted path to the records list inside each page payload.
@@ -326,7 +286,8 @@ class Paginator:
     type: PaginationType = PaginationType.PAGE
     page_size: int = PAGE_SIZE
     start_page: int = START_PAGE
-    start_cursor: str | int | None = None
+    # start_cursor: str | int | None = None
+    start_cursor: object | None = None
     records_path: str | None = None
     cursor_path: str | None = None
     max_pages: int | None = None
@@ -420,7 +381,8 @@ class Paginator:
             ),
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
-            cursor_path=config.get('cursor_path'),
+            # cursor_path=config.get('cursor_path'),
+            cursor_path=str(config.get('cursor_path', '')) or None,
             max_pages=config.get('max_pages'),
             max_records=config.get('max_records'),
             page_param=str(config.get('page_param', '')),
