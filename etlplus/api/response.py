@@ -339,7 +339,7 @@ class Paginator:
     @classmethod
     def from_config(
         cls,
-        config: PaginationConfig,
+        config: Mapping[str, Any],
         *,
         fetch: Callable[[str, Mapping[str, Any] | None, int | None], Any],
         sleep_func: Callable[[float], None] | None = None,
@@ -350,7 +350,7 @@ class Paginator:
 
         Parameters
         ----------
-        config : PaginationConfig
+        config : Mapping[str, Any]
             Pagination configuration mapping.
         fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any]
             Callback used to fetch a single page for a request given the
