@@ -354,6 +354,9 @@ class RetryManager:
         Whether to retry on network errors (timeouts, connection errors).
     cap : float
         Maximum sleep seconds for jittered backoff.
+    sleeper : Callable[[float], None]
+        Callable used to sleep between retry attempts. Defaults to
+        :func:`time.sleep`.
     """
 
     # -- Attributes -- #
@@ -361,6 +364,7 @@ class RetryManager:
     policy: RetryPolicy
     retry_network_errors: bool = False
     cap: float = 30.0
+    sleeper: Callable[[float], None] = time.sleep
 
     # -- Getters -- #
 
@@ -493,7 +497,7 @@ class RetryManager:
                         cause=e,
                     ) from e
                 sleep_for = self.get_sleep_time(attempt)
-                time.sleep(sleep_for)
+                self.sleeper(sleep_for)
                 attempt += 1
 
         # If we exit the loop, all attempts failed without raising.
