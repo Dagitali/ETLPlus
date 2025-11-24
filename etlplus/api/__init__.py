@@ -71,9 +71,9 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .rate_limiter import compute_sleep_seconds
-from .rate_limiter import RateLimitConfig
-from .rate_limiter import RateLimiter
+from .request import compute_sleep_seconds
+from .request import RateLimitConfig
+from .request import RateLimiter
 from .response import CursorPaginationConfig
 from .response import PagePaginationConfig
 from .response import PaginationConfig
