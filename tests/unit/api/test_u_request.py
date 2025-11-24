@@ -1,7 +1,7 @@
 """
-``tests.unit.api.test_u_rate_limiter`` module.
+``tests.unit.api.test_u_request`` module.
 
-Unit tests for :class:`etlplus.api.rate_limiter.RateLimiter`.
+Unit tests for :class:`etlplus.api.request.RateLimiter`.
 
 Notes
 -----
@@ -11,7 +11,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_rate_limiter.py
+>>> pytest tests/unit/api/test_u_request.py
 """
 from __future__ import annotations
 
@@ -222,7 +222,7 @@ class TestRateLimiterEnforce:
         # Patch the module-level ``time.sleep`` used by
         # :class:`RateLimiter`.
         monkeypatch.setattr(
-            'etlplus.api.rate_limiter.time.sleep',
+            'etlplus.api.request.time.sleep',
             fake_sleep,
         )
 
@@ -246,7 +246,7 @@ class TestRateLimiterEnforce:
             calls.append(value)
 
         monkeypatch.setattr(
-            'etlplus.api.rate_limiter.time.sleep',
+            'etlplus.api.request.time.sleep',
             fake_sleep,
         )
 
