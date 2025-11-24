@@ -1,11 +1,13 @@
 """
-``etlplus.api.rate_limiter`` module.
+``etlplus.api.request`` module.
 
-Centralized rate limiting logic for REST API requests.
+Centralized logic for handling REST API requests, including:
+- Request rate limiting.
 
-This module encapsulates rate limit configuration and behavior in a single
-class. It supports instantiation from a configuration mapping, computation of
-sleep intervals, and application of sleep between requests.
+This module provides a :class:`RateLimiter` class that encapsulates rate limit
+configuration and behavior. It supports instantiation from a configuration
+mapping, computation of sleep intervals, and application of sleep between
+requests.
 
 Examples
 --------
@@ -42,20 +44,13 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-_RateLimitConfig = Mapping[str, Any]
-
-# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class RateLimitConfig(TypedDict):
     """
-    Optional rate limit configuration.
+    Configuration for limiting REST API request rates.
 
-    Summary
-    -------
     Provides either a fixed delay (``sleep_seconds``) or derives one from a
     maximum requests-per-second value (``max_per_sec``).
 
@@ -141,7 +136,7 @@ def compute_sleep_seconds(
 
     Examples
     --------
-    >>> from etlplus.api.rate_limiter import compute_sleep_seconds
+    >>> from etlplus.api.request import compute_sleep_seconds
     >>> compute_sleep_seconds({"sleep_seconds": 0.2}, None)
     0.2
     >>> compute_sleep_seconds({"max_per_sec": 4}, None)
@@ -301,7 +296,7 @@ class RateLimiter:
     @classmethod
     def from_config(
         cls,
-        cfg: _RateLimitConfig | None,
+        cfg: Mapping[str, Any] | None,
     ) -> RateLimiter:
         """
         Build a :class:`RateLimiter` from a configuration mapping.
@@ -317,7 +312,7 @@ class RateLimiter:
 
         Parameters
         ----------
-        cfg : _RateLimitConfig | None
+        cfg : Mapping[str, Any] | None
             Configuration mapping from which to derive rate-limit settings.
 
         Returns

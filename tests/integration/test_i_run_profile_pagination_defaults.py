@@ -13,7 +13,12 @@ Notes
 """
 from __future__ import annotations
 
+from typing import Any
+from typing import Callable
+
 from etlplus.config import PaginationConfig
+from etlplus.config import PipelineConfig
+from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 
 # SECTION: TESTS ============================================================ #
@@ -23,9 +28,9 @@ class TestRunProfilePaginationDefaults:
 
     def test_job_level_pagination_overrides_profile_defaults(
         self,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[type[Client], list[Client]],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:
         # Profile defaults exist, but job-level options will override.
         cfg = pipeline_cfg_factory(
@@ -38,14 +43,17 @@ class TestRunProfilePaginationDefaults:
             ),
         )
         job = cfg.jobs[0]
-        job.extract.options = {
-            'pagination': {
-                'type': 'cursor',
-                'cursor_param': 'cursor',
-                'cursor_path': 'next',
-                'page_size': 25,
-            },
-        }
+        if job.extract is not None:
+            job.extract.options = {
+                'pagination': {
+                    'type': 'cursor',
+                    'cursor_param': 'cursor',
+                    'cursor_path': 'next',
+                    'page_size': 25,
+                },
+            }
+        else:
+            raise ValueError('job.extract is None; cannot set options')
 
         FakeClient, created = fake_endpoint_client
         result = run_patched(cfg, FakeClient)
@@ -63,9 +71,9 @@ class TestRunProfilePaginationDefaults:
 
     def test_profile_pagination_defaults_applied(
         self,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[type[Client], list[Client]],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
