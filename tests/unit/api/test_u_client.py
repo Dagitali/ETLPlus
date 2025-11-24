@@ -382,9 +382,7 @@ class TestCursorPagination:
             attempts['n'] += 1
             if attempts['n'] == 1:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(
-                    status_code=503,
-                )
+                err.response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
@@ -785,11 +783,13 @@ class TestRateLimitPrecedence:
         list(
             client.paginate_iter(
                 'list',
-                pagination={
-                    'type': 'page',
-                    'page_size': 2,
-                    'start_page': 1,
-                },
+                pagination=cast(
+                    PagePaginationConfig, {
+                        'type': 'page',
+                        'page_size': 2,
+                        'start_page': 1,
+                    },
+                ),
                 sleep_seconds=0.05,  # explicit override should win
             ),
         )
@@ -887,9 +887,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             if attempts['n'] < 3:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(
-                    status_code=503,
-                )
+                err.response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'ok': True}
 
@@ -953,10 +951,7 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry=cast(
-                RetryPolicy,
-                retry_cfg(max_attempts=4, backoff=0.5),
-            ),
+            retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
             retry_network_errors=True,
         )
         out = client.paginate_url(
