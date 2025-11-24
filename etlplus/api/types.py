@@ -152,7 +152,7 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries: int | HTTPAdapterRetryConfig
 
 
-# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
+# SECTION: TYPED DICTS (Retries) ============================================ #
 
 
 class RetryPolicy(TypedDict):
