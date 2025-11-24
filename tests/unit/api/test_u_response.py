@@ -180,7 +180,7 @@ class TestPaginator:
         self,
         ptype: str,
         actual: int | None,
-        expected_start: int,
+        expected: int,
     ) -> None:
         """
         Verify that ``start_page`` values are normalized by paginator type.
@@ -191,13 +191,10 @@ class TestPaginator:
             Raw pagination type from configuration.
         actual : int | None
             Configured start page value.
-        expected_start : int
+        expected : int
             Expected normalized start page value.
         """
-        cfg: PagePaginationConfig = {
-            'type': PaginationType.PAGE if ptype == 'page'
-            else PaginationType.OFFSET,
-        }
+        cfg: dict[str, Any] = {'type': ptype}
         if actual is not None:
             cfg['start_page'] = actual
 
@@ -208,7 +205,7 @@ class TestPaginator:
         else:
             assert paginator.type == ptype
 
-        assert paginator.start_page == expected_start
+        assert paginator.start_page == expected
 
     def test_page_integration(self) -> None:
         """Exercise paginate over a multi-record iterator.
