@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from etlplus.api.rate_limiter import compute_sleep_seconds
-from etlplus.api.rate_limiter import RateLimitConfig
-from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api.request import compute_sleep_seconds
+from etlplus.api.request import RateLimitConfig
+from etlplus.api.request import RateLimiter
 
 
 # SECTION: FIXTURES ======================================================== #
