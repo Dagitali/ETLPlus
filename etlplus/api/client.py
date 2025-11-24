@@ -36,7 +36,6 @@ Examples
 """
 from __future__ import annotations
 
-import random
 import time
 from dataclasses import dataclass
 from dataclasses import field
@@ -63,6 +62,7 @@ from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import compute_sleep_seconds
 from .request import RateLimitConfig
+from .request import RetryManager
 from .response import PaginationConfig
 from .response import Paginator
 from .transport import build_http_adapter
@@ -70,7 +70,6 @@ from .types import HTTPAdapterMountConfig
 from .types import JSONData
 from .types import JSONList
 from .types import RetryPolicy
-from .utils import to_positive_int
 
 
 # SECTION: CLASSES ========================================================== #
@@ -417,8 +416,8 @@ class EndpointClient:
             retry policy configured) for other HTTP statuses or network
             errors.
         """
-        # Determine session to use for this request.
-        # Prefer context-managed session when present.
+        # Determine session to use for this request. Prefer context-managed
+        # session when present.
         sess = self._get_active_session()
 
         policy: RetryPolicy | None = self.retry
@@ -453,81 +452,20 @@ class EndpointClient:
                     cause=e,
                 ) from e
 
-        max_attempts = to_positive_int(
-            policy.get('max_attempts'),
-            self.DEFAULT_RETRY_MAX_ATTEMPTS,
-            minimum=1,
+        retry_mgr = RetryManager(
+            policy=policy,
+            retry_network_errors=self.retry_network_errors,
+            cap=self.DEFAULT_RETRY_CAP,
         )
+        if sess is not None:
+            kw = dict(kw)
+            kw['session'] = sess
 
-        try:
-            backoff = float(policy.get('backoff', self.DEFAULT_RETRY_BACKOFF))
-        except (TypeError, ValueError):
-            backoff = self.DEFAULT_RETRY_BACKOFF
-        backoff = max(backoff, 0.0)
-
-        retry_on = policy.get('retry_on')
-        if not retry_on:
-            retry_on_codes = set(self.DEFAULT_RETRY_ON)
-        else:
-            # Best-effort coercion; ignore unparseable entries.
-            retry_on_codes = {int(c) for c in retry_on}
-
-        attempt = 1
-        cap = self.DEFAULT_RETRY_CAP
-        while True:
-            try:
-                if sess is not None:
-                    call_kw = dict(kw)
-                    call_kw['session'] = sess
-                else:
-                    call_kw = kw
-                return _extract('api', url, **call_kw)
-            except requests.RequestException as e:  # pragma: no cover (net)
-                status = getattr(
-                    getattr(e, 'response', None),
-                    'status_code',
-                    None,
-                )
-                # HTTP status-based retry.
-                should_retry = (
-                    isinstance(status, int) and status in retry_on_codes
-                )
-
-                # Network error retry (timeouts/connection failures).
-                if not should_retry and self.retry_network_errors:
-                    is_timeout = isinstance(e, requests.Timeout)
-                    is_conn = isinstance(e, requests.ConnectionError)
-                    should_retry = is_timeout or is_conn
-                if not should_retry or attempt >= max_attempts:
-                    retried = attempt > 1
-                    if status in {401, 403}:
-                        raise ApiAuthError(
-                            url=url,
-                            status=status,
-                            attempts=attempt,
-                            retried=retried,
-                            retry_policy=policy,
-                            cause=e,
-                        ) from e
-                    raise ApiRequestError(
-                        url=url,
-                        status=status,
-                        attempts=attempt,
-                        retried=retried,
-                        retry_policy=policy,
-                        cause=e,
-                    ) from e
-
-                # Exponential backoff with Full Jitter to reduce herding:
-                #   sleep = random.uniform(0, min(cap, backoff * 2**(n-1))).
-                if backoff > 0:
-                    exp = backoff * (2 ** (attempt - 1))
-                    upper = exp if exp < cap else cap
-                    sleep_for = random.uniform(0.0, upper)
-                else:
-                    sleep_for = 0.0
-                EndpointClient.apply_sleep(sleep_for)
-                attempt += 1
+        return retry_mgr.run_with_retry(
+            lambda url, **kw: _extract('api', url, **kw),
+            url,
+            **kw,
+        )
 
     def _get_active_session(self) -> requests.Session | None:
         """
