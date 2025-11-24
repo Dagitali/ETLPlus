@@ -23,11 +23,10 @@ from typing import Mapping
 import pytest
 
 from etlplus.api.client import EndpointClient
-from etlplus.api.response import PaginationConfig as PaginatorConfig
+from etlplus.api.response import PagePaginationConfig
+from etlplus.api.response import PaginationConfig
 from etlplus.api.response import PaginationType
 from etlplus.api.response import Paginator
-from etlplus.api.types import PagePaginationConfig
-from etlplus.api.types import PaginationConfig
 
 
 # SECTION: HELPERS ========================================================== #
@@ -115,13 +114,14 @@ class TestPaginator:
         When optional pagination configuration keys are omitted, the
         paginator should fall back to its class-level defaults.
         """
-        type_ = PaginationType.PAGE
-        cfg: PaginatorConfig = {'type': type_}
+        cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
-        assert paginator.page_param == Paginator.PAGE_PARAMS[type_]
-        assert paginator.size_param == Paginator.SIZE_PARAMS[type_]
+        assert paginator.page_param == \
+            Paginator.PAGE_PARAMS[PaginationType.PAGE]
+        assert paginator.size_param == \
+            Paginator.SIZE_PARAMS[PaginationType.PAGE]
         assert paginator.limit_param == Paginator.LIMIT_PARAM
         assert paginator.cursor_param == Paginator.CURSOR_PARAM
         assert paginator.records_path is None
@@ -155,7 +155,7 @@ class TestPaginator:
         expected : int
             Expected normalized page size.
         """
-        cfg: PaginatorConfig = {'type': 'page'}
+        cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
         if actual is not None:
             cfg['page_size'] = actual
 
@@ -194,7 +194,10 @@ class TestPaginator:
         expected_start : int
             Expected normalized start page value.
         """
-        cfg: PaginatorConfig = {'type': ptype}
+        cfg: PagePaginationConfig = {
+            'type': PaginationType.PAGE if ptype == 'page'
+            else PaginationType.OFFSET,
+        }
         if actual is not None:
             cfg['start_page'] = actual
 
@@ -221,7 +224,7 @@ class TestPaginator:
         )
 
         pg: PagePaginationConfig = {
-            'type': 'page',
+            'type': PaginationType.PAGE,
             'page_param': 'page',
             'size_param': 'per_page',
             'page_size': 2,
@@ -242,7 +245,7 @@ class TestPaginator:
             endpoints={'items': '/items'},
         )
 
-        pg: PagePaginationConfig = {'type': 'page'}
+        pg: PagePaginationConfig = {'type': PaginationType.PAGE}
 
         # Both helpers should route through paginate_url_iter.
         list(client.paginate('items', pagination=pg))
