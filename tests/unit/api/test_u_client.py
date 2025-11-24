@@ -87,14 +87,15 @@ def make_http_error(
 
 @pytest.mark.unit
 class TestContextManager:
-    """Unit test suite :class:`EndpointClient`."""
+    """Unit test suite for :class:`EndpointClient`."""
 
     def test_closes_factory_session(
         self,
         mock_session: MockSession,
     ) -> None:
         """
-        Test that EndpointClient closes a session created by a factory.
+        Test that :class:`EndpointClient` closes a session created by a
+        factory.
 
         Parameters
         ----------
@@ -119,7 +120,7 @@ class TestContextManager:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that EndpointClient creates and closes a default session.
+        Test that :class:`EndpointClient` creates and closes a default session.
 
         Parameters
         ----------
@@ -156,7 +157,8 @@ class TestContextManager:
         mock_session: MockSession,
     ) -> None:
         """
-        Test that EndpointClient does not close an externally provided session.
+        Test that :class:`EndpointClient` does not close an externally provided
+        session.
 
         Parameters
         ----------
@@ -180,6 +182,7 @@ class TestContextManager:
 @pytest.mark.unit
 class TestCursorPagination:
     """Unit test suite for :class:`EndpointClient`."""
+
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
@@ -304,9 +307,11 @@ class TestCursorPagination:
         cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
         """
-        Test that PaginationError includes the page number on failure.
+        Test that :class:`PaginationError` includes the page number on
+        failure.
 
-        When a cursor-paginated request fails, PaginationError includes page.
+        When a cursor-paginated request fails, :class:`PaginationError`
+        includes page.
 
         Parameters
         ----------
@@ -414,6 +419,7 @@ class TestCursorPagination:
         assert attempts['n'] == 2
 
 
+@pytest.mark.unit
 class TestErrors:
     """
     Unit test suite for :class:`ApiAuthError`.
@@ -424,7 +430,8 @@ class TestErrors:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that ApiAuthError is raised and wrapped on a single attempt.
+        Test that :class:`ApiAuthError` is raised and wrapped on a single
+        attempt.
 
         Parameters
         ----------
@@ -456,6 +463,7 @@ class TestErrors:
         assert err.retry_policy is None
 
 
+@pytest.mark.unit
 class TestOffsetPagination:
     """
     Unit test suite for offset pagination in :class:`EndpointClient`.
@@ -516,6 +524,7 @@ class TestOffsetPagination:
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
 
 
+@pytest.mark.unit
 class TestPagePagination:
     """
     Unit test suite for page-based pagination in :class:`EndpointClient`.
@@ -668,7 +677,7 @@ class TestPagePagination:
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         """
-        Test that PaginationError includes the page number on failure.
+        Test that :class:`PaginationError` includes the page number on failure.
 
         Parameters
         ----------
@@ -739,6 +748,7 @@ class TestPagePagination:
         assert out == {'foo': 'bar'}
 
 
+@pytest.mark.unit
 class TestRateLimitPrecedence:
     """
     Unit test suite for rate limit precedence in :class:`EndpointClient`.
@@ -801,6 +811,7 @@ class TestRateLimitPrecedence:
         assert capture_sleeps == [pytest.approx(0.05), pytest.approx(0.05)]
 
 
+@pytest.mark.unit
 class TestRetryLogic:
     """
     Unit test suite for retry logic in :class:`EndpointClient`.
@@ -815,7 +826,8 @@ class TestRetryLogic:
         retry_cfg: Callable[..., dict[str, Any]],
     ) -> None:
         """
-        Test that ApiRequestError is raised after retries are exhausted.
+        Test that :class:`ApiRequestError` is raised after retries are
+        exhausted.
 
         Parameters
         ----------
@@ -970,6 +982,7 @@ class TestRetryLogic:
         assert attempts['n'] == 3
 
 
+@pytest.mark.unit
 class TestUrlComposition:
     """
     Unit test suite for URL composition in :class:`EndpointClient`.
@@ -978,7 +991,7 @@ class TestUrlComposition:
     query parameter ordering in composed URLs.
     """
     @pytest.mark.parametrize(
-        'base_url,base_path,endpoint,expected',
+        'base_url,base_path,endpoint,expected_url',
         [
             (
                 'https://api.example.com',
@@ -1009,7 +1022,7 @@ class TestUrlComposition:
         base_url: str,
         base_path: str,
         endpoint: str,
-        expected: str,
+        expected_url: str,
     ) -> None:
         """
         Test that base_path variants are composed correctly in URLs.
@@ -1024,7 +1037,7 @@ class TestUrlComposition:
             Base path for the API.
         endpoint : str
             Endpoint path.
-        expected : str
+        expected_url : str
             Expected composed URL.
         """
         client = EndpointClient(
@@ -1034,7 +1047,7 @@ class TestUrlComposition:
         )
         out = client.paginate('list', pagination=None)
         assert out == {'ok': True}
-        assert extract_stub['urls'] == [expected]
+        assert extract_stub['urls'] == [expected_url]
 
     def test_query_merging_and_path_encoding(
         self,
@@ -1116,7 +1129,7 @@ class TestUrlComposition:
 
 @pytest.mark.property
 class TestUrlCompositionProperty:
-    """Property-based URL composition tests (Hypothesis)."""
+    """Unit test suite for property-based URL composition (Hypothesis)."""
 
     @given(
         id_value=st.text(
@@ -1130,7 +1143,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Property-based test for path parameter encoding in URLs.
+        Test path parameter encoding in URLs.
 
         Parameters
         ----------
@@ -1167,7 +1180,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Property-based test for query parameter encoding in URLs.
+        Test query parameter encoding in URLs.
 
         Parameters
         ----------

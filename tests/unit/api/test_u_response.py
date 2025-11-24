@@ -102,8 +102,9 @@ class FakePageClient(EndpointClient):
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestPaginator:
-    """Tests for :class:`Paginator` configuration and normalization logic."""
+    """Unit test suite for :class:`Paginator`."""
 
     def test_defaults_when_missing_keys(self) -> None:
         """
@@ -111,8 +112,8 @@ class TestPaginator:
 
         Notes
         -----
-        When optional pagination configuration keys are omitted, the
-        paginator should fall back to its class-level defaults.
+        - When optional pagination configuration keys are omitted, the
+          paginator should fall back to its class-level defaults.
         """
         cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
 
@@ -131,7 +132,7 @@ class TestPaginator:
         assert paginator.start_cursor is None
 
     @pytest.mark.parametrize(
-        'actual, expected',
+        'actual, expected_page_size',
         [
             (None, Paginator.PAGE_SIZE),
             (-1, 1),
@@ -143,16 +144,16 @@ class TestPaginator:
     def test_page_size_normalization(
         self,
         actual: int | None,
-        expected: int,
+        expected_page_size: int,
     ) -> None:
         """
-        Ensure ``page_size`` values are coerced to a positive integer.
+        Test that ``page_size`` values are coerced to a positive integer.
 
         Parameters
         ----------
         actual : int | None
             Raw configured page size.
-        expected : int
+        expected_page_size : int
             Expected normalized page size.
         """
         cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
@@ -160,10 +161,10 @@ class TestPaginator:
             cfg['page_size'] = actual
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
-        assert paginator.page_size == expected
+        assert paginator.page_size == expected_page_size
 
     @pytest.mark.parametrize(
-        'ptype, actual, expected_start',
+        'ptype, actual, expected',
         [
             ('page', None, 1),
             ('page', -5, 1),
@@ -183,7 +184,7 @@ class TestPaginator:
         expected: int,
     ) -> None:
         """
-        Verify that ``start_page`` values are normalized by paginator type.
+        Test that ``start_page`` values are normalized by paginator type.
 
         Parameters
         ----------
@@ -208,7 +209,8 @@ class TestPaginator:
         assert paginator.start_page == expected
 
     def test_page_integration(self) -> None:
-        """Exercise paginate over a multi-record iterator.
+        """
+        Test pagination over a multi-record iterator.
 
         Uses a lightweight EndpointClient subclass that overrides
         ``paginate_url_iter`` to simulate multiple pages of results and
@@ -236,7 +238,9 @@ class TestPaginator:
         assert [r['id'] for r in records] == [1, 2, 3]
 
     def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
-        """Ensure paginate and paginate_iter delegate to paginate_url_iter."""
+        """
+        Test that paginate and paginate_iter delegate to paginate_url_iter.
+        """
         client = RecordingClient(
             base_url='https://example.test/api',
             endpoints={'items': '/items'},

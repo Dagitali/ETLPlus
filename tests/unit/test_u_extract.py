@@ -43,7 +43,7 @@ class TestExtract:
             extract('invalid', 'source')
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_extracts',
         [
             (
                 'json',
@@ -60,7 +60,7 @@ class TestExtract:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str], None],
-        expected: Any,
+        expected_extracts: Any,
     ) -> None:
         """
         Test extracting data from a file with a supported format.
@@ -73,7 +73,7 @@ class TestExtract:
             File format of the data.
         write : Callable[[str], None]
             Function to write data to the file.
-        expected : Any
+        expected_extracts : Any
             Expected extracted data.
 
         Notes
@@ -85,7 +85,7 @@ class TestExtract:
         result = extract(
             'file', str(path), file_format=file_format,
         )
-        assert result == expected
+        assert result == expected_extracts
 
 
 @pytest.mark.unit
@@ -160,7 +160,7 @@ class TestExtractFromFile:
     """
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_extracts',
         [
             (
                 'json',
@@ -195,7 +195,7 @@ class TestExtractFromFile:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str], None] | None,
-        expected: Any,
+        expected_extracts: Any,
         request: pytest.FixtureRequest,
     ) -> None:
         """
@@ -210,7 +210,7 @@ class TestExtractFromFile:
         write : Callable[[str], None] | None
             Optional function to write data to the file. For CSV, the
             ``csv_writer`` fixture is used instead.
-        expected : Any
+        expected_extracts : Any
             Expected extracted data.
         request : pytest.FixtureRequest
             Pytest fixture request object used to access other fixtures.
@@ -241,7 +241,7 @@ class TestExtractFromFile:
             else:
                 assert name == 'John'
         else:
-            assert result == expected
+            assert result == expected_extracts
 
     @pytest.mark.parametrize(
         'file_format,content,err_msg',

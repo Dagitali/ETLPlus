@@ -60,7 +60,7 @@ class TestComputeSleepSeconds:
     """
 
     @pytest.mark.parametrize(
-        'rate_limit, config, expected',
+        'rate_limit, config, expected_sleep',
         [
             ({'sleep_seconds': -1}, None, 0.0),
             (None, {'max_per_sec': 'oops'}, 0.0),
@@ -70,7 +70,7 @@ class TestComputeSleepSeconds:
         self,
         rate_limit: RateLimitConfig | None,
         config: RateLimitConfig | dict[str, Any] | None,
-        expected: float,
+        expected_sleep: float,
     ) -> None:
         """
         Test that non-positive and non-numeric values are ignored and return
@@ -82,10 +82,10 @@ class TestComputeSleepSeconds:
             The rate limit configuration.
         config : RateLimitConfig | dict[str, Any] | None
             The override configuration.
-        expected : float
+        expected_sleep : float
             The expected sleep seconds value.
         """
-        assert compute_sleep_seconds(rate_limit, config) == expected
+        assert compute_sleep_seconds(rate_limit, config) == expected_sleep
 
     def test_overrides_max_per_sec(self) -> None:
         """Test that max_per_sec in config overrides other values."""
@@ -123,7 +123,8 @@ class TestRateLimiterBasics:
         fixed_limiter: RateLimiter,
     ) -> None:
         """
-        ``fixed()`` returns a limiter with the specified positive delay.
+        Test that ``fixed()`` returns a limiter with the specified positive
+        delay.
         """
         assert fixed_limiter.sleep_seconds == pytest.approx(0.25)
         assert fixed_limiter.enabled is True
@@ -144,7 +145,8 @@ class TestRateLimiterBasics:
         expected_sleep: float,
     ) -> None:
         """
-        ``fixed()`` converts inputs to non-negative floats, defaulting to 0.0.
+        Test that ``fixed()`` converts inputs to non-negative floats,
+        defaulting to 0.0.
         """
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
@@ -163,7 +165,8 @@ class TestRateLimiterBasics:
         expected_enabled: bool,
     ) -> None:
         """
-        RateLimiter truthiness and ``enabled`` follow ``sleep_seconds > 0``.
+        Test :class:`RateLimiter` truthiness and ``enabled`` follow
+        ``sleep_seconds > 0``.
         """
         limiter = RateLimiter(seconds)
         assert limiter.enabled is expected_enabled
@@ -237,7 +240,7 @@ class TestRateLimiterEnforce:
         disabled_limiter: RateLimiter,
     ) -> None:
         """
-        ``enforce`` should not call :func:`time.sleep` when disabled.
+        Test that ``enforce`` should not call :func:`time.sleep` when disabled.
         """
         calls: list[float] = []
 
