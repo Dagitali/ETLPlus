@@ -102,6 +102,7 @@ class FakePageClient(EndpointClient):
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.unit
 class TestPaginator:
     """Tests for :class:`Paginator` configuration and normalization logic."""
 

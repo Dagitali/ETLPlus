@@ -34,6 +34,7 @@ class TestLoadData:
             load_data('not a valid json string')
 
 
+@pytest.mark.unit
 class TestValidateField:
     """Unit test suite for :func:`etlplus.validate.validate_field`."""
 
@@ -82,6 +83,7 @@ class TestValidateField:
         assert result['valid'] is expected_valid
 
 
+@pytest.mark.unit
 class TestValidate:
     """Test suite for validate function."""
 

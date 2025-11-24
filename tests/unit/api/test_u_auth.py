@@ -93,6 +93,7 @@ def token_sequence(
         return _Resp({'access_token': f"t{calls['n']}", 'expires_in': 60})
 
     monkeypatch.setattr(requests, 'post', fake_post)
+
     return calls
 
 
