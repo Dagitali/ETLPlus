@@ -37,8 +37,8 @@ __all__ = [
     # HTTP adapter config
     'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
 
-    # Rate limit / retry
-    'RateLimitConfig', 'RetryPolicy',
+    # Retry
+    'RetryPolicy',
 ]
 
 
@@ -153,35 +153,6 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
 
 
 # SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
-
-
-class RateLimitConfig(TypedDict):
-    """
-    Optional rate limit configuration.
-
-    Summary
-    -------
-    Provides either a fixed delay (``sleep_seconds``) or derives one from a
-    maximum requests-per-second value (``max_per_sec``).
-
-    Attributes
-    ----------
-    sleep_seconds : NotRequired[float | int]
-        Fixed delay between requests.
-    max_per_sec : NotRequired[float | int]
-        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
-        between requests when positive.
-
-    Examples
-    --------
-    >>> rl: RateLimitConfig = {'max_per_sec': 4}
-    ... # sleep ~= 0.25s between calls
-    """
-
-    # -- Attributes -- #
-
-    sleep_seconds: NotRequired[float | int]
-    max_per_sec: NotRequired[float | int]
 
 
 class RetryPolicy(TypedDict):
