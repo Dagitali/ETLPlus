@@ -15,6 +15,8 @@ from typing import Literal
 
 import pytest
 
+from etlplus.config import PaginationConfig
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -79,8 +81,16 @@ class TestPaginationConfig:
 
     def test_valid_values_no_warnings(
         self,
-        pagination_config_factory,
+        pagination_config_factory: Callable[..., PaginationConfig],
     ) -> None:  # noqa: D401
+        """
+        Test that valid pagination values produce no warnings.
+
+        Parameters
+        ----------
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
         pc = pagination_config_factory(
             type='page',
             start_page=1,
@@ -98,8 +108,19 @@ class TestPaginationConfig:
     def test_validate_bounds_parametrized(
         self,
         ptype: Literal['page', 'offset', 'cursor'],
-        pagination_config_factory,
+        pagination_config_factory: Callable[..., PaginationConfig],
     ) -> None:
+        """
+        Test that validate_bounds produces correct warnings for different
+        pagination types.
+
+        Parameters
+        ----------
+        ptype : Literal['page', 'offset', 'cursor']
+            Pagination type to test.
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
         pc = pagination_config_factory(
             type=ptype,
             start_page=0,
@@ -129,8 +150,16 @@ class TestPaginationConfig:
 
     def test_offset_mode_warnings(
         self,
-        pagination_config_factory,
+        pagination_config_factory: Callable[..., PaginationConfig],
     ) -> None:  # noqa: D401
+        """
+        Test that offset mode warnings are produced correctly.
+
+        Parameters
+        ----------
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
         pc = pagination_config_factory(
             type='offset', start_page=0, page_size=-1,
         )
@@ -140,8 +169,16 @@ class TestPaginationConfig:
 
     def test_from_obj_coerces_numeric_fields(
         self,
-        pagination_from_obj_factory,
+        pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:  # noqa: D401
+        """
+        Test that from_obj coerces numeric fields correctly.
+
+        Parameters
+        ----------
+        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
+            Factory for PaginationConfig.
+        """
         obj = {
             'type': 'page',
             'page_param': 'page',
@@ -162,8 +199,16 @@ class TestPaginationConfig:
 
     def test_from_obj_ignores_bad_numeric_values(
         self,
-        pagination_from_obj_factory,
+        pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:  # noqa: D401
+        """
+        Test that from_obj ignores bad numeric values.
+
+        Parameters
+        ----------
+        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
+            Factory for PaginationConfig.
+        """
         obj: dict[str, Any] = {
             'type': 'page',
             'start_page': 'not-an-int',

@@ -147,7 +147,7 @@ class TestPaginator:
         expected_page_size: int,
     ) -> None:
         """
-        Ensure ``page_size`` values are coerced to a positive integer.
+        Test that ``page_size`` values are coerced to a positive integer.
 
         Parameters
         ----------
@@ -184,7 +184,7 @@ class TestPaginator:
         expected: int,
     ) -> None:
         """
-        Verify that ``start_page`` values are normalized by paginator type.
+        Test that ``start_page`` values are normalized by paginator type.
 
         Parameters
         ----------
@@ -209,7 +209,8 @@ class TestPaginator:
         assert paginator.start_page == expected
 
     def test_page_integration(self) -> None:
-        """Exercise paginate over a multi-record iterator.
+        """
+        Test pagination over a multi-record iterator.
 
         Uses a lightweight EndpointClient subclass that overrides
         ``paginate_url_iter`` to simulate multiple pages of results and
@@ -237,7 +238,9 @@ class TestPaginator:
         assert [r['id'] for r in records] == [1, 2, 3]
 
     def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
-        """Ensure paginate and paginate_iter delegate to paginate_url_iter."""
+        """
+        Test that paginate and paginate_iter delegate to paginate_url_iter.
+        """
         client = RecordingClient(
             base_url='https://example.test/api',
             endpoints={'items': '/items'},

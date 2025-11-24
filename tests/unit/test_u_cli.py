@@ -101,7 +101,7 @@ class TestCreateParser:
         expected_args: dict[str, object],
     ) -> None:
         """
-        Parameterized test for CLI command parsing and argument mapping.
+        Test CLI command parsing and argument mapping.
 
         Parameters
         ----------

@@ -94,7 +94,8 @@ class TestContextManager:
         mock_session: MockSession,
     ) -> None:
         """
-        Test that EndpointClient closes a session created by a factory.
+        Test that :class:`EndpointClient` closes a session created by a
+        factory.
 
         Parameters
         ----------
@@ -119,7 +120,7 @@ class TestContextManager:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that EndpointClient creates and closes a default session.
+        Test that :class:`EndpointClient` creates and closes a default session.
 
         Parameters
         ----------
@@ -156,7 +157,8 @@ class TestContextManager:
         mock_session: MockSession,
     ) -> None:
         """
-        Test that EndpointClient does not close an externally provided session.
+        Test that :class:`EndpointClient` does not close an externally provided
+        session.
 
         Parameters
         ----------
@@ -180,6 +182,7 @@ class TestContextManager:
 @pytest.mark.unit
 class TestCursorPagination:
     """Unit test suite for :class:`EndpointClient`."""
+
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
@@ -304,9 +307,11 @@ class TestCursorPagination:
         cursor_cfg: Callable[..., CursorPaginationConfig],
     ) -> None:
         """
-        Test that PaginationError includes the page number on failure.
+        Test that :class:`PaginationError` includes the page number on
+        failure.
 
-        When a cursor-paginated request fails, PaginationError includes page.
+        When a cursor-paginated request fails, :class:`PaginationError`
+        includes page.
 
         Parameters
         ----------
@@ -425,7 +430,8 @@ class TestErrors:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that ApiAuthError is raised and wrapped on a single attempt.
+        Test that :class:`ApiAuthError` is raised and wrapped on a single
+        attempt.
 
         Parameters
         ----------
@@ -671,7 +677,7 @@ class TestPagePagination:
         page_cfg: Callable[..., PagePaginationConfig],
     ) -> None:
         """
-        Test that PaginationError includes the page number on failure.
+        Test that :class:`PaginationError` includes the page number on failure.
 
         Parameters
         ----------
@@ -820,7 +826,8 @@ class TestRetryLogic:
         retry_cfg: Callable[..., dict[str, Any]],
     ) -> None:
         """
-        Test that ApiRequestError is raised after retries are exhausted.
+        Test that :class:`ApiRequestError` is raised after retries are
+        exhausted.
 
         Parameters
         ----------
@@ -1136,7 +1143,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Property-based test for path parameter encoding in URLs.
+        Test path parameter encoding in URLs.
 
         Parameters
         ----------
@@ -1173,7 +1180,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Property-based test for query parameter encoding in URLs.
+        Test query parameter encoding in URLs.
 
         Parameters
         ----------

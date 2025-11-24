@@ -138,7 +138,7 @@ class TestValidate:
         expected_valid: bool,
     ) -> None:
         """
-        Validate dict and list data against rules.
+        Test dict and list data against rules.
 
         Parameters
         ----------
@@ -157,7 +157,7 @@ class TestValidate:
         temp_json_file: Callable[[dict[str, Any]], str],
     ) -> None:
         """
-        Validate from a JSON file path.
+        Test from a JSON file path.
 
         Parameters
         ----------
@@ -174,7 +174,7 @@ class TestValidate:
             Path(temp_path).unlink()
 
     def test_from_json_string(self) -> None:
-        """Validate from a JSON string."""
+        """Test from a JSON string."""
         json_str = '{"name": "John", "age": 30}'
         result = validate(json_str)
         assert result['valid']
@@ -185,7 +185,7 @@ class TestValidate:
             assert any(d.get('name') == 'John' for d in data)
 
     def test_no_rules(self) -> None:
-        """Validate without rules returns the data unchanged."""
+        """Test without rules returns the data unchanged."""
         data = {'test': 'data'}
         result = validate(data)
         assert result['valid']

@@ -123,7 +123,8 @@ class TestRateLimiterBasics:
         fixed_limiter: RateLimiter,
     ) -> None:
         """
-        ``fixed()`` returns a limiter with the specified positive delay.
+        Test that ``fixed()`` returns a limiter with the specified positive
+        delay.
         """
         assert fixed_limiter.sleep_seconds == pytest.approx(0.25)
         assert fixed_limiter.enabled is True
@@ -144,7 +145,8 @@ class TestRateLimiterBasics:
         expected_sleep: float,
     ) -> None:
         """
-        ``fixed()`` converts inputs to non-negative floats, defaulting to 0.0.
+        Test that ``fixed()`` converts inputs to non-negative floats,
+        defaulting to 0.0.
         """
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
@@ -163,7 +165,8 @@ class TestRateLimiterBasics:
         expected_enabled: bool,
     ) -> None:
         """
-        RateLimiter truthiness and ``enabled`` follow ``sleep_seconds > 0``.
+        Test :class:`RateLimiter` truthiness and ``enabled`` follow
+        ``sleep_seconds > 0``.
         """
         limiter = RateLimiter(seconds)
         assert limiter.enabled is expected_enabled
@@ -237,7 +240,7 @@ class TestRateLimiterEnforce:
         disabled_limiter: RateLimiter,
     ) -> None:
         """
-        ``enforce`` should not call :func:`time.sleep` when disabled.
+        Test that ``enforce`` should not call :func:`time.sleep` when disabled.
         """
         calls: list[float] = []
 

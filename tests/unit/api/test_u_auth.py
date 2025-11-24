@@ -118,7 +118,7 @@ class TestEndpointCredentialsBearer:
         token_sequence: dict[str, int],
     ) -> None:
         """
-        Test that EndpointCredentialsBearer fetches and caches tokens
+        Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
         correctly.
 
         Parameters
@@ -150,7 +150,8 @@ class TestEndpointCredentialsBearer:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that EndpointCredentialsBearer refreshes token when expiring.
+        Test that :class:`EndpointCredentialsBearer` refreshes token when
+        expiring.
 
         Parameters
         ----------

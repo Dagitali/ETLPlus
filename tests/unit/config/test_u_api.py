@@ -482,7 +482,7 @@ class TestApiProfileConfig:
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
         """
-        Test that base_url is required for ApiProfileConfig.
+        Test that base_url is required for :class:`ApiProfileConfig`.
 
         Parameters
         ----------
@@ -533,7 +533,7 @@ class TestEndpointConfig:
         endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:
         """
-        Test that from_str sets no method for EndpointConfig.
+        Test that from_str sets no method for :class:`EndpointConfig`.
 
         Parameters
         ----------
@@ -609,7 +609,7 @@ class TestEndpointConfig:
     ) -> None:
         """
         Test that method and query_params are parsed correctly in
-        EndpointConfig.
+        :class:`EndpointConfig`.
 
         Parameters
         ----------
