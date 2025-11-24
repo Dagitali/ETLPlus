@@ -25,6 +25,9 @@ from .utils import cast_str_dict
 __all__ = ['ProfileConfig']
 
 
+# SECTION: TYPED DICTS ====================================================== #
+
+
 # SECTION: CLASSES ========================================================== #
 
 
