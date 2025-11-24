@@ -61,8 +61,8 @@ from ..extract import extract as _extract
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .rate_limiter import compute_sleep_seconds
-from .rate_limiter import RateLimitConfig
+from .request import compute_sleep_seconds
+from .request import RateLimitConfig
 from .response import PaginationConfig
 from .response import Paginator
 from .transport import build_http_adapter
