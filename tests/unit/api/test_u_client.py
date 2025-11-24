@@ -87,7 +87,7 @@ def make_http_error(
 
 @pytest.mark.unit
 class TestContextManager:
-    """Unit test suite :class:`EndpointClient`."""
+    """Unit test suite for :class:`EndpointClient`."""
 
     def test_closes_factory_session(
         self,
@@ -1122,7 +1122,7 @@ class TestUrlComposition:
 
 @pytest.mark.property
 class TestUrlCompositionProperty:
-    """Property-based URL composition tests (Hypothesis)."""
+    """Unit test suite for property-based URL composition (Hypothesis)."""
 
     @given(
         id_value=st.text(

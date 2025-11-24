@@ -85,7 +85,7 @@ class TestValidateField:
 
 @pytest.mark.unit
 class TestValidate:
-    """Test suite for validate function."""
+    """Unit test suite for :func:`etlplus.validate.validate`."""
 
     @pytest.mark.parametrize(
         'data, rules, expected_valid',

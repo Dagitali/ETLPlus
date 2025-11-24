@@ -24,7 +24,7 @@ from etlplus.config import RateLimitConfig
 @pytest.mark.unit
 class TestRateLimitConfig:
     """
-    Test suite for :class:`RateLimitConfig`.
+    Unit test suite for :class:`RateLimitConfig`.
 
     Notes
     -----

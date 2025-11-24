@@ -104,7 +104,7 @@ class FakePageClient(EndpointClient):
 
 @pytest.mark.unit
 class TestPaginator:
-    """Tests for :class:`Paginator` configuration and normalization logic."""
+    """Unit test suite for :class:`Paginator`."""
 
     def test_defaults_when_missing_keys(self) -> None:
         """
@@ -112,8 +112,8 @@ class TestPaginator:
 
         Notes
         -----
-        When optional pagination configuration keys are omitted, the
-        paginator should fall back to its class-level defaults.
+        - When optional pagination configuration keys are omitted, the
+          paginator should fall back to its class-level defaults.
         """
         cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
 

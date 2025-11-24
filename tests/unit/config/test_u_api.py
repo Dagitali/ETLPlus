@@ -292,7 +292,7 @@ class TestApiConfig:
         ----------
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
-       """
+        """
         obj = {
             'profiles': {
                 'default': {
