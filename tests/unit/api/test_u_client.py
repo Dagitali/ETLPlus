@@ -382,9 +382,7 @@ class TestCursorPagination:
             attempts['n'] += 1
             if attempts['n'] == 1:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(
-                    status_code=503,
-                )
+                err.response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
@@ -411,7 +409,8 @@ class TestCursorPagination:
         assert out == [{'i': 1}]
 
         # One sleep from the single retry attempt.
-        assert capture_sleeps == [pytest.approx(0.05)]
+        assert len(capture_sleeps) == 1
+        assert abs(capture_sleeps[0] - 0.05) < 1e-6
         assert attempts['n'] == 2
 
 
@@ -785,11 +784,14 @@ class TestRateLimitPrecedence:
         list(
             client.paginate_iter(
                 'list',
-                pagination={
-                    'type': 'page',
-                    'page_size': 2,
-                    'start_page': 1,
-                },
+                pagination=cast(
+                    PagePaginationConfig,
+                    {
+                        'type': 'page',
+                        'page_size': 2,
+                        'start_page': 1,
+                    },
+                ),
                 sleep_seconds=0.05,  # explicit override should win
             ),
         )
@@ -887,9 +889,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             if attempts['n'] < 3:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(
-                    status_code=503,
-                )
+                err.response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'ok': True}
 
@@ -909,7 +909,9 @@ class TestRetryLogic:
         assert out == {'ok': True}
 
         # Should have slept twice (between the 3 attempts).
-        assert capture_sleeps == [0.1, 0.2]
+        assert len(capture_sleeps) == 2
+        assert abs(capture_sleeps[0] - 0.1) < 1e-6
+        assert abs(capture_sleeps[1] - 0.2) < 1e-6
         assert attempts['n'] == 3
 
     def test_retry_on_network_errors(
@@ -953,10 +955,7 @@ class TestRetryLogic:
         client = EndpointClient(
             base_url='https://api.example.com',
             endpoints={},
-            retry=cast(
-                RetryPolicy,
-                retry_cfg(max_attempts=4, backoff=0.5),
-            ),
+            retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
             retry_network_errors=True,
         )
         out = client.paginate_url(
@@ -965,7 +964,9 @@ class TestRetryLogic:
         assert out == {'ok': True}
 
         # Should have slept twice (after 2 failures).
-        assert capture_sleeps == [0.12, 0.18]
+        assert len(capture_sleeps) == 2
+        assert abs(capture_sleeps[0] - 0.12) < 1e-6
+        assert abs(capture_sleeps[1] - 0.18) < 1e-6
         assert attempts['n'] == 3
 
 

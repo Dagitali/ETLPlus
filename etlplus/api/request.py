@@ -3,16 +3,12 @@
 
 Centralized logic for handling REST API requests, including:
 - Request rate limiting.
-
-This module provides a :class:`RateLimiter` class that encapsulates rate limit
-configuration and behavior. It supports instantiation from a configuration
-mapping, computation of sleep intervals, and application of sleep between
-requests.
+- Retry policies with exponential backoff.
 
 Examples
 --------
 Create a limiter from static configuration and apply it before each
-request::
+request:
 
     cfg = {"max_per_sec": 5}
     limiter = RateLimiter.from_config(cfg)
@@ -23,12 +19,21 @@ request::
 """
 from __future__ import annotations
 
+import random
 import time
 from dataclasses import dataclass
 from typing import Any
+from typing import Callable
 from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
+
+import requests  # type: ignore[import]
+
+from .errors import ApiAuthError
+from .errors import ApiRequestError
+from .types import JSONData
+from .types import RetryPolicy
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -334,3 +339,204 @@ class RateLimiter:
             )
 
         return cls()
+
+
+@dataclass(frozen=True, slots=True)
+class RetryManager:
+    """
+    Centralized retry logic for REST API endpoint requests.
+
+    Attributes
+    ----------
+    policy : RetryPolicy
+        Retry policy configuration.
+    retry_network_errors : bool
+        Whether to retry on network errors (timeouts, connection errors).
+    cap : float
+        Maximum sleep seconds for jittered backoff.
+    sleeper : Callable[[float], None]
+        Callable used to sleep between retry attempts. Defaults to
+        :func:`time.sleep`.
+    """
+
+    # -- Attributes -- #
+
+    policy: RetryPolicy
+    retry_network_errors: bool = False
+    cap: float = 30.0
+    sleeper: Callable[[float], None] = time.sleep
+
+    # -- Getters -- #
+
+    @property
+    def backoff(self) -> float:
+        """
+        Backoff factor.
+
+        Returns
+        -------
+        float
+            Backoff factor.
+        """
+        try:
+            return max(float(self.policy.get('backoff', 0.5)), 0.0)
+        except (TypeError, ValueError):
+            return 0.5
+
+    @property
+    def max_attempts(self) -> int:
+        """
+        Maximum number of retry attempts.
+
+        Returns
+        -------
+        int
+            Maximum number of retry attempts.
+        """
+        return int(self.policy.get('max_attempts', 3))
+
+    @property
+    def retry_on_codes(self) -> set[int]:
+        """
+        Set of HTTP status codes that should trigger a retry.
+
+        Returns
+        -------
+        set[int]
+            Retry HTTP status codes.
+        """
+        codes = self.policy.get('retry_on')
+        if not codes:
+            return {429, 502, 503, 504}
+        try:
+            return {int(c) for c in codes}
+        except (TypeError, ValueError):
+            return {429, 502, 503, 504}
+
+    # -- Instance Methods -- #
+
+    def get_sleep_time(
+        self,
+        attempt: int,
+    ) -> float:
+        """
+        Sleep time in seconds.
+
+        Parameters
+        ----------
+        attempt : int
+            Attempt number.
+
+        Returns
+        -------
+        float
+            Sleep time in seconds.
+        """
+        exp = self.backoff * (2 ** (attempt - 1))
+        upper = min(exp, self.cap)
+        return random.uniform(0.0, upper)
+
+    def run_with_retry(
+        self,
+        func: Callable[..., JSONData],
+        url: str,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Run a function with retry logic according to the configured policy.
+
+        Parameters
+        ----------
+        func : Callable[..., JSONData]
+            Function to run with retry logic.
+        url : str
+            URL for the API request.
+        **kwargs : Any
+            Additional keyword arguments to pass to ``func``
+
+        Returns
+        -------
+        JSONData
+            Response data from the API request.
+
+        Raises
+        ------
+        ApiAuthError
+            Authentication error during API request.
+        ApiRequestError
+            Request error during API request.
+        """
+        attempt = 1
+        while attempt <= self.max_attempts:
+            try:
+                return func(url, **kwargs)
+            except requests.RequestException as e:
+                status = getattr(
+                    getattr(e, 'response', None),
+                    'status_code',
+                    None,
+                )
+                too_many_attempts = attempt >= self.max_attempts
+                if not self.should_retry(status, e) or too_many_attempts:
+                    retried = attempt > 1
+                    if status in {401, 403}:
+                        raise ApiAuthError(
+                            url=url,
+                            status=status,
+                            attempts=attempt,
+                            retried=retried,
+                            retry_policy=self.policy,
+                            cause=e,
+                        ) from e
+                    raise ApiRequestError(
+                        url=url,
+                        status=status,
+                        attempts=attempt,
+                        retried=retried,
+                        retry_policy=self.policy,
+                        cause=e,
+                    ) from e
+                sleep_for = self.get_sleep_time(attempt)
+                self.sleeper(sleep_for)
+                attempt += 1
+
+        # If we exit the loop, all attempts failed without raising.
+        raise ApiRequestError(
+            url=url,
+            status=None,
+            attempts=attempt - 1,
+            retried=True,
+            retry_policy=self.policy,
+            cause=None,
+        )
+
+    def should_retry(
+        self,
+        status: int | None,
+        error: Exception,
+    ) -> bool:
+        """
+        Determine whether a request should be retried.
+
+        Parameters
+        ----------
+        status : int | None
+            Whether the request should be retried.
+        error : Exception
+            The exception that was raised.
+
+        Returns
+        -------
+        bool
+            Whether the request should be retried.
+        """
+        # HTTP status-based retry
+        if status is not None and status in self.retry_on_codes:
+            return True
+
+        # Network error retry
+        if self.retry_network_errors:
+            if isinstance(error, (requests.Timeout, requests.ConnectionError)):
+                return True
+
+        return False
