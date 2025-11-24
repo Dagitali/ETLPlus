@@ -978,7 +978,7 @@ class TestUrlComposition:
     query parameter ordering in composed URLs.
     """
     @pytest.mark.parametrize(
-        'base_url,base_path,endpoint,expected',
+        'base_url,base_path,endpoint,expected_url',
         [
             (
                 'https://api.example.com',
@@ -1009,7 +1009,7 @@ class TestUrlComposition:
         base_url: str,
         base_path: str,
         endpoint: str,
-        expected: str,
+        expected_url: str,
     ) -> None:
         """
         Test that base_path variants are composed correctly in URLs.
@@ -1024,7 +1024,7 @@ class TestUrlComposition:
             Base path for the API.
         endpoint : str
             Endpoint path.
-        expected : str
+        expected_url : str
             Expected composed URL.
         """
         client = EndpointClient(
@@ -1034,7 +1034,7 @@ class TestUrlComposition:
         )
         out = client.paginate('list', pagination=None)
         assert out == {'ok': True}
-        assert extract_stub['urls'] == [expected]
+        assert extract_stub['urls'] == [expected_url]
 
     def test_query_merging_and_path_encoding(
         self,

@@ -131,7 +131,7 @@ class TestPaginator:
         assert paginator.start_cursor is None
 
     @pytest.mark.parametrize(
-        'actual, expected',
+        'actual, expected_page_size',
         [
             (None, Paginator.PAGE_SIZE),
             (-1, 1),
@@ -143,7 +143,7 @@ class TestPaginator:
     def test_page_size_normalization(
         self,
         actual: int | None,
-        expected: int,
+        expected_page_size: int,
     ) -> None:
         """
         Ensure ``page_size`` values are coerced to a positive integer.
@@ -152,7 +152,7 @@ class TestPaginator:
         ----------
         actual : int | None
             Raw configured page size.
-        expected : int
+        expected_page_size : int
             Expected normalized page size.
         """
         cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
@@ -160,10 +160,10 @@ class TestPaginator:
             cfg['page_size'] = actual
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
-        assert paginator.page_size == expected
+        assert paginator.page_size == expected_page_size
 
     @pytest.mark.parametrize(
-        'ptype, actual, expected_start',
+        'ptype, actual, expected',
         [
             ('page', None, 1),
             ('page', -5, 1),

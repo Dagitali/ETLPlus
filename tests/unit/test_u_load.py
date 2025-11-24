@@ -99,7 +99,7 @@ class TestLoad:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str, Any], None],
-        expected: Any,
+        expected_data: Any,
     ) -> None:
         """
         Test loading data to a file with a supported format.
@@ -112,7 +112,7 @@ class TestLoad:
             File format of the data.
         write : Callable[[str, Any], None]
             Function to write data to the file.
-        expected : Any
+        expected_data : Any
             Expected data to write and read.
 
         Notes
@@ -120,11 +120,10 @@ class TestLoad:
         Supported format should not raise an error.
         """
         path = tmp_path / f'output.{file_format}'
-        mock_data = expected
-        write(str(path), mock_data)
+        write(str(path), expected_data)
         result = cast(
             dict[str, Any], load(
-                mock_data, 'file', str(path), file_format=file_format,
+                expected_data, 'file', str(path), file_format=file_format,
             ),
         )
         assert result['status'] == 'success'
@@ -244,7 +243,7 @@ class TestLoadData:
     """
 
     @pytest.mark.parametrize(
-        'input_data,expected',
+        'input_data,expected_output',
         [
             ({'test': 'data'}, {'test': 'data'}),
             ([{'test': 'data'}], [{'test': 'data'}]),
@@ -253,7 +252,7 @@ class TestLoadData:
     def test_data_passthrough(
         self,
         input_data: dict[str, Any] | list[dict[str, Any]],
-        expected: dict[str, Any] | list[dict[str, Any]],
+        expected_output: dict[str, Any] | list[dict[str, Any]],
     ) -> None:
         """
         Test passthrough for dict and list input.
@@ -262,10 +261,10 @@ class TestLoadData:
         ----------
         input_data : dict[str, Any] | list[dict[str, Any]]
             Input data to load.
-        expected : dict[str, Any] | list[dict[str, Any]]
+        expected_output : dict[str, Any] | list[dict[str, Any]]
             Expected output.
         """
-        assert load_data(input_data) == expected
+        assert load_data(input_data) == expected_output
 
     def test_data_from_file(
         self,

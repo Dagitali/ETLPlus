@@ -60,7 +60,7 @@ class TestComputeSleepSeconds:
     """
 
     @pytest.mark.parametrize(
-        'rate_limit, config, expected',
+        'rate_limit, config, expected_sleep',
         [
             ({'sleep_seconds': -1}, None, 0.0),
             (None, {'max_per_sec': 'oops'}, 0.0),
@@ -70,7 +70,7 @@ class TestComputeSleepSeconds:
         self,
         rate_limit: RateLimitConfig | None,
         config: RateLimitConfig | dict[str, Any] | None,
-        expected: float,
+        expected_sleep: float,
     ) -> None:
         """
         Test that non-positive and non-numeric values are ignored and return
@@ -82,10 +82,10 @@ class TestComputeSleepSeconds:
             The rate limit configuration.
         config : RateLimitConfig | dict[str, Any] | None
             The override configuration.
-        expected : float
+        expected_sleep : float
             The expected sleep seconds value.
         """
-        assert compute_sleep_seconds(rate_limit, config) == expected
+        assert compute_sleep_seconds(rate_limit, config) == expected_sleep
 
     def test_overrides_max_per_sec(self) -> None:
         """Test that max_per_sec in config overrides other values."""

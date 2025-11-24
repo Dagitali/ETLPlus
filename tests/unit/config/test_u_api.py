@@ -545,7 +545,7 @@ class TestEndpointConfig:
         assert ep.method is None
 
     @pytest.mark.parametrize(
-        'payload, expected_exc',
+        'payload, expected_exception',
         [
             ({'method': 'GET'}, TypeError),  # missing path
             ({'path': 123}, TypeError),  # path wrong type
@@ -566,7 +566,7 @@ class TestEndpointConfig:
     def test_invalid_payloads_raise(
         self,
         payload: dict[str, object],
-        expected_exc: type[Exception],
+        expected_exception: type[Exception],
         endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:
         """
@@ -576,12 +576,12 @@ class TestEndpointConfig:
         ----------
         payload : dict[str, object]
             Payload to test for error handling.
-        expected_exc : type[Exception]
+        expected_exception : type[Exception]
             Expected exception type.
         endpoint_config_factory : Callable[[str], EndpointConfig]
             Factory for building :class:`EndpointConfig` from string.
         """
-        with pytest.raises(expected_exc):
+        with pytest.raises(expected_exception):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
 
     def test_lenient_fields_do_not_raise(

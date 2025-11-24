@@ -98,7 +98,7 @@ class TestCreateParser:
     def test_parser_commands(
         self,
         cmd_args: list[str],
-        expected: dict[str, object],
+        expected_args: dict[str, object],
     ) -> None:
         """
         Parameterized test for CLI command parsing and argument mapping.
@@ -107,12 +107,12 @@ class TestCreateParser:
         ----------
         cmd_args : list[str]
             CLI arguments to parse.
-        expected : dict[str, object]
+        expected_args : dict[str, object]
             Expected parsed argument values.
         """
         parser = create_parser()
         args = parser.parse_args(cmd_args)
-        for key, val in expected.items():
+        for key, val in expected_args.items():
             assert getattr(args, key, None) == val
 
     def test_parser_version(self) -> None:
