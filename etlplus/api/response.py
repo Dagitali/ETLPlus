@@ -50,6 +50,8 @@ from typing import TypedDict
 
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .utils import to_maximum_int
+from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -411,8 +413,11 @@ class Paginator:
 
         return cls(
             type=ptype,
-            page_size=int(config.get('page_size', cls.PAGE_SIZE)),
-            start_page=int(config.get('start_page', cls.START_PAGES[ptype])),
+            page_size=to_positive_int(config.get('page_size'), cls.PAGE_SIZE),
+            start_page=to_maximum_int(
+                config.get('start_page'),
+                cls.START_PAGES[ptype],
+            ),
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
             cursor_path=config.get('cursor_path'),
