@@ -44,7 +44,9 @@ __all__ = ['build_http_adapter']
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
+def build_http_adapter(
+    cfg: Mapping[str, Any],
+) -> HTTPAdapter:
     """
     Build a requests ``HTTPAdapter`` from a configuration mapping.
 
@@ -69,20 +71,14 @@ def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
     HTTPAdapter
         Configured HTTPAdapter instance.
     """
-    pool_connections = cfg.get('pool_connections')
-    try:
-        pool_connections_i = (
-            int(pool_connections) if pool_connections is not None else 10
-        )
-    except (TypeError, ValueError):
-        pool_connections_i = 10
+    def _get_int(val: Any, default: int) -> int:
+        try:
+            return int(val) if val is not None else default
+        except (TypeError, ValueError):
+            return default
 
-    pool_maxsize = cfg.get('pool_maxsize')
-    try:
-        pool_maxsize_i = int(pool_maxsize) if pool_maxsize is not None else 10
-    except (TypeError, ValueError):
-        pool_maxsize_i = 10
-
+    pool_connections = _get_int(cfg.get('pool_connections'), 10)
+    pool_maxsize = _get_int(cfg.get('pool_maxsize'), 10)
     pool_block = bool(cfg.get('pool_block', False))
 
     retries_cfg = cfg.get('max_retries')
@@ -131,8 +127,8 @@ def build_http_adapter(cfg: Mapping[str, Any]) -> HTTPAdapter:
         max_retries = 0
 
     return HTTPAdapter(
-        pool_connections=pool_connections_i,
-        pool_maxsize=pool_maxsize_i,
+        pool_connections=pool_connections,
+        pool_maxsize=pool_maxsize,
         max_retries=max_retries,
         pool_block=pool_block,
     )
