@@ -62,19 +62,36 @@ except ImportError:  # pragma: no cover
     st = _DummyStrategies()  # type: ignore[assignment]
 
 
-def _ascii_no_amp_eq():  # type: ignore[missing-return-type]
+def _ascii_no_amp_eq() -> Any:
+    """
+    Returns a Hypothesis strategy for ASCII text excluding '&' and '='.
+
+    Returns
+    -------
+    Any
+        Hypothesis strategy for text.
+    """
     alpha = st.characters(min_codepoint=32, max_codepoint=126).filter(
         lambda ch: ch not in ['&', '='],
     )
     return st.text(alphabet=alpha, min_size=0, max_size=12)
 
 
-def make_http_error(
-    status: int,
-) -> requests.HTTPError:
-    err = requests.HTTPError(f"HTTP {status}")
+def make_http_error(status: int) -> requests.HTTPError:
+    """
+    Create a requests.HTTPError with attached response object.
 
-    # Attach a response-like object that exposes status_code
+    Parameters
+    ----------
+    status : int
+        HTTP status code to attach.
+
+    Returns
+    -------
+    requests.HTTPError
+        HTTPError with attached response.
+    """
+    err = requests.HTTPError(f"HTTP {status}")
     resp = requests.Response()
     resp.status_code = status
     err.response = resp  # type: ignore[attr-defined]
@@ -421,9 +438,7 @@ class TestCursorPagination:
 
 @pytest.mark.unit
 class TestErrors:
-    """
-    Unit test suite for :class:`ApiAuthError`.
-    """
+    """Unit test suite for :class:`ApiAuthError`."""
 
     def test_auth_error_wrapping_on_single_attempt(
         self,
@@ -816,8 +831,16 @@ class TestRetryLogic:
     """
     Unit test suite for retry logic in :class:`EndpointClient`.
 
-    Tests retry behavior for request errors, jitter backoff, and network error
-    handling, ensuring correct retry policy application and error propagation.
+    This suite covers:
+    - Retry behavior for request errors
+    - Jitter backoff and sleep duration
+    - Network error handling and retry policy application
+    - Error propagation and attempt counting
+
+    Notes
+    -----
+    - Uses monkeypatch to simulate failures and control retry attempts.
+    - Uses pytest fixtures for retry configuration and sleep capture.
     """
 
     def test_request_error_after_retries_exhausted(
@@ -835,7 +858,6 @@ class TestRetryLogic:
             Pytest monkeypatch fixture.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
-
         """
         client = EndpointClient(
             base_url='https://api.example.com/v1',
@@ -897,7 +919,7 @@ class TestRetryLogic:
             _stype: str,
             _url: str,
             **kwargs: dict[str, Any],
-        ):
+        ) -> dict:
             attempts['n'] += 1
             if attempts['n'] < 3:
                 err = requests.HTTPError('boom')
@@ -954,7 +976,7 @@ class TestRetryLogic:
             _stype: str,
             _url: str,
             **kwargs: dict[str, Any],
-        ):
+        ) -> dict:
             attempts['n'] += 1
             if attempts['n'] == 1:
                 raise requests.Timeout('slow')
@@ -987,11 +1009,19 @@ class TestUrlComposition:
     """
     Unit test suite for URL composition in :class:`EndpointClient`.
 
-    Tests base path variants, query parameter merging, path encoding, and
-    query parameter ordering in composed URLs.
+    This suite covers:
+    - Base path variants and endpoint joining
+    - Query parameter merging and encoding
+    - Path encoding and duplicate parameter handling
+    - Query parameter ordering in composed URLs
+
+    Notes
+    -----
+    - Uses pytest parameterization for variant coverage.
+    - Ensures all composed URLs match expected output.
     """
     @pytest.mark.parametrize(
-        'base_url,base_path,endpoint,expected_url',
+        'base_url, base_path, endpoint, expected_url',
         [
             (
                 'https://api.example.com',
@@ -1013,7 +1043,6 @@ class TestUrlComposition:
             ),
             # Note: trailing slashes on base_url/base_path not normalized by
             # client.
-
         ],
     )
     def test_base_path_variants(
@@ -1129,7 +1158,18 @@ class TestUrlComposition:
 
 @pytest.mark.property
 class TestUrlCompositionProperty:
-    """Unit test suite for property-based URL composition (Hypothesis)."""
+    """
+    Unit tests for property-based URL composition using Hypothesis.
+
+    This suite covers:
+    - Path parameter encoding for arbitrary strings
+    - Query parameter encoding for arbitrary dictionaries
+
+    Notes
+    -----
+    - Uses Hypothesis strategies for robust property-based testing.
+    - Ensures all encoded URLs match expected output.
+    """
 
     @given(
         id_value=st.text(

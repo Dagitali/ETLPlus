@@ -37,7 +37,7 @@ class TestCreateParser:
         assert parser.prog == 'etlplus'
 
     @pytest.mark.parametrize(
-        'cmd_args,expected',
+        'cmd_args,expected_args',
         [
             (
                 ['extract', 'file', '/path/to/file.json'],
