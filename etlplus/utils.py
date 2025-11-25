@@ -12,7 +12,7 @@ from typing import Any
 from .types import JSONData
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [

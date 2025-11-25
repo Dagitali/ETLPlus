@@ -38,7 +38,7 @@ from __future__ import annotations
 from .utils import maybe_validate as validate_json_schema
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['validate_json_schema']

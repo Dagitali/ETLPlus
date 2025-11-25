@@ -40,7 +40,7 @@ from .types import StrAnyMap
 from .types import StrPath
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [

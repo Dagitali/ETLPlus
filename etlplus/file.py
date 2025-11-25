@@ -22,7 +22,7 @@ from .types import StrPath
 from .utils import count_records
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['File']

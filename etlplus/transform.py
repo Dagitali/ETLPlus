@@ -726,7 +726,7 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 def apply_filter(
