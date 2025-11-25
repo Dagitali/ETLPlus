@@ -168,7 +168,7 @@ class TestRateLimiterBasics:
         Test :class:`RateLimiter` truthiness and ``enabled`` follow
         ``sleep_seconds > 0``.
         """
-        limiter = RateLimiter(seconds)
+        limiter = RateLimiter(sleep_seconds=seconds)
         assert limiter.enabled is expected_enabled
         assert bool(limiter) is expected_enabled
 
