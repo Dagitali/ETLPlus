@@ -32,7 +32,7 @@ from .types import RetryPolicy
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiRequestError(requests.RequestException):
     """
     Base error for API request failures with rich context.
@@ -98,7 +98,7 @@ class ApiAuthError(ApiRequestError):
     """Authentication/authorization failure (e.g., 401/403)."""
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class PaginationError(ApiRequestError):
     """
     Error raised during pagination with page context.
