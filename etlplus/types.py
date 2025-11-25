@@ -14,7 +14,7 @@ from typing import Callable
 from typing import Literal
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
