@@ -82,7 +82,7 @@ class TestLoad:
         assert result['status'] == expected_status
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_data',
         [
             (
                 'json',
