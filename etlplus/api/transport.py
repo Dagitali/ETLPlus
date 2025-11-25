@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Mapping
+from typing import TypedDict
 
 from requests.adapters import HTTPAdapter  # type: ignore
 
@@ -38,10 +39,127 @@ from .utils import to_maximum_int
 from .utils import to_positive_int
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['build_http_adapter']
+__all__ = [
+    # Classes
+    'HTTPAdapterMountConfig',
+    'HTTPAdapterRetryConfig',
+
+    # Functions
+    'build_http_adapter',
+]
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class HTTPAdapterRetryConfig(TypedDict, total=False):
+    """
+    Retry configuration for urllib3 ``Retry``.
+
+    Used by requests' ``HTTPAdapter``.
+
+    Summary
+    -------
+    Keys mirror the ``Retry`` constructor where relevant. All keys are
+    optional; omit any you don't need. When converted downstream, collection-
+    valued fields are normalized to tuples/frozensets.
+
+    Attributes
+    ----------
+    total : int
+        Retry counters matching urllib3 semantics.
+    connect : int
+        Number of connection-related retries.
+    read : int
+        Number of read-related retries.
+    redirect : int
+        Number of redirect-related retries.
+    status : int
+        Number of status-related retries.
+    backoff_factor : float
+        Base factor for exponential backoff between attempts.
+    status_forcelist : list[int] | tuple[int, ...]
+        HTTP status codes that should always be retried.
+    allowed_methods : list[str] | set[str] | tuple[str, ...]
+        Idempotent HTTP methods eligible for retry.
+    raise_on_status : bool
+        Whether to raise after exhausting status-based retries.
+    respect_retry_after_header : bool
+        Honor ``Retry-After`` response headers when present.
+
+    Examples
+    --------
+    >>> retry_cfg: HTTPAdapterRetryConfig = {
+    ...     'total': 5,
+    ...     'backoff_factor': 0.5,
+    ...     'status_forcelist': [429, 503],
+    ...     'allowed_methods': ['GET'],
+    ... }
+    """
+
+    # -- Attributes -- #
+
+    total: int
+    connect: int
+    read: int
+    redirect: int
+    status: int
+    backoff_factor: float
+    status_forcelist: list[int] | tuple[int, ...]
+    allowed_methods: list[str] | set[str] | tuple[str, ...]
+    raise_on_status: bool
+    respect_retry_after_header: bool
+
+
+class HTTPAdapterMountConfig(TypedDict, total=False):
+    """
+    Configuration mapping for mounting an ``HTTPAdapter`` on a ``Session``.
+
+    Summary
+    -------
+    Provides connection pooling and optional retry behavior. Values are
+    forwarded into ``HTTPAdapter`` and, when a retry dict is supplied,
+    converted to a ``Retry`` instance where supported.
+
+    Attributes
+    ----------
+    prefix : str
+        Prefix to mount the adapter on (e.g., ``'https://'`` or specific base).
+    pool_connections : int
+        Number of urllib3 connection pools to cache.
+    pool_maxsize : int
+        Maximum connections per pool.
+    pool_block : bool
+        Whether the pool should block for connections instead of creating new
+        ones.
+    max_retries : int | HTTPAdapterRetryConfig
+        Retry configuration passed to ``HTTPAdapter`` (int) or converted to
+        ``Retry``.
+
+    Examples
+    --------
+    >>> adapter_cfg: HTTPAdapterMountConfig = {
+    ...     'prefix': 'https://',
+    ...     'pool_connections': 10,
+    ...     'pool_maxsize': 10,
+    ...     'pool_block': False,
+    ...     'max_retries': {
+    ...         'total': 3,
+    ...         'backoff_factor': 0.5,
+    ...     },
+    ... }
+    """
+
+    # -- Attributes -- #
+
+    prefix: str
+    pool_connections: int
+    pool_maxsize: int
+    pool_block: bool
+    max_retries: int | HTTPAdapterRetryConfig
 
 
 # SECTION: FUNCTIONS ======================================================== #
