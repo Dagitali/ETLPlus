@@ -190,7 +190,7 @@ PaginationConfig = PagePaginationConfig | CursorPaginationConfig
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class Paginator:
     """
     REST API endpoint response pagination engine.
