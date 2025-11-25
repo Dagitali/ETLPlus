@@ -159,7 +159,7 @@ def compute_sleep_seconds(
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class RateLimiter:
     """
     Centralized rate limiting for REST API requests.
@@ -341,7 +341,7 @@ class RateLimiter:
         return cls()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RetryManager:
     """
     Centralized retry logic for REST API endpoint requests.
