@@ -78,8 +78,8 @@ from .response import CursorPaginationConfig
 from .response import PagePaginationConfig
 from .response import PaginationConfig
 from .transport import build_http_adapter
-from .types import HTTPAdapterMountConfig
-from .types import HTTPAdapterRetryConfig
+from .transport import HTTPAdapterMountConfig
+from .transport import HTTPAdapterRetryConfig
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -94,6 +94,8 @@ __all__ = [
     'CursorPaginationConfig',
     'EndpointClient',
     'EndpointCredentialsBearer',
+    'HTTPAdapterMountConfig',
+    'HTTPAdapterRetryConfig',
     'PagePaginationConfig',
     'PaginationConfig',
     'RateLimitConfig',
@@ -104,7 +106,6 @@ __all__ = [
     'compute_sleep_seconds',
 
     # Common types
-    'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
     'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
     'RetryPolicy',
 ]

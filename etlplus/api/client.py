@@ -66,7 +66,7 @@ from .request import RetryManager
 from .response import PaginationConfig
 from .response import Paginator
 from .transport import build_http_adapter
-from .types import HTTPAdapterMountConfig
+from .transport import HTTPAdapterMountConfig
 from .types import JSONData
 from .types import JSONList
 from .types import RetryPolicy
