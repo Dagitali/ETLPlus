@@ -25,7 +25,6 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import NotRequired
 from typing import TypedDict
 
 import requests  # type: ignore[import]
@@ -52,20 +51,19 @@ __all__ = [
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RateLimitConfig(TypedDict):
+class RateLimitConfig(TypedDict, total=False):
     """
     Configuration for limiting REST API request rates.
 
-    Provides either a fixed delay (``sleep_seconds``) or derives one from a
-    maximum requests-per-second value (``max_per_sec``).
+    All keys are optional and intended to be mutually exclusive, positive
+    values.
 
     Attributes
     ----------
-    sleep_seconds : NotRequired[float | int]
-        Fixed delay between requests.
-    max_per_sec : NotRequired[float | int]
-        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
-        between requests when positive.
+    sleep_seconds : float | int, optional
+        Number of seconds to sleep between requests.
+    max_per_sec : float | int, optional
+        Maximum requests per second.
 
     Examples
     --------
@@ -75,8 +73,8 @@ class RateLimitConfig(TypedDict):
 
     # -- Attributes -- #
 
-    sleep_seconds: NotRequired[float | int]
-    max_per_sec: NotRequired[float | int]
+    sleep_seconds: float | int
+    max_per_sec: float | int
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
