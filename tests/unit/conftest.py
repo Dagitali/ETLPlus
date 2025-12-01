@@ -29,7 +29,7 @@ from etlplus.api import CursorPaginationMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationMap
 from etlplus.api import PaginationMap
-from etlplus.api import RateLimitMap
+from etlplus.api import RateLimitConfigMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
@@ -655,17 +655,17 @@ def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
 
 @pytest.fixture
 def rate_limit_from_obj_factory() -> Callable[
-    [RateLimitMap], RateLimitConfig,
+    [RateLimitConfigMap], RateLimitConfig,
 ]:
     """
     Create a factory to build :class:`RateLimitConfig` via `from_obj` mapping.
 
     Returns
     -------
-    Callable[[RateLimitMap], RateLimitConfig]
+    Callable[[RateLimitConfigMap], RateLimitConfig]
         Function that builds :class:`RateLimitConfig` from mapping.
     """
-    def _make(obj: RateLimitMap) -> RateLimitConfig:
+    def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
         return RateLimitConfig.from_obj(obj)
 
     return _make
