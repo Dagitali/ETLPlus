@@ -28,6 +28,7 @@ import requests  # type: ignore[import]
 from etlplus.api import CursorPaginationMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationMap
+from etlplus.api import PaginationMap
 from etlplus.api import RateLimitMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
@@ -35,7 +36,6 @@ from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
-from etlplus.config.types import PaginationConfigMap
 from etlplus.enums import DataConnectorType
 from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
@@ -196,8 +196,8 @@ def cursor_cfg() -> Callable[..., CursorPaginationMap]:
 
     Returns
     -------
-    Callable[..., CursorPaginationConfig]
-        Function that builds CursorPaginationConfig instances.
+    Callable[..., CursorPaginationMap]
+        Function that builds :class:`CursorPaginationMap` instances.
     """
     def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationMap:
         base: dict[str, Any] = {'type': 'cursor'}
@@ -214,8 +214,8 @@ def offset_cfg() -> Callable[..., PagePaginationMap]:
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds PagePaginationConfig instances.
+    Callable[..., PagePaginationMap]
+        Function that builds PagePaginationMap instances.
     """
     def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationMap:
         base: dict[str, Any] = {'type': 'offset'}
@@ -369,8 +369,8 @@ def page_cfg() -> Callable[..., PagePaginationMap]:
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds :class:`PagePaginationConfig` instances.
+    Callable[..., PagePaginationMap]
+        Function that builds :class:`PagePaginationMap` instances.
     """
     def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationMap:
         base: dict[str, Any] = {'type': 'page'}
@@ -570,7 +570,7 @@ def pagination_from_obj_factory() -> Callable[
     Callable[[Any], PaginationConfig]
         Function that builds :class:`PaginationConfig` instances from mapping.
     """
-    def _make(obj: PaginationConfigMap) -> PaginationConfig:  # noqa: ANN401
+    def _make(obj: PaginationMap) -> PaginationConfig:  # noqa: ANN401
         return PaginationConfig.from_obj(obj)
 
     return _make
