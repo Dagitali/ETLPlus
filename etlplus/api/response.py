@@ -80,7 +80,7 @@ class PaginationType(StrEnum):
 
 class CursorPaginationConfig(TypedDict, total=False):
     """
-    Configuration for cursor-based REST API pagination.
+    Configuration mapping for cursor-based REST API response pagination.
 
     Supports fetching successive result pages using a cursor token returned in
     each response. Values are all optional except ``type``.
@@ -133,7 +133,8 @@ class CursorPaginationConfig(TypedDict, total=False):
 
 class PagePaginationConfig(TypedDict, total=False):
     """
-    Configuration for page-based and offset-based REST API pagination types.
+    Configuration mapping for page-based and offset-based REST API response
+    pagination.
 
     Controls page-number or offset-based pagination. Values are optional
     except ``type``.
