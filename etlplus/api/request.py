@@ -67,7 +67,7 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     Examples
     --------
-    >>> rl: RateLimitMap = {'max_per_sec': 4}
+    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
     ... # sleep ~= 0.25s between calls
     """
 
@@ -125,7 +125,7 @@ def compute_sleep_seconds(
 
     Parameters
     ----------
-    rate_limit : RateLimitMap | None, optional
+    rate_limit : RateLimitConfigMap | None, optional
         Base rate-limit configuration. May contain ``"sleep_seconds"`` or
         ``"max_per_sec"``.
     overrides : Mapping[str, Any] | None, optional
