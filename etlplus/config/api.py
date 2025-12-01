@@ -483,7 +483,7 @@ class EndpointConfig:
 
         Notes
         -----
-        TypedDict shape: ``EndpointConfigMap`` (editor/type-checker hint).
+        TypedDict shape: :class:`EndpointMap` (editor/type-checker hint).
         """
         # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):
