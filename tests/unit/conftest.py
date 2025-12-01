@@ -338,7 +338,6 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
-
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
         monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
