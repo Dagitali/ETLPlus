@@ -27,6 +27,7 @@ import requests  # type: ignore[import]
 from etlplus.api import CursorPaginationConfig
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfig
+from etlplus.api import RateLimitMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
@@ -34,7 +35,6 @@ from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
 from etlplus.config.types import PaginationConfigMap
-from etlplus.config.types import RateLimitConfigMap
 from etlplus.enums import DataConnectorType
 from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
@@ -337,11 +337,12 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
-    import etlplus.api.client as cmod  # local import to avoid cycles
+    # import etlplus.api.client as cmod  # local import to avoid cycles
+    import random
 
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(seq))
+        monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
         return values
 
     return _set
@@ -656,17 +657,17 @@ def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
 
 @pytest.fixture
 def rate_limit_from_obj_factory() -> Callable[
-    [RateLimitConfigMap], RateLimitConfig,
+    [RateLimitMap], RateLimitConfig,
 ]:
     """
     Create a factory to build :class:`RateLimitConfig` via `from_obj` mapping.
 
     Returns
     -------
-    Callable[[RateLimitConfigMap], RateLimitConfig]
+    Callable[[RateLimitMap], RateLimitConfig]
         Function that builds :class:`RateLimitConfig` from mapping.
     """
-    def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
+    def _make(obj: RateLimitMap) -> RateLimitConfig:
         return RateLimitConfig.from_obj(obj)
 
     return _make
