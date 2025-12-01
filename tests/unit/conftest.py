@@ -25,9 +25,9 @@ from typing import Unpack
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api import CursorPaginationConfig
+from etlplus.api import CursorPaginationMap
 from etlplus.api import EndpointClient
-from etlplus.api import PagePaginationConfig
+from etlplus.api import PagePaginationMap
 from etlplus.api import RateLimitMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
@@ -190,7 +190,7 @@ def client_factory() -> Callable[..., EndpointClient]:
 
 
 @pytest.fixture
-def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
+def cursor_cfg() -> Callable[..., CursorPaginationMap]:
     """
     Create a factory for building immutable cursor pagination config objects.
 
@@ -199,16 +199,16 @@ def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
     Callable[..., CursorPaginationConfig]
         Function that builds CursorPaginationConfig instances.
     """
-    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfig:
+    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationMap:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
-        return cast(CursorPaginationConfig, _freeze(base))
+        return cast(CursorPaginationMap, _freeze(base))
 
     return _make
 
 
 @pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfig]:
+def offset_cfg() -> Callable[..., PagePaginationMap]:
     """
     Create a factory for building immutable offset pagination config objects.
 
@@ -217,10 +217,10 @@ def offset_cfg() -> Callable[..., PagePaginationConfig]:
     Callable[..., PagePaginationConfig]
         Function that builds PagePaginationConfig instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationMap:
         base: dict[str, Any] = {'type': 'offset'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationMap, _freeze(base))
 
     return _make
 
@@ -363,7 +363,7 @@ def mock_session() -> MockSession:
 
 
 @pytest.fixture
-def page_cfg() -> Callable[..., PagePaginationConfig]:
+def page_cfg() -> Callable[..., PagePaginationMap]:
     """
     Create a factory to build immutable page-number pagination config objects.
 
@@ -372,10 +372,10 @@ def page_cfg() -> Callable[..., PagePaginationConfig]:
     Callable[..., PagePaginationConfig]
         Function that builds :class:`PagePaginationConfig` instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationMap:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationMap, _freeze(base))
 
     return _make
 
