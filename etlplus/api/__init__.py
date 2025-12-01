@@ -106,6 +106,6 @@ __all__ = [
     'compute_sleep_seconds',
 
     # Common types
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationMap',
+    'JSONDict', 'JSONList', 'JSONData',
     'RetryPolicy',
 ]
