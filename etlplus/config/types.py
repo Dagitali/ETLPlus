@@ -53,7 +53,7 @@ __all__ = [
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
-    'EndpointConfigMap',
+    'EndpointMap',
     'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
 ]
 
@@ -87,7 +87,7 @@ class ApiConfigMap(TypedDict, total=False):
 
     base_url: str
     headers: Mapping[str, Any]
-    endpoints: Mapping[str, EndpointConfigMap | str]
+    endpoints: Mapping[str, EndpointMap | str]
     profiles: Mapping[str, ApiProfileConfigMap]
 
 
@@ -185,7 +185,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
     options: Mapping[str, Any]
 
 
-class EndpointConfigMap(TypedDict, total=False):
+class EndpointMap(TypedDict, total=False):
     """
     Shape accepted by EndpointConfig.from_obj.
 
