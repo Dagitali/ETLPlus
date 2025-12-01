@@ -63,7 +63,7 @@ from .errors import PaginationError
 from .request import compute_sleep_seconds
 from .request import RateLimitMap
 from .request import RetryManager
-from .response import PaginationConfig
+from .response import PaginationMap
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
@@ -502,7 +502,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
-        pagination: PaginationConfig | None = None,
+        pagination: PaginationMap | None = None,
         sleep_seconds: float = 0.0,
     ) -> JSONData:
         """
@@ -571,7 +571,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
-        pagination: PaginationConfig | None = None,
+        pagination: PaginationMap | None = None,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
         """
@@ -627,7 +627,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> JSONData:
@@ -684,7 +684,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
@@ -758,7 +758,7 @@ class EndpointClient:
                 ) from e
 
         paginator = Paginator.from_config(
-            cast(PaginationConfig, pg),
+            cast(PaginationMap, pg),
             fetch=_fetch,
             sleep_func=EndpointClient.apply_sleep,
             sleep_seconds=effective_sleep,

@@ -59,9 +59,9 @@ from .utils import to_positive_int
 
 __all__ = [
     # Classes
-    'CursorPaginationConfig',
-    'PagePaginationConfig',
-    'PaginationConfig',
+    'CursorPaginationMap',
+    'PagePaginationMap',
+    'PaginationMap',
     'Paginator',
 ]
 
@@ -78,7 +78,7 @@ class PaginationType(StrEnum):
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class CursorPaginationConfig(TypedDict, total=False):
+class CursorPaginationMap(TypedDict, total=False):
     """
     Configuration mapping for cursor-based REST API response pagination.
 
@@ -131,7 +131,7 @@ class CursorPaginationConfig(TypedDict, total=False):
     limit_param: str
 
 
-class PagePaginationConfig(TypedDict, total=False):
+class PagePaginationMap(TypedDict, total=False):
     """
     Configuration mapping for page-based and offset-based REST API response
     pagination.
@@ -185,7 +185,7 @@ class PagePaginationConfig(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-PaginationConfig = PagePaginationConfig | CursorPaginationConfig
+PaginationMap = PagePaginationMap | CursorPaginationMap
 
 
 # SECTION: CLASSES ========================================================== #

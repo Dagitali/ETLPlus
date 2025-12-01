@@ -17,7 +17,7 @@ import requests  # type: ignore[import]
 
 from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfig as ApiPaginationConfig
+from .api import PaginationMap as ApiPaginationConfig
 from .api.types import RetryPolicy as ApiRetryPolicy
 from .config import load_pipeline_config
 from .extract import extract

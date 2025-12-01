@@ -74,9 +74,9 @@ from .client import EndpointClient
 from .request import compute_sleep_seconds
 from .request import RateLimiter
 from .request import RateLimitMap
-from .response import CursorPaginationConfig
-from .response import PagePaginationConfig
-from .response import PaginationConfig
+from .response import CursorPaginationMap
+from .response import PagePaginationMap
+from .response import PaginationMap
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
@@ -91,13 +91,13 @@ from .types import RetryPolicy
 
 __all__ = [
     # Classes
-    'CursorPaginationConfig',
+    'CursorPaginationMap',
     'EndpointClient',
     'EndpointCredentialsBearer',
     'HTTPAdapterMountConfig',
     'HTTPAdapterRetryConfig',
-    'PagePaginationConfig',
-    'PaginationConfig',
+    'PagePaginationMap',
+    'PaginationMap',
     'RateLimitMap',
     'RateLimiter',
 
@@ -106,6 +106,6 @@ __all__ = [
     'compute_sleep_seconds',
 
     # Common types
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+    'JSONDict', 'JSONList', 'JSONData', 'PaginationMap',
     'RetryPolicy',
 ]
