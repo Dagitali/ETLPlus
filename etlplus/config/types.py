@@ -33,7 +33,6 @@ from __future__ import annotations
 from typing import Any
 from typing import Literal
 from typing import Mapping
-from typing import NotRequired
 from typing import TypedDict
 
 from ..api import PaginationMap
@@ -197,11 +196,11 @@ class EndpointConfigMap(TypedDict, total=False):
     - etlplus.config.api.EndpointConfig.from_obj: parses this mapping
     """
 
-    path: NotRequired[str]
-    url: NotRequired[str]
-    method: NotRequired[str]
-    path_params: NotRequired[Mapping[str, Any]]
-    query_params: NotRequired[Mapping[str, Any]]
-    body: NotRequired[Any]
-    pagination: NotRequired[PaginationMap]
-    rate_limit: NotRequired[RateLimitMap]
+    path: str
+    url: str
+    method: str
+    path_params: Mapping[str, Any]
+    query_params: Mapping[str, Any]
+    body: Any
+    pagination: PaginationMap
+    rate_limit: RateLimitMap
