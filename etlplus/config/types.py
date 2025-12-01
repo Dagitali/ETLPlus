@@ -35,7 +35,7 @@ from typing import Literal
 from typing import Mapping
 from typing import TypedDict
 
-from ..api import PaginationMap
+from ..api import PaginationConfigMap
 from ..api import RateLimitConfigMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
@@ -127,7 +127,7 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     """
 
     headers: Mapping[str, Any]
-    pagination: PaginationMap | Mapping[str, Any]
+    pagination: PaginationConfigMap | Mapping[str, Any]
     rate_limit: RateLimitConfigMap | Mapping[str, Any]
 
 
@@ -146,7 +146,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     method: str
     headers: Mapping[str, Any]
     query_params: Mapping[str, Any]
-    pagination: PaginationMap
+    pagination: PaginationConfigMap
     rate_limit: RateLimitConfigMap
     api: str
     endpoint: str
@@ -202,5 +202,5 @@ class EndpointMap(TypedDict, total=False):
     path_params: Mapping[str, Any]
     query_params: Mapping[str, Any]
     body: Any
-    pagination: PaginationMap
+    pagination: PaginationConfigMap
     rate_limit: RateLimitConfigMap

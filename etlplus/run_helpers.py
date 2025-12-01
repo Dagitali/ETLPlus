@@ -33,7 +33,7 @@ import requests  # type: ignore[import]
 
 from .api import compute_sleep_seconds
 from .api import EndpointClient
-from .api import PaginationMap as ApiPaginationConfig
+from .api import PaginationConfigMap as ApiPaginationConfig
 from .api.types import RetryPolicy as ApiRetryPolicy
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig

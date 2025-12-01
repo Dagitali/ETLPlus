@@ -30,7 +30,7 @@ from .mixins import BoundsWarningsMixin
 from .utils import to_int
 
 if TYPE_CHECKING:
-    from ..api import PaginationMap, PaginationType
+    from ..api import PaginationConfigMap, PaginationType
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -150,7 +150,7 @@ class PaginationConfig(BoundsWarningsMixin):
     @overload
     def from_obj(
         cls,
-        obj: PaginationMap,
+        obj: PaginationConfigMap,
     ) -> Self: ...
 
     @classmethod
