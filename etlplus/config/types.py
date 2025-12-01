@@ -36,7 +36,7 @@ from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
-from ..api.request import RateLimitMap
+from ..api import RateLimitMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
