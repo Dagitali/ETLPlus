@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import random
 import tempfile
 import types
 from os import PathLike
@@ -337,8 +338,6 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
-    # import etlplus.api.client as cmod  # local import to avoid cycles
-    import random
 
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
