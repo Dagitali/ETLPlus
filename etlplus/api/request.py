@@ -160,7 +160,7 @@ def compute_sleep_seconds(
 @dataclass(slots=True, kw_only=True)
 class RateLimiter:
     """
-    Centralized rate limiting for REST API requests.
+    REST API request rate limit manager.
 
     Parameters
     ----------
