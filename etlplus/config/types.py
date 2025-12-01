@@ -36,6 +36,7 @@ from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
+from ..api.request import RateLimitMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
@@ -52,7 +53,8 @@ __all__ = [
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
-    'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
+    # 'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitMap',
+    'EndpointConfigMap', 'PaginationConfigMap',
     'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
 ]
 
@@ -127,7 +129,7 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
 
     headers: Mapping[str, Any]
     pagination: PaginationConfigMap | Mapping[str, Any]
-    rate_limit: RateLimitConfigMap | Mapping[str, Any]
+    rate_limit: RateLimitMap | Mapping[str, Any]
 
 
 class ConnectorApiConfigMap(TypedDict, total=False):
@@ -146,7 +148,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     headers: Mapping[str, Any]
     query_params: Mapping[str, Any]
     pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
+    rate_limit: RateLimitMap
     api: str
     endpoint: str
 
@@ -202,7 +204,7 @@ class EndpointConfigMap(TypedDict, total=False):
     query_params: NotRequired[Mapping[str, Any]]
     body: NotRequired[Any]
     pagination: NotRequired[PaginationConfigMap]
-    rate_limit: NotRequired[RateLimitConfigMap]
+    rate_limit: NotRequired[RateLimitMap]
 
 
 class PaginationConfigMap(TypedDict, total=False):
@@ -227,14 +229,14 @@ class PaginationConfigMap(TypedDict, total=False):
     max_records: int
 
 
-class RateLimitConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by RateLimitConfig.from_obj (all keys optional).
+# class RateLimitMap(TypedDict, total=False):
+#     """
+#     Shape accepted by RateLimitConfig.from_obj (all keys optional).
 
-    See Also
-    --------
-    - etlplus.config.rate_limit.RateLimitConfig.from_obj
-    """
+#     See Also
+#     --------
+#     - etlplus.config.rate_limit.RateLimitConfig.from_obj
+#     """
 
-    sleep_seconds: float
-    max_per_sec: float
+#     sleep_seconds: float
+#     max_per_sec: float

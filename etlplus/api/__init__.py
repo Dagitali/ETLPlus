@@ -72,8 +72,8 @@ from __future__ import annotations
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
 from .request import compute_sleep_seconds
-from .request import RateLimitConfig
 from .request import RateLimiter
+from .request import RateLimitMap
 from .response import CursorPaginationConfig
 from .response import PagePaginationConfig
 from .response import PaginationConfig
@@ -98,7 +98,7 @@ __all__ = [
     'HTTPAdapterRetryConfig',
     'PagePaginationConfig',
     'PaginationConfig',
-    'RateLimitConfig',
+    'RateLimitMap',
     'RateLimiter',
 
     # Functions

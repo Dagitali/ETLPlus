@@ -40,7 +40,7 @@ from .types import RetryPolicy
 
 __all__ = [
     # Classes
-    'RateLimitConfig',
+    'RateLimitMap',
     'RateLimiter',
 
     # Functions
@@ -51,9 +51,9 @@ __all__ = [
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RateLimitConfig(TypedDict, total=False):
+class RateLimitMap(TypedDict, total=False):
     """
-    Configuration for limiting REST API request rates.
+    Configuration mapping for limiting REST API request rates.
 
     All keys are optional and intended to be mutually exclusive, positive
     values.
@@ -67,7 +67,7 @@ class RateLimitConfig(TypedDict, total=False):
 
     Examples
     --------
-    >>> rl: RateLimitConfig = {'max_per_sec': 4}
+    >>> rl: RateLimitMap = {'max_per_sec': 4}
     ... # sleep ~= 0.25s between calls
     """
 
@@ -108,7 +108,7 @@ def _to_positive_float(
 
 
 def compute_sleep_seconds(
-    rate_limit: RateLimitConfig | None = None,
+    rate_limit: RateLimitMap | None = None,
     overrides: Mapping[str, Any] | None = None,
 ) -> float:
     """
@@ -125,7 +125,7 @@ def compute_sleep_seconds(
 
     Parameters
     ----------
-    rate_limit : RateLimitConfig | None, optional
+    rate_limit : RateLimitMap | None, optional
         Base rate-limit configuration. May contain ``"sleep_seconds"`` or
         ``"max_per_sec"``.
     overrides : Mapping[str, Any] | None, optional
