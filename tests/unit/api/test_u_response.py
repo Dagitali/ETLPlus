@@ -23,8 +23,8 @@ from typing import Mapping
 import pytest
 
 from etlplus.api.client import EndpointClient
-from etlplus.api.response import PagePaginationConfig
-from etlplus.api.response import PaginationConfig
+from etlplus.api.response import PagePaginationMap
+from etlplus.api.response import PaginationMap
 from etlplus.api.response import PaginationType
 from etlplus.api.response import Paginator
 
@@ -64,7 +64,7 @@ class RecordingClient(EndpointClient):
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
@@ -89,7 +89,7 @@ class FakePageClient(EndpointClient):
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
@@ -115,7 +115,7 @@ class TestPaginator:
         - When optional pagination configuration keys are omitted, the
           paginator should fall back to its class-level defaults.
         """
-        cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
+        cfg: PagePaginationMap = {'type': PaginationType.PAGE}
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
@@ -156,7 +156,7 @@ class TestPaginator:
         expected_page_size : int
             Expected normalized page size.
         """
-        cfg: PagePaginationConfig = {'type': PaginationType.PAGE}
+        cfg: PagePaginationMap = {'type': PaginationType.PAGE}
         if actual is not None:
             cfg['page_size'] = actual
 
@@ -222,7 +222,7 @@ class TestPaginator:
             endpoints={'items': '/items'},
         )
 
-        pg: PagePaginationConfig = {
+        pg: PagePaginationMap = {
             'type': PaginationType.PAGE,
             'page_param': 'page',
             'size_param': 'per_page',
@@ -246,7 +246,7 @@ class TestPaginator:
             endpoints={'items': '/items'},
         )
 
-        pg: PagePaginationConfig = {'type': PaginationType.PAGE}
+        pg: PagePaginationMap = {'type': PaginationType.PAGE}
 
         # Both helpers should route through paginate_url_iter.
         list(client.paginate('items', pagination=pg))
