@@ -50,7 +50,7 @@ __all__ = [
     # Type aliases
     'Connector',
     'ConnectorType',
-    'PaginationType',
+    # 'PaginationType',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
@@ -68,7 +68,7 @@ type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 type ConnectorType = Literal['api', 'database', 'file']
 
 # Literal type for supported pagination kinds
-type PaginationType = Literal['page', 'offset', 'cursor']
+# type PaginationType = Literal['page', 'offset', 'cursor']
 
 
 # SECTION: TYPED DICTS ====================================================== #
