@@ -28,7 +28,7 @@ from .mixins import BoundsWarningsMixin
 from .utils import to_float
 
 if TYPE_CHECKING:
-    from .types import RateLimitMap
+    from .types import RateLimitConfigMap
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -88,7 +88,7 @@ class RateLimitConfig(BoundsWarningsMixin):
     @overload
     def from_obj(
         cls,
-        obj: RateLimitMap,
+        obj: RateLimitConfigMap,
     ) -> Self: ...
 
     @classmethod

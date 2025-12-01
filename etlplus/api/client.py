@@ -61,7 +61,7 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import compute_sleep_seconds
-from .request import RateLimitMap
+from .request import RateLimitConfigMap
 from .request import RetryManager
 from .response import PaginationMap
 from .response import Paginator
@@ -209,7 +209,7 @@ class EndpointClient:
     retry: RetryPolicy | None = None
     retry_network_errors: bool = False
     # Optional client-wide rate limit configuration
-    rate_limit: RateLimitMap | None = None
+    rate_limit: RateLimitConfigMap | None = None
 
     # Optional HTTP session or factory
     session: requests.Session | None = None

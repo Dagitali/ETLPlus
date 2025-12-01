@@ -72,8 +72,8 @@ from __future__ import annotations
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
 from .request import compute_sleep_seconds
+from .request import RateLimitConfigMap
 from .request import RateLimiter
-from .request import RateLimitMap
 from .response import CursorPaginationMap
 from .response import PagePaginationMap
 from .response import PaginationMap
@@ -100,7 +100,7 @@ __all__ = [
     'PagePaginationMap',
     'PaginationMap',
     'PaginationType',
-    'RateLimitMap',
+    'RateLimitConfigMap',
     'RateLimiter',
 
     # Functions
