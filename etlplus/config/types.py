@@ -36,6 +36,7 @@ from typing import Mapping
 from typing import NotRequired
 from typing import TypedDict
 
+from ..api import PaginationMap
 from ..api import RateLimitMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
@@ -53,8 +54,7 @@ __all__ = [
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
-    # 'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitMap',
-    'EndpointConfigMap', 'PaginationConfigMap',
+    'EndpointConfigMap',
     'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
 ]
 
@@ -128,7 +128,7 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     """
 
     headers: Mapping[str, Any]
-    pagination: PaginationConfigMap | Mapping[str, Any]
+    pagination: PaginationMap | Mapping[str, Any]
     rate_limit: RateLimitMap | Mapping[str, Any]
 
 
@@ -147,7 +147,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     method: str
     headers: Mapping[str, Any]
     query_params: Mapping[str, Any]
-    pagination: PaginationConfigMap
+    pagination: PaginationMap
     rate_limit: RateLimitMap
     api: str
     endpoint: str
@@ -203,40 +203,5 @@ class EndpointConfigMap(TypedDict, total=False):
     path_params: NotRequired[Mapping[str, Any]]
     query_params: NotRequired[Mapping[str, Any]]
     body: NotRequired[Any]
-    pagination: NotRequired[PaginationConfigMap]
+    pagination: NotRequired[PaginationMap]
     rate_limit: NotRequired[RateLimitMap]
-
-
-class PaginationConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by PaginationConfig.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.pagination.PaginationConfig.from_obj
-    """
-
-    type: PaginationType
-    page_param: str
-    size_param: str
-    start_page: int
-    page_size: int
-    cursor_param: str
-    cursor_path: str
-    start_cursor: str | int
-    records_path: str
-    max_pages: int
-    max_records: int
-
-
-# class RateLimitMap(TypedDict, total=False):
-#     """
-#     Shape accepted by RateLimitConfig.from_obj (all keys optional).
-
-#     See Also
-#     --------
-#     - etlplus.config.rate_limit.RateLimitConfig.from_obj
-#     """
-
-#     sleep_seconds: float
-#     max_per_sec: float

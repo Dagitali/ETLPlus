@@ -77,6 +77,7 @@ from .request import RateLimitMap
 from .response import CursorPaginationMap
 from .response import PagePaginationMap
 from .response import PaginationMap
+from .response import PaginationType
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
@@ -98,6 +99,7 @@ __all__ = [
     'HTTPAdapterRetryConfig',
     'PagePaginationMap',
     'PaginationMap',
+    'PaginationType',
     'RateLimitMap',
     'RateLimiter',
 

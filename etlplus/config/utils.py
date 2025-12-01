@@ -175,23 +175,24 @@ def pagination_from_defaults(
 
     # Locally import inside function to avoid circular dependencies; narrow to
     # literal.
-    from .pagination import PaginationConfig as _PaginationConfig
-    from .types import PaginationType as _PaginationType
+    from .pagination import PaginationConfig
+    # from .types import PaginationType
+    from ..api import PaginationType
 
     # Normalize pagination type to supported literal when possible.
-    norm_type: _PaginationType | None
+    norm_type: PaginationType | None
     match str(ptype).strip().lower() if ptype is not None else '':
         case 'page':
-            norm_type = cast(_PaginationType, 'page')
+            norm_type = PaginationType.PAGE  # 'page'
         case 'offset':
-            norm_type = cast(_PaginationType, 'offset')
+            norm_type = PaginationType.OFFSET  # 'offset'
         case 'cursor':
-            norm_type = cast(_PaginationType, 'cursor')
+            norm_type = PaginationType.CURSOR  # 'cursor'
         case _:
             norm_type = None
 
-    return _PaginationConfig(
-        type=norm_type,
+    return PaginationConfig(
+        type=cast(PaginationType, norm_type),
         page_param=page_param,
         size_param=size_param,
         start_page=to_int(start_page),
