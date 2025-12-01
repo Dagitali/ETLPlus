@@ -20,8 +20,8 @@ from typing import Any
 import pytest
 
 from etlplus.api.request import compute_sleep_seconds
+from etlplus.api.request import RateLimitConfigMap
 from etlplus.api.request import RateLimiter
-from etlplus.api.request import RateLimitMap
 
 
 # SECTION: FIXTURES ======================================================== #
@@ -79,8 +79,8 @@ class TestComputeSleepSeconds:
     )
     def test_invalid_values(
         self,
-        rate_limit: RateLimitMap | None,
-        config: RateLimitMap | dict[str, Any] | None,
+        rate_limit: RateLimitConfigMap | None,
+        config: RateLimitConfigMap | dict[str, Any] | None,
         expected_sleep: float,
     ) -> None:
         """
@@ -89,9 +89,9 @@ class TestComputeSleepSeconds:
 
         Parameters
         ----------
-        rate_limit : RateLimitMap | None
+        rate_limit : RateLimitConfigMap | None
             The rate limit configuration.
-        config : RateLimitMap | dict[str, Any] | None
+        config : RateLimitConfigMap | dict[str, Any] | None
             The override configuration.
         expected_sleep : float
             The expected sleep seconds value.
