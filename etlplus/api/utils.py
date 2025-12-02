@@ -5,7 +5,7 @@ Small shared helpers for :mod:`etlplus.api` modules.
 """
 from __future__ import annotations
 
-from typing import TypeAlias
+from collections.abc import Callable
 from typing import TypeVar
 
 
@@ -31,7 +31,6 @@ __all__ = [
 
 
 Num = TypeVar('Num', int, float)
-Number: TypeAlias = int | float
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -133,19 +132,67 @@ def _coerce_int(value: object) -> int | None:
             try:
                 return int(text)
             except ValueError:
-                maybe = _coerce_float(text)
-                return (
-                    int(maybe)
-                    if maybe is not None and maybe.is_integer()
-                    else None
-                )
+                return _integral_from_float(_coerce_float(text))
         case _:
-            maybe = _coerce_float(value)
-            return (
-                int(maybe)
-                if maybe is not None and maybe.is_integer()
-                else None
-            )
+            return _integral_from_float(_coerce_float(value))
+
+
+def _integral_from_float(
+    candidate: float | None,
+) -> int | None:
+    """
+    Return ``int(candidate)`` when ``candidate`` is integral.
+
+    Parameters
+    ----------
+    candidate : float | None
+        Float to convert when representing a whole number.
+
+    Returns
+    -------
+    int | None
+        Integer form of ``candidate`` or ``None`` if not integral.
+    """
+    if candidate is None or not candidate.is_integer():
+        return None
+    return int(candidate)
+
+
+def _normalize_number(
+    coercer: Callable[[object], Num | None],
+    value: object,
+    *,
+    default: Num | None = None,
+    minimum: Num | None = None,
+    maximum: Num | None = None,
+) -> Num | None:
+    """
+    Coerce ``value`` with ``coercer`` and optionally clamp it.
+
+    Parameters
+    ----------
+    coercer : Callable[[object], NumberT | None]
+        Function that attempts coercion.
+    value : object
+        Value to normalize.
+    default : Num | None, optional
+        Fallback returned when coercion fails. Defaults to ``None``.
+    minimum : Num | None, optional
+        Lower bound, inclusive.
+    maximum : Num | None, optional
+        Upper bound, inclusive.
+
+    Returns
+    -------
+    NumberT | None
+        Normalized value or ``None`` when coercion fails.
+    """
+    result = coercer(value)
+    if result is None:
+        result = default
+    if result is None:
+        return None
+    return _clamp(result, minimum, maximum)
 
 
 def _validate_bounds(
@@ -231,12 +278,13 @@ def to_float(
     float | None
         Normalized float or ``default`` when coercion fails.
     """
-    result = _coerce_float(value)
-    if result is None:
-        result = default
-    if result is None:
-        return None
-    return _clamp(result, minimum, maximum)
+    return _normalize_number(
+        _coerce_float,
+        value,
+        default=default,
+        minimum=minimum,
+        maximum=maximum,
+    )
 
 
 def to_maximum_float(
@@ -333,12 +381,13 @@ def to_int(
     int | None
         Normalized integer or ``default`` when coercion fails.
     """
-    result = _coerce_int(value)
-    if result is None:
-        result = default
-    if result is None:
-        return None
-    return _clamp(result, minimum, maximum)
+    return _normalize_number(
+        _coerce_int,
+        value,
+        default=default,
+        minimum=minimum,
+        maximum=maximum,
+    )
 
 
 def to_maximum_int(
