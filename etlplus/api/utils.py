@@ -5,6 +5,7 @@ Small shared helpers for :mod:`etlplus.api` modules.
 """
 from __future__ import annotations
 
+from typing import TypeAlias
 from typing import TypeVar
 
 
@@ -30,6 +31,7 @@ __all__ = [
 
 
 Num = TypeVar('Num', int, float)
+Number: TypeAlias = int | float
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -41,8 +43,7 @@ def _clamp(
     maximum: Num | None,
 ) -> Num:
     """
-    Return ``value`` constrained to the interval ``[minimum, maximum]`` when
-    set.
+    Return ``value`` constrained to the interval ``[minimum, maximum]``.
 
     Parameters
     ----------
@@ -58,6 +59,7 @@ def _clamp(
     Num
         Clamped value.
     """
+    minimum, maximum = _validate_bounds(minimum, maximum)
     if minimum is not None:
         value = max(value, minimum)
     if maximum is not None:
@@ -146,6 +148,61 @@ def _coerce_int(value: object) -> int | None:
             )
 
 
+def _validate_bounds(
+    minimum: Num | None,
+    maximum: Num | None,
+) -> tuple[Num | None, Num | None]:
+    """
+    Ensure ``minimum`` does not exceed ``maximum``.
+
+    Parameters
+    ----------
+    minimum : Num | None
+        Candidate lower bound.
+    maximum : Num | None
+        Candidate upper bound.
+
+    Returns
+    -------
+    tuple[Num | None, Num | None]
+        Normalized ``(minimum, maximum)`` pair.
+
+    Raises
+    ------
+    ValueError
+        If both bounds are provided and ``minimum > maximum``.
+    """
+    if (
+        minimum is not None
+        and maximum is not None
+        and minimum > maximum
+    ):
+        raise ValueError('minimum cannot exceed maximum')
+    return minimum, maximum
+
+
+def _value_or_default(
+    value: Num | None,
+    default: Num,
+) -> Num:
+    """
+    Return ``value`` when not ``None``; otherwise ``default``.
+
+    Parameters
+    ----------
+    value : Num | None
+        Candidate value.
+    default : Num
+        Fallback value.
+
+    Returns
+    -------
+    Num
+        ``value`` or ``default``.
+    """
+    return default if value is None else value
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -202,7 +259,7 @@ def to_maximum_float(
        Maximum of the coerced float value and ``default``.
     """
     result = to_float(value, default)
-    return max(result if result is not None else default, default)
+    return max(_value_or_default(result, default), default)
 
 
 def to_minimum_float(
@@ -225,7 +282,7 @@ def to_minimum_float(
         The minimum of the coerced float value and the default.
     """
     result = to_float(value, default)
-    return min(result if result is not None else default, default)
+    return min(_value_or_default(result, default), default)
 
 
 def to_positive_float(
@@ -306,7 +363,7 @@ def to_maximum_int(
         The maximum of the coerced integer value and the default.
     """
     result = to_int(value, default)
-    return max(result if result is not None else default, default)
+    return max(_value_or_default(result, default), default)
 
 
 def to_minimum_int(
@@ -331,7 +388,7 @@ def to_minimum_int(
         The minimum of the coerced integer value and the default.
     """
     result = to_int(value, default)
-    return min(result if result is not None else default, default)
+    return min(_value_or_default(result, default), default)
 
 
 def to_positive_int(
