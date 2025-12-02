@@ -58,6 +58,10 @@ Notes
   ``cursor``, ``limit``; start page ``1``; page size ``100``).
 - Retries are opt-in via the ``retry`` parameter; backoff uses jitter.
 - Use ``retry_network_errors=True`` to also retry timeouts/connection errors.
+- Prefer :data:`JSONRecords` (list of :data:`JSONDict`) for paginated
+  responses; scalar/record aliases are exported for convenience.
+- The underlying :class:`Paginator` is exported for advanced scenarios that
+  need to stream pages manually.
 
 See Also
 --------
@@ -78,12 +82,17 @@ from .response import CursorPaginationConfigMap
 from .response import PagePaginationConfigMap
 from .response import PaginationConfigMap
 from .response import PaginationType
+from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
+from .types import JSONRecord
+from .types import JSONRecords
+from .types import JSONScalar
+from .types import JSONValue
 from .types import RetryPolicy
 
 
@@ -92,22 +101,30 @@ from .types import RetryPolicy
 
 __all__ = [
     # Classes
-    'CursorPaginationConfigMap',
     'EndpointClient',
     'EndpointCredentialsBearer',
-    'HTTPAdapterMountConfig',
-    'HTTPAdapterRetryConfig',
-    'PagePaginationConfigMap',
-    'PaginationConfigMap',
-    'PaginationType',
-    'RateLimitConfigMap',
+    'Paginator',
     'RateLimiter',
+
+    # Enums
+    'PaginationType',
 
     # Functions
     'build_http_adapter',
     'compute_sleep_seconds',
 
-    # Common types
-    'JSONDict', 'JSONList', 'JSONData',
+    # Type Aliases
+    'JSONData',
+    'JSONDict', 'JSONList',
+    'JSONRecord', 'JSONRecords',
+    'JSONScalar', 'JSONValue',
+
+    # Type Aliases
+    'CursorPaginationConfigMap',
+    'HTTPAdapterMountConfig',
+    'HTTPAdapterRetryConfig',
+    'PagePaginationConfigMap',
+    'PaginationConfigMap',
+    'RateLimitConfigMap',
     'RetryPolicy',
 ]

@@ -37,18 +37,39 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from typing import Any
+from typing import Mapping
+from typing import TypedDict
 
 import requests  # type: ignore[import]
 from requests import PreparedRequest  # type: ignore
+from requests import Response  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['EndpointCredentialsBearer']
 
 
 # SECTION: CONSTANTS ======================================================== #
 
 
 CLOCK_SKEW_SEC = 30
+DEFAULT_TOKEN_TTL = 3600
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class _TokenResponse(TypedDict):
+    """Minimal shape of an OAuth token response body."""
+
+    access_token: str
+    expires_in: int | float
 
 
 # SECTION: CLASSES ========================================================== #
@@ -90,6 +111,12 @@ class EndpointCredentialsBearer(AuthBase):
         Current access token (``None`` until first successful request).
     expiry : float
         UNIX timestamp when the token expires.
+    timeout : float
+        Timeout in seconds for token requests (defaults to ``15.0``).
+    session : requests.Session | None
+        Optional session used for token requests to leverage connection
+        pooling and shared auth state. Falls back to the module-level
+        ``requests`` functions when ``None``.
 
     Notes
     -----
@@ -108,10 +135,15 @@ class EndpointCredentialsBearer(AuthBase):
     scope: str | None = None
     token: str | None = None
     expiry: float = 0.0
+    timeout: float = 15.0
+    session: requests.Session | None = None
 
     # -- Magic Methods (Object Behavior) -- #
 
-    def __call__(self, r: PreparedRequest) -> PreparedRequest:
+    def __call__(
+        self,
+        r: PreparedRequest,
+    ) -> PreparedRequest:
         """
         Attach an Authorization header to an outgoing request.
 
@@ -147,28 +179,99 @@ class EndpointCredentialsBearer(AuthBase):
         None
             This method mutates ``token`` and ``expiry`` in place.
 
+        Notes
+        -----
+        Exceptions raised by the underlying HTTP call propagate directly.
+        """
+        if self._token_valid():
+            return
+
+        response = self._request_token()
+        self.token = response['access_token']
+        ttl = float(response.get('expires_in', DEFAULT_TOKEN_TTL))
+        self.expiry = time.time() + max(ttl, 0.0)
+
+    def _parse_token_response(
+        self,
+        resp: Response,
+    ) -> _TokenResponse:
+        """
+        Validate the JSON token response and return a typed mapping.
+
+        Parameters
+        ----------
+        resp : Response
+            The HTTP response from the token endpoint.
+
+        Returns
+        -------
+        _TokenResponse
+            Parsed token response mapping.
+
         Raises
         ------
-        requests.exceptions.RequestException
-            On generic request-level failures.
-        requests.exceptions.Timeout
-            When the token request times out.
-        requests.exceptions.ConnectionError
-            On network connection issues.
-        requests.exceptions.SSLError
-            On TLS/SSL negotiation failures.
-        requests.exceptions.HTTPError
-            When the endpoint returns a non-2xx status and ``raise_for_status``
-            triggers.
-        RuntimeError
-            When the token response does not include ``access_token``.
         ValueError
-            When the token response body is not valid JSON.
+            When the response is not valid JSON or not a JSON object.
+        RuntimeError
+            When the response is missing the ``access_token`` field.
         """
-        if self.token and time.time() < self.expiry - CLOCK_SKEW_SEC:
-            return
         try:
-            resp = requests.post(
+            payload: Any = resp.json()
+        except ValueError:
+            logger.error(
+                'Token response is not valid JSON. Body: %s',
+                resp.text[:500],
+            )
+            raise
+
+        if not isinstance(payload, Mapping):
+            logger.error(
+                'Token response is not a JSON object (type=%s)',
+                type(payload).__name__,
+            )
+            raise ValueError('Token response must be a JSON object')
+
+        token = payload.get('access_token')
+        if not isinstance(token, str) or not token:
+            logger.error(
+                'Token response missing "access_token". Keys: %s',
+                list(payload.keys()),
+            )
+            raise RuntimeError('Missing access_token in token response')
+
+        raw_ttl = payload.get('expires_in', DEFAULT_TOKEN_TTL)
+        try:
+            ttl = float(raw_ttl)
+        except (TypeError, ValueError):
+            ttl = float(DEFAULT_TOKEN_TTL)
+
+        return _TokenResponse(access_token=token, expires_in=ttl)
+
+    def _request_token(self) -> _TokenResponse:
+        """
+        Execute the OAuth2 token request and parse the response.
+
+        Returns
+        -------
+        _TokenResponse
+            Parsed token response mapping.
+
+        Raises
+        ------
+        requests.exceptions.Timeout
+            On request timeout.
+        requests.exceptions.SSLError
+            On TLS/SSL errors.
+        requests.exceptions.ConnectionError
+            On network connection errors.
+        requests.exceptions.HTTPError
+            On HTTP errors (4xx/5xx responses).
+        requests.exceptions.RequestException
+            On network/HTTP errors during the token request.
+        """
+        client = self.session or requests
+        try:
+            resp = client.post(
                 self.token_url,
                 data={
                     'grant_type': 'client_credentials',
@@ -176,7 +279,7 @@ class EndpointCredentialsBearer(AuthBase):
                 },
                 auth=(self.client_id, self.client_secret),
                 headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                timeout=15,
+                timeout=self.timeout,
             )
             resp.raise_for_status()
         except requests.exceptions.Timeout:
@@ -212,22 +315,18 @@ class EndpointCredentialsBearer(AuthBase):
             )
             raise
 
-        try:
-            data = resp.json()
-        except ValueError:
-            logger.error(
-                'Token response is not valid JSON. Body: %s',
-                resp.text[:500],
-            )
-            raise
+        return self._parse_token_response(resp)
 
-        tok = data.get('access_token')
-        if not tok:
-            logger.error(
-                'Token response missing "access_token". Keys: %s',
-                list(data.keys()),
-            )
-            raise RuntimeError('Missing access_token in token response')
+    def _token_valid(self) -> bool:
+        """
+        Return ``True`` when the cached token is usable.
 
-        self.token = tok
-        self.expiry = time.time() + int(data.get('expires_in', 3600))
+        Returns
+        -------
+        bool
+            ``True`` when a token is present and not expired.
+        """
+        return (
+            self.token is not None
+            and time.time() < (self.expiry - CLOCK_SKEW_SEC)
+        )

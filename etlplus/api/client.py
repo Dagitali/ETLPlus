@@ -64,11 +64,13 @@ from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RetryManager
 from .response import PaginationConfigMap
+from .response import PaginationType
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .types import JSONData
-from .types import JSONList
+from .types import JSONDict
+from .types import JSONRecords
 from .types import RetryPolicy
 
 
@@ -461,8 +463,11 @@ class EndpointClient:
             kw = dict(kw)
             kw['session'] = sess
 
+        def _api_fetch(target_url: str, **call_kw: Any) -> JSONData:
+            return _extract('api', target_url, **call_kw)
+
         return retry_mgr.run_with_retry(
-            lambda url, **kw: _extract('api', url, **kw),
+            _api_fetch,
             url,
             **kw,
         )
@@ -526,7 +531,7 @@ class EndpointClient:
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
-        pagination : PaginationConfig | None
+        pagination : PaginationConfigMap | None
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
@@ -551,7 +556,7 @@ class EndpointClient:
             return self._extract_with_retry(url, **kw)
 
         # Collect from iterator for paginated streaming ergonomics.
-        return list(
+        records: JSONRecords = list(
             self.paginate_url_iter(
                 url=url,
                 params=params,
@@ -561,6 +566,7 @@ class EndpointClient:
                 sleep_seconds=sleep_seconds,
             ),
         )
+        return records
 
     def paginate_iter(
         self,
@@ -573,7 +579,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
-    ) -> Iterator[dict]:
+    ) -> Iterator[JSONDict]:
         """
         Stream records for a registered endpoint using pagination.
 
@@ -597,14 +603,14 @@ class EndpointClient:
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
-        pagination : PaginationConfig | None
+        pagination : PaginationConfigMap | None
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
 
         Yields
         ------
-        dict
+        JSONDict
             Record dictionaries extracted from each page.
         """
         url = self.url(
@@ -644,7 +650,7 @@ class EndpointClient:
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
-        pagination : PaginationConfig | None
+        pagination : PaginationConfigMap | None
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
@@ -657,17 +663,17 @@ class EndpointClient:
         """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = pg.get('type') if pagination else None
+        ptype = self._normalize_pagination_type(pg)
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
-        if not ptype or ptype not in {'page', 'offset', 'cursor'}:
+        if ptype is None:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
             return self._extract_with_retry(url, **kw)
 
         # For known pagination types, collect from the generator.
-        return list(
+        records: JSONRecords = list(
             self.paginate_url_iter(
                 url=url,
                 params=params,
@@ -677,6 +683,7 @@ class EndpointClient:
                 sleep_seconds=sleep_seconds,
             ),
         )
+        return records
 
     def paginate_url_iter(
         self,
@@ -687,7 +694,7 @@ class EndpointClient:
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
-    ) -> Iterator[dict]:
+    ) -> Iterator[JSONDict]:
         """
         Stream records by paginating an absolute URL.
 
@@ -701,22 +708,22 @@ class EndpointClient:
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
-        pagination : PaginationConfig | None
+        pagination : PaginationConfigMap | None
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
 
         Yields
         ------
-        dict
+        JSONDict
             Record dictionaries extracted from each page.
         """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = pg.get('type') if pagination else None
+        ptype = self._normalize_pagination_type(pg)
 
         # No pagination type or unknown type: single request, coalesce, yield.
-        if not ptype or ptype not in {'page', 'offset', 'cursor'}:
+        if ptype is None:
             kw = EndpointClient.build_request_kwargs(
                 params=params,
                 headers=headers,
@@ -728,10 +735,9 @@ class EndpointClient:
             return
 
         # Determine effective sleep seconds.
-        effective_sleep = (
-            sleep_seconds
-            if sleep_seconds and sleep_seconds > 0
-            else compute_sleep_seconds(self.rate_limit, None)
+        effective_sleep = self._resolve_sleep_seconds(
+            sleep_seconds,
+            self.rate_limit,
         )
 
         def _fetch(
@@ -930,7 +936,7 @@ class EndpointClient:
     def coalesce_records(
         x: Any,
         records_path: str | None,
-    ) -> JSONList:
+    ) -> JSONRecords:
         """
         Coalesce JSON page payloads into a list of dicts.
 
@@ -946,7 +952,7 @@ class EndpointClient:
 
         Returns
         -------
-        JSONList
+        JSONRecords
             List of record dicts extracted from the payload.
         """
         return Paginator.coalesce_records(x, records_path)
@@ -973,3 +979,58 @@ class EndpointClient:
             otherwise None.
         """
         return Paginator.next_cursor_from(data_obj, path)
+
+    # -- Protected Static Methods -- #
+
+    @staticmethod
+    def _normalize_pagination_type(
+        config: Mapping[str, Any] | None,
+    ) -> PaginationType | None:
+        """
+        Return a normalized ``PaginationType`` enum when possible.
+
+        Parameters
+        ----------
+        config : Mapping[str, Any] | None
+            Pagination configuration.
+
+        Returns
+        -------
+        PaginationType | None
+            The normalized pagination type, or ``None`` if unknown.
+        """
+        if not config:
+            return None
+        raw = config.get('type')
+        if isinstance(raw, PaginationType):
+            return raw
+        if raw is None:
+            return None
+        try:
+            return PaginationType(str(raw).strip().lower())
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _resolve_sleep_seconds(
+        explicit: float,
+        rate_limit: RateLimitConfigMap | None,
+    ) -> float:
+        """
+        Derive the effective sleep interval honoring rate-limit config.
+
+        Parameters
+        ----------
+        explicit : float
+            Explicit sleep seconds provided by the caller.
+        rate_limit : RateLimitConfigMap | None
+            Client-wide rate limit configuration.
+
+        Returns
+        -------
+        float
+            The resolved sleep seconds to apply between requests.
+        """
+        if explicit and explicit > 0:
+            return explicit
+        return compute_sleep_seconds(rate_limit, None)

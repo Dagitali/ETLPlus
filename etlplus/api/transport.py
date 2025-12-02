@@ -29,8 +29,8 @@ See Also
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
-from typing import Mapping
 from typing import TypedDict
 
 from requests.adapters import HTTPAdapter  # type: ignore
@@ -162,6 +162,96 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries: int | HTTPAdapterRetryConfig
 
 
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _build_retry_value(
+    config: Mapping[str, Any],
+) -> int | Any:
+    """
+    Create an ``urllib3.Retry`` (when available) or integer fallback.
+
+    Parameters
+    ----------
+    config : Mapping[str, Any]
+        Mapping with urllib3 ``Retry`` kwargs.
+
+    Returns
+    -------
+    int | Any
+        ``Retry`` instance, ``0`` when config is empty, or integer fallback
+        when urllib3 is absent.
+    """
+    try:
+        from urllib3.util.retry import Retry  # type: ignore
+    except ImportError:  # pragma: no cover - optional dependency
+        return to_maximum_int(config.get('total'), 0)
+
+    kwargs = _normalize_retry_kwargs(config)
+    return Retry(**kwargs) if kwargs else 0
+
+
+def _normalize_retry_kwargs(
+    retries_cfg: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Filter and normalize urllib3 ``Retry`` kwargs from a mapping."""
+    allowed_keys = {
+        'total',
+        'connect',
+        'read',
+        'redirect',
+        'status',
+        'backoff_factor',
+        'status_forcelist',
+        'allowed_methods',
+        'raise_on_status',
+        'respect_retry_after_header',
+    }
+    normalized: dict[str, Any] = {}
+    for key, value in retries_cfg.items():
+        if key not in allowed_keys:
+            continue
+        match key:
+            case 'status_forcelist' if isinstance(value, (list, tuple, set)):
+                normalized[key] = tuple(value)
+            case 'allowed_methods' if isinstance(
+                value,
+                (list, tuple, set, frozenset),
+            ):
+                normalized[key] = frozenset(value)
+            case _:
+                normalized[key] = value
+    return normalized
+
+
+def _resolve_max_retries(
+    retries_cfg: object,
+) -> int | Any:
+    """
+    Normalize ``max_retries`` values accepted by ``HTTPAdapter``.
+
+    Parameters
+    ----------
+    retries_cfg : object
+        Raw ``max_retries`` configuration value.
+
+    Returns
+    -------
+    int | Any
+        Integer retry count or ``Retry`` instance.
+    """
+    match retries_cfg:
+        case int():
+            return retries_cfg
+        case Mapping():
+            try:
+                return _build_retry_value(retries_cfg)
+            except (TypeError, ValueError, AttributeError):
+                return to_maximum_int(retries_cfg.get('total'), 0)
+        case _:
+            return 0
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -196,46 +286,7 @@ def build_http_adapter(
     pool_maxsize = to_positive_int(cfg.get('pool_maxsize'), 10)
     pool_block = bool(cfg.get('pool_block', False))
 
-    retries_cfg = cfg.get('max_retries')
-    max_retries: Any
-    if isinstance(retries_cfg, int):
-        max_retries = retries_cfg
-    elif isinstance(retries_cfg, dict):
-        # Try to construct urllib3 Retry from dict.
-        try:
-            from urllib3.util.retry import Retry  # type: ignore
-
-            allowed_keys = {
-                'total',
-                'connect',
-                'read',
-                'redirect',
-                'status',
-                'backoff_factor',
-                'status_forcelist',
-                'allowed_methods',
-                'raise_on_status',
-                'respect_retry_after_header',
-            }
-            kwargs: dict[str, Any] = {}
-            for k, v in retries_cfg.items():
-                if (
-                    k in {'status_forcelist', 'allowed_methods'}
-                    and isinstance(v, (list, tuple, set))
-                ):
-                    # Convert to tuple/set as appropriate.
-                    kwargs[k] = (
-                        tuple(v) if k == 'status_forcelist' else frozenset(v)
-                    )
-                elif k in allowed_keys:
-                    kwargs[k] = v
-            max_retries = Retry(**kwargs) if kwargs else 0
-        except (ImportError, TypeError, ValueError, AttributeError):
-            # Fallback if urllib3 not available or invalid config.
-            max_retries = to_maximum_int(retries_cfg.get('total'), 0)
-
-    else:
-        max_retries = 0
+    max_retries = _resolve_max_retries(cfg.get('max_retries'))
 
     return HTTPAdapter(
         pool_connections=pool_connections,

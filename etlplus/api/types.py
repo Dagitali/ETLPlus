@@ -22,7 +22,6 @@ Examples
 """
 from __future__ import annotations
 
-from typing import Any
 from typing import NotRequired
 from typing import TypedDict
 
@@ -31,10 +30,16 @@ from typing import TypedDict
 
 
 __all__ = [
-    # Aliases
-    'JSONDict', 'JSONList', 'JSONData',
+    # Type Aliases
+    'JSONScalar',
+    'JSONValue',
+    'JSONDict',
+    'JSONList',
+    'JSONData',
+    'JSONRecord',
+    'JSONRecords',
 
-    # Retry
+    # Typed Dicts
     'RetryPolicy',
 ]
 
@@ -81,9 +86,10 @@ class RetryPolicy(TypedDict):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type JSONDict = dict[str, Any]
-type JSONList = list[JSONDict]
-type JSONData = JSONDict | JSONList
-
-type JSONRecord = dict[str, bool | float | int | str | None]
+type JSONScalar = bool | float | int | str | None
+type JSONValue = JSONScalar | 'JSONDict' | 'JSONList'
+type JSONDict = dict[str, JSONValue]
+type JSONList = list[JSONValue]
+type JSONRecord = JSONDict
 type JSONRecords = list[JSONRecord]
+type JSONData = JSONDict | JSONList | JSONRecords

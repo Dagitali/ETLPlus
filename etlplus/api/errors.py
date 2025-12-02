@@ -29,6 +29,12 @@ import requests  # type: ignore[import]
 from .types import RetryPolicy
 
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['ApiAuthError', 'ApiRequestError', 'PaginationError']
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -74,6 +80,11 @@ class ApiRequestError(requests.RequestException):
     ... except ApiRequestError as e:
     ...     print(e.status, e.attempts)
     500 1
+
+    Notes
+    -----
+    The :meth:`as_dict` helper returns a structured payload suitable for
+    structured logging or telemetry.
     """
 
     # -- Attributes -- #
