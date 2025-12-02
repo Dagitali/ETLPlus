@@ -108,6 +108,10 @@ Pagination tips (mirrors `etlplus.api`):
 - Cursor style: specify `cursor_param` and `cursor_path` (e.g., `data.nextCursor`).
 - Extract records from nested payloads with `records_path` (e.g., `data.items`).
 
+Client helpers (``etlplus.api.EndpointClient``) now return the ``JSONRecords``
+alias (a ``list`` of ``JSONDict``) so pipelines and custom runners can rely on
+typed payloads when aggregating paginated responses.
+
 See `etlplus/api/README.md` for the code-level pagination API.
 
 ### Runner behavior with `base_path` (sources and targets)
