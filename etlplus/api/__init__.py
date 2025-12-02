@@ -72,11 +72,12 @@ from __future__ import annotations
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
 from .request import compute_sleep_seconds
-from .request import RateLimitConfig
+from .request import RateLimitConfigMap
 from .request import RateLimiter
-from .response import CursorPaginationConfig
-from .response import PagePaginationConfig
-from .response import PaginationConfig
+from .response import CursorPaginationConfigMap
+from .response import PagePaginationConfigMap
+from .response import PaginationConfigMap
+from .response import PaginationType
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
@@ -91,14 +92,15 @@ from .types import RetryPolicy
 
 __all__ = [
     # Classes
-    'CursorPaginationConfig',
+    'CursorPaginationConfigMap',
     'EndpointClient',
     'EndpointCredentialsBearer',
     'HTTPAdapterMountConfig',
     'HTTPAdapterRetryConfig',
-    'PagePaginationConfig',
-    'PaginationConfig',
-    'RateLimitConfig',
+    'PagePaginationConfigMap',
+    'PaginationConfigMap',
+    'PaginationType',
+    'RateLimitConfigMap',
     'RateLimiter',
 
     # Functions
@@ -106,6 +108,6 @@ __all__ = [
     'compute_sleep_seconds',
 
     # Common types
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+    'JSONDict', 'JSONList', 'JSONData',
     'RetryPolicy',
 ]

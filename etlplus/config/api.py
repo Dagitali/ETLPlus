@@ -35,7 +35,7 @@ from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
 if TYPE_CHECKING:
-    from .types import ApiConfigMap, ApiProfileConfigMap, EndpointConfigMap
+    from .types import ApiConfigMap, ApiProfileConfigMap, EndpointMap
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -456,7 +456,7 @@ class EndpointConfig:
     @overload
     def from_obj(
         cls,
-        obj: EndpointConfigMap,
+        obj: EndpointMap,
     ) -> Self: ...
 
     @classmethod
@@ -483,7 +483,7 @@ class EndpointConfig:
 
         Notes
         -----
-        TypedDict shape: ``EndpointConfigMap`` (editor/type-checker hint).
+        TypedDict shape: :class:`EndpointMap` (editor/type-checker hint).
         """
         # Allow either a bare string path or a mapping with explicit fields.
         if isinstance(obj, str):

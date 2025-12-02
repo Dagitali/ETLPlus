@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import random
 import tempfile
 import types
 from os import PathLike
@@ -24,17 +25,17 @@ from typing import Unpack
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api import CursorPaginationConfig
+from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
-from etlplus.api import PagePaginationConfig
+from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PaginationConfigMap
+from etlplus.api import RateLimitConfigMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
-from etlplus.config.types import PaginationConfigMap
-from etlplus.config.types import RateLimitConfigMap
 from etlplus.enums import DataConnectorType
 from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
@@ -189,37 +190,37 @@ def client_factory() -> Callable[..., EndpointClient]:
 
 
 @pytest.fixture
-def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
+def cursor_cfg() -> Callable[..., CursorPaginationConfigMap]:
     """
     Create a factory for building immutable cursor pagination config objects.
 
     Returns
     -------
-    Callable[..., CursorPaginationConfig]
-        Function that builds CursorPaginationConfig instances.
+    Callable[..., CursorPaginationConfigMap]
+        Function that builds :class:`CursorPaginationConfigMap` instances.
     """
-    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfig:
+    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfigMap:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
-        return cast(CursorPaginationConfig, _freeze(base))
+        return cast(CursorPaginationConfigMap, _freeze(base))
 
     return _make
 
 
 @pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfig]:
+def offset_cfg() -> Callable[..., PagePaginationConfigMap]:
     """
     Create a factory for building immutable offset pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds PagePaginationConfig instances.
+    Callable[..., PagePaginationConfigMap]
+        Function that builds PagePaginationConfigMap instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'offset'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationConfigMap, _freeze(base))
 
     return _make
 
@@ -337,11 +338,9 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
-    import etlplus.api.client as cmod  # local import to avoid cycles
-
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(seq))
+        monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
         return values
 
     return _set
@@ -364,19 +363,19 @@ def mock_session() -> MockSession:
 
 
 @pytest.fixture
-def page_cfg() -> Callable[..., PagePaginationConfig]:
+def page_cfg() -> Callable[..., PagePaginationConfigMap]:
     """
     Create a factory to build immutable page-number pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds :class:`PagePaginationConfig` instances.
+    Callable[..., PagePaginationConfigMap]
+        Function that builds :class:`PagePaginationConfigMap` instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationConfigMap, _freeze(base))
 
     return _make
 

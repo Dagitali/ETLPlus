@@ -33,9 +33,10 @@ from __future__ import annotations
 from typing import Any
 from typing import Literal
 from typing import Mapping
-from typing import NotRequired
 from typing import TypedDict
 
+from ..api import PaginationConfigMap
+from ..api import RateLimitConfigMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
@@ -48,11 +49,11 @@ __all__ = [
     # Type aliases
     'Connector',
     'ConnectorType',
-    'PaginationType',
+    # 'PaginationType',
 
     # TypedDicts
     'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
-    'EndpointConfigMap', 'PaginationConfigMap', 'RateLimitConfigMap',
+    'EndpointMap',
     'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
 ]
 
@@ -66,7 +67,7 @@ type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 type ConnectorType = Literal['api', 'database', 'file']
 
 # Literal type for supported pagination kinds
-type PaginationType = Literal['page', 'offset', 'cursor']
+# type PaginationType = Literal['page', 'offset', 'cursor']
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -86,7 +87,7 @@ class ApiConfigMap(TypedDict, total=False):
 
     base_url: str
     headers: Mapping[str, Any]
-    endpoints: Mapping[str, EndpointConfigMap | str]
+    endpoints: Mapping[str, EndpointMap | str]
     profiles: Mapping[str, ApiProfileConfigMap]
 
 
@@ -184,7 +185,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
     options: Mapping[str, Any]
 
 
-class EndpointConfigMap(TypedDict, total=False):
+class EndpointMap(TypedDict, total=False):
     """
     Shape accepted by EndpointConfig.from_obj.
 
@@ -195,46 +196,11 @@ class EndpointConfigMap(TypedDict, total=False):
     - etlplus.config.api.EndpointConfig.from_obj: parses this mapping
     """
 
-    path: NotRequired[str]
-    url: NotRequired[str]
-    method: NotRequired[str]
-    path_params: NotRequired[Mapping[str, Any]]
-    query_params: NotRequired[Mapping[str, Any]]
-    body: NotRequired[Any]
-    pagination: NotRequired[PaginationConfigMap]
-    rate_limit: NotRequired[RateLimitConfigMap]
-
-
-class PaginationConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by PaginationConfig.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.pagination.PaginationConfig.from_obj
-    """
-
-    type: PaginationType
-    page_param: str
-    size_param: str
-    start_page: int
-    page_size: int
-    cursor_param: str
-    cursor_path: str
-    start_cursor: str | int
-    records_path: str
-    max_pages: int
-    max_records: int
-
-
-class RateLimitConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by RateLimitConfig.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.rate_limit.RateLimitConfig.from_obj
-    """
-
-    sleep_seconds: float
-    max_per_sec: float
+    path: str
+    url: str
+    method: str
+    path_params: Mapping[str, Any]
+    query_params: Mapping[str, Any]
+    body: Any
+    pagination: PaginationConfigMap
+    rate_limit: RateLimitConfigMap

@@ -34,7 +34,7 @@ from .profile import ProfileConfig
 from .rate_limit import RateLimitConfig
 from .types import Connector
 from .types import ConnectorType
-from .types import PaginationType
+# from .types import PaginationType
 
 __all__ = [
     # API
@@ -47,7 +47,7 @@ __all__ = [
     # Connectors
     'Connector',
     'ConnectorType',
-    'PaginationType',
+    # 'PaginationType',
     'ConnectorApi',
     'ConnectorDb',
     'ConnectorFile',

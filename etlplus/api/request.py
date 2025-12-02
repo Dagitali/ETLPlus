@@ -25,7 +25,6 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import NotRequired
 from typing import TypedDict
 
 import requests  # type: ignore[import]
@@ -41,7 +40,7 @@ from .types import RetryPolicy
 
 __all__ = [
     # Classes
-    'RateLimitConfig',
+    'RateLimitConfigMap',
     'RateLimiter',
 
     # Functions
@@ -52,31 +51,30 @@ __all__ = [
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RateLimitConfig(TypedDict):
+class RateLimitConfigMap(TypedDict, total=False):
     """
-    Configuration for limiting REST API request rates.
+    Configuration mapping for limiting REST API request rates.
 
-    Provides either a fixed delay (``sleep_seconds``) or derives one from a
-    maximum requests-per-second value (``max_per_sec``).
+    All keys are optional and intended to be mutually exclusive, positive
+    values.
 
     Attributes
     ----------
-    sleep_seconds : NotRequired[float | int]
-        Fixed delay between requests.
-    max_per_sec : NotRequired[float | int]
-        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
-        between requests when positive.
+    sleep_seconds : float | int, optional
+        Number of seconds to sleep between requests.
+    max_per_sec : float | int, optional
+        Maximum requests per second.
 
     Examples
     --------
-    >>> rl: RateLimitConfig = {'max_per_sec': 4}
+    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
     ... # sleep ~= 0.25s between calls
     """
 
     # -- Attributes -- #
 
-    sleep_seconds: NotRequired[float | int]
-    max_per_sec: NotRequired[float | int]
+    sleep_seconds: float | int
+    max_per_sec: float | int
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -110,7 +108,7 @@ def _to_positive_float(
 
 
 def compute_sleep_seconds(
-    rate_limit: RateLimitConfig | None = None,
+    rate_limit: RateLimitConfigMap | None = None,
     overrides: Mapping[str, Any] | None = None,
 ) -> float:
     """
@@ -127,7 +125,7 @@ def compute_sleep_seconds(
 
     Parameters
     ----------
-    rate_limit : RateLimitConfig | None, optional
+    rate_limit : RateLimitConfigMap | None, optional
         Base rate-limit configuration. May contain ``"sleep_seconds"`` or
         ``"max_per_sec"``.
     overrides : Mapping[str, Any] | None, optional
@@ -162,7 +160,7 @@ def compute_sleep_seconds(
 @dataclass(slots=True, kw_only=True)
 class RateLimiter:
     """
-    Centralized rate limiting for REST API requests.
+    REST API request rate limit manager.
 
     Parameters
     ----------

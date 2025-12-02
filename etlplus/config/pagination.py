@@ -30,7 +30,7 @@ from .mixins import BoundsWarningsMixin
 from .utils import to_int
 
 if TYPE_CHECKING:
-    from .types import PaginationConfigMap, PaginationType
+    from ..api import PaginationConfigMap, PaginationType
 
 
 # SECTION: EXPORTS ========================================================== #

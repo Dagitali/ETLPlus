@@ -61,9 +61,9 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import compute_sleep_seconds
-from .request import RateLimitConfig
+from .request import RateLimitConfigMap
 from .request import RetryManager
-from .response import PaginationConfig
+from .response import PaginationConfigMap
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
@@ -103,7 +103,7 @@ class EndpointClient:
     retry_network_errors : bool, optional
         When ``True``, also retry on network errors (timeouts, connection
         resets). Defaults to ``False``.
-    rate_limit : RateLimitConfig | None, optional
+    rate_limit : RateLimitConfigMap | None, optional
         Optional client-wide rate limit used to derive an inter-request
         delay when an explicit ``sleep_seconds`` isn't supplied.
     session : requests.Session | None, optional
@@ -128,7 +128,7 @@ class EndpointClient:
         Retry policy reference (may be ``None``).
     retry_network_errors : bool
         Whether network errors are retried in addition to HTTP statuses.
-    rate_limit : RateLimitConfig | None
+    rate_limit : RateLimitConfigMap | None
         Client-wide rate limit configuration (may be ``None``).
     session : requests.Session | None
         Explicit HTTP session used for requests when provided.
@@ -209,7 +209,7 @@ class EndpointClient:
     retry: RetryPolicy | None = None
     retry_network_errors: bool = False
     # Optional client-wide rate limit configuration
-    rate_limit: RateLimitConfig | None = None
+    rate_limit: RateLimitConfigMap | None = None
 
     # Optional HTTP session or factory
     session: requests.Session | None = None
@@ -502,7 +502,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
-        pagination: PaginationConfig | None = None,
+        pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
     ) -> JSONData:
         """
@@ -571,7 +571,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, Any] | None = None,
         timeout: float | int | None = None,
-        pagination: PaginationConfig | None = None,
+        pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
         """
@@ -627,7 +627,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> JSONData:
@@ -684,7 +684,7 @@ class EndpointClient:
         params: Mapping[str, Any] | None,
         headers: Mapping[str, Any] | None,
         timeout: float | int | None,
-        pagination: PaginationConfig | None,
+        pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
     ) -> Iterator[dict]:
@@ -758,7 +758,7 @@ class EndpointClient:
                 ) from e
 
         paginator = Paginator.from_config(
-            cast(PaginationConfig, pg),
+            cast(PaginationConfigMap, pg),
             fetch=_fetch,
             sleep_func=EndpointClient.apply_sleep,
             sleep_seconds=effective_sleep,
