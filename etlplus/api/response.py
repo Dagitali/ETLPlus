@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import ClassVar
 from typing import Iterator
 from typing import Literal
@@ -50,6 +51,10 @@ from typing import TypedDict
 
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .types import JSONDict
+from .types import JSONRecords
+from .utils import to_float
+from .utils import to_int
 from .utils import to_maximum_int
 from .utils import to_positive_int
 
@@ -386,14 +391,14 @@ class Paginator:
             records_path=config.get('records_path'),
             # cursor_path=config.get('cursor_path'),
             cursor_path=str(config.get('cursor_path', '')) or None,
-            max_pages=config.get('max_pages'),
-            max_records=config.get('max_records'),
+            max_pages=to_int(config.get('max_pages'), None, minimum=1),
+            max_records=to_int(config.get('max_records'), None, minimum=1),
             page_param=str(config.get('page_param', '')),
             size_param=str(config.get('size_param', '')),
             cursor_param=str(config.get('cursor_param', '')),
             limit_param=str(config.get('limit_param', '')),
             fetch=fetch,
-            sleep_seconds=sleep_seconds,
+            sleep_seconds=to_float(sleep_seconds, 0.0, minimum=0.0) or 0.0,
             sleep_func=sleep_func,
         )
 
@@ -404,7 +409,7 @@ class Paginator:
         url: str,
         *,
         params: Mapping[str, Any] | None = None,
-    ) -> list[dict]:
+    ) -> JSONRecords:
         """Collect all records across pages into a list of dicts."""
         return list(self.paginate_iter(url, params=params))
 
@@ -413,7 +418,7 @@ class Paginator:
         url: str,
         *,
         params: Mapping[str, Any] | None = None,
-    ) -> Iterator[dict]:
+    ) -> Iterator[JSONDict]:
         """Yield record dicts across pages for the configured strategy."""
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
@@ -597,7 +602,8 @@ class Paginator:
         """
         Sleep for the configured number of seconds.
 
-        Uses the provided sleep function.
+        Uses the provided sleep function.  Callers can inject a RateLimiter if
+        needed.
         """
         if self.sleep_func is None:
             return
@@ -610,7 +616,7 @@ class Paginator:
     def coalesce_records(
         x: Any,
         records_path: str | None,
-    ) -> list[dict]:
+    ) -> JSONRecords:
         """
         Coalesce JSON page payloads into a list of dicts.
 
@@ -623,7 +629,7 @@ class Paginator:
 
         Returns
         -------
-        list[dict]
+        JSONRecords
             List of record dicts extracted from the payload.
 
         Notes
@@ -646,20 +652,20 @@ class Paginator:
             data = _get_path(x, records_path)
 
         if isinstance(data, list):
-            out: list[dict] = []
+            out: JSONRecords = []
             for item in data:
                 if isinstance(item, dict):
-                    out.append(item)
+                    out.append(cast(JSONDict, item))
                 else:
-                    out.append({'value': item})
+                    out.append(cast(JSONDict, {'value': item}))
             return out
         if isinstance(data, dict):
             items = data.get('items')
             if isinstance(items, list):
                 return Paginator.coalesce_records(items, None)
-            return [data]
+            return [cast(JSONDict, data)]
 
-        return [{'value': data}]
+        return [cast(JSONDict, {'value': data})]
 
     @staticmethod
     def next_cursor_from(
