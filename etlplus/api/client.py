@@ -103,7 +103,7 @@ class EndpointClient:
     retry_network_errors : bool, optional
         When ``True``, also retry on network errors (timeouts, connection
         resets). Defaults to ``False``.
-    rate_limit : RateLimitConfig | None, optional
+    rate_limit : RateLimitConfigMap | None, optional
         Optional client-wide rate limit used to derive an inter-request
         delay when an explicit ``sleep_seconds`` isn't supplied.
     session : requests.Session | None, optional
@@ -128,7 +128,7 @@ class EndpointClient:
         Retry policy reference (may be ``None``).
     retry_network_errors : bool
         Whether network errors are retried in addition to HTTP statuses.
-    rate_limit : RateLimitConfig | None
+    rate_limit : RateLimitConfigMap | None
         Client-wide rate limit configuration (may be ``None``).
     session : requests.Session | None
         Explicit HTTP session used for requests when provided.
