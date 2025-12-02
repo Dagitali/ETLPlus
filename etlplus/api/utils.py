@@ -16,6 +16,7 @@ __all__ = [
     'to_float',
     'to_maximum_float',
     'to_minimum_float',
+    'to_positive_float',
 
     # Integer coercion
     'to_int',
@@ -225,6 +226,29 @@ def to_minimum_float(
     """
     result = to_float(value, default)
     return min(result if result is not None else default, default)
+
+
+def to_positive_float(
+    value: object,
+) -> float | None:
+    """
+    Coerce ``value`` to a float when strictly positive.
+
+    Parameters
+    ----------
+    value : object
+        Value to convert.
+
+    Returns
+    -------
+    float | None
+        Positive float if conversion succeeds and the value is greater than
+        zero; ``None`` if not.
+    """
+    result = to_float(value)
+    if result is None or result <= 0:
+        return None
+    return result
 
 
 def to_int(
