@@ -21,10 +21,10 @@ import pytest
 import requests  # type: ignore[import]
 
 import etlplus.api.client as cmod
-from etlplus.api import CursorPaginationMap
+from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import errors as api_errors
-from etlplus.api import PagePaginationMap
+from etlplus.api import PagePaginationConfigMap
 from etlplus.api import RetryPolicy
 from tests.unit.api.test_u_mocks import MockSession
 
@@ -207,7 +207,7 @@ class TestCursorPagination:
     def test_page_size_normalizes(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg: Callable[..., CursorPaginationMap],
+        cursor_cfg: Callable[..., CursorPaginationConfigMap],
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -266,7 +266,7 @@ class TestCursorPagination:
     def test_adds_limit_and_advances_cursor(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg: Callable[..., CursorPaginationMap],
+        cursor_cfg: Callable[..., CursorPaginationConfigMap],
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
@@ -321,7 +321,7 @@ class TestCursorPagination:
     def test_error_includes_page_number(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg: Callable[..., CursorPaginationMap],
+        cursor_cfg: Callable[..., CursorPaginationConfigMap],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on
@@ -375,7 +375,7 @@ class TestCursorPagination:
     def test_retry_backoff_sleeps(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        cursor_cfg: Callable[..., CursorPaginationMap],
+        cursor_cfg: Callable[..., CursorPaginationConfigMap],
         capture_sleeps: list[float],
         jitter: Callable[[list[float]], list[float]],
     ) -> None:
@@ -516,7 +516,7 @@ class TestOffsetPagination:
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = cast(
-            PagePaginationMap,
+            PagePaginationConfigMap,
             {
                 'type': 'offset',
                 'page_param': 'offset',
@@ -551,7 +551,7 @@ class TestPagePagination:
     def test_stops_on_short_final_batch(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg: Callable[..., PagePaginationMap],
+        page_cfg: Callable[..., PagePaginationConfigMap],
     ) -> None:
         """
         Test that pagination stops on a short final batch.
@@ -598,7 +598,7 @@ class TestPagePagination:
     def test_max_records_cap(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg: Callable[..., PagePaginationMap],
+        page_cfg: Callable[..., PagePaginationConfigMap],
     ) -> None:
         """
         Test that max_records parameter truncates results as expected.
@@ -644,7 +644,7 @@ class TestPagePagination:
     def test_page_size_normalization(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg: Callable[..., PagePaginationMap],
+        page_cfg: Callable[..., PagePaginationConfigMap],
     ) -> None:
         """
         Test that page_size is normalized to 1 if set to 0.
@@ -689,7 +689,7 @@ class TestPagePagination:
     def test_error_includes_page_number(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        page_cfg: Callable[..., PagePaginationMap],
+        page_cfg: Callable[..., PagePaginationConfigMap],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on failure.
@@ -810,7 +810,7 @@ class TestRateLimitPrecedence:
             client.paginate_iter(
                 'list',
                 pagination=cast(
-                    PagePaginationMap,
+                    PagePaginationConfigMap,
                     {
                         'type': 'page',
                         'page_size': 2,
