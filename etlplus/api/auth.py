@@ -191,12 +191,39 @@ class EndpointCredentialsBearer(AuthBase):
         ttl = float(response.get('expires_in', DEFAULT_TOKEN_TTL))
         self.expiry = time.time() + max(ttl, 0.0)
 
-    def _token_valid(self) -> bool:
-        """Return ``True`` when the cached token is usable."""
-        return (
-            self.token is not None
-            and time.time() < (self.expiry - CLOCK_SKEW_SEC)
-        )
+    def _parse_token_response(self, resp: Response) -> _TokenResponse:
+        """Validate the JSON token response and return a typed mapping."""
+        try:
+            payload: Any = resp.json()
+        except ValueError:
+            logger.error(
+                'Token response is not valid JSON. Body: %s',
+                resp.text[:500],
+            )
+            raise
+
+        if not isinstance(payload, Mapping):
+            logger.error(
+                'Token response is not a JSON object (type=%s)',
+                type(payload).__name__,
+            )
+            raise ValueError('Token response must be a JSON object')
+
+        token = payload.get('access_token')
+        if not isinstance(token, str) or not token:
+            logger.error(
+                'Token response missing "access_token". Keys: %s',
+                list(payload.keys()),
+            )
+            raise RuntimeError('Missing access_token in token response')
+
+        raw_ttl = payload.get('expires_in', DEFAULT_TOKEN_TTL)
+        try:
+            ttl = float(raw_ttl)
+        except (TypeError, ValueError):
+            ttl = float(DEFAULT_TOKEN_TTL)
+
+        return _TokenResponse(access_token=token, expires_in=ttl)
 
     def _request_token(self) -> _TokenResponse:
         """Execute the OAuth2 token request and parse the response."""
@@ -248,36 +275,9 @@ class EndpointCredentialsBearer(AuthBase):
 
         return self._parse_token_response(resp)
 
-    def _parse_token_response(self, resp: Response) -> _TokenResponse:
-        """Validate the JSON token response and return a typed mapping."""
-        try:
-            payload: Any = resp.json()
-        except ValueError:
-            logger.error(
-                'Token response is not valid JSON. Body: %s',
-                resp.text[:500],
-            )
-            raise
-
-        if not isinstance(payload, Mapping):
-            logger.error(
-                'Token response is not a JSON object (type=%s)',
-                type(payload).__name__,
-            )
-            raise ValueError('Token response must be a JSON object')
-
-        token = payload.get('access_token')
-        if not isinstance(token, str) or not token:
-            logger.error(
-                'Token response missing "access_token". Keys: %s',
-                list(payload.keys()),
-            )
-            raise RuntimeError('Missing access_token in token response')
-
-        raw_ttl = payload.get('expires_in', DEFAULT_TOKEN_TTL)
-        try:
-            ttl = float(raw_ttl)
-        except (TypeError, ValueError):
-            ttl = float(DEFAULT_TOKEN_TTL)
-
-        return _TokenResponse(access_token=token, expires_in=ttl)
+    def _token_valid(self) -> bool:
+        """Return ``True`` when the cached token is usable."""
+        return (
+            self.token is not None
+            and time.time() < (self.expiry - CLOCK_SKEW_SEC)
+        )
