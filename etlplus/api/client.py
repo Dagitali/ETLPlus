@@ -64,6 +64,7 @@ from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RetryManager
 from .response import PaginationConfigMap
+from .response import PaginationType
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
@@ -662,10 +663,10 @@ class EndpointClient:
         """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = pg.get('type') if pagination else None
+        ptype = self._normalize_pagination_type(pg)
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
-        if not ptype or ptype not in {'page', 'offset', 'cursor'}:
+        if ptype is None:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
@@ -719,10 +720,10 @@ class EndpointClient:
         """
         # Normalize pagination config for typed access.
         pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = pg.get('type') if pagination else None
+        ptype = self._normalize_pagination_type(pg)
 
         # No pagination type or unknown type: single request, coalesce, yield.
-        if not ptype or ptype not in {'page', 'offset', 'cursor'}:
+        if ptype is None:
             kw = EndpointClient.build_request_kwargs(
                 params=params,
                 headers=headers,
@@ -734,10 +735,9 @@ class EndpointClient:
             return
 
         # Determine effective sleep seconds.
-        effective_sleep = (
-            sleep_seconds
-            if sleep_seconds and sleep_seconds > 0
-            else compute_sleep_seconds(self.rate_limit, None)
+        effective_sleep = self._resolve_sleep_seconds(
+            sleep_seconds,
+            self.rate_limit,
         )
 
         def _fetch(
@@ -979,3 +979,58 @@ class EndpointClient:
             otherwise None.
         """
         return Paginator.next_cursor_from(data_obj, path)
+
+    # -- Protected Static Methods -- #
+
+    @staticmethod
+    def _normalize_pagination_type(
+        config: Mapping[str, Any] | None,
+    ) -> PaginationType | None:
+        """
+        Return a normalized ``PaginationType`` enum when possible.
+
+        Parameters
+        ----------
+        config : Mapping[str, Any] | None
+            Pagination configuration.
+
+        Returns
+        -------
+        PaginationType | None
+            The normalized pagination type, or ``None`` if unknown.
+        """
+        if not config:
+            return None
+        raw = config.get('type')
+        if isinstance(raw, PaginationType):
+            return raw
+        if raw is None:
+            return None
+        try:
+            return PaginationType(str(raw).strip().lower())
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _resolve_sleep_seconds(
+        explicit: float,
+        rate_limit: RateLimitConfigMap | None,
+    ) -> float:
+        """
+        Derive the effective sleep interval honoring rate-limit config.
+
+        Parameters
+        ----------
+        explicit : float
+            Explicit sleep seconds provided by the caller.
+        rate_limit : RateLimitConfigMap | None
+            Client-wide rate limit configuration.
+
+        Returns
+        -------
+        float
+            The resolved sleep seconds to apply between requests.
+        """
+        if explicit and explicit > 0:
+            return explicit
+        return compute_sleep_seconds(rate_limit, None)
