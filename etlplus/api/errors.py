@@ -23,7 +23,6 @@ Examples
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import requests  # type: ignore[import]
 
@@ -105,18 +104,6 @@ class ApiRequestError(requests.RequestException):
 
         return f"ApiRequestError({base}{meta})"
 
-    # TODO: Use `from dataclasses import asdict`.
-    def as_dict(self) -> dict[str, Any]:
-        """Structured representation useful for telemetry/logging."""
-        return {
-            'url': self.url,
-            'status': self.status,
-            'attempts': self.attempts,
-            'retried': self.retried,
-            'retry_policy': self.retry_policy,
-            'cause': self.cause,
-        }
-
 
 class ApiAuthError(ApiRequestError):
     """Authentication/authorization failure (e.g., 401/403)."""
@@ -156,9 +143,3 @@ class PaginationError(ApiRequestError):
         base = super().__str__()
 
         return f"PaginationError({base} page={self.page})"
-
-    # TODO: Use `from dataclasses import asdict`.
-    def as_dict(self) -> dict[str, Any]:
-        data = super().as_dict()
-        data['page'] = self.page
-        return data
