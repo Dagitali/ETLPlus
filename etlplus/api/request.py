@@ -24,6 +24,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from typing import Callable
+from typing import ClassVar
 from typing import Mapping
 from typing import TypedDict
 
@@ -33,6 +34,9 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .types import JSONData
 from .types import RetryPolicy
+from .utils import to_float
+from .utils import to_int
+from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -80,11 +84,38 @@ class RateLimitConfigMap(TypedDict, total=False):
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
+def _merge_rate_limit(
+    rate_limit: Mapping[str, Any] | None,
+    overrides: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Merge ``rate_limit`` and ``overrides`` honoring override precedence.
+
+    Parameters
+    ----------
+    rate_limit : Mapping[str, Any] | None
+        Base rate-limit configuration.
+    overrides : Mapping[str, Any] | None
+        Override configuration.
+
+    Returns
+    -------
+    dict[str, Any]
+        Merged configuration with overrides applied.
+    """
+    merged: dict[str, Any] = {}
+    if rate_limit:
+        merged.update(rate_limit)
+    if overrides:
+        merged.update({k: v for k, v in overrides.items() if v is not None})
+    return merged
+
+
 def _to_positive_float(
     value: Any,
 ) -> float | None:
     """
-    Convert a value to a positive float.
+    Coerce ``value`` to a float when strictly positive.
 
     Parameters
     ----------
@@ -97,11 +128,10 @@ def _to_positive_float(
         Positive float if conversion succeeds and the value is greater than
         zero; ``None`` if not.
     """
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
+    result = to_float(value)
+    if result is None or result <= 0:
         return None
-    return number if number > 0 else None
+    return result
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -148,8 +178,8 @@ def compute_sleep_seconds(
     0.5
     """
     # Precedence: overrides > rate_limit
-    cfg = overrides if overrides else rate_limit
-    limiter = RateLimiter.from_config(cfg or {})
+    cfg = _merge_rate_limit(rate_limit, overrides)
+    limiter = RateLimiter.from_config(cfg or None)
 
     return limiter.sleep_seconds if limiter.enabled else 0.0
 
@@ -286,13 +316,7 @@ class RateLimiter:
         RateLimiter
             Instance with the specified delay.
         """
-        try:
-            value = float(seconds)
-        except (TypeError, ValueError):
-            value = 0.0
-
-        if value < 0:
-            value = 0.0
+        value = to_float(seconds, 0.0, minimum=0.0) or 0.0
 
         return cls(sleep_seconds=value)
 
@@ -346,6 +370,8 @@ class RetryManager:
 
     Attributes
     ----------
+    DEFAULT_STATUS_CODES : ClassVar[set[int]]
+        Default HTTP status codes considered retryable.
     policy : RetryPolicy
         Retry policy configuration.
     retry_network_errors : bool
@@ -358,6 +384,8 @@ class RetryManager:
     """
 
     # -- Attributes -- #
+
+    DEFAULT_STATUS_CODES: ClassVar[set[int]] = {429, 502, 503, 504}
 
     policy: RetryPolicy
     retry_network_errors: bool = False
@@ -376,10 +404,11 @@ class RetryManager:
         float
             Backoff factor.
         """
-        try:
-            return max(float(self.policy.get('backoff', 0.5)), 0.0)
-        except (TypeError, ValueError):
-            return 0.5
+        return to_float(
+            self.policy.get('backoff'),
+            default=0.5,
+            minimum=0.0,
+        ) or 0.5
 
     @property
     def max_attempts(self) -> int:
@@ -391,7 +420,7 @@ class RetryManager:
         int
             Maximum number of retry attempts.
         """
-        return int(self.policy.get('max_attempts', 3))
+        return to_positive_int(self.policy.get('max_attempts'), 3)
 
     @property
     def retry_on_codes(self) -> set[int]:
@@ -405,11 +434,13 @@ class RetryManager:
         """
         codes = self.policy.get('retry_on')
         if not codes:
-            return {429, 502, 503, 504}
-        try:
-            return {int(c) for c in codes}
-        except (TypeError, ValueError):
-            return {429, 502, 503, 504}
+            return self.DEFAULT_STATUS_CODES
+        normalized: set[int] = set()
+        for code in codes:
+            value = to_int(code)
+            if value is not None and value > 0:
+                normalized.add(value)
+        return normalized or self.DEFAULT_STATUS_CODES
 
     # -- Instance Methods -- #
 
@@ -430,6 +461,7 @@ class RetryManager:
         float
             Sleep time in seconds.
         """
+        attempt = max(1, attempt)
         exp = self.backoff * (2 ** (attempt - 1))
         upper = min(exp, self.cap)
         return random.uniform(0.0, upper)
