@@ -110,6 +110,11 @@ def _coerce_int(value: object) -> int | None:
     ----------
     value : object
         Value to coerce.
+
+    Returns
+    -------
+    int | None
+        Coerced integer or ``None`` when coercion fails.
     """
     match value:
         case None | bool():
