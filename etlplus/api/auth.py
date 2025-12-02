@@ -191,8 +191,30 @@ class EndpointCredentialsBearer(AuthBase):
         ttl = float(response.get('expires_in', DEFAULT_TOKEN_TTL))
         self.expiry = time.time() + max(ttl, 0.0)
 
-    def _parse_token_response(self, resp: Response) -> _TokenResponse:
-        """Validate the JSON token response and return a typed mapping."""
+    def _parse_token_response(
+        self,
+        resp: Response,
+    ) -> _TokenResponse:
+        """
+        Validate the JSON token response and return a typed mapping.
+
+        Parameters
+        ----------
+        resp : Response
+            The HTTP response from the token endpoint.
+
+        Returns
+        -------
+        _TokenResponse
+            Parsed token response mapping.
+
+        Raises
+        ------
+        ValueError
+            When the response is not valid JSON or not a JSON object.
+        RuntimeError
+            When the response is missing the ``access_token`` field.
+        """
         try:
             payload: Any = resp.json()
         except ValueError:
@@ -226,7 +248,27 @@ class EndpointCredentialsBearer(AuthBase):
         return _TokenResponse(access_token=token, expires_in=ttl)
 
     def _request_token(self) -> _TokenResponse:
-        """Execute the OAuth2 token request and parse the response."""
+        """
+        Execute the OAuth2 token request and parse the response.
+
+        Returns
+        -------
+        _TokenResponse
+            Parsed token response mapping.
+
+        Raises
+        ------
+        requests.exceptions.Timeout
+            On request timeout.
+        requests.exceptions.SSLError
+            On TLS/SSL errors.
+        requests.exceptions.ConnectionError
+            On network connection errors.
+        requests.exceptions.HTTPError
+            On HTTP errors (4xx/5xx responses).
+        requests.exceptions.RequestException
+            On network/HTTP errors during the token request.
+        """
         client = self.session or requests
         try:
             resp = client.post(
@@ -276,7 +318,14 @@ class EndpointCredentialsBearer(AuthBase):
         return self._parse_token_response(resp)
 
     def _token_valid(self) -> bool:
-        """Return ``True`` when the cached token is usable."""
+        """
+        Return ``True`` when the cached token is usable.
+
+        Returns
+        -------
+        bool
+            ``True`` when a token is present and not expired.
+        """
         return (
             self.token is not None
             and time.time() < (self.expiry - CLOCK_SKEW_SEC)
