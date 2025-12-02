@@ -6,6 +6,8 @@ Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP clien
 - Supports page-, offset-, and cursor-based pagination via `PaginationConfig`
 - Simple bearer-auth credentials via `EndpointCredentialsBearer`
 - Convenience helpers to extract records from nested JSON payloads
+- Returns the shared `JSONRecords` alias (a list of `JSONDict`) for paginated
+  responses, matching the rest of the library.
 
 Back to project overview: see the top-level [README](../../README.md).
 
@@ -26,6 +28,7 @@ from etlplus.api import (
     EndpointClient,
     EndpointCredentialsBearer,
     PaginationConfig,  # re-exported from etlplus.api.types
+    JSONRecords,
 )
 
 client = EndpointClient(
@@ -33,13 +36,15 @@ client = EndpointClient(
     endpoints={
         "list": "/items",  # you can add more named endpoints here
     },
+    retry={"max_attempts": 4, "backoff": 0.5},
+    retry_network_errors=True,
     # Optional: auth
     credentials=EndpointCredentialsBearer(token="<YOUR_TOKEN>")
-)
+    )
 
 # Page-based pagination
 pg: PaginationConfig = {"type": "page", "page_size": 100}
-rows = client.paginate("list", pagination=pg)
+rows: JSONRecords = client.paginate("list", pagination=pg)
 for row in rows:
     print(row)
 ```
@@ -65,7 +70,7 @@ If the response is a list at the top level, you can omit `records_path`.
 ## Cursor-based pagination example
 
 ```python
-from etlplus.api import EndpointClient, PaginationConfig
+from etlplus.api import EndpointClient, PaginationConfig, JSONRecords
 
 client = EndpointClient(
     base_url="https://api.example.com/v1",
@@ -86,9 +91,10 @@ pg: PaginationConfig = {
     # "start_cursor": "abc123",
 }
 
-rows = client.paginate("list", pagination=pg)
+rows: JSONRecords = client.paginate("list", pagination=pg)
 for row in rows:
     process(row)
+```
 
 ## Offset-based pagination example
 
@@ -96,8 +102,8 @@ for row in rows:
 from etlplus.api import EndpointClient, PaginationConfig
 
 client = EndpointClient(
-  base_url="https://api.example.com/v1",
-  endpoints={"list": "/items"},
+    base_url="https://api.example.com/v1",
+    endpoints={"list": "/items"},
 )
 
 pg: PaginationConfig = {
@@ -118,28 +124,42 @@ pg: PaginationConfig = {
 
 rows = client.paginate("list", pagination=pg)
 for row in rows:
-  process(row)
-```
+    process(row)
 ```
 
 ## Authentication
 
-Use bearer tokens with `EndpointCredentialsBearer`:
+Use bearer tokens with `EndpointCredentialsBearer` (OAuth2 client credentials
+flow). Attach it to a `requests.Session` and pass that session to the client:
 
 ```python
+import requests
 from etlplus.api import EndpointClient, EndpointCredentialsBearer
+
+auth = EndpointCredentialsBearer(
+    token_url="https://auth.example.com/oauth2/token",
+    client_id="CLIENT_ID",
+    client_secret="CLIENT_SECRET",
+    scope="read:items",
+)
+
+session = requests.Session()
+session.auth = auth
 
 client = EndpointClient(
     base_url="https://api.example.com/v1",
     endpoints={"list": "/items"},
-    credentials=EndpointCredentialsBearer(token="<YOUR_TOKEN>")
+    session=session,
 )
 ```
 
 ## Errors and rate limiting
 
-- Errors: See `etlplus/api/errors.py` for the concrete exceptions raised by the client.
-- Rate limiting: See `etlplus/api/rate.py` for strategies used to throttle and retry.
+- Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in
+  `etlplus/api/errors.py`) include an `as_dict()` helper for structured logs.
+- Rate limiting: `RateLimiter` and `compute_sleep_seconds` (in
+  `etlplus/api/request.py`) derive fixed sleeps or `max_per_sec` windows, and
+  are used automatically when pagination requests specify rate-limit config.
 
 ## Types and transport
 
