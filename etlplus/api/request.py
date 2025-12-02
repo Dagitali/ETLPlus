@@ -36,6 +36,7 @@ from .types import JSONData
 from .types import RetryPolicy
 from .utils import to_float
 from .utils import to_int
+from .utils import to_positive_float
 from .utils import to_positive_int
 
 
@@ -109,29 +110,6 @@ def _merge_rate_limit(
     if overrides:
         merged.update({k: v for k, v in overrides.items() if v is not None})
     return merged
-
-
-def _to_positive_float(
-    value: Any,
-) -> float | None:
-    """
-    Coerce ``value`` to a float when strictly positive.
-
-    Parameters
-    ----------
-    value : Any
-        Value to convert.
-
-    Returns
-    -------
-    float | None
-        Positive float if conversion succeeds and the value is greater than
-        zero; ``None`` if not.
-    """
-    result = to_float(value)
-    if result is None or result <= 0:
-        return None
-    return result
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -229,8 +207,8 @@ class RateLimiter:
            ``sleep_seconds``.
         3. Otherwise the limiter is disabled.
         """
-        sleep = _to_positive_float(self.sleep_seconds)
-        rate = _to_positive_float(self.max_per_sec)
+        sleep = to_positive_float(self.sleep_seconds)
+        rate = to_positive_float(self.max_per_sec)
 
         if sleep is not None:
             self.sleep_seconds = sleep
@@ -350,8 +328,8 @@ class RateLimiter:
         if not cfg:
             return cls()
 
-        sleep_val = _to_positive_float(cfg.get('sleep_seconds'))
-        rate_val = _to_positive_float(cfg.get('max_per_sec'))
+        sleep_val = to_positive_float(cfg.get('sleep_seconds'))
+        rate_val = to_positive_float(cfg.get('max_per_sec'))
 
         # Let __post_init__ enforce invariants and precedence rules.
         if sleep_val is not None or rate_val is not None:
