@@ -165,8 +165,23 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
-def _build_retry_value(config: Mapping[str, Any]) -> Any:
-    """Create an ``urllib3.Retry`` or integer fallback from ``config``."""
+def _build_retry_value(
+    config: Mapping[str, Any],
+) -> int | Any:
+    """
+    Create an ``urllib3.Retry`` (when available) or integer fallback.
+
+    Parameters
+    ----------
+    config : Mapping[str, Any]
+        Mapping with urllib3 ``Retry`` kwargs.
+
+    Returns
+    -------
+    int | Any
+        ``Retry`` instance, ``0`` when config is empty, or integer fallback
+        when urllib3 is absent.
+    """
     try:
         from urllib3.util.retry import Retry  # type: ignore
     except ImportError:  # pragma: no cover - optional dependency
@@ -196,16 +211,45 @@ def _normalize_retry_kwargs(
     for key, value in retries_cfg.items():
         if key not in allowed_keys:
             continue
-        if key == 'status_forcelist' and isinstance(value, (list, tuple, set)):
-            normalized[key] = tuple(value)
-        elif key == 'allowed_methods' and isinstance(
-            value,
-            (list, tuple, set, frozenset),
-        ):
-            normalized[key] = frozenset(value)
-        else:
-            normalized[key] = value
+        match key:
+            case 'status_forcelist' if isinstance(value, (list, tuple, set)):
+                normalized[key] = tuple(value)
+            case 'allowed_methods' if isinstance(
+                value,
+                (list, tuple, set, frozenset),
+            ):
+                normalized[key] = frozenset(value)
+            case _:
+                normalized[key] = value
     return normalized
+
+
+def _resolve_max_retries(
+    retries_cfg: object,
+) -> int | Any:
+    """
+    Normalize ``max_retries`` values accepted by ``HTTPAdapter``.
+
+    Parameters
+    ----------
+    retries_cfg : object
+        Raw ``max_retries`` configuration value.
+
+    Returns
+    -------
+    int | Any
+        Integer retry count or ``Retry`` instance.
+    """
+    match retries_cfg:
+        case int():
+            return retries_cfg
+        case Mapping():
+            try:
+                return _build_retry_value(retries_cfg)
+            except (TypeError, ValueError, AttributeError):
+                return to_maximum_int(retries_cfg.get('total'), 0)
+        case _:
+            return 0
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -242,18 +286,7 @@ def build_http_adapter(
     pool_maxsize = to_positive_int(cfg.get('pool_maxsize'), 10)
     pool_block = bool(cfg.get('pool_block', False))
 
-    retries_cfg = cfg.get('max_retries')
-    if isinstance(retries_cfg, int):
-        max_retries: Any = retries_cfg
-    elif isinstance(retries_cfg, Mapping):
-        # Try to construct urllib3 Retry from dict.
-        try:
-            max_retries = _build_retry_value(retries_cfg)
-        except (TypeError, ValueError, AttributeError):
-            # Fallback if urllib3 not available or invalid config.
-            max_retries = to_maximum_int(retries_cfg.get('total'), 0)
-    else:
-        max_retries = 0
+    max_retries = _resolve_max_retries(cfg.get('max_retries'))
 
     return HTTPAdapter(
         pool_connections=pool_connections,
