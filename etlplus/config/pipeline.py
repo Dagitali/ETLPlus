@@ -42,18 +42,43 @@ from .utils import deep_substitute
 __all__ = ['PipelineConfig', 'load_pipeline_config']
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 
+def _as_mapping(
+    value: Any,
+) -> StrAnyMap | None:
+    """
+    Return the value if it is a mapping; otherwise return ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        The value to check.
+
+    Returns
+    -------
+    StrAnyMap | None
+        The mapping or ``None``.
+    """
+    return value if isinstance(value, Mapping) else None
+
+
 def _build_jobs(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[JobConfig]:
     """
     Return a list of ``JobConfig`` objects parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -63,49 +88,16 @@ def _build_jobs(
     """
     jobs: list[JobConfig] = []
     for j in (raw.get('jobs', []) or []):
-        if not isinstance(j, dict):
+        if not isinstance(j, Mapping):
             continue
         name = j.get('name')
         if not isinstance(name, str):
             continue
-        # Extract
-        extract = None
-        if (
-            isinstance(ex_raw := j.get('extract') or {}, dict)
-            and ex_raw.get('source')
-        ):
-            extract = ExtractRef(
-                source=str(ex_raw.get('source')),
-                options=dict(ex_raw.get('options', {}) or {}),
-            )
-        # Validate
-        validate = None
-        if (
-            isinstance(v_raw := j.get('validate') or {}, dict)
-            and v_raw.get('ruleset')
-        ):
-            validate = ValidationRef(
-                ruleset=str(v_raw.get('ruleset')),
-                severity=v_raw.get('severity'),
-                phase=v_raw.get('phase'),
-            )
-        # Transform
-        transform = None
-        if (
-            isinstance(tr_raw := j.get('transform') or {}, dict)
-            and tr_raw.get('pipeline')
-        ):
-            transform = TransformRef(pipeline=str(tr_raw.get('pipeline')))
-        # Load
-        load = None
-        if (
-            isinstance(ld_raw := j.get('load') or {}, dict)
-            and ld_raw.get('target')
-        ):
-            load = LoadRef(
-                target=str(ld_raw.get('target')),
-                overrides=dict(ld_raw.get('overrides', {}) or {}),
-            )
+
+        extract = _build_extract_ref(j.get('extract'))
+        validate = _build_validation_ref(j.get('validate'))
+        transform = _build_transform_ref(j.get('transform'))
+        load = _build_load_ref(j.get('load'))
 
         jobs.append(
             JobConfig(
@@ -122,14 +114,14 @@ def _build_jobs(
 
 
 def _build_sources(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[Connector]:
     """
     Return a list of source connectors parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -141,14 +133,14 @@ def _build_sources(
 
 
 def _build_targets(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[Connector]:
     """
     Return a list of target connectors parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -160,7 +152,7 @@ def _build_targets(
 
 
 def _build_connectors(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
     key: str,
 ) -> list[Connector]:
     """
@@ -170,7 +162,7 @@ def _build_connectors(
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
     key : str
         List-containing top-level key ("sources" or "targets").
@@ -182,7 +174,7 @@ def _build_connectors(
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
-        if not isinstance(obj, dict):
+        if not isinstance(obj, Mapping):
             continue
         try:
             items.append(parse_connector(obj))
@@ -191,6 +183,102 @@ def _build_connectors(
             continue
 
     return items
+
+
+def _build_extract_ref(
+    value: Any,
+) -> ExtractRef | None:
+    """
+    Build an ``ExtractRef`` from the provided value.
+
+    Parameters
+    ----------
+    value : Any
+        Raw extract reference value.
+    Returns
+    -------
+    ExtractRef | None
+        Constructed extract reference, or ``None`` if invalid.
+    """
+    data = _as_mapping(value)
+    if not data or not data.get('source'):
+        return None
+    return ExtractRef(
+        source=str(data.get('source')),
+        options=dict(data.get('options', {}) or {}),
+    )
+
+
+def _build_load_ref(
+    value: Any,
+) -> LoadRef | None:
+    """
+    Build a ``LoadRef`` from the provided value.
+
+    Parameters
+    ----------
+    value : Any
+        Raw load reference value.
+
+    Returns
+    -------
+    LoadRef | None
+        Constructed load reference, or ``None`` if invalid.
+    """
+    data = _as_mapping(value)
+    if not data or not data.get('target'):
+        return None
+    return LoadRef(
+        target=str(data.get('target')),
+        overrides=dict(data.get('overrides', {}) or {}),
+    )
+
+
+def _build_transform_ref(
+    value: Any,
+) -> TransformRef | None:
+    """
+    Build a ``TransformRef`` from the provided value.
+
+    Parameters
+    ----------
+    value : Any
+        Raw transform reference value.
+
+    Returns
+    -------
+    TransformRef | None
+        Constructed transform reference, or ``None`` if invalid.
+    """
+    data = _as_mapping(value)
+    if not data or not data.get('pipeline'):
+        return None
+    return TransformRef(pipeline=str(data.get('pipeline')))
+
+
+def _build_validation_ref(
+    value: Any,
+) -> ValidationRef | None:
+    """
+    Build a ``ValidationRef`` from the provided value.
+
+    Parameters
+    ----------
+    value : Any
+        Raw validation reference value.
+    Returns
+    -------
+    ValidationRef | None
+        Constructed validation reference, or ``None`` if invalid.
+    """
+    data = _as_mapping(value)
+    if not data or not data.get('ruleset'):
+        return None
+    return ValidationRef(
+        ruleset=str(data.get('ruleset')),
+        severity=data.get('severity'),
+        phase=data.get('phase'),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -322,14 +410,14 @@ class PipelineConfig:
     @classmethod
     def from_dict(
         cls,
-        raw: Mapping[str, Any],
+        raw: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``PipelineConfig`` instance.
 
         Parameters
         ----------
-        raw : Mapping[str, Any]
+        raw : StrAnyMap
             Raw pipeline mapping.
 
         Returns
@@ -348,19 +436,19 @@ class PipelineConfig:
 
         # APIs
         apis: dict[str, ApiConfig] = {}
-        for api_name, api_obj in (raw.get('apis', {}) or {}).items():
+        for api_name, api_obj in (_as_mapping(raw.get('apis')) or {}).items():
             apis[str(api_name)] = ApiConfig.from_obj(api_obj)
 
         # Databases and file systems (pass-through structures)
-        databases = dict(raw.get('databases', {}) or {})
-        file_systems = dict(raw.get('file_systems', {}) or {})
+        databases = dict(_as_mapping(raw.get('databases')) or {})
+        file_systems = dict(_as_mapping(raw.get('file_systems')) or {})
 
         # Sources
         sources = _build_sources(raw)
 
         # Validations/Transforms
-        validations = dict(raw.get('validations', {}) or {})
-        transforms = dict(raw.get('transforms', {}) or {})
+        validations = dict(_as_mapping(raw.get('validations')) or {})
+        transforms = dict(_as_mapping(raw.get('transforms')) or {})
 
         # Targets
         targets = _build_targets(raw)
