@@ -86,13 +86,6 @@ from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import JSONRecord
-from .types import JSONRecords
-from .types import JSONScalar
-from .types import JSONValue
 from .types import RetryPolicy
 
 
@@ -112,12 +105,6 @@ __all__ = [
     # Functions
     'build_http_adapter',
     'compute_sleep_seconds',
-
-    # Type Aliases
-    'JSONData',
-    'JSONDict', 'JSONList',
-    'JSONRecord', 'JSONRecords',
-    'JSONScalar', 'JSONValue',
 
     # Type Aliases
     'CursorPaginationConfigMap',
