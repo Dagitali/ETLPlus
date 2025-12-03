@@ -32,7 +32,6 @@ from ..types import JSONRecord
 from ..types import JSONRecords
 from ..types import JSONScalar
 from ..types import JSONValue
-from ..types import PaginationConfig
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -47,7 +46,6 @@ __all__ = [
     'JSONData',
     'JSONRecord',
     'JSONRecords',
-    'PaginationConfig',
 
     # Typed Dicts
     'RetryPolicy',
