@@ -37,6 +37,7 @@ from typing import TypedDict
 
 from ..api import PaginationConfigMap
 from ..api import RateLimitConfigMap
+from ..types import StrAnyMap
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
@@ -86,7 +87,7 @@ class ApiConfigMap(TypedDict, total=False):
     """
 
     base_url: str
-    headers: Mapping[str, Any]
+    headers: StrAnyMap
     endpoints: Mapping[str, EndpointMap | str]
     profiles: Mapping[str, ApiProfileConfigMap]
 
@@ -105,9 +106,9 @@ class ApiProfileConfigMap(TypedDict, total=False):
     """
 
     base_url: str
-    headers: Mapping[str, Any]
+    headers: StrAnyMap
     base_path: str
-    auth: Mapping[str, Any]
+    auth: StrAnyMap
     defaults: ApiProfileDefaultsMap
 
 
@@ -126,9 +127,9 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     - etlplus.config.rate_limit.RateLimitConfig.from_obj: parses rate_limit
     """
 
-    headers: Mapping[str, Any]
-    pagination: PaginationConfigMap | Mapping[str, Any]
-    rate_limit: RateLimitConfigMap | Mapping[str, Any]
+    headers: StrAnyMap
+    pagination: PaginationConfigMap | StrAnyMap
+    rate_limit: RateLimitConfigMap | StrAnyMap
 
 
 class ConnectorApiConfigMap(TypedDict, total=False):
@@ -144,8 +145,8 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     type: ConnectorType
     url: str
     method: str
-    headers: Mapping[str, Any]
-    query_params: Mapping[str, Any]
+    headers: StrAnyMap
+    query_params: StrAnyMap
     pagination: PaginationConfigMap
     rate_limit: RateLimitConfigMap
     api: str
@@ -182,7 +183,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
     type: ConnectorType
     format: str
     path: str
-    options: Mapping[str, Any]
+    options: StrAnyMap
 
 
 class EndpointMap(TypedDict, total=False):
@@ -199,8 +200,8 @@ class EndpointMap(TypedDict, total=False):
     path: str
     url: str
     method: str
-    path_params: Mapping[str, Any]
-    query_params: Mapping[str, Any]
+    path_params: StrAnyMap
+    query_params: StrAnyMap
     body: Any
     pagination: PaginationConfigMap
     rate_limit: RateLimitConfigMap
