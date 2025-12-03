@@ -65,8 +65,8 @@ Notes
 
 See Also
 --------
-- :mod:`etlplus.api.types` for shared types (``PaginationConfig``,
-  ``RetryPolicy``, HTTP adapter configs)
+- :mod:`etlplus.api.request` for retry policies and rate-limit helpers
+- :mod:`etlplus.api.response` for pagination config shapes and record helpers
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
 - :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
   from rate limit settings
@@ -78,6 +78,7 @@ from .client import EndpointClient
 from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RateLimiter
+from .request import RetryPolicy
 from .response import CursorPaginationConfigMap
 from .response import PagePaginationConfigMap
 from .response import PaginationConfigMap
@@ -86,7 +87,6 @@ from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
-from .types import RetryPolicy
 
 
 # SECTION: EXPORTS ========================================================== #
