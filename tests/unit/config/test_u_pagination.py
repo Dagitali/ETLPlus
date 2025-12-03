@@ -16,6 +16,7 @@ from typing import Literal
 import pytest
 
 from etlplus.config import PaginationConfig
+from etlplus.config.utils import pagination_from_defaults
 
 
 # SECTION: TESTS ============================================================ #
@@ -31,141 +32,37 @@ class TestPaginationConfig:
     Tests validation and parsing of pagination configuration for different
     pagination styles.
     """
-    @pytest.mark.parametrize(
-        'tval',
-        [None, 'weird', ''],
-        ids=['none', 'weird', 'empty'],
-    )
-    def test_unknown_type_general_warnings_only(
-        self,
-        tval: str | None,
-        pagination_config_factory: Callable[..., Any],
-    ) -> None:
-        """
-        Test that unknown pagination types only yield general warnings.
 
-        Parameters
-        ----------
-        tval : str | None
-            Pagination type value to test.
-        pagination_config_factory : Callable[..., Any]
-            Factory for PaginationConfig.
-        """
-        pc = pagination_config_factory(
-            type=tval,
-            start_page=0,
-            page_size=0,
-            max_pages=0,
-            max_records=-1,
+    def test_defaults_apply_response_fallback_path(self) -> None:
+        """Defaults mapping should surface response fallback_path."""
+        cfg = pagination_from_defaults(
+            {
+                'type': 'page',
+                'response': {
+                    'items_path': 'data.items',
+                    'fallback_path': 'payload.records',
+                },
+            },
         )
-        warnings = pc.validate_bounds()
 
-        # General warnings should be present.
-        assert 'max_pages should be > 0' in warnings
-        assert 'max_records should be > 0' in warnings
+        assert cfg is not None
+        assert cfg.records_path == 'data.items'
+        assert cfg.fallback_path == 'payload.records'
 
-        # No page/offset or cursor-specific warnings for unknown types.
-        assert not any('start_page should be >= 1' in w for w in warnings)
-        assert not any(
-            'page_size should be > 0 for cursor pagination' in w
-            for w in warnings
+    def test_defaults_preserve_top_level_fallback_path(self) -> None:
+        """
+        Nested fallback_path should not override explicit top-level value.
+        """
+        cfg = pagination_from_defaults(
+            {
+                'fallback_path': 'top.level.records',
+                'response': {'fallback_path': 'ignored.path'},
+                'params': {'fallback_path': 'ignored.params'},
+            },
         )
-        assert not any('page_size should be > 0' in w for w in warnings)
 
-        pc2 = pagination_config_factory(
-            type='offset', start_page=0, page_size=-1,
-        )
-        warnings2 = pc2.validate_bounds()
-        assert 'start_page should be >= 1' in warnings2
-        assert 'page_size should be > 0' in warnings2
-
-    def test_valid_values_no_warnings(
-        self,
-        pagination_config_factory: Callable[..., PaginationConfig],
-    ) -> None:  # noqa: D401
-        """
-        Test that valid pagination values produce no warnings.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
-        """
-        pc = pagination_config_factory(
-            type='page',
-            start_page=1,
-            page_size=10,
-            max_pages=5,
-            max_records=100,
-        )
-        assert pc.validate_bounds() == []
-
-    @pytest.mark.parametrize(
-        'ptype',
-        ['page', 'offset', 'cursor'],
-        ids=['page', 'offset', 'cursor'],
-    )
-    def test_validate_bounds_parametrized(
-        self,
-        ptype: Literal['page', 'offset', 'cursor'],
-        pagination_config_factory: Callable[..., PaginationConfig],
-    ) -> None:
-        """
-        Test that validate_bounds produces correct warnings for different
-        pagination types.
-
-        Parameters
-        ----------
-        ptype : Literal['page', 'offset', 'cursor']
-            Pagination type to test.
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
-        """
-        pc = pagination_config_factory(
-            type=ptype,
-            start_page=0,
-            page_size=0,
-            max_pages=0,
-            max_records=-1,
-        )
-        warnings = pc.validate_bounds()
-
-        # General warnings should always appear.
-        assert 'max_pages should be > 0' in warnings
-        assert 'max_records should be > 0' in warnings
-
-        if ptype in {'page', 'offset'}:
-            assert 'start_page should be >= 1' in warnings
-            assert 'page_size should be > 0' in warnings
-            assert not any(
-                'page_size should be > 0 for cursor pagination' in w
-                for w in warnings
-            )
-        else:  # cursor
-            assert not any('start_page should be >= 1' in w for w in warnings)
-            assert any(
-                'page_size should be > 0 for cursor pagination' in w
-                for w in warnings
-            )
-
-    def test_offset_mode_warnings(
-        self,
-        pagination_config_factory: Callable[..., PaginationConfig],
-    ) -> None:  # noqa: D401
-        """
-        Test that offset mode warnings are produced correctly.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
-        """
-        pc = pagination_config_factory(
-            type='offset', start_page=0, page_size=-1,
-        )
-        warnings = pc.validate_bounds()
-        assert 'start_page should be >= 1' in warnings
-        assert 'page_size should be > 0' in warnings
+        assert cfg is not None
+        assert cfg.fallback_path == 'top.level.records'
 
     def test_from_obj_coerces_numeric_fields(
         self,
@@ -222,3 +119,139 @@ class TestPaginationConfig:
         assert pc.page_size is None
         assert pc.max_pages is None
         assert pc.max_records is None
+
+    def test_offset_mode_warnings(
+        self,
+        pagination_config_factory: Callable[..., PaginationConfig],
+    ) -> None:  # noqa: D401
+        """
+        Test that offset mode warnings are produced correctly.
+
+        Parameters
+        ----------
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
+        pc = pagination_config_factory(
+            type='offset', start_page=0, page_size=-1,
+        )
+        warnings = pc.validate_bounds()
+        assert 'start_page should be >= 1' in warnings
+        assert 'page_size should be > 0' in warnings
+
+    @pytest.mark.parametrize(
+        'tval',
+        [None, 'weird', ''],
+        ids=['none', 'weird', 'empty'],
+    )
+    def test_unknown_type_general_warnings_only(
+        self,
+        tval: str | None,
+        pagination_config_factory: Callable[..., Any],
+    ) -> None:
+        """
+        Test that unknown pagination types only yield general warnings.
+
+        Parameters
+        ----------
+        tval : str | None
+            Pagination type value to test.
+        pagination_config_factory : Callable[..., Any]
+            Factory for PaginationConfig.
+        """
+        pc = pagination_config_factory(
+            type=tval,
+            start_page=0,
+            page_size=0,
+            max_pages=0,
+            max_records=-1,
+        )
+        warnings = pc.validate_bounds()
+
+        # General warnings should be present.
+        assert 'max_pages should be > 0' in warnings
+        assert 'max_records should be > 0' in warnings
+
+        # No page/offset or cursor-specific warnings for unknown types.
+        assert not any('start_page should be >= 1' in w for w in warnings)
+        assert not any(
+            'page_size should be > 0 for cursor pagination' in w
+            for w in warnings
+        )
+        assert not any('page_size should be > 0' in w for w in warnings)
+
+        pc2 = pagination_config_factory(
+            type='offset', start_page=0, page_size=-1,
+        )
+        warnings2 = pc2.validate_bounds()
+        assert 'start_page should be >= 1' in warnings2
+        assert 'page_size should be > 0' in warnings2
+
+    @pytest.mark.parametrize(
+        'ptype',
+        ['page', 'offset', 'cursor'],
+        ids=['page', 'offset', 'cursor'],
+    )
+    def test_validate_bounds_parametrized(
+        self,
+        ptype: Literal['page', 'offset', 'cursor'],
+        pagination_config_factory: Callable[..., PaginationConfig],
+    ) -> None:
+        """
+        Test that validate_bounds produces correct warnings for different
+        pagination types.
+
+        Parameters
+        ----------
+        ptype : Literal['page', 'offset', 'cursor']
+            Pagination type to test.
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
+        pc = pagination_config_factory(
+            type=ptype,
+            start_page=0,
+            page_size=0,
+            max_pages=0,
+            max_records=-1,
+        )
+        warnings = pc.validate_bounds()
+
+        # General warnings should always appear.
+        assert 'max_pages should be > 0' in warnings
+        assert 'max_records should be > 0' in warnings
+
+        if ptype in {'page', 'offset'}:
+            assert 'start_page should be >= 1' in warnings
+            assert 'page_size should be > 0' in warnings
+            assert not any(
+                'page_size should be > 0 for cursor pagination' in w
+                for w in warnings
+            )
+        else:  # cursor
+            assert not any('start_page should be >= 1' in w for w in warnings)
+            assert any(
+                'page_size should be > 0 for cursor pagination' in w
+                for w in warnings
+            )
+
+    def test_valid_values_no_warnings(
+        self,
+        pagination_config_factory: Callable[..., PaginationConfig],
+    ) -> None:  # noqa: D401
+        """
+        Test that valid pagination values produce no warnings.
+
+        Parameters
+        ----------
+        pagination_config_factory : Callable[..., PaginationConfig]
+            Factory for PaginationConfig.
+        """
+        pc = pagination_config_factory(
+            type='page',
+            start_page=1,
+            page_size=10,
+            max_pages=5,
+            max_records=100,
+        )
+        assert pc.validate_bounds() == []
