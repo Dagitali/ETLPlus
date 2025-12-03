@@ -69,6 +69,12 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -130,19 +136,19 @@ class ConnectorApi:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorApi`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
@@ -212,19 +218,19 @@ class ConnectorDb:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorDb`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
@@ -286,19 +292,19 @@ class ConnectorFile:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorFile`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
