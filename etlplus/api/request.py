@@ -30,13 +30,13 @@ from typing import TypedDict
 
 import requests  # type: ignore[import]
 
+from ..types import JSONData
 from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_positive_float
 from ..utils import to_positive_int
 from .errors import ApiAuthError
 from .errors import ApiRequestError
-from .types import JSONData
 from .types import RetryPolicy
 
 
