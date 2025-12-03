@@ -37,6 +37,12 @@ if TYPE_CHECKING:
 __all__ = ['RateLimitConfig']
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -101,13 +107,13 @@ class RateLimitConfig(BoundsWarningsMixin):
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any] | None,
+        obj: StrAnyMap | None,
     ) -> Self | None:
         """Parse a mapping into a ``RateLimitConfig`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any] | None
+        obj : StrAnyMap | None
             Mapping with optional rate-limit fields, or ``None``.
 
         Returns
