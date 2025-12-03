@@ -23,7 +23,6 @@ __all__ = [
     'JSONDict', 'JSONList', 'JSONData', 'JSONScalar', 'JSONValue',
     'JSONRecord', 'JSONRecords',
     'Record', 'Records',
-    'PaginationConfig',
     'OperatorFunc',
     'PipelineStepName', 'PipelineConfig',
     'SortKey',
@@ -54,9 +53,6 @@ type Record = JSONDict
 type Records = JSONList
 type JSONRecord = JSONDict
 type JSONRecords = list[JSONRecord]
-
-# General pagination config alias used across API/config packages.
-type PaginationConfig = Mapping[str, Any]
 
 # -- File System -- #
 
