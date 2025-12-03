@@ -13,10 +13,9 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
-from typing import cast
-from typing import Iterable
 from typing import TYPE_CHECKING
 
 from ..utils import to_float
@@ -24,6 +23,7 @@ from ..utils import to_int
 
 if TYPE_CHECKING:
     from .pagination import PaginationConfig
+    from .pagination import PaginationType
     from .rate_limit import RateLimitConfig
 
 
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 __all__ = [
     'cast_str_dict',
     'deep_substitute',
+    'maybe_mapping',
     'pagination_from_defaults',
     'rate_limit_from_defaults',
     'to_int',
@@ -40,11 +41,17 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def cast_str_dict(
-    m: Mapping[str, Any] | None,
+    mapping: StrAnyMap | None,
 ) -> dict[str, str]:
     """
     Return a new ``dict`` with all values coerced to ``str``.
@@ -54,21 +61,23 @@ def cast_str_dict(
 
     Parameters
     ----------
-    m : Mapping[str, Any] | None
-        The mapping to coerce.
+    mapping : StrAnyMap | None
+        Mapping whose values are stringified; ``None`` yields ``{}``.
 
     Returns
     -------
     dict[str, str]
-        Dictionary of the original pairs converted via ``str()``.
+        Dictionary of the original key/value pairs converted via ``str()``.
     """
-    return {k: str(v) for k, v in (m or {}).items()}
+    if not mapping:
+        return {}
+    return {str(key): str(value) for key, value in mapping.items()}
 
 
 def deep_substitute(
     value: Any,
-    vars_map: Mapping[str, Any],
-    env_map: Mapping[str, str],
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, str] | None,
 ) -> Any:
     """
     Recursively substitute ``${VAR}`` tokens in nested structures.
@@ -79,45 +88,59 @@ def deep_substitute(
     ----------
     value : Any
         The value to perform substitutions on.
-    vars_map : Mapping[str, Any]
-        A mapping of variable names to replacement values.
-    env_map : Mapping[str, str]
-        A mapping of environment variable names to replacement values.
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, str] | None
+        Mapping of environment variables overriding ``vars_map`` values (higher
+        precedence).
 
     Returns
     -------
     Any
         New structure with substitutions applied where tokens were found.
     """
-    if isinstance(value, str):
-        # Fast path: single combined pass over substitutions.
-        if not (vars_map or env_map):
-            return value
+    substitutions = _prepare_substitutions(vars_map, env_map)
 
-        # Union preserves right-hand precedence (env overrides vars).
-        merged: Iterable[tuple[str, Any]] = (
-            (dict(vars_map) | dict(env_map)).items()
-            if env_map else vars_map.items()
-        )
-        out = value
-        for name, replacement in merged:
-            token = f"${{{name}}}"
-            if token in out:
-                out = out.replace(token, str(replacement))
-        return out
-    if isinstance(value, dict):
-        return {
-            k: deep_substitute(v, vars_map, env_map)
-            for k, v in value.items()
-        }
-    if isinstance(value, list):
-        return [deep_substitute(v, vars_map, env_map) for v in value]
+    def _apply(node: Any) -> Any:
+        match node:
+            case str():
+                return _replace_tokens(node, substitutions)
+            case Mapping():
+                return {k: _apply(v) for k, v in node.items()}
+            case list() | tuple() as seq:
+                apply = [_apply(item) for item in seq]
+                return apply if isinstance(seq, list) else tuple(apply)
+            case set():
+                return {_apply(item) for item in node}
+            case frozenset():
+                return frozenset(_apply(item) for item in node)
+            case _:
+                return node
 
-    return value
+    return _apply(value)
+
+
+def maybe_mapping(
+    value: Any,
+) -> StrAnyMap | None:
+    """
+    Return ``value`` when it is mapping-like; otherwise ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+
+    Returns
+    -------
+    StrAnyMap | None
+        The input value if it is a mapping; ``None`` if not.
+    """
+    return value if isinstance(value, Mapping) else None
 
 
 def pagination_from_defaults(
-    obj: Mapping[str, Any] | None,
+    obj: StrAnyMap | None,
 ) -> PaginationConfig | None:
     """
     Extract pagination type and integer bounds from defaults mapping.
@@ -127,8 +150,8 @@ def pagination_from_defaults(
 
     Parameters
     ----------
-    obj : Mapping[str, Any] | None
-        The object to parse (expected to be a mapping).
+    obj : StrAnyMap | None
+        Defaults mapping (non-mapping inputs return ``None``).
 
     Returns
     -------
@@ -140,7 +163,6 @@ def pagination_from_defaults(
         return None
 
     # Start with direct keys if present.
-    ptype = obj.get('type')
     page_param = obj.get('page_param')
     size_param = obj.get('size_param')
     start_page = obj.get('start_page')
@@ -148,51 +170,38 @@ def pagination_from_defaults(
     cursor_param = obj.get('cursor_param')
     cursor_path = obj.get('cursor_path')
     records_path = obj.get('records_path')
+    fallback_path = obj.get('fallback_path')
     max_pages = obj.get('max_pages')
     max_records = obj.get('max_records')
 
     # Map from nested shapes when provided.
-    params_val = obj.get('params')
-    params_blk = params_val if isinstance(params_val, Mapping) else None
-    if params_blk and not page_param:
-        page_param = params_blk.get('page')
-    if params_blk and not size_param:
-        size_param = params_blk.get('per_page') or params_blk.get('limit')
-    if params_blk and not cursor_param:
-        cursor_param = params_blk.get('cursor')
+    params_blk = maybe_mapping(obj.get('params'))
+    if params_blk:
+        page_param = page_param or params_blk.get('page')
+        size_param = (
+            size_param
+            or params_blk.get('per_page')
+            or params_blk.get('limit')
+        )
+        cursor_param = cursor_param or params_blk.get('cursor')
+        fallback_path = fallback_path or params_blk.get('fallback_path')
 
-    resp_val = obj.get('response')
-    resp_blk = resp_val if isinstance(resp_val, Mapping) else None
-    if resp_blk and not records_path:
-        records_path = resp_blk.get('items_path')
-    if resp_blk and not cursor_path:
-        cursor_path = resp_blk.get('next_cursor_path')
+    resp_blk = maybe_mapping(obj.get('response'))
+    if resp_blk:
+        records_path = records_path or resp_blk.get('items_path')
+        cursor_path = cursor_path or resp_blk.get('next_cursor_path')
+        fallback_path = fallback_path or resp_blk.get('fallback_path')
 
-    dflt_val = obj.get('defaults')
-    dflt_blk = dflt_val if isinstance(dflt_val, Mapping) else None
-    if dflt_blk and not page_size:
-        page_size = dflt_blk.get('per_page')
+    dflt_blk = maybe_mapping(obj.get('defaults'))
+    if dflt_blk:
+        page_size = page_size or dflt_blk.get('per_page')
 
     # Locally import inside function to avoid circular dependencies; narrow to
     # literal.
     from .pagination import PaginationConfig
-    # from .types import PaginationType
-    from ..api import PaginationType
-
-    # Normalize pagination type to supported literal when possible.
-    norm_type: PaginationType | None
-    match str(ptype).strip().lower() if ptype is not None else '':
-        case 'page':
-            norm_type = PaginationType.PAGE  # 'page'
-        case 'offset':
-            norm_type = PaginationType.OFFSET  # 'offset'
-        case 'cursor':
-            norm_type = PaginationType.CURSOR  # 'cursor'
-        case _:
-            norm_type = None
 
     return PaginationConfig(
-        type=cast(PaginationType, norm_type),
+        type=_coerce_pagination_type(obj.get('type')),
         page_param=page_param,
         size_param=size_param,
         start_page=to_int(start_page),
@@ -201,13 +210,14 @@ def pagination_from_defaults(
         cursor_path=cursor_path,
         start_cursor=None,
         records_path=records_path,
+        fallback_path=fallback_path,
         max_pages=to_int(max_pages),
         max_records=to_int(max_records),
     )
 
 
 def rate_limit_from_defaults(
-    obj: Mapping[str, Any] | None,
+    obj: StrAnyMap | None,
 ) -> RateLimitConfig | None:
     """
     Return numeric rate-limit bounds from defaults mapping.
@@ -216,8 +226,8 @@ def rate_limit_from_defaults(
 
     Parameters
     ----------
-    obj : Mapping[str, Any] | None
-        The object to parse (expected to be a mapping).
+    obj : StrAnyMap | None
+        Defaults mapping (non-mapping inputs return ``None``).
 
     Returns
     -------
@@ -239,3 +249,50 @@ def rate_limit_from_defaults(
         sleep_seconds=to_float(sleep_seconds),
         max_per_sec=to_float(max_per_sec),
     )
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _prepare_substitutions(
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, Any] | None,
+) -> tuple[tuple[str, Any], ...]:
+    if not vars_map and not env_map:
+        return ()
+    merged: dict[str, Any] = {}
+    if vars_map:
+        merged.update(vars_map)
+    if env_map:
+        merged.update(env_map)
+    return tuple(merged.items())
+
+
+def _replace_tokens(
+    text: str,
+    substitutions: Iterable[tuple[str, Any]],
+) -> str:
+    if not substitutions:
+        return text
+    out = text
+    for name, replacement in substitutions:
+        token = f"${{{name}}}"
+        if token in out:
+            out = out.replace(token, str(replacement))
+    return out
+
+
+def _coerce_pagination_type(
+    value: Any,
+) -> PaginationType | None:
+    from ..api import PaginationType
+
+    match str(value).strip().lower() if value is not None else '':
+        case 'page':
+            return PaginationType.PAGE
+        case 'offset':
+            return PaginationType.OFFSET
+        case 'cursor':
+            return PaginationType.CURSOR
+        case _:
+            return None

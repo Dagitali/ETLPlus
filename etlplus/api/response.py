@@ -96,6 +96,9 @@ class CursorPaginationConfigMap(TypedDict, total=False):
         Pagination type discriminator.
     records_path : str
         Dotted path to the records list in each page payload.
+    fallback_path : str
+        Secondary dotted path consulted when ``records_path`` resolves to an
+        empty collection or ``None``.
     max_pages : int
         Maximum number of pages to fetch.
     max_records : int
@@ -127,6 +130,7 @@ class CursorPaginationConfigMap(TypedDict, total=False):
 
     type: Required[Literal[PaginationType.CURSOR]]
     records_path: str
+    fallback_path: str
     max_pages: int
     max_records: int
     cursor_param: str
@@ -150,6 +154,9 @@ class PagePaginationConfigMap(TypedDict, total=False):
         Pagination type discriminator.
     records_path : str
         Dotted path to the records list in each page payload.
+    fallback_path : str
+        Secondary dotted path consulted when ``records_path`` resolves to an
+        empty collection or ``None``.
     max_pages : int
         Maximum number of pages to fetch.
     max_records : int
@@ -179,6 +186,7 @@ class PagePaginationConfigMap(TypedDict, total=False):
 
     type: Required[Literal[PaginationType.PAGE, PaginationType.OFFSET]]
     records_path: str
+    fallback_path: str
     max_pages: int
     max_records: int
     page_param: str
@@ -236,6 +244,9 @@ class Paginator:
         Initial cursor value for cursor-based pagination.
     records_path : str | None
         Dotted path to the records list inside each page payload.
+    fallback_path : str | None
+        Alternate dotted path used when ``records_path`` resolves to an empty
+        collection or ``None``.
     cursor_path : str | None
         Dotted path to the next-cursor value inside each page payload.
     max_pages : int | None
@@ -297,6 +308,7 @@ class Paginator:
     # start_cursor: str | int | None = None
     start_cursor: object | None = None
     records_path: str | None = None
+    fallback_path: str | None = None
     cursor_path: str | None = None
     max_pages: int | None = None
     max_records: int | None = None
@@ -389,6 +401,7 @@ class Paginator:
             ),
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
+            fallback_path=config.get('fallback_path'),
             # cursor_path=config.get('cursor_path'),
             cursor_path=str(config.get('cursor_path', '')) or None,
             max_pages=to_int(config.get('max_pages'), None, minimum=1),
@@ -441,6 +454,7 @@ class Paginator:
                 batch = self.coalesce_records(
                     page_data,
                     self.records_path,
+                    self.fallback_path,
                 )
                 n = len(batch)
                 pages += 1
@@ -488,6 +502,7 @@ class Paginator:
                 batch = self.coalesce_records(
                     page_data,
                     self.records_path,
+                    self.fallback_path,
                 )
                 n = len(batch)
                 pages += 1
@@ -521,7 +536,11 @@ class Paginator:
         # Fallback: single page, coalesce. and yield.
         self.last_page = 1
         page_data = self._fetch_page(url, params)
-        yield from self.coalesce_records(page_data, self.records_path)
+        yield from self.coalesce_records(
+            page_data,
+            self.records_path,
+            self.fallback_path,
+        )
 
     # -- Protected Instance Methods -- #
 
@@ -616,6 +635,7 @@ class Paginator:
     def coalesce_records(
         x: Any,
         records_path: str | None,
+        fallback_path: str | None = None,
     ) -> JSONRecords:
         """
         Coalesce JSON page payloads into a list of dicts.
@@ -626,6 +646,9 @@ class Paginator:
             The JSON payload from an API response.
         records_path : str | None
             Optional dotted path to the records within the payload.
+        fallback_path : str | None
+            Secondary dotted path consulted when ``records_path`` resolves to
+            ``None`` or an empty list.
 
         Returns
         -------
@@ -638,18 +661,33 @@ class Paginator:
         lists, mappings, and scalars by coercing non-dict items into
         ``{"value": x}``.
         """
-        def _get_path(obj: Any, path: str) -> Any:
-            cur = obj
+        _missing = object()
+
+        def _resolve(obj: Any, path: str | None) -> Any:
+            if not isinstance(path, str) or not path:
+                return obj
+            cur: Any = obj
             for part in path.split('.'):
-                if isinstance(cur, dict):
-                    cur = cur.get(part)
+                if isinstance(cur, dict) and part in cur:
+                    cur = cur[part]
                 else:
-                    return None
+                    return _missing
             return cur
 
-        data = x
-        if isinstance(records_path, str) and records_path:
-            data = _get_path(x, records_path)
+        data = _resolve(x, records_path)
+        if data is _missing:
+            data = None
+
+        if fallback_path and (
+            data is None
+            or (isinstance(data, list) and not data)
+        ):
+            fallback = _resolve(x, fallback_path)
+            if fallback is not _missing:
+                data = fallback
+
+        if data is None and not records_path:
+            data = x
 
         if isinstance(data, list):
             out: JSONRecords = []

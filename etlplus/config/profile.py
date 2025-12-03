@@ -25,7 +25,10 @@ from .utils import cast_str_dict
 __all__ = ['ProfileConfig']
 
 
-# SECTION: TYPED DICTS ====================================================== #
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #
@@ -54,13 +57,13 @@ class ProfileConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any] | None,
+        obj: StrAnyMap | None,
     ) -> Self:
         """Parse a mapping into a ``ProfileConfig`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any] | None
+        obj : StrAnyMap | None
             Mapping with optional profile fields, or ``None``.
 
         Returns

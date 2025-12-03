@@ -21,7 +21,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from typing import cast
 from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
@@ -67,6 +66,8 @@ class PaginationConfig(BoundsWarningsMixin):
         Starting cursor value.
     records_path : str | None
         JSONPath expression to extract the records from the response.
+    fallback_path : str | None
+        Secondary JSONPath checked when ``records_path`` yields nothing.
     max_pages : int | None
         Maximum number of pages to retrieve.
     max_records : int | None
@@ -90,6 +91,7 @@ class PaginationConfig(BoundsWarningsMixin):
 
     # General
     records_path: str | None = None
+    fallback_path: str | None = None
     max_pages: int | None = None
     max_records: int | None = None
 
@@ -186,21 +188,8 @@ class PaginationConfig(BoundsWarningsMixin):
         if not isinstance(obj, Mapping):
             return None
 
-        # Normalize type to a supported literal; cast numeric fields.
-        t = obj.get('type')
-        norm_type: PaginationType | None
-        match str(t).strip().lower() if t is not None else '':
-            case 'page':
-                norm_type = cast('PaginationType', 'page')
-            case 'offset':
-                norm_type = cast('PaginationType', 'offset')
-            case 'cursor':
-                norm_type = cast('PaginationType', 'cursor')
-            case _:
-                norm_type = None
-
         return cls(
-            type=norm_type,
+            type=_normalize_pagination_type(obj.get('type')),
             page_param=obj.get('page_param'),
             size_param=obj.get('size_param'),
             start_page=to_int(obj.get('start_page')),
@@ -209,6 +198,36 @@ class PaginationConfig(BoundsWarningsMixin):
             cursor_path=obj.get('cursor_path'),
             start_cursor=obj.get('start_cursor'),
             records_path=obj.get('records_path'),
+            fallback_path=obj.get('fallback_path'),
             max_pages=to_int(obj.get('max_pages')),
             max_records=to_int(obj.get('max_records')),
         )
+
+
+def _normalize_pagination_type(
+    value: Any,
+) -> PaginationType | None:
+    """
+    Normalize a value into a PaginationType enum member.
+
+    Parameters
+    ----------
+    value : Any
+        The value to normalize into a PaginationType.
+
+    Returns
+    -------
+    PaginationType | None
+        The normalized PaginationType, or None if unrecognized.
+    """
+    from ..api import PaginationType
+
+    match str(value).strip().lower() if value is not None else '':
+        case 'page':
+            return PaginationType.PAGE
+        case 'offset':
+            return PaginationType.OFFSET
+        case 'cursor':
+            return PaginationType.CURSOR
+        case _:
+            return None

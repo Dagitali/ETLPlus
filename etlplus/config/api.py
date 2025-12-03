@@ -48,6 +48,58 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _effective_service_defaults(
+    *,
+    profiles: Mapping[str, ApiProfileConfig],
+    fallback_base: Any,
+    fallback_headers: dict[str, str],
+) -> tuple[str, dict[str, str]]:
+    if profiles:
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+        selected = profiles[name]
+        headers = dict(selected.headers)
+        if fallback_headers:
+            headers |= fallback_headers
+        return selected.base_url, headers
+
+    if not isinstance(fallback_base, str):
+        raise TypeError('ApiConfig requires "base_url" (str)')
+    return fallback_base, fallback_headers
+
+
+def _mapping_or_empty(value: Any) -> dict[str, Any]:
+    return dict(value or {}) if isinstance(value, Mapping) else {}
+
+
+def _parse_endpoints(raw: Any) -> dict[str, EndpointConfig]:
+    if not isinstance(raw, Mapping):
+        return {}
+    parsed: dict[str, EndpointConfig] = {}
+    for name, data in raw.items():
+        parsed[str(name)] = EndpointConfig.from_obj(data)
+    return parsed
+
+
+def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
+    if not isinstance(raw, Mapping):
+        return {}
+    parsed: dict[str, ApiProfileConfig] = {}
+    for name, profile_raw in raw.items():
+        if not isinstance(profile_raw, Mapping):
+            continue
+        parsed[str(name)] = ApiProfileConfig.from_obj(profile_raw)
+    return parsed
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -98,20 +150,20 @@ class ApiProfileConfig:
     @overload
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into an ``ApiProfileConfig`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``base_url``.
 
         Returns
@@ -134,7 +186,7 @@ class ApiProfileConfig:
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        defaults_raw = obj.get('defaults', {}) or {}
+        defaults_raw = _mapping_or_empty(obj.get('defaults'))
         merged_headers = (
             cast_str_dict(defaults_raw.get('headers'))
             | cast_str_dict(obj.get('headers'))
@@ -311,7 +363,7 @@ class ApiConfig:
         """
         return self._profile_attr('rate_limit_defaults')
 
-    # -- Static Methods -- #
+    # -- Class Methods -- #
 
     @classmethod
     @overload
@@ -324,19 +376,19 @@ class ApiConfig:
     @overload
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """Parse a mapping into an ``ApiConfig`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping containing either ``base_url`` or a ``profiles`` block.
 
         Returns
@@ -359,15 +411,7 @@ class ApiConfig:
 
         # Optional: profiles structure
         # See also: ApiProfileConfig.from_obj for profile parsing logic.
-        profiles_raw = obj.get('profiles', {}) or {}
-        profiles: dict[str, ApiProfileConfig] = (
-            {
-                str(name): ApiProfileConfig.from_obj(p)
-                for name, p in profiles_raw.items()
-                if isinstance(p, dict)
-            }
-            if isinstance(profiles_raw, dict) else {}
-        )
+        profiles = _parse_profiles(obj.get('profiles'))
 
         # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
@@ -375,37 +419,18 @@ class ApiConfig:
 
         # Determine effective base_url/headers for backward compatibility
         # Always compute a concrete str for base_url.
-        base_url: str
-        headers: dict[str, str] = {}
-        if profiles:
-            # Choose a default profile: explicit 'default' else first key
-            prof_name = 'default' if 'default' in profiles else (
-                next(iter(profiles.keys()))
-            )
-            base_url = profiles[prof_name].base_url
-            headers = dict(profiles[prof_name].headers)
-            # Merge in top-level headers as overrides if provided
-            if tl_headers:
-                headers |= tl_headers
-        else:
-            # Legacy flat shape must provide base_url.
-            if not isinstance(tl_base, str):
-                raise TypeError('ApiConfig requires "base_url" (str)')
-            base_url = tl_base
-            headers = tl_headers
-        raw_eps = obj.get('endpoints', {}) or {}
-        eps: dict[str, EndpointConfig] = (
-            {
-                str(name): EndpointConfig.from_obj(ep)
-                for name, ep in raw_eps.items()
-            }
-            if isinstance(raw_eps, dict) else {}
+        base_url, headers = _effective_service_defaults(
+            profiles=profiles,
+            fallback_base=tl_base,
+            fallback_headers=tl_headers,
         )
+
+        endpoints = _parse_endpoints(obj.get('endpoints'))
 
         return cls(
             base_url=base_url,
             headers=headers,
-            endpoints=eps,
+            endpoints=endpoints,
             profiles=profiles,
         )
 
@@ -462,13 +487,13 @@ class EndpointConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: str | Mapping[str, Any],
+        obj: str | StrAnyMap,
     ) -> Self:
         """Parse a string or mapping into an ``EndpointConfig`` instance.
 
         Parameters
         ----------
-        obj : str | Mapping[str, Any]
+        obj : str | StrAnyMap
             Either a bare path string or a mapping with endpoint fields.
 
         Returns
@@ -486,21 +511,26 @@ class EndpointConfig:
         TypedDict shape: :class:`EndpointMap` (editor/type-checker hint).
         """
         # Allow either a bare string path or a mapping with explicit fields.
-        if isinstance(obj, str):
-            return cls(path=obj, method=None)
-        if isinstance(obj, Mapping):
-            path = obj.get('path') or obj.get('url')
-            if not isinstance(path, str):
-                raise TypeError('EndpointConfig requires a "path" (str)')
+        match obj:
+            case str():
+                return cls(path=obj, method=None)
+            case Mapping():
+                path = obj.get('path') or obj.get('url')
+                if not isinstance(path, str):
+                    raise TypeError('EndpointConfig requires a "path" (str)')
 
-            return cls(
-                path=path,
-                method=obj.get('method'),
-                path_params=dict(obj.get('path_params', {}) or {}),
-                query_params=dict(obj.get('query_params', {}) or {}),
-                body=obj.get('body'),
-                pagination=PaginationConfig.from_obj(obj.get('pagination')),
-                rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
-            )
-
-        raise TypeError('Invalid endpoint config: must be str or mapping')
+                return cls(
+                    path=path,
+                    method=obj.get('method'),
+                    path_params=dict(obj.get('path_params', {}) or {}),
+                    query_params=dict(obj.get('query_params', {}) or {}),
+                    body=obj.get('body'),
+                    pagination=PaginationConfig.from_obj(
+                        obj.get('pagination'),
+                    ),
+                    rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
+                )
+            case _:
+                raise TypeError(
+                    'Invalid endpoint config: expected str or mapping',
+                )
