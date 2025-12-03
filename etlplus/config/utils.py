@@ -16,7 +16,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
-from typing import cast
 from typing import TYPE_CHECKING
 
 from ..utils import to_float
@@ -24,6 +23,7 @@ from ..utils import to_int
 
 if TYPE_CHECKING:
     from .pagination import PaginationConfig
+    from .pagination import PaginationType
     from .rate_limit import RateLimitConfig
 
 
@@ -90,7 +90,7 @@ def deep_substitute(
     vars_map : StrAnyMap | None
         Mapping of variable names to replacement values (lower precedence).
     env_map : Mapping[str, str] | None
-        Mapping of environment variable overriding ``vars_map`` values (higher
+        Mapping of environment variables overriding ``vars_map`` values (higher
         precedence).
 
     Returns
@@ -139,7 +139,6 @@ def pagination_from_defaults(
         return None
 
     # Start with direct keys if present.
-    ptype = obj.get('type')
     page_param = obj.get('page_param')
     size_param = obj.get('size_param')
     start_page = obj.get('start_page')
@@ -173,23 +172,9 @@ def pagination_from_defaults(
     # Locally import inside function to avoid circular dependencies; narrow to
     # literal.
     from .pagination import PaginationConfig
-    # from .types import PaginationType
-    from ..api import PaginationType
-
-    # Normalize pagination type to supported literal when possible.
-    norm_type: PaginationType | None
-    match str(ptype).strip().lower() if ptype is not None else '':
-        case 'page':
-            norm_type = PaginationType.PAGE  # 'page'
-        case 'offset':
-            norm_type = PaginationType.OFFSET  # 'offset'
-        case 'cursor':
-            norm_type = PaginationType.CURSOR  # 'cursor'
-        case _:
-            norm_type = None
 
     return PaginationConfig(
-        type=cast(PaginationType, norm_type),
+        type=_coerce_pagination_type(obj.get('type')),
         page_param=page_param,
         size_param=size_param,
         start_page=to_int(start_page),
@@ -271,3 +256,19 @@ def _replace_tokens(
 
 def _mapping_or_none(value: Any) -> StrAnyMap | None:
     return value if isinstance(value, Mapping) else None
+
+
+def _coerce_pagination_type(
+    value: Any,
+) -> PaginationType | None:
+    from ..api import PaginationType
+
+    match str(value).strip().lower() if value is not None else '':
+        case 'page':
+            return PaginationType.PAGE
+        case 'offset':
+            return PaginationType.OFFSET
+        case 'cursor':
+            return PaginationType.CURSOR
+        case _:
+            return None
