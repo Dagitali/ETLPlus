@@ -66,6 +66,8 @@ class PaginationConfig(BoundsWarningsMixin):
         Starting cursor value.
     records_path : str | None
         JSONPath expression to extract the records from the response.
+    fallback_path : str | None
+        Secondary JSONPath checked when ``records_path`` yields nothing.
     max_pages : int | None
         Maximum number of pages to retrieve.
     max_records : int | None
@@ -89,6 +91,7 @@ class PaginationConfig(BoundsWarningsMixin):
 
     # General
     records_path: str | None = None
+    fallback_path: str | None = None
     max_pages: int | None = None
     max_records: int | None = None
 
@@ -195,6 +198,7 @@ class PaginationConfig(BoundsWarningsMixin):
             cursor_path=obj.get('cursor_path'),
             start_cursor=obj.get('start_cursor'),
             records_path=obj.get('records_path'),
+            fallback_path=obj.get('fallback_path'),
             max_pages=to_int(obj.get('max_pages')),
             max_records=to_int(obj.get('max_records')),
         )
