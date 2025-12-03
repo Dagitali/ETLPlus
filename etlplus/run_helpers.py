@@ -34,7 +34,7 @@ import requests  # type: ignore[import]
 from .api import compute_sleep_seconds
 from .api import EndpointClient
 from .api import PaginationConfigMap as ApiPaginationConfig
-from .api.types import RetryPolicy as ApiRetryPolicy
+from .api import RetryPolicy as ApiRetryPolicy
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig
 from .config.pagination import PaginationConfig as CfgPaginationConfig
@@ -242,7 +242,7 @@ def build_endpoint_client(
     try:
         from . import run as run_mod  # local import to avoid cycles
         ClientClass = getattr(run_mod, 'EndpointClient', EndpointClient)
-    except Exception:  # pragma: no cover - fallback path
+    except (ImportError, AttributeError):  # pragma: no cover - fallback path
         ClientClass = EndpointClient
     return ClientClass(
         base_url=base_url,

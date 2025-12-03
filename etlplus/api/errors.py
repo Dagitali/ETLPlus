@@ -23,10 +23,12 @@ Examples
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import requests  # type: ignore[import]
 
-from .types import RetryPolicy
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .request import RetryPolicy
 
 
 # SECTION: EXPORTS ========================================================== #

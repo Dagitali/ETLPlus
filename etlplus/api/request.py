@@ -1,7 +1,7 @@
 """
 ``etlplus.api.request`` module.
 
-Centralized logic for handling REST API requests, including:
+Centralized logic for handling HTTP requests, including:
 - Request rate limiting.
 - Retry policies with exponential backoff.
 
@@ -30,14 +30,13 @@ from typing import TypedDict
 
 import requests  # type: ignore[import]
 
+from ..types import JSONData
+from ..utils import to_float
+from ..utils import to_int
+from ..utils import to_positive_float
+from ..utils import to_positive_int
 from .errors import ApiAuthError
 from .errors import ApiRequestError
-from .types import JSONData
-from .types import RetryPolicy
-from .utils import to_float
-from .utils import to_int
-from .utils import to_positive_float
-from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,11 +44,14 @@ from .utils import to_positive_int
 
 __all__ = [
     # Classes
-    'RateLimitConfigMap',
     'RateLimiter',
 
     # Functions
     'compute_sleep_seconds',
+
+    # Typed Dicts
+    'RateLimitConfigMap',
+    'RetryPolicy',
 ]
 
 
@@ -58,7 +60,7 @@ __all__ = [
 
 class RateLimitConfigMap(TypedDict, total=False):
     """
-    Configuration mapping for limiting REST API request rates.
+    Configuration mapping for limiting HTTP request rates.
 
     All keys are optional and intended to be mutually exclusive, positive
     values.
@@ -80,6 +82,34 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     sleep_seconds: float | int
     max_per_sec: float | int
+
+
+class RetryPolicy(TypedDict, total=False):
+    """
+    Optional retry policy for HTTP requests.
+
+    All keys are optional.
+
+    Attributes
+    ----------
+    max_attempts : int, optional
+        Maximum number of attempts (including the first). When omitted,
+        callers may apply defaults.
+    backoff : float, optional
+        Base backoff seconds; attempt ``n`` sleeps ``backoff * 2**(n-1)``
+        before retrying.
+    retry_on : list[int], optional
+        HTTP status codes that should trigger a retry.
+
+    Notes
+    -----
+    - Controls exponential backoff with jitter (applied externally) and retry
+        eligibility by HTTP status code. Used by :class:`RetryManager`.
+    """
+
+    max_attempts: int
+    backoff: float
+    retry_on: list[int]
 
 
 # SECTION: PROTECTED FUNCTIONS ============================================== #
@@ -168,7 +198,7 @@ def compute_sleep_seconds(
 @dataclass(slots=True, kw_only=True)
 class RateLimiter:
     """
-    REST API request rate limit manager.
+    HTTP request rate limit manager.
 
     Parameters
     ----------
@@ -344,7 +374,7 @@ class RateLimiter:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RetryManager:
     """
-    Centralized retry logic for REST API endpoint requests.
+    Centralized retry logic for HTTP requests.
 
     Attributes
     ----------

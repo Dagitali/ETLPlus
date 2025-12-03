@@ -1,5 +1,5 @@
 """
-etlplus.api.transport  module.
+``etlplus.api.transport`` module.
 
 Configure ``requests`` ``HTTPAdapter`` instances with connection pooling and
 optional ``urllib3`` retry behavior.
@@ -21,11 +21,6 @@ Examples
 ...   "max_retries": {"total": 3, "backoff_factor": 0.5},
 ... }
 >>> adapter = build_http_adapter(cfg)
-
-See Also
---------
-- :mod:`etlplus.api.types` for ``HTTPAdapterMountConfig`` and
-    ``HTTPAdapterRetryConfig``
 """
 from __future__ import annotations
 
@@ -35,8 +30,8 @@ from typing import TypedDict
 
 from requests.adapters import HTTPAdapter  # type: ignore
 
-from .utils import to_maximum_int
-from .utils import to_positive_int
+from ..utils import to_maximum_int
+from ..utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #

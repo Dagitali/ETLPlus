@@ -21,6 +21,7 @@ __all__ = [
     'AggregateFunc',
     'FieldName', 'Fields',
     'JSONDict', 'JSONList', 'JSONData', 'JSONScalar', 'JSONValue',
+    'JSONRecord', 'JSONRecords',
     'Record', 'Records',
     'OperatorFunc',
     'PipelineStepName', 'PipelineConfig',
@@ -50,6 +51,8 @@ type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
 # Convenience synonyms
 type Record = JSONDict
 type Records = JSONList
+type JSONRecord = JSONDict
+type JSONRecords = list[JSONRecord]
 
 # -- File System -- #
 

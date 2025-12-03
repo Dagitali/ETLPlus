@@ -25,10 +25,9 @@ pip install -e ".[dev]"
 
 ```python
 from etlplus.api import (
-    EndpointClient,
-    EndpointCredentialsBearer,
-    PaginationConfig,  # re-exported from etlplus.api.types
-    JSONRecords,
+  EndpointClient,
+  EndpointCredentialsBearer,
+  JSONRecords,
 )
 
 client = EndpointClient(
@@ -163,7 +162,7 @@ client = EndpointClient(
 
 ## Types and transport
 
-- Types: `etlplus/api/types.py` defines the `PaginationConfig` shape and other helper types. These are re-exported from `etlplus.api` for convenience.
+- Types: pagination config helpers live in `etlplus/api/response.py` and retry/rate-limit helpers (including `RetryPolicy`) live in `etlplus/api/request.py`. These are re-exported from `etlplus.api` for convenience.
 - Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users may consult it to adapt behavior.
 
 ## Minimal contract

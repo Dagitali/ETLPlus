@@ -1,15 +1,13 @@
 """
-etlplus.api.client module.
+``etlplus.api.client`` module.
 
 Endpoint client utilities for registering endpoint paths, composing URLs, and
 paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
-- Centralized types live in :mod:`etlplus.api.types` (re-exported from
-    :mod:`etlplus.api`). Prefer importing ``PaginationConfig``,
-    ``RateLimitConfig``, and ``RetryPolicy`` rather than redefining ad-hoc
-    dicts.
+- Pagination/record aliases are exported from :mod:`etlplus.api.response` and
+    retry-related types live in :mod:`etlplus.api.request`.
 - Pagination requires a ``PaginationConfig``. See
     :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the
     accepted shapes.
@@ -57,21 +55,21 @@ from urllib.parse import urlunsplit
 import requests  # type: ignore[import]
 
 from ..extract import extract as _extract
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONRecords
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RetryManager
+from .request import RetryPolicy
 from .response import PaginationConfigMap
 from .response import PaginationType
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONRecords
-from .types import RetryPolicy
 
 
 # SECTION: CLASSES ========================================================== #

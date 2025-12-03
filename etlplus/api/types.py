@@ -1,17 +1,8 @@
 """
-etlplus.api.types module.
+``etlplus.api.types`` module.
 
 Centralized type aliases and ``TypedDict``-based configurations used in the
 :mod:`etlplus.api` package.
-
-Contents
---------
-- JSON aliases: ``JSONDict``, ``JSONList``, ``JSONData``
-- Pagination configs: ``PagePaginationConfig``, ``CursorPaginationConfig``,
-  and the union ``PaginationConfig``
-- Rate limiting: ``RateLimitConfig``
-- Retry policy: ``RetryPolicy``
-- HTTP transport: ``HTTPAdapterRetryConfig``, ``HTTPAdapterMountConfig``
 
 Examples
 --------
@@ -30,15 +21,6 @@ from typing import TypedDict
 
 
 __all__ = [
-    # Type Aliases
-    'JSONScalar',
-    'JSONValue',
-    'JSONDict',
-    'JSONList',
-    'JSONData',
-    'JSONRecord',
-    'JSONRecords',
-
     # Typed Dicts
     'RetryPolicy',
 ]
@@ -81,15 +63,3 @@ class RetryPolicy(TypedDict):
     max_attempts: NotRequired[int]
     backoff: NotRequired[float]
     retry_on: NotRequired[list[int]]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type JSONScalar = bool | float | int | str | None
-type JSONValue = JSONScalar | 'JSONDict' | 'JSONList'
-type JSONDict = dict[str, JSONValue]
-type JSONList = list[JSONValue]
-type JSONRecord = JSONDict
-type JSONRecords = list[JSONRecord]
-type JSONData = JSONDict | JSONList | JSONRecords
