@@ -151,26 +151,24 @@ def pagination_from_defaults(
     max_records = obj.get('max_records')
 
     # Map from nested shapes when provided.
-    params_val = obj.get('params')
-    params_blk = params_val if isinstance(params_val, Mapping) else None
-    if params_blk and not page_param:
-        page_param = params_blk.get('page')
-    if params_blk and not size_param:
-        size_param = params_blk.get('per_page') or params_blk.get('limit')
-    if params_blk and not cursor_param:
-        cursor_param = params_blk.get('cursor')
+    params_blk = _mapping_or_none(obj.get('params'))
+    if params_blk:
+        page_param = page_param or params_blk.get('page')
+        size_param = (
+            size_param
+            or params_blk.get('per_page')
+            or params_blk.get('limit')
+        )
+        cursor_param = cursor_param or params_blk.get('cursor')
 
-    resp_val = obj.get('response')
-    resp_blk = resp_val if isinstance(resp_val, Mapping) else None
-    if resp_blk and not records_path:
-        records_path = resp_blk.get('items_path')
-    if resp_blk and not cursor_path:
-        cursor_path = resp_blk.get('next_cursor_path')
+    resp_blk = _mapping_or_none(obj.get('response'))
+    if resp_blk:
+        records_path = records_path or resp_blk.get('items_path')
+        cursor_path = cursor_path or resp_blk.get('next_cursor_path')
 
-    dflt_val = obj.get('defaults')
-    dflt_blk = dflt_val if isinstance(dflt_val, Mapping) else None
-    if dflt_blk and not page_size:
-        page_size = dflt_blk.get('per_page')
+    dflt_blk = _mapping_or_none(obj.get('defaults'))
+    if dflt_blk:
+        page_size = page_size or dflt_blk.get('per_page')
 
     # Locally import inside function to avoid circular dependencies; narrow to
     # literal.
