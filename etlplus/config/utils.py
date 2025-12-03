@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 __all__ = [
     'cast_str_dict',
     'deep_substitute',
+    'maybe_mapping',
     'pagination_from_defaults',
     'rate_limit_from_defaults',
     'to_int',
@@ -109,10 +110,33 @@ def deep_substitute(
             case list() | tuple() as seq:
                 apply = [_apply(item) for item in seq]
                 return apply if isinstance(seq, list) else tuple(apply)
+            case set():
+                return {_apply(item) for item in node}
+            case frozenset():
+                return frozenset(_apply(item) for item in node)
             case _:
                 return node
 
     return _apply(value)
+
+
+def maybe_mapping(
+    value: Any,
+) -> StrAnyMap | None:
+    """
+    Return ``value`` when it is mapping-like; otherwise ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+
+    Returns
+    -------
+    StrAnyMap | None
+        The input value if it is a mapping; ``None`` if not.
+    """
+    return value if isinstance(value, Mapping) else None
 
 
 def pagination_from_defaults(
@@ -146,11 +170,12 @@ def pagination_from_defaults(
     cursor_param = obj.get('cursor_param')
     cursor_path = obj.get('cursor_path')
     records_path = obj.get('records_path')
+    fallback_path = obj.get('fallback_path')
     max_pages = obj.get('max_pages')
     max_records = obj.get('max_records')
 
     # Map from nested shapes when provided.
-    params_blk = _mapping_or_none(obj.get('params'))
+    params_blk = maybe_mapping(obj.get('params'))
     if params_blk:
         page_param = page_param or params_blk.get('page')
         size_param = (
@@ -159,13 +184,15 @@ def pagination_from_defaults(
             or params_blk.get('limit')
         )
         cursor_param = cursor_param or params_blk.get('cursor')
+        fallback_path = fallback_path or params_blk.get('fallback_path')
 
-    resp_blk = _mapping_or_none(obj.get('response'))
+    resp_blk = maybe_mapping(obj.get('response'))
     if resp_blk:
         records_path = records_path or resp_blk.get('items_path')
         cursor_path = cursor_path or resp_blk.get('next_cursor_path')
+        fallback_path = fallback_path or resp_blk.get('fallback_path')
 
-    dflt_blk = _mapping_or_none(obj.get('defaults'))
+    dflt_blk = maybe_mapping(obj.get('defaults'))
     if dflt_blk:
         page_size = page_size or dflt_blk.get('per_page')
 
@@ -183,6 +210,7 @@ def pagination_from_defaults(
         cursor_path=cursor_path,
         start_cursor=None,
         records_path=records_path,
+        fallback_path=fallback_path,
         max_pages=to_int(max_pages),
         max_records=to_int(max_records),
     )
@@ -252,10 +280,6 @@ def _replace_tokens(
         if token in out:
             out = out.replace(token, str(replacement))
     return out
-
-
-def _mapping_or_none(value: Any) -> StrAnyMap | None:
-    return value if isinstance(value, Mapping) else None
 
 
 def _coerce_pagination_type(
