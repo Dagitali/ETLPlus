@@ -14,7 +14,6 @@ import json
 import random
 import tempfile
 import types
-from os import PathLike
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -36,8 +35,6 @@ from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
-from etlplus.enums import DataConnectorType
-from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
 
 
@@ -226,11 +223,11 @@ def offset_cfg() -> Callable[..., PagePaginationConfigMap]:
 
 
 @pytest.fixture
-def extract_stub(
+def request_once_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
-    Patch :func:`EndpointClient._extract` and capture calls for assertion.
+    Patch :meth:`EndpointClient._request_once` and capture calls.
 
     Parameters
     ----------
@@ -248,13 +245,21 @@ def extract_stub(
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
-    def _fake_extract(kind: str, url: str, **kwargs: Any):  # noqa: D401
-        assert kind == 'api'
+    def _fake_request(
+        self: cmod.EndpointClient,
+        method: str,
+        url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        **kwargs: Any,
+    ) -> dict[str, Any]:  # noqa: D401
+        assert method == 'GET'
         calls['urls'].append(url)
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod, '_extract', _fake_extract)
+    monkeypatch.setattr(cmod.EndpointClient, '_request_once', _fake_request)
 
     return calls
 
@@ -263,11 +268,12 @@ def extract_stub(
 def extract_stub_factory() -> Callable[..., Any]:
     """
     Create a factory to build a per-use stub factory for patching
-    :func:`_extract` without relying on function-scoped fixtures
+    the low-level HTTP helper without relying on function-scoped fixtures
     (Hypothesis-friendly).
 
-    Each invocation patches :func:`etlplus.api.client._extract` for the
-    duration of the context manager and restores the original afterwards.
+    Each invocation patches
+    :meth:`etlplus.api.client.EndpointClient._request_once` for the duration
+    of the context manager and restores the original afterwards.
 
     Returns
     -------
@@ -290,28 +296,25 @@ def extract_stub_factory() -> Callable[..., Any]:
     ):  # noqa: D401
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
-        def _fake_extract(
-            source_type: DataConnectorType | str,
-            source: str | Path | PathLike[str],
-            file_format: FileFormat | str | None = None,
+        def _fake_request(
+            self: cmod.EndpointClient,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
             **kwargs: Any,
         ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
-            calls['urls'].append(str(source))
-            calls['kwargs'].append(
-                {
-                    'source_type': source_type,
-                    'file_format': file_format,
-                    **kwargs,
-                },
-            )
+            calls['urls'].append(url)
+            calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = getattr(cmod, '_extract')
-        cmod._extract = _fake_extract  # type: ignore[attr-defined]
+        saved = getattr(cmod.EndpointClient, '_request_once')
+        setattr(cmod.EndpointClient, '_request_once', _fake_request)
         try:
             yield calls
         finally:
-            cmod._extract = saved  # type: ignore[attr-defined]
+            setattr(cmod.EndpointClient, '_request_once', saved)
 
     return _make
 
