@@ -13,10 +13,10 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 from typing import cast
-from typing import Iterable
 from typing import TYPE_CHECKING
 
 from ..utils import to_float
@@ -40,11 +40,17 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def cast_str_dict(
-    m: Mapping[str, Any] | None,
+    mapping: StrAnyMap | None,
 ) -> dict[str, str]:
     """
     Return a new ``dict`` with all values coerced to ``str``.
@@ -54,21 +60,23 @@ def cast_str_dict(
 
     Parameters
     ----------
-    m : Mapping[str, Any] | None
-        The mapping to coerce.
+    mapping : StrAnyMap | None
+        Mapping whose values are stringified; ``None`` yields ``{}``.
 
     Returns
     -------
     dict[str, str]
-        Dictionary of the original pairs converted via ``str()``.
+        Dictionary of the original key/value pairs converted via ``str()``.
     """
-    return {k: str(v) for k, v in (m or {}).items()}
+    if not mapping:
+        return {}
+    return {str(key): str(value) for key, value in mapping.items()}
 
 
 def deep_substitute(
     value: Any,
-    vars_map: Mapping[str, Any],
-    env_map: Mapping[str, str],
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, str] | None,
 ) -> Any:
     """
     Recursively substitute ``${VAR}`` tokens in nested structures.
@@ -79,45 +87,36 @@ def deep_substitute(
     ----------
     value : Any
         The value to perform substitutions on.
-    vars_map : Mapping[str, Any]
-        A mapping of variable names to replacement values.
-    env_map : Mapping[str, str]
-        A mapping of environment variable names to replacement values.
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, str] | None
+        Mapping of environment variable overriding ``vars_map`` values (higher
+        precedence).
 
     Returns
     -------
     Any
         New structure with substitutions applied where tokens were found.
     """
-    if isinstance(value, str):
-        # Fast path: single combined pass over substitutions.
-        if not (vars_map or env_map):
-            return value
+    substitutions = _prepare_substitutions(vars_map, env_map)
 
-        # Union preserves right-hand precedence (env overrides vars).
-        merged: Iterable[tuple[str, Any]] = (
-            (dict(vars_map) | dict(env_map)).items()
-            if env_map else vars_map.items()
-        )
-        out = value
-        for name, replacement in merged:
-            token = f"${{{name}}}"
-            if token in out:
-                out = out.replace(token, str(replacement))
-        return out
-    if isinstance(value, dict):
-        return {
-            k: deep_substitute(v, vars_map, env_map)
-            for k, v in value.items()
-        }
-    if isinstance(value, list):
-        return [deep_substitute(v, vars_map, env_map) for v in value]
+    def _apply(node: Any) -> Any:
+        match node:
+            case str():
+                return _replace_tokens(node, substitutions)
+            case Mapping():
+                return {k: _apply(v) for k, v in node.items()}
+            case list() | tuple() as seq:
+                apply = [_apply(item) for item in seq]
+                return apply if isinstance(seq, list) else tuple(apply)
+            case _:
+                return node
 
-    return value
+    return _apply(value)
 
 
 def pagination_from_defaults(
-    obj: Mapping[str, Any] | None,
+    obj: StrAnyMap | None,
 ) -> PaginationConfig | None:
     """
     Extract pagination type and integer bounds from defaults mapping.
@@ -127,7 +126,7 @@ def pagination_from_defaults(
 
     Parameters
     ----------
-    obj : Mapping[str, Any] | None
+    obj : StrAnyMap | None
         The object to parse (expected to be a mapping).
 
     Returns
@@ -207,7 +206,7 @@ def pagination_from_defaults(
 
 
 def rate_limit_from_defaults(
-    obj: Mapping[str, Any] | None,
+    obj: StrAnyMap | None,
 ) -> RateLimitConfig | None:
     """
     Return numeric rate-limit bounds from defaults mapping.
@@ -216,7 +215,7 @@ def rate_limit_from_defaults(
 
     Parameters
     ----------
-    obj : Mapping[str, Any] | None
+    obj : StrAnyMap | None
         The object to parse (expected to be a mapping).
 
     Returns
@@ -239,3 +238,38 @@ def rate_limit_from_defaults(
         sleep_seconds=to_float(sleep_seconds),
         max_per_sec=to_float(max_per_sec),
     )
+
+
+# SECTION: PROTECTED FUNCTIONS ============================================== #
+
+
+def _prepare_substitutions(
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, Any] | None,
+) -> tuple[tuple[str, Any], ...]:
+    if not vars_map and not env_map:
+        return ()
+    merged: dict[str, Any] = {}
+    if vars_map:
+        merged.update(vars_map)
+    if env_map:
+        merged.update(env_map)
+    return tuple(merged.items())
+
+
+def _replace_tokens(
+    text: str,
+    substitutions: Iterable[tuple[str, Any]],
+) -> str:
+    if not substitutions:
+        return text
+    out = text
+    for name, replacement in substitutions:
+        token = f"${{{name}}}"
+        if token in out:
+            out = out.replace(token, str(replacement))
+    return out
+
+
+def _mapping_or_none(value: Any) -> StrAnyMap | None:
+    return value if isinstance(value, Mapping) else None
