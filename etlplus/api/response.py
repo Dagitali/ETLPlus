@@ -49,14 +49,14 @@ from typing import Mapping
 from typing import Required
 from typing import TypedDict
 
+from ..utils import to_float
+from ..utils import to_int
+from ..utils import to_maximum_int
+from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .types import JSONDict
 from .types import JSONRecords
-from .utils import to_float
-from .utils import to_int
-from .utils import to_maximum_int
-from .utils import to_positive_int
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -616,7 +616,7 @@ class Paginator:
             return True
         return False
 
-    # TODO: Replace with RateLimiter.
+    # TODOD: Replace with RateLimiter when pagination integrates RateLimiter.
     def _sleep(self) -> None:
         """
         Sleep for the configured number of seconds.
