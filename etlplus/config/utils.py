@@ -127,7 +127,7 @@ def pagination_from_defaults(
     Parameters
     ----------
     obj : StrAnyMap | None
-        The object to parse (expected to be a mapping).
+        Defaults mapping (non-mapping inputs return ``None``).
 
     Returns
     -------
@@ -216,7 +216,7 @@ def rate_limit_from_defaults(
     Parameters
     ----------
     obj : StrAnyMap | None
-        The object to parse (expected to be a mapping).
+        Defaults mapping (non-mapping inputs return ``None``).
 
     Returns
     -------
