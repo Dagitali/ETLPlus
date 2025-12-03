@@ -130,6 +130,7 @@ def _extract_from_source(
         pagination = {**pagination, **resolve(ov.get('pagination', {}))}
         ptype = str(pagination.get('type', '')).strip().lower()
         records_path = pagination.get('records_path')
+        fallback_path = pagination.get('fallback_path')
         max_pages = pagination.get('max_pages')
         max_records = pagination.get('max_records')
 
@@ -140,18 +141,33 @@ def _extract_from_source(
         def _coalesce_records(x: Any) -> JSONList:
             # Optionally drill into a dict via a simple dotted path to
             # find the records array.
-            def _get_path(obj: Any, path: str) -> Any:
+            _missing = object()
+
+            def _get_path(obj: Any, path: str | None) -> Any:
+                if not isinstance(path, str) or not path:
+                    return obj
                 cur = obj
                 for part in path.split('.'):
-                    if isinstance(cur, dict):
-                        cur = cur.get(part)
+                    if isinstance(cur, dict) and part in cur:
+                        cur = cur[part]
                     else:
-                        return None
+                        return _missing
                 return cur
 
-            data = x
-            if isinstance(records_path, str) and records_path:
-                data = _get_path(x, records_path)
+            data = _get_path(x, records_path)
+            if data is _missing:
+                data = None
+
+            if fallback_path and (
+                data is None
+                or (isinstance(data, list) and not data)
+            ):
+                fb = _get_path(x, fallback_path)
+                if fb is not _missing:
+                    data = fb
+
+            if data is None and not records_path:
+                data = x
 
             if isinstance(data, list):
                 # Keep only dict items (normalize scalars into dicts)
