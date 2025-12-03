@@ -8,7 +8,7 @@ public path under real configuration semantics.
 Notes
 -----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
-    client module's internal ``_extract`` suffices to intercept page fetches.
+    client's internal HTTP helper suffices to intercept page fetches.
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
@@ -100,9 +100,21 @@ jobs:
                 return {'data': [{'id': 'c'}], 'next': None}
             return {'data': [], 'next': None}
 
+        def fake_request(
+            self: cmod.EndpointClient,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         # Patch extract targets consistent with the page/offset test.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
 
         monkeypatch.setattr(
             sys,
@@ -166,8 +178,20 @@ jobs:
                 return {'items': [{'id': 'z'}], 'next': None}
             return {'items': [], 'next': None}
 
+        def fake_request(
+            self: cmod.EndpointClient,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
         monkeypatch.setattr(
             sys,
             'argv',
@@ -248,7 +272,7 @@ jobs:
 """
         cfg = _write_pipeline(tmp_path, pipeline_yaml)
 
-        # Mock extract to return 2 items for page 1 and 1 item for page 2.
+        # Mock extract to return scenario-driven items per page.
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
@@ -260,12 +284,24 @@ jobs:
                 return scenario.pages[page - 1]
             return []
 
+        def fake_request(
+            self: cmod.EndpointClient,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         # Patch extract targets:
         # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - cmod._extract: paginate now delegates to EndpointClient, which uses
-        #   the client's internal extractor per page.
+        # - EndpointClient._request_once: paginate now delegates to the
+        #   client's internal HTTP helper per page.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
 
         # Run CLI.
         monkeypatch.setattr(
