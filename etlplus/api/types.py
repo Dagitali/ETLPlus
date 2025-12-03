@@ -25,6 +25,15 @@ from __future__ import annotations
 from typing import NotRequired
 from typing import TypedDict
 
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..types import JSONRecord
+from ..types import JSONRecords
+from ..types import JSONScalar
+from ..types import JSONValue
+from ..types import PaginationConfig
+
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,6 +47,7 @@ __all__ = [
     'JSONData',
     'JSONRecord',
     'JSONRecords',
+    'PaginationConfig',
 
     # Typed Dicts
     'RetryPolicy',
@@ -81,15 +91,3 @@ class RetryPolicy(TypedDict):
     max_attempts: NotRequired[int]
     backoff: NotRequired[float]
     retry_on: NotRequired[list[int]]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type JSONScalar = bool | float | int | str | None
-type JSONValue = JSONScalar | 'JSONDict' | 'JSONList'
-type JSONDict = dict[str, JSONValue]
-type JSONList = list[JSONValue]
-type JSONRecord = JSONDict
-type JSONRecords = list[JSONRecord]
-type JSONData = JSONDict | JSONList | JSONRecords
