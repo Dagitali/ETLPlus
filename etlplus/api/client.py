@@ -731,7 +731,12 @@ class EndpointClient:
             )
             page_data = self._extract_with_retry(url, **kw)
             records_path = pg.get('records_path')
-            yield from Paginator.coalesce_records(page_data, records_path)
+            fallback_path = pg.get('fallback_path')
+            yield from Paginator.coalesce_records(
+                page_data,
+                records_path,
+                fallback_path,
+            )
             return
 
         # Determine effective sleep seconds.
@@ -936,6 +941,7 @@ class EndpointClient:
     def coalesce_records(
         x: Any,
         records_path: str | None,
+        fallback_path: str | None = None,
     ) -> JSONRecords:
         """
         Coalesce JSON page payloads into a list of dicts.
@@ -949,13 +955,16 @@ class EndpointClient:
             The JSON payload from an API response.
         records_path : str | None
             Dotted path to the records within the payload.
+        fallback_path : str | None
+            Secondary dotted path consulted when ``records_path`` resolves to
+            ``None`` or an empty list.
 
         Returns
         -------
         JSONRecords
             List of record dicts extracted from the payload.
         """
-        return Paginator.coalesce_records(x, records_path)
+        return Paginator.coalesce_records(x, records_path, fallback_path)
 
     @staticmethod
     def next_cursor_from(
