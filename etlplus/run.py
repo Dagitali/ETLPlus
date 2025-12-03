@@ -18,7 +18,7 @@ import requests  # type: ignore[import]
 from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
 from .api import PaginationConfigMap as ApiPaginationConfig
-from .api.types import RetryPolicy as ApiRetryPolicy
+from .api import RetryPolicy as ApiRetryPolicy
 from .config import load_pipeline_config
 from .extract import extract
 from .load import load
@@ -50,8 +50,9 @@ __all__ = ['run']
 #   (config layer)
 # - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
 #   (config layer)
-# - ApiPaginationConfig: etlplus.api.types.PaginationConfig (client layer)
-# - ApiRetryPolicy: etlplus.api.types.RetryPolicy (client layer)
+# - ApiPaginationConfig: etlplus.api.response.PaginationConfigMap
+#   (client layer)
+# - ApiRetryPolicy: etlplus.api.request.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
 type Headers = Mapping[str, str]
