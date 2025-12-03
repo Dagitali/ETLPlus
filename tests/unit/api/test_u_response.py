@@ -106,6 +106,26 @@ class FakePageClient(EndpointClient):
 class TestPaginator:
     """Unit test suite for :class:`Paginator`."""
 
+    def test_coalesce_records_uses_fallback_path(self) -> None:
+        """
+        Test that :meth:`coalesce_records` falls back when primary path is
+        empty.
+        """
+        payload = {
+            'data': {
+                'primary': [],
+                'backup': [{'id': 99}],
+            },
+        }
+
+        records = Paginator.coalesce_records(
+            payload,
+            'data.primary',
+            'data.backup',
+        )
+
+        assert records == [{'id': 99}]
+
     def test_defaults_when_missing_keys(self) -> None:
         """
         Confirm that default parameter names and limits are preserved.
@@ -130,6 +150,35 @@ class TestPaginator:
         assert paginator.max_pages is None
         assert paginator.max_records is None
         assert paginator.start_cursor is None
+
+    def test_page_integration(self) -> None:
+        """
+        Test pagination over a multi-record iterator.
+
+        Uses a lightweight EndpointClient subclass that overrides
+        ``paginate_url_iter`` to simulate multiple pages of results and
+        verifies that ``paginate`` flattens them into a single record stream.
+        """
+
+        client = FakePageClient(
+            base_url='https://example.test/api',
+            endpoints={'items': '/items'},
+        )
+
+        pg: PagePaginationConfigMap = {
+            'type': PaginationType.PAGE,
+            'page_param': 'page',
+            'size_param': 'per_page',
+            'page_size': 2,
+            'records_path': 'items',
+        }
+
+        records = cast(
+            list[dict[str, Any]],
+            list(client.paginate('items', pagination=pg)),
+        )
+
+        assert [r['id'] for r in records] == [1, 2, 3]
 
     @pytest.mark.parametrize(
         'actual, expected_page_size',
@@ -162,6 +211,36 @@ class TestPaginator:
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
         assert paginator.page_size == expected_page_size
+
+    def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
+        """
+        Test that paginate and paginate_iter delegate to paginate_url_iter.
+        """
+        client = RecordingClient(
+            base_url='https://example.test/api',
+            endpoints={'items': '/items'},
+        )
+
+        pg: PagePaginationConfigMap = {'type': PaginationType.PAGE}
+
+        # Both helpers should route through paginate_url_iter.
+        list(client.paginate('items', pagination=pg))
+        list(client.paginate_iter('items', pagination=pg))
+
+        # Both calls should have gone through paginate_url_iter exactly once
+        # each.
+        assert len(client._paginate_calls) == 2
+
+        calls: list[dict[str, Any]] = client._paginate_calls
+
+        urls = [call['url'] for call in calls]
+        assert urls == [
+            'https://example.test/api/items',
+            'https://example.test/api/items',
+        ]
+
+        paginations = [call['pagination'] for call in calls]
+        assert paginations == [pg, pg]
 
     @pytest.mark.parametrize(
         'ptype, actual, expected',
@@ -207,62 +286,3 @@ class TestPaginator:
             assert paginator.type == ptype
 
         assert paginator.start_page == expected
-
-    def test_page_integration(self) -> None:
-        """
-        Test pagination over a multi-record iterator.
-
-        Uses a lightweight EndpointClient subclass that overrides
-        ``paginate_url_iter`` to simulate multiple pages of results and
-        verifies that ``paginate`` flattens them into a single record stream.
-        """
-
-        client = FakePageClient(
-            base_url='https://example.test/api',
-            endpoints={'items': '/items'},
-        )
-
-        pg: PagePaginationConfigMap = {
-            'type': PaginationType.PAGE,
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'page_size': 2,
-            'records_path': 'items',
-        }
-
-        records = cast(
-            list[dict[str, Any]],
-            list(client.paginate('items', pagination=pg)),
-        )
-
-        assert [r['id'] for r in records] == [1, 2, 3]
-
-    def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
-        """
-        Test that paginate and paginate_iter delegate to paginate_url_iter.
-        """
-        client = RecordingClient(
-            base_url='https://example.test/api',
-            endpoints={'items': '/items'},
-        )
-
-        pg: PagePaginationConfigMap = {'type': PaginationType.PAGE}
-
-        # Both helpers should route through paginate_url_iter.
-        list(client.paginate('items', pagination=pg))
-        list(client.paginate_iter('items', pagination=pg))
-
-        # Both calls should have gone through paginate_url_iter exactly once
-        # each.
-        assert len(client._paginate_calls) == 2
-
-        calls: list[dict[str, Any]] = client._paginate_calls
-
-        urls = [call['url'] for call in calls]
-        assert urls == [
-            'https://example.test/api/items',
-            'https://example.test/api/items',
-        ]
-
-        paginations = [call['pagination'] for call in calls]
-        assert paginations == [pg, pg]
