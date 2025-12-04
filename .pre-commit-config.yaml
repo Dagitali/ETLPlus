@@ -136,18 +136,18 @@ repos:
   #     - id: setup-cfg-fmt
 
   # Python: linting, import ordering, pyupgrade-like rules
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.14.2
-  #   hooks:
-  #     - id: ruff
-  #       args:
-  #         - --fix
-  #         - --exit-non-zero-on-fix
-  #       # Ruff will:
-  #       # - enforce E/F/W/B/I/UP as configured in .ruff.toml
-  #       # - sort imports (isort-like)
-  #       # - apply pyupgrade-like rules for py313
-  #     # - id: ruff-format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.2
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
+        # Ruff will:
+        # - enforce E/F/W/B/I/UP as configured in .ruff.toml
+        # - sort imports (isort-like)
+        # - apply pyupgrade-like rules for py313
+      # - id: ruff-format
 
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.2
