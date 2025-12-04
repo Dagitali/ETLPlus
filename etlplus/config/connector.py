@@ -36,22 +36,20 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
-from typing import overload
-from typing import Self
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Self
+from typing import overload
 
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .types import (
-        ConnectorApiConfigMap,
-        ConnectorDbConfigMap,
-        ConnectorFileConfigMap,
-        ConnectorType,
-    )
+    from .types import ConnectorApiConfigMap
+    from .types import ConnectorDbConfigMap
+    from .types import ConnectorFileConfigMap
+    from .types import ConnectorType
 
 
 # SECTION: EXPORTS ========================================================== #

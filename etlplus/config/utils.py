@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
-from typing import Any
 from typing import TYPE_CHECKING
+from typing import Any
 
 from ..utils import to_float
 from ..utils import to_int

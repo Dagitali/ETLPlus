@@ -20,10 +20,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
-from typing import overload
-from typing import Self
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Self
+from typing import overload
 
 from ..api import PaginationType
 from .mixins import BoundsWarningsMixin

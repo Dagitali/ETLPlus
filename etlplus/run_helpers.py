@@ -26,15 +26,15 @@ from __future__ import annotations
 import inspect
 from collections.abc import Mapping
 from typing import Any
-from typing import cast
 from typing import TypedDict
+from typing import cast
 
 import requests  # type: ignore[import]
 
-from .api import compute_sleep_seconds
 from .api import EndpointClient
 from .api import PaginationConfigMap as ApiPaginationConfig
 from .api import RetryPolicy as ApiRetryPolicy
+from .api import compute_sleep_seconds
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig
 from .config.pagination import PaginationConfig as CfgPaginationConfig
@@ -692,7 +692,7 @@ def build_session(
     params = cfg.get('params')
     if isinstance(params, dict):
         try:
-            setattr(s, 'params', params)
+            s.params = params
         except (AttributeError, TypeError):
             pass
     auth = cfg.get('auth')

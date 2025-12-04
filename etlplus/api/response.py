@@ -38,16 +38,16 @@ endpoint:
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
-from typing import cast
 from typing import ClassVar
-from typing import Iterator
 from typing import Literal
 from typing import Required
 from typing import TypedDict
+from typing import cast
 
 from ..types import JSONDict
 from ..types import JSONRecords

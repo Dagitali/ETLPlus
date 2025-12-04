@@ -19,8 +19,8 @@ import pytest
 from etlplus.config.connector import ConnectorApi
 from etlplus.config.connector import ConnectorDb
 from etlplus.config.connector import ConnectorFile
-from etlplus.config.pipeline import _build_connectors
 from etlplus.config.pipeline import PipelineConfig
+from etlplus.config.pipeline import _build_connectors
 
 
 # SECTION: TESTS ============================================================ #

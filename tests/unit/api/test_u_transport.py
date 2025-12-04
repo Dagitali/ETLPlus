@@ -20,7 +20,6 @@ import requests  # type: ignore[import]
 
 from etlplus.api.transport import build_http_adapter
 
-
 # SECTION: TESTS ============================================================ #
 
 

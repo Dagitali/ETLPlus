@@ -7,18 +7,18 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
-from typing import cast
 from typing import Final
 from typing import TypedDict
+from typing import cast
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
 
-from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
 from .api import PaginationConfigMap as ApiPaginationConfig
 from .api import RetryPolicy as ApiRetryPolicy
+from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .config import load_pipeline_config
 from .extract import extract
 from .load import load
