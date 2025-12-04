@@ -42,7 +42,8 @@ def _dummy_fetch(
 
 
 class RecordingClient(EndpointClient):
-    """EndpointClient subclass that records paginate_url_iter calls.
+    """
+    EndpointClient subclass that records paginate_url_iter calls.
 
     Used to verify that ``paginate`` and ``paginate_iter`` are thin shims
     over ``paginate_url_iter``.
@@ -52,6 +53,7 @@ class RecordingClient(EndpointClient):
 
     @property
     def paginate_calls(self) -> list[dict[str, Any]]:
+        """Access recorded :meth:`paginate_url_iter` calls."""
         return type(self)._paginate_calls
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -83,6 +85,12 @@ class RecordingClient(EndpointClient):
 
 
 class FakePageClient(EndpointClient):
+    """
+    EndpointClient subclass that simulates paginated results.
+
+    Used to test :class:`Paginator` integration without real HTTP calls.
+    """
+
     def paginate_url_iter(
         self,
         url: str,
