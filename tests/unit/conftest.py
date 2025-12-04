@@ -313,12 +313,21 @@ def extract_stub_factory() -> Callable[..., Any]:
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = getattr(cmod.EndpointClient, '_request_once')
-        setattr(cmod.EndpointClient, '_request_once', _fake_request)
+        saved = cmod.EndpointClient._request_once
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            cmod.EndpointClient,
+            '_request_once',
+            _fake_request,
+        )
         try:
             yield calls
         finally:
-            setattr(cmod.EndpointClient, '_request_once', saved)
+            monkeypatch.setattr(
+                cmod.EndpointClient,
+                '_request_once',
+                saved,
+            )
 
     return _make
 
