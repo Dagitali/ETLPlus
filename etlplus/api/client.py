@@ -384,56 +384,79 @@ class EndpointClient:
                         close_attr()  # type: ignore[misc]
                     except TypeError:
                         pass
+            except Exception:
+                # Some callers provide mock objects with non-callable
+                # ``close`` attributes—ignore those rather than bubble.
+                pass
             finally:
-                object.__setattr__(self, '_ctx_session', None)
-                object.__setattr__(self, '_ctx_owns_session', False)
+                self._clear_managed_session()
         else:
             # Ensure cleared even if we didn't own it
-            object.__setattr__(self, '_ctx_session', None)
-            object.__setattr__(self, '_ctx_owns_session', False)
+            self._clear_managed_session()
+
+    def _clear_managed_session(self) -> None:
+        """Reset context-managed session bookkeeping."""
+        object.__setattr__(self, '_ctx_session', None)
+        object.__setattr__(self, '_ctx_owns_session', False)
 
     # -- Protected Instance Methods -- #
 
-    def _extract_with_retry(
+    def _get_with_retry(
         self,
         url: str,
         **kw: Any,
     ) -> JSONData:
         """
-        Execute an API GET with optional retry policy.
-
-        Retries only apply when a retry policy is configured on the client.
-        Without a policy, a single attempt is performed.
+        Execute an HTTP ``GET`` request with the client's retry semantics.
 
         Parameters
         ----------
         url : str
             Absolute URL to fetch.
         **kw : Any
-            Keyword arguments forwarded to ``requests.get`` via
-            :func:`etlplus.extract.extract`.
+            Keyword arguments forwarded to :meth:`request` (e.g., ``params``).
 
         Returns
         -------
         JSONData
-            Parsed JSON payload.
-
-        Raises
-        ------
-        ApiAuthError
-            If authentication or authorization ultimately fails
-            (for example, with a 401 or 403 status).
-        ApiRequestError
-            If all retry attempts fail (or a single attempt fails with no
-            retry policy configured) for other HTTP statuses or network
-            errors.
+            Parsed payload produced by :meth:`request`.
 
         Notes
         -----
-        This helper remains for backward compatibility and simply forwards
-        to :meth:`request` with ``method='GET'``.
+        This method surfaces the more accurate name for what historically
+        lived behind :meth:`_extract_with_retry`. Errors from
+        :meth:`request` (``ApiAuthError``/``ApiRequestError``) propagate
+        unchanged.
         """
         return self.request('GET', url, **kw)
+
+    # TODO: Remove this method.  Replace calls with :meth:`_get_with_retry`.
+    def _extract_with_retry(
+        self,
+        url: str,
+        **kw: Any,
+    ) -> JSONData:
+        """
+        Backwards-compatible alias for :meth:`_get_with_retry`.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to fetch.
+        **kw : Any
+            Keyword arguments forwarded to :meth:`_get_with_retry`.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload produced by :meth:`_get_with_retry`.
+
+        Notes
+        -----
+        Prefer :meth:`_get_with_retry`; this wrapper exists to avoid churn in
+        older call sites and tests.
+        """
+        return self._get_with_retry(url, **kw)
 
     def _request_with_retry(
         self,
@@ -441,8 +464,31 @@ class EndpointClient:
         url: str,
         **kw: Any,
     ) -> JSONData:
-        """Execute an HTTP request with optional retry semantics."""
-        method_normalized = (method or 'GET').strip().upper() or 'GET'
+        """
+        Execute an HTTP request honoring the configured retry policy.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke.
+        url : str
+            Absolute URL to request.
+        **kw : Any
+            Keyword arguments forwarded to :func:`requests.request`.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+
+        Raises
+        ------
+        ApiAuthError
+            If authentication ultimately fails (401/403).
+        ApiRequestError
+            If retries are exhausted for other failures.
+        """
+        method_normalized = self._normalize_http_method(method)
 
         call_kwargs = dict(kw)
         supplied_timeout = call_kwargs.pop('timeout', _MISSING)
@@ -536,7 +582,19 @@ class EndpointClient:
         self,
         response: Response,
     ) -> JSONData:
-        """Normalize ``requests`` responses into JSON-compatible payloads."""
+        """
+        Normalize ``requests`` responses into JSON-compatible payloads.
+
+        Parameters
+        ----------
+        response : Response
+            Raw ``requests`` response.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+        """
         content_type = response.headers.get('content-type', '').lower()
         if 'application/json' in content_type:
             try:
@@ -568,9 +626,30 @@ class EndpointClient:
         timeout: Any,
         **kwargs: Any,
     ) -> JSONData:
-        """Perform a single HTTP request and parse the response payload."""
+        """
+        Perform a single HTTP request and parse the response payload.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke.
+        url : str
+            Absolute URL to request.
+        session : requests.Session | None
+            Session used for dispatch (if any).
+        timeout : Any
+            Timeout supplied to ``requests``.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+        """
+        method_normalized = self._normalize_http_method(method)
         response = self._send_http_request(
-            method,
+            method_normalized,
             url,
             session=session,
             timeout=timeout,
@@ -580,7 +659,19 @@ class EndpointClient:
         return self._parse_response_payload(response)
 
     def _resolve_timeout(self, timeout: Any) -> Any:
-        """Resolve timeout, applying the client default when unspecified."""
+        """
+        Resolve timeout, applying the client default when unspecified.
+
+        Parameters
+        ----------
+        timeout : Any
+            Timeout value supplied by the caller.
+
+        Returns
+        -------
+        Any
+            Caller-supplied timeout or the client default.
+        """
         return self.DEFAULT_TIMEOUT if timeout is _MISSING else timeout
 
     def _send_http_request(
@@ -592,25 +683,60 @@ class EndpointClient:
         timeout: Any,
         **kwargs: Any,
     ) -> Response:
-        """Dispatch a requests call using the provided session when present."""
-        call_kwargs = dict(kwargs)
-        call_kwargs['timeout'] = timeout
+        """
+        Dispatch an HTTP call using the provided or default session.
 
-        method_normalized = (method or 'GET').strip().upper() or 'GET'
+        Parameters
+        ----------
+        method : str
+            HTTP method name.
+        url : str
+            Absolute URL to request.
+        session : requests.Session | None
+            Optional session bound to the client/context.
+        timeout : Any
+            Timeout forwarded to ``requests``.
+        **kwargs : Any
+            Additional keyword arguments for ``requests``.
 
+        Returns
+        -------
+        Response
+            Raw ``requests`` response for downstream parsing.
+        """
+        call_kwargs = {**kwargs, 'timeout': timeout}
+        method_normalized = self._normalize_http_method(method)
+        request_callable = self._resolve_request_callable(session)
+        return request_callable(method_normalized, url, **call_kwargs)
+
+    def _resolve_request_callable(
+        self,
+        session: requests.Session | None,
+    ) -> Callable[..., Response]:
+        """
+        Resolve which callable should issue the HTTP request.
+
+        Parameters
+        ----------
+        session : requests.Session | None
+            Optional session provided by the caller or context manager.
+
+        Returns
+        -------
+        Callable[..., Response]
+            A callable mirroring ``requests.request``.
+
+        Raises
+        ------
+        TypeError
+            If a custom session does not expose a callable ``request``.
+        """
         if session is not None:
             request_callable = getattr(session, 'request', None)
-            if not callable(request_callable):
-                raise TypeError(
-                    'Session must expose a callable "request" method',
-                )
-        else:
-            request_callable = requests.request
-
-        return cast(
-            Response,
-            request_callable(method_normalized, url, **call_kwargs),
-        )
+            if callable(request_callable):
+                return request_callable
+            raise TypeError('Session must expose a callable "request" method')
+        return requests.request
 
     # -- Instance Methods (HTTP Requests )-- #
 
@@ -619,7 +745,23 @@ class EndpointClient:
         url: str,
         **kwargs: Any,
     ) -> JSONData:
-        """Convenience wrapper for ``request('GET', ...)``."""
+        """
+        Wrap ``request('GET', ...)`` for convenience.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to request.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``
+            (e.g., ``params``, ``headers``).
+
+        Returns
+        -------
+        JSONData
+            Parsed JSON payload or fallback structure matching
+            :func:`etlplus.extract.extract_from_api` semantics.
+        """
         return self.request('GET', url, **kwargs)
 
     def post(
@@ -627,7 +769,23 @@ class EndpointClient:
         url: str,
         **kwargs: Any,
     ) -> JSONData:
-        """Convenience wrapper for ``request('POST', ...)``."""
+        """
+        Wrap ``request('POST', ...)`` for convenience.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to request.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``
+            (e.g., ``params``, ``headers``, ``json``).
+
+        Returns
+        -------
+        JSONData
+            Parsed JSON payload or fallback structure matching
+            :func:`etlplus.extract.extract_from_api` semantics.
+        """
         return self.request('POST', url, **kwargs)
 
     def request(
@@ -657,7 +815,7 @@ class EndpointClient:
         """
         return self._request_with_retry(method, url, **kwargs)
 
-    # -- Instance Methods (HTTP Responses)-- #
+    # -- Instance Methods (HTTP Responses) -- #
 
     def paginate(
         self,
@@ -708,26 +866,14 @@ class EndpointClient:
             path_parameters=path_parameters,
             query_parameters=query_parameters,
         )
-
-        # If no pagination provided, preserve single-request behavior.
-        if not pagination or not pagination.get('type'):
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return self._extract_with_retry(url, **kw)
-
-        # Collect from iterator for paginated streaming ergonomics.
-        records: JSONRecords = list(
-            self.paginate_url_iter(
-                url=url,
-                params=params,
-                headers=headers,
-                timeout=timeout,
-                pagination=pagination,
-                sleep_seconds=sleep_seconds,
-            ),
+        return self.paginate_url(
+            url,
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            pagination=pagination,
+            sleep_seconds=sleep_seconds,
         )
-        return records
 
     def paginate_iter(
         self,
@@ -831,7 +977,7 @@ class EndpointClient:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
-            return self._extract_with_retry(url, **kw)
+            return self._get_with_retry(url, **kw)
 
         # For known pagination types, collect from the generator.
         records: JSONRecords = list(
@@ -890,7 +1036,7 @@ class EndpointClient:
                 headers=headers,
                 timeout=timeout,
             )
-            page_data = self._extract_with_retry(url, **kw)
+            page_data = self._get_with_retry(url, **kw)
             records_path = pg.get('records_path')
             fallback_path = pg.get('fallback_path')
             yield from Paginator.coalesce_records(
@@ -917,7 +1063,7 @@ class EndpointClient:
                 timeout=timeout,
             )
             try:
-                return self._extract_with_retry(url_, **call_kw)
+                return self._get_with_retry(url_, **call_kw)
             except ApiRequestError as e:
                 raise PaginationError(
                     url=url_,
@@ -1153,6 +1299,24 @@ class EndpointClient:
         return Paginator.next_cursor_from(data_obj, path)
 
     # -- Protected Static Methods -- #
+
+    @staticmethod
+    def _normalize_http_method(method: str | None) -> str:
+        """
+        Normalize HTTP method names to uppercase strings.
+
+        Parameters
+        ----------
+        method : str | None
+            Raw HTTP method value supplied by the caller.
+
+        Returns
+        -------
+        str
+            Uppercase HTTP method, defaulting to ``'GET'`` when falsy.
+        """
+        candidate = (method or '').strip().upper()
+        return candidate or 'GET'
 
     @staticmethod
     def _normalize_pagination_type(
