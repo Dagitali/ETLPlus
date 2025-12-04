@@ -338,7 +338,7 @@ class EndpointClient:
         -----
         - Explicit ``session`` is reused and not closed on exit.
         - When ``session_factory`` exists it's invoked and the session
-          closed on exit.
+            closed on exit.
         - Otherwise, a default ``requests.Session`` is created and closed.
         """
         if self._ctx_session is not None:
@@ -401,6 +401,58 @@ class EndpointClient:
 
     # -- Protected Instance Methods -- #
 
+    # TODO: Remove this method.  Replace calls with :meth:`_get_with_retry`.
+    def _extract_with_retry(
+        self,
+        url: str,
+        **kw: Any,
+    ) -> JSONData:
+        """
+        Backwards-compatible alias for :meth:`_get_with_retry`.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to fetch.
+        **kw : Any
+            Keyword arguments forwarded to :meth:`_get_with_retry`.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload produced by :meth:`_get_with_retry`.
+
+        Notes
+        -----
+        Prefer :meth:`_get_with_retry`; this wrapper exists to avoid churn in
+        older call sites and tests.
+        """
+        return self._get_with_retry(url, **kw)
+
+    def _get_active_session(self) -> requests.Session | None:
+        """
+        Return the currently active session if available.
+
+        Prefers the context-managed session, then an explicit bound
+        ``session``, then lazily creates one via ``session_factory`` when
+        available. Returns ``None`` when no session can be obtained.
+
+        Returns
+        -------
+        requests.Session | None
+            The session to use for an outgoing request, if any.
+        """
+        if self._ctx_session is not None:
+            return self._ctx_session
+        if self.session is not None:
+            return self.session
+        if self.session_factory is not None:
+            try:
+                return self.session_factory()
+            except (RuntimeError, TypeError):  # pragma: no cover - defensive
+                return None
+        return None
+
     def _get_with_retry(
         self,
         url: str,
@@ -430,33 +482,85 @@ class EndpointClient:
         """
         return self.request('GET', url, **kw)
 
-    # TODO: Remove this method.  Replace calls with :meth:`_get_with_retry`.
-    def _extract_with_retry(
+    def _parse_response_payload(
         self,
-        url: str,
-        **kw: Any,
+        response: Response,
     ) -> JSONData:
         """
-        Backwards-compatible alias for :meth:`_get_with_retry`.
+        Normalize ``requests`` responses into JSON-compatible payloads.
 
         Parameters
         ----------
-        url : str
-            Absolute URL to fetch.
-        **kw : Any
-            Keyword arguments forwarded to :meth:`_get_with_retry`.
+        response : Response
+            Raw ``requests`` response.
 
         Returns
         -------
         JSONData
-            Parsed payload produced by :meth:`_get_with_retry`.
-
-        Notes
-        -----
-        Prefer :meth:`_get_with_retry`; this wrapper exists to avoid churn in
-        older call sites and tests.
+            Parsed response payload.
         """
-        return self._get_with_retry(url, **kw)
+        content_type = response.headers.get('content-type', '').lower()
+        if 'application/json' in content_type:
+            try:
+                payload: Any = response.json()
+            except ValueError:
+                return {
+                    'content': response.text,
+                    'content_type': content_type,
+                }
+            if isinstance(payload, dict):
+                return cast(JSONDict, payload)
+            if isinstance(payload, list):
+                if all(isinstance(item, dict) for item in payload):
+                    return cast(JSONList, payload)
+                return [{'value': item} for item in payload]
+            return {'value': payload}
+
+        return {
+            'content': response.text,
+            'content_type': content_type,
+        }
+
+    def _request_once(
+        self,
+        method: str,
+        url: str,
+        *,
+        session: requests.Session | None,
+        timeout: Any,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Perform a single HTTP request and parse the response payload.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke.
+        url : str
+            Absolute URL to request.
+        session : requests.Session | None
+            Session used for dispatch (if any).
+        timeout : Any
+            Timeout supplied to ``requests``.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+        """
+        method_normalized = self._normalize_http_method(method)
+        response = self._send_http_request(
+            method_normalized,
+            url,
+            session=session,
+            timeout=timeout,
+            **kwargs,
+        )
+        response.raise_for_status()
+        return self._parse_response_payload(response)
 
     def _request_with_retry(
         self,
@@ -554,109 +658,34 @@ class EndpointClient:
             **call_kwargs,
         )
 
-    def _get_active_session(self) -> requests.Session | None:
-        """
-        Return the currently active session if available.
-
-        Prefers the context-managed session, then an explicit bound
-        ``session``, then lazily creates one via ``session_factory`` when
-        available. Returns ``None`` when no session can be obtained.
-
-        Returns
-        -------
-        requests.Session | None
-            The session to use for an outgoing request, if any.
-        """
-        if self._ctx_session is not None:
-            return self._ctx_session
-        if self.session is not None:
-            return self.session
-        if self.session_factory is not None:
-            try:
-                return self.session_factory()
-            except (RuntimeError, TypeError):  # pragma: no cover - defensive
-                return None
-        return None
-
-    def _parse_response_payload(
+    def _resolve_request_callable(
         self,
-        response: Response,
-    ) -> JSONData:
-        """
-        Normalize ``requests`` responses into JSON-compatible payloads.
-
-        Parameters
-        ----------
-        response : Response
-            Raw ``requests`` response.
-
-        Returns
-        -------
-        JSONData
-            Parsed response payload.
-        """
-        content_type = response.headers.get('content-type', '').lower()
-        if 'application/json' in content_type:
-            try:
-                payload: Any = response.json()
-            except ValueError:
-                return {
-                    'content': response.text,
-                    'content_type': content_type,
-                }
-            if isinstance(payload, dict):
-                return cast(JSONDict, payload)
-            if isinstance(payload, list):
-                if all(isinstance(item, dict) for item in payload):
-                    return cast(JSONList, payload)
-                return [{'value': item} for item in payload]
-            return {'value': payload}
-
-        return {
-            'content': response.text,
-            'content_type': content_type,
-        }
-
-    def _request_once(
-        self,
-        method: str,
-        url: str,
-        *,
         session: requests.Session | None,
-        timeout: Any,
-        **kwargs: Any,
-    ) -> JSONData:
+    ) -> Callable[..., Response]:
         """
-        Perform a single HTTP request and parse the response payload.
+        Resolve which callable should issue the HTTP request.
 
         Parameters
         ----------
-        method : str
-            HTTP method to invoke.
-        url : str
-            Absolute URL to request.
         session : requests.Session | None
-            Session used for dispatch (if any).
-        timeout : Any
-            Timeout supplied to ``requests``.
-        **kwargs : Any
-            Additional keyword arguments forwarded to ``requests``.
+            Optional session provided by the caller or context manager.
 
         Returns
         -------
-        JSONData
-            Parsed response payload.
+        Callable[..., Response]
+            A callable mirroring ``requests.request``.
+
+        Raises
+        ------
+        TypeError
+            If a custom session does not expose a callable ``request``.
         """
-        method_normalized = self._normalize_http_method(method)
-        response = self._send_http_request(
-            method_normalized,
-            url,
-            session=session,
-            timeout=timeout,
-            **kwargs,
-        )
-        response.raise_for_status()
-        return self._parse_response_payload(response)
+        if session is not None:
+            request_callable = getattr(session, 'request', None)
+            if callable(request_callable):
+                return request_callable
+            raise TypeError('Session must expose a callable "request" method')
+        return requests.request
 
     def _resolve_timeout(self, timeout: Any) -> Any:
         """
@@ -708,35 +737,6 @@ class EndpointClient:
         method_normalized = self._normalize_http_method(method)
         request_callable = self._resolve_request_callable(session)
         return request_callable(method_normalized, url, **call_kwargs)
-
-    def _resolve_request_callable(
-        self,
-        session: requests.Session | None,
-    ) -> Callable[..., Response]:
-        """
-        Resolve which callable should issue the HTTP request.
-
-        Parameters
-        ----------
-        session : requests.Session | None
-            Optional session provided by the caller or context manager.
-
-        Returns
-        -------
-        Callable[..., Response]
-            A callable mirroring ``requests.request``.
-
-        Raises
-        ------
-        TypeError
-            If a custom session does not expose a callable ``request``.
-        """
-        if session is not None:
-            request_callable = getattr(session, 'request', None)
-            if callable(request_callable):
-                return request_callable
-            raise TypeError('Session must expose a callable "request" method')
-        return requests.request
 
     # -- Instance Methods (HTTP Requests )-- #
 
