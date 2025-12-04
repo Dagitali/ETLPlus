@@ -54,6 +54,7 @@ class _Resp:
         self.text = str(payload)
 
     def raise_for_status(self) -> None:
+        """Raise HTTPError if status code indicates an error."""
         if self.status_code >= 400:
             err = requests.HTTPError('boom')
             err.response = types.SimpleNamespace(
@@ -63,6 +64,7 @@ class _Resp:
             raise err
 
     def json(self) -> dict[str, Any]:
+        """Return the JSON payload."""
         return self._payload
 
 
@@ -86,6 +88,8 @@ def token_sequence(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
+    # pylint: disable=unused-argument
+
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
@@ -161,6 +165,8 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         calls: dict[str, int] = {'n': 0}
 
         def fake_post(
@@ -217,6 +223,8 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         def fake_post(
             *args,
             **kwargs,
@@ -228,6 +236,7 @@ class TestEndpointCredentialsBearer:
 
             class _R:
                 def raise_for_status(self):
+                    """Raise HTTPError for 401 response."""
                     e = requests.HTTPError('401')
                     e.response = resp  # type: ignore[attr-defined]
                     raise e
@@ -257,6 +266,8 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         def fake_post(
             *args,
             **kwargs,
@@ -291,9 +302,11 @@ class TestEndpointCredentialsBearer:
             text = 'not json'
 
             def raise_for_status(self):
+                """Raise nothing for HTTP 200 OK status."""
                 return None
 
             def json(self):
+                """Raise ValueError for invalid JSON."""
                 raise ValueError('invalid json')
 
         monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())
