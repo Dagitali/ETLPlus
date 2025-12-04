@@ -13,9 +13,10 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
+from etlplus.api import PaginationType
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
@@ -35,7 +36,7 @@ class TestRunProfilePaginationDefaults:
         # Profile defaults exist, but job-level options will override.
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
-                type='page',
+                type=PaginationType.PAGE,
                 page_param='page',
                 size_param='per_page',
                 start_page=5,
@@ -77,7 +78,7 @@ class TestRunProfilePaginationDefaults:
     ) -> None:
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
-                type='page',
+                type=PaginationType.PAGE,
                 page_param='page',
                 size_param='per_page',
                 start_page=5,
