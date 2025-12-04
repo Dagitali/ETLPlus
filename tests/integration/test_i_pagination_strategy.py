@@ -18,13 +18,17 @@ import json
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from typing import Callable
 
 import pytest
 
 import etlplus.api.client as cmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
+from etlplus.config.pipeline import PipelineConfig
+from tests.integration.conftest import FakeEndpointClientProtocol
 
 
 # SECTION: HELPERS ========================================================== #
@@ -32,6 +36,8 @@ from etlplus.cli import main
 
 @dataclass(slots=True)
 class PageScenario:
+    """Test scenario for page/offset pagination."""
+
     name: str
     page_size: int
     pages: list[list[dict[str, int]]]
@@ -49,16 +55,21 @@ def _write_pipeline(tmp_path, yaml_text: str) -> str:
 
 
 class TestPaginationStrategies:
+    """Integration test suite for pagination strategies."""
+
     @pytest.fixture(autouse=True)
-    def _no_sleep(self, monkeypatch) -> None:  # noqa: D401
+    def _no_sleep(self, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: D401
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     def test_cursor_mode(
         self,
-        monkeypatch,
-        tmp_path,
-        capsys,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:  # noqa: D401
+        """Test cursor-based pagination end-to-end via CLI."""
+        # pylint: disable=unused-argument
+
         out_path = tmp_path / 'cursor.json'
         pipeline_yaml = f"""
 name: cursor_test
@@ -133,10 +144,13 @@ jobs:
 
     def test_cursor_mode_missing_records_path(
         self,
-        monkeypatch,
-        tmp_path,
-        capsys,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:  # noqa: D401
+        """Test cursor pagination without ``records_path`` via CLI."""
+        # pylint: disable=unused-argument
+
         # Omits records_path and relies on fallback coalescing behavior.
         out_path = tmp_path / 'cursor_no_records_path.json'
         pipeline_yaml = f"""
@@ -233,10 +247,13 @@ jobs:
     def test_page_offset_modes(
         self,
         scenario: PageScenario,
-        monkeypatch,
-        tmp_path,
-        capsys,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """Test page/offset pagination end-to-end via CLI."""
+        # pylint: disable=unused-argument
+
         # Prepare output path.
         out_path = tmp_path / f'{scenario.name}.json'
         max_records_yaml = (
@@ -380,20 +397,27 @@ jobs:
     def test_pagination_edge_cases(
         self,
         scenario: dict,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[
+            type[FakeEndpointClientProtocol],
+            list[FakeEndpointClientProtocol],
+        ],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:  # noqa: D401
-        """Edge cases for pagination coalescing using shared fixtures.
+        """
+        Test edge cases for pagination coalescing using shared fixtures.
 
         This drives the runner wiring directly (not CLI) to assert the exact
         pagination mapping seen by the client after defaults/overrides.
         """
         cfg = pipeline_cfg_factory()
         job = cfg.jobs[0]
-        opts = job.extract.options or {}
+        opts = {}
+        if job.extract is not None and hasattr(job.extract, 'options'):
+            opts = dict(job.extract.options)
         opts.update({'pagination': scenario['pagination']})
-        job.extract.options = opts
+        if job.extract is not None:
+            job.extract.options = opts
 
         FakeClient, created = fake_endpoint_client
         result = run_patched(cfg, FakeClient)
