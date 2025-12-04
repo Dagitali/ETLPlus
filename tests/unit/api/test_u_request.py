@@ -320,4 +320,4 @@ class TestRateLimiterEnforce:
 
         disabled_limiter.enforce()
 
-        assert calls == []
+        assert not calls
