@@ -241,6 +241,8 @@ def request_once_stub(
             urls: list[str]
             kwargs: list[dict[str, Any]]
     """
+    # pylint: disable=unused-argument
+
     import etlplus.api.client as cmod  # local import to avoid cycles
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
@@ -286,6 +288,8 @@ def extract_stub_factory() -> Callable[..., Any]:
     ...     client.paginate(...)
     ...     assert calls['urls'] == [...]
     """
+    # pylint: disable=unused-argument
+
     import contextlib
     import etlplus.api.client as cmod  # Local import to avoid cycles
 
@@ -423,6 +427,8 @@ def token_sequence(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
+    # pylint: disable=unused-argument
+
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
@@ -457,8 +463,8 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
     return _make
 
 
-@pytest.fixture
-def api_obj_factory(
+@pytest.fixture(name='api_obj_factory')
+def api_obj_factory_fixture(
     base_url_: str,
     sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
@@ -515,8 +521,8 @@ def api_obj_factory(
     return _make
 
 
-@pytest.fixture
-def base_url_() -> str:
+@pytest.fixture(name='base_url_')
+def base_url_fixture() -> str:
     """
     Return a common base URL string for config tests.
 
@@ -674,8 +680,8 @@ def rate_limit_from_obj_factory() -> Callable[
     return _make
 
 
-@pytest.fixture
-def sample_endpoints_() -> dict[str, dict[str, Any]]:
+@pytest.fixture(name='sample_endpoints_')
+def sample_endpoints_fixture() -> dict[str, dict[str, Any]]:
     """
     Return a common endpoints mapping for config tests.
 
