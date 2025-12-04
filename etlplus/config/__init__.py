@@ -28,13 +28,15 @@ from .jobs import LoadRef
 from .jobs import TransformRef
 from .jobs import ValidationRef
 from .pagination import PaginationConfig
-from .pipeline import load_pipeline_config
 from .pipeline import PipelineConfig
+from .pipeline import load_pipeline_config
 from .profile import ProfileConfig
 from .rate_limit import RateLimitConfig
 from .types import Connector
 from .types import ConnectorType
-# from .types import PaginationType
+
+# SECTION: EXPORTS ========================================================== #
+
 
 __all__ = [
     # API
@@ -47,7 +49,6 @@ __all__ = [
     # Connectors
     'Connector',
     'ConnectorType',
-    # 'PaginationType',
     'ConnectorApi',
     'ConnectorDb',
     'ConnectorFile',

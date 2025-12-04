@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import cast
 
 import pytest
@@ -25,7 +25,6 @@ import pytest
 from etlplus.load import load
 from etlplus.load import load_data
 from etlplus.load import load_to_file
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -227,9 +226,9 @@ class TestLoadErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert False, (
-                    f'Expected {exc_type.__name__} with message: {err_msg}'
-                )
+                raise AssertionError(
+                    f'Expected {exc_type.__name__} with message: {err_msg}',
+                ) from e.value
 
 
 @pytest.mark.unit

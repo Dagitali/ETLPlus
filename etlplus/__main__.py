@@ -10,7 +10,6 @@ import sys
 
 from .cli import main
 
-
 # SECTION: MAIN EXECUTION =================================================== #
 
 

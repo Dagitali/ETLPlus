@@ -33,7 +33,6 @@ from requests.adapters import HTTPAdapter  # type: ignore
 from ..utils import to_maximum_int
 from ..utils import to_positive_int
 
-
 # SECTION: EXPORTS ========================================================== #
 
 

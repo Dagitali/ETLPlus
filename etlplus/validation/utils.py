@@ -5,9 +5,8 @@ A module providing helpers for data validation.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
-
 
 # SECTION: FUNCTIONS ======================================================== #
 

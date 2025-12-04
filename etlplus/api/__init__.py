@@ -75,19 +75,18 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RateLimiter
 from .request import RetryPolicy
+from .request import compute_sleep_seconds
 from .response import CursorPaginationConfigMap
 from .response import PagePaginationConfigMap
 from .response import PaginationConfigMap
 from .response import PaginationType
 from .response import Paginator
-from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
-
+from .transport import build_http_adapter
 
 # SECTION: EXPORTS ========================================================== #
 

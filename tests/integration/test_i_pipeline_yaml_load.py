@@ -16,7 +16,6 @@ import pytest
 
 from etlplus.config import PipelineConfig
 
-
 # SECTION: TESTS ============================================================ #
 
 

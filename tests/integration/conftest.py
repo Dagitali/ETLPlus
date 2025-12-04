@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import importlib
 import pathlib
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import Protocol
 
 import pytest
@@ -28,7 +28,6 @@ from etlplus.config import LoadRef
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
-
 
 # SECTION: HELPERS ========================================================== #
 

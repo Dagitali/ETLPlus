@@ -20,10 +20,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
-from typing import overload
-from typing import Self
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Self
+from typing import overload
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
@@ -35,7 +35,9 @@ from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
 if TYPE_CHECKING:
-    from .types import ApiConfigMap, ApiProfileConfigMap, EndpointMap
+    from .types import ApiConfigMap
+    from .types import ApiProfileConfigMap
+    from .types import EndpointMap
 
 
 # SECTION: EXPORTS ========================================================== #

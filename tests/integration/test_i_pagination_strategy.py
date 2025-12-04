@@ -17,10 +17,10 @@ from __future__ import annotations
 import json
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from typing import Callable
 
 import pytest
 
@@ -29,7 +29,6 @@ import etlplus.cli as cli_mod
 from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
-
 
 # SECTION: HELPERS ========================================================== #
 

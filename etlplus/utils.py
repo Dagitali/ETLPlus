@@ -13,7 +13,6 @@ from typing import TypeVar
 
 from .types import JSONData
 
-
 # SECTION: EXPORTS ========================================================== #
 
 

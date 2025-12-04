@@ -24,7 +24,6 @@ from etlplus.config import JobConfig
 from etlplus.config import LoadRef
 from etlplus.config import PipelineConfig
 
-
 # SECTION: HELPERS ========================================================== #
 
 

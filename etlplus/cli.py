@@ -19,9 +19,9 @@ import argparse
 import csv
 import os
 import sys
+from collections.abc import Sequence
 from textwrap import dedent
 from typing import Any
-from typing import Sequence
 
 from . import __version__
 from .config import load_pipeline_config
@@ -34,7 +34,6 @@ from .transform import transform
 from .utils import json_type
 from .utils import print_json
 from .validate import validate
-
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -475,7 +474,7 @@ def create_parser() -> argparse.ArgumentParser:
             option_string: str | None = None,
         ) -> None:
             setattr(namespace, self.dest, values)
-            setattr(namespace, '_format_explicit', True)
+            namespace._format_explicit = True
 
     extract_parser.add_argument(
         'source_type',
@@ -588,7 +587,7 @@ def create_parser() -> argparse.ArgumentParser:
             option_string: str | None = None,
         ) -> None:
             setattr(namespace, self.dest, values)
-            setattr(namespace, '_format_explicit', True)
+            namespace._format_explicit = True
 
     load_parser.set_defaults(_format_explicit=False)
     load_parser.add_argument(

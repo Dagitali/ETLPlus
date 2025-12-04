@@ -10,7 +10,7 @@ Notes
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 
@@ -20,7 +20,6 @@ from etlplus.transform import apply_map
 from etlplus.transform import apply_select
 from etlplus.transform import apply_sort
 from etlplus.transform import transform
-
 
 # SECTION: TESTS =========================================================== #
 

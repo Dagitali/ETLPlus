@@ -8,16 +8,15 @@ Notes
 - Exercises type, required, and range checks on fields.
 - Uses temporary files to verify load/validate convenience helpers.
 """
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 
 import pytest
 
 from etlplus.validate import load_data
 from etlplus.validate import validate
 from etlplus.validate import validate_field
-
 
 # SECTION: TESTS =========================================================== #
 

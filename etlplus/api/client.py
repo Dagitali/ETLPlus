@@ -35,17 +35,17 @@ Examples
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
+from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
-from typing import Callable
-from typing import cast
 from typing import ClassVar
-from typing import Iterator
-from typing import Mapping
 from typing import Self
+from typing import cast
 from urllib.parse import parse_qsl
 from urllib.parse import quote
 from urllib.parse import urlencode
@@ -62,16 +62,15 @@ from ..types import JSONRecords
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .request import compute_sleep_seconds
 from .request import RateLimitConfigMap
 from .request import RetryManager
 from .request import RetryPolicy
+from .request import compute_sleep_seconds
 from .response import PaginationConfigMap
 from .response import PaginationType
 from .response import Paginator
-from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
-
+from .transport import build_http_adapter
 
 # SECTION: CONSTANTS ======================================================== #
 

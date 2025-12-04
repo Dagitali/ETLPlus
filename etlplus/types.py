@@ -5,14 +5,13 @@ Shared type aliases leveraged across ETLPlus modules.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import Literal
-
 
 # SECTION: EXPORTS ========================================================== #
 

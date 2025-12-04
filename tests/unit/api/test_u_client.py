@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import types
 import urllib.parse as urlparse
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import cast
 
 import pytest
@@ -23,11 +23,10 @@ import requests  # type: ignore[import]
 import etlplus.api.client as cmod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
-from etlplus.api import errors as api_errors
 from etlplus.api import PagePaginationConfigMap
 from etlplus.api import RetryPolicy
+from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_mocks import MockSession
-
 
 # SECTION: HELPERS ========================================================== #
 

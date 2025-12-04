@@ -13,7 +13,6 @@ import pytest
 
 from etlplus.config import parse_connector
 
-
 # SECTION: TESTS ============================================================ #
 
 

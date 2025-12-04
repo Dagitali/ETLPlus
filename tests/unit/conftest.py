@@ -14,12 +14,12 @@ import json
 import random
 import tempfile
 import types
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
-from typing import cast
 from typing import TypedDict
 from typing import Unpack
+from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
@@ -36,7 +36,6 @@ from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
 from tests.unit.api.test_u_mocks import MockSession
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -291,6 +290,7 @@ def extract_stub_factory() -> Callable[..., Any]:
     # pylint: disable=unused-argument
 
     import contextlib
+
     import etlplus.api.client as cmod  # Local import to avoid cycles
 
     @contextlib.contextmanager
@@ -313,12 +313,21 @@ def extract_stub_factory() -> Callable[..., Any]:
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = getattr(cmod.EndpointClient, '_request_once')
-        setattr(cmod.EndpointClient, '_request_once', _fake_request)
+        saved = cmod.EndpointClient._request_once
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            cmod.EndpointClient,
+            '_request_once',
+            _fake_request,
+        )
         try:
             yield calls
         finally:
-            setattr(cmod.EndpointClient, '_request_once', saved)
+            monkeypatch.setattr(
+                cmod.EndpointClient,
+                '_request_once',
+                saved,
+            )
 
     return _make
 

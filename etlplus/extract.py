@@ -11,17 +11,16 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .enums import coerce_data_connector_type
-from .enums import coerce_file_format
 from .enums import DataConnectorType
 from .enums import FileFormat
 from .enums import HttpMethod
+from .enums import coerce_data_connector_type
+from .enums import coerce_file_format
 from .file import File
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
 from .types import StrPath
-
 
 # SECTION: FUNCTIONS ======================================================== #
 

@@ -11,8 +11,8 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 import pytest
 
@@ -21,7 +21,6 @@ from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
-
 
 # SECTION: TESTS ============================================================ #
 

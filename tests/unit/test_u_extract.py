@@ -14,15 +14,14 @@ Notes
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 
 import pytest
 
 from etlplus.extract import extract
 from etlplus.extract import extract_from_file
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -144,9 +143,9 @@ class TestExtractErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert False, (
-                    f'Expected {exc_type.__name__} with message: {err_msg}'
-                )
+                raise AssertionError(
+                    f'Expected {exc_type.__name__} with message: {err_msg}',
+                ) from e.value
 
 
 @pytest.mark.unit

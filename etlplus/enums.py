@@ -14,7 +14,6 @@ from .types import AggregateFunc
 from .types import OperatorFunc
 from .types import StrStrMap
 
-
 # SECTION: EXPORTS ========================================================== #
 
 

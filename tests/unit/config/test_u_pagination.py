@@ -9,15 +9,14 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import Literal
 
 import pytest
 
 from etlplus.config import PaginationConfig
 from etlplus.config.utils import pagination_from_defaults
-
 
 # SECTION: TESTS ============================================================ #
 

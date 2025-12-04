@@ -16,9 +16,9 @@ Examples
 from __future__ import annotations
 
 from collections.abc import Iterator
+from collections.abc import Mapping
 from typing import Any
 from typing import cast
-from typing import Mapping
 
 import pytest
 
@@ -27,7 +27,6 @@ from etlplus.api.response import PagePaginationConfigMap
 from etlplus.api.response import PaginationConfigMap
 from etlplus.api.response import PaginationType
 from etlplus.api.response import Paginator
-
 
 # SECTION: HELPERS ========================================================== #
 

@@ -15,15 +15,14 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 import pytest
 
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
-
 
 # SECTION: TESTS ============================================================ #
 
