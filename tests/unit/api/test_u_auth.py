@@ -29,6 +29,9 @@ from etlplus.api.auth import EndpointCredentialsBearer
 # SECTION: HELPERS ========================================================== #
 
 
+# pylint: disable=protected-access
+
+
 class _Resp:
     """
     Lightweight fake response object for simulating requests.Response.
