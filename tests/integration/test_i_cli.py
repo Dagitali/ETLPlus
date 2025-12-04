@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_cli`` module.
+:mod:`tests.integration.test_i_cli` module.
 
 End-to-end CLI integration test suite. Exercises the ``etlplus`` command for
 core subcommands without external dependencies by operating on temporary files
@@ -18,17 +18,25 @@ import sys
 import tempfile
 from pathlib import Path
 
+from pytest import CaptureFixture
+from pytest import MonkeyPatch
+
 from etlplus.cli import main
 
 # SECTION: TESTS ============================================================ #
 
 
 class TestCliEndToEnd:
+    """Integration test suite for :mod:`etlplus.cli`."""
 
     def test_extract_format_error_strict_flag(
-        self, monkeypatch,
-        capsys,
+        self, monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that :func:`extract` with ``--strict-format`` and incorrect format
+        errors.
+        """
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -52,9 +60,13 @@ class TestCliEndToEnd:
 
     def test_extract_format_warns_default(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that :func:`extract` with default format and incorrect format
+        warns.
+        """
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -78,9 +90,13 @@ class TestCliEndToEnd:
 
     def test_load_format_error_strict_flag(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that :func:`load` with ``--strict-format`` and incorrect format
+        errors.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / 'output.csv'
             json_data = '{"name": "John"}'
@@ -99,9 +115,12 @@ class TestCliEndToEnd:
             assert not output_path.exists()
 
     def test_load_format_warns_default(
-        self, monkeypatch,
-        capsys,
+        self, monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that `:func:`load` with default format and incorrect format warns.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / 'output.csv'
             json_data = '{"name": "John"}'
@@ -121,9 +140,12 @@ class TestCliEndToEnd:
 
     def test_main_no_command(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with no command shows usage.
+        """
         monkeypatch.setattr(sys, 'argv', ['etlplus'])
         result = main()
         assert result == 0
@@ -132,9 +154,12 @@ class TestCliEndToEnd:
 
     def test_main_extract_file(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with the ``extract`` file command works.
+        """
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -157,9 +182,12 @@ class TestCliEndToEnd:
 
     def test_main_validate_data(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with the ``validate`` command works.
+        """
         json_data = '{"name": "John", "age": 30}'
         monkeypatch.setattr(sys, 'argv', ['etlplus', 'validate', json_data])
         result = main()
@@ -169,9 +197,12 @@ class TestCliEndToEnd:
 
     def test_main_transform_data(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with the ``transform`` command works.
+        """
         json_data = '[{"name": "John", "age": 30}]'
         operations = '{"select": ["name"]}'
         monkeypatch.setattr(
@@ -186,8 +217,11 @@ class TestCliEndToEnd:
 
     def test_main_load_file(
         self,
-        monkeypatch,
+        monkeypatch: MonkeyPatch,
     ) -> None:
+        """
+        Test that running :func:`main` with the ``load`` file command works.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / 'output.json'
             json_data = '{"name": "John", "age": 30}'
@@ -202,8 +236,12 @@ class TestCliEndToEnd:
 
     def test_main_extract_with_output(
         self,
-        monkeypatch,
+        monkeypatch: MonkeyPatch,
     ) -> None:
+        """
+        Test that running :func:`main` with the ``extract`` file command and
+        ``output`` option works.
+        """
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False,
         ) as f:
@@ -230,9 +268,12 @@ class TestCliEndToEnd:
 
     def test_main_error_handling(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with an invalid command errors.
+        """
         monkeypatch.setattr(
             sys,
             'argv',
@@ -245,9 +286,13 @@ class TestCliEndToEnd:
 
     def test_main_strict_format_error(
         self,
-        monkeypatch,
-        capsys,
+        monkeypatch: MonkeyPatch,
+        capsys: CaptureFixture[str],
     ) -> None:
+        """
+        Test that running :func:`main` with the ``extract`` file command and
+        ``--strict-format`` option with an incorrect format errors.
+        """
         # Passing --format for a file with --strict-format should error
         monkeypatch.setattr(
             sys,
