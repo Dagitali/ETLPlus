@@ -5,10 +5,10 @@ A module for running ETL jobs defined in YAML configurations.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from typing import cast
 from typing import Final
-from typing import Mapping
 from typing import TypedDict
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit

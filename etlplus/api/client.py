@@ -35,16 +35,16 @@ Examples
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
-from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Iterator
-from typing import Mapping
 from typing import Self
 from urllib.parse import parse_qsl
 from urllib.parse import quote

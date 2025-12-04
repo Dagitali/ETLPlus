@@ -24,9 +24,9 @@ avoid tight coupling with config dataclasses while keeping runtime flexible.
 from __future__ import annotations
 
 import inspect
+from collections.abc import Mapping
 from typing import Any
 from typing import cast
-from typing import Mapping
 from typing import TypedDict
 
 import requests  # type: ignore[import]

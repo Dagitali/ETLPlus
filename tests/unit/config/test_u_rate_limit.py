@@ -10,8 +10,8 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
-from typing import Callable
 
 import pytest
 

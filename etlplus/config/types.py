@@ -30,9 +30,9 @@ Examples
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from typing import Literal
-from typing import Mapping
 from typing import TypedDict
 
 from ..api import PaginationConfigMap

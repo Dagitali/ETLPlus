@@ -8,9 +8,9 @@ Notes
 - Exercises type, required, and range checks on fields.
 - Uses temporary files to verify load/validate convenience helpers.
 """
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 
 import pytest
 

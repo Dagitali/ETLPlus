@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from typing import Callable
 from typing import ClassVar
-from typing import Mapping
 from typing import TypedDict
 
 import requests  # type: ignore[import]

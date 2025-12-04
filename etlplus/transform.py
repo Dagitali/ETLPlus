@@ -37,10 +37,10 @@ Using enums for keys and functions::
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
-from typing import Callable
 from typing import cast
 
 from .enums import AggregateName

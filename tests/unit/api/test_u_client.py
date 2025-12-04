@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import types
 import urllib.parse as urlparse
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import cast
 
 import pytest

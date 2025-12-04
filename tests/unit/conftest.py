@@ -14,9 +14,9 @@ import json
 import random
 import tempfile
 import types
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import cast
 from typing import TypedDict
 from typing import Unpack

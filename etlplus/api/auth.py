@@ -36,9 +36,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from typing import Mapping
 from typing import TypedDict
 
 import requests  # type: ignore[import]
