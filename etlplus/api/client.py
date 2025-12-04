@@ -1246,58 +1246,6 @@ class EndpointClient:
             kw['timeout'] = timeout
         return kw
 
-    @staticmethod
-    def coalesce_records(
-        x: Any,
-        records_path: str | None,
-        fallback_path: str | None = None,
-    ) -> JSONRecords:
-        """
-        Coalesce JSON page payloads into a list of dicts.
-
-        Supports dotted path extraction via ``records_path`` and handles lists,
-        maps, and scalars by coercing non-dict items into ``{'value': x}``.
-
-        Parameters
-        ----------
-        x : Any
-            The JSON payload from an API response.
-        records_path : str | None
-            Dotted path to the records within the payload.
-        fallback_path : str | None
-            Secondary dotted path consulted when ``records_path`` resolves to
-            ``None`` or an empty list.
-
-        Returns
-        -------
-        JSONRecords
-            List of record dicts extracted from the payload.
-        """
-        return Paginator.coalesce_records(x, records_path, fallback_path)
-
-    @staticmethod
-    def next_cursor_from(
-        data_obj: Any,
-        path: str | None,
-    ) -> str | int | None:
-        """
-        Extract a cursor value from a JSON payload using a dotted path.
-
-        Parameters
-        ----------
-        data_obj : Any
-            The JSON payload object (expected to be a dict).
-        path : str | None
-            Dotted path within the payload that points to the next cursor.
-
-        Returns
-        -------
-        str | int | None
-            The extracted cursor value if present and of type str or int;
-            otherwise None.
-        """
-        return Paginator.next_cursor_from(data_obj, path)
-
     # -- Protected Static Methods -- #
 
     @staticmethod
