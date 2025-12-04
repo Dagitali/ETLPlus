@@ -41,22 +41,27 @@ except ImportError:  # pragma: no cover
     _HYP_AVAILABLE = False
 
     def given(*_a, **_k):  # type: ignore[unused-ignore]
+        """No-op decorator when Hypothesis is unavailable."""
         def _wrap(fn):
             return pytest.mark.skip(reason='needs hypothesis')(fn)
         return _wrap
 
     class _Strategy:  # minimal chainable strategy stub
         def filter(self, *_a, **_k):  # pragma: no cover
+            """No-op filter when Hypothesis is unavailable."""
             return self
 
     class _DummyStrategies:
         def text(self, *_a, **_k):  # pragma: no cover
+            """No-op text strategy when Hypothesis is unavailable."""
             return _Strategy()
 
         def characters(self, *_a, **_k):  # pragma: no cover
+            """No-op characters strategy when Hypothesis is unavailable."""
             return _Strategy()
 
         def dictionaries(self, *_a, **_k):  # pragma: no cover
+            """No-op dictionaries strategy when Hypothesis is unavailable."""
             return _Strategy()
 
     st = _DummyStrategies()  # type: ignore[assignment]
@@ -237,6 +242,8 @@ class TestCursorPagination:
         expected_limit : int
             Expected normalized limit.
         """
+        # pylint: disable=unused-argument
+
         calls: list[dict[str, Any]] = []
 
         def fake_request(
@@ -294,6 +301,8 @@ class TestCursorPagination:
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
         """
+        # pylint: disable=unused-argument
+
         calls: list[dict[str, Any]] = []
 
         def fake_request(
@@ -361,6 +370,7 @@ class TestCursorPagination:
             base_url='https://api.example.com/v1',
             endpoints={'list': '/items'},
         )
+        # pylint: disable=unused-argument
 
         # First page succeeds with next cursor; second raises 500.
         calls = {'n': 0}
@@ -421,6 +431,8 @@ class TestCursorPagination:
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
         """
+        # pylint: disable=unused-argument
+
         jitter([0.05])
 
         attempts = {'n': 0}
@@ -492,6 +504,7 @@ class TestErrors:
             base_url='https://api.example.com/v1',
             endpoints={'x': '/x'},
         )
+        # pylint: disable=unused-argument
 
         def boom(
             self: EndpointClient,
@@ -538,6 +551,8 @@ class TestOffsetPagination:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         calls: list[dict[str, Any]] = []
 
         def fake_request(
@@ -610,6 +625,7 @@ class TestPagePagination:
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
         """
+        # pylint: disable=unused-argument
 
         def fake_request(
             self: EndpointClient,
@@ -662,6 +678,7 @@ class TestPagePagination:
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
         """
+        # pylint: disable=unused-argument
 
         def fake_request(
             self: EndpointClient,
@@ -713,6 +730,7 @@ class TestPagePagination:
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
         """
+        # pylint: disable=unused-argument
 
         def fake_request(
             self: EndpointClient,
@@ -771,6 +789,8 @@ class TestPagePagination:
             base_url='https://api.example.com/v1',
             endpoints={'list': '/items'},
         )
+        # pylint: disable=unused-argument
+
         page_size = 2
 
         def extractor(
@@ -817,6 +837,7 @@ class TestPagePagination:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
 
         def _raw_response(
             self: EndpointClient,
@@ -885,6 +906,8 @@ class TestRateLimitPrecedence:
             timeout: Any,
             **kw: Any,
         ) -> list[dict[str, int]]:  # noqa: D401
+            # pylint: disable=unused-argument
+
             assert method == 'GET'
             calls['n'] += 1
             # Return full page until third call which ends pagination.
@@ -966,6 +989,8 @@ class TestRetryLogic:
             timeout: Any,
             **kwargs: dict[str, Any],
         ) -> dict[str, Any]:  # noqa: ARG001
+            # pylint: disable=unused-argument
+
             assert method == 'GET'
             attempts['n'] += 1
             raise make_http_error(503)
@@ -1003,6 +1028,8 @@ class TestRetryLogic:
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
         """
+        # pylint: disable=unused-argument
+
         jitter([0.1, 0.2])
 
         # Patch HTTP helper to fail with 503 twice, then succeed.
@@ -1067,6 +1094,8 @@ class TestRetryLogic:
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
         """
+        # pylint: disable=unused-argument
+
         jitter([0.12, 0.18])
         attempts = {'n': 0}
 
