@@ -53,10 +53,11 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
+from requests import Response  # type: ignore[import]
 
-from ..extract import extract as _extract
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import JSONList
 from ..types import JSONRecords
 from .errors import ApiAuthError
 from .errors import ApiRequestError
@@ -70,6 +71,12 @@ from .response import PaginationType
 from .response import Paginator
 from .transport import build_http_adapter
 from .transport import HTTPAdapterMountConfig
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_MISSING = object()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -156,6 +163,8 @@ class EndpointClient:
         Default HTTP status codes eligible for retry.
     DEFAULT_RETRY_CAP : ClassVar[float]
         Maximum sleep seconds for jittered backoff.
+    DEFAULT_TIMEOUT : ClassVar[float]
+        Default timeout applied to HTTP requests when unspecified.
 
     Raises
     ------
@@ -244,6 +253,9 @@ class EndpointClient:
     # Cap for jittered backoff sleeps (seconds)
     DEFAULT_RETRY_CAP: ClassVar[float] = 30.0
 
+    # Default timeout applied when callers do not explicitly provide one.
+    DEFAULT_TIMEOUT: ClassVar[float] = 10.0
+
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
@@ -326,7 +338,7 @@ class EndpointClient:
         -----
         - Explicit ``session`` is reused and not closed on exit.
         - When ``session_factory`` exists it's invoked and the session
-          closed on exit.
+            closed on exit.
         - Otherwise, a default ``requests.Session`` is created and closed.
         """
         if self._ctx_session is not None:
@@ -372,61 +384,234 @@ class EndpointClient:
                         close_attr()  # type: ignore[misc]
                     except TypeError:
                         pass
+            except Exception:
+                # Some callers provide mock objects with non-callable
+                # ``close`` attributes—ignore those rather than bubble.
+                pass
             finally:
-                object.__setattr__(self, '_ctx_session', None)
-                object.__setattr__(self, '_ctx_owns_session', False)
+                self._clear_managed_session()
         else:
             # Ensure cleared even if we didn't own it
-            object.__setattr__(self, '_ctx_session', None)
-            object.__setattr__(self, '_ctx_owns_session', False)
+            self._clear_managed_session()
+
+    def _clear_managed_session(self) -> None:
+        """Reset context-managed session bookkeeping."""
+        object.__setattr__(self, '_ctx_session', None)
+        object.__setattr__(self, '_ctx_owns_session', False)
 
     # -- Protected Instance Methods -- #
 
+    # TODO: Remove this method.  Replace calls with :meth:`_get_with_retry`.
     def _extract_with_retry(
         self,
         url: str,
         **kw: Any,
     ) -> JSONData:
         """
-        Execute an API GET with optional retry policy.
-
-        Retries only apply when a retry policy is configured on the client.
-        Without a policy, a single attempt is performed.
+        Backwards-compatible alias for :meth:`_get_with_retry`.
 
         Parameters
         ----------
         url : str
             Absolute URL to fetch.
         **kw : Any
-            Keyword arguments forwarded to ``requests.get`` via
-            :func:`etlplus.extract.extract`.
+            Keyword arguments forwarded to :meth:`_get_with_retry`.
 
         Returns
         -------
         JSONData
-            Parsed JSON payload.
+            Parsed payload produced by :meth:`_get_with_retry`.
+
+        Notes
+        -----
+        Prefer :meth:`_get_with_retry`; this wrapper exists to avoid churn in
+        older call sites and tests.
+        """
+        return self._get_with_retry(url, **kw)
+
+    def _get_active_session(self) -> requests.Session | None:
+        """
+        Return the currently active session if available.
+
+        Prefers the context-managed session, then an explicit bound
+        ``session``, then lazily creates one via ``session_factory`` when
+        available. Returns ``None`` when no session can be obtained.
+
+        Returns
+        -------
+        requests.Session | None
+            The session to use for an outgoing request, if any.
+        """
+        if self._ctx_session is not None:
+            return self._ctx_session
+        if self.session is not None:
+            return self.session
+        if self.session_factory is not None:
+            try:
+                return self.session_factory()
+            except (RuntimeError, TypeError):  # pragma: no cover - defensive
+                return None
+        return None
+
+    def _get_with_retry(
+        self,
+        url: str,
+        **kw: Any,
+    ) -> JSONData:
+        """
+        Execute an HTTP ``GET`` request with the client's retry semantics.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to fetch.
+        **kw : Any
+            Keyword arguments forwarded to :meth:`request` (e.g., ``params``).
+
+        Returns
+        -------
+        JSONData
+            Parsed payload produced by :meth:`request`.
+
+        Notes
+        -----
+        This method surfaces the more accurate name for what historically
+        lived behind :meth:`_extract_with_retry`. Errors from
+        :meth:`request` (``ApiAuthError``/``ApiRequestError``) propagate
+        unchanged.
+        """
+        return self.request('GET', url, **kw)
+
+    def _parse_response_payload(
+        self,
+        response: Response,
+    ) -> JSONData:
+        """
+        Normalize ``requests`` responses into JSON-compatible payloads.
+
+        Parameters
+        ----------
+        response : Response
+            Raw ``requests`` response.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+        """
+        content_type = response.headers.get('content-type', '').lower()
+        if 'application/json' in content_type:
+            try:
+                payload: Any = response.json()
+            except ValueError:
+                return {
+                    'content': response.text,
+                    'content_type': content_type,
+                }
+            if isinstance(payload, dict):
+                return cast(JSONDict, payload)
+            if isinstance(payload, list):
+                if all(isinstance(item, dict) for item in payload):
+                    return cast(JSONList, payload)
+                return [{'value': item} for item in payload]
+            return {'value': payload}
+
+        return {
+            'content': response.text,
+            'content_type': content_type,
+        }
+
+    def _request_once(
+        self,
+        method: str,
+        url: str,
+        *,
+        session: requests.Session | None,
+        timeout: Any,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Perform a single HTTP request and parse the response payload.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke.
+        url : str
+            Absolute URL to request.
+        session : requests.Session | None
+            Session used for dispatch (if any).
+        timeout : Any
+            Timeout supplied to ``requests``.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+        """
+        method_normalized = self._normalize_http_method(method)
+        response = self._send_http_request(
+            method_normalized,
+            url,
+            session=session,
+            timeout=timeout,
+            **kwargs,
+        )
+        response.raise_for_status()
+        return self._parse_response_payload(response)
+
+    def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        **kw: Any,
+    ) -> JSONData:
+        """
+        Execute an HTTP request honoring the configured retry policy.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke.
+        url : str
+            Absolute URL to request.
+        **kw : Any
+            Keyword arguments forwarded to :func:`requests.request`.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
 
         Raises
         ------
         ApiAuthError
-            If authentication or authorization ultimately fails
-            (for example, with a 401 or 403 status).
+            If authentication ultimately fails (401/403).
         ApiRequestError
-            If all retry attempts fail (or a single attempt fails with no
-            retry policy configured) for other HTTP statuses or network
-            errors.
+            If retries are exhausted for other failures.
         """
+        method_normalized = self._normalize_http_method(method)
+
+        call_kwargs = dict(kw)
+        supplied_timeout = call_kwargs.pop('timeout', _MISSING)
+        timeout = self._resolve_timeout(supplied_timeout)
+        user_session = call_kwargs.pop('session', None)
         # Determine session to use for this request. Prefer context-managed
         # session when present.
-        sess = self._get_active_session()
+        sess = self._get_active_session() or user_session
 
         policy: RetryPolicy | None = self.retry
         if not policy:
-            if sess is not None:
-                kw = dict(kw)
-                kw['session'] = sess
             try:
-                return _extract('api', url, **kw)
+                return self._request_once(
+                    method_normalized,
+                    url,
+                    session=sess,
+                    timeout=timeout,
+                    **call_kwargs,
+                )
             except requests.RequestException as e:  # pragma: no cover (net)
                 status = getattr(
                     getattr(e, 'response', None),
@@ -457,44 +642,180 @@ class EndpointClient:
             retry_network_errors=self.retry_network_errors,
             cap=self.DEFAULT_RETRY_CAP,
         )
-        if sess is not None:
-            kw = dict(kw)
-            kw['session'] = sess
 
         def _api_fetch(target_url: str, **call_kw: Any) -> JSONData:
-            return _extract('api', target_url, **call_kw)
+            return self._request_once(
+                method_normalized,
+                target_url,
+                session=sess,
+                timeout=timeout,
+                **call_kw,
+            )
 
         return retry_mgr.run_with_retry(
             _api_fetch,
             url,
-            **kw,
+            **call_kwargs,
         )
 
-    def _get_active_session(self) -> requests.Session | None:
+    def _resolve_request_callable(
+        self,
+        session: requests.Session | None,
+    ) -> Callable[..., Response]:
         """
-        Return the currently active session if available.
+        Resolve which callable should issue the HTTP request.
 
-        Prefers the context-managed session, then an explicit bound
-        ``session``, then lazily creates one via ``session_factory`` when
-        available. Returns ``None`` when no session can be obtained.
+        Parameters
+        ----------
+        session : requests.Session | None
+            Optional session provided by the caller or context manager.
 
         Returns
         -------
-        requests.Session | None
-            The session to use for an outgoing request, if any.
-        """
-        if self._ctx_session is not None:
-            return self._ctx_session
-        if self.session is not None:
-            return self.session
-        if self.session_factory is not None:
-            try:
-                return self.session_factory()
-            except (RuntimeError, TypeError):  # pragma: no cover - defensive
-                return None
-        return None
+        Callable[..., Response]
+            A callable mirroring ``requests.request``.
 
-    # -- Instance Methods -- #
+        Raises
+        ------
+        TypeError
+            If a custom session does not expose a callable ``request``.
+        """
+        if session is not None:
+            request_callable = getattr(session, 'request', None)
+            if callable(request_callable):
+                return request_callable
+            raise TypeError('Session must expose a callable "request" method')
+        return requests.request
+
+    def _resolve_timeout(self, timeout: Any) -> Any:
+        """
+        Resolve timeout, applying the client default when unspecified.
+
+        Parameters
+        ----------
+        timeout : Any
+            Timeout value supplied by the caller.
+
+        Returns
+        -------
+        Any
+            Caller-supplied timeout or the client default.
+        """
+        return self.DEFAULT_TIMEOUT if timeout is _MISSING else timeout
+
+    def _send_http_request(
+        self,
+        method: str,
+        url: str,
+        *,
+        session: requests.Session | None,
+        timeout: Any,
+        **kwargs: Any,
+    ) -> Response:
+        """
+        Dispatch an HTTP call using the provided or default session.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method name.
+        url : str
+            Absolute URL to request.
+        session : requests.Session | None
+            Optional session bound to the client/context.
+        timeout : Any
+            Timeout forwarded to ``requests``.
+        **kwargs : Any
+            Additional keyword arguments for ``requests``.
+
+        Returns
+        -------
+        Response
+            Raw ``requests`` response for downstream parsing.
+        """
+        call_kwargs = {**kwargs, 'timeout': timeout}
+        method_normalized = self._normalize_http_method(method)
+        request_callable = self._resolve_request_callable(session)
+        return request_callable(method_normalized, url, **call_kwargs)
+
+    # -- Instance Methods (HTTP Requests )-- #
+
+    def get(
+        self,
+        url: str,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Wrap ``request('GET', ...)`` for convenience.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to request.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``
+            (e.g., ``params``, ``headers``).
+
+        Returns
+        -------
+        JSONData
+            Parsed JSON payload or fallback structure matching
+            :func:`etlplus.extract.extract_from_api` semantics.
+        """
+        return self.request('GET', url, **kwargs)
+
+    def post(
+        self,
+        url: str,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Wrap ``request('POST', ...)`` for convenience.
+
+        Parameters
+        ----------
+        url : str
+            Absolute URL to request.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``
+            (e.g., ``params``, ``headers``, ``json``).
+
+        Returns
+        -------
+        JSONData
+            Parsed JSON payload or fallback structure matching
+            :func:`etlplus.extract.extract_from_api` semantics.
+        """
+        return self.request('POST', url, **kwargs)
+
+    def request(
+        self,
+        method: str,
+        url: str,
+        **kwargs: Any,
+    ) -> JSONData:
+        """
+        Execute an HTTP request using the client's retry and session settings.
+
+        Parameters
+        ----------
+        method : str
+            HTTP method to invoke (``'GET'``, ``'POST'``, etc.).
+        url : str
+            Absolute URL to request.
+        **kwargs : Any
+            Additional keyword arguments forwarded to ``requests``
+            (e.g., ``params``, ``headers``, ``json``).
+
+        Returns
+        -------
+        JSONData
+            Parsed JSON payload or fallback structure matching
+            :func:`etlplus.extract.extract_from_api` semantics.
+        """
+        return self._request_with_retry(method, url, **kwargs)
+
+    # -- Instance Methods (HTTP Responses) -- #
 
     def paginate(
         self,
@@ -545,26 +866,14 @@ class EndpointClient:
             path_parameters=path_parameters,
             query_parameters=query_parameters,
         )
-
-        # If no pagination provided, preserve single-request behavior.
-        if not pagination or not pagination.get('type'):
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return self._extract_with_retry(url, **kw)
-
-        # Collect from iterator for paginated streaming ergonomics.
-        records: JSONRecords = list(
-            self.paginate_url_iter(
-                url=url,
-                params=params,
-                headers=headers,
-                timeout=timeout,
-                pagination=pagination,
-                sleep_seconds=sleep_seconds,
-            ),
+        return self.paginate_url(
+            url,
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            pagination=pagination,
+            sleep_seconds=sleep_seconds,
         )
-        return records
 
     def paginate_iter(
         self,
@@ -668,7 +977,7 @@ class EndpointClient:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
-            return self._extract_with_retry(url, **kw)
+            return self._get_with_retry(url, **kw)
 
         # For known pagination types, collect from the generator.
         records: JSONRecords = list(
@@ -727,7 +1036,7 @@ class EndpointClient:
                 headers=headers,
                 timeout=timeout,
             )
-            page_data = self._extract_with_retry(url, **kw)
+            page_data = self._get_with_retry(url, **kw)
             records_path = pg.get('records_path')
             fallback_path = pg.get('fallback_path')
             yield from Paginator.coalesce_records(
@@ -754,7 +1063,7 @@ class EndpointClient:
                 timeout=timeout,
             )
             try:
-                return self._extract_with_retry(url_, **call_kw)
+                return self._get_with_retry(url_, **call_kw)
             except ApiRequestError as e:
                 raise PaginationError(
                     url=url_,
@@ -774,6 +1083,8 @@ class EndpointClient:
         )
 
         yield from paginator.paginate_iter(url, params=params)
+
+    # -- Instance Methods (Endpoints)-- #
 
     def url(
         self,
@@ -935,59 +1246,25 @@ class EndpointClient:
             kw['timeout'] = timeout
         return kw
 
-    @staticmethod
-    def coalesce_records(
-        x: Any,
-        records_path: str | None,
-        fallback_path: str | None = None,
-    ) -> JSONRecords:
-        """
-        Coalesce JSON page payloads into a list of dicts.
-
-        Supports dotted path extraction via ``records_path`` and handles lists,
-        maps, and scalars by coercing non-dict items into ``{'value': x}``.
-
-        Parameters
-        ----------
-        x : Any
-            The JSON payload from an API response.
-        records_path : str | None
-            Dotted path to the records within the payload.
-        fallback_path : str | None
-            Secondary dotted path consulted when ``records_path`` resolves to
-            ``None`` or an empty list.
-
-        Returns
-        -------
-        JSONRecords
-            List of record dicts extracted from the payload.
-        """
-        return Paginator.coalesce_records(x, records_path, fallback_path)
-
-    @staticmethod
-    def next_cursor_from(
-        data_obj: Any,
-        path: str | None,
-    ) -> str | int | None:
-        """
-        Extract a cursor value from a JSON payload using a dotted path.
-
-        Parameters
-        ----------
-        data_obj : Any
-            The JSON payload object (expected to be a dict).
-        path : str | None
-            Dotted path within the payload that points to the next cursor.
-
-        Returns
-        -------
-        str | int | None
-            The extracted cursor value if present and of type str or int;
-            otherwise None.
-        """
-        return Paginator.next_cursor_from(data_obj, path)
-
     # -- Protected Static Methods -- #
+
+    @staticmethod
+    def _normalize_http_method(method: str | None) -> str:
+        """
+        Normalize HTTP method names to uppercase strings.
+
+        Parameters
+        ----------
+        method : str | None
+            Raw HTTP method value supplied by the caller.
+
+        Returns
+        -------
+        str
+            Uppercase HTTP method, defaulting to ``'GET'`` when falsy.
+        """
+        candidate = (method or '').strip().upper()
+        return candidate or 'GET'
 
     @staticmethod
     def _normalize_pagination_type(
