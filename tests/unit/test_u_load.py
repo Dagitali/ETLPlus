@@ -226,9 +226,9 @@ class TestLoadErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert False, (
-                    f'Expected {exc_type.__name__} with message: {err_msg}'
-                )
+                raise AssertionError(
+                    f'Expected {exc_type.__name__} with message: {err_msg}',
+                ) from e.value
 
 
 @pytest.mark.unit
