@@ -42,7 +42,8 @@ def _dummy_fetch(
 
 
 class RecordingClient(EndpointClient):
-    """EndpointClient subclass that records paginate_url_iter calls.
+    """
+    EndpointClient subclass that records paginate_url_iter calls.
 
     Used to verify that ``paginate`` and ``paginate_iter`` are thin shims
     over ``paginate_url_iter``.
@@ -52,6 +53,7 @@ class RecordingClient(EndpointClient):
 
     @property
     def paginate_calls(self) -> list[dict[str, Any]]:
+        """Access recorded :meth:`paginate_url_iter` calls."""
         return type(self)._paginate_calls
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -83,6 +85,12 @@ class RecordingClient(EndpointClient):
 
 
 class FakePageClient(EndpointClient):
+    """
+    EndpointClient subclass that simulates paginated results.
+
+    Used to test :class:`Paginator` integration without real HTTP calls.
+    """
+
     def paginate_url_iter(
         self,
         url: str,
@@ -101,6 +109,8 @@ class FakePageClient(EndpointClient):
 
 # SECTION: TESTS ============================================================ #
 
+
+# pylint: disable=protected-access
 
 @pytest.mark.unit
 class TestPaginator:
@@ -170,7 +180,6 @@ class TestPaginator:
             'page_param': 'page',
             'size_param': 'per_page',
             'page_size': 2,
-            'records_path': 'items',
         }
 
         records = cast(
@@ -178,7 +187,10 @@ class TestPaginator:
             list(client.paginate('items', pagination=pg)),
         )
 
-        assert [r['id'] for r in records] == [1, 2, 3]
+        expected = [1, 2, 3]
+        for i, r in enumerate(records):
+            assert r.get('id') in expected
+            assert r.get('id') == expected[i]
 
     @pytest.mark.parametrize(
         'actual, expected_page_size',

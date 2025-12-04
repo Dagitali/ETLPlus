@@ -62,9 +62,10 @@ __all__ = [
 # SECTION: TYPES ============================================================ #
 
 
+# TODO: Consider moving to etlplus.api.types.
 type Headers = Mapping[str, str]
 type Params = Mapping[str, Any]
-type URL = str
+type Url = str
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -73,7 +74,7 @@ type URL = str
 class ApiRequestEnv(TypedDict, total=False):
     """API request environment configuration."""
 
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
     session: requests.Session | None
@@ -92,7 +93,7 @@ class ApiRequestEnv(TypedDict, total=False):
 class ApiTargetEnv(TypedDict, total=False):
     """API target environment configuration."""
 
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
     session: requests.Session | None
@@ -159,11 +160,11 @@ def _get_api_cfg_and_endpoint(
 def _inherit_http_from_api_endpoint(
     api_cfg: CfgApiConfig,
     ep: CfgEndpointConfig,
-    url: URL | None,
+    url: Url | None,
     headers: dict[str, str],
     session_cfg: SessionConfig | None,
     force_url: bool = False,
-) -> tuple[URL | None, dict[str, str], SessionConfig | None]:
+) -> tuple[Url | None, dict[str, str], SessionConfig | None]:
     if force_url or not url:
         url = api_cfg.build_endpoint_url(ep)
     headers = {**api_cfg.headers, **headers}
@@ -277,7 +278,7 @@ def compose_api_request_env(
         The composed API request environment.
     """
     ex_opts = ex_opts or {}
-    url: URL | None = getattr(source_obj, 'url', None)
+    url: Url | None = getattr(source_obj, 'url', None)
     params: dict[str, Any] = dict(
         getattr(source_obj, 'query_params', {}) or {},
     )
@@ -411,8 +412,8 @@ def compose_api_target_env(
         Composed API target environment.
     """
     ov = overrides or {}
-    url: URL | None = cast(
-        URL | None,
+    url: Url | None = cast(
+        Url | None,
         ov.get('url') or getattr(target_obj, 'url', None),
     )
     method: str | None = cast(

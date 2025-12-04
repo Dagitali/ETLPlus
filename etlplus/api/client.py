@@ -384,7 +384,7 @@ class EndpointClient:
                         close_attr()  # type: ignore[misc]
                     except TypeError:
                         pass
-            except Exception:
+            except AttributeError:
                 # Some callers provide mock objects with non-callable
                 # ``close`` attributes—ignore those rather than bubble.
                 pass

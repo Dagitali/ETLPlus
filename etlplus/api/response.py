@@ -75,6 +75,8 @@ __all__ = [
 
 
 class PaginationType(StrEnum):
+    """Enumeration of supported pagination types for REST API responses."""
+
     PAGE = 'page'
     OFFSET = 'offset'
     CURSOR = 'cursor'
