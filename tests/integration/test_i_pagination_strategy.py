@@ -419,8 +419,8 @@ jobs:
         if job.extract is not None:
             job.extract.options = opts
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         assert result.get('status') in {'ok', 'success'}
         assert created, 'Expected client to be constructed'
