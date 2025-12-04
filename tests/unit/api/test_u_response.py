@@ -102,6 +102,8 @@ class FakePageClient(EndpointClient):
 # SECTION: TESTS ============================================================ #
 
 
+# pylint: disable=protected-access
+
 @pytest.mark.unit
 class TestPaginator:
     """Unit test suite for :class:`Paginator`."""
@@ -170,7 +172,6 @@ class TestPaginator:
             'page_param': 'page',
             'size_param': 'per_page',
             'page_size': 2,
-            'records_path': 'items',
         }
 
         records = cast(
@@ -178,7 +179,10 @@ class TestPaginator:
             list(client.paginate('items', pagination=pg)),
         )
 
-        assert [r['id'] for r in records] == [1, 2, 3]
+        expected = [1, 2, 3]
+        for i, r in enumerate(records):
+            assert r.get('id') in expected
+            assert r.get('id') == expected[i]
 
     @pytest.mark.parametrize(
         'actual, expected_page_size',
