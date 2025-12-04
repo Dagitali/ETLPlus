@@ -17,9 +17,9 @@ import types
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import cast
 from typing import TypedDict
 from typing import Unpack
+from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
@@ -291,6 +291,7 @@ def extract_stub_factory() -> Callable[..., Any]:
     # pylint: disable=unused-argument
 
     import contextlib
+
     import etlplus.api.client as cmod  # Local import to avoid cycles
 
     @contextlib.contextmanager
