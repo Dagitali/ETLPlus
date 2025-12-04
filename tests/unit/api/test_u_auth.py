@@ -71,8 +71,8 @@ class _Resp:
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture
-def token_sequence(
+@pytest.fixture(name='token_sequence')
+def token_sequence_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, int]:
     """
