@@ -373,7 +373,23 @@ def _load_to_target(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+) -> int:
+    """
+    Run ETLPlus jobs from a YAML pipeline configuration.
+
+    Parameters
+    ----------
+    argv : list[str] | None, optional
+        List of command-line arguments to parse. If None, defaults to
+        sys.argv[1:].
+
+    Returns
+    -------
+    int
+        Exit code (0 for success, non-zero for errors).
+    """
     ap = argparse.ArgumentParser(
         description='Run ETLPlus jobs from a YAML pipeline config',
     )
@@ -403,8 +419,8 @@ def main(argv: list[str] | None = None) -> int:
     profile = cfg.get('profile', {}) or {}
     profile_env: dict[str, str] = profile.get('env', {}) or {}
 
-    # Compose env: profile.env overrides current environment
-    # if the same key also exists in os.environ
+    # Compose env: profile.env overrides current environment if the same key
+    # also exists in os.environ.
     env_map: dict[str, str] = dict(os.environ)
     env_map.update({k: str(v) for k, v in profile_env.items()})
 
@@ -440,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
         source_obj, extract_overrides, vars_map, env_map,
     )
 
-    # Validate (optional) with severity/phase
+    # Validate (optional) with severity/phase.
     if 'validate' in job:
         vcfg = job['validate'] or {}
         ruleset_name = vcfg.get('ruleset')
@@ -466,7 +482,7 @@ def main(argv: list[str] | None = None) -> int:
         if phase in {'before_transform', 'both'}:
             data = _handle_validation(data)
 
-    # Transform (optional)
+    # Transform (optional).
     if 'transform' in job:
         pipeline_name = job['transform'].get('pipeline')
         operations = transforms.get(pipeline_name, {})
@@ -491,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(msg)
                     raise SystemExit(1)
 
-    # Load
+    # Load.
     load_cfg = job.get('load', {})
     target_name = load_cfg.get('target')
     if target_name not in targets_by_name:
