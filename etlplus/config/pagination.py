@@ -25,11 +25,12 @@ from typing import overload
 from typing import Self
 from typing import TYPE_CHECKING
 
+from ..api import PaginationType
 from .mixins import BoundsWarningsMixin
 from .utils import to_int
 
 if TYPE_CHECKING:
-    from ..api import PaginationConfigMap, PaginationType
+    from ..api import PaginationConfigMap
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -220,8 +221,6 @@ def _normalize_pagination_type(
     PaginationType | None
         The normalized PaginationType, or None if unrecognized.
     """
-    from ..api import PaginationType
-
     match str(value).strip().lower() if value is not None else '':
         case 'page':
             return PaginationType.PAGE
