@@ -25,7 +25,6 @@ import requests  # type: ignore[import]
 from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
 
-
 # SECTION: HELPERS ========================================================== #
 
 

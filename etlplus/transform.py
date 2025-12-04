@@ -66,7 +66,6 @@ from .types import StepSpec
 from .types import StrPath
 from .utils import to_number
 
-
 # SECTION: PROTECTED FUNCTIONS ============================================== #
 
 

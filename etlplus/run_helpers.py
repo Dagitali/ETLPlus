@@ -41,7 +41,6 @@ from .config.pagination import PaginationConfig as CfgPaginationConfig
 from .config.rate_limit import RateLimitConfig as CfgRateLimitConfig
 from .types import Timeout
 
-
 # SECTION: EXPORTS ========================================================== #
 
 

@@ -21,7 +21,6 @@ from etlplus.transform import apply_select
 from etlplus.transform import apply_sort
 from etlplus.transform import transform
 
-
 # SECTION: TESTS =========================================================== #
 
 

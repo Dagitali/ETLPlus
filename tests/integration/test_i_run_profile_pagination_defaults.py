@@ -21,7 +21,6 @@ from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
-
 # SECTION: TESTS ============================================================ #
 
 

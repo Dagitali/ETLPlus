@@ -14,7 +14,6 @@ import pytest
 
 from etlplus.cli import create_parser
 
-
 # SECTION: TESTS ============================================================ #
 
 

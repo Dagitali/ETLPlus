@@ -17,7 +17,6 @@ import pytest
 from etlplus.enums import FileFormat
 from etlplus.file import File
 
-
 # SECTION: TESTS =========================================================== #
 
 

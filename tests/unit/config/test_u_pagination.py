@@ -18,7 +18,6 @@ import pytest
 from etlplus.config import PaginationConfig
 from etlplus.config.utils import pagination_from_defaults
 
-
 # SECTION: TESTS ============================================================ #
 
 

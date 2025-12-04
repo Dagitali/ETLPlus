@@ -19,7 +19,6 @@ import pytest
 
 from etlplus.cli import main
 
-
 # SECTION: TESTS ============================================================ #
 
 

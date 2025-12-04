@@ -29,7 +29,6 @@ from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
 from etlplus.config import RateLimitConfig
 
-
 # SECTION: HELPERS ========================================================== #
 
 

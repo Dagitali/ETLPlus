@@ -26,7 +26,6 @@ from etlplus.load import load
 from etlplus.load import load_data
 from etlplus.load import load_to_file
 
-
 # SECTION: TESTS ============================================================ #
 
 

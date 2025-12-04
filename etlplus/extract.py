@@ -22,7 +22,6 @@ from .types import JSONDict
 from .types import JSONList
 from .types import StrPath
 
-
 # SECTION: FUNCTIONS ======================================================== #
 
 

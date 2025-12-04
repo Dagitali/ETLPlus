@@ -15,7 +15,6 @@ from etlplus.utils import to_float
 from etlplus.utils import to_int
 from etlplus.utils import to_number
 
-
 # SECTION: TESTS =========================================================== #
 
 

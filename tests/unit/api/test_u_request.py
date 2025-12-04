@@ -23,7 +23,6 @@ from etlplus.api.request import RateLimitConfigMap
 from etlplus.api.request import RateLimiter
 from etlplus.api.request import compute_sleep_seconds
 
-
 # SECTION: FIXTURES ======================================================== #
 
 

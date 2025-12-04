@@ -28,7 +28,6 @@ from etlplus.api.response import PaginationConfigMap
 from etlplus.api.response import PaginationType
 from etlplus.api.response import Paginator
 
-
 # SECTION: HELPERS ========================================================== #
 
 

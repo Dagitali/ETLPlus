@@ -22,7 +22,6 @@ from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import RateLimitConfig
 
-
 # SECTION: TESTS ============================================================ #
 
 

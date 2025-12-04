@@ -30,7 +30,6 @@ from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
-
 # SECTION: HELPERS ========================================================== #
 
 

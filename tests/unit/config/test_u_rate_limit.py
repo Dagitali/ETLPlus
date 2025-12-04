@@ -17,7 +17,6 @@ import pytest
 
 from etlplus.config import RateLimitConfig
 
-
 # SECTION: TESTS ============================================================ #
 
 

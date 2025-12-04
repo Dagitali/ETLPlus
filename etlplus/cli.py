@@ -35,7 +35,6 @@ from .utils import json_type
 from .utils import print_json
 from .validate import validate
 
-
 # SECTION: FUNCTIONS ======================================================== #
 
 

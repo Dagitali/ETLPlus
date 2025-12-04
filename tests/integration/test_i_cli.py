@@ -20,7 +20,6 @@ from pathlib import Path
 
 from etlplus.cli import main
 
-
 # SECTION: TESTS ============================================================ #
 
 
