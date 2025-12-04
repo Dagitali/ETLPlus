@@ -55,9 +55,10 @@ __all__ = ['run']
 # - ApiRetryPolicy: etlplus.api.request.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
+# TODO: Consider moving to etlplus.api.types.
 type Headers = Mapping[str, str]
 type Params = Mapping[str, Any]
-type URL = str
+type Url = str
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -71,7 +72,7 @@ class BaseApiHttpEnv(TypedDict, total=False):
     """
 
     # Request details
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
 
