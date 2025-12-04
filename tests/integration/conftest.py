@@ -132,6 +132,12 @@ def fake_endpoint_client() -> tuple[
     created: list[FakeEndpointClientProtocol] = []
 
     class FakeClient:
+        """
+        Fake :class:`EndpointClient` capturing :meth:`paginate` arguments.
+        """
+
+        # pylint: disable=unused-argument
+
         seen: dict[str, Any]
 
         def __init__(
@@ -148,11 +154,14 @@ def fake_endpoint_client() -> tuple[
 
         def paginate(
             self,
-            *argsrgs,
+            *args,
             pagination: Any | None = None,
             sleep_seconds: float = 0.0,
             **kwargs,
         ) -> Any:
+            """
+            Capture pagination config and sleep seconds.
+            """
             self.seen['pagination'] = pagination
             self.seen['sleep_seconds'] = sleep_seconds
             return [{'ok': True}]
@@ -250,6 +259,8 @@ def run_patched(
         *,
         sleep_seconds: float | None = None,
     ) -> dict[str, Any]:
+        # pylint: disable=unused-argument
+
         # Patch config loader and EndpointClient.
         monkeypatch.setattr(
             run_mod,
