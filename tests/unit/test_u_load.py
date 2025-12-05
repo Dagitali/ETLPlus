@@ -315,6 +315,7 @@ class TestLoadData:
         """
         class _FakeStdin:
             def read(self) -> str:
+                """Simulate reading JSON data from stdin."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
         monkeypatch.setattr('sys.stdin', _FakeStdin())
         result = load_data('-')

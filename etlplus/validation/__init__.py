@@ -1,5 +1,5 @@
 """
-etlplus.validation package.
+:mod:`etlplus.validation` package.
 
 The top-level module defining ``:mod:etlplus.validation``, a package of high-
 level data validation helpers.

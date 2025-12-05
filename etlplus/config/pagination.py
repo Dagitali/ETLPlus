@@ -1,5 +1,5 @@
 """
-etlplus.config.pagination module.
+:mod:`etlplus.config.pagination` module.
 
 Pagination model for REST API responses (page, offset, cursor styles).
 

@@ -1,5 +1,5 @@
 """
-etlplus.config.utils module.
+:mod:`etlplus.config.utils` module.
 
 A module defining utility helpers for ETL pipeline configuration.
 

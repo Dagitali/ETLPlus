@@ -1,5 +1,5 @@
 """
-etlplus.validation module.
+:mod:`etlplus.validation` module.
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 

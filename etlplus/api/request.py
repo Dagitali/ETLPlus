@@ -1,5 +1,5 @@
 """
-``etlplus.api.request`` module.
+:mod:`etlplus.api.request` module.
 
 Centralized logic for handling HTTP requests, including:
 - Request rate limiting.

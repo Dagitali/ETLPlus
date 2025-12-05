@@ -1,5 +1,5 @@
 """
-etlplus.run_helpers module.
+:mod:`etlplus.run_helpers` module.
 
 Helper functions and small utilities used by ``etlplus.run`` to compose API
 request/load environments, pagination configs, session objects, and endpoint
