@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_run_profile_rate_limit_defaults`` module.
+:mod:`tests.integration.test_i_run_profile_rate_limit_defaults` module.
 
 Integration tests for profile-level rate limit defaults. Verifies propagation
 of rate limit sleep configuration from API profile defaults into the runner and
@@ -28,6 +28,8 @@ from tests.integration.conftest import FakeEndpointClientProtocol
 
 
 class TestRunProfileRateLimitDefaults:
+    """Integration test suite for profile-level rate limit defaults."""
+
     @pytest.mark.parametrize(
         'rate_cfg,forced_sleep,expected_sleep',
         [
@@ -59,11 +61,11 @@ class TestRunProfileRateLimitDefaults:
         forced_sleep: float | None,
         expected_sleep: float,
     ) -> None:
+        """Test propagation of profile-level rate limit sleep configuration."""
         cfg = pipeline_cfg_factory(rate_limit_defaults=rate_cfg)
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient, sleep_seconds=forced_sleep)
-
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client, sleep_seconds=forced_sleep)
         # Sanity.
         assert result.get('status') == 'ok'
         assert created, 'Expected client to be constructed'
