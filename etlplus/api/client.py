@@ -400,34 +400,6 @@ class EndpointClient:
 
     # -- Protected Instance Methods -- #
 
-    # TODO: Remove this method.  Replace calls with :meth:`_get_with_retry`.
-    def _extract_with_retry(
-        self,
-        url: str,
-        **kw: Any,
-    ) -> JSONData:
-        """
-        Backwards-compatible alias for :meth:`_get_with_retry`.
-
-        Parameters
-        ----------
-        url : str
-            Absolute URL to fetch.
-        **kw : Any
-            Keyword arguments forwarded to :meth:`_get_with_retry`.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload produced by :meth:`_get_with_retry`.
-
-        Notes
-        -----
-        Prefer :meth:`_get_with_retry`; this wrapper exists to avoid churn in
-        older call sites and tests.
-        """
-        return self._get_with_retry(url, **kw)
-
     def _get_active_session(self) -> requests.Session | None:
         """
         Return the currently active session if available.
