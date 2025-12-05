@@ -87,6 +87,9 @@ from .response import Paginator
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
+from .types import Headers
+from .types import Params
+from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -107,10 +110,13 @@ __all__ = [
 
     # Type Aliases
     'CursorPaginationConfigMap',
+    'Headers',
     'HTTPAdapterMountConfig',
     'HTTPAdapterRetryConfig',
     'PagePaginationConfigMap',
     'PaginationConfigMap',
+    'Params',
     'RateLimitConfigMap',
     'RetryPolicy',
+    'Url',
 ]

@@ -32,8 +32,11 @@ from typing import cast
 import requests  # type: ignore[import]
 
 from .api import EndpointClient
+from .api import Headers
 from .api import PaginationConfigMap as ApiPaginationConfig
+from .api import Params
 from .api import RetryPolicy as ApiRetryPolicy
+from .api import Url
 from .api import compute_sleep_seconds
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig
@@ -56,15 +59,6 @@ __all__ = [
     'ApiRequestEnv',
     'ApiTargetEnv',
 ]
-
-
-# SECTION: TYPES ============================================================ #
-
-
-# TODO: Consider moving to etlplus.api.types.
-type Headers = Mapping[str, str]
-type Params = Mapping[str, Any]
-type Url = str
 
 
 # SECTION: TYPED DICTS ====================================================== #
