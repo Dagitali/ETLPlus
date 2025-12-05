@@ -480,7 +480,7 @@ class RetryManager:
         **kwargs: Any,
     ) -> JSONData:
         """
-        Run a function with retry logic according to the configured policy.
+        Execute ``func`` with exponential-backoff retries.
 
         Parameters
         ----------
@@ -498,54 +498,77 @@ class RetryManager:
 
         Raises
         ------
+        ApiRequestError
+            Request error during API request.
+        """
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                return func(url, **kwargs)
+            except requests.RequestException as e:
+                status = self._extract_status(e)
+                exhausted = attempt == self.max_attempts
+                if not self.should_retry(status, e) or exhausted:
+                    self._raise_terminal_error(url, attempt, status, e)
+                self.sleeper(self.get_sleep_time(attempt))
+
+        # ``range`` already covered all attempts; reaching this line would
+        # indicate a logical error.
+        raise ApiRequestError(  # pragma: no cover - defensive
+            url=url,
+            status=None,
+            attempts=self.max_attempts,
+            retried=True,
+            retry_policy=self.policy,
+            cause=None,
+        )
+
+    def _raise_terminal_error(
+        self,
+        url: str,
+        attempt: int,
+        status: int | None,
+        error: requests.RequestException,
+    ) -> None:
+        """
+        Raise the appropriate terminal error after exhausting retries.
+
+        Parameters
+        ----------
+        url : str
+            URL for the API request.
+        attempt : int
+            Attempt number.
+        status : int | None
+            HTTP status code if available.
+        error : requests.RequestException
+            The exception that was raised.
+
+        Raises
+        ------
         ApiAuthError
             Authentication error during API request.
         ApiRequestError
             Request error during API request.
         """
-        attempt = 1
-        while attempt <= self.max_attempts:
-            try:
-                return func(url, **kwargs)
-            except requests.RequestException as e:
-                status = getattr(
-                    getattr(e, 'response', None),
-                    'status_code',
-                    None,
-                )
-                too_many_attempts = attempt >= self.max_attempts
-                if not self.should_retry(status, e) or too_many_attempts:
-                    retried = attempt > 1
-                    if status in {401, 403}:
-                        raise ApiAuthError(
-                            url=url,
-                            status=status,
-                            attempts=attempt,
-                            retried=retried,
-                            retry_policy=self.policy,
-                            cause=e,
-                        ) from e
-                    raise ApiRequestError(
-                        url=url,
-                        status=status,
-                        attempts=attempt,
-                        retried=retried,
-                        retry_policy=self.policy,
-                        cause=e,
-                    ) from e
-                sleep_for = self.get_sleep_time(attempt)
-                self.sleeper(sleep_for)
-                attempt += 1
+        retried = attempt > 1
+        if status in {401, 403}:
+            raise ApiAuthError(
+                url=url,
+                status=status,
+                attempts=attempt,
+                retried=retried,
+                retry_policy=self.policy,
+                cause=error,
+            ) from error
 
-        # If we exit the loop, all attempts failed without raising.
         raise ApiRequestError(
             url=url,
-            status=None,
-            attempts=attempt - 1,
-            retried=True,
+            status=status,
+            attempts=attempt,
+            retried=retried,
             retry_policy=self.policy,
-            cause=None,
-        )
+            cause=error,
+        ) from error
 
     def should_retry(
         self,
@@ -577,3 +600,25 @@ class RetryManager:
                 return True
 
         return False
+
+    # -- Protected Static Methods -- #
+
+    @staticmethod
+    def _extract_status(
+        error: requests.RequestException,
+    ) -> int | None:
+        """
+        Extract the HTTP status code from a RequestException.
+
+        Parameters
+        ----------
+        error : requests.RequestException
+            The exception from which to extract the status code.
+
+        Returns
+        -------
+        int | None
+            The HTTP status code if available, otherwise None.
+        """
+        response = getattr(error, 'response', None)
+        return getattr(response, 'status_code', None)
