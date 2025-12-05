@@ -57,17 +57,29 @@ from ..utils import to_maximum_int
 from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .request import RateLimiter
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Classes
+    'Paginator',
+
+    # Enums
+    'PaginationType',
+
+    # Typed Dicts
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
     'PaginationConfigMap',
-    'Paginator',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_MISSING = object()
 
 
 # SECTION: ENUMS ============================================================ #
@@ -199,7 +211,11 @@ class PagePaginationConfigMap(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+type FetchPageFunc = Callable[
+    [str, Mapping[str, Any] | None, int | None], Any,
+]
+
+type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -263,7 +279,7 @@ class Paginator:
     limit_param : str
         Query parameter name carrying the page size for cursor-based
         pagination when the API uses a separate limit field.
-    fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any] | None
+    fetch : FetchPageFunc | None
         Callback used to fetch a single page. It receives the absolute URL,
         the request params mapping, and the 1-based page index.
     sleep_seconds : float
@@ -272,6 +288,9 @@ class Paginator:
     sleep_func : Callable[[float], None] | None
         Function used to perform sleeping; typically wraps ``time.sleep``
         or a test double.
+    rate_limiter : RateLimiter | None
+        Optional rate limiter invoked between page fetches. Takes precedence
+        over ``sleep_func`` when provided.
     last_page : int
         Tracks the last page index attempted. Useful for diagnostics.
     """
@@ -346,11 +365,10 @@ class Paginator:
         if not self.limit_param:
             self.limit_param = self.LIMIT_PARAM
 
-    fetch: Callable[
-        [str, Mapping[str, Any] | None, int | None], Any,
-    ] | None = None
+    fetch: FetchPageFunc | None = None
     sleep_seconds: float = 0.0
     sleep_func: Callable[[float], None] | None = None
+    rate_limiter: RateLimiter | None = None
     last_page: int = 0
 
     # -- Class Methods -- #
@@ -360,9 +378,10 @@ class Paginator:
         cls,
         config: Mapping[str, Any],
         *,
-        fetch: Callable[[str, Mapping[str, Any] | None, int | None], Any],
+        fetch: FetchPageFunc,
         sleep_func: Callable[[float], None] | None = None,
         sleep_seconds: float = 0.0,
+        rate_limiter: RateLimiter | None = None,
     ) -> Paginator:
         """
         Normalize config and build a paginator instance.
@@ -371,7 +390,7 @@ class Paginator:
         ----------
         config : Mapping[str, Any]
             Pagination configuration mapping.
-        fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any]
+        fetch : FetchPageFunc
             Callback used to fetch a single page for a request given the
             absolute URL, the request params mapping, and the 1-based page
             index.
@@ -381,6 +400,9 @@ class Paginator:
         sleep_seconds : float, optional
             Number of seconds to sleep between page fetches. Defaults to
             ``0.0``. When non-positive, no sleeping occurs.
+        rate_limiter : RateLimiter | None, optional
+            Optional limiter invoked between page fetches. When provided it
+            overrides ``sleep_seconds``/``sleep_func`` pacing.
 
         Returns
         -------
@@ -414,6 +436,7 @@ class Paginator:
             fetch=fetch,
             sleep_seconds=to_float(sleep_seconds, 0.0, minimum=0.0) or 0.0,
             sleep_func=sleep_func,
+            rate_limiter=rate_limiter,
         )
 
     # Instance Methods -- #
@@ -617,18 +640,18 @@ class Paginator:
             return True
         return False
 
-    # TODOD: Replace with RateLimiter when pagination integrates RateLimiter.
+    # TODO: Remove attributes sleep_func and sleep_seconds in favor of
+    # TODO: rate_limiter.
     def _sleep(self) -> None:
         """
-        Sleep for the configured number of seconds.
-
-        Uses the provided sleep function.  Callers can inject a RateLimiter if
-        needed.
+        Apply any configured pacing between subsequent page fetches.
         """
-        if self.sleep_func is None:
+        if self.rate_limiter is not None:
+            self.rate_limiter.enforce()
             return
-        if self.sleep_seconds > 0:
-            self.sleep_func(self.sleep_seconds)
+        if self.sleep_func is None or self.sleep_seconds <= 0:
+            return
+        self.sleep_func(self.sleep_seconds)
 
     # -- Static Methods -- #
 
@@ -662,8 +685,6 @@ class Paginator:
         lists, mappings, and scalars by coercing non-dict items into
         ``{"value": x}``.
         """
-        _missing = object()
-
         def _resolve(obj: Any, path: str | None) -> Any:
             if not isinstance(path, str) or not path:
                 return obj
@@ -672,11 +693,11 @@ class Paginator:
                 if isinstance(cur, dict) and part in cur:
                     cur = cur[part]
                 else:
-                    return _missing
+                    return _MISSING
             return cur
 
         data = _resolve(x, records_path)
-        if data is _missing:
+        if data is _MISSING:
             data = None
 
         if fallback_path and (
@@ -684,7 +705,7 @@ class Paginator:
             or (isinstance(data, list) and not data)
         ):
             fallback = _resolve(x, fallback_path)
-            if fallback is not _missing:
+            if fallback is not _MISSING:
                 data = fallback
 
         if data is None and not records_path:
