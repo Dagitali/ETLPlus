@@ -18,6 +18,7 @@ import requests  # type: ignore[import]
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
 from .api import PaginationConfigMap as ApiPaginationConfig
 from .api import RetryPolicy as ApiRetryPolicy
+from .api import Url
 from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .config import load_pipeline_config
 from .extract import extract
@@ -38,8 +39,7 @@ from .validation.utils import maybe_validate
 __all__ = ['run']
 
 
-# SECTION: TYPES ============================================================ #
-
+# SECTION: TYPED DICTS ====================================================== #
 
 # Types glossary (config vs API client)
 # ------------------------------------
@@ -53,14 +53,6 @@ __all__ = ['run']
 #   (client layer)
 # - ApiRetryPolicy: etlplus.api.request.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
-
-# TODO: Consider moving to etlplus.api.types.
-type Headers = Mapping[str, str]
-type Params = Mapping[str, Any]
-type Url = str
-
-
-# SECTION: TYPED DICTS ====================================================== #
 
 
 class BaseApiHttpEnv(TypedDict, total=False):
