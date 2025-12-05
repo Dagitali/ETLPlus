@@ -13,6 +13,8 @@ Examples
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
 from typing import NotRequired
 from typing import TypedDict
 
@@ -25,7 +27,15 @@ __all__ = [
 ]
 
 
-# SECTION: TYPED DICTS (Retries) ============================================ #
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type Headers = Mapping[str, str]
+type Params = Mapping[str, Any]
+type Url = str
+
+
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class RetryPolicy(TypedDict):
