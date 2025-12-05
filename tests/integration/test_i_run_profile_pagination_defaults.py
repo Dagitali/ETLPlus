@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_run_profile_pagination_defaults`` module.
+:mod:`tests.integration.test_i_run_profile_pagination_defaults` module.
 
 Integration tests for profile-level pagination defaults. Validates that
 ``run()`` inherits pagination defaults from the API profile when not overridden
@@ -25,6 +25,7 @@ from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 
 class TestRunProfilePaginationDefaults:
+    """Integration test suite for profile-level pagination defaults."""
 
     def test_job_level_pagination_overrides_profile_defaults(
         self,
@@ -32,6 +33,7 @@ class TestRunProfilePaginationDefaults:
         fake_endpoint_client: tuple[type[Client], list[Client]],
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:
+        """Test that job-level pagination options override profile defaults."""
         # Profile defaults exist, but job-level options will override.
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
@@ -55,8 +57,8 @@ class TestRunProfilePaginationDefaults:
         else:
             raise ValueError('job.extract is None; cannot set options')
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         assert result.get('status') == 'ok'
         assert created, 'Expected client to be constructed'
@@ -75,6 +77,7 @@ class TestRunProfilePaginationDefaults:
         fake_endpoint_client: tuple[type[Client], list[Client]],
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:
+        """Test that profile-level pagination defaults are applied."""
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
                 type=PaginationType.PAGE,
@@ -85,8 +88,8 @@ class TestRunProfilePaginationDefaults:
             ),
         )
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         # Sanity.
         assert result.get('status') == 'ok'
