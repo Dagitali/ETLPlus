@@ -1,5 +1,5 @@
 """
-tests.unit.test_u_utils module.
+:mod:`tests.unit.test_u_utils` module.
 
 Unit tests for ``etlplus.utils``.
 

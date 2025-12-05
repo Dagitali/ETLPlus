@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_response`` module.
+:mod:`tests.unit.api.test_u_response` module.
 
 Unit tests for :class:`etlplus.api.response.Paginator`.
 

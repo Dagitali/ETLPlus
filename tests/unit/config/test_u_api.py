@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_api`` module.
+:mod:`tests.unit.config.test_u_api` module.
 
 Unit tests for ``etlplus.config.api``.
 
