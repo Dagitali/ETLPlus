@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_pagination_strategy`` module.
+:mod:`tests.integration.test_i_pagination_strategy` module.
 
 Integration tests for pagination strategies. We mock API extraction for both
 page/offset and cursor modes and drive the CLI entry point to exercise the

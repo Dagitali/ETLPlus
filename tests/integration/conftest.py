@@ -1,5 +1,5 @@
 """
-``tests.integration.conftest`` module.
+:mod:`tests.integration.conftest` module.
 
 Configures pytest-based integration tests and provides shared fixtures.
 

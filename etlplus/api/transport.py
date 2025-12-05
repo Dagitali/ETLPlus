@@ -1,5 +1,5 @@
 """
-``etlplus.api.transport`` module.
+:mod:`etlplus.api.transport` module.
 
 Configure ``requests`` ``HTTPAdapter`` instances with connection pooling and
 optional ``urllib3`` retry behavior.

@@ -1,5 +1,5 @@
 """
-``etlplus.api.types`` module.
+:mod:`etlplus.api.types` module.
 
 Centralized type aliases and ``TypedDict``-based configurations used in the
 :mod:`etlplus.api` package.

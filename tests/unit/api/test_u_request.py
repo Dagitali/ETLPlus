@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_request`` module.
+:mod:`tests.unit.api.test_u_request` module.
 
 Unit tests for :class:`etlplus.api.request.RateLimiter`.
 

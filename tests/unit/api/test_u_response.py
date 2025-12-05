@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_response`` module.
+:mod:`tests.unit.api.test_u_response` module.
 
 Unit tests for :class:`etlplus.api.response.Paginator`.
 
@@ -108,8 +108,6 @@ class FakePageClient(EndpointClient):
 
 # SECTION: TESTS ============================================================ #
 
-
-# pylint: disable=protected-access
 
 @pytest.mark.unit
 class TestPaginator:
@@ -227,6 +225,8 @@ class TestPaginator:
         """
         Test that paginate and paginate_iter delegate to paginate_url_iter.
         """
+        # pylint: disable=protected-access
+
         client = RecordingClient(
             base_url='https://example.test/api',
             endpoints={'items': '/items'},

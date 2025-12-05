@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_rate_limit`` module.
+:mod:`tests.unit.config.test_u_rate_limit` module.
 
 Unit tests for ``etlplus.config.rate_limit``.
 
@@ -97,6 +97,8 @@ class TestRateLimitConfig:
             Factory for creating RateLimitConfig from mapping or iterable.
         """
         class Weird(Iterable):
+            """A weird iterable that is not a mapping."""
+
             def __iter__(self):  # type: ignore[override]
                 yield 'sleep_seconds'
                 yield '1'

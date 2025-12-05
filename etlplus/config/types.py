@@ -1,5 +1,5 @@
 """
-etlplus.config.types module.
+:mod:`etlplus.config.types` module.
 
 Type aliases and editor-only TypedDicts for :mod:`etlplus.config`.
 

@@ -1,5 +1,5 @@
 """
-etlplus.api.errors module.
+:mod:`etlplus.api.errors` module.
 
 Exception types with rich context for debugging REST API failures.
 

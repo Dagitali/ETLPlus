@@ -1,5 +1,5 @@
 """
-etlplus.config.pipeline module.
+:mod:`etlplus.config.pipeline` module.
 
 Pipeline configuration model and helpers for job orchestration.
 

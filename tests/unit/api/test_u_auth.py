@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_auth`` module.
+:mod:`tests.unit.api.test_u_auth` module.
 
 Unit tests for ``etlplus.api.auth``.
 
@@ -26,9 +26,6 @@ from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
 
 # SECTION: HELPERS ========================================================== #
-
-
-# pylint: disable=protected-access
 
 
 class _Resp:
@@ -222,6 +219,7 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=protected-access
         # pylint: disable=unused-argument
 
         def fake_post(

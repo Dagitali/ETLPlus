@@ -1,5 +1,5 @@
 """
-``tests.conftest`` module.
+:mod:`tests.conftest` module.
 
 Test-wide shared pytest fixtures for the test suite.
 tests-wide conftest.

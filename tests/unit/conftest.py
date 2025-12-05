@@ -1,5 +1,5 @@
 """
-``tests.unit.conftest`` module.
+:mod:`tests.unit.conftest` module.
 
 Configures pytest-based unit tests and provides shared fixtures.
 
@@ -298,6 +298,8 @@ def extract_stub_factory() -> Callable[..., Any]:
         *,
         return_value: Any | None = None,
     ):  # noqa: D401
+        # pylint: disable=protected-access
+
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
         def _fake_request(

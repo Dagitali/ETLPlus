@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_mocks`` module.
+`:mod:`tests.unit.api.test_u_mocks` module.
 
 Reusable mocked objects for API client unit tests.
 
@@ -27,7 +27,7 @@ __all__ = ['MockResponse', 'MockSession']
 
 
 @pytest.mark.unit
-class MockResponse(Response):  # pragma: no cover - behaviour trivial
+class MockResponse(Response):  # pragma: no cover - behavior trivial
     """
     Minimal ``Response`` subclass returning a provided JSON payload.
 

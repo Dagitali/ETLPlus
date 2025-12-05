@@ -1,5 +1,5 @@
 """
-etlplus.enums module.
+:mod:`etlplus.enums` module.
 
 Shared enumeration types used across ETLPlus modules.
 """

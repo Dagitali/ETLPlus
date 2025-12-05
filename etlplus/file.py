@@ -1,5 +1,5 @@
 """
-etlplus.file module.
+:mod:`etlplus.file` module.
 
 Shared helpers for reading and writing structured and semi-structured data
 files.

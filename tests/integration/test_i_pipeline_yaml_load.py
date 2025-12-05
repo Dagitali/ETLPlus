@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_pipeline_yaml_load`` module.
+:mod:`tests.integration.test_i_pipeline_yaml_load` module.
 
 Pipeline YAML load integration test suite. Parametrized checks to ensure the
 repository pipeline YAML parses correctly with and without environment-
@@ -20,11 +20,18 @@ from etlplus.config import PipelineConfig
 
 
 class TestPipelineYamlLoad:
+    """Integration test suite for pipeline YAML loading."""
+
     @pytest.mark.parametrize('substitute', [False, True])
     def test_load_repo_pipeline_yaml(
         self,
         substitute: bool,
     ) -> None:  # noqa: D401
+        """
+        Test loading the repository pipeline YAML with optional env
+        substitution.
+        """
+
         # Ensure the repository pipeline YAML parses under current models.
         cfg = PipelineConfig.from_yaml(
             'examples/configs/pipeline.yml',

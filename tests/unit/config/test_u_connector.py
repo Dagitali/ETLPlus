@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_connector`` module.
+:mod:`tests.unit.config.test_u_connector` module.
 
 Unit tests for ``etlplus.config.connector``.
 

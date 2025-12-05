@@ -1,5 +1,5 @@
 """
-etlplus.load module.
+:mod:`etlplus.load` module.
 
 Helpers to load data into files, databases, and REST APIs.
 """

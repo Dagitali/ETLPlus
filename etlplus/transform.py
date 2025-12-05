@@ -1,5 +1,5 @@
 """
-etlplus.transformation module.
+:mod:`etlplus.transform` module.
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).

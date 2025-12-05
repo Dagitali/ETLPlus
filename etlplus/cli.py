@@ -1,5 +1,5 @@
 """
-etlplus.cli module.
+:mod:`etlplus.cli` module.
 
 Entry point for the ``etlplus`` command-line Interface (CLI).
 

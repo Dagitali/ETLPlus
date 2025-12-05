@@ -1,5 +1,5 @@
 """
-etlplus.__main__  module.
+:mod:`etlplus.__main__` module.
 
 Thin wrapper so `python -m etlplus` invokes the same CLI entrypoint as the
 console script defined in `pyproject.toml`.

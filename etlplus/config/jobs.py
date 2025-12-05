@@ -1,5 +1,5 @@
 """
-etlplus.config.jobs module.
+:mod:`etlplus.config.jobs` module.
 
 Data classes modeling job orchestration references (extract, validate,
 transform, load).

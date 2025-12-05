@@ -1,5 +1,5 @@
 """
-etlplus.config.api module.
+:mod:`etlplus.config.api` module.
 
 Configuration models for REST API services and endpoints.
 

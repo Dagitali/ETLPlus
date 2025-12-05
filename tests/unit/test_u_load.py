@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_load`` module.
+:mod:`tests.unit.test_u_load` module.
 
 Unit tests for ``etlplus.load``.
 
@@ -217,6 +217,11 @@ class TestLoadErrors:
             Arguments to pass to the function.
         err_msg : str | None
             Expected error message substring, if applicable.
+
+        Raises
+        ------
+        AssertionError
+            If the expected exception is not raised.
         """
         with pytest.raises(exc_type) as e:
             call(*args)
@@ -310,6 +315,7 @@ class TestLoadData:
         """
         class _FakeStdin:
             def read(self) -> str:
+                """Simulate reading JSON data from stdin."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
         monkeypatch.setattr('sys.stdin', _FakeStdin())
         result = load_data('-')

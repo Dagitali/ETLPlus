@@ -1,5 +1,5 @@
 """
-etlplus.config.rate_limit module.
+:mod:`etlplus.config.rate_limit` module.
 
 Rate limit model for REST API requests.
 

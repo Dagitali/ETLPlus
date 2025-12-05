@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_extract`` module.
+:mod:`tests.unit.test_u_extract` module.
 
 Unit tests for ``etlplus.extract``.
 
@@ -134,6 +134,11 @@ class TestExtractErrors:
             Arguments to pass to the function.
         err_msg : str | None
             Expected error message substring, if applicable.
+
+        Raises
+        ------
+        AssertionError
+            If the expected exception is not raised.
         """
         with pytest.raises(exc_type) as e:
             call(*args)

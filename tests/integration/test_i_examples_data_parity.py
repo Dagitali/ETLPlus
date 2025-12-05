@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_examples_data_parity`` module.
+:mod:`tests.integration.test_i_examples_data_parity` module.
 
 Sample data integration test suite. Ensures that example input data files
 in different formats contain identical records.
@@ -20,6 +20,7 @@ from etlplus.file import File
 def _norm_record(
     rec: dict[str, Any],
 ) -> dict[str, Any]:
+    """Normalize record fields to consistent types for comparison."""
     return {
         'name': rec['name'],
         'email': rec['email'],
@@ -32,6 +33,7 @@ def _norm_record(
 
 
 def test_examples_sample_csv_json_parity_integration():
+    """Test that example CSV and JSON sample data contain identical records."""
     repo_root = Path(__file__).resolve().parents[2]
     source_dir = repo_root / 'examples' / 'data'
     csv_path = source_dir / 'sample.csv'

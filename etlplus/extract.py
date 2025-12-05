@@ -1,5 +1,5 @@
 """
-etlplus.extract module.
+:mod:`etlplus.extract` module.
 
 Helpers to extract data from files, databases, and REST APIs.
 """
