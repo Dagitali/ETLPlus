@@ -522,6 +522,39 @@ class RetryManager:
             cause=None,
         )
 
+    def should_retry(
+        self,
+        status: int | None,
+        error: Exception,
+    ) -> bool:
+        """
+        Determine whether a request should be retried.
+
+        Parameters
+        ----------
+        status : int | None
+            Whether the request should be retried.
+        error : Exception
+            The exception that was raised.
+
+        Returns
+        -------
+        bool
+            Whether the request should be retried.
+        """
+        # HTTP status-based retry
+        if status is not None and status in self.retry_on_codes:
+            return True
+
+        # Network error retry
+        if self.retry_network_errors:
+            if isinstance(error, (requests.Timeout, requests.ConnectionError)):
+                return True
+
+        return False
+
+    # -- Protected Instance Methods -- #
+
     def _raise_terminal_error(
         self,
         url: str,
@@ -569,37 +602,6 @@ class RetryManager:
             retry_policy=self.policy,
             cause=error,
         ) from error
-
-    def should_retry(
-        self,
-        status: int | None,
-        error: Exception,
-    ) -> bool:
-        """
-        Determine whether a request should be retried.
-
-        Parameters
-        ----------
-        status : int | None
-            Whether the request should be retried.
-        error : Exception
-            The exception that was raised.
-
-        Returns
-        -------
-        bool
-            Whether the request should be retried.
-        """
-        # HTTP status-based retry
-        if status is not None and status in self.retry_on_codes:
-            return True
-
-        # Network error retry
-        if self.retry_network_errors:
-            if isinstance(error, (requests.Timeout, requests.ConnectionError)):
-                return True
-
-        return False
 
     # -- Protected Static Methods -- #
 
