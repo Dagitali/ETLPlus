@@ -439,7 +439,10 @@ class TestCursorPagination:
             captured['rate_limiter'] = rate_limiter
 
             class _StubPaginator:
+                """Stub paginator yielding a single page."""
+
                 def paginate_iter(self, *_args: Any, **_kwargs: Any):
+                    """Yield a single stub record."""
                     yield {'id': 1}
 
             return _StubPaginator()
