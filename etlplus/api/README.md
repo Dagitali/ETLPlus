@@ -1,13 +1,14 @@
 # etlplus.api module.
 
-Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for paginated REST endpoints.
+Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for
+paginated REST endpoints.
 
 - Provides a small `EndpointClient` for calling JSON APIs
 - Supports page-, offset-, and cursor-based pagination via `PaginationConfig`
 - Simple bearer-auth credentials via `EndpointCredentialsBearer`
 - Convenience helpers to extract records from nested JSON payloads
-- Returns the shared `JSONRecords` alias (a list of `JSONDict`) for paginated
-  responses, matching the rest of the library.
+- Returns the shared `JSONRecords` alias (a list of `JSONDict`) for paginated responses, matching
+  the rest of the library.
 
 Back to project overview: see the top-level [README](../../README.md).
 
@@ -47,6 +48,30 @@ rows: JSONRecords = client.paginate("list", pagination=pg)
 for row in rows:
     print(row)
 ```
+
+### Overriding rate limits per call
+
+When a client is constructed with ``rate_limit`` metadata you can still tweak the pacing for
+individual calls by passing ``rate_limit_overrides`` to ``paginate``/``paginate_iter``. The
+overrides share the same shape as the base configuration and take precedence over the client
+defaults.
+
+```python
+client = EndpointClient(
+  base_url="https://api.example.com/v1",
+  endpoints={"list": "/items"},
+  rate_limit={"max_per_sec": 2},  # ~0.5s between calls when unspecified
+)
+
+rows = client.paginate(
+  "list",
+  pagination={"type": "page", "page_size": 100},
+  rate_limit_overrides={"sleep_seconds": 0.1},  # per-call override
+)
+```
+
+Precedence is ``overrides.sleep_seconds`` > ``overrides.max_per_sec`` > the same keys from
+``client.rate_limit``. When no override is supplied the base settings are used.
 
 ## Choosing `records_path` and `cursor_path`
 
@@ -128,8 +153,8 @@ for row in rows:
 
 ## Authentication
 
-Use bearer tokens with `EndpointCredentialsBearer` (OAuth2 client credentials
-flow). Attach it to a `requests.Session` and pass that session to the client:
+Use bearer tokens with `EndpointCredentialsBearer` (OAuth2 client credentials flow). Attach it to a
+`requests.Session` and pass that session to the client:
 
 ```python
 import requests
@@ -154,16 +179,21 @@ client = EndpointClient(
 
 ## Errors and rate limiting
 
-- Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in
-  `etlplus/api/errors.py`) include an `as_dict()` helper for structured logs.
-- Rate limiting: `RateLimiter` and `compute_sleep_seconds` (in
-  `etlplus/api/request.py`) derive fixed sleeps or `max_per_sec` windows, and
-  are used automatically when pagination requests specify rate-limit config.
+- Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in `etlplus/api/errors.py`)
+  include an `as_dict()` helper for structured logs.
+- Rate limiting: `RateLimiter` and `compute_sleep_seconds` (in `etlplus/api/request.py`) derive
+  fixed sleeps or `max_per_sec` windows. The paginator now builds a `RateLimiter` whenever the
+  effective delay comes from `rate_limit`/`rate_limit_overrides`, so each page fetch sleeps before
+  making another HTTP call. Passing `rate_limit_overrides` to `paginate*` lets you momentarily speed
+  up or slow down a single request without mutating the client-wide defaults.
 
 ## Types and transport
 
-- Types: pagination config helpers live in `etlplus/api/response.py` and retry/rate-limit helpers (including `RetryPolicy`) live in `etlplus/api/request.py`. These are re-exported from `etlplus.api` for convenience.
-- Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users may consult it to adapt behavior.
+- Types: pagination config helpers live in `etlplus/api/response.py` and retry/rate-limit helpers
+  (including `RetryPolicy`) live in `etlplus/api/request.py`. These are re-exported from
+  `etlplus.api` for convenience.
+- Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users
+  may consult it to adapt behavior.
 
 ## Minimal contract
 
