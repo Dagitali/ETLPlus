@@ -63,6 +63,7 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import RateLimitConfigMap
+from .request import RateLimiter
 from .request import RetryManager
 from .request import RetryPolicy
 from .request import compute_sleep_seconds
@@ -799,6 +800,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> JSONData:
         """
         Paginate by endpoint key.
@@ -825,6 +827,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : Mapping[str, Any] | None
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Returns
         -------
@@ -844,6 +849,7 @@ class EndpointClient:
             timeout=timeout,
             pagination=pagination,
             sleep_seconds=sleep_seconds,
+            rate_limit_overrides=rate_limit_overrides,
         )
 
     def paginate_iter(
@@ -857,6 +863,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records for a registered endpoint using pagination.
@@ -885,6 +892,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : Mapping[str, Any] | None
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Yields
         ------
@@ -903,6 +913,7 @@ class EndpointClient:
             timeout=timeout,
             pagination=pagination,
             sleep_seconds=sleep_seconds,
+            rate_limit_overrides=rate_limit_overrides,
         )
 
     def paginate_url(
@@ -914,6 +925,7 @@ class EndpointClient:
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> JSONData:
         """
         Paginate API responses for an absolute URL and aggregate records.
@@ -932,6 +944,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : Mapping[str, Any] | None
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Returns
         -------
@@ -959,6 +974,7 @@ class EndpointClient:
                 timeout=timeout,
                 pagination=pagination,
                 sleep_seconds=sleep_seconds,
+                rate_limit_overrides=rate_limit_overrides,
             ),
         )
         return records
@@ -972,6 +988,7 @@ class EndpointClient:
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records by paginating an absolute URL.
@@ -990,6 +1007,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : Mapping[str, Any] | None
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Yields
         ------
@@ -1021,6 +1041,13 @@ class EndpointClient:
         effective_sleep = self._resolve_sleep_seconds(
             sleep_seconds,
             self.rate_limit,
+            rate_limit_overrides,
+        )
+        derived_from_rate_limit = sleep_seconds <= 0 and effective_sleep > 0
+        rate_limiter = (
+            RateLimiter.fixed(effective_sleep)
+            if derived_from_rate_limit
+            else None
         )
 
         def _fetch(
@@ -1051,6 +1078,7 @@ class EndpointClient:
             fetch=_fetch,
             sleep_func=EndpointClient.apply_sleep,
             sleep_seconds=effective_sleep,
+            rate_limiter=rate_limiter,
         )
 
         yield from paginator.paginate_iter(url, params=params)
@@ -1270,6 +1298,7 @@ class EndpointClient:
     def _resolve_sleep_seconds(
         explicit: float,
         rate_limit: RateLimitConfigMap | None,
+        overrides: Mapping[str, Any] | None = None,
     ) -> float:
         """
         Derive the effective sleep interval honoring rate-limit config.
@@ -1280,6 +1309,8 @@ class EndpointClient:
             Explicit sleep seconds provided by the caller.
         rate_limit : RateLimitConfigMap | None
             Client-wide rate limit configuration.
+        overrides : Mapping[str, Any] | None, optional
+            Per-call overrides that take precedence over ``rate_limit``.
 
         Returns
         -------
@@ -1288,4 +1319,4 @@ class EndpointClient:
         """
         if explicit and explicit > 0:
             return explicit
-        return compute_sleep_seconds(rate_limit, None)
+        return compute_sleep_seconds(rate_limit, overrides)
