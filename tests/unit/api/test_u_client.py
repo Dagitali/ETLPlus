@@ -24,6 +24,7 @@ import etlplus.api.client as cmod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PaginationType
 from etlplus.api import RetryPolicy
 from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_mocks import MockSession
@@ -406,6 +407,74 @@ class TestCursorPagination:
                 client.paginate_iter('list', pagination=cfg),
             )
         assert ei.value.page == 2 and ei.value.status == 500
+
+    def test_rate_limit_overrides_adjust_sleep(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that per-call overrides influence paginator pacing.
+
+        When ``rate_limit_overrides`` are provided to ``paginate_url_iter``,
+        the computed ``sleep_seconds`` reflects the overrides.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        """
+
+        captured: dict[str, Any] = {}
+
+        def fake_from_config(
+            cls: type[EndpointClient],
+            config: CursorPaginationConfigMap | PagePaginationConfigMap,
+            *,
+            fetch: Callable[..., Any],
+            sleep_func: Callable[[float], None] | None,
+            sleep_seconds: float,
+            rate_limiter: Any,
+        ) -> Any:
+            captured['sleep_seconds'] = sleep_seconds
+            captured['rate_limiter'] = rate_limiter
+
+            class _StubPaginator:
+                def paginate_iter(self, *_args: Any, **_kwargs: Any):
+                    yield {'id': 1}
+
+            return _StubPaginator()
+
+        monkeypatch.setattr(
+            cmod.Paginator,
+            'from_config',
+            classmethod(fake_from_config),
+        )
+
+        client = EndpointClient(
+            base_url='https://api.example.com/v1',
+            endpoints={'items': '/items'},
+            rate_limit={'max_per_sec': 2},
+        )
+
+        # pg: PagePaginationConfigMap = {'type': 'page'}
+        pg: PagePaginationConfigMap = {'type': PaginationType.PAGE}
+
+        out = list(
+            client.paginate_url_iter(
+                'https://api.example.com/v1/items',
+                params=None,
+                headers=None,
+                timeout=None,
+                pagination=pg,
+                rate_limit_overrides={'max_per_sec': 4},
+            ),
+        )
+
+        assert out == [{'id': 1}]
+        assert captured['sleep_seconds'] == pytest.approx(0.25)
+        limiter = captured['rate_limiter']
+        assert limiter is not None
+        assert getattr(limiter, 'sleep_seconds', 0.0) == pytest.approx(0.25)
 
     def test_retry_backoff_sleeps(
         self,
