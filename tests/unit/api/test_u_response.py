@@ -5,9 +5,11 @@ Unit tests for :class:`etlplus.api.response.Paginator`.
 
 Notes
 -----
-- Ensures non-positive and non-numeric inputs result in 0.0 seconds.
-- Ensures non-positive and non-numeric inputs result in a disabled limiter.
-- Verifies helper constructors and configuration-based construction.
+- Exercises pagination defaults, cursor helpers, and record extraction.
+- Ensures thin :class:`EndpointClient` wrappers delegate to
+    ``paginate_url_iter``.
+- Verifies the optional :class:`RateLimiter` integration for pacing between
+    page fetches.
 
 Examples
 --------
@@ -23,6 +25,7 @@ from typing import cast
 import pytest
 
 from etlplus.api.client import EndpointClient
+from etlplus.api.request import RateLimiter
 from etlplus.api.response import PagePaginationConfigMap
 from etlplus.api.response import PaginationConfigMap
 from etlplus.api.response import PaginationType
@@ -68,6 +71,7 @@ class RecordingClient(EndpointClient):
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
         """Record arguments and yield a single marker record."""
         type(self)._paginate_calls.append(
@@ -78,6 +82,7 @@ class RecordingClient(EndpointClient):
                 'timeout': timeout,
                 'pagination': pagination,
                 'sleep_seconds': sleep_seconds,
+                'rate_limit_overrides': rate_limit_overrides,
             },
         )
         yield {'marker': 'ok'}
@@ -99,6 +104,7 @@ class FakePageClient(EndpointClient):
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
         # Ignore all arguments; just simulate three records from two pages.
         yield {'id': 1}
@@ -140,7 +146,7 @@ class TestPaginator:
         Notes
         -----
         - When optional pagination configuration keys are omitted, the
-          paginator should fall back to its class-level defaults.
+            paginator should fall back to its class-level defaults.
         """
         cfg: PagePaginationConfigMap = {'type': PaginationType.PAGE}
 
@@ -252,6 +258,58 @@ class TestPaginator:
 
         paginations = [call['pagination'] for call in calls]
         assert paginations == [pg, pg]
+
+    def test_rate_limiter_precedes_sleep_function(
+        self,
+    ) -> None:
+        """Ensure ``rate_limiter`` is honored before ``sleep_func`` pacing."""
+
+        payloads = [
+            {'items': [{'id': 1}]},
+            {'items': [{'id': 2}]},
+            {'items': []},
+        ]
+
+        def fetch(
+            _url: str,
+            _params: Mapping[str, Any] | None,
+            _page: int | None,
+        ) -> Mapping[str, Any]:
+            return cast(Mapping[str, Any], payloads.pop(0))
+
+        limiter_calls: list[int] = []
+
+        class DummyLimiter(RateLimiter):
+            """Dummy RateLimiter that records enforce calls."""
+
+            def __init__(self) -> None:  # pragma: no cover - simple init
+                super().__init__(sleep_seconds=0.1)
+
+            def enforce(self) -> None:  # type: ignore[override]
+                limiter_calls.append(1)
+
+        sleep_calls: list[float] = []
+
+        def sleeper(value: float) -> None:  # pragma: no cover - should skip
+            sleep_calls.append(value)
+
+        paginator = Paginator.from_config(
+            {
+                'type': PaginationType.PAGE,
+                'page_size': 1,
+                'records_path': 'items',
+            },
+            fetch=fetch,
+            sleep_func=sleeper,
+            sleep_seconds=0.5,
+            rate_limiter=DummyLimiter(),
+        )
+
+        records = list(paginator.paginate_iter('https://example.test/items'))
+
+        assert [rec['id'] for rec in records] == [1, 2]
+        assert len(limiter_calls) == 2
+        assert not sleep_calls
 
     @pytest.mark.parametrize(
         'ptype, actual, expected',
