@@ -46,7 +46,6 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
 class TestComputeSleepSeconds:
     """
     Unit test suite for :func:`compute_sleep_seconds`.
