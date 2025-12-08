@@ -259,10 +259,10 @@ class TestPaginator:
         paginations = [call['pagination'] for call in calls]
         assert paginations == [pg, pg]
 
-    def test_rate_limiter_precedes_sleep_function(
+    def test_rate_limiter_enforces_between_pages(
         self,
     ) -> None:
-        """Ensure ``rate_limiter`` is honored before ``sleep_func`` pacing."""
+        """Ensure the configured rate limiter enforces pacing."""
 
         payloads = [
             {'items': [{'id': 1}]},
@@ -288,11 +288,6 @@ class TestPaginator:
             def enforce(self) -> None:  # type: ignore[override]
                 limiter_calls.append(1)
 
-        sleep_calls: list[float] = []
-
-        def sleeper(value: float) -> None:  # pragma: no cover - should skip
-            sleep_calls.append(value)
-
         paginator = Paginator.from_config(
             {
                 'type': PaginationType.PAGE,
@@ -300,8 +295,6 @@ class TestPaginator:
                 'records_path': 'items',
             },
             fetch=fetch,
-            sleep_func=sleeper,
-            sleep_seconds=0.5,
             rate_limiter=DummyLimiter(),
         )
 
@@ -309,7 +302,6 @@ class TestPaginator:
 
         assert [rec['id'] for rec in records] == [1, 2]
         assert len(limiter_calls) == 2
-        assert not sleep_calls
 
     @pytest.mark.parametrize(
         'ptype, actual, expected',
