@@ -105,10 +105,13 @@ def patch_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch : pytest.MonkeyPatch
         Built-in pytest fixture used to patch attributes.
     """
+    # Patch the module-level sleep helper so :class:`RateLimiter` continues to
+    # invoke ``time.sleep`` (allowing targeted tests to inspect it) without
+    # pausing.
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(lambda _: None),
+        request_mod.time,
+        'sleep',
+        lambda _seconds: None,
     )
 
 
@@ -123,8 +126,7 @@ def capture_sleeps(
 
     Patches :class:`RetryManager` so that its ``sleeper`` callable appends
     sleep durations to a list instead of actually sleeping. Also patches
-    :meth:`EndpointClient.apply_sleep` to record rate-limit sleeps into
-    the same list.
+    :class:`RateLimiter` to record rate-limit sleeps into the same list.
     """
     sleeps: list[float] = []
 
@@ -144,14 +146,14 @@ def capture_sleeps(
         _init,  # type: ignore[assignment]
     )
 
-    # Patch EndpointClient.apply_sleep so rate-limit sleeps are captured.
-    def _capture_sleep(seconds: float) -> None:
-        sleeps.append(seconds)
+    # Patch :meth:`RateLimiter.enforce` so rate-limit sleeps are captured.
+    def _capture_sleep(self: request_mod.RateLimiter) -> None:
+        sleeps.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_capture_sleep),
+        request_mod.RateLimiter,
+        'enforce',
+        _capture_sleep,
     )
 
     return sleeps
