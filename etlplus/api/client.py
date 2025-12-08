@@ -1043,10 +1043,9 @@ class EndpointClient:
             self.rate_limit,
             rate_limit_overrides,
         )
-        derived_from_rate_limit = sleep_seconds <= 0 and effective_sleep > 0
         rate_limiter = (
             RateLimiter.fixed(effective_sleep)
-            if derived_from_rate_limit
+            if effective_sleep > 0
             else None
         )
 
@@ -1076,8 +1075,6 @@ class EndpointClient:
         paginator = Paginator.from_config(
             cast(PaginationConfigMap, pg),
             fetch=_fetch,
-            sleep_func=EndpointClient.apply_sleep,
-            sleep_seconds=effective_sleep,
             rate_limiter=rate_limiter,
         )
 

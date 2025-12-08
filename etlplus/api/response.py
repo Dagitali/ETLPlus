@@ -30,8 +30,7 @@ endpoint:
 >>> paginator = Paginator.from_config(
 ...     cfg,
 ...     fetch=fetch,
-...     sleep_func=time.sleep,
-...     sleep_seconds=0.5,
+...     rate_limiter=RateLimiter.fixed(0.5),
 ... )
 >>> all_records = paginator.paginate('https://api.example.com/v1/items')
 """
@@ -51,7 +50,6 @@ from typing import cast
 
 from ..types import JSONDict
 from ..types import JSONRecords
-from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_maximum_int
 from ..utils import to_positive_int
@@ -282,15 +280,8 @@ class Paginator:
     fetch : FetchPageFunc | None
         Callback used to fetch a single page. It receives the absolute URL,
         the request params mapping, and the 1-based page index.
-    sleep_seconds : float
-        Number of seconds to sleep between page fetches. When non-positive,
-        no sleeping occurs.
-    sleep_func : Callable[[float], None] | None
-        Function used to perform sleeping; typically wraps ``time.sleep``
-        or a test double.
     rate_limiter : RateLimiter | None
-        Optional rate limiter invoked between page fetches. Takes precedence
-        over ``sleep_func`` when provided.
+        Optional rate limiter invoked between page fetches.
     last_page : int
         Tracks the last page index attempted. Useful for diagnostics.
     """
@@ -366,8 +357,6 @@ class Paginator:
             self.limit_param = self.LIMIT_PARAM
 
     fetch: FetchPageFunc | None = None
-    sleep_seconds: float = 0.0
-    sleep_func: Callable[[float], None] | None = None
     rate_limiter: RateLimiter | None = None
     last_page: int = 0
 
@@ -379,8 +368,6 @@ class Paginator:
         config: Mapping[str, Any],
         *,
         fetch: FetchPageFunc,
-        sleep_func: Callable[[float], None] | None = None,
-        sleep_seconds: float = 0.0,
         rate_limiter: RateLimiter | None = None,
     ) -> Paginator:
         """
@@ -394,15 +381,8 @@ class Paginator:
             Callback used to fetch a single page for a request given the
             absolute URL, the request params mapping, and the 1-based page
             index.
-        sleep_func : Callable[[float], None] | None, optional
-            Sleep function used between pages. Defaults to no-op when
-            ``None``.
-        sleep_seconds : float, optional
-            Number of seconds to sleep between page fetches. Defaults to
-            ``0.0``. When non-positive, no sleeping occurs.
         rate_limiter : RateLimiter | None, optional
-            Optional limiter invoked between page fetches. When provided it
-            overrides ``sleep_seconds``/``sleep_func`` pacing.
+            Optional limiter invoked between page fetches.
 
         Returns
         -------
@@ -434,8 +414,6 @@ class Paginator:
             cursor_param=str(config.get('cursor_param', '')),
             limit_param=str(config.get('limit_param', '')),
             fetch=fetch,
-            sleep_seconds=to_float(sleep_seconds, 0.0, minimum=0.0) or 0.0,
-            sleep_func=sleep_func,
             rate_limiter=rate_limiter,
         )
 
@@ -507,7 +485,7 @@ class Paginator:
                 else:
                     current += self.page_size
 
-                self._sleep()
+                self._enforce_rate_limit()
             return
 
         if self.type == PaginationType.CURSOR:
@@ -554,7 +532,7 @@ class Paginator:
                 if self._stop_limits(pages, recs):
                     break
                 cursor = nxt
-                self._sleep()
+                self._enforce_rate_limit()
             return
 
         # Fallback: single page, coalesce. and yield.
@@ -640,18 +618,10 @@ class Paginator:
             return True
         return False
 
-    # TODO: Remove attributes sleep_func and sleep_seconds in favor of
-    # TODO: rate_limiter.
-    def _sleep(self) -> None:
-        """
-        Apply any configured pacing between subsequent page fetches.
-        """
+    def _enforce_rate_limit(self) -> None:
+        """Apply configured pacing between subsequent page fetches."""
         if self.rate_limiter is not None:
             self.rate_limiter.enforce()
-            return
-        if self.sleep_func is None or self.sleep_seconds <= 0:
-            return
-        self.sleep_func(self.sleep_seconds)
 
     # -- Static Methods -- #
 
