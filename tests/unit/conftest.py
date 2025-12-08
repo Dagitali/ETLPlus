@@ -24,6 +24,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
+import etlplus.api.request as request_mod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
@@ -129,8 +130,8 @@ def capture_sleeps(
     """
     Capture sleep durations from retry/backoff logic.
 
-    Patches :meth:`EndpointClient.apply_sleep` so tests can assert
-    jitter/backoff behavior without actually waiting.
+    Patches :class:`RateLimiter` so tests can assert jitter/backoff behavior
+    without actually waiting.
 
     Parameters
     ----------
@@ -144,13 +145,13 @@ def capture_sleeps(
     """
     values: list[float] = []
 
-    def _sleep(s: float, *, _sleeper=None) -> None:  # noqa: D401, ANN001
-        values.append(s)
+    def _enforce(self: request_mod.RateLimiter) -> None:  # noqa: D401
+        values.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_sleep),
+        request_mod.RateLimiter,
+        'enforce',
+        _enforce,
         raising=False,
     )
 
