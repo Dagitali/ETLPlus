@@ -423,6 +423,7 @@ class TestCursorPagination:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
 
         captured: dict[str, Any] = {}
 
@@ -431,12 +432,14 @@ class TestCursorPagination:
             config: CursorPaginationConfigMap | PagePaginationConfigMap,
             *,
             fetch: Callable[..., Any],
-            sleep_func: Callable[[float], None] | None,
-            sleep_seconds: float,
             rate_limiter: Any,
         ) -> Any:
-            captured['sleep_seconds'] = sleep_seconds
             captured['rate_limiter'] = rate_limiter
+            captured['sleep_seconds'] = (
+                getattr(rate_limiter, 'sleep_seconds', 0.0)
+                if rate_limiter is not None
+                else 0.0
+            )
 
             class _StubPaginator:
                 """Stub paginator yielding a single page."""
@@ -958,7 +961,7 @@ class TestRateLimitPrecedence:
         capture_sleeps : list[float]
             List to capture sleep durations.
         """
-        # Simulate apply_sleep capturing values already via capture_sleeps.
+        # :func:`capture_sleeps` fixture already records rate-limiter pacing.
         client = EndpointClient(
             base_url='https://api.example.com/v1',
             endpoints={'list': '/items'},
