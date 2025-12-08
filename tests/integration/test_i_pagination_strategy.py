@@ -8,7 +8,7 @@ public path under real configuration semantics.
 Notes
 -----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
-    client's internal HTTP helper suffices to intercept page fetches.
+    RequestManager ``_request_once`` helper suffices to intercept page fetches.
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
@@ -24,7 +24,7 @@ from typing import Any
 
 import pytest
 
-import etlplus.api.client as cmod
+import etlplus.api.request_manager as rmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
@@ -111,7 +111,7 @@ jobs:
             return {'data': [], 'next': None}
 
         def fake_request(
-            self: cmod.EndpointClient,
+            self: rmod.RequestManager,
             method: str,
             url: str,
             *,
@@ -124,7 +124,11 @@ jobs:
 
         # Patch extract targets consistent with the page/offset test.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
+        monkeypatch.setattr(
+            rmod.RequestManager,
+            '_request_once',
+            fake_request,
+        )
 
         monkeypatch.setattr(
             sys,
@@ -192,7 +196,7 @@ jobs:
             return {'items': [], 'next': None}
 
         def fake_request(
-            self: cmod.EndpointClient,
+            self: rmod.RequestManager,
             method: str,
             url: str,
             *,
@@ -204,7 +208,11 @@ jobs:
             return fake_extract('api', url, **kwargs)
 
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
+        monkeypatch.setattr(
+            rmod.RequestManager,
+            '_request_once',
+            fake_request,
+        )
         monkeypatch.setattr(
             sys,
             'argv',
@@ -301,7 +309,7 @@ jobs:
             return []
 
         def fake_request(
-            self: cmod.EndpointClient,
+            self: rmod.RequestManager,
             method: str,
             url: str,
             *,
@@ -314,10 +322,14 @@ jobs:
 
         # Patch extract targets:
         # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - EndpointClient._request_once: paginate now delegates to the
-        #   client's internal HTTP helper per page.
+        # - RequestManager._request_once: paginate now delegates to the
+        #   shared HTTP helper per page.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod.EndpointClient, '_request_once', fake_request)
+        monkeypatch.setattr(
+            rmod.RequestManager,
+            '_request_once',
+            fake_request,
+        )
 
         # Run CLI.
         monkeypatch.setattr(
