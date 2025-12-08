@@ -243,17 +243,18 @@ def request_once_stub(
     """
     # pylint: disable=unused-argument
 
-    import etlplus.api.client as cmod  # local import to avoid cycles
+    import etlplus.api.request_manager as rmod  # local import to avoid cycles
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
     def _fake_request(
-        self: cmod.EndpointClient,
+        self: rmod.RequestManager,
         method: str,
         url: str,
         *,
         session: Any,
         timeout: Any,
+        request_callable: Callable[..., Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:  # noqa: D401
         assert method == 'GET'
@@ -261,7 +262,7 @@ def request_once_stub(
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod.EndpointClient, '_request_once', _fake_request)
+    monkeypatch.setattr(rmod.RequestManager, '_request_once', _fake_request)
 
     return calls
 
@@ -292,7 +293,7 @@ def extract_stub_factory() -> Callable[..., Any]:
 
     import contextlib
 
-    import etlplus.api.client as cmod  # Local import to avoid cycles
+    import etlplus.api.request_manager as rmod  # Local import to avoid cycles
 
     @contextlib.contextmanager
     def _make(
@@ -304,22 +305,23 @@ def extract_stub_factory() -> Callable[..., Any]:
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
         def _fake_request(
-            self: cmod.EndpointClient,
+            self: rmod.RequestManager,
             method: str,
             url: str,
             *,
             session: Any,
             timeout: Any,
+            request_callable: Callable[..., Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
             calls['urls'].append(url)
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = cmod.EndpointClient._request_once
+        saved = rmod.RequestManager._request_once
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
-            cmod.EndpointClient,
+            rmod.RequestManager,
             '_request_once',
             _fake_request,
         )
@@ -327,7 +329,7 @@ def extract_stub_factory() -> Callable[..., Any]:
             yield calls
         finally:
             monkeypatch.setattr(
-                cmod.EndpointClient,
+                rmod.RequestManager,
                 '_request_once',
                 saved,
             )
