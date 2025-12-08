@@ -24,7 +24,6 @@ from etlplus.api.transport import build_http_adapter
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
 class TestBuildHttpAdapter:
     """
     Unit test suite for :func:`build_http_adapter`.
