@@ -444,6 +444,11 @@ class EndpointClient:
             -------
             JSONData
                 Parsed response payload.
+
+            Raises
+            ------
+            PaginationError
+                If the request fails.
             """
             call_kw = EndpointClient.build_request_kwargs(
                 params=params_,
