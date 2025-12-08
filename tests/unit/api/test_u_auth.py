@@ -104,7 +104,6 @@ def token_sequence_fixture(
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
 class TestEndpointCredentialsBearer:
     """
     Unit test suite for :class:`EndpointCredentialsBearer`.
