@@ -360,44 +360,6 @@ class EndpointClient:
 
     # -- Protected Instance Methods -- #
 
-    def _request_once(
-        self,
-        method: str,
-        url: str,
-        *,
-        session: requests.Session | None,
-        timeout: Any,
-        **kwargs: Any,
-    ) -> JSONData:
-        """
-        Perform a single HTTP via the request manager (legacy shim).
-
-        Parameters
-        ----------
-        method : str
-            HTTP method to invoke.
-        url : str
-            Absolute URL to request.
-        session : requests.Session | None
-            Session used for dispatch (if any).
-        timeout : Any
-            Timeout supplied to ``requests``.
-        **kwargs : Any
-            Additional keyword arguments forwarded to ``requests``.
-
-        Returns
-        -------
-        JSONData
-            Parsed response payload.
-        """
-        return self._request_manager.request_once(
-            method,
-            url,
-            session=session,
-            timeout=timeout,
-            **kwargs,
-        )
-
     def _get_with_retry(
         self,
         url: str,
@@ -405,6 +367,7 @@ class EndpointClient:
     ) -> JSONData:
         """
         Execute a ``GET`` honoring the client's retry semantics.
+
         Parameters
         ----------
         url : str
@@ -417,11 +380,7 @@ class EndpointClient:
         JSONData
             Parsed response payload.
         """
-        return self._request_manager.get(
-            url,
-            request_callable=self._resolve_request_callable(),
-            **kw,
-        )
+        return self._request_manager.get(url, **kw)
 
     def _build_paginator_runner(
         self,
@@ -492,11 +451,7 @@ class EndpointClient:
                 timeout=timeout,
             )
             try:
-                return self._request_manager.get(
-                    url_,
-                    request_callable=self._resolve_request_callable(),
-                    **call_kw,
-                )
+                return self._request_manager.get(url_, **call_kw)
             except ApiRequestError as exc:
                 raise PaginationError(
                     url=url_,
@@ -538,11 +493,7 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self._request_manager.get(
-            url,
-            request_callable=self._resolve_request_callable(),
-            **kwargs,
-        )
+        return self._request_manager.get(url, **kwargs)
 
     def post(
         self,
@@ -566,11 +517,7 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self._request_manager.post(
-            url,
-            request_callable=self._resolve_request_callable(),
-            **kwargs,
-        )
+        return self._request_manager.post(url, **kwargs)
 
     def request(
         self,
@@ -597,23 +544,7 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self._request_manager.request(
-            method,
-            url,
-            request_callable=self._resolve_request_callable(),
-            **kwargs,
-        )
-
-    def _resolve_request_callable(self) -> Callable[..., JSONData] | None:
-        """
-        Return patched ``_request_once`` when tests override it.
-        """
-        sentinel = _DEFAULT_ENDPOINT_REQUEST_ONCE
-        bound = self._request_once
-        func = getattr(bound, '__func__', bound)
-        if sentinel is None or func is sentinel:
-            return None
-        return bound
+        return self._request_manager.request(method, url, **kwargs)
 
     # -- Instance Methods (HTTP Responses) -- #
 
@@ -1061,9 +992,3 @@ class EndpointClient:
         if explicit and explicit > 0:
             return explicit
         return compute_sleep_seconds(rate_limit, overrides)
-
-
-# SECTION: CONSTANTS ======================================================== #
-
-_DEFAULT_ENDPOINT_REQUEST_ONCE: Callable[..., JSONData] | None = \
-    EndpointClient._request_once
