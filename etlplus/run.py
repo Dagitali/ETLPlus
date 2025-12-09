@@ -51,7 +51,7 @@ __all__ = ['run']
 #   (config layer)
 # - ApiPaginationConfig: etlplus.api.response.PaginationConfigMap
 #   (client layer)
-# - ApiRetryPolicy: etlplus.api.request.RetryPolicy (client layer)
+# - ApiRetryPolicy: etlplus.api.retry_manager.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
 
