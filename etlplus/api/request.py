@@ -111,7 +111,7 @@ class RetryPolicy(TypedDict, total=False):
     retry_on: list[int]
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _merge_rate_limit(
@@ -139,6 +139,30 @@ def _merge_rate_limit(
     if overrides:
         merged.update({k: v for k, v in overrides.items() if v is not None})
     return merged
+
+
+def _normalized_rate_values(
+    cfg: Mapping[str, Any] | None,
+) -> tuple[float | None, float | None]:
+    """
+    Return sanitized ``(sleep_seconds, max_per_sec)`` pair.
+
+    Parameters
+    ----------
+    cfg : Mapping[str, Any] | None
+        Rate-limit configuration.
+
+    Returns
+    -------
+    tuple[float | None, float | None]
+        Normalized ``(sleep_seconds, max_per_sec)`` values.
+    """
+    if not cfg:
+        return None, None
+    return (
+        to_positive_float(cfg.get('sleep_seconds')),
+        to_positive_float(cfg.get('max_per_sec')),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -339,7 +363,7 @@ class RateLimiter:
 
         - ``"sleep_seconds"``: positive number of seconds between requests.
         - ``"max_per_sec"``: positive requests-per-second rate, converted to
-          a delay of ``1 / max_per_sec`` seconds between requests.
+            a delay of ``1 / max_per_sec`` seconds between requests.
 
         If neither key is provided or all values are invalid or non-positive,
         the returned limiter has rate limiting disabled.
@@ -354,20 +378,15 @@ class RateLimiter:
         RateLimiter
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
-        if not cfg:
+        sleep_val, rate_val = _normalized_rate_values(cfg)
+        if sleep_val is None and rate_val is None:
             return cls()
 
-        sleep_val = to_positive_float(cfg.get('sleep_seconds'))
-        rate_val = to_positive_float(cfg.get('max_per_sec'))
-
         # Let __post_init__ enforce invariants and precedence rules.
-        if sleep_val is not None or rate_val is not None:
-            return cls(
-                sleep_seconds=sleep_val if sleep_val is not None else 0.0,
-                max_per_sec=rate_val,
-            )
-
-        return cls()
+        return cls(
+            sleep_seconds=sleep_val if sleep_val is not None else 0.0,
+            max_per_sec=rate_val,
+        )
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
