@@ -932,24 +932,6 @@ class EndpointClient:
     # -- Protected Static Methods -- #
 
     @staticmethod
-    def _normalize_http_method(method: str | None) -> str:
-        """
-        Normalize HTTP method names to uppercase strings.
-
-        Parameters
-        ----------
-        method : str | None
-            Raw HTTP method value supplied by the caller.
-
-        Returns
-        -------
-        str
-            Uppercase HTTP method, defaulting to ``'GET'`` when falsy.
-        """
-        candidate = (method or '').strip().upper()
-        return candidate or 'GET'
-
-    @staticmethod
     def _resolve_sleep_seconds(
         explicit: float,
         rate_limit: RateLimitConfigMap | None,
