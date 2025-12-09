@@ -8,7 +8,7 @@ public path under real configuration semantics.
 Notes
 -----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
-    RequestManager ``_request_once`` helper suffices to intercept page fetches.
+    RequestManager ``request_once`` helper suffices to intercept page fetches.
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
@@ -124,11 +124,7 @@ jobs:
 
         # Patch extract targets consistent with the page/offset test.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rmod.RequestManager,
-            '_request_once',
-            fake_request,
-        )
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
 
         monkeypatch.setattr(
             sys,
@@ -208,11 +204,7 @@ jobs:
             return fake_extract('api', url, **kwargs)
 
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rmod.RequestManager,
-            '_request_once',
-            fake_request,
-        )
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
         monkeypatch.setattr(
             sys,
             'argv',
@@ -322,14 +314,10 @@ jobs:
 
         # Patch extract targets:
         # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - RequestManager._request_once: paginate now delegates to the
+        # - RequestManager.request_once: paginate now delegates to the
         #   shared HTTP helper per page.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rmod.RequestManager,
-            '_request_once',
-            fake_request,
-        )
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
 
         # Run CLI.
         monkeypatch.setattr(
