@@ -195,8 +195,9 @@ class RequestManager:
         self,
         method: str,
         url: str,
+        *,
         request_callable: Callable[..., JSONData] | None = None,
-        **kwargs: Any,
+        **kw: Any,
     ) -> JSONData:
         """
         Perform a request with retries.
@@ -209,20 +210,106 @@ class RequestManager:
             Target URL.
         request_callable : Callable[..., JSONData] | None, optional
             Optional custom request function.
-        **kwargs : Any
+        **kw : Any
             Additional keyword arguments for the request.
 
         Returns
         -------
         JSONData
             Parsed JSON response data.
+
+        Raises
+        ------
+        ApiAuthError
+            If an authentication error occurs (HTTP 401 or 403).
+        ApiRequestError
+            If a non-authentication request error occurs.
         """
-        return self._request_with_retry(
-            method,
-            url,
-            request_callable=request_callable,
-            **kwargs,
-        )
+        method_normalized = self._normalize_http_method(method)
+
+        call_kwargs = dict(kw)
+        supplied_timeout = call_kwargs.pop('timeout', _MISSING)
+        timeout = self._resolve_timeout(supplied_timeout)
+        user_session = call_kwargs.pop('session', None)
+        session, owns_session = self._resolve_session_for_call(user_session)
+
+        try:
+            policy = self.retry
+            if not policy:
+                try:
+                    return self.request_once(
+                        method_normalized,
+                        url,
+                        session=session,
+                        timeout=timeout,
+                        request_callable=request_callable,
+                        **call_kwargs,
+                    )
+                except requests.RequestException as exc:  # pragma: no cover
+                    status = getattr(
+                        getattr(exc, 'response', None),
+                        'status_code',
+                        None,
+                    )
+                    if status in {401, 403}:
+                        raise ApiAuthError(
+                            url=url,
+                            status=status,
+                            attempts=1,
+                            retried=False,
+                            retry_policy=None,
+                            cause=exc,
+                        ) from exc
+                    raise ApiRequestError(
+                        url=url,
+                        status=status,
+                        attempts=1,
+                        retried=False,
+                        retry_policy=None,
+                        cause=exc,
+                    ) from exc
+
+            retry_mgr = RetryManager(
+                policy=policy,
+                retry_network_errors=self.retry_network_errors,
+                cap=self.retry_cap,
+            )
+
+            def _fetch(
+                target_url: str,
+                **call_kw: Any,
+            ) -> JSONData:
+                """
+                Perform the actual request once within retry context.
+
+                Parameters
+                ----------
+                target_url : str
+                    Target URL.
+                **call_kw : Any
+                    Additional keyword arguments for the request.
+
+                Returns
+                -------
+                JSONData
+                    Parsed JSON response data.
+                """
+                return self.request_once(
+                    method_normalized,
+                    target_url,
+                    session=session,
+                    timeout=timeout,
+                    request_callable=request_callable,
+                    **call_kw,
+                )
+
+            return retry_mgr.run_with_retry(_fetch, url, **call_kwargs)
+        finally:
+            if owns_session and session is not None:
+                try:
+                    session.close()
+                except AttributeError:  # pragma: no cover - defensive
+                    pass
 
     def request_once(
         self,
@@ -347,126 +434,6 @@ class RequestManager:
             'content': response.text,
             'content_type': content_type,
         }
-
-    def _request_with_retry(
-        self,
-        method: str,
-        url: str,
-        *,
-        request_callable: Callable[..., JSONData] | None = None,
-        **kw: Any,
-    ) -> JSONData:
-        """
-        Perform a request with retries.
-
-        Parameters
-        ----------
-        method : str
-            HTTP method (e.g., 'GET', 'POST').
-        url : str
-            Target URL.
-        request_callable : Callable[..., JSONData] | None, optional
-            Optional custom request function.
-        **kw : Any
-            Additional keyword arguments for the request.
-
-        Returns
-        -------
-        JSONData
-            Parsed JSON response data.
-
-        Raises
-        ------
-        ApiAuthError
-            If an authentication error occurs (HTTP 401 or 403).
-        ApiRequestError
-            If a non-authentication request error occurs.
-        """
-        method_normalized = self._normalize_http_method(method)
-
-        call_kwargs = dict(kw)
-        supplied_timeout = call_kwargs.pop('timeout', _MISSING)
-        timeout = self._resolve_timeout(supplied_timeout)
-        user_session = call_kwargs.pop('session', None)
-        session, owns_session = self._resolve_session_for_call(user_session)
-
-        try:
-            policy = self.retry
-            if not policy:
-                try:
-                    return self.request_once(
-                        method_normalized,
-                        url,
-                        session=session,
-                        timeout=timeout,
-                        request_callable=request_callable,
-                        **call_kwargs,
-                    )
-                except requests.RequestException as exc:  # pragma: no cover
-                    status = getattr(
-                        getattr(exc, 'response', None),
-                        'status_code',
-                        None,
-                    )
-                    if status in {401, 403}:
-                        raise ApiAuthError(
-                            url=url,
-                            status=status,
-                            attempts=1,
-                            retried=False,
-                            retry_policy=None,
-                            cause=exc,
-                        ) from exc
-                    raise ApiRequestError(
-                        url=url,
-                        status=status,
-                        attempts=1,
-                        retried=False,
-                        retry_policy=None,
-                        cause=exc,
-                    ) from exc
-
-            retry_mgr = RetryManager(
-                policy=policy,
-                retry_network_errors=self.retry_network_errors,
-                cap=self.retry_cap,
-            )
-
-            def _fetch(
-                target_url: str,
-                **call_kw: Any,
-            ) -> JSONData:
-                """
-                Perform the actual request once within retry context.
-
-                Parameters
-                ----------
-                target_url : str
-                    Target URL.
-                **call_kw : Any
-                    Additional keyword arguments for the request.
-
-                Returns
-                -------
-                JSONData
-                    Parsed JSON response data.
-                """
-                return self.request_once(
-                    method_normalized,
-                    target_url,
-                    session=session,
-                    timeout=timeout,
-                    request_callable=request_callable,
-                    **call_kw,
-                )
-
-            return retry_mgr.run_with_retry(_fetch, url, **call_kwargs)
-        finally:
-            if owns_session and session is not None:
-                try:
-                    session.close()
-                except AttributeError:  # pragma: no cover - defensive
-                    pass
 
     def _resolve_request_callable(
         self,
