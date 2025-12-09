@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
+from functools import partial
 from typing import Any
 from typing import cast
 
@@ -232,19 +233,19 @@ class RequestManager:
         timeout = self._resolve_timeout(supplied_timeout)
         user_session = call_kwargs.pop('session', None)
         session, owns_session = self._resolve_session_for_call(user_session)
+        fetch = partial(
+            self.request_once,
+            method_normalized,
+            session=session,
+            timeout=timeout,
+            request_callable=request_callable,
+        )
 
         try:
             policy = self.retry
             if not policy:
                 try:
-                    return self.request_once(
-                        method_normalized,
-                        url,
-                        session=session,
-                        timeout=timeout,
-                        request_callable=request_callable,
-                        **call_kwargs,
-                    )
+                    return fetch(url, **call_kwargs)
                 except requests.RequestException as exc:  # pragma: no cover
                     status = getattr(
                         getattr(exc, 'response', None),
@@ -274,36 +275,7 @@ class RequestManager:
                 retry_network_errors=self.retry_network_errors,
                 cap=self.retry_cap,
             )
-
-            def _fetch(
-                target_url: str,
-                **call_kw: Any,
-            ) -> JSONData:
-                """
-                Perform the actual request once within retry context.
-
-                Parameters
-                ----------
-                target_url : str
-                    Target URL.
-                **call_kw : Any
-                    Additional keyword arguments for the request.
-
-                Returns
-                -------
-                JSONData
-                    Parsed JSON response data.
-                """
-                return self.request_once(
-                    method_normalized,
-                    target_url,
-                    session=session,
-                    timeout=timeout,
-                    request_callable=request_callable,
-                    **call_kw,
-                )
-
-            return retry_mgr.run_with_retry(_fetch, url, **call_kwargs)
+            return retry_mgr.run_with_retry(fetch, url, **call_kwargs)
         finally:
             if owns_session and session is not None:
                 try:
