@@ -20,8 +20,8 @@ from ..types import JSONData
 from ..types import JSONDict
 from .errors import ApiAuthError
 from .errors import ApiRequestError
-from .request import RetryManager
-from .request import RetryPolicy
+from .retry_manager import RetryManager
+from .retry_manager import RetryPolicy
 
 # SECTION: CONSTANTS ======================================================== #
 
