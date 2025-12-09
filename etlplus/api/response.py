@@ -501,21 +501,22 @@ class Paginator:
         overrides: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Merge caller params with defaults and overrides.
+        Merge caller params, defaults, and overrides into one mapping.
 
         Parameters
         ----------
         params : Params | None
-            Base query parameters from the caller.
+            Base query parameters supplied by the caller.
         defaults : Mapping[str, Any] | None, optional
-            Default query parameters to use if not provided by the caller.
+            Default key/value pairs inserted when missing.
         overrides : Mapping[str, Any] | None, optional
-            Query parameters to override, replacing any existing values.
+            Override values that always replace existing entries when
+            non-``None``.
 
         Returns
         -------
         dict[str, Any]
-            Combined query parameters mapping.
+            Combined query parameters prepared for the fetch callback.
         """
         combined: dict[str, Any] = dict(params or {})
         if defaults:
@@ -580,19 +581,19 @@ class Paginator:
         query_params: Params | None,
     ) -> Generator[JSONDict]:
         """
-        Yield records for cursor-based pagination strategies.
+        Yield record dicts for cursor-based pagination strategies.
 
         Parameters
         ----------
         url : Url
-            Absolute URL to request.
+            Endpoint URL to paginate.
         query_params : Params | None
-            Query parameters for the request.
+            Base query parameters passed by the caller.
 
         Yields
         ------
         Generator[JSONDict]
-            Record dicts extracted from each page.
+            Iterator over normalized record dictionaries for each page.
         """
         cursor = self.start_cursor
         pages = 0
@@ -638,19 +639,19 @@ class Paginator:
         query_params: Params | None,
     ) -> Generator[JSONDict]:
         """
-        Yield records for page/offset pagination strategies.
+        Yield record dicts for page/offset pagination strategies.
 
         Parameters
         ----------
         url : Url
-            Absolute URL to request.
+            Endpoint URL to paginate.
         query_params : Params | None
-            Query parameters for the request.
+            Base query parameters passed by the caller.
 
         Yields
         ------
         Generator[JSONDict]
-            Record dicts extracted from each page.
+            Iterator over normalized record dictionaries for each page.
         """
         current = self.start_page
         pages = 0
@@ -690,20 +691,20 @@ class Paginator:
         batch: JSONRecords,
         emitted: int,
     ) -> tuple[JSONRecords, bool]:
-        """
-        Respect ``max_records`` while yielding the current batch.
+        """Respect ``max_records`` while yielding the current batch.
 
         Parameters
         ----------
         batch : JSONRecords
-            Current batch of records fetched.
+            Records retrieved from the latest page fetch.
         emitted : int
-            Number of records emitted so far.
+            Count of records yielded so far.
 
         Returns
         -------
         tuple[JSONRecords, bool]
-            Tuple of (possibly trimmed) batch and exhaustion flag.
+            ``(records_to_emit, exhausted)`` where ``exhausted`` indicates
+            the ``max_records`` limit was reached.
         """
         if not isinstance(self.max_records, int):
             return batch, False
@@ -720,17 +721,17 @@ class Paginator:
         current: int,
     ) -> int:
         """
-        Return the next page/offset value respecting the strategy.
+        Return the next page/offset value for the active strategy.
 
         Parameters
         ----------
         current : int
-            Current page number or offset.
+            Current page number or offset value.
 
         Returns
         -------
         int
-            Next page number or offset.
+            Incremented page number or offset respecting pagination type.
         """
         if self.type == PaginationType.OFFSET:
             return current + self.page_size
