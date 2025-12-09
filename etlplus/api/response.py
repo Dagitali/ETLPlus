@@ -37,7 +37,7 @@ endpoint:
 from __future__ import annotations
 
 from collections.abc import Callable
-from collections.abc import Iterator
+from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
@@ -451,7 +451,7 @@ class Paginator:
         url: Url,
         *,
         params: Params | None = None,
-    ) -> Iterator[JSONDict]:
+    ) -> Generator[JSONDict]:
         """
         Yield record dicts across pages for the configured strategy.
 
@@ -462,10 +462,20 @@ class Paginator:
         params : Params | None, optional
             Optional query parameters for the request.
 
+        Returns
+        -------
+        None
+            The generator stops without producing a return value.
+
         Yields
         ------
-        Iterator[JSONDict]
-            Iterator over record dicts extracted from all pages.
+        JSONDict
+            Individual record dicts extracted from the paginated responses.
+
+        Raises
+        ------
+        ValueError
+            If ``fetch`` callback is not provided.
         """
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
@@ -875,21 +885,26 @@ class PaginatorRunner:
         url: Url,
         *,
         params: Params | None = None,
-    ) -> Iterator[JSONDict]:
+    ) -> Generator[JSONDict]:
         """
         Yield records for the configured pagination strategy.
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL of the endpoint to fetch.
         params : Params | None, optional
             Optional query parameters for the request.
 
-        Yields
+        Returns
         -------
-        Iterator[JSONDict]
-            Iterator over record dicts extracted from all pages.
+        None
+            The generator stops without producing a return value.
+
+        Yields
+        ------
+        JSONDict
+            Individual record dicts extracted from the paginated responses.
         """
         if not self.is_paginated:
             pg = cast(dict[str, Any], self.pagination or {})
