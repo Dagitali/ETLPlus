@@ -56,7 +56,7 @@ from ..utils import to_maximum_int
 from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .request import RateLimiter
+from .rate_limiter import RateLimiter
 from .types import Params
 from .types import Url
 
