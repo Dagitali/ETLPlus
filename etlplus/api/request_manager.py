@@ -231,6 +231,7 @@ class RequestManager:
         *,
         session: requests.Session | None,
         timeout: Any,
+        request_callable: Callable[..., JSONData] | None = None,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -246,6 +247,8 @@ class RequestManager:
             Optional HTTP session to use.
         timeout : Any
             Timeout for the request.
+        request_callable : Callable[..., JSONData] | None, optional
+            Optional custom request function.
         **kwargs : Any
             Additional keyword arguments for the request.
 
@@ -254,13 +257,24 @@ class RequestManager:
         JSONData
             Parsed JSON response data.
         """
-        return self._request_once(
-            method,
+        method_normalized = self._normalize_http_method(method)
+        if request_callable is not None:
+            return request_callable(
+                method_normalized,
+                url,
+                session=session,
+                timeout=timeout,
+                **kwargs,
+            )
+        response = self._send_http_request(
+            method_normalized,
             url,
             session=session,
             timeout=timeout,
             **kwargs,
         )
+        response.raise_for_status()
+        return self._parse_response_payload(response)
 
     # -- Internal Instance Methods -- #
 
@@ -334,58 +348,6 @@ class RequestManager:
             'content_type': content_type,
         }
 
-    def _request_once(
-        self,
-        method: str,
-        url: str,
-        *,
-        session: requests.Session | None,
-        timeout: Any,
-        request_callable: Callable[..., JSONData] | None = None,
-        **kwargs: Any,
-    ) -> JSONData:
-        """
-        Perform a single request without retries.
-
-        Parameters
-        ----------
-        method : str
-            HTTP method (e.g., 'GET', 'POST').
-        url : str
-            Target URL.
-        session : requests.Session | None
-            Optional HTTP session to use.
-        timeout : Any
-            Timeout for the request.
-        request_callable : Callable[..., JSONData] | None, optional
-            Optional custom request function.
-        **kwargs : Any
-            Additional keyword arguments for the request.
-
-        Returns
-        -------
-        JSONData
-            Parsed JSON response data.
-        """
-        method_normalized = self._normalize_http_method(method)
-        if request_callable is not None:
-            return request_callable(
-                method_normalized,
-                url,
-                session=session,
-                timeout=timeout,
-                **kwargs,
-            )
-        response = self._send_http_request(
-            method_normalized,
-            url,
-            session=session,
-            timeout=timeout,
-            **kwargs,
-        )
-        response.raise_for_status()
-        return self._parse_response_payload(response)
-
     def _request_with_retry(
         self,
         method: str,
@@ -432,7 +394,7 @@ class RequestManager:
             policy = self.retry
             if not policy:
                 try:
-                    return self._request_once(
+                    return self.request_once(
                         method_normalized,
                         url,
                         session=session,
@@ -489,7 +451,7 @@ class RequestManager:
                 JSONData
                     Parsed JSON response data.
                 """
-                return self._request_once(
+                return self.request_once(
                     method_normalized,
                     target_url,
                     session=session,
