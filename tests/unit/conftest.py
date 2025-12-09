@@ -227,7 +227,7 @@ def request_once_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
-    Patch :meth:`EndpointClient._request_once` and capture calls.
+    Patch :meth:`EndpointClient.request_once` and capture calls.
 
     Parameters
     ----------
@@ -262,7 +262,7 @@ def request_once_stub(
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(rmod.RequestManager, '_request_once', _fake_request)
+    monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
 
     return calls
 
@@ -275,8 +275,8 @@ def extract_stub_factory() -> Callable[..., Any]:
     (Hypothesis-friendly).
 
     Each invocation patches
-    :meth:`etlplus.api.client.EndpointClient._request_once` for the duration
-    of the context manager and restores the original afterwards.
+    :meth:`etlplus.api.client.EndpointClient.request_once` for the duration of
+    the context manager and restores the original afterwards.
 
     Returns
     -------
@@ -318,11 +318,11 @@ def extract_stub_factory() -> Callable[..., Any]:
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = rmod.RequestManager._request_once
+        saved = rmod.RequestManager.request_once
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
             rmod.RequestManager,
-            '_request_once',
+            'request_once',
             _fake_request,
         )
         try:
@@ -330,7 +330,7 @@ def extract_stub_factory() -> Callable[..., Any]:
         finally:
             monkeypatch.setattr(
                 rmod.RequestManager,
-                '_request_once',
+                'request_once',
                 saved,
             )
 
