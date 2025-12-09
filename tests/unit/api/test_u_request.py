@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_request` module.
 
-Unit tests for :class:`etlplus.api.request.RateLimiter`.
+Unit tests for :class:`etlplus.api.rate_limiter.RateLimiter`.
 
 Notes
 -----
@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from etlplus.api.request import RateLimitConfigMap
-from etlplus.api.request import RateLimiter
-from etlplus.api.request import compute_sleep_seconds
+from etlplus.api.rate_limiter import RateLimitConfigMap
+from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api.rate_limiter import compute_sleep_seconds
 
 # SECTION: FIXTURES ======================================================== #
 
@@ -286,7 +286,7 @@ class TestRateLimiterEnforce:
 
         # Patch the module-level ``time.sleep`` used by
         # :class:`RateLimiter`.
-        monkeypatch.setattr('etlplus.api.request.time.sleep', fake_sleep)
+        monkeypatch.setattr('etlplus.api.rate_limiter.time.sleep', fake_sleep)
 
         limiter = RateLimiter.fixed(0.5)
         limiter.enforce()
@@ -314,7 +314,7 @@ class TestRateLimiterEnforce:
         def fake_sleep(value: float) -> None:  # pragma: no cover
             # Should not run.
             calls.append(value)
-        monkeypatch.setattr('etlplus.api.request.time.sleep', fake_sleep)
+        monkeypatch.setattr('etlplus.api.rate_limiter.time.sleep', fake_sleep)
 
         disabled_limiter.enforce()
 
