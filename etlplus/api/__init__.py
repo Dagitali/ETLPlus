@@ -65,8 +65,9 @@ Notes
 
 See Also
 --------
-- :mod:`etlplus.api.request` for retry policies and rate-limit helpers
+- :mod:`etlplus.api.rate_limiter` for rate-limit helpers
 - :mod:`etlplus.api.response` for pagination config shapes and record helpers
+- :mod:`etlplus.api.retry_manager` for retry policies
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
 - :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
   from rate limit settings
@@ -75,15 +76,16 @@ from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
 from .client import EndpointClient
-from .request import RateLimitConfigMap
-from .request import RateLimiter
-from .request import RetryPolicy
-from .request import compute_sleep_seconds
+from .rate_limiter import RateLimitConfigMap
+from .rate_limiter import RateLimiter
+from .rate_limiter import compute_sleep_seconds
 from .response import CursorPaginationConfigMap
 from .response import PagePaginationConfigMap
 from .response import PaginationConfigMap
 from .response import PaginationType
 from .response import Paginator
+from .retry_manager import RetryManager
+from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
@@ -100,6 +102,7 @@ __all__ = [
     'EndpointCredentialsBearer',
     'Paginator',
     'RateLimiter',
+    'RetryManager',
 
     # Enums
     'PaginationType',
