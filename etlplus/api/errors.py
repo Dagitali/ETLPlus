@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from typing import Any
 
 import requests  # type: ignore[import]
 
@@ -106,6 +107,19 @@ class ApiRequestError(requests.RequestException):
 
         return f"ApiRequestError({base}{meta})"
 
+    # -- Instance Methods -- #
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return structured error context for logging or telemetry."""
+        return {
+            'url': self.url,
+            'status': self.status,
+            'attempts': self.attempts,
+            'retried': self.retried,
+            'retry_policy': self.retry_policy,
+            'cause': repr(self.cause) if self.cause else None,
+        }
+
 
 class ApiAuthError(ApiRequestError):
     """Authentication/authorization failure (e.g., 401/403)."""
@@ -145,3 +159,11 @@ class PaginationError(ApiRequestError):
         base = super().__str__()
 
         return f"PaginationError({base} page={self.page})"
+
+    # -- Instance Methods -- #
+
+    def as_dict(self) -> dict[str, Any]:
+        """Extend base context with pagination metadata."""
+        payload = super().as_dict()
+        payload['page'] = self.page
+        return payload
