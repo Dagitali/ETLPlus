@@ -858,7 +858,7 @@ class PaginatorRunner:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL of the endpoint to fetch.
         params : Params | None, optional
             Optional query parameters for the request.
