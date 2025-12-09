@@ -76,6 +76,8 @@ class RequestManager:
     session_factory: Callable[[], requests.Session] | None = None
     retry_cap: float = 30.0
 
+    # -- Internal Attributes -- #
+
     _ctx_session: Any | None = field(default=None, init=False, repr=False)
     _ctx_owns_session: bool = field(default=False, init=False, repr=False)
 
@@ -260,7 +262,7 @@ class RequestManager:
             **kwargs,
         )
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _resolve_session_for_call(
         self,
@@ -588,7 +590,7 @@ class RequestManager:
         request_callable = self._resolve_request_callable(session)
         return request_callable(method_normalized, url, **call_kwargs)
 
-    # -- Protected Static Methods -- #
+    # -- Internal Static Methods -- #
 
     @staticmethod
     def _normalize_http_method(
