@@ -40,6 +40,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from functools import partial
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
@@ -400,57 +401,69 @@ class EndpointClient:
             if effective_sleep > 0
             else None
         )
-
-        def _fetch(
-            url_: str,
-            params_: Mapping[str, Any] | None,
-            page_index: int | None,
-        ) -> JSONData:
-            """
-            Fetch a single page via the request manager.
-
-            Parameters
-            ----------
-            url_ : str
-                Absolute URL to request.
-            params_ : Mapping[str, Any] | None
-                Query parameters for the request.
-            page_index : int | None
-                Index of the page being fetched.
-
-            Returns
-            -------
-            JSONData
-                Parsed response payload.
-
-            Raises
-            ------
-            PaginationError
-                If the request fails.
-            """
-            call_kw = EndpointClient.build_request_kwargs(
-                params=params_,
-                headers=headers,
-                timeout=timeout,
-            )
-            try:
-                return self.get(url_, **call_kw)
-            except ApiRequestError as exc:
-                raise PaginationError(
-                    url=url_,
-                    status=exc.status,
-                    attempts=exc.attempts,
-                    retried=exc.retried,
-                    retry_policy=exc.retry_policy,
-                    cause=exc,
-                    page=page_index,
-                ) from exc
-
+        fetch = partial(
+            self._fetch_page,
+            headers=headers,
+            timeout=timeout,
+        )
         return PaginatorRunner(
             pagination=pagination,
-            fetch=_fetch,
+            fetch=fetch,
             rate_limiter=rate_limiter,
         )
+
+    def _fetch_page(
+        self,
+        url_: str,
+        params_: Mapping[str, Any] | None,
+        page_index: int | None,
+        *,
+        headers: Mapping[str, Any] | None,
+        timeout: float | int | None,
+    ) -> JSONData:
+        """
+        Fetch a single page using shared pagination guardrails.
+
+        Parameters
+        ----------
+        url_ : str
+            Absolute URL to request.
+        params_ : Mapping[str, Any] | None
+            Query parameters for the request.
+        page_index : int | None
+            Index of the page being fetched.
+        headers : Mapping[str, Any] | None
+            HTTP headers to include in the request.
+        timeout : float | int | None
+            Timeout for the request.
+
+        Returns
+        -------
+        JSONData
+            Parsed response payload.
+
+        Raises
+        ------
+        PaginationError
+            If the request fails.
+        """
+        call_kw = EndpointClient.build_request_kwargs(
+            params=params_,
+            headers=headers,
+            timeout=timeout,
+        )
+        try:
+            return self.get(url_, **call_kw)
+        except ApiRequestError as exc:
+            raise PaginationError(
+                url=url_,
+                status=exc.status,
+                attempts=exc.attempts,
+                retried=exc.retried,
+                retry_policy=exc.retry_policy,
+                cause=exc,
+                page=page_index,
+            ) from exc
 
     # -- Instance Methods (HTTP Requests ) -- #
 
