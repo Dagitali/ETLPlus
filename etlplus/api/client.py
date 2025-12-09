@@ -69,6 +69,9 @@ from .response import Paginator
 from .response import PaginatorRunner
 from .transport import HTTPAdapterMountConfig
 from .transport import build_http_adapter
+from .types import Headers
+from .types import Params
+from .types import Url
 
 # SECTION: CLASSES ========================================================== #
 
@@ -87,7 +90,7 @@ class EndpointClient:
 
     Parameters
     ----------
-    base_url : str
+    base_url : Url
         Absolute base URL, e.g., ``"https://api.example.com/v1"``.
     endpoints : Mapping[str, str]
         Mapping of endpoint keys to relative paths, e.g.,
@@ -115,7 +118,7 @@ class EndpointClient:
 
     Attributes
     ----------
-    base_url : str
+    base_url : Url
         Absolute base URL.
     endpoints : Mapping[str, str]
         Read-only mapping of endpoint keys to relative paths
@@ -201,7 +204,7 @@ class EndpointClient:
 
     # -- Attributes -- #
 
-    base_url: str
+    base_url: Url
     endpoints: Mapping[str, str]
     base_path: str | None = None
 
@@ -365,7 +368,7 @@ class EndpointClient:
         self,
         *,
         pagination: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
+        headers: Headers | None,
         timeout: float | int | None,
         sleep_seconds: float,
         rate_limit_overrides: Mapping[str, Any] | None,
@@ -377,7 +380,7 @@ class EndpointClient:
         ----------
         pagination : Mapping[str, Any] | None
             Pagination configuration.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             HTTP headers to include in requests.
         timeout : float | int | None
             Timeout for HTTP requests.
@@ -414,11 +417,11 @@ class EndpointClient:
 
     def _fetch_page(
         self,
-        url_: str,
-        params_: Mapping[str, Any] | None,
+        url_: Url,
+        params_: Params | None,
         page_index: int | None,
         *,
-        headers: Mapping[str, Any] | None,
+        headers: Headers | None,
         timeout: float | int | None,
     ) -> JSONData:
         """
@@ -426,13 +429,13 @@ class EndpointClient:
 
         Parameters
         ----------
-        url_ : str
+        url_ : Url
             Absolute URL to request.
-        params_ : Mapping[str, Any] | None
+        params_ : Params | None
             Query parameters for the request.
         page_index : int | None
             Index of the page being fetched.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             HTTP headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -469,7 +472,7 @@ class EndpointClient:
 
     def get(
         self,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -477,7 +480,7 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -493,7 +496,7 @@ class EndpointClient:
 
     def post(
         self,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -501,7 +504,7 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -518,7 +521,7 @@ class EndpointClient:
     def request(
         self,
         method: str,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -528,7 +531,7 @@ class EndpointClient:
         ----------
         method : str
             HTTP method to invoke (``'GET'``, ``'POST'``, etc.).
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -550,8 +553,8 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
@@ -572,9 +575,9 @@ class EndpointClient:
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present on
             ``base_url``).
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -613,8 +616,8 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
@@ -637,9 +640,9 @@ class EndpointClient:
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present).
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in each request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
@@ -673,9 +676,9 @@ class EndpointClient:
 
     def paginate_url(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
+        headers: Headers | None,
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
@@ -687,11 +690,11 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to paginate.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -736,9 +739,9 @@ class EndpointClient:
 
     def paginate_url_iter(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
+        headers: Headers | None,
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
@@ -750,11 +753,11 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to paginate.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in each request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
@@ -910,8 +913,8 @@ class EndpointClient:
     @staticmethod
     def build_request_kwargs(
         *,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
     ) -> dict[str, Any]:
         """
@@ -921,9 +924,9 @@ class EndpointClient:
 
         Parameters
         ----------
-        params : Mapping[str, Any] | None, optional
+        params : Params | None, optional
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None, optional
+        headers : Headers | None, optional
             Headers to include in the request.
         timeout : float | int | None, optional
             Timeout for the request in seconds.
