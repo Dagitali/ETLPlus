@@ -360,28 +360,6 @@ class EndpointClient:
 
     # -- Protected Instance Methods -- #
 
-    def _get_with_retry(
-        self,
-        url: str,
-        **kw: Any,
-    ) -> JSONData:
-        """
-        Execute a ``GET`` honoring the client's retry semantics.
-
-        Parameters
-        ----------
-        url : str
-            Absolute URL to request.
-        **kw : Any
-            Additional keyword arguments forwarded to ``requests``.
-
-        Returns
-        -------
-        JSONData
-            Parsed response payload.
-        """
-        return self._request_manager.get(url, **kw)
-
     def _build_paginator_runner(
         self,
         *,
@@ -456,7 +434,7 @@ class EndpointClient:
                 timeout=timeout,
             )
             try:
-                return self._request_manager.get(url_, **call_kw)
+                return self.get(url_, **call_kw)
             except ApiRequestError as exc:
                 raise PaginationError(
                     url=url_,
@@ -474,7 +452,7 @@ class EndpointClient:
             rate_limiter=rate_limiter,
         )
 
-    # -- Instance Methods (HTTP Requests )-- #
+    # -- Instance Methods (HTTP Requests ) -- #
 
     def get(
         self,
@@ -727,7 +705,7 @@ class EndpointClient:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
-            return self._get_with_retry(url, **kw)
+            return self.get(url, **kw)
 
         # For known pagination types, delegate through paginate_url_iter to
         # preserve subclass overrides (tests rely on this shim behavior).
