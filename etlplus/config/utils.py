@@ -251,7 +251,7 @@ def rate_limit_from_defaults(
     )
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _prepare_substitutions(

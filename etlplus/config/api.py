@@ -56,7 +56,7 @@ __all__ = [
 type StrAnyMap = Mapping[str, Any]
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _effective_service_defaults(
@@ -236,7 +236,7 @@ class ApiConfig:
     # See also: ApiProfileConfig.from_obj for profile parsing logic.
     profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _selected_profile(self) -> ApiProfileConfig | None:
         """

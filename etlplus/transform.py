@@ -66,7 +66,7 @@ from .types import StepSpec
 from .types import StrPath
 from .utils import to_number
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 # -- Aggregators -- #
@@ -705,7 +705,7 @@ def _is_plain_fields_list(obj: Any) -> bool:
         and not any(isinstance(x, Mapping) for x in obj)
 
 
-# SECTION: PROTECTED CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS ============================================== #
 
 
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (

@@ -36,7 +36,7 @@ from etlplus.types import StrAnyMap
 from etlplus.types import StrStrMap
 from etlplus.validate import validate
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _deep_substitute(

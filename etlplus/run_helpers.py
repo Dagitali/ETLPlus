@@ -106,7 +106,7 @@ class SessionConfig(TypedDict, total=False):
     trust_env: bool
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 # -- API Environment Composition -- #

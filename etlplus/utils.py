@@ -266,7 +266,7 @@ def to_number(
     return None
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================= #
+# SECTION: INTERNAL FUNCTIONS ============================================= #
 
 
 def _clamp(

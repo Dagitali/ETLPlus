@@ -934,7 +934,7 @@ class PaginatorRunner:
     fetch: FetchPageFunc
     rate_limiter: RateLimiter | None = None
 
-    # -- Protected Attributes -- #
+    # -- Internal Attributes -- #
 
     _ptype: PaginationType | None = field(
         init=False,

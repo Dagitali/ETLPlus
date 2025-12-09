@@ -156,7 +156,7 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries: int | HTTPAdapterRetryConfig
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _build_retry_value(

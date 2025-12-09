@@ -27,7 +27,7 @@ from .utils import count_records
 __all__ = ['File']
 
 
-# SECTION: PROTECTED CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS ============================================== #
 
 
 _DEFAULT_XML_ROOT = 'root'
@@ -46,7 +46,7 @@ _EXT_TO_FORMAT: dict[str, FileFormat] = {
 _YAML_CACHE: dict[str, Any] = {}
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 def _dict_to_element(
     name: str,
@@ -182,7 +182,7 @@ class File:
     path: Path
     file_format: FileFormat | None = None
 
-    # -- Magic Methods (Constructors) -- #
+    # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
         """
@@ -204,7 +204,7 @@ class File:
                 # Leave as None; _ensure_format() will raise on use if needed.
                 pass
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _assert_exists(self) -> None:
         """

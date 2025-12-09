@@ -572,7 +572,7 @@ class RetryManager:
 
         return False
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _raise_terminal_error(
         self,
@@ -622,7 +622,7 @@ class RetryManager:
             cause=error,
         ) from error
 
-    # -- Protected Static Methods -- #
+    # -- Internal Static Methods -- #
 
     @staticmethod
     def _extract_status(

@@ -26,7 +26,7 @@ from .types import JSONList
 from .types import StrPath
 from .utils import count_records
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _parse_json_string(

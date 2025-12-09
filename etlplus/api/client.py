@@ -362,7 +362,7 @@ class EndpointClient:
         """
         self._request_manager.__exit__(exc_type, exc, tb)
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _build_paginator_runner(
         self,
@@ -945,7 +945,7 @@ class EndpointClient:
             kw['timeout'] = timeout
         return kw
 
-    # -- Protected Static Methods -- #
+    # -- Internal Static Methods -- #
 
     @staticmethod
     def _resolve_sleep_seconds(
