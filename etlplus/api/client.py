@@ -418,7 +418,7 @@ class EndpointClient:
     def _fetch_page(
         self,
         url_: Url,
-        params_: Params | None,
+        params: Params | None,
         page_index: int | None,
         *,
         headers: Headers | None,
@@ -431,7 +431,7 @@ class EndpointClient:
         ----------
         url_ : Url
             Absolute URL to request.
-        params_ : Params | None
+        params : Params | None
             Query parameters for the request.
         page_index : int | None
             Index of the page being fetched.
@@ -451,7 +451,7 @@ class EndpointClient:
             If the request fails.
         """
         call_kw = EndpointClient.build_request_kwargs(
-            params=params_,
+            params=params,
             headers=headers,
             timeout=timeout,
         )
