@@ -22,7 +22,7 @@ from typing import Any
 
 
 __all__ = [
-    # type Aliases
+    # Type Aliases
     'Headers',
     'Params',
     'Url',
