@@ -60,6 +60,7 @@ __all__ = ['EndpointCredentialsBearer']
 
 CLOCK_SKEW_SEC = 30
 DEFAULT_TOKEN_TTL = 3600
+FORM_HEADERS = {'Content-Type': 'application/x-www-form-urlencoded'}
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -75,7 +76,7 @@ class _TokenResponse(TypedDict):
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True, repr=False, eq=False)
+@dataclass(slots=True, repr=False, eq=False, kw_only=True)
 class EndpointCredentialsBearer(AuthBase):
     """
     Bearer token authentication via the OAuth2 Client Credentials flow.
@@ -165,7 +166,7 @@ class EndpointCredentialsBearer(AuthBase):
         r.headers['Authorization'] = f'Bearer {self.token}'
         return r
 
-    # -- Protected Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _ensure_token(self) -> None:
         """
@@ -190,6 +191,10 @@ class EndpointCredentialsBearer(AuthBase):
         self.token = response['access_token']
         ttl = float(response.get('expires_in', DEFAULT_TOKEN_TTL))
         self.expiry = time.time() + max(ttl, 0.0)
+
+    def _http_client(self) -> requests.Session | Any:
+        """Return the configured HTTP session or the module-level client."""
+        return self.session or requests
 
     def _parse_token_response(
         self,
@@ -269,22 +274,20 @@ class EndpointCredentialsBearer(AuthBase):
         requests.exceptions.RequestException
             On network/HTTP errors during the token request.
         """
-        client = self.session or requests
+        client = self._http_client()
         try:
             resp = client.post(
                 self.token_url,
-                data={
-                    'grant_type': 'client_credentials',
-                    'scope': self.scope or '',
-                },
+                data=self._token_payload(),
                 auth=(self.client_id, self.client_secret),
-                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                headers=self._token_headers(),
                 timeout=self.timeout,
             )
             resp.raise_for_status()
         except requests.exceptions.Timeout:
             logger.error(
-                'Token request timed out (url=%s)', self.token_url,
+                'Token request timed out (url=%s)',
+                self.token_url,
             )
             raise
         except requests.exceptions.SSLError:
@@ -316,6 +319,17 @@ class EndpointCredentialsBearer(AuthBase):
             raise
 
         return self._parse_token_response(resp)
+
+    def _token_headers(self) -> Mapping[str, str]:
+        """Return headers for the token request."""
+        return FORM_HEADERS
+
+    def _token_payload(self) -> dict[str, str]:
+        """Build the minimal OAuth2 client credentials payload."""
+        return {
+            'grant_type': 'client_credentials',
+            'scope': self.scope or '',
+        }
 
     def _token_valid(self) -> bool:
         """
