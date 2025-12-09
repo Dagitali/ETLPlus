@@ -25,7 +25,7 @@ from typing import cast
 import pytest
 
 from etlplus.api.client import EndpointClient
-from etlplus.api.request import RateLimiter
+from etlplus.api.rate_limiter import RateLimiter
 from etlplus.api.response import PagePaginationConfigMap
 from etlplus.api.response import PaginationConfigMap
 from etlplus.api.response import PaginationType
