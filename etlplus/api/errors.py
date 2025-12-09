@@ -29,7 +29,7 @@ from typing import Any
 import requests  # type: ignore[import]
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .request import RetryPolicy
+    from .retry_manager import RetryPolicy
 
 
 # SECTION: EXPORTS ========================================================== #
