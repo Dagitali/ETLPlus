@@ -24,7 +24,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.request as request_mod
+import etlplus.api.rate_limiter as rate_limiter_mod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
@@ -145,11 +145,11 @@ def capture_sleeps(
     """
     values: list[float] = []
 
-    def _enforce(self: request_mod.RateLimiter) -> None:  # noqa: D401
+    def _enforce(self: rate_limiter_mod.RateLimiter) -> None:  # noqa: D401
         values.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        request_mod.RateLimiter,
+        rate_limiter_mod.RateLimiter,
         'enforce',
         _enforce,
         raising=False,
