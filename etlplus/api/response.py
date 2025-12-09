@@ -462,15 +462,10 @@ class Paginator:
         params : Params | None, optional
             Optional query parameters for the request.
 
-        Returns
-        -------
-        None
-            The generator stops without producing a return value.
-
         Yields
         ------
-        JSONDict
-            Individual record dicts extracted from the paginated responses.
+        Generator[JSONDict]
+            Iterator over the record dicts extracted from paginated responses.
 
         Raises
         ------
@@ -480,104 +475,15 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        pages = 0
-        recs = 0
+        match self.type:
+            case PaginationType.PAGE | PaginationType.OFFSET:
+                yield from self._iterate_page_style(url, params)
+                return
+            case PaginationType.CURSOR:
+                yield from self._iterate_cursor_style(url, params)
+                return
 
-        if self.type in (PaginationType.PAGE, PaginationType.OFFSET):
-            current = self.start_page
-            while True:
-                self.last_page = pages + 1
-                req_params = dict(params or {})
-                req_params[self.page_param] = current
-                req_params[self.size_param] = self.page_size
-
-                page_data = self._fetch_page(
-                    url,
-                    req_params,
-                )
-                batch = self.coalesce_records(
-                    page_data,
-                    self.records_path,
-                    self.fallback_path,
-                )
-                n = len(batch)
-                pages += 1
-                recs += n
-
-                if (
-                    isinstance(self.max_records, int)
-                    and recs > self.max_records
-                ):
-                    take = max(
-                        0,
-                        self.max_records - (recs - n),
-                    )
-                    yield from batch[:take]
-                    break
-
-                yield from batch
-
-                if n < self.page_size:
-                    break
-                if self._stop_limits(pages, recs):
-                    break
-
-                if self.type == PaginationType.PAGE:
-                    current += 1
-                else:
-                    current += self.page_size
-
-                self._enforce_rate_limit()
-            return
-
-        if self.type == PaginationType.CURSOR:
-            cursor = self.start_cursor
-            while True:
-                self.last_page = pages + 1
-                req_params = dict(params or {})
-                if cursor is not None:
-                    req_params[self.cursor_param] = cursor
-                req_params.setdefault(self.limit_param, self.page_size)
-
-                page_data = self._fetch_page(
-                    url,
-                    req_params,
-                )
-                batch = self.coalesce_records(
-                    page_data,
-                    self.records_path,
-                    self.fallback_path,
-                )
-                n = len(batch)
-                pages += 1
-                recs += n
-
-                if (
-                    isinstance(self.max_records, int)
-                    and recs > self.max_records
-                ):
-                    take = max(
-                        0,
-                        self.max_records - (recs - n),
-                    )
-                    yield from batch[:take]
-                    break
-
-                yield from batch
-
-                nxt = self.next_cursor_from(
-                    page_data,
-                    self.cursor_path,
-                )
-                if not nxt or n == 0:
-                    break
-                if self._stop_limits(pages, recs):
-                    break
-                cursor = nxt
-                self._enforce_rate_limit()
-            return
-
-        # Fallback: single page, coalesce. and yield.
+        # Fallback: single page, coalesce, and yield as-is.
         self.last_page = 1
         page_data = self._fetch_page(url, params)
         yield from self.coalesce_records(
@@ -586,7 +492,41 @@ class Paginator:
             self.fallback_path,
         )
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
+
+    def _compose_params(
+        self,
+        params: Params | None,
+        *,
+        defaults: Mapping[str, Any] | None = None,
+        overrides: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Merge caller params with defaults and overrides.
+
+        Parameters
+        ----------
+        params : Params | None
+            Base query parameters from the caller.
+        defaults : Mapping[str, Any] | None, optional
+            Default query parameters to use if not provided by the caller.
+        overrides : Mapping[str, Any] | None, optional
+            Query parameters to override, replacing any existing values.
+
+        Returns
+        -------
+        dict[str, Any]
+            Combined query parameters mapping.
+        """
+        combined: dict[str, Any] = dict(params or {})
+        if defaults:
+            for key, value in defaults.items():
+                combined.setdefault(key, value)
+        if overrides:
+            combined.update(
+                {k: v for k, v in overrides.items() if v is not None},
+            )
+        return combined
 
     def _fetch_page(
         self,
@@ -634,6 +574,168 @@ class Paginator:
                 cause=e,
                 page=self.last_page,
             ) from e
+
+    def _iterate_cursor_style(
+        self,
+        url: Url,
+        query_params: Params | None,
+    ) -> Generator[JSONDict]:
+        """
+        Yield records for cursor-based pagination strategies.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL to request.
+        query_params : Params | None
+            Query parameters for the request.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Record dicts extracted from each page.
+        """
+        cursor = self.start_cursor
+        pages = 0
+        emitted = 0
+
+        while True:
+            self.last_page = pages + 1
+            overrides = (
+                {self.cursor_param: cursor}
+                if cursor is not None
+                else None
+            )
+            req_params = self._compose_params(
+                query_params,
+                defaults={self.limit_param: self.page_size},
+                overrides=overrides,
+            )
+
+            page_data = self._fetch_page(url, req_params)
+            batch = self.coalesce_records(
+                page_data,
+                self.records_path,
+                self.fallback_path,
+            )
+
+            pages += 1
+            trimmed, exhausted = self._limit_batch(batch, emitted)
+            yield from trimmed
+            emitted += len(trimmed)
+
+            nxt = self.next_cursor_from(page_data, self.cursor_path)
+            if exhausted or not nxt or not batch:
+                break
+            if self._stop_limits(pages, emitted):
+                break
+
+            cursor = nxt
+            self._enforce_rate_limit()
+
+    def _iterate_page_style(
+        self,
+        url: Url,
+        query_params: Params | None,
+    ) -> Generator[JSONDict]:
+        """
+        Yield records for page/offset pagination strategies.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL to request.
+        query_params : Params | None
+            Query parameters for the request.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Record dicts extracted from each page.
+        """
+        current = self.start_page
+        pages = 0
+        emitted = 0
+
+        while True:
+            self.last_page = pages + 1
+            req_params = self._compose_params(
+                query_params,
+                overrides={
+                    self.page_param: current,
+                    self.size_param: self.page_size,
+                },
+            )
+            page_data = self._fetch_page(url, req_params)
+            batch = self.coalesce_records(
+                page_data,
+                self.records_path,
+                self.fallback_path,
+            )
+
+            pages += 1
+            trimmed, exhausted = self._limit_batch(batch, emitted)
+            yield from trimmed
+            emitted += len(trimmed)
+
+            if exhausted or len(batch) < self.page_size:
+                break
+            if self._stop_limits(pages, emitted):
+                break
+
+            current = self._next_page_value(current)
+            self._enforce_rate_limit()
+
+    def _limit_batch(
+        self,
+        batch: JSONRecords,
+        emitted: int,
+    ) -> tuple[JSONRecords, bool]:
+        """
+        Respect ``max_records`` while yielding the current batch.
+
+        Parameters
+        ----------
+        batch : JSONRecords
+            Current batch of records fetched.
+        emitted : int
+            Number of records emitted so far.
+
+        Returns
+        -------
+        tuple[JSONRecords, bool]
+            Tuple of (possibly trimmed) batch and exhaustion flag.
+        """
+        if not isinstance(self.max_records, int):
+            return batch, False
+
+        remaining = self.max_records - emitted
+        if remaining <= 0:
+            return [], True
+        if len(batch) > remaining:
+            return batch[:remaining], True
+        return batch, False
+
+    def _next_page_value(
+        self,
+        current: int,
+    ) -> int:
+        """
+        Return the next page/offset value respecting the strategy.
+
+        Parameters
+        ----------
+        current : int
+            Current page number or offset.
+
+        Returns
+        -------
+        int
+            Next page number or offset.
+        """
+        if self.type == PaginationType.OFFSET:
+            return current + self.page_size
+        return current + 1
 
     def _stop_limits(
         self, pages: int,
@@ -896,15 +998,10 @@ class PaginatorRunner:
         params : Params | None, optional
             Optional query parameters for the request.
 
-        Returns
-        -------
-        None
-            The generator stops without producing a return value.
-
         Yields
         ------
-        JSONDict
-            Individual record dicts extracted from the paginated responses.
+        Generator[JSONDict]
+            Iterator over the record dicts extracted from paginated responses.
         """
         if not self.is_paginated:
             pg = cast(dict[str, Any], self.pagination or {})
