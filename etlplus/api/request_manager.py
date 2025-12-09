@@ -262,25 +262,37 @@ class RequestManager:
 
     # -- Protected Instance Methods -- #
 
-    def _get_active_session(self) -> requests.Session | None:
+    def _resolve_session_for_call(
+        self,
+        explicit: requests.Session | None,
+    ) -> tuple[requests.Session | None, bool]:
         """
-        Get the active HTTP session.
+        Determine which session should service the current request.
+
+        Parameters
+        ----------
+        explicit : requests.Session | None
+            Session provided directly by the caller.
 
         Returns
         -------
-        requests.Session | None
-            The active HTTP session if available, otherwise None.
+        tuple[requests.Session | None, bool]
+            Pair of ``(session, owns_session)`` where ``owns_session``
+            indicates whether this manager is responsible for closing the
+            session after the request completes.
         """
+        if explicit is not None:
+            return explicit, False
         if self._ctx_session is not None:
-            return self._ctx_session
+            return self._ctx_session, False
         if self.session is not None:
-            return self.session
+            return self.session, False
         if self.session_factory is not None:
             try:
-                return self.session_factory()
+                return self.session_factory(), True
             except (RuntimeError, TypeError):  # pragma: no cover - defensive
-                return None
-        return None
+                return None, False
+        return None, False
 
     def _parse_response_payload(
         self,
@@ -412,27 +424,36 @@ class RequestManager:
         supplied_timeout = call_kwargs.pop('timeout', _MISSING)
         timeout = self._resolve_timeout(supplied_timeout)
         user_session = call_kwargs.pop('session', None)
-        sess = self._get_active_session() or user_session
+        session, owns_session = self._resolve_session_for_call(user_session)
 
-        policy = self.retry
-        if not policy:
-            try:
-                return self._request_once(
-                    method_normalized,
-                    url,
-                    session=sess,
-                    timeout=timeout,
-                    request_callable=request_callable,
-                    **call_kwargs,
-                )
-            except requests.RequestException as exc:  # pragma: no cover (net)
-                status = getattr(
-                    getattr(exc, 'response', None),
-                    'status_code',
-                    None,
-                )
-                if status in {401, 403}:
-                    raise ApiAuthError(
+        try:
+            policy = self.retry
+            if not policy:
+                try:
+                    return self._request_once(
+                        method_normalized,
+                        url,
+                        session=session,
+                        timeout=timeout,
+                        request_callable=request_callable,
+                        **call_kwargs,
+                    )
+                except requests.RequestException as exc:  # pragma: no cover
+                    status = getattr(
+                        getattr(exc, 'response', None),
+                        'status_code',
+                        None,
+                    )
+                    if status in {401, 403}:
+                        raise ApiAuthError(
+                            url=url,
+                            status=status,
+                            attempts=1,
+                            retried=False,
+                            retry_policy=None,
+                            cause=exc,
+                        ) from exc
+                    raise ApiRequestError(
                         url=url,
                         status=status,
                         attempts=1,
@@ -440,50 +461,48 @@ class RequestManager:
                         retry_policy=None,
                         cause=exc,
                     ) from exc
-                raise ApiRequestError(
-                    url=url,
-                    status=status,
-                    attempts=1,
-                    retried=False,
-                    retry_policy=None,
-                    cause=exc,
-                ) from exc
 
-        retry_mgr = RetryManager(
-            policy=policy,
-            retry_network_errors=self.retry_network_errors,
-            cap=self.retry_cap,
-        )
-
-        def _fetch(
-            target_url: str,
-            **call_kw: Any,
-        ) -> JSONData:
-            """
-            Perform the actual request once within retry context.
-
-            Parameters
-            ----------
-            target_url : str
-                Target URL.
-            **call_kw : Any
-                Additional keyword arguments for the request.
-
-            Returns
-            -------
-            JSONData
-                Parsed JSON response data.
-            """
-            return self._request_once(
-                method_normalized,
-                target_url,
-                session=sess,
-                timeout=timeout,
-                request_callable=request_callable,
-                **call_kw,
+            retry_mgr = RetryManager(
+                policy=policy,
+                retry_network_errors=self.retry_network_errors,
+                cap=self.retry_cap,
             )
 
-        return retry_mgr.run_with_retry(_fetch, url, **call_kwargs)
+            def _fetch(
+                target_url: str,
+                **call_kw: Any,
+            ) -> JSONData:
+                """
+                Perform the actual request once within retry context.
+
+                Parameters
+                ----------
+                target_url : str
+                    Target URL.
+                **call_kw : Any
+                    Additional keyword arguments for the request.
+
+                Returns
+                -------
+                JSONData
+                    Parsed JSON response data.
+                """
+                return self._request_once(
+                    method_normalized,
+                    target_url,
+                    session=session,
+                    timeout=timeout,
+                    request_callable=request_callable,
+                    **call_kw,
+                )
+
+            return retry_mgr.run_with_retry(_fetch, url, **call_kwargs)
+        finally:
+            if owns_session and session is not None:
+                try:
+                    session.close()
+                except AttributeError:  # pragma: no cover - defensive
+                    pass
 
     def _resolve_request_callable(
         self,
