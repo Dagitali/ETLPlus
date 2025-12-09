@@ -57,6 +57,8 @@ from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .request import RateLimiter
+from .types import Params
+from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -423,20 +425,48 @@ class Paginator:
 
     def paginate(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
+        params: Params | None = None,
     ) -> JSONRecords:
-        """Collect all records across pages into a list of dicts."""
+        """
+        Collect all records across pages into a list of dicts.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL of the endpoint to fetch.
+        params : Params | None, optional
+            Optional query parameters for the request.
+
+        Returns
+        -------
+        JSONRecords
+            List of record dicts aggregated across all fetched pages.
+        """
         return list(self.paginate_iter(url, params=params))
 
     def paginate_iter(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
+        params: Params | None = None,
     ) -> Iterator[JSONDict]:
-        """Yield record dicts across pages for the configured strategy."""
+        """
+        Yield record dicts across pages for the configured strategy.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL of the endpoint to fetch.
+        params : Params | None, optional
+            Optional query parameters for the request.
+
+        Yields
+        ------
+        Iterator[JSONDict]
+            Iterator over record dicts extracted from all pages.
+        """
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
@@ -550,8 +580,8 @@ class Paginator:
 
     def _fetch_page(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
     ) -> Any:
         """
         Fetch a single page and attach page index on failure.
@@ -563,9 +593,9 @@ class Paginator:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL of the endpoint to fetch.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Optional query parameters for the request.
 
         Returns
@@ -819,9 +849,9 @@ class PaginatorRunner:
 
     def collect(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
+        params: Params | None = None,
     ) -> JSONRecords:
         """
         Collect records across pages into a list.
@@ -830,7 +860,7 @@ class PaginatorRunner:
         ----------
         url : str
             Absolute URL of the endpoint to fetch.
-        params : Mapping[str, Any] | None, optional
+        params : Params | None, optional
             Optional query parameters for the request.
 
         Returns
@@ -842,9 +872,9 @@ class PaginatorRunner:
 
     def iterate(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
+        params: Params | None = None,
     ) -> Iterator[JSONDict]:
         """
         Yield records for the configured pagination strategy.
@@ -853,7 +883,7 @@ class PaginatorRunner:
         ----------
         url : str
             Absolute URL of the endpoint to fetch.
-        params : Mapping[str, Any] | None, optional
+        params : Params | None, optional
             Optional query parameters for the request.
 
         Yields
