@@ -81,8 +81,10 @@ from .paginator import PaginationType
 from .paginator import Paginator
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
+from .rate_limiter import RateLimitPlan
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
+from .retry_manager import RetryStrategy
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
@@ -98,8 +100,10 @@ __all__ = [
     'EndpointClient',
     'EndpointCredentialsBearer',
     'Paginator',
+    'RateLimitPlan',
     'RateLimiter',
     'RetryManager',
+    'RetryStrategy',
 
     # Enums
     'PaginationType',
