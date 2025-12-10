@@ -49,7 +49,7 @@ __all__ = ['run']
 #   (config layer)
 # - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
 #   (config layer)
-# - ApiPaginationConfig: etlplus.api.response.PaginationConfigMap
+# - ApiPaginationConfig: etlplus.api.paginator.PaginationConfigMap
 #   (client layer)
 # - ApiRetryPolicy: etlplus.api.retry_manager.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options

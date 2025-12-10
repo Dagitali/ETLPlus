@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.response` module.
+:mod:`etlplus.api.paginator` module.
 
 Centralized logic for handling REST API endpoint responses, including:
 - Pagination strategies (page, offset, cursor).

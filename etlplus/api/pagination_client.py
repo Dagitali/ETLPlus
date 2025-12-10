@@ -16,10 +16,10 @@ from typing import cast
 
 from ..types import JSONDict
 from ..types import JSONRecords
+from .paginator import PaginationConfigMap
+from .paginator import PaginationType
+from .paginator import Paginator
 from .rate_limiter import RateLimiter
-from .response import PaginationConfigMap
-from .response import PaginationType
-from .response import Paginator
 from .types import Params
 from .types import Url
 

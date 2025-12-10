@@ -6,7 +6,7 @@ paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
-- Pagination/record aliases are exported from :mod:`etlplus.api.response`.
+    - Pagination/record aliases are exported from :mod:`etlplus.api.paginator`.
 - Retry-related types live in :mod:`etlplus.api.retry_manager`.
 - Pagination requires a ``PaginationConfig``. See
     :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the
@@ -60,12 +60,12 @@ from ..types import JSONDict
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .pagination_client import PaginationClient
+from .paginator import PaginationConfigMap
+from .paginator import Paginator
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
 from .rate_limiter import compute_sleep_seconds
 from .request_manager import RequestManager
-from .response import PaginationConfigMap
-from .response import Paginator
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
 from .transport import build_http_adapter
@@ -364,7 +364,7 @@ class EndpointClient:
 
     # -- Internal Instance Methods -- #
 
-    def _build_paginator_runner(
+    def _build_pagination_client(
         self,
         *,
         pagination: Mapping[str, Any] | None,
@@ -774,7 +774,7 @@ class EndpointClient:
         JSONDict
             Record dictionaries extracted from each page.
         """
-        runner = self._build_paginator_runner(
+        runner = self._build_pagination_client(
             pagination=cast(Mapping[str, Any] | None, pagination),
             headers=headers,
             timeout=timeout,
