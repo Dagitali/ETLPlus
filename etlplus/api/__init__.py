@@ -75,7 +75,7 @@ See Also
 from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
-from .client import EndpointClient
+from .endpoint_client import EndpointClient
 from .paginator import CursorPaginationConfigMap
 from .paginator import PagePaginationConfigMap
 from .paginator import PaginationConfigMap

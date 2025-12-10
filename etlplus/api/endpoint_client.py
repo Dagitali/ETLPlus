@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.client` module.
+:mod:`etlplus.api.endpoint_client` module.
 
 Endpoint client utilities for registering endpoint paths, composing URLs, and
 paginating API responses with optional retries and rate limiting.
