@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from dataclasses import field
 from typing import Any
 from typing import cast
 
@@ -65,26 +64,17 @@ class PaginationClient:
     fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
 
-    # -- Internal Attributes -- #
-
-    _ptype: PaginationType | None = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
-
-    # -- Magic Methods (Object Lifecycle) -- #
-
-    def __post_init__(self) -> None:
-        """Normalize and validate pagination configuration."""
-        self._ptype = Paginator.detect_type(self.pagination, default=None)
-
     # -- Properties -- #
 
     @property
     def is_paginated(self) -> bool:
         """Return ``True`` when a known pagination type is configured."""
-        return self._ptype is not None
+        return self.pagination_type is not None
+
+    @property
+    def pagination_type(self) -> PaginationType | None:
+        """Return the normalized pagination type when available."""
+        return Paginator.detect_type(self.pagination, default=None)
 
     # -- Instance Methods -- #
 
