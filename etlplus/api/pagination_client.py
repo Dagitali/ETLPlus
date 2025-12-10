@@ -6,7 +6,6 @@ and optional rate limiting into :class:`Paginator` instances.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -20,6 +19,7 @@ from .paginator import PaginationConfigMap
 from .paginator import PaginationType
 from .paginator import Paginator
 from .rate_limiter import RateLimiter
+from .types import FetchPageCallable
 from .types import Params
 from .types import Url
 
@@ -32,36 +32,37 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type FetchPageFunc = Callable[
-    [str, Mapping[str, Any] | None, int | None], Any,
-]
-
-
 # SECTION: CLASSES ========================================================== #
 
 
 @dataclass(slots=True, kw_only=True)
 class PaginationClient:
     """
-    Lightweight adapter that runs :class:`Paginator` instances.
+    Drive :class:`Paginator` instances with shared guardrails.
+
+    Parameters
+    ----------
+    pagination : Mapping[str, Any] | None
+        Pagination configuration mapping.
+    fetch : FetchPageCallable
+        Callback used to fetch a single page.
+    rate_limiter : RateLimiter | None, optional
+        Optional limiter invoked between page fetches.
 
     Attributes
     ----------
     pagination : Mapping[str, Any] | None
-        Pagination configuration mapping.
-    fetch : FetchPageFunc
-        Callback used to fetch a single page.
+        Resolved pagination configuration.
+    fetch : FetchPageCallable
+        Stored fetch callback invoked by ``Paginator``.
     rate_limiter : RateLimiter | None
-        Optional rate limiter invoked between page fetches.
+        Limiter applied between requests when configured.
     """
 
     # -- Attributes -- #
 
     pagination: Mapping[str, Any] | None
-    fetch: FetchPageFunc
+    fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
 
     # -- Internal Attributes -- #
@@ -127,13 +128,7 @@ class PaginationClient:
             Optional query parameters to include in the request.
         """
         if not self.is_paginated:
-            pg = cast(dict[str, Any], self.pagination or {})
-            page_data = self.fetch(url, params, None)
-            yield from Paginator.coalesce_records(
-                page_data,
-                pg.get('records_path'),
-                pg.get('fallback_path'),
-            )
+            yield from self._iterate_single_page(url, params)
             return
 
         paginator = Paginator.from_config(
@@ -142,3 +137,33 @@ class PaginationClient:
             rate_limiter=self.rate_limiter,
         )
         yield from paginator.paginate_iter(url, params=params)
+
+    # -- InternalInstance Methods -- #
+
+    def _iterate_single_page(
+        self,
+        url: Url,
+        params: Params | None,
+    ) -> Generator[JSONDict]:
+        """
+        Iterate records for non-paginated responses.
+
+        Parameters
+        ----------
+        url : Url
+            Base URL to fetch pages from.
+        params : Params | None
+            Optional query parameters to include in the request.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            JSON records from the response.
+        """
+        pg = cast(dict[str, Any], self.pagination or {})
+        page_data = self.fetch(url, params, None)
+        yield from Paginator.coalesce_records(
+            page_data,
+            pg.get('records_path'),
+            pg.get('fallback_path'),
+        )
