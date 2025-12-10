@@ -189,7 +189,7 @@ client = EndpointClient(
 
 ## Types and transport
 
-- Types: pagination config helpers live in `etlplus/api/response.py` and retry/rate-limit helpers
+- Types: pagination config helpers live in `etlplus/api/paginator.py` and retry/rate-limit helpers
   (including `RetryPolicy`) live in `etlplus/api/request.py`. These are re-exported from
   `etlplus.api` for convenience.
 - Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users
