@@ -1,6 +1,6 @@
 """Compatibility wrappers for historical rate-limit helpers.
 
-The canonical implementation now lives in :mod:`etlplus.api.request`. This
+The canonical implementation now lives in :mod:`etlplus.api.rate_limiter`. This
 module keeps a tiny :class:`RateLimitConfig` shim plus convenience re-exports,
 so existing imports continue to function.
 """
@@ -13,7 +13,7 @@ from typing import Any
 from ..utils import to_float
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
-from .rate_limiter import compute_sleep_seconds as _compute_sleep_seconds
+from .types import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -122,7 +122,7 @@ def _as_mapping(
 
 def compute_sleep_seconds(
     rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
-    overrides: Mapping[str, Any] | None = None,
+    overrides: RateLimitOverrides = None,
 ) -> float:
     """
     Compute the per-request delay by delegating to :mod:`etlplus.api.request`.
@@ -131,7 +131,7 @@ def compute_sleep_seconds(
     ----------
     rate_limit : Mapping[str, Any] | RateLimitConfig | None, optional
         Base rate-limit configuration, by default None.
-    overrides : Mapping[str, Any] | None, optional
+    overrides : RateLimitOverrides, optional
         Override settings to apply atop the base config, by default None.
 
     Returns
@@ -140,10 +140,14 @@ def compute_sleep_seconds(
         Computed inter-request delay in seconds.
     """
     normalized = _as_mapping(rate_limit)
-    return _compute_sleep_seconds(normalized, overrides)
+    return RateLimiter.resolve_sleep_seconds(
+        rate_limit=normalized,
+        overrides=overrides,
+    )
 
 
 # Re-export "public" helpers for callers previously importing from here.
 compute_sleep_seconds.__doc__ = (
-    _compute_sleep_seconds.__doc__ or compute_sleep_seconds.__doc__
+    RateLimiter.resolve_sleep_seconds.__doc__
+    or compute_sleep_seconds.__doc__
 )
