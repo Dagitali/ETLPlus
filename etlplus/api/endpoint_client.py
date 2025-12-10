@@ -38,6 +38,7 @@ import time
 from collections.abc import Callable
 from collections.abc import Iterator
 from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from functools import partial
@@ -67,7 +68,6 @@ from .rate_limiter import RateLimiter
 from .request_manager import RequestManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
-from .transport import build_session_with_adapters
 from .types import Headers
 from .types import Params
 from .types import RateLimitOverrides
@@ -112,7 +112,7 @@ class EndpointClient:
     session_factory : Callable[[], requests.Session] | None, optional
         Factory used to lazily create a session. Ignored if ``session`` is
         provided.
-    session_adapters : list[HTTPAdapterMountConfig] | None, optional
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
         Adapter mount configuration(s) used to build a session lazily when
         neither ``session`` nor ``session_factory`` is supplied.
 
@@ -135,7 +135,7 @@ class EndpointClient:
         Explicit HTTP session used for requests when provided.
     session_factory : Callable[[], requests.Session] | None
         Lazily invoked factory producing a session when needed.
-    session_adapters : list[HTTPAdapterMountConfig] | None
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None
         Adapter mount configuration(s) for connection pooling / retries.
     DEFAULT_PAGE_PARAM : ClassVar[str]
         Default page parameter name.
@@ -169,11 +169,11 @@ class EndpointClient:
     -----
     - Endpoint mapping is defensively copied and wrapped read-only.
     - Pagination defaults (page size, start page, cursor param, etc.) are
-      centralized as class variables.
+        centralized as class variables.
     - Context manager support (``with EndpointClient(...) as client``)
-      manages session lifecycle; owned sessions are closed on exit.
+        manages session lifecycle; owned sessions are closed on exit.
     - Retries use exponential backoff with jitter capped by
-      ``DEFAULT_RETRY_CAP`` seconds.
+        ``DEFAULT_RETRY_CAP`` seconds.
 
     Examples
     --------
@@ -222,7 +222,7 @@ class EndpointClient:
     # and connection pooling. If provided and neither `session` nor
     # `session_factory` is supplied, a factory is synthesized to create a
     # Session and mount the configured adapters lazily.
-    session_adapters: list[HTTPAdapterMountConfig] | None = None
+    session_adapters: Sequence[HTTPAdapterMountConfig] | None = None
 
     # Internal: context-managed session and ownership flag.
     _request_manager: RequestManager = field(
@@ -294,16 +294,12 @@ class EndpointClient:
         if self.session is not None and self.session_factory is not None:
             object.__setattr__(self, 'session_factory', None)
 
-        # If no session/factory provided but adapter configs are, synthesize
-        # a factory that builds a Session and mounts adapters.
-        if (
-            self.session is None
-            and self.session_factory is None
-            and self.session_adapters
-        ):
+        # Normalize adapter configs to tuples for immutability.
+        if self.session_adapters:
             adapters_cfg = tuple(self.session_adapters)
-            factory = partial(build_session_with_adapters, adapters_cfg)
-            object.__setattr__(self, 'session_factory', factory)
+            object.__setattr__(self, 'session_adapters', adapters_cfg)
+        else:
+            object.__setattr__(self, 'session_adapters', None)
 
         manager = RequestManager(
             retry=self.retry,
@@ -311,6 +307,7 @@ class EndpointClient:
             default_timeout=self.DEFAULT_TIMEOUT,
             session=self.session,
             session_factory=self.session_factory,
+            session_adapters=self.session_adapters,
             retry_cap=self.DEFAULT_RETRY_CAP,
         )
         object.__setattr__(self, '_request_manager', manager)
