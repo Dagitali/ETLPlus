@@ -25,6 +25,7 @@ from typing import TypedDict
 
 from ..utils import to_float
 from ..utils import to_positive_float
+from .types import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -75,7 +76,7 @@ class RateLimitConfigMap(TypedDict, total=False):
 
 def _merge_rate_limit(
     rate_limit: Mapping[str, Any] | None,
-    overrides: Mapping[str, Any] | None,
+    overrides: RateLimitOverrides = None,
 ) -> dict[str, Any]:
     """
     Merge ``rate_limit`` and ``overrides`` honoring override precedence.
@@ -84,8 +85,8 @@ def _merge_rate_limit(
     ----------
     rate_limit : Mapping[str, Any] | None
         Base rate-limit configuration.
-    overrides : Mapping[str, Any] | None
-        Override configuration.
+    overrides : RateLimitOverrides, optional
+        Override configuration with precedence over ``rate_limit``.
 
     Returns
     -------
@@ -127,13 +128,12 @@ def _normalized_rate_values(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# TODO: Fold into RateLimiter class.
 def compute_sleep_seconds(
     rate_limit: RateLimitConfigMap | None = None,
-    overrides: Mapping[str, Any] | None = None,
+    overrides: RateLimitOverrides = None,
 ) -> float:
     """
-    Compute the sleep interval from rate-limit configuration.
+    Compute a delay from the provided configuration mappings.
 
     Precedence is:
 
@@ -149,14 +149,13 @@ def compute_sleep_seconds(
     rate_limit : RateLimitConfigMap | None, optional
         Base rate-limit configuration. May contain ``"sleep_seconds"`` or
         ``"max_per_sec"``.
-    overrides : Mapping[str, Any] | None, optional
+    overrides : RateLimitOverrides, optional
         Optional overrides with the same keys as ``rate_limit``.
 
     Returns
     -------
     float
-        Computed sleep interval in seconds. The value is always greater than
-        or equal to zero.
+        Computed sleep interval in seconds (always >= 0).
 
     Examples
     --------
@@ -168,11 +167,10 @@ def compute_sleep_seconds(
     >>> compute_sleep_seconds(None, {"max_per_sec": 2})
     0.5
     """
-    # Precedence: overrides > rate_limit
-    cfg = _merge_rate_limit(rate_limit, overrides)
-    limiter = RateLimiter.from_config(cfg or None)
-
-    return limiter.sleep_seconds if limiter.enabled else 0.0
+    return RateLimiter.resolve_sleep_seconds(
+        rate_limit=rate_limit,
+        overrides=overrides,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -347,3 +345,54 @@ class RateLimiter:
             sleep_seconds=sleep_val if sleep_val is not None else 0.0,
             max_per_sec=rate_val,
         )
+
+    @classmethod
+    def resolve_sleep_seconds(
+        cls,
+        *,
+        rate_limit: RateLimitConfigMap | None,
+        overrides: RateLimitOverrides = None,
+    ) -> float:
+        """
+        Normalize the supplied mappings into a concrete delay.
+
+        Precedence is:
+
+        1. ``overrides["sleep_seconds"]``
+        2. ``overrides["max_per_sec"]``
+        3. ``rate_limit["sleep_seconds"]``
+        4. ``rate_limit["max_per_sec"]``
+
+        Non-numeric or non-positive values are ignored.
+
+        Parameters
+        ----------
+        rate_limit : RateLimitConfigMap | None
+            Base rate-limit configuration. May contain ``"sleep_seconds"`` or
+            ``"max_per_sec"``.
+        overrides : RateLimitOverrides, optional
+            Optional overrides with the same keys as ``rate_limit``.
+
+        Returns
+        -------
+        float
+            Normalized delay in seconds (always >= 0).
+
+        Notes
+        -----
+        The returned value is always non-negative, even when the limiter is
+        disabled.
+
+        Examples
+        --------
+        >>> from etlplus.api.rate_limiter import RateLimiter
+        >>> RateLimiter.resolve_sleep_seconds(
+        ...     rate_limit={'max_per_sec': 5},
+        ...     overrides={'sleep_seconds': 0.25},
+        ... )
+        0.25
+        """
+        # Precedence: overrides > rate_limit
+        cfg = _merge_rate_limit(rate_limit, overrides)
+        limiter = cls.from_config(cfg or None)
+        return limiter.sleep_seconds if limiter.enabled else 0.0
