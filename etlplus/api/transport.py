@@ -297,16 +297,16 @@ def build_session_with_adapters(
     adapters_cfg: Sequence[HTTPAdapterMountConfig],
 ) -> requests.Session:
     """
-    Return a :class:`requests.Session` with adapters mounted per
-    ``adapters_cfg``.
+    Mount adapters described by ``adapters_cfg`` onto a new session.
+
+    Ignores invalid adapter configurations so that a usable session is always
+    returned.
 
     Parameters
     ----------
     adapters_cfg : Sequence[HTTPAdapterMountConfig]
-        Configuration(s) for mounting HTTPAdapter instances on a session.
-        Each config is a mapping with keys ``'prefix'`` (defaulting to
-        ``'https://'``), ``'max_retries'`` (defaulting to 3), and
-        ``'timeout'`` (defaulting to 10 seconds).
+        Configuration mappings describing the adapter prefix, pooling
+        values, and retry policy for each mounted adapter.
 
     Returns
     -------
