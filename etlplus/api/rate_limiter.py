@@ -72,6 +72,21 @@ class RateLimitConfigMap(TypedDict, total=False):
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _coerce_rate_limit_map(
+    rate_limit: Mapping[str, Any] | RateLimitConfig | None,
+) -> RateLimitConfigMap | None:
+    """Normalize legacy inputs into a concrete mapping."""
+    if rate_limit is None:
+        return None
+    if isinstance(rate_limit, RateLimitConfig):
+        mapping = rate_limit.as_mapping()
+        return mapping or None
+    if isinstance(rate_limit, Mapping):
+        candidate = RateLimitConfig.from_obj(rate_limit)
+        return candidate.as_mapping() if candidate else None
+    return None
+
+
 def _merge_rate_limit(
     rate_limit: Mapping[str, Any] | None,
     overrides: RateLimitOverrides = None,
@@ -312,7 +327,7 @@ class RateLimiter:
     @classmethod
     def from_config(
         cls,
-        cfg: Mapping[str, Any] | None,
+        cfg: Mapping[str, Any] | RateLimitConfig | None,
     ) -> RateLimiter:
         """
         Build a :class:`RateLimiter` from a configuration mapping.
@@ -328,7 +343,7 @@ class RateLimiter:
 
         Parameters
         ----------
-        cfg : Mapping[str, Any] | None
+        cfg : Mapping[str, Any] | RateLimitConfig | None
             Configuration mapping from which to derive rate-limit settings.
 
         Returns
@@ -336,7 +351,8 @@ class RateLimiter:
         RateLimiter
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
-        sleep_val, rate_val = _normalized_rate_values(cfg)
+        normalized_cfg = _coerce_rate_limit_map(cfg)
+        sleep_val, rate_val = _normalized_rate_values(normalized_cfg)
         if sleep_val is None and rate_val is None:
             return cls()
 
@@ -350,7 +366,7 @@ class RateLimiter:
     def resolve_sleep_seconds(
         cls,
         *,
-        rate_limit: RateLimitConfigMap | None,
+        rate_limit: RateLimitConfigMap | RateLimitConfig | None,
         overrides: RateLimitOverrides = None,
     ) -> float:
         """
@@ -367,7 +383,7 @@ class RateLimiter:
 
         Parameters
         ----------
-        rate_limit : RateLimitConfigMap | None
+        rate_limit : RateLimitConfigMap | RateLimitConfig | None
             Base rate-limit configuration. May contain ``"sleep_seconds"`` or
             ``"max_per_sec"``.
         overrides : RateLimitOverrides, optional
@@ -393,6 +409,7 @@ class RateLimiter:
         0.25
         """
         # Precedence: overrides > rate_limit
-        cfg = _merge_rate_limit(rate_limit, overrides)
+        normalized = _coerce_rate_limit_map(rate_limit)
+        cfg = _merge_rate_limit(normalized, overrides)
         limiter = cls.from_config(cfg or None)
         return limiter.sleep_seconds if limiter.enabled else 0.0
