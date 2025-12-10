@@ -25,9 +25,11 @@ Examples
 from __future__ import annotations
 
 from collections.abc import Mapping
+from collections.abc import Sequence
 from typing import Any
 from typing import TypedDict
 
+import requests  # type: ignore[import]
 from requests.adapters import HTTPAdapter  # type: ignore
 
 from ..utils import to_maximum_int
@@ -43,6 +45,7 @@ __all__ = [
 
     # Functions
     'build_http_adapter',
+    'build_session_with_adapters',
 ]
 
 
@@ -288,3 +291,35 @@ def build_http_adapter(
         max_retries=max_retries,
         pool_block=pool_block,
     )
+
+
+def build_session_with_adapters(
+    adapters_cfg: Sequence[HTTPAdapterMountConfig],
+) -> requests.Session:
+    """
+    Return a :class:`requests.Session` with adapters mounted per
+    ``adapters_cfg``.
+
+    Parameters
+    ----------
+    adapters_cfg : Sequence[HTTPAdapterMountConfig]
+        Configuration(s) for mounting HTTPAdapter instances on a session.
+        Each config is a mapping with keys ``'prefix'`` (defaulting to
+        ``'https://'``), ``'max_retries'`` (defaulting to 3), and
+        ``'timeout'`` (defaulting to 10 seconds).
+
+    Returns
+    -------
+    requests.Session
+        Configured session instance.
+    """
+    session = requests.Session()
+    for cfg in adapters_cfg:
+        prefix = cfg.get('prefix', 'https://')
+        try:
+            adapter = build_http_adapter(cfg)
+            session.mount(prefix, adapter)
+        except (ValueError, TypeError, AttributeError):
+            # Skip invalid adapter configs but still return a usable session.
+            continue
+    return session
