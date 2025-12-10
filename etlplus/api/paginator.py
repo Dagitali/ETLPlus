@@ -36,7 +36,6 @@ endpoint:
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -56,6 +55,7 @@ from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .rate_limiter import RateLimiter
+from .types import FetchPageCallable
 from .types import Params
 from .types import Url
 
@@ -211,10 +211,6 @@ class PagePaginationConfigMap(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type FetchPageFunc = Callable[
-    [str, Mapping[str, Any] | None, int | None], Any,
-]
-
 type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 
 
@@ -279,7 +275,7 @@ class Paginator:
     limit_param : str
         Query parameter name carrying the page size for cursor-based
         pagination when the API uses a separate limit field.
-    fetch : FetchPageFunc | None
+    fetch : FetchPageCallable | None
         Callback used to fetch a single page. It receives the absolute URL,
         the request params mapping, and the 1-based page index.
     rate_limiter : RateLimiter | None
@@ -361,7 +357,7 @@ class Paginator:
         if not self.limit_param:
             self.limit_param = self.LIMIT_PARAM
 
-    fetch: FetchPageFunc | None = None
+    fetch: FetchPageCallable | None = None
     rate_limiter: RateLimiter | None = None
     last_page: int = 0
 
@@ -372,7 +368,7 @@ class Paginator:
         cls,
         config: Mapping[str, Any],
         *,
-        fetch: FetchPageFunc,
+        fetch: FetchPageCallable,
         rate_limiter: RateLimiter | None = None,
     ) -> Paginator:
         """
@@ -382,7 +378,7 @@ class Paginator:
         ----------
         config : Mapping[str, Any]
             Pagination configuration mapping.
-        fetch : FetchPageFunc
+        fetch : FetchPageCallable
             Callback used to fetch a single page for a request given the
             absolute URL, the request params mapping, and the 1-based page
             index.
