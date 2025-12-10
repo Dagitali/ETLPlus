@@ -35,9 +35,10 @@ from .api import EndpointClient
 from .api import Headers
 from .api import PaginationConfigMap as ApiPaginationConfig
 from .api import Params
+from .api import RateLimitConfigMap as ApiRateLimitConfig
+from .api import RateLimiter
 from .api import RetryPolicy as ApiRetryPolicy
 from .api import Url
-from .api import compute_sleep_seconds
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig
 from .config.pagination import PaginationConfig as CfgPaginationConfig
@@ -106,7 +107,7 @@ class SessionConfig(TypedDict, total=False):
     trust_env: bool
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 # -- API Environment Composition -- #
@@ -629,7 +630,7 @@ def paginate_with_client(
 def compute_rl_sleep_seconds(
     rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
-) -> float | None:
+) -> float:
     """
     Compute sleep seconds from rate limit configuration and overrides.
 
@@ -642,8 +643,8 @@ def compute_rl_sleep_seconds(
 
     Returns
     -------
-    float | None
-        Sleep duration in seconds, or None if not applicable.
+    float
+        Sleep duration in seconds (0.0 when disabled).
     """
     rl_map: Mapping[str, Any] | None
     if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
@@ -654,7 +655,12 @@ def compute_rl_sleep_seconds(
     else:
         rl_map = cast(Mapping[str, Any] | None, rate_limit)
 
-    return compute_sleep_seconds(cast(Any, rl_map), overrides or {})
+    rl_mapping = cast(ApiRateLimitConfig | None, rl_map)
+    override_mapping = cast(Mapping[str, Any] | None, overrides)
+    return RateLimiter.resolve_sleep_seconds(
+        rate_limit=rl_mapping,
+        overrides=override_mapping,
+    )
 
 
 # -- Session -- #

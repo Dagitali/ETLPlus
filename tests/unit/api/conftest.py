@@ -16,7 +16,8 @@ from collections.abc import Callable
 
 import pytest
 
-import etlplus.api.request as request_mod
+import etlplus.api.rate_limiter as rate_limiter_mod
+import etlplus.api.retry_manager as retry_manager_mod
 from etlplus.api import EndpointClient
 
 # SECTION: FIXTURES ========================================================= #
@@ -105,10 +106,13 @@ def patch_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch : pytest.MonkeyPatch
         Built-in pytest fixture used to patch attributes.
     """
+    # Patch the module-level sleep helper so :class:`RateLimiter` continues to
+    # invoke ``time.sleep`` (allowing targeted tests to inspect it) without
+    # pausing.
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(lambda _: None),
+        rate_limiter_mod.time,
+        'sleep',
+        lambda _seconds: None,
     )
 
 
@@ -123,13 +127,12 @@ def capture_sleeps(
 
     Patches :class:`RetryManager` so that its ``sleeper`` callable appends
     sleep durations to a list instead of actually sleeping. Also patches
-    :meth:`EndpointClient.apply_sleep` to record rate-limit sleeps into
-    the same list.
+    :class:`RateLimiter` to record rate-limit sleeps into the same list.
     """
     sleeps: list[float] = []
 
     # Patch RetryManager to inject a recording sleeper when none is given.
-    original_init = request_mod.RetryManager.__init__
+    original_init = retry_manager_mod.RetryManager.__init__
 
     def _init(self, *args, **kwargs):
         if 'sleeper' not in kwargs:
@@ -139,19 +142,19 @@ def capture_sleeps(
         original_init(self, *args, **kwargs)
 
     monkeypatch.setattr(
-        request_mod.RetryManager,
+        retry_manager_mod.RetryManager,
         '__init__',
         _init,  # type: ignore[assignment]
     )
 
-    # Patch EndpointClient.apply_sleep so rate-limit sleeps are captured.
-    def _capture_sleep(seconds: float) -> None:
-        sleeps.append(seconds)
+    # Patch :meth:`RateLimiter.enforce` so rate-limit sleeps are captured.
+    def _capture_sleep(self: rate_limiter_mod.RateLimiter) -> None:
+        sleeps.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_capture_sleep),
+        rate_limiter_mod.RateLimiter,
+        'enforce',
+        _capture_sleep,
     )
 
     return sleeps
@@ -180,7 +183,7 @@ def jitter(
         return b
 
     monkeypatch.setattr(
-        request_mod.random,
+        retry_manager_mod.random,
         'uniform',
         fake_uniform,
     )

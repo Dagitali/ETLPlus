@@ -158,7 +158,7 @@ def to_minimum_float(
 ) -> float:
     """
     Return the lesser of ``default`` and the coerced float value.
-"""
+    """
     result = to_float(value, default)
     return min(_value_or_default(result, default), default)
 
@@ -266,7 +266,7 @@ def to_number(
     return None
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================= #
+# SECTION: INTERNAL FUNCTIONS ============================================= #
 
 
 def _clamp(

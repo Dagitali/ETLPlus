@@ -17,6 +17,7 @@ from typing import Protocol
 
 import pytest
 
+from etlplus.api.rate_limiter import RateLimiter
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import ConnectorApi
@@ -268,12 +269,21 @@ def run_patched(
         )
         monkeypatch.setattr(run_mod, 'EndpointClient', endpoint_client_cls)
 
-        # Optionally force compute_sleep_seconds to a constant.
+        # Optionally force the resolved rate-limit delay to a constant.
         if sleep_seconds is not None:
+            def _fixed_resolve(
+                cls: type[RateLimiter],
+                *,
+                rate_limit: Any | None = None,
+                overrides: Any | None = None,
+            ) -> float:
+                # ignore inputs and return deterministic delay for assertions
+                return sleep_seconds
+
             monkeypatch.setattr(
-                run_mod,
-                'compute_sleep_seconds',
-                lambda *_a, **_k: sleep_seconds,
+                RateLimiter,
+                'resolve_sleep_seconds',
+                classmethod(_fixed_resolve),
             )
 
         # Avoid real IO in load().

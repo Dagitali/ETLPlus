@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.api.test_u_request` module.
+:mod:`tests.unit.api.test_u_rate_limiter` module.
 
-Unit tests for :class:`etlplus.api.request.RateLimiter`.
+Unit tests for :class:`etlplus.api.rate_limiter.RateLimiter`.
 
 Notes
 -----
@@ -11,7 +11,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_request.py
+>>> pytest tests/unit/api/test_u_rate_limiter.py
 """
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from etlplus.api.request import RateLimitConfigMap
-from etlplus.api.request import RateLimiter
-from etlplus.api.request import compute_sleep_seconds
+from etlplus.api.rate_limiter import RateLimitConfigMap
+from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api.rate_limiter import RateLimitPlan
 
 # SECTION: FIXTURES ======================================================== #
 
@@ -46,10 +46,32 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
-class TestComputeSleepSeconds:
+class TestRateLimitPlan:
+    """Unit tests for :class:`RateLimitPlan`."""
+
+    def test_plan_prefers_sleep_seconds(self) -> None:
+        """Sleep seconds take precedence over max_per_sec."""
+        plan = RateLimitPlan.from_inputs(
+            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
+        )
+        assert plan.enabled is True
+        assert plan.sleep_seconds == pytest.approx(0.2)
+        assert plan.max_per_sec == pytest.approx(5.0)
+
+    def test_plan_honors_overrides(self) -> None:
+        """Overrides replace base config values."""
+        plan = RateLimitPlan.from_inputs(
+            rate_limit={'max_per_sec': 2},
+            overrides={'sleep_seconds': 0.1},
+        )
+        assert plan.sleep_seconds == pytest.approx(0.1)
+        assert plan.max_per_sec == pytest.approx(10.0)
+
+
+@pytest.mark.unit
+class TestResolveSleepSeconds:
     """
-    Unit test suite for :func:`compute_sleep_seconds`.
+    Unit test suite for :meth:`RateLimiter.resolve_sleep_seconds`.
 
     Notes
     -----
@@ -59,7 +81,7 @@ class TestComputeSleepSeconds:
 
     Examples
     --------
-    >>> compute_sleep_seconds({'max_per_sec': 2}, None)
+    >>> RateLimiter.resolve_sleep_seconds({"max_per_sec": 2}, None)
     0.5
     """
 
@@ -95,19 +117,31 @@ class TestComputeSleepSeconds:
         expected_sleep : float
             The expected sleep seconds value.
         """
-        assert compute_sleep_seconds(rate_limit, config) == expected_sleep
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=rate_limit,
+            overrides=config,
+        ) == expected_sleep
 
     def test_overrides_max_per_sec(self) -> None:
         """Test that max_per_sec in config overrides other values."""
-        assert compute_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=None,
+            overrides={'max_per_sec': 4},
+        ) == 0.25
 
     def test_overrides_sleep_seconds(self) -> None:
         """Test that sleep_seconds in config overrides other values."""
-        assert compute_sleep_seconds(None, {'sleep_seconds': 0.2}) == 0.2
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=None,
+            overrides={'sleep_seconds': 0.2},
+        ) == 0.2
 
     def test_rate_limit_fallback(self) -> None:
         """Test fallback to rate limit config when override is None."""
-        assert compute_sleep_seconds({'max_per_sec': 2}, None) == 0.5
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit={'max_per_sec': 2},
+            overrides=None,
+        ) == 0.5
 
 
 @pytest.mark.unit
@@ -287,7 +321,7 @@ class TestRateLimiterEnforce:
 
         # Patch the module-level ``time.sleep`` used by
         # :class:`RateLimiter`.
-        monkeypatch.setattr('etlplus.api.request.time.sleep', fake_sleep)
+        monkeypatch.setattr('etlplus.api.rate_limiter.time.sleep', fake_sleep)
 
         limiter = RateLimiter.fixed(0.5)
         limiter.enforce()
@@ -315,7 +349,7 @@ class TestRateLimiterEnforce:
         def fake_sleep(value: float) -> None:  # pragma: no cover
             # Should not run.
             calls.append(value)
-        monkeypatch.setattr('etlplus.api.request.time.sleep', fake_sleep)
+        monkeypatch.setattr('etlplus.api.rate_limiter.time.sleep', fake_sleep)
 
         disabled_limiter.enforce()
 

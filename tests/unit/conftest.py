@@ -24,6 +24,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
+import etlplus.api.rate_limiter as rate_limiter_mod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
@@ -129,8 +130,8 @@ def capture_sleeps(
     """
     Capture sleep durations from retry/backoff logic.
 
-    Patches :meth:`EndpointClient.apply_sleep` so tests can assert
-    jitter/backoff behavior without actually waiting.
+    Patches :class:`RateLimiter` so tests can assert jitter/backoff behavior
+    without actually waiting.
 
     Parameters
     ----------
@@ -144,13 +145,13 @@ def capture_sleeps(
     """
     values: list[float] = []
 
-    def _sleep(s: float, *, _sleeper=None) -> None:  # noqa: D401, ANN001
-        values.append(s)
+    def _enforce(self: rate_limiter_mod.RateLimiter) -> None:  # noqa: D401
+        values.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_sleep),
+        rate_limiter_mod.RateLimiter,
+        'enforce',
+        _enforce,
         raising=False,
     )
 
@@ -226,7 +227,7 @@ def request_once_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
-    Patch :meth:`EndpointClient._request_once` and capture calls.
+    Patch :meth:`EndpointClient.request_once` and capture calls.
 
     Parameters
     ----------
@@ -242,17 +243,18 @@ def request_once_stub(
     """
     # pylint: disable=unused-argument
 
-    import etlplus.api.client as cmod  # local import to avoid cycles
+    import etlplus.api.request_manager as rmod  # local import to avoid cycles
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
     def _fake_request(
-        self: cmod.EndpointClient,
+        self: rmod.RequestManager,
         method: str,
         url: str,
         *,
         session: Any,
         timeout: Any,
+        request_callable: Callable[..., Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:  # noqa: D401
         assert method == 'GET'
@@ -260,7 +262,7 @@ def request_once_stub(
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod.EndpointClient, '_request_once', _fake_request)
+    monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
 
     return calls
 
@@ -273,8 +275,9 @@ def extract_stub_factory() -> Callable[..., Any]:
     (Hypothesis-friendly).
 
     Each invocation patches
-    :meth:`etlplus.api.client.EndpointClient._request_once` for the duration
-    of the context manager and restores the original afterwards.
+    :meth:`etlplus.api.endpoint_client.EndpointClient.request_once` for the
+    duration of the context manager and restores the original
+    afterwards.
 
     Returns
     -------
@@ -291,7 +294,7 @@ def extract_stub_factory() -> Callable[..., Any]:
 
     import contextlib
 
-    import etlplus.api.client as cmod  # Local import to avoid cycles
+    import etlplus.api.request_manager as rmod  # Local import to avoid cycles
 
     @contextlib.contextmanager
     def _make(
@@ -303,31 +306,32 @@ def extract_stub_factory() -> Callable[..., Any]:
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
         def _fake_request(
-            self: cmod.EndpointClient,
+            self: rmod.RequestManager,
             method: str,
             url: str,
             *,
             session: Any,
             timeout: Any,
+            request_callable: Callable[..., Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
             calls['urls'].append(url)
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = cmod.EndpointClient._request_once
+        saved = rmod.RequestManager.request_once
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
-            cmod.EndpointClient,
-            '_request_once',
+            rmod.RequestManager,
+            'request_once',
             _fake_request,
         )
         try:
             yield calls
         finally:
             monkeypatch.setattr(
-                cmod.EndpointClient,
-                '_request_once',
+                rmod.RequestManager,
+                'request_once',
                 saved,
             )
 

@@ -47,7 +47,7 @@ __all__ = ['PipelineConfig', 'load_pipeline_config']
 type StrAnyMap = Mapping[str, Any]
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _as_mapping(

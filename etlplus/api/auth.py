@@ -38,13 +38,18 @@ import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
+from typing import Protocol
 from typing import TypedDict
+from typing import cast
 
 import requests  # type: ignore[import]
 from requests import PreparedRequest  # type: ignore
 from requests import Response  # type: ignore
 from requests.auth import AuthBase  # type: ignore
+
+from .types import Url
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +65,11 @@ __all__ = ['EndpointCredentialsBearer']
 
 CLOCK_SKEW_SEC = 30
 DEFAULT_TOKEN_TTL = 3600
+DEFAULT_TOKEN_TIMEOUT = 15.0
+MAX_LOG_BODY = 500
+FORM_HEADERS = MappingProxyType(
+    {'Content-Type': 'application/x-www-form-urlencoded'},
+)
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -72,10 +82,83 @@ class _TokenResponse(TypedDict):
     expires_in: int | float
 
 
+class _TokenHttpClient(Protocol):
+    """Protocol for objects that expose a ``post`` helper like ``requests``."""
+
+    def post(
+        self,
+        url: Url,
+        **kwargs: Any,
+    ) -> Response:
+        """
+        Issue an HTTP POST request and return the response object.
+
+        Parameters
+        ----------
+        url : Url
+            The URL to which the request is sent.
+        **kwargs : Any
+            Arbitrary request keyword arguments (payload, headers, timeout).
+
+        Returns
+        -------
+        Response
+            HTTP response produced by the client.
+        """
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _response_excerpt(
+    resp: Response | None,
+) -> str:
+    """
+    Return a short excerpt of ``resp.text`` for diagnostics.
+
+    Parameters
+    ----------
+    resp : Response | None
+        The HTTP response object.
+
+    Returns
+    -------
+    str
+        The first ``MAX_LOG_BODY`` characters of the response body.
+    """
+    return _truncate(resp.text if resp is not None else '')
+
+
+def _truncate(
+    text: str | None,
+    *,
+    limit: int = MAX_LOG_BODY,
+) -> str:
+    """
+    Return ``text`` shortened to ``limit`` characters for logging.
+
+    Parameters
+    ----------
+    text : str | None
+        The text to truncate.
+    limit : int, optional
+        The maximum length of the returned string (default is
+        ``MAX_LOG_BODY``).
+
+    Returns
+    -------
+    str
+        The truncated text.
+    """
+    if not text:
+        return ''
+    return text[:limit]
+
+
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True, repr=False, eq=False)
+@dataclass(slots=True, repr=False, eq=False, kw_only=True)
 class EndpointCredentialsBearer(AuthBase):
     """
     Bearer token authentication via the OAuth2 Client Credentials flow.
@@ -112,7 +195,8 @@ class EndpointCredentialsBearer(AuthBase):
     expiry : float
         UNIX timestamp when the token expires.
     timeout : float
-        Timeout in seconds for token requests (defaults to ``15.0``).
+        Timeout in seconds for token requests (defaults to
+        ``DEFAULT_TOKEN_TIMEOUT``).
     session : requests.Session | None
         Optional session used for token requests to leverage connection
         pooling and shared auth state. Falls back to the module-level
@@ -122,9 +206,9 @@ class EndpointCredentialsBearer(AuthBase):
     -----
     - Tokens are refreshed when remaining lifetime < ``CLOCK_SKEW_SEC``.
     - Network/HTTP errors propagate as ``requests`` exceptions from
-      ``_ensure_token``.
+        ``_ensure_token``.
     - Missing ``access_token`` in a successful response raises
-      ``RuntimeError``.
+        ``RuntimeError``.
     """
 
     # -- Attributes -- #
@@ -135,7 +219,7 @@ class EndpointCredentialsBearer(AuthBase):
     scope: str | None = None
     token: str | None = None
     expiry: float = 0.0
-    timeout: float = 15.0
+    timeout: float = DEFAULT_TOKEN_TIMEOUT
     session: requests.Session | None = None
 
     # -- Magic Methods (Object Behavior) -- #
@@ -165,7 +249,7 @@ class EndpointCredentialsBearer(AuthBase):
         r.headers['Authorization'] = f'Bearer {self.token}'
         return r
 
-    # -- Protected Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _ensure_token(self) -> None:
         """
@@ -190,6 +274,11 @@ class EndpointCredentialsBearer(AuthBase):
         self.token = response['access_token']
         ttl = float(response.get('expires_in', DEFAULT_TOKEN_TTL))
         self.expiry = time.time() + max(ttl, 0.0)
+
+    def _http_client(self) -> _TokenHttpClient:
+        """Return the configured HTTP session or the module-level client."""
+        client = self.session or requests
+        return cast(_TokenHttpClient, client)
 
     def _parse_token_response(
         self,
@@ -220,7 +309,7 @@ class EndpointCredentialsBearer(AuthBase):
         except ValueError:
             logger.error(
                 'Token response is not valid JSON. Body: %s',
-                resp.text[:500],
+                _truncate(resp.text),
             )
             raise
 
@@ -269,22 +358,20 @@ class EndpointCredentialsBearer(AuthBase):
         requests.exceptions.RequestException
             On network/HTTP errors during the token request.
         """
-        client = self.session or requests
+        client = self._http_client()
         try:
             resp = client.post(
                 self.token_url,
-                data={
-                    'grant_type': 'client_credentials',
-                    'scope': self.scope or '',
-                },
+                data=self._token_payload(),
                 auth=(self.client_id, self.client_secret),
-                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                headers=self._token_headers(),
                 timeout=self.timeout,
             )
             resp.raise_for_status()
         except requests.exceptions.Timeout:
             logger.error(
-                'Token request timed out (url=%s)', self.token_url,
+                'Token request timed out (url=%s)',
+                self.token_url,
             )
             raise
         except requests.exceptions.SSLError:
@@ -300,8 +387,8 @@ class EndpointCredentialsBearer(AuthBase):
             )
             raise
         except requests.exceptions.HTTPError as e:
-            body = (e.response.text or '')[:500] or ''
-            code = e.response.status_code or 'N/A'
+            body = _response_excerpt(e.response)
+            code = getattr(e.response, 'status_code', 'N/A')
             logger.error(
                 'Token endpoint returned HTTP %s. Body: %s',
                 code,
@@ -316,6 +403,19 @@ class EndpointCredentialsBearer(AuthBase):
             raise
 
         return self._parse_token_response(resp)
+
+    def _token_headers(self) -> Mapping[str, str]:
+        """Return headers for the token request."""
+        return FORM_HEADERS
+
+    def _token_payload(self) -> dict[str, str]:
+        """Build the minimal OAuth2 client credentials payload."""
+        payload = {
+            'grant_type': 'client_credentials',
+        }
+        if isinstance(self.scope, str) and self.scope.strip():
+            payload['scope'] = self.scope
+        return payload
 
     def _token_valid(self) -> bool:
         """

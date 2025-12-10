@@ -133,7 +133,7 @@ class Validation(TypedDict):
 type RulesMap = Mapping[str, FieldRules]
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _coerce_rule(

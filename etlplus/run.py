@@ -19,7 +19,6 @@ from .api import EndpointClient  # noqa: F401 (re-exported for tests)
 from .api import PaginationConfigMap as ApiPaginationConfig
 from .api import RetryPolicy as ApiRetryPolicy
 from .api import Url
-from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .config import load_pipeline_config
 from .extract import extract
 from .load import load
@@ -49,9 +48,9 @@ __all__ = ['run']
 #   (config layer)
 # - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
 #   (config layer)
-# - ApiPaginationConfig: etlplus.api.response.PaginationConfigMap
+# - ApiPaginationConfig: etlplus.api.paginator.PaginationConfigMap
 #   (client layer)
-# - ApiRetryPolicy: etlplus.api.request.RetryPolicy (client layer)
+# - ApiRetryPolicy: etlplus.api.retry_manager.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
 
@@ -174,16 +173,6 @@ def run(
     ValueError
         If the job is not found or if there are configuration issues.
     """
-    # Propagate a possibly monkeypatched compute_sleep_seconds into helpers,
-    # to preserve existing test contracts that patch run.compute_sleep_seconds.
-    try:
-        from . import run_helpers as _rh  # local import to avoid cycles
-        # Propagate monkeypatched function to helpers
-        _rh.compute_sleep_seconds = compute_sleep_seconds
-    except (ImportError, AttributeError):
-        # Safe to ignore; helpers will use their own reference.
-        pass
-
     cfg_path = config_path or DEFAULT_CONFIG_PATH
     cfg = load_pipeline_config(cfg_path, substitute=True)
 

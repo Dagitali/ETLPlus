@@ -25,9 +25,11 @@ Examples
 from __future__ import annotations
 
 from collections.abc import Mapping
+from collections.abc import Sequence
 from typing import Any
 from typing import TypedDict
 
+import requests  # type: ignore[import]
 from requests.adapters import HTTPAdapter  # type: ignore
 
 from ..utils import to_maximum_int
@@ -43,6 +45,7 @@ __all__ = [
 
     # Functions
     'build_http_adapter',
+    'build_session_with_adapters',
 ]
 
 
@@ -156,7 +159,7 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     max_retries: int | HTTPAdapterRetryConfig
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _build_retry_value(
@@ -288,3 +291,35 @@ def build_http_adapter(
         max_retries=max_retries,
         pool_block=pool_block,
     )
+
+
+def build_session_with_adapters(
+    adapters_cfg: Sequence[HTTPAdapterMountConfig],
+) -> requests.Session:
+    """
+    Mount adapters described by ``adapters_cfg`` onto a new session.
+
+    Ignores invalid adapter configurations so that a usable session is always
+    returned.
+
+    Parameters
+    ----------
+    adapters_cfg : Sequence[HTTPAdapterMountConfig]
+        Configuration mappings describing the adapter prefix, pooling
+        values, and retry policy for each mounted adapter.
+
+    Returns
+    -------
+    requests.Session
+        Configured session instance.
+    """
+    session = requests.Session()
+    for cfg in adapters_cfg:
+        prefix = cfg.get('prefix', 'https://')
+        try:
+            adapter = build_http_adapter(cfg)
+            session.mount(prefix, adapter)
+        except (ValueError, TypeError, AttributeError):
+            # Skip invalid adapter configs but still return a usable session.
+            continue
+    return session

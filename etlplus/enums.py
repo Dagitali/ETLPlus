@@ -355,7 +355,7 @@ class PipelineStep(CoercibleStrEnum):
         return _PIPELINE_ORDER_INDEX[self]
 
 
-# SECTION: PROTECTED CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS ============================================== #
 
 
 # Precomputed order index for PipelineStep; avoids recomputing on each access.

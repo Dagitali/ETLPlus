@@ -1,13 +1,13 @@
 """
-:mod:`etlplus.api.client` module.
+:mod:`etlplus.api.endpoint_client` module.
 
 Endpoint client utilities for registering endpoint paths, composing URLs, and
 paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
-- Pagination/record aliases are exported from :mod:`etlplus.api.response` and
-    retry-related types live in :mod:`etlplus.api.request`.
+    - Pagination/record aliases are exported from :mod:`etlplus.api.paginator`.
+- Retry-related types live in :mod:`etlplus.api.retry_manager`.
 - Pagination requires a ``PaginationConfig``. See
     :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the
     accepted shapes.
@@ -38,8 +38,10 @@ import time
 from collections.abc import Callable
 from collections.abc import Iterator
 from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
+from functools import partial
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
@@ -53,30 +55,23 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
-from requests import Response  # type: ignore[import]
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import JSONList
-from ..types import JSONRecords
-from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .request import RateLimitConfigMap
-from .request import RetryManager
-from .request import RetryPolicy
-from .request import compute_sleep_seconds
-from .response import PaginationConfigMap
-from .response import PaginationType
-from .response import Paginator
+from .pagination_client import PaginationClient
+from .paginator import PaginationConfigMap
+from .paginator import Paginator
+from .rate_limiter import RateLimitConfigMap
+from .rate_limiter import RateLimiter
+from .request_manager import RequestManager
+from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
-from .transport import build_http_adapter
-
-# SECTION: CONSTANTS ======================================================== #
-
-
-_MISSING = object()
-
+from .types import Headers
+from .types import Params
+from .types import RateLimitOverrides
+from .types import Url
 
 # SECTION: CLASSES ========================================================== #
 
@@ -95,7 +90,7 @@ class EndpointClient:
 
     Parameters
     ----------
-    base_url : str
+    base_url : Url
         Absolute base URL, e.g., ``"https://api.example.com/v1"``.
     endpoints : Mapping[str, str]
         Mapping of endpoint keys to relative paths, e.g.,
@@ -117,13 +112,13 @@ class EndpointClient:
     session_factory : Callable[[], requests.Session] | None, optional
         Factory used to lazily create a session. Ignored if ``session`` is
         provided.
-    session_adapters : list[HTTPAdapterMountConfig] | None, optional
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
         Adapter mount configuration(s) used to build a session lazily when
         neither ``session`` nor ``session_factory`` is supplied.
 
     Attributes
     ----------
-    base_url : str
+    base_url : Url
         Absolute base URL.
     endpoints : Mapping[str, str]
         Read-only mapping of endpoint keys to relative paths
@@ -140,7 +135,7 @@ class EndpointClient:
         Explicit HTTP session used for requests when provided.
     session_factory : Callable[[], requests.Session] | None
         Lazily invoked factory producing a session when needed.
-    session_adapters : list[HTTPAdapterMountConfig] | None
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None
         Adapter mount configuration(s) for connection pooling / retries.
     DEFAULT_PAGE_PARAM : ClassVar[str]
         Default page parameter name.
@@ -174,11 +169,11 @@ class EndpointClient:
     -----
     - Endpoint mapping is defensively copied and wrapped read-only.
     - Pagination defaults (page size, start page, cursor param, etc.) are
-      centralized as class variables.
+        centralized as class variables.
     - Context manager support (``with EndpointClient(...) as client``)
-      manages session lifecycle; owned sessions are closed on exit.
+        manages session lifecycle; owned sessions are closed on exit.
     - Retries use exponential backoff with jitter capped by
-      ``DEFAULT_RETRY_CAP`` seconds.
+        ``DEFAULT_RETRY_CAP`` seconds.
 
     Examples
     --------
@@ -209,7 +204,7 @@ class EndpointClient:
 
     # -- Attributes -- #
 
-    base_url: str
+    base_url: Url
     endpoints: Mapping[str, str]
     base_path: str | None = None
 
@@ -227,12 +222,13 @@ class EndpointClient:
     # and connection pooling. If provided and neither `session` nor
     # `session_factory` is supplied, a factory is synthesized to create a
     # Session and mount the configured adapters lazily.
-    session_adapters: list[HTTPAdapterMountConfig] | None = None
+    session_adapters: Sequence[HTTPAdapterMountConfig] | None = None
 
     # Internal: context-managed session and ownership flag.
-    _ctx_session: Any | None = field(default=None, repr=False, compare=False)
-    _ctx_owns_session: bool = field(
-        default=False, repr=False, compare=False,
+    _request_manager: RequestManager = field(
+        init=False,
+        repr=False,
+        compare=False,
     )
 
     # -- Class Defaults (Centralized) -- #
@@ -298,65 +294,36 @@ class EndpointClient:
         if self.session is not None and self.session_factory is not None:
             object.__setattr__(self, 'session_factory', None)
 
-        # If no session/factory provided but adapter configs are, synthesize
-        # a factory that builds a Session and mounts adapters.
-        if (
-            self.session is None
-            and self.session_factory is None
-            and self.session_adapters
-        ):
-            adapters_cfg = list(self.session_adapters)
+        # Normalize adapter configs to tuples for immutability.
+        if self.session_adapters:
+            adapters_cfg = tuple(self.session_adapters)
+            object.__setattr__(self, 'session_adapters', adapters_cfg)
+        else:
+            object.__setattr__(self, 'session_adapters', None)
 
-            def _factory() -> requests.Session:
-                s = requests.Session()
-                for cfg in adapters_cfg:
-                    prefix = cfg.get('prefix', 'https://')
-                    try:
-                        adapter = build_http_adapter(cfg)
-                        s.mount(prefix, adapter)
-                    except (ValueError, TypeError, AttributeError):
-                        # If mounting fails for any reason, continue so that
-                        # at least a default Session is returned.
-                        continue
-                return s
-
-            object.__setattr__(self, 'session_factory', _factory)
+        manager = RequestManager(
+            retry=self.retry,
+            retry_network_errors=self.retry_network_errors,
+            default_timeout=self.DEFAULT_TIMEOUT,
+            session=self.session,
+            session_factory=self.session_factory,
+            session_adapters=self.session_adapters,
+            retry_cap=self.DEFAULT_RETRY_CAP,
+        )
+        object.__setattr__(self, '_request_manager', manager)
 
     # -- Magic Methods (Context Manager Protocol) -- #
 
     def __enter__(self) -> Self:
         """
-        Enter a context where a session is managed by the client.
+        Enter the runtime context related to this object.
 
         Returns
         -------
         Self
-            The client itself with an active session bound for the context.
-
-        Notes
-        -----
-        - Explicit ``session`` is reused and not closed on exit.
-        - When ``session_factory`` exists it's invoked and the session
-            closed on exit.
-        - Otherwise, a default ``requests.Session`` is created and closed.
+            The client instance.
         """
-        if self._ctx_session is not None:
-            return self
-
-        if self.session is not None:
-            object.__setattr__(self, '_ctx_session', self.session)
-            object.__setattr__(self, '_ctx_owns_session', False)
-            return self
-
-        if self.session_factory is not None:
-            s = self.session_factory()
-            object.__setattr__(self, '_ctx_session', s)
-            object.__setattr__(self, '_ctx_owns_session', True)
-            return self
-
-        s = requests.Session()
-        object.__setattr__(self, '_ctx_session', s)
-        object.__setattr__(self, '_ctx_owns_session', True)
+        self._request_manager.__enter__()
         return self
 
     def __exit__(
@@ -366,190 +333,96 @@ class EndpointClient:
         tb: TracebackType | None,
     ) -> None:
         """
-        Exit the managed-session context and close if owned.
-
-        Ensures any session created by the context is closed and internal
-        context state is cleared.
-        """
-        s = self._ctx_session
-        owns = self._ctx_owns_session
-        if s is not None and owns:
-            try:
-                close_attr = getattr(s, 'close', None)
-                if close_attr is not None:
-                    try:
-                        # Some objects may expose a non-callable 'close'
-                        # attribute. Guard the call to avoid TypeError.
-                        close_attr()  # type: ignore[misc]
-                    except TypeError:
-                        pass
-            except AttributeError:
-                # Some callers provide mock objects with non-callable
-                # ``close`` attributes—ignore those rather than bubble.
-                pass
-            finally:
-                self._clear_managed_session()
-        else:
-            # Ensure cleared even if we didn't own it
-            self._clear_managed_session()
-
-    def _clear_managed_session(self) -> None:
-        """Reset context-managed session bookkeeping."""
-        object.__setattr__(self, '_ctx_session', None)
-        object.__setattr__(self, '_ctx_owns_session', False)
-
-    # -- Protected Instance Methods -- #
-
-    def _get_active_session(self) -> requests.Session | None:
-        """
-        Return the currently active session if available.
-
-        Prefers the context-managed session, then an explicit bound
-        ``session``, then lazily creates one via ``session_factory`` when
-        available. Returns ``None`` when no session can be obtained.
-
-        Returns
-        -------
-        requests.Session | None
-            The session to use for an outgoing request, if any.
-        """
-        if self._ctx_session is not None:
-            return self._ctx_session
-        if self.session is not None:
-            return self.session
-        if self.session_factory is not None:
-            try:
-                return self.session_factory()
-            except (RuntimeError, TypeError):  # pragma: no cover - defensive
-                return None
-        return None
-
-    def _get_with_retry(
-        self,
-        url: str,
-        **kw: Any,
-    ) -> JSONData:
-        """
-        Execute an HTTP ``GET`` request with the client's retry semantics.
+        Exit the runtime context related to this object.
 
         Parameters
         ----------
-        url : str
-            Absolute URL to fetch.
-        **kw : Any
-            Keyword arguments forwarded to :meth:`request` (e.g., ``params``).
-
-        Returns
-        -------
-        JSONData
-            Parsed payload produced by :meth:`request`.
-
-        Notes
-        -----
-        This method surfaces the more accurate name for what historically
-        lived behind :meth:`_extract_with_retry`. Errors from
-        :meth:`request` (``ApiAuthError``/``ApiRequestError``) propagate
-        unchanged.
+        exc_type : type[BaseException] | None
+            Exception type if raised, else ``None``.
+        exc : BaseException | None
+            Exception instance if raised, else ``None``.
+        tb : TracebackType | None
+            Traceback if exception raised, else ``None``.
         """
-        return self.request('GET', url, **kw)
+        self._request_manager.__exit__(exc_type, exc, tb)
 
-    def _parse_response_payload(
+    # -- Internal Instance Methods -- #
+
+    def _build_pagination_client(
         self,
-        response: Response,
-    ) -> JSONData:
-        """
-        Normalize ``requests`` responses into JSON-compatible payloads.
-
-        Parameters
-        ----------
-        response : Response
-            Raw ``requests`` response.
-
-        Returns
-        -------
-        JSONData
-            Parsed response payload.
-        """
-        content_type = response.headers.get('content-type', '').lower()
-        if 'application/json' in content_type:
-            try:
-                payload: Any = response.json()
-            except ValueError:
-                return {
-                    'content': response.text,
-                    'content_type': content_type,
-                }
-            if isinstance(payload, dict):
-                return cast(JSONDict, payload)
-            if isinstance(payload, list):
-                if all(isinstance(item, dict) for item in payload):
-                    return cast(JSONList, payload)
-                return [{'value': item} for item in payload]
-            return {'value': payload}
-
-        return {
-            'content': response.text,
-            'content_type': content_type,
-        }
-
-    def _request_once(
-        self,
-        method: str,
-        url: str,
         *,
-        session: requests.Session | None,
-        timeout: Any,
-        **kwargs: Any,
-    ) -> JSONData:
+        pagination: Mapping[str, Any] | None,
+        headers: Headers | None,
+        timeout: float | int | None,
+        sleep_seconds: float,
+        rate_limit_overrides: RateLimitOverrides,
+    ) -> PaginationClient:
         """
-        Perform a single HTTP request and parse the response payload.
+        Create a :class:`PaginationClient` wired to the request manager.
 
         Parameters
         ----------
-        method : str
-            HTTP method to invoke.
-        url : str
-            Absolute URL to request.
-        session : requests.Session | None
-            Session used for dispatch (if any).
-        timeout : Any
-            Timeout supplied to ``requests``.
-        **kwargs : Any
-            Additional keyword arguments forwarded to ``requests``.
+        pagination : Mapping[str, Any] | None
+            Pagination configuration.
+        headers : Headers | None
+            HTTP headers to include in requests.
+        timeout : float | int | None
+            Timeout for HTTP requests.
+        sleep_seconds : float
+            Number of seconds to sleep between requests.
+        rate_limit_overrides : RateLimitOverrides
+            Overrides for rate limiting.
 
         Returns
         -------
-        JSONData
-            Parsed response payload.
+        PaginationClient
+            Configured pagination helper instance.
         """
-        method_normalized = self._normalize_http_method(method)
-        response = self._send_http_request(
-            method_normalized,
-            url,
-            session=session,
+        effective_sleep = self._resolve_sleep_seconds(
+            sleep_seconds,
+            self.rate_limit,
+            rate_limit_overrides,
+        )
+        rate_limiter = (
+            RateLimiter.fixed(effective_sleep)
+            if effective_sleep > 0
+            else None
+        )
+        fetch = partial(
+            self._fetch_page,
+            headers=headers,
             timeout=timeout,
-            **kwargs,
         )
-        response.raise_for_status()
-        return self._parse_response_payload(response)
+        return PaginationClient(
+            pagination=pagination,
+            fetch=fetch,
+            rate_limiter=rate_limiter,
+        )
 
-    def _request_with_retry(
+    def _fetch_page(
         self,
-        method: str,
-        url: str,
-        **kw: Any,
+        url_: Url,
+        params: Params | None,
+        page_index: int | None,
+        *,
+        headers: Headers | None,
+        timeout: float | int | None,
     ) -> JSONData:
         """
-        Execute an HTTP request honoring the configured retry policy.
+        Fetch a single page using shared pagination guardrails.
 
         Parameters
         ----------
-        method : str
-            HTTP method to invoke.
-        url : str
+        url_ : Url
             Absolute URL to request.
-        **kw : Any
-            Keyword arguments forwarded to :func:`requests.request`.
+        params : Params | None
+            Query parameters for the request.
+        page_index : int | None
+            Index of the page being fetched.
+        headers : Headers | None
+            HTTP headers to include in the request.
+        timeout : float | int | None
+            Timeout for the request.
 
         Returns
         -------
@@ -558,162 +431,32 @@ class EndpointClient:
 
         Raises
         ------
-        ApiAuthError
-            If authentication ultimately fails (401/403).
-        ApiRequestError
-            If retries are exhausted for other failures.
+        PaginationError
+            If the request fails.
         """
-        method_normalized = self._normalize_http_method(method)
-
-        call_kwargs = dict(kw)
-        supplied_timeout = call_kwargs.pop('timeout', _MISSING)
-        timeout = self._resolve_timeout(supplied_timeout)
-        user_session = call_kwargs.pop('session', None)
-        # Determine session to use for this request. Prefer context-managed
-        # session when present.
-        sess = self._get_active_session() or user_session
-
-        policy: RetryPolicy | None = self.retry
-        if not policy:
-            try:
-                return self._request_once(
-                    method_normalized,
-                    url,
-                    session=sess,
-                    timeout=timeout,
-                    **call_kwargs,
-                )
-            except requests.RequestException as e:  # pragma: no cover (net)
-                status = getattr(
-                    getattr(e, 'response', None),
-                    'status_code',
-                    None,
-                )
-                retried = False
-                if status in {401, 403}:
-                    raise ApiAuthError(
-                        url=url,
-                        status=status,
-                        attempts=1,
-                        retried=retried,
-                        retry_policy=None,
-                        cause=e,
-                    ) from e
-                raise ApiRequestError(
-                    url=url,
-                    status=status,
-                    attempts=1,
-                    retried=retried,
-                    retry_policy=None,
-                    cause=e,
-                ) from e
-
-        retry_mgr = RetryManager(
-            policy=policy,
-            retry_network_errors=self.retry_network_errors,
-            cap=self.DEFAULT_RETRY_CAP,
+        call_kw = EndpointClient.build_request_kwargs(
+            params=params,
+            headers=headers,
+            timeout=timeout,
         )
+        try:
+            return self.get(url_, **call_kw)
+        except ApiRequestError as exc:
+            raise PaginationError(
+                url=url_,
+                status=exc.status,
+                attempts=exc.attempts,
+                retried=exc.retried,
+                retry_policy=exc.retry_policy,
+                cause=exc,
+                page=page_index,
+            ) from exc
 
-        def _api_fetch(target_url: str, **call_kw: Any) -> JSONData:
-            return self._request_once(
-                method_normalized,
-                target_url,
-                session=sess,
-                timeout=timeout,
-                **call_kw,
-            )
-
-        return retry_mgr.run_with_retry(
-            _api_fetch,
-            url,
-            **call_kwargs,
-        )
-
-    def _resolve_request_callable(
-        self,
-        session: requests.Session | None,
-    ) -> Callable[..., Response]:
-        """
-        Resolve which callable should issue the HTTP request.
-
-        Parameters
-        ----------
-        session : requests.Session | None
-            Optional session provided by the caller or context manager.
-
-        Returns
-        -------
-        Callable[..., Response]
-            A callable mirroring ``requests.request``.
-
-        Raises
-        ------
-        TypeError
-            If a custom session does not expose a callable ``request``.
-        """
-        if session is not None:
-            request_callable = getattr(session, 'request', None)
-            if callable(request_callable):
-                return request_callable
-            raise TypeError('Session must expose a callable "request" method')
-        return requests.request
-
-    def _resolve_timeout(self, timeout: Any) -> Any:
-        """
-        Resolve timeout, applying the client default when unspecified.
-
-        Parameters
-        ----------
-        timeout : Any
-            Timeout value supplied by the caller.
-
-        Returns
-        -------
-        Any
-            Caller-supplied timeout or the client default.
-        """
-        return self.DEFAULT_TIMEOUT if timeout is _MISSING else timeout
-
-    def _send_http_request(
-        self,
-        method: str,
-        url: str,
-        *,
-        session: requests.Session | None,
-        timeout: Any,
-        **kwargs: Any,
-    ) -> Response:
-        """
-        Dispatch an HTTP call using the provided or default session.
-
-        Parameters
-        ----------
-        method : str
-            HTTP method name.
-        url : str
-            Absolute URL to request.
-        session : requests.Session | None
-            Optional session bound to the client/context.
-        timeout : Any
-            Timeout forwarded to ``requests``.
-        **kwargs : Any
-            Additional keyword arguments for ``requests``.
-
-        Returns
-        -------
-        Response
-            Raw ``requests`` response for downstream parsing.
-        """
-        call_kwargs = {**kwargs, 'timeout': timeout}
-        method_normalized = self._normalize_http_method(method)
-        request_callable = self._resolve_request_callable(session)
-        return request_callable(method_normalized, url, **call_kwargs)
-
-    # -- Instance Methods (HTTP Requests )-- #
+    # -- Instance Methods (HTTP Requests ) -- #
 
     def get(
         self,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -721,7 +464,7 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -733,11 +476,11 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self.request('GET', url, **kwargs)
+        return self._request_manager.get(url, **kwargs)
 
     def post(
         self,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -745,7 +488,7 @@ class EndpointClient:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -757,12 +500,12 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self.request('POST', url, **kwargs)
+        return self._request_manager.post(url, **kwargs)
 
     def request(
         self,
         method: str,
-        url: str,
+        url: Url,
         **kwargs: Any,
     ) -> JSONData:
         """
@@ -772,7 +515,7 @@ class EndpointClient:
         ----------
         method : str
             HTTP method to invoke (``'GET'``, ``'POST'``, etc.).
-        url : str
+        url : Url
             Absolute URL to request.
         **kwargs : Any
             Additional keyword arguments forwarded to ``requests``
@@ -784,7 +527,7 @@ class EndpointClient:
             Parsed JSON payload or fallback structure matching
             :func:`etlplus.extract.extract_from_api` semantics.
         """
-        return self._request_with_retry(method, url, **kwargs)
+        return self._request_manager.request(method, url, **kwargs)
 
     # -- Instance Methods (HTTP Responses) -- #
 
@@ -794,11 +537,12 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
         """
         Paginate by endpoint key.
@@ -815,9 +559,9 @@ class EndpointClient:
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present on
             ``base_url``).
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -825,6 +569,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : RateLimitOverrides, optional
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Returns
         -------
@@ -844,6 +591,7 @@ class EndpointClient:
             timeout=timeout,
             pagination=pagination,
             sleep_seconds=sleep_seconds,
+            rate_limit_overrides=rate_limit_overrides,
         )
 
     def paginate_iter(
@@ -852,11 +600,12 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records for a registered endpoint using pagination.
@@ -875,9 +624,9 @@ class EndpointClient:
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present).
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in each request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
@@ -885,6 +634,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : RateLimitOverrides, optional
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Yields
         ------
@@ -903,28 +655,30 @@ class EndpointClient:
             timeout=timeout,
             pagination=pagination,
             sleep_seconds=sleep_seconds,
+            rate_limit_overrides=rate_limit_overrides,
         )
 
     def paginate_url(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
+        headers: Headers | None,
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
         """
         Paginate API responses for an absolute URL and aggregate records.
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to paginate.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in the request.
         timeout : float | int | None
             Timeout for the request.
@@ -932,6 +686,9 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : RateLimitOverrides, optional
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Returns
         -------
@@ -940,18 +697,19 @@ class EndpointClient:
             dicts aggregated across pages for paginated calls.
         """
         # Normalize pagination config for typed access.
-        pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = self._normalize_pagination_type(pg)
+        pg_map = cast(Mapping[str, Any] | None, pagination)
+        ptype = Paginator.detect_type(pg_map, default=None)
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
         if ptype is None:
             kw = EndpointClient.build_request_kwargs(
                 params=params, headers=headers, timeout=timeout,
             )
-            return self._get_with_retry(url, **kw)
+            return self.get(url, **kw)
 
-        # For known pagination types, collect from the generator.
-        records: JSONRecords = list(
+        # For known pagination types, delegate through paginate_url_iter to
+        # preserve subclass overrides (tests rely on this shim behavior).
+        return list(
             self.paginate_url_iter(
                 url=url,
                 params=params,
@@ -959,30 +717,31 @@ class EndpointClient:
                 timeout=timeout,
                 pagination=pagination,
                 sleep_seconds=sleep_seconds,
+                rate_limit_overrides=rate_limit_overrides,
             ),
         )
-        return records
 
     def paginate_url_iter(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
+        headers: Headers | None,
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records by paginating an absolute URL.
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL to paginate.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Query parameters to include in each request.
-        headers : Mapping[str, Any] | None
+        headers : Headers | None
             Headers to include in each request.
         timeout : float | int | None
             Timeout for each request.
@@ -990,70 +749,23 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
+        rate_limit_overrides : RateLimitOverrides, optional
+            Optional per-call overrides merged with ``self.rate_limit`` when
+            deriving pacing.
 
         Yields
         ------
         JSONDict
             Record dictionaries extracted from each page.
         """
-        # Normalize pagination config for typed access.
-        pg: dict[str, Any] = cast(dict[str, Any], pagination or {})
-        ptype = self._normalize_pagination_type(pg)
-
-        # No pagination type or unknown type: single request, coalesce, yield.
-        if ptype is None:
-            kw = EndpointClient.build_request_kwargs(
-                params=params,
-                headers=headers,
-                timeout=timeout,
-            )
-            page_data = self._get_with_retry(url, **kw)
-            records_path = pg.get('records_path')
-            fallback_path = pg.get('fallback_path')
-            yield from Paginator.coalesce_records(
-                page_data,
-                records_path,
-                fallback_path,
-            )
-            return
-
-        # Determine effective sleep seconds.
-        effective_sleep = self._resolve_sleep_seconds(
-            sleep_seconds,
-            self.rate_limit,
+        runner = self._build_pagination_client(
+            pagination=cast(Mapping[str, Any] | None, pagination),
+            headers=headers,
+            timeout=timeout,
+            sleep_seconds=sleep_seconds,
+            rate_limit_overrides=rate_limit_overrides,
         )
-
-        def _fetch(
-            url_: str,
-            params_: Mapping[str, Any] | None,
-            page_index: int | None,
-        ) -> JSONData:
-            call_kw = EndpointClient.build_request_kwargs(
-                params=params_,
-                headers=headers,
-                timeout=timeout,
-            )
-            try:
-                return self._get_with_retry(url_, **call_kw)
-            except ApiRequestError as e:
-                raise PaginationError(
-                    url=url_,
-                    status=e.status,
-                    attempts=e.attempts,
-                    retried=e.retried,
-                    retry_policy=e.retry_policy,
-                    cause=e,
-                    page=page_index,
-                ) from e
-
-        paginator = Paginator.from_config(
-            cast(PaginationConfigMap, pg),
-            fetch=_fetch,
-            sleep_func=EndpointClient.apply_sleep,
-            sleep_seconds=effective_sleep,
-        )
-
-        yield from paginator.paginate_iter(url, params=params)
+        yield from runner.iterate(url, params=params)
 
     # -- Instance Methods (Endpoints)-- #
 
@@ -1185,8 +897,8 @@ class EndpointClient:
     @staticmethod
     def build_request_kwargs(
         *,
-        params: Mapping[str, Any] | None = None,
-        headers: Mapping[str, Any] | None = None,
+        params: Params | None = None,
+        headers: Headers | None = None,
         timeout: float | int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1196,9 +908,9 @@ class EndpointClient:
 
         Parameters
         ----------
-        params : Mapping[str, Any] | None, optional
+        params : Params | None, optional
             Query parameters to include in the request.
-        headers : Mapping[str, Any] | None, optional
+        headers : Headers | None, optional
             Headers to include in the request.
         timeout : float | int | None, optional
             Timeout for the request in seconds.
@@ -1217,59 +929,13 @@ class EndpointClient:
             kw['timeout'] = timeout
         return kw
 
-    # -- Protected Static Methods -- #
-
-    @staticmethod
-    def _normalize_http_method(method: str | None) -> str:
-        """
-        Normalize HTTP method names to uppercase strings.
-
-        Parameters
-        ----------
-        method : str | None
-            Raw HTTP method value supplied by the caller.
-
-        Returns
-        -------
-        str
-            Uppercase HTTP method, defaulting to ``'GET'`` when falsy.
-        """
-        candidate = (method or '').strip().upper()
-        return candidate or 'GET'
-
-    @staticmethod
-    def _normalize_pagination_type(
-        config: Mapping[str, Any] | None,
-    ) -> PaginationType | None:
-        """
-        Return a normalized ``PaginationType`` enum when possible.
-
-        Parameters
-        ----------
-        config : Mapping[str, Any] | None
-            Pagination configuration.
-
-        Returns
-        -------
-        PaginationType | None
-            The normalized pagination type, or ``None`` if unknown.
-        """
-        if not config:
-            return None
-        raw = config.get('type')
-        if isinstance(raw, PaginationType):
-            return raw
-        if raw is None:
-            return None
-        try:
-            return PaginationType(str(raw).strip().lower())
-        except ValueError:
-            return None
+    # -- Internal Static Methods -- #
 
     @staticmethod
     def _resolve_sleep_seconds(
         explicit: float,
         rate_limit: RateLimitConfigMap | None,
+        overrides: RateLimitOverrides = None,
     ) -> float:
         """
         Derive the effective sleep interval honoring rate-limit config.
@@ -1280,6 +946,8 @@ class EndpointClient:
             Explicit sleep seconds provided by the caller.
         rate_limit : RateLimitConfigMap | None
             Client-wide rate limit configuration.
+        overrides : RateLimitOverrides, optional
+            Per-call overrides that take precedence over ``rate_limit``.
 
         Returns
         -------
@@ -1288,4 +956,7 @@ class EndpointClient:
         """
         if explicit and explicit > 0:
             return explicit
-        return compute_sleep_seconds(rate_limit, None)
+        return RateLimiter.resolve_sleep_seconds(
+            rate_limit=rate_limit,
+            overrides=overrides,
+        )

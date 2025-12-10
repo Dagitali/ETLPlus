@@ -65,25 +65,26 @@ Notes
 
 See Also
 --------
-- :mod:`etlplus.api.request` for retry policies and rate-limit helpers
-- :mod:`etlplus.api.response` for pagination config shapes and record helpers
+- :mod:`etlplus.api.rate_limiter` for rate-limit helpers
+- :mod:`etlplus.api.paginator` for pagination config shapes and record helpers
+- :mod:`etlplus.api.retry_manager` for retry policies
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
-- :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
-  from rate limit settings
 """
 from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
-from .client import EndpointClient
-from .request import RateLimitConfigMap
-from .request import RateLimiter
-from .request import RetryPolicy
-from .request import compute_sleep_seconds
-from .response import CursorPaginationConfigMap
-from .response import PagePaginationConfigMap
-from .response import PaginationConfigMap
-from .response import PaginationType
-from .response import Paginator
+from .endpoint_client import EndpointClient
+from .paginator import CursorPaginationConfigMap
+from .paginator import PagePaginationConfigMap
+from .paginator import PaginationConfigMap
+from .paginator import PaginationType
+from .paginator import Paginator
+from .rate_limiter import RateLimitConfigMap
+from .rate_limiter import RateLimiter
+from .rate_limiter import RateLimitPlan
+from .retry_manager import RetryManager
+from .retry_manager import RetryPolicy
+from .retry_manager import RetryStrategy
 from .transport import HTTPAdapterMountConfig
 from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
@@ -99,14 +100,16 @@ __all__ = [
     'EndpointClient',
     'EndpointCredentialsBearer',
     'Paginator',
+    'RateLimitPlan',
     'RateLimiter',
+    'RetryManager',
+    'RetryStrategy',
 
     # Enums
     'PaginationType',
 
     # Functions
     'build_http_adapter',
-    'compute_sleep_seconds',
 
     # Type Aliases
     'CursorPaginationConfigMap',

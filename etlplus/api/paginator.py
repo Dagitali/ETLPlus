@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.response` module.
+:mod:`etlplus.api.paginator` module.
 
 Centralized logic for handling REST API endpoint responses, including:
 - Pagination strategies (page, offset, cursor).
@@ -30,18 +30,17 @@ endpoint:
 >>> paginator = Paginator.from_config(
 ...     cfg,
 ...     fetch=fetch,
-...     sleep_func=time.sleep,
-...     sleep_seconds=0.5,
+...     rate_limiter=RateLimiter.fixed(0.5),
 ... )
 >>> all_records = paginator.paginate('https://api.example.com/v1/items')
 """
 from __future__ import annotations
 
-from collections.abc import Callable
-from collections.abc import Iterator
+from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from typing import Any
 from typing import ClassVar
 from typing import Literal
@@ -51,23 +50,71 @@ from typing import cast
 
 from ..types import JSONDict
 from ..types import JSONRecords
-from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_maximum_int
 from ..utils import to_positive_int
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .rate_limiter import RateLimiter
+from .types import FetchPageCallable
+from .types import Params
+from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Classes
+    'Paginator',
+
+    # Enums
+    'PaginationType',
+
+    # Typed Dicts
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
     'PaginationConfigMap',
-    'Paginator',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_MISSING = object()
+
+
+# SECTION: INTERNAL HELPERS ================================================ #
+
+
+def _resolve_path(
+    obj: Any,
+    path: str | None,
+) -> Any:
+    """
+    Resolve dotted ``path`` within ``obj`` or return ``_MISSING``.
+
+    Parameters
+    ----------
+    obj : Any
+        JSON payload from an API response.
+    path : str | None
+        Dotted path to the target value within ``obj``.
+
+    Returns
+    -------
+    Any
+        Target value from the payload, or ``_MISSING`` if the path does not
+        exist.
+    """
+    if not isinstance(path, str) or not path:
+        return obj
+    cur: Any = obj
+    for part in path.split('.'):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return _MISSING
+    return cur
 
 
 # SECTION: ENUMS ============================================================ #
@@ -199,7 +246,7 @@ class PagePaginationConfigMap(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 
 
 # SECTION: CLASSES ========================================================== #
@@ -263,15 +310,11 @@ class Paginator:
     limit_param : str
         Query parameter name carrying the page size for cursor-based
         pagination when the API uses a separate limit field.
-    fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any] | None
+    fetch : FetchPageCallable | None
         Callback used to fetch a single page. It receives the absolute URL,
         the request params mapping, and the 1-based page index.
-    sleep_seconds : float
-        Number of seconds to sleep between page fetches. When non-positive,
-        no sleeping occurs.
-    sleep_func : Callable[[float], None] | None
-        Function used to perform sleeping; typically wraps ``time.sleep``
-        or a test double.
+    rate_limiter : RateLimiter | None
+        Optional rate limiter invoked between page fetches.
     last_page : int
         Tracks the last page index attempted. Useful for diagnostics.
     """
@@ -320,7 +363,10 @@ class Paginator:
 
     # -- Magic Methods (Object Lifecycle) -- #
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """
+        Normalize and validate pagination configuration.
+        """
         # Normalize type to supported PaginationType.
         if self.type not in (
             PaginationType.PAGE,
@@ -346,11 +392,8 @@ class Paginator:
         if not self.limit_param:
             self.limit_param = self.LIMIT_PARAM
 
-    fetch: Callable[
-        [str, Mapping[str, Any] | None, int | None], Any,
-    ] | None = None
-    sleep_seconds: float = 0.0
-    sleep_func: Callable[[float], None] | None = None
+    fetch: FetchPageCallable | None = None
+    rate_limiter: RateLimiter | None = None
     last_page: int = 0
 
     # -- Class Methods -- #
@@ -360,9 +403,8 @@ class Paginator:
         cls,
         config: Mapping[str, Any],
         *,
-        fetch: Callable[[str, Mapping[str, Any] | None, int | None], Any],
-        sleep_func: Callable[[float], None] | None = None,
-        sleep_seconds: float = 0.0,
+        fetch: FetchPageCallable,
+        rate_limiter: RateLimiter | None = None,
     ) -> Paginator:
         """
         Normalize config and build a paginator instance.
@@ -371,27 +413,20 @@ class Paginator:
         ----------
         config : Mapping[str, Any]
             Pagination configuration mapping.
-        fetch : Callable[[str, Mapping[str, Any] | None, int | None], Any]
+        fetch : FetchPageCallable
             Callback used to fetch a single page for a request given the
             absolute URL, the request params mapping, and the 1-based page
             index.
-        sleep_func : Callable[[float], None] | None, optional
-            Sleep function used between pages. Defaults to no-op when
-            ``None``.
-        sleep_seconds : float, optional
-            Number of seconds to sleep between page fetches. Defaults to
-            ``0.0``. When non-positive, no sleeping occurs.
+        rate_limiter : RateLimiter | None, optional
+            Optional limiter invoked between page fetches.
 
         Returns
         -------
         Paginator
             Configured paginator instance.
         """
-        ptype_raw = str(config.get('type', 'page')).strip().lower()
-        try:
-            ptype = PaginationType(ptype_raw)
-        except ValueError:
-            ptype = PaginationType.PAGE
+        ptype = cls.detect_type(config, default=PaginationType.PAGE)
+        assert ptype is not None
 
         return cls(
             type=ptype,
@@ -403,138 +438,80 @@ class Paginator:
             start_cursor=config.get('start_cursor'),
             records_path=config.get('records_path'),
             fallback_path=config.get('fallback_path'),
-            # cursor_path=config.get('cursor_path'),
-            cursor_path=str(config.get('cursor_path', '')) or None,
+            cursor_path=config.get('cursor_path'),
             max_pages=to_int(config.get('max_pages'), None, minimum=1),
             max_records=to_int(config.get('max_records'), None, minimum=1),
-            page_param=str(config.get('page_param', '')),
-            size_param=str(config.get('size_param', '')),
-            cursor_param=str(config.get('cursor_param', '')),
-            limit_param=str(config.get('limit_param', '')),
+            page_param=config.get('page_param', ''),
+            size_param=config.get('size_param', ''),
+            cursor_param=config.get('cursor_param', ''),
+            limit_param=config.get('limit_param', ''),
             fetch=fetch,
-            sleep_seconds=to_float(sleep_seconds, 0.0, minimum=0.0) or 0.0,
-            sleep_func=sleep_func,
+            rate_limiter=rate_limiter,
         )
 
-    # Instance Methods -- #
+    # -- Instance Methods -- #
 
     def paginate(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
+        params: Params | None = None,
     ) -> JSONRecords:
-        """Collect all records across pages into a list of dicts."""
+        """
+        Collect all records across pages into a list of dicts.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL of the endpoint to fetch.
+        params : Params | None, optional
+            Optional query parameters for the request.
+
+        Returns
+        -------
+        JSONRecords
+            List of record dicts aggregated across all fetched pages.
+        """
         return list(self.paginate_iter(url, params=params))
 
     def paginate_iter(
         self,
-        url: str,
+        url: Url,
         *,
-        params: Mapping[str, Any] | None = None,
-    ) -> Iterator[JSONDict]:
-        """Yield record dicts across pages for the configured strategy."""
+        params: Params | None = None,
+    ) -> Generator[JSONDict]:
+        """
+        Yield record dicts across pages for the configured strategy.
+
+        Parameters
+        ----------
+        url : Url
+            Absolute URL of the endpoint to fetch.
+        params : Params | None, optional
+            Optional query parameters for the request.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Iterator over the record dicts extracted from paginated responses.
+
+        Raises
+        ------
+        ValueError
+            If ``fetch`` callback is not provided.
+        """
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        pages = 0
-        recs = 0
+        match self.type:
+            case PaginationType.PAGE | PaginationType.OFFSET:
+                yield from self._iterate_page_style(url, params)
+                return
+            case PaginationType.CURSOR:
+                yield from self._iterate_cursor_style(url, params)
+                return
 
-        if self.type in (PaginationType.PAGE, PaginationType.OFFSET):
-            current = self.start_page
-            while True:
-                self.last_page = pages + 1
-                req_params = dict(params or {})
-                req_params[self.page_param] = current
-                req_params[self.size_param] = self.page_size
-
-                page_data = self._fetch_page(
-                    url,
-                    req_params,
-                )
-                batch = self.coalesce_records(
-                    page_data,
-                    self.records_path,
-                    self.fallback_path,
-                )
-                n = len(batch)
-                pages += 1
-                recs += n
-
-                if (
-                    isinstance(self.max_records, int)
-                    and recs > self.max_records
-                ):
-                    take = max(
-                        0,
-                        self.max_records - (recs - n),
-                    )
-                    yield from batch[:take]
-                    break
-
-                yield from batch
-
-                if n < self.page_size:
-                    break
-                if self._stop_limits(pages, recs):
-                    break
-
-                if self.type == PaginationType.PAGE:
-                    current += 1
-                else:
-                    current += self.page_size
-
-                self._sleep()
-            return
-
-        if self.type == PaginationType.CURSOR:
-            cursor = self.start_cursor
-            while True:
-                self.last_page = pages + 1
-                req_params = dict(params or {})
-                if cursor is not None:
-                    req_params[self.cursor_param] = cursor
-                req_params.setdefault(self.limit_param, self.page_size)
-
-                page_data = self._fetch_page(
-                    url,
-                    req_params,
-                )
-                batch = self.coalesce_records(
-                    page_data,
-                    self.records_path,
-                    self.fallback_path,
-                )
-                n = len(batch)
-                pages += 1
-                recs += n
-
-                if (
-                    isinstance(self.max_records, int)
-                    and recs > self.max_records
-                ):
-                    take = max(
-                        0,
-                        self.max_records - (recs - n),
-                    )
-                    yield from batch[:take]
-                    break
-
-                yield from batch
-
-                nxt = self.next_cursor_from(
-                    page_data,
-                    self.cursor_path,
-                )
-                if not nxt or n == 0:
-                    break
-                if self._stop_limits(pages, recs):
-                    break
-                cursor = nxt
-                self._sleep()
-            return
-
-        # Fallback: single page, coalesce. and yield.
+        # Fallback: single page, coalesce, and yield as-is.
         self.last_page = 1
         page_data = self._fetch_page(url, params)
         yield from self.coalesce_records(
@@ -543,12 +520,47 @@ class Paginator:
             self.fallback_path,
         )
 
-    # -- Protected Instance Methods -- #
+    # -- Internal Instance Methods -- #
+
+    def _compose_params(
+        self,
+        params: Params | None,
+        *,
+        defaults: Mapping[str, Any] | None = None,
+        overrides: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Merge caller params, defaults, and overrides into one mapping.
+
+        Parameters
+        ----------
+        params : Params | None
+            Base query parameters supplied by the caller.
+        defaults : Mapping[str, Any] | None, optional
+            Default key/value pairs inserted when missing.
+        overrides : Mapping[str, Any] | None, optional
+            Override values that always replace existing entries when
+            non-``None``.
+
+        Returns
+        -------
+        dict[str, Any]
+            Combined query parameters prepared for the fetch callback.
+        """
+        combined: dict[str, Any] = dict(params or {})
+        if defaults:
+            for key, value in defaults.items():
+                combined.setdefault(key, value)
+        if overrides:
+            combined.update(
+                {k: v for k, v in overrides.items() if v is not None},
+            )
+        return combined
 
     def _fetch_page(
         self,
-        url: str,
-        params: Mapping[str, Any] | None,
+        url: Url,
+        params: Params | None,
     ) -> Any:
         """
         Fetch a single page and attach page index on failure.
@@ -560,9 +572,9 @@ class Paginator:
 
         Parameters
         ----------
-        url : str
+        url : Url
             Absolute URL of the endpoint to fetch.
-        params : Mapping[str, Any] | None
+        params : Params | None
             Optional query parameters for the request.
 
         Returns
@@ -592,6 +604,168 @@ class Paginator:
                 page=self.last_page,
             ) from e
 
+    def _iterate_cursor_style(
+        self,
+        url: Url,
+        query_params: Params | None,
+    ) -> Generator[JSONDict]:
+        """
+        Yield record dicts for cursor-based pagination strategies.
+
+        Parameters
+        ----------
+        url : Url
+            Endpoint URL to paginate.
+        query_params : Params | None
+            Base query parameters passed by the caller.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Iterator over normalized record dictionaries for each page.
+        """
+        cursor = self.start_cursor
+        pages = 0
+        emitted = 0
+
+        while True:
+            self.last_page = pages + 1
+            overrides = (
+                {self.cursor_param: cursor}
+                if cursor is not None
+                else None
+            )
+            req_params = self._compose_params(
+                query_params,
+                defaults={self.limit_param: self.page_size},
+                overrides=overrides,
+            )
+
+            page_data = self._fetch_page(url, req_params)
+            batch = self.coalesce_records(
+                page_data,
+                self.records_path,
+                self.fallback_path,
+            )
+
+            pages += 1
+            trimmed, exhausted = self._limit_batch(batch, emitted)
+            yield from trimmed
+            emitted += len(trimmed)
+
+            nxt = self.next_cursor_from(page_data, self.cursor_path)
+            if exhausted or not nxt or not batch:
+                break
+            if self._stop_limits(pages, emitted):
+                break
+
+            cursor = nxt
+            self._enforce_rate_limit()
+
+    def _iterate_page_style(
+        self,
+        url: Url,
+        query_params: Params | None,
+    ) -> Generator[JSONDict]:
+        """
+        Yield record dicts for page/offset pagination strategies.
+
+        Parameters
+        ----------
+        url : Url
+            Endpoint URL to paginate.
+        query_params : Params | None
+            Base query parameters passed by the caller.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Iterator over normalized record dictionaries for each page.
+        """
+        current = self.start_page
+        pages = 0
+        emitted = 0
+
+        while True:
+            self.last_page = pages + 1
+            req_params = self._compose_params(
+                query_params,
+                overrides={
+                    self.page_param: current,
+                    self.size_param: self.page_size,
+                },
+            )
+            page_data = self._fetch_page(url, req_params)
+            batch = self.coalesce_records(
+                page_data,
+                self.records_path,
+                self.fallback_path,
+            )
+
+            pages += 1
+            trimmed, exhausted = self._limit_batch(batch, emitted)
+            yield from trimmed
+            emitted += len(trimmed)
+
+            if exhausted or len(batch) < self.page_size:
+                break
+            if self._stop_limits(pages, emitted):
+                break
+
+            current = self._next_page_value(current)
+            self._enforce_rate_limit()
+
+    def _limit_batch(
+        self,
+        batch: JSONRecords,
+        emitted: int,
+    ) -> tuple[JSONRecords, bool]:
+        """Respect ``max_records`` while yielding the current batch.
+
+        Parameters
+        ----------
+        batch : JSONRecords
+            Records retrieved from the latest page fetch.
+        emitted : int
+            Count of records yielded so far.
+
+        Returns
+        -------
+        tuple[JSONRecords, bool]
+            ``(records_to_emit, exhausted)`` where ``exhausted`` indicates
+            the ``max_records`` limit was reached.
+        """
+        if not isinstance(self.max_records, int):
+            return batch, False
+
+        remaining = self.max_records - emitted
+        if remaining <= 0:
+            return [], True
+        if len(batch) > remaining:
+            return batch[:remaining], True
+        return batch, False
+
+    def _next_page_value(
+        self,
+        current: int,
+    ) -> int:
+        """
+        Return the next page/offset value for the active strategy.
+
+        Parameters
+        ----------
+        current : int
+            Current page number or offset value.
+
+        Returns
+        -------
+        int
+            Incremented page number or offset respecting pagination type.
+        """
+        if self.type == PaginationType.OFFSET:
+            return current + self.page_size
+        return current + 1
+
     def _stop_limits(
         self, pages: int,
         recs: int,
@@ -617,18 +791,10 @@ class Paginator:
             return True
         return False
 
-    # TODOD: Replace with RateLimiter when pagination integrates RateLimiter.
-    def _sleep(self) -> None:
-        """
-        Sleep for the configured number of seconds.
-
-        Uses the provided sleep function.  Callers can inject a RateLimiter if
-        needed.
-        """
-        if self.sleep_func is None:
-            return
-        if self.sleep_seconds > 0:
-            self.sleep_func(self.sleep_seconds)
+    def _enforce_rate_limit(self) -> None:
+        """Apply configured pacing between subsequent page fetches."""
+        if self.rate_limiter is not None:
+            self.rate_limiter.enforce()
 
     # -- Static Methods -- #
 
@@ -662,29 +828,17 @@ class Paginator:
         lists, mappings, and scalars by coercing non-dict items into
         ``{"value": x}``.
         """
-        _missing = object()
-
-        def _resolve(obj: Any, path: str | None) -> Any:
-            if not isinstance(path, str) or not path:
-                return obj
-            cur: Any = obj
-            for part in path.split('.'):
-                if isinstance(cur, dict) and part in cur:
-                    cur = cur[part]
-                else:
-                    return _missing
-            return cur
-
-        data = _resolve(x, records_path)
-        if data is _missing:
+        resolver = partial(_resolve_path, x)
+        data = resolver(records_path)
+        if data is _MISSING:
             data = None
 
         if fallback_path and (
             data is None
             or (isinstance(data, list) and not data)
         ):
-            fallback = _resolve(x, fallback_path)
-            if fallback is not _missing:
+            fallback = resolver(fallback_path)
+            if fallback is not _MISSING:
                 data = fallback
 
         if data is None and not records_path:
@@ -705,6 +859,39 @@ class Paginator:
             return [cast(JSONDict, data)]
 
         return [cast(JSONDict, {'value': data})]
+
+    @staticmethod
+    def detect_type(
+        config: Mapping[str, Any] | None,
+        *,
+        default: PaginationType | None = None,
+    ) -> PaginationType | None:
+        """
+        Return a normalized pagination type when possible.
+
+        Parameters
+        ----------
+        config : Mapping[str, Any] | None
+            Pagination configuration mapping.
+        default : PaginationType | None, optional
+            Default type to return when not specified in config.
+
+        Returns
+        -------
+        PaginationType | None
+            Detected pagination type, or ``default`` if not found.
+        """
+        if not config:
+            return default
+        raw = config.get('type')
+        if isinstance(raw, PaginationType):
+            return raw
+        if raw is None:
+            return default
+        try:
+            return PaginationType(str(raw).strip().lower())
+        except ValueError:
+            return default
 
     @staticmethod
     def next_cursor_from(
