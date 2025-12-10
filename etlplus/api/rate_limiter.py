@@ -33,6 +33,7 @@ from .types import RateLimitOverrides
 __all__ = [
     # Classes
     'RateLimitConfig',
+    'RateLimitPlan',
     'RateLimiter',
 
     # Typed Dicts
@@ -186,6 +187,45 @@ class RateLimitConfig:
             sleep_seconds=to_float(obj.get('sleep_seconds')),
             max_per_sec=to_float(obj.get('max_per_sec')),
         )
+
+
+@dataclass(slots=True, frozen=True)
+class RateLimitPlan:
+    """Canonical, normalized view of rate-limit inputs."""
+
+    # -- Attributes -- #
+
+    sleep_seconds: float = 0.0
+    max_per_sec: float | None = None
+
+    # -- Properties -- #
+
+    @property
+    def enabled(self) -> bool:
+        """Whether this plan enforces a delay."""
+        return self.sleep_seconds > 0
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_inputs(
+        cls,
+        *,
+        rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
+        overrides: RateLimitOverrides = None,
+    ) -> RateLimitPlan:
+        """
+        Normalize user config and overrides into a single plan.
+        """
+        normalized = _coerce_rate_limit_map(rate_limit)
+        cfg = _merge_rate_limit(normalized, overrides)
+        sleep, per_sec = _normalized_rate_values(cfg)
+        if sleep is not None:
+            return cls(sleep_seconds=sleep, max_per_sec=1.0 / sleep)
+        if per_sec is not None:
+            delay = 1.0 / per_sec
+            return cls(sleep_seconds=delay, max_per_sec=per_sec)
+        return cls()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -351,15 +391,10 @@ class RateLimiter:
         RateLimiter
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
-        normalized_cfg = _coerce_rate_limit_map(cfg)
-        sleep_val, rate_val = _normalized_rate_values(normalized_cfg)
-        if sleep_val is None and rate_val is None:
-            return cls()
-
-        # Let __post_init__ enforce invariants and precedence rules.
+        plan = RateLimitPlan.from_inputs(rate_limit=cfg)
         return cls(
-            sleep_seconds=sleep_val if sleep_val is not None else 0.0,
-            max_per_sec=rate_val,
+            sleep_seconds=plan.sleep_seconds,
+            max_per_sec=plan.max_per_sec,
         )
 
     @classmethod
@@ -408,8 +443,8 @@ class RateLimiter:
         ... )
         0.25
         """
-        # Precedence: overrides > rate_limit
-        normalized = _coerce_rate_limit_map(rate_limit)
-        cfg = _merge_rate_limit(normalized, overrides)
-        limiter = cls.from_config(cfg or None)
-        return limiter.sleep_seconds if limiter.enabled else 0.0
+        plan = RateLimitPlan.from_inputs(
+            rate_limit=rate_limit,
+            overrides=overrides,
+        )
+        return plan.sleep_seconds if plan.enabled else 0.0
