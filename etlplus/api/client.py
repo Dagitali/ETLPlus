@@ -59,7 +59,7 @@ from ..types import JSONData
 from ..types import JSONDict
 from .errors import ApiRequestError
 from .errors import PaginationError
-from .paginator_runner import PaginatorRunner
+from .pagination_client import PaginationClient
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
 from .rate_limiter import compute_sleep_seconds
@@ -372,9 +372,9 @@ class EndpointClient:
         timeout: float | int | None,
         sleep_seconds: float,
         rate_limit_overrides: Mapping[str, Any] | None,
-    ) -> PaginatorRunner:
+    ) -> PaginationClient:
         """
-        Create a :class:`PaginatorRunner` wired to the request manager.
+        Create a :class:`PaginationClient` wired to the request manager.
 
         Parameters
         ----------
@@ -391,8 +391,8 @@ class EndpointClient:
 
         Returns
         -------
-        PaginatorRunner
-            Configured paginator runner instance.
+        PaginationClient
+            Configured pagination helper instance.
         """
         effective_sleep = self._resolve_sleep_seconds(
             sleep_seconds,
@@ -409,7 +409,7 @@ class EndpointClient:
             headers=headers,
             timeout=timeout,
         )
-        return PaginatorRunner(
+        return PaginationClient(
             pagination=pagination,
             fetch=fetch,
             rate_limiter=rate_limiter,
