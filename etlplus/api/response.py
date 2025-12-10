@@ -40,7 +40,6 @@ from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from dataclasses import field
 from enum import StrEnum
 from typing import Any
 from typing import ClassVar
@@ -66,7 +65,7 @@ from .types import Url
 __all__ = [
     # Classes
     'Paginator',
-    'PaginatorRunner',
+    # 'PaginatorRunner',
 
     # Enums
     'PaginationType',
@@ -908,114 +907,3 @@ class Paginator:
             else:
                 return None
         return cur if isinstance(cur, (str, int)) else None
-
-
-@dataclass(slots=True, kw_only=True)
-class PaginatorRunner:
-    """
-    Helper that adapts :class:`Paginator` for endpoint clients.
-
-    Encapsulates pagination configuration, fetch callback, and optional
-    rate limiter.
-
-    Attributes
-    ----------
-    pagination : Mapping[str, Any] | None
-        Pagination configuration mapping.
-    fetch : FetchPageFunc
-        Callback used to fetch a single page.
-    rate_limiter : RateLimiter | None
-        Optional rate limiter invoked between page fetches.
-    """
-
-    # -- Attributes -- #
-
-    pagination: Mapping[str, Any] | None
-    fetch: FetchPageFunc
-    rate_limiter: RateLimiter | None = None
-
-    # -- Internal Attributes -- #
-
-    _ptype: PaginationType | None = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
-
-    # -- Magic Methods (Object Lifecycle) -- #
-
-    def __post_init__(self) -> None:
-        """
-        Normalize and validate pagination configuration.
-        """
-        self._ptype = Paginator.detect_type(self.pagination, default=None)
-
-    # -- Getters -- #
-
-    @property
-    def is_paginated(self) -> bool:
-        """Return ``True`` when a known pagination type is configured."""
-        return self._ptype is not None
-
-    # -- Instance Methods -- #
-
-    def collect(
-        self,
-        url: Url,
-        *,
-        params: Params | None = None,
-    ) -> JSONRecords:
-        """
-        Collect records across pages into a list.
-
-        Parameters
-        ----------
-        url : Url
-            Absolute URL of the endpoint to fetch.
-        params : Params | None, optional
-            Optional query parameters for the request.
-
-        Returns
-        -------
-        JSONRecords
-            List of record dicts extracted from all pages.
-        """
-        return list(self.iterate(url, params=params))
-
-    def iterate(
-        self,
-        url: Url,
-        *,
-        params: Params | None = None,
-    ) -> Generator[JSONDict]:
-        """
-        Yield records for the configured pagination strategy.
-
-        Parameters
-        ----------
-        url : Url
-            Absolute URL of the endpoint to fetch.
-        params : Params | None, optional
-            Optional query parameters for the request.
-
-        Yields
-        ------
-        Generator[JSONDict]
-            Iterator over the record dicts extracted from paginated responses.
-        """
-        if not self.is_paginated:
-            pg = cast(dict[str, Any], self.pagination or {})
-            page_data = self.fetch(url, params, None)
-            yield from Paginator.coalesce_records(
-                page_data,
-                pg.get('records_path'),
-                pg.get('fallback_path'),
-            )
-            return
-
-        paginator = Paginator.from_config(
-            cast(PaginationConfigMap, self.pagination),
-            fetch=self.fetch,
-            rate_limiter=self.rate_limiter,
-        )
-        yield from paginator.paginate_iter(url, params=params)
