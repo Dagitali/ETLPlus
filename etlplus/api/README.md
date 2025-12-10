@@ -177,6 +177,10 @@ client = EndpointClient(
 )
 ```
 
+`EndpointCredentialsBearer` refreshes tokens automatically, applies a 15-second default timeout
+(`DEFAULT_TOKEN_TIMEOUT`), and omits the optional `scope` field when not provided so identity
+providers can fall back to their own defaults.
+
 ## Errors and rate limiting
 
 - Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in `etlplus/api/errors.py`)
@@ -195,6 +199,15 @@ client = EndpointClient(
   `etlplus.api` for convenience.
 - Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users
   may consult it to adapt behavior.
+
+## Supporting modules
+
+- `etlplus.api.types` collects friendly aliases such as `Headers`, `Params`, `Url`, and
+  `RateLimitOverrides` (whose values accept numeric override inputs) so endpoint helpers share the
+  same type vocabulary.
+- `etlplus.utils` exposes lightweight helpers used across the project, including CLI-friendly
+  functions like `json_type`/`print_json` plus numeric coercion utilities (`to_float`,
+  `to_positive_int`, etc.).
 
 ## Minimal contract
 
