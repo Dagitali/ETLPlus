@@ -37,11 +37,12 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+type Headers = Mapping[str, str]
+type Params = Mapping[str, Any]
+type Url = str
+
 type FetchPageCallable = Callable[
     [Url, Params | None, int | None],
     JSONData,
 ]
-type Headers = Mapping[str, str]
-type Params = Mapping[str, Any]
 type RateLimitOverrides = Mapping[str, Any] | None
-type Url = str
