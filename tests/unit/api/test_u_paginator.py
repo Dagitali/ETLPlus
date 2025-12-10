@@ -24,7 +24,7 @@ from typing import cast
 
 import pytest
 
-from etlplus.api.client import EndpointClient
+from etlplus.api.endpoint_client import EndpointClient
 from etlplus.api.paginator import PagePaginationConfigMap
 from etlplus.api.paginator import PaginationConfigMap
 from etlplus.api.paginator import PaginationType
