@@ -181,11 +181,12 @@ client = EndpointClient(
 
 - Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in `etlplus/api/errors.py`)
   include an `as_dict()` helper for structured logs.
-- Rate limiting: `RateLimiter` and `compute_sleep_seconds` (in `etlplus/api/request.py`) derive
-  fixed sleeps or `max_per_sec` windows. The paginator now builds a `RateLimiter` whenever the
-  effective delay comes from `rate_limit`/`rate_limit_overrides`, so each page fetch sleeps before
-  making another HTTP call. Passing `rate_limit_overrides` to `paginate*` lets you momentarily speed
-  up or slow down a single request without mutating the client-wide defaults.
+- Rate limiting: `RateLimiter` and its `resolve_sleep_seconds` helper (in
+  `etlplus/api/rate_limiter.py`) derives fixed sleeps or `max_per_sec` windows. The paginator now
+  builds a `RateLimiter` whenever the effective delay comes from
+  `rate_limit`/`rate_limit_overrides`, so each page fetch sleeps before making another HTTP call.
+  Passing `rate_limit_overrides` to `paginate*` lets you momentarily speed up or slow down a single
+  request without mutating the client-wide defaults.
 
 ## Types and transport
 
