@@ -59,13 +59,13 @@ from ..types import JSONData
 from ..types import JSONDict
 from .errors import ApiRequestError
 from .errors import PaginationError
+from .paginator_runner import PaginatorRunner
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
 from .rate_limiter import compute_sleep_seconds
 from .request_manager import RequestManager
 from .response import PaginationConfigMap
 from .response import Paginator
-from .response import PaginatorRunner
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
 from .transport import build_http_adapter
