@@ -278,7 +278,13 @@ class RetryManager:
         Raises
         ------
         ApiRequestError
-            Request error during API request.
+            Request failed even after exhausting API request retries.
+
+        Notes
+        -----
+        Authentication failures propagate as :class:`ApiAuthError` from the
+        internal ``_raise_terminal_error`` helper when the status code is 401
+        or 403.
         """
         for attempt in range(1, self.max_attempts + 1):
             try:
@@ -312,14 +318,14 @@ class RetryManager:
         Parameters
         ----------
         status : int | None
-            Whether the request should be retried.
+            HTTP status code extracted from the failed response, if any.
         error : Exception
             The exception that was raised.
 
         Returns
         -------
         bool
-            Whether the request should be retried.
+            ``True`` when the request should be retried, ``False`` otherwise.
         """
         # HTTP status-based retry
         if status is not None and status in self.retry_on_codes:
@@ -399,7 +405,7 @@ class RetryManager:
         Returns
         -------
         int | None
-            The HTTP status code if available, otherwise None.
+            The HTTP status code if available, else ``None``.
         """
         response = getattr(error, 'response', None)
         return getattr(response, 'status_code', None)

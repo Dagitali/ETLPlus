@@ -55,11 +55,13 @@ class RequestManager:
     session : requests.Session | None, optional
         Optional pre-configured session to use. Default is ``None``.
     session_factory : Callable[[], requests.Session] | None, optional
-        Optional factory for creating sessions. Default is ``None``.
+        Optional factory for lazily creating sessions when ``session`` is
+        ``None``.
     retry_cap : float, optional
         Maximum backoff cap in seconds. Default is 30.0.
     session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
-        Adapter mount configurations used when lazily building a session.
+        Adapter mount configurations used when lazily building a session via
+        :func:`etlplus.api.transport.build_session_with_adapters`.
 
     Attributes
     ----------
@@ -74,7 +76,7 @@ class RequestManager:
     session_factory : Callable[[], requests.Session] | None
         Optional factory for creating sessions.
     retry_cap : float
-        Maximum backoff cap in seconds.
+        Maximum backoff cap in seconds for :class:`RetryManager` sleeps.
     session_adapters : Sequence[HTTPAdapterMountConfig] | None
         Adapter mount configurations used when lazily building a session.
     """
@@ -167,7 +169,7 @@ class RequestManager:
         url : str
             Target URL.
         request_callable : Callable[..., JSONData] | None, optional
-            Optional custom request function.
+            Optional callable compatible with ``requests.Session.request``.
         **kwargs : Any
             Additional keyword arguments for the request.
 
@@ -197,7 +199,7 @@ class RequestManager:
         url : str
             Target URL.
         request_callable : Callable[..., JSONData] | None, optional
-            Optional custom request function.
+            Optional callable compatible with ``requests.Session.request``.
         **kwargs : Any
             Additional keyword arguments for the request.
 
@@ -231,7 +233,7 @@ class RequestManager:
         url : str
             Target URL.
         request_callable : Callable[..., JSONData] | None, optional
-            Optional custom request function.
+            Optional callable compatible with ``requests.Session.request``.
         **kw : Any
             Additional keyword arguments for the request.
 
@@ -243,9 +245,10 @@ class RequestManager:
         Raises
         ------
         ApiAuthError
-            If an authentication error occurs (HTTP 401 or 403).
+            If authentication fails (HTTP 401 or 403) and retries are
+            exhausted.
         ApiRequestError
-            If a non-authentication request error occurs.
+            If the request ultimately fails for a non-authentication reason.
         """
         method_normalized = self._normalize_http_method(method)
 
