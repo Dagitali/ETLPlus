@@ -6,6 +6,7 @@ HTTP request orchestration with retries and session lifecycle control.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from functools import partial
@@ -21,6 +22,8 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
+from .transport import HTTPAdapterMountConfig
+from .transport import build_session_with_adapters
 
 # SECTION: TYPE ALIASES ==================================================== #
 
@@ -55,6 +58,8 @@ class RequestManager:
         Optional factory for creating sessions. Default is ``None``.
     retry_cap : float, optional
         Maximum backoff cap in seconds. Default is 30.0.
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
+        Adapter mount configurations used when lazily building a session.
 
     Attributes
     ----------
@@ -70,6 +75,8 @@ class RequestManager:
         Optional factory for creating sessions.
     retry_cap : float
         Maximum backoff cap in seconds.
+    session_adapters : Sequence[HTTPAdapterMountConfig] | None
+        Adapter mount configurations used when lazily building a session.
     """
 
     # -- Attributes -- #
@@ -80,6 +87,11 @@ class RequestManager:
     session: requests.Session | None = None
     session_factory: Callable[[], requests.Session] | None = None
     retry_cap: float = 30.0
+    session_adapters: Sequence[HTTPAdapterMountConfig] | None = None
+
+    def __post_init__(self) -> None:
+        if self.session_adapters:
+            self.session_adapters = tuple(self.session_adapters)
 
     # -- Internal Attributes -- #
 
@@ -103,14 +115,12 @@ class RequestManager:
             self._ctx_session = self.session
             self._ctx_owns_session = False
             return self
-        if self.session_factory is not None:
-            sess = self.session_factory()
-            self._ctx_session = sess
-            self._ctx_owns_session = True
-            return self
-        sess = requests.Session()
+        sess, owns_session = self._instantiate_session()
+        if sess is None:
+            sess = requests.Session()
+            owns_session = True
         self._ctx_session = sess
-        self._ctx_owns_session = True
+        self._ctx_owns_session = owns_session
         return self
 
     def __exit__(
@@ -348,17 +358,25 @@ class RequestManager:
 
     # -- Internal Instance Methods -- #
 
-    def _resolve_session_for_call(
-        self,
-        explicit: requests.Session | None,
-    ) -> tuple[requests.Session | None, bool]:
+    def _build_adapter_session(self) -> requests.Session | None:
         """
-        Determine which session should service the current request.
+        Build a session configured with HTTP adapters when provided.
 
-        Parameters
-        ----------
-        explicit : requests.Session | None
-            Session provided directly by the caller.
+        Returns
+        -------
+        requests.Session | None
+            Configured session with HTTP adapters, or ``None``.
+        """
+        if not self.session_adapters:
+            return None
+        try:
+            return build_session_with_adapters(tuple(self.session_adapters))
+        except (ValueError, TypeError, AttributeError):
+            return requests.Session()
+
+    def _instantiate_session(self) -> tuple[requests.Session | None, bool]:
+        """
+        Create a session from factory/adapters when available.
 
         Returns
         -------
@@ -367,17 +385,17 @@ class RequestManager:
             indicates whether this manager is responsible for closing the
             session after the request completes.
         """
-        if explicit is not None:
-            return explicit, False
-        if self._ctx_session is not None:
-            return self._ctx_session, False
-        if self.session is not None:
-            return self.session, False
         if self.session_factory is not None:
             try:
-                return self.session_factory(), True
-            except (RuntimeError, TypeError):  # pragma: no cover - defensive
+                session = self.session_factory()
+            except (RuntimeError, TypeError, ValueError):  # pragma: no cover
                 return None, False
+            if session is not None:
+                return session, True
+            return None, False
+        adapter_session = self._build_adapter_session()
+        if adapter_session is not None:
+            return adapter_session, True
         return None, False
 
     def _parse_response_payload(
@@ -469,6 +487,36 @@ class RequestManager:
         if timeout is _MISSING:
             return cast(TimeoutInput, self.default_timeout)
         return cast(TimeoutInput, timeout)
+
+    def _resolve_session_for_call(
+        self,
+        explicit: requests.Session | None,
+    ) -> tuple[requests.Session | None, bool]:
+        """
+        Determine which session should service the current request.
+
+        Parameters
+        ----------
+        explicit : requests.Session | None
+            Session provided directly by the caller.
+
+        Returns
+        -------
+        tuple[requests.Session | None, bool]
+            Pair of ``(session, owns_session)`` where ``owns_session``
+            indicates whether this manager is responsible for closing the
+            session after the request completes.
+        """
+        if explicit is not None:
+            return explicit, False
+        if self._ctx_session is not None:
+            return self._ctx_session, False
+        if self.session is not None:
+            return self.session, False
+        session, owns_session = self._instantiate_session()
+        if session is not None:
+            return session, owns_session
+        return None, False
 
     def _send_http_request(
         self,
