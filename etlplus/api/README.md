@@ -25,28 +25,38 @@ pip install -e ".[dev]"
 ## Quickstart
 
 ```python
+import requests
 from etlplus.api import (
   EndpointClient,
   EndpointCredentialsBearer,
   JSONRecords,
 )
 
+auth = EndpointCredentialsBearer(
+  token_url="https://auth.example.com/oauth2/token",
+  client_id="CLIENT_ID",
+  client_secret="CLIENT_SECRET",
+  scope="read:items",
+)
+
+session = requests.Session()
+session.auth = auth
+
 client = EndpointClient(
-    base_url="https://api.example.com/v1",
-    endpoints={
-        "list": "/items",  # you can add more named endpoints here
-    },
-    retry={"max_attempts": 4, "backoff": 0.5},
-    retry_network_errors=True,
-    # Optional: auth
-    credentials=EndpointCredentialsBearer(token="<YOUR_TOKEN>")
-    )
+  base_url="https://api.example.com/v1",
+  endpoints={
+    "list": "/items",  # you can add more named endpoints here
+  },
+  retry={"max_attempts": 4, "backoff": 0.5},
+  retry_network_errors=True,
+  session=session,
+)
 
 # Page-based pagination
 pg: PaginationConfig = {"type": "page", "page_size": 100}
 rows: JSONRecords = client.paginate("list", pagination=pg)
 for row in rows:
-    print(row)
+  print(row)
 ```
 
 ### Overriding rate limits per call
@@ -179,7 +189,8 @@ client = EndpointClient(
 
 `EndpointCredentialsBearer` refreshes tokens automatically, applies a 15-second default timeout
 (`DEFAULT_TOKEN_TIMEOUT`), and omits the optional `scope` field when not provided so identity
-providers can fall back to their own defaults.
+providers can fall back to their own defaults. If you already possess a static token, attach it to a
+`requests.Session` manually rather than instantiating `EndpointCredentialsBearer`.
 
 ## Errors and rate limiting
 
@@ -194,11 +205,12 @@ providers can fall back to their own defaults.
 
 ## Types and transport
 
-- Types: pagination config helpers live in `etlplus/api/paginator.py` and retry/rate-limit helpers
-  (including `RetryPolicy`) live in `etlplus/api/request.py`. These are re-exported from
-  `etlplus.api` for convenience.
-- Transport: `etlplus/api/transport.py` contains the HTTP transport implementation. Advanced users
-  may consult it to adapt behavior.
+- Types: pagination config helpers live in `etlplus/api/paginator.py`; retry helpers (including
+  `RetryPolicy`) live in `etlplus/api/retry_manager.py`; rate-limit helpers live in
+  `etlplus/api/rate_limiter.py`. These are all re-exported from `etlplus.api` for convenience.
+- Transport/session: `etlplus/api/transport.py` contains the HTTP adapter helpers and
+  `etlplus/api/request_manager.py` wraps `requests` sessions plus retry orchestration. Advanced
+  users may consult those modules to adapt behavior.
 
 ## Supporting modules
 
