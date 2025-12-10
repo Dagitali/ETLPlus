@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_request` module.
+:mod:`tests.unit.api.test_u_rate_limiter` module.
 
 Unit tests for :class:`etlplus.api.rate_limiter.RateLimiter`.
 
@@ -11,7 +11,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_request.py
+>>> pytest tests/unit/api/test_u_rate_limiter.py
 """
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ import pytest
 
 from etlplus.api.rate_limiter import RateLimitConfigMap
 from etlplus.api.rate_limiter import RateLimiter
-from etlplus.api.rate_limiter import compute_sleep_seconds
 
 # SECTION: FIXTURES ======================================================== #
 
@@ -46,9 +45,9 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 
 @pytest.mark.unit
-class TestComputeSleepSeconds:
+class TestResolveSleepSeconds:
     """
-    Unit test suite for :func:`compute_sleep_seconds`.
+    Unit test suite for :meth:`RateLimiter.resolve_sleep_seconds`.
 
     Notes
     -----
@@ -58,7 +57,7 @@ class TestComputeSleepSeconds:
 
     Examples
     --------
-    >>> compute_sleep_seconds({'max_per_sec': 2}, None)
+    >>> RateLimiter.resolve_sleep_seconds({"max_per_sec": 2}, None)
     0.5
     """
 
@@ -94,19 +93,31 @@ class TestComputeSleepSeconds:
         expected_sleep : float
             The expected sleep seconds value.
         """
-        assert compute_sleep_seconds(rate_limit, config) == expected_sleep
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=rate_limit,
+            overrides=config,
+        ) == expected_sleep
 
     def test_overrides_max_per_sec(self) -> None:
         """Test that max_per_sec in config overrides other values."""
-        assert compute_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=None,
+            overrides={'max_per_sec': 4},
+        ) == 0.25
 
     def test_overrides_sleep_seconds(self) -> None:
         """Test that sleep_seconds in config overrides other values."""
-        assert compute_sleep_seconds(None, {'sleep_seconds': 0.2}) == 0.2
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=None,
+            overrides={'sleep_seconds': 0.2},
+        ) == 0.2
 
     def test_rate_limit_fallback(self) -> None:
         """Test fallback to rate limit config when override is None."""
-        assert compute_sleep_seconds({'max_per_sec': 2}, None) == 0.5
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit={'max_per_sec': 2},
+            overrides=None,
+        ) == 0.5
 
 
 @pytest.mark.unit
