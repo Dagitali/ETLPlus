@@ -44,6 +44,7 @@ from typing import overload
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
+from .utils import coerce_dict
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
     from .types import ConnectorApiConfigMap
@@ -170,7 +171,7 @@ class ConnectorApi:
             url=obj.get('url'),
             method=obj.get('method'),
             headers=headers,
-            query_params=dict(obj.get('query_params', {}) or {}),
+            query_params=coerce_dict(obj.get('query_params')),
             pagination=PaginationConfig.from_obj(obj.get('pagination')),
             rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             api=obj.get('api') or obj.get('service'),
@@ -324,7 +325,7 @@ class ConnectorFile:
             type='file',
             format=obj.get('format'),
             path=obj.get('path'),
-            options=dict(obj.get('options', {}) or {}),
+            options=coerce_dict(obj.get('options')),
         )
 
 
