@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.api.test_u_client` module.
+:mod:`tests.unit.api.test_u_endpoint_client` module.
 
-Unit tests for ``etlplus.api.client``.
+Unit tests for ``etlplus.api.endpoint_client``.
 
 Notes
 -----
@@ -20,7 +20,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.client as cmod
+import etlplus.api.endpoint_client as cmod
 import etlplus.api.request_manager as rmod
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
