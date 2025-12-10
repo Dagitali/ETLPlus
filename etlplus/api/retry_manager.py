@@ -6,15 +6,13 @@ Centralized logic for retrying HTTP requests, including:
 
 Examples
 --------
-Create a limiter from static configuration and apply it before each
-request:
+Retry a request with exponential backoff::
 
-    cfg = {"max_per_sec": 5}
-    limiter = RateLimiter.from_config(cfg)
-
-    for payload in batch:
-        limiter.enforce()
-        client.send(payload)
+    >>> from etlplus.api.retry_manager import RetryManager
+    >>> policy = {"max_attempts": 3, "backoff": 0.25, "retry_on": [429]}
+    >>> mgr = RetryManager(policy=policy)
+    >>> mgr.get_sleep_time(1)
+    0.123  # jittered value in [0, min(backoff, cap)]
 """
 from __future__ import annotations
 
@@ -22,8 +20,10 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import ClassVar
+from typing import Final
 from typing import TypedDict
 
 import requests  # type: ignore[import]
@@ -40,6 +40,7 @@ from .errors import ApiRequestError
 
 __all__ = [
     # Classes
+    'RetryStrategy',
     'RetryManager',
 
     # Typed Dicts
@@ -78,6 +79,70 @@ class RetryPolicy(TypedDict, total=False):
     retry_on: list[int]
 
 
+# SECTION: CONSTANTS & TYPE ALIASES ======================================== #
+
+
+type Sleeper = Callable[[float], None]
+
+DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset({
+    429,
+    502,
+    503,
+    504,
+})
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class RetryStrategy:
+    """Normalized retry settings derived from a :class:`RetryPolicy`."""
+
+    # -- Attributes -- #
+
+    max_attempts: int
+    backoff: float
+    retry_on_codes: frozenset[int]
+
+    DEFAULT_ATTEMPTS: ClassVar[int] = 3
+    DEFAULT_BACKOFF: ClassVar[float] = 0.5
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_policy(
+        cls,
+        policy: RetryPolicy | None,
+        *,
+        default_codes: frozenset[int] = DEFAULT_RETRY_STATUS_CODES,
+    ) -> RetryStrategy:
+        """Normalize user policy values into a deterministic strategy."""
+        policy = policy or {}
+        attempts = to_positive_int(
+            policy.get('max_attempts'),
+            cls.DEFAULT_ATTEMPTS,
+        )
+        backoff = to_float(
+            policy.get('backoff'),
+            default=cls.DEFAULT_BACKOFF,
+            minimum=0.0,
+        ) or cls.DEFAULT_BACKOFF
+        retry_on = policy.get('retry_on') or []
+        normalized: set[int] = set()
+        for code in retry_on:
+            value = to_int(code)
+            if value is not None and value > 0:
+                normalized.add(value)
+        if not normalized:
+            normalized = set(default_codes)
+        return cls(
+            max_attempts=attempts,
+            backoff=backoff,
+            retry_on_codes=frozenset(normalized),
+        )
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -88,7 +153,7 @@ class RetryManager:
 
     Attributes
     ----------
-    DEFAULT_STATUS_CODES : ClassVar[set[int]]
+    DEFAULT_STATUS_CODES : ClassVar[frozenset[int]]
         Default HTTP status codes considered retryable.
     policy : RetryPolicy
         Retry policy configuration.
@@ -96,21 +161,36 @@ class RetryManager:
         Whether to retry on network errors (timeouts, connection errors).
     cap : float
         Maximum sleep seconds for jittered backoff.
-    sleeper : Callable[[float], None]
+    sleeper : Sleeper
         Callable used to sleep between retry attempts. Defaults to
         :func:`time.sleep`.
+    strategy : RetryStrategy
+        Normalized view of the retry policy (backoff, attempts, codes).
     """
 
     # -- Attributes -- #
 
-    DEFAULT_STATUS_CODES: ClassVar[set[int]] = {429, 502, 503, 504}
+    DEFAULT_STATUS_CODES: ClassVar[frozenset[int]] = DEFAULT_RETRY_STATUS_CODES
 
     policy: RetryPolicy
     retry_network_errors: bool = False
     cap: float = 30.0
-    sleeper: Callable[[float], None] = time.sleep
+    sleeper: Sleeper = time.sleep
+    strategy: RetryStrategy = field(init=False, repr=False)
 
-    # -- Getters -- #
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'strategy',
+            RetryStrategy.from_policy(
+                self.policy,
+                default_codes=self.DEFAULT_STATUS_CODES,
+            ),
+        )
+
+    # -- Properties -- #
 
     @property
     def backoff(self) -> float:
@@ -122,11 +202,7 @@ class RetryManager:
         float
             Backoff factor.
         """
-        return to_float(
-            self.policy.get('backoff'),
-            default=0.5,
-            minimum=0.0,
-        ) or 0.5
+        return self.strategy.backoff
 
     @property
     def max_attempts(self) -> int:
@@ -138,7 +214,7 @@ class RetryManager:
         int
             Maximum number of retry attempts.
         """
-        return to_positive_int(self.policy.get('max_attempts'), 3)
+        return self.strategy.max_attempts
 
     @property
     def retry_on_codes(self) -> set[int]:
@@ -150,15 +226,7 @@ class RetryManager:
         set[int]
             Retry HTTP status codes.
         """
-        codes = self.policy.get('retry_on')
-        if not codes:
-            return self.DEFAULT_STATUS_CODES
-        normalized: set[int] = set()
-        for code in codes:
-            value = to_int(code)
-            if value is not None and value > 0:
-                normalized.add(value)
-        return normalized or self.DEFAULT_STATUS_CODES
+        return set(self.strategy.retry_on_codes)
 
     # -- Instance Methods -- #
 
