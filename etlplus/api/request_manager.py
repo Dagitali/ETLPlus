@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.api.request_manager` module.
 
-Helper utilities for handling REST API endpoint request/response helper
-utilities.
+HTTP request orchestration with retries and session lifecycle control.
 """
 from __future__ import annotations
 
@@ -22,6 +21,11 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
+
+# SECTION: TYPE ALIASES ==================================================== #
+
+
+type TimeoutInput = float | tuple[float | None, float | None] | None
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -43,7 +47,7 @@ class RequestManager:
         Retry policy to apply to requests. Default is ``None``.
     retry_network_errors : bool, optional
         Whether to retry on network errors. Default is ``False``.
-    default_timeout : float, optional
+    default_timeout : TimeoutInput, optional
         Default timeout for requests in seconds. Default is 10.0.
     session : requests.Session | None, optional
         Optional pre-configured session to use. Default is ``None``.
@@ -58,7 +62,7 @@ class RequestManager:
         Retry policy to apply to requests.
     retry_network_errors : bool
         Whether to retry on network errors.
-    default_timeout : float
+    default_timeout : TimeoutInput
         Default timeout for requests in seconds.
     session : requests.Session | None
         Optional pre-configured session to use.
@@ -72,7 +76,7 @@ class RequestManager:
 
     retry: RetryPolicy | None = None
     retry_network_errors: bool = False
-    default_timeout: float = 10.0
+    default_timeout: TimeoutInput = 10.0
     session: requests.Session | None = None
     session_factory: Callable[[], requests.Session] | None = None
     retry_cap: float = 30.0
@@ -85,7 +89,14 @@ class RequestManager:
     # -- Magic Methods (Context Manager Protocol) -- #
 
     def __enter__(self) -> RequestManager:
-        """Enter the runtime context related to this object."""
+        """
+        Enter the runtime context and ensure a session is available.
+
+        Returns
+        -------
+        RequestManager
+            The manager instance with an active session context.
+        """
         if self._ctx_session is not None:
             return self
         if self.session is not None:
@@ -109,7 +120,7 @@ class RequestManager:
         tb: Any,
     ) -> None:
         """
-        Exit the runtime context related to this object.
+        Exit the runtime context and close owned sessions.
 
         Parameters
         ----------
@@ -118,7 +129,7 @@ class RequestManager:
         exc : BaseException | None
             Exception instance if raised, else ``None``.
         tb : Any
-            Traceback if exception raised, else ``None``.
+            Traceback if an exception was raised, else ``None``.
         """
         if self._ctx_session is None:
             return
@@ -289,7 +300,7 @@ class RequestManager:
         url: str,
         *,
         session: requests.Session | None,
-        timeout: Any,
+        timeout: TimeoutInput,
         request_callable: Callable[..., JSONData] | None = None,
         **kwargs: Any,
     ) -> JSONData:
@@ -304,8 +315,8 @@ class RequestManager:
             Target URL.
         session : requests.Session | None
             Optional HTTP session to use.
-        timeout : Any
-            Timeout for the request.
+        timeout : TimeoutInput
+            Timeout for the request (float, tuple, or ``None``).
         request_callable : Callable[..., JSONData] | None, optional
             Optional custom request function.
         **kwargs : Any
@@ -438,23 +449,26 @@ class RequestManager:
         return requests.request
 
     def _resolve_timeout(
-        self, timeout: Any,
-    ) -> Any:
+        self,
+        timeout: TimeoutInput | object,
+    ) -> TimeoutInput:
         """
         Resolve the timeout value, defaulting to the instance's
         ``default_timeout`` if not provided.
 
         Parameters
         ----------
-        timeout : Any
-            Supplied timeout value.
+        timeout : TimeoutInput | object
+            Supplied timeout value or sentinel.
 
         Returns
         -------
-        Any
+        TimeoutInput
             Resolved timeout value.
         """
-        return self.default_timeout if timeout is _MISSING else timeout
+        if timeout is _MISSING:
+            return cast(TimeoutInput, self.default_timeout)
+        return cast(TimeoutInput, timeout)
 
     def _send_http_request(
         self,
@@ -462,7 +476,7 @@ class RequestManager:
         url: str,
         *,
         session: requests.Session | None,
-        timeout: Any,
+        timeout: TimeoutInput,
         **kwargs: Any,
     ) -> Response:
         """
@@ -476,7 +490,7 @@ class RequestManager:
             Target URL for the request.
         session : requests.Session | None
             Optional session object to use for the request.
-        timeout : Any
+        timeout : TimeoutInput
             Timeout value for the request.
         **kwargs : Any
             Additional keyword arguments for the request.
