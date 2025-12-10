@@ -15,16 +15,21 @@ Examples
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
+
+from ..types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Type Aliases
+    'FetchPageCallable',
     'Headers',
     'Params',
+    'RateLimitOverrides',
     'Url',
 ]
 
@@ -32,6 +37,11 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+type FetchPageCallable = Callable[
+    [Url, Params | None, int | None],
+    JSONData,
+]
 type Headers = Mapping[str, str]
 type Params = Mapping[str, Any]
+type RateLimitOverrides = Mapping[str, Any] | None
 type Url = str
