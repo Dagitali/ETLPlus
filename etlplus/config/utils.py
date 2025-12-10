@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     'cast_str_dict',
+    'coerce_dict',
     'deep_substitute',
     'maybe_mapping',
     'pagination_from_defaults',
@@ -72,6 +73,25 @@ def cast_str_dict(
     if not mapping:
         return {}
     return {str(key): str(value) for key, value in mapping.items()}
+
+
+def coerce_dict(
+    value: Any,
+) -> dict[str, Any]:
+    """
+    Return a ``dict`` copy when ``value`` is mapping-like.
+
+    Parameters
+    ----------
+    value : Any
+        Mapping-like object to copy. ``None`` returns an empty dict.
+
+    Returns
+    -------
+    dict[str, Any]
+        Shallow copy of ``value`` converted to a standard ``dict``.
+    """
+    return dict(value) if isinstance(value, Mapping) else {}
 
 
 def deep_substitute(
@@ -169,6 +189,7 @@ def pagination_from_defaults(
     page_size = obj.get('page_size')
     cursor_param = obj.get('cursor_param')
     cursor_path = obj.get('cursor_path')
+    start_cursor = obj.get('start_cursor')
     records_path = obj.get('records_path')
     fallback_path = obj.get('fallback_path')
     max_pages = obj.get('max_pages')
@@ -208,7 +229,7 @@ def pagination_from_defaults(
         page_size=to_int(page_size),
         cursor_param=cursor_param,
         cursor_path=cursor_path,
-        start_cursor=None,
+        start_cursor=start_cursor,
         records_path=records_path,
         fallback_path=fallback_path,
         max_pages=to_int(max_pages),
