@@ -45,4 +45,6 @@ type FetchPageCallable = Callable[
     [Url, Params | None, int | None],
     JSONData,
 ]
-type RateLimitOverrides = Mapping[str, Any] | None
+
+type RateLimitOverrideValue = float | int | None
+type RateLimitOverrides = Mapping[str, RateLimitOverrideValue] | None
