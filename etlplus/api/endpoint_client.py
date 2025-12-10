@@ -67,7 +67,7 @@ from .rate_limiter import RateLimiter
 from .request_manager import RequestManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
-from .transport import build_http_adapter
+from .transport import build_session_with_adapters
 from .types import Headers
 from .types import Params
 from .types import RateLimitOverrides
@@ -301,22 +301,9 @@ class EndpointClient:
             and self.session_factory is None
             and self.session_adapters
         ):
-            adapters_cfg = list(self.session_adapters)
-
-            def _factory() -> requests.Session:
-                s = requests.Session()
-                for cfg in adapters_cfg:
-                    prefix = cfg.get('prefix', 'https://')
-                    try:
-                        adapter = build_http_adapter(cfg)
-                        s.mount(prefix, adapter)
-                    except (ValueError, TypeError, AttributeError):
-                        # If mounting fails for any reason, continue so that
-                        # at least a default Session is returned.
-                        continue
-                return s
-
-            object.__setattr__(self, 'session_factory', _factory)
+            adapters_cfg = tuple(self.session_adapters)
+            factory = partial(build_session_with_adapters, adapters_cfg)
+            object.__setattr__(self, 'session_factory', factory)
 
         manager = RequestManager(
             retry=self.retry,
