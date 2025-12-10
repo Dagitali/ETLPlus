@@ -32,6 +32,7 @@ from .types import RateLimitOverrides
 
 __all__ = [
     # Classes
+    'RateLimitConfig',
     'RateLimiter',
 
     # Typed Dicts
@@ -120,6 +121,56 @@ def _normalized_rate_values(
         to_positive_float(cfg.get('sleep_seconds')),
         to_positive_float(cfg.get('max_per_sec')),
     )
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True)
+class RateLimitConfig:
+    """Lightweight container for optional rate-limit settings."""
+
+    sleep_seconds: float | int | None = None
+    max_per_sec: float | int | None = None
+
+    # -- Instance Methods -- #
+
+    def as_mapping(self) -> RateLimitConfigMap:
+        """Return a normalized mapping consumable by rate-limit helpers."""
+        cfg: RateLimitConfigMap = {}
+        if (sleep := to_float(self.sleep_seconds)) is not None:
+            cfg['sleep_seconds'] = sleep
+        if (rate := to_float(self.max_per_sec)) is not None:
+            cfg['max_per_sec'] = rate
+        return cfg
+
+    def validate_bounds(self) -> list[str]:
+        """Return human-readable warnings for suspicious numeric bounds."""
+        warnings: list[str] = []
+        if (sleep := to_float(self.sleep_seconds)) is not None and sleep < 0:
+            warnings.append('sleep_seconds should be >= 0')
+        if (rate := to_float(self.max_per_sec)) is not None and rate <= 0:
+            warnings.append('max_per_sec should be > 0')
+        return warnings
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any] | RateLimitConfig | None,
+    ) -> RateLimitConfig | None:
+        """Parse mappings or existing configs into :class:`RateLimitConfig`."""
+        if obj is None:
+            return None
+        if isinstance(obj, cls):
+            return obj
+        if not isinstance(obj, Mapping):
+            return None
+        return cls(
+            sleep_seconds=to_float(obj.get('sleep_seconds')),
+            max_per_sec=to_float(obj.get('max_per_sec')),
+        )
 
 
 # SECTION: CLASSES ========================================================== #
