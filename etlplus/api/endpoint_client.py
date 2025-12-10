@@ -64,13 +64,13 @@ from .paginator import PaginationConfigMap
 from .paginator import Paginator
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
-from .rate_limiter import compute_sleep_seconds
 from .request_manager import RequestManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
 from .transport import build_http_adapter
 from .types import Headers
 from .types import Params
+from .types import RateLimitOverrides
 from .types import Url
 
 # SECTION: CLASSES ========================================================== #
@@ -371,7 +371,7 @@ class EndpointClient:
         headers: Headers | None,
         timeout: float | int | None,
         sleep_seconds: float,
-        rate_limit_overrides: Mapping[str, Any] | None,
+        rate_limit_overrides: RateLimitOverrides,
     ) -> PaginationClient:
         """
         Create a :class:`PaginationClient` wired to the request manager.
@@ -386,7 +386,7 @@ class EndpointClient:
             Timeout for HTTP requests.
         sleep_seconds : float
             Number of seconds to sleep between requests.
-        rate_limit_overrides : Mapping[str, Any] | None
+        rate_limit_overrides : RateLimitOverrides
             Overrides for rate limiting.
 
         Returns
@@ -558,7 +558,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
         """
         Paginate by endpoint key.
@@ -585,7 +585,7 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
-        rate_limit_overrides : Mapping[str, Any] | None
+        rate_limit_overrides : RateLimitOverrides, optional
             Optional per-call overrides merged with ``self.rate_limit`` when
             deriving pacing.
 
@@ -621,7 +621,7 @@ class EndpointClient:
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records for a registered endpoint using pagination.
@@ -650,7 +650,7 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
-        rate_limit_overrides : Mapping[str, Any] | None
+        rate_limit_overrides : RateLimitOverrides, optional
             Optional per-call overrides merged with ``self.rate_limit`` when
             deriving pacing.
 
@@ -683,7 +683,7 @@ class EndpointClient:
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
         """
         Paginate API responses for an absolute URL and aggregate records.
@@ -702,7 +702,7 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
-        rate_limit_overrides : Mapping[str, Any] | None
+        rate_limit_overrides : RateLimitOverrides, optional
             Optional per-call overrides merged with ``self.rate_limit`` when
             deriving pacing.
 
@@ -746,7 +746,7 @@ class EndpointClient:
         pagination: PaginationConfigMap | None,
         *,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
+        rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
         """
         Stream records by paginating an absolute URL.
@@ -765,7 +765,7 @@ class EndpointClient:
             Pagination configuration.
         sleep_seconds : float
             Time to sleep between requests.
-        rate_limit_overrides : Mapping[str, Any] | None
+        rate_limit_overrides : RateLimitOverrides, optional
             Optional per-call overrides merged with ``self.rate_limit`` when
             deriving pacing.
 
@@ -951,7 +951,7 @@ class EndpointClient:
     def _resolve_sleep_seconds(
         explicit: float,
         rate_limit: RateLimitConfigMap | None,
-        overrides: Mapping[str, Any] | None = None,
+        overrides: RateLimitOverrides = None,
     ) -> float:
         """
         Derive the effective sleep interval honoring rate-limit config.
@@ -962,7 +962,7 @@ class EndpointClient:
             Explicit sleep seconds provided by the caller.
         rate_limit : RateLimitConfigMap | None
             Client-wide rate limit configuration.
-        overrides : Mapping[str, Any] | None, optional
+        overrides : RateLimitOverrides, optional
             Per-call overrides that take precedence over ``rate_limit``.
 
         Returns
@@ -972,4 +972,7 @@ class EndpointClient:
         """
         if explicit and explicit > 0:
             return explicit
-        return compute_sleep_seconds(rate_limit, overrides)
+        return RateLimiter.resolve_sleep_seconds(
+            rate_limit=rate_limit,
+            overrides=overrides,
+        )

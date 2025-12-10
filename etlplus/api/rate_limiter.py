@@ -34,9 +34,6 @@ __all__ = [
     # Classes
     'RateLimiter',
 
-    # Functions
-    'compute_sleep_seconds',
-
     # Typed Dicts
     'RateLimitConfigMap',
 ]
@@ -122,54 +119,6 @@ def _normalized_rate_values(
     return (
         to_positive_float(cfg.get('sleep_seconds')),
         to_positive_float(cfg.get('max_per_sec')),
-    )
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def compute_sleep_seconds(
-    rate_limit: RateLimitConfigMap | None = None,
-    overrides: RateLimitOverrides = None,
-) -> float:
-    """
-    Compute a delay from the provided configuration mappings.
-
-    Precedence is:
-
-    1. ``overrides["sleep_seconds"]``
-    2. ``overrides["max_per_sec"]``
-    3. ``rate_limit["sleep_seconds"]``
-    4. ``rate_limit["max_per_sec"]``
-
-    Non-numeric or non-positive values are ignored.
-
-    Parameters
-    ----------
-    rate_limit : RateLimitConfigMap | None, optional
-        Base rate-limit configuration. May contain ``"sleep_seconds"`` or
-        ``"max_per_sec"``.
-    overrides : RateLimitOverrides, optional
-        Optional overrides with the same keys as ``rate_limit``.
-
-    Returns
-    -------
-    float
-        Computed sleep interval in seconds (always >= 0).
-
-    Examples
-    --------
-    >>> from etlplus.api.rate_limiter import compute_sleep_seconds
-    >>> compute_sleep_seconds({"sleep_seconds": 0.2}, None)
-    0.2
-    >>> compute_sleep_seconds({"max_per_sec": 4}, None)
-    0.25
-    >>> compute_sleep_seconds(None, {"max_per_sec": 2})
-    0.5
-    """
-    return RateLimiter.resolve_sleep_seconds(
-        rate_limit=rate_limit,
-        overrides=overrides,
     )
 
 

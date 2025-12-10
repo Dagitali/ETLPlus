@@ -69,8 +69,6 @@ See Also
 - :mod:`etlplus.api.paginator` for pagination config shapes and record helpers
 - :mod:`etlplus.api.retry_manager` for retry policies
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
-- :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
-  from rate limit settings
 """
 from __future__ import annotations
 
@@ -83,7 +81,6 @@ from .paginator import PaginationType
 from .paginator import Paginator
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
-from .rate_limiter import compute_sleep_seconds
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
@@ -109,7 +106,6 @@ __all__ = [
 
     # Functions
     'build_http_adapter',
-    'compute_sleep_seconds',
 
     # Type Aliases
     'CursorPaginationConfigMap',
