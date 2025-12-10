@@ -40,6 +40,7 @@ from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from typing import Any
 from typing import ClassVar
 from typing import Literal
@@ -80,6 +81,40 @@ __all__ = [
 
 
 _MISSING = object()
+
+
+# SECTION: INTERNAL HELPERS ================================================ #
+
+
+def _resolve_path(
+    obj: Any,
+    path: str | None,
+) -> Any:
+    """
+    Resolve dotted ``path`` within ``obj`` or return ``_MISSING``.
+
+    Parameters
+    ----------
+    obj : Any
+        JSON payload from an API response.
+    path : str | None
+        Dotted path to the target value within ``obj``.
+
+    Returns
+    -------
+    Any
+        Target value from the payload, or ``_MISSING`` if the path does not
+        exist.
+    """
+    if not isinstance(path, str) or not path:
+        return obj
+    cur: Any = obj
+    for part in path.split('.'):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return _MISSING
+    return cur
 
 
 # SECTION: ENUMS ============================================================ #
@@ -793,18 +828,8 @@ class Paginator:
         lists, mappings, and scalars by coercing non-dict items into
         ``{"value": x}``.
         """
-        def _resolve(obj: Any, path: str | None) -> Any:
-            if not isinstance(path, str) or not path:
-                return obj
-            cur: Any = obj
-            for part in path.split('.'):
-                if isinstance(cur, dict) and part in cur:
-                    cur = cur[part]
-                else:
-                    return _MISSING
-            return cur
-
-        data = _resolve(x, records_path)
+        resolver = partial(_resolve_path, x)
+        data = resolver(records_path)
         if data is _MISSING:
             data = None
 
@@ -812,7 +837,7 @@ class Paginator:
             data is None
             or (isinstance(data, list) and not data)
         ):
-            fallback = _resolve(x, fallback_path)
+            fallback = resolver(fallback_path)
             if fallback is not _MISSING:
                 data = fallback
 
