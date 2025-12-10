@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.api.test_u_response` module.
+:mod:`tests.unit.api.test_u_paginator` module.
 
-Unit tests for :class:`etlplus.api.response.Paginator`.
+Unit tests for :class:`etlplus.api.paginator.Paginator`.
 
 Notes
 -----
@@ -13,7 +13,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_response.py
+>>> pytest tests/unit/api/test_u_paginator.py
 """
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ from typing import cast
 import pytest
 
 from etlplus.api.client import EndpointClient
+from etlplus.api.paginator import PagePaginationConfigMap
+from etlplus.api.paginator import PaginationConfigMap
+from etlplus.api.paginator import PaginationType
+from etlplus.api.paginator import Paginator
 from etlplus.api.rate_limiter import RateLimiter
-from etlplus.api.response import PagePaginationConfigMap
-from etlplus.api.response import PaginationConfigMap
-from etlplus.api.response import PaginationType
-from etlplus.api.response import Paginator
 
 # SECTION: HELPERS ========================================================== #
 
