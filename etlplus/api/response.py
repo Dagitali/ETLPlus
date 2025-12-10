@@ -65,7 +65,6 @@ from .types import Url
 __all__ = [
     # Classes
     'Paginator',
-    # 'PaginatorRunner',
 
     # Enums
     'PaginationType',
