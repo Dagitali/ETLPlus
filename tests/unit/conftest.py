@@ -275,8 +275,9 @@ def extract_stub_factory() -> Callable[..., Any]:
     (Hypothesis-friendly).
 
     Each invocation patches
-    :meth:`etlplus.api.client.EndpointClient.request_once` for the duration of
-    the context manager and restores the original afterwards.
+    :meth:`etlplus.api.endpoint_client.EndpointClient.request_once` for the
+    duration of the context manager and restores the original
+    afterwards.
 
     Returns
     -------
