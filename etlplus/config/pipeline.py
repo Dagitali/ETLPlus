@@ -33,7 +33,9 @@ from .jobs import TransformRef
 from .jobs import ValidationRef
 from .profile import ProfileConfig
 from .types import Connector
+from .utils import coerce_dict
 from .utils import deep_substitute
+from .utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -45,28 +47,6 @@ __all__ = ['PipelineConfig', 'load_pipeline_config']
 
 
 type StrAnyMap = Mapping[str, Any]
-
-
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _as_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return the value if it is a mapping; otherwise return ``None``.
-
-    Parameters
-    ----------
-    value : Any
-        The value to check.
-
-    Returns
-    -------
-    StrAnyMap | None
-        The mapping or ``None``.
-    """
-    return value if isinstance(value, Mapping) else None
 
 
 def _build_jobs(
@@ -86,22 +66,22 @@ def _build_jobs(
         Parsed job configurations.
     """
     jobs: list[JobConfig] = []
-    for j in (raw.get('jobs', []) or []):
-        if not isinstance(j, Mapping):
+    for job_raw in (raw.get('jobs', []) or []):
+        if not (job := maybe_mapping(job_raw)):
             continue
-        name = j.get('name')
+        name = job.get('name')
         if not isinstance(name, str):
             continue
 
-        extract = _build_extract_ref(j.get('extract'))
-        validate = _build_validation_ref(j.get('validate'))
-        transform = _build_transform_ref(j.get('transform'))
-        load = _build_load_ref(j.get('load'))
+        extract = _build_extract_ref(job.get('extract'))
+        validate = _build_validation_ref(job.get('validate'))
+        transform = _build_transform_ref(job.get('transform'))
+        load = _build_load_ref(job.get('load'))
 
         jobs.append(
             JobConfig(
                 name=name,
-                description=j.get('description'),
+                description=job.get('description'),
                 extract=extract,
                 validate=validate,
                 transform=transform,
@@ -173,10 +153,10 @@ def _build_connectors(
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
-        if not isinstance(obj, Mapping):
+        if not (entry := maybe_mapping(obj)):
             continue
         try:
-            items.append(parse_connector(obj))
+            items.append(parse_connector(entry))
         except TypeError:
             # Skip unsupported types or malformed entries
             continue
@@ -199,12 +179,12 @@ def _build_extract_ref(
     ExtractRef | None
         Constructed extract reference, or ``None`` if invalid.
     """
-    data = _as_mapping(value)
+    data = maybe_mapping(value)
     if not data or not data.get('source'):
         return None
     return ExtractRef(
         source=str(data.get('source')),
-        options=dict(data.get('options', {}) or {}),
+        options=coerce_dict(data.get('options')),
     )
 
 
@@ -224,12 +204,12 @@ def _build_load_ref(
     LoadRef | None
         Constructed load reference, or ``None`` if invalid.
     """
-    data = _as_mapping(value)
+    data = maybe_mapping(value)
     if not data or not data.get('target'):
         return None
     return LoadRef(
         target=str(data.get('target')),
-        overrides=dict(data.get('overrides', {}) or {}),
+        overrides=coerce_dict(data.get('overrides')),
     )
 
 
@@ -249,7 +229,7 @@ def _build_transform_ref(
     TransformRef | None
         Constructed transform reference, or ``None`` if invalid.
     """
-    data = _as_mapping(value)
+    data = maybe_mapping(value)
     if not data or not data.get('pipeline'):
         return None
     return TransformRef(pipeline=str(data.get('pipeline')))
@@ -270,7 +250,7 @@ def _build_validation_ref(
     ValidationRef | None
         Constructed validation reference, or ``None`` if invalid.
     """
-    data = _as_mapping(value)
+    data = maybe_mapping(value)
     if not data or not data.get('ruleset'):
         return None
     return ValidationRef(
@@ -429,25 +409,26 @@ class PipelineConfig:
         version = raw.get('version')
 
         # Profile and vars
-        prof_raw = raw.get('profile', {}) or {}
+        prof_raw = maybe_mapping(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
-        vars_map: dict[str, Any] = dict(raw.get('vars', {}) or {})
+        vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
 
         # APIs
         apis: dict[str, ApiConfig] = {}
-        for api_name, api_obj in (_as_mapping(raw.get('apis')) or {}).items():
+        api_block = maybe_mapping(raw.get('apis')) or {}
+        for api_name, api_obj in api_block.items():
             apis[str(api_name)] = ApiConfig.from_obj(api_obj)
 
         # Databases and file systems (pass-through structures)
-        databases = dict(_as_mapping(raw.get('databases')) or {})
-        file_systems = dict(_as_mapping(raw.get('file_systems')) or {})
+        databases = coerce_dict(raw.get('databases'))
+        file_systems = coerce_dict(raw.get('file_systems'))
 
         # Sources
         sources = _build_sources(raw)
 
         # Validations/Transforms
-        validations = dict(_as_mapping(raw.get('validations')) or {})
-        transforms = dict(_as_mapping(raw.get('transforms')) or {})
+        validations = coerce_dict(raw.get('validations'))
+        transforms = coerce_dict(raw.get('transforms'))
 
         # Targets
         targets = _build_targets(raw)
