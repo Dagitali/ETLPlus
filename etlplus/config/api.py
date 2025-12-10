@@ -31,6 +31,8 @@ from ..api import EndpointClient
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
+from .utils import coerce_dict
+from .utils import maybe_mapping
 from .utils import pagination_from_defaults
 from .utils import rate_limit_from_defaults
 
@@ -78,27 +80,23 @@ def _effective_service_defaults(
     return fallback_base, fallback_headers
 
 
-def _mapping_or_empty(value: Any) -> dict[str, Any]:
-    return dict(value or {}) if isinstance(value, Mapping) else {}
-
-
 def _parse_endpoints(raw: Any) -> dict[str, EndpointConfig]:
-    if not isinstance(raw, Mapping):
+    if not (mapping := maybe_mapping(raw)):
         return {}
-    parsed: dict[str, EndpointConfig] = {}
-    for name, data in raw.items():
-        parsed[str(name)] = EndpointConfig.from_obj(data)
-    return parsed
+    return {
+        str(name): EndpointConfig.from_obj(data)
+        for name, data in mapping.items()
+    }
 
 
 def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
-    if not isinstance(raw, Mapping):
+    if not (mapping := maybe_mapping(raw)):
         return {}
     parsed: dict[str, ApiProfileConfig] = {}
-    for name, profile_raw in raw.items():
-        if not isinstance(profile_raw, Mapping):
+    for name, profile_raw in mapping.items():
+        if not (profile_map := maybe_mapping(profile_raw)):
             continue
-        parsed[str(name)] = ApiProfileConfig.from_obj(profile_raw)
+        parsed[str(name)] = ApiProfileConfig.from_obj(profile_map)
     return parsed
 
 
@@ -188,14 +186,14 @@ class ApiProfileConfig:
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        defaults_raw = _mapping_or_empty(obj.get('defaults'))
+        defaults_raw = coerce_dict(obj.get('defaults'))
         merged_headers = (
             cast_str_dict(defaults_raw.get('headers'))
             | cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
-        auth = dict(obj.get('auth', {}) or {})
+        auth = coerce_dict(obj.get('auth'))
 
         pag_def = pagination_from_defaults(defaults_raw.get('pagination'))
         rl_def = rate_limit_from_defaults(defaults_raw.get('rate_limit'))
@@ -506,7 +504,10 @@ class EndpointConfig:
         Raises
         ------
         TypeError
-            If the input is neither str nor mapping, or ``path`` is missing.
+            If the input is neither str nor mapping, ``path`` is missing, or
+            ``query_params`` is not a mapping.
+        ValueError
+            If ``path_params`` is provided but is not a mapping.
 
         Notes
         -----
@@ -521,11 +522,25 @@ class EndpointConfig:
                 if not isinstance(path, str):
                     raise TypeError('EndpointConfig requires a "path" (str)')
 
+                path_params_raw = obj.get('path_params')
+                if (
+                    path_params_raw is not None
+                    and not isinstance(path_params_raw, Mapping)
+                ):
+                    raise ValueError('path_params must be a mapping if set')
+
+                query_params_raw = obj.get('query_params')
+                if (
+                    query_params_raw is not None
+                    and not isinstance(query_params_raw, Mapping)
+                ):
+                    raise TypeError('query_params must be a mapping if set')
+
                 return cls(
                     path=path,
                     method=obj.get('method'),
-                    path_params=dict(obj.get('path_params', {}) or {}),
-                    query_params=dict(obj.get('query_params', {}) or {}),
+                    path_params=coerce_dict(path_params_raw),
+                    query_params=coerce_dict(query_params_raw),
                     body=obj.get('body'),
                     pagination=PaginationConfig.from_obj(
                         obj.get('pagination'),
