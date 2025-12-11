@@ -2,6 +2,24 @@
 :mod:`etlplus.types` module.
 
 Shared type aliases leveraged across ETLPlus modules.
+
+Notes
+-----
+- Centralizes JSON- and pipeline-oriented aliases to keep modules focused on
+    orchestration logic.
+- Relies on Python 3.13 ``type`` statements for readability and IDE support.
+
+Examples
+--------
+>>> from etlplus.types import JSONDict, PipelineConfig
+>>> payload: JSONDict = {'id': 1, 'name': 'Ada'}
+>>> isinstance(payload, dict)
+True
+>>> config: PipelineConfig = {
+...     'filter': [{'field': 'id', 'op': '>', 'value': 0}],
+... }
+>>> isinstance(config, dict)
+True
 """
 from __future__ import annotations
 
