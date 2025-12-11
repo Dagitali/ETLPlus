@@ -13,9 +13,14 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import Self
+
+from .utils import coerce_dict
+from .utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -27,6 +32,12 @@ __all__ = [
     'TransformRef',
     'ValidationRef',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #
@@ -49,6 +60,36 @@ class ExtractRef:
 
     source: str
     options: dict[str, Any] = field(default_factory=dict)
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """Parse a mapping into an :class:`ExtractRef` instance.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping with ``source`` and optional ``options``.
+
+        Returns
+        -------
+        Self | None
+            Parsed reference or ``None`` when the payload is invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        source = data.get('source')
+        if not isinstance(source, str):
+            return None
+        return cls(
+            source=source,
+            options=coerce_dict(data.get('options')),
+        )
 
 
 @dataclass(slots=True)
@@ -81,6 +122,45 @@ class JobConfig:
     transform: TransformRef | None = None
     load: LoadRef | None = None
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """Parse a mapping into a :class:`JobConfig` instance.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping describing a job block.
+
+        Returns
+        -------
+        Self | None
+            Parsed job configuration or ``None`` if invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        name = data.get('name')
+        if not isinstance(name, str):
+            return None
+
+        description = data.get('description')
+        if description is not None and not isinstance(description, str):
+            description = str(description)
+
+        return cls(
+            name=name,
+            description=description,
+            extract=ExtractRef.from_obj(data.get('extract')),
+            validate=ValidationRef.from_obj(data.get('validate')),
+            transform=TransformRef.from_obj(data.get('transform')),
+            load=LoadRef.from_obj(data.get('load')),
+        )
+
 
 @dataclass(slots=True)
 class LoadRef:
@@ -100,6 +180,36 @@ class LoadRef:
     target: str
     overrides: dict[str, Any] = field(default_factory=dict)
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """Parse a mapping into a :class:`LoadRef` instance.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping with ``target`` and optional ``overrides``.
+
+        Returns
+        -------
+        Self | None
+            Parsed reference or ``None`` when invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        target = data.get('target')
+        if not isinstance(target, str):
+            return None
+        return cls(
+            target=target,
+            overrides=coerce_dict(data.get('overrides')),
+        )
+
 
 @dataclass(slots=True)
 class TransformRef:
@@ -115,6 +225,33 @@ class TransformRef:
     # -- Attributes -- #
 
     pipeline: str
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """Parse a mapping into a :class:`TransformRef` instance.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping with ``pipeline``.
+
+        Returns
+        -------
+        Self | None
+            Parsed reference or ``None`` when invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        pipeline = data.get('pipeline')
+        if not isinstance(pipeline, str):
+            return None
+        return cls(pipeline=pipeline)
 
 
 @dataclass(slots=True)
@@ -138,3 +275,40 @@ class ValidationRef:
     ruleset: str
     severity: str | None = None  # warn|error
     phase: str | None = None     # before_transform|after_transform|both
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """Parse a mapping into a :class:`ValidationRef` instance.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping with ``ruleset`` plus optional metadata.
+
+        Returns
+        -------
+        Self | None
+            Parsed reference or ``None`` when invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        ruleset = data.get('ruleset')
+        if not isinstance(ruleset, str):
+            return None
+        severity = data.get('severity')
+        if severity is not None and not isinstance(severity, str):
+            severity = str(severity)
+        phase = data.get('phase')
+        if phase is not None and not isinstance(phase, str):
+            phase = str(phase)
+        return cls(
+            ruleset=ruleset,
+            severity=severity,
+            phase=phase,
+        )
