@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
+from ..types import StrAnyMap
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
@@ -50,12 +51,6 @@ __all__ = [
     'ApiProfileConfig',
     'EndpointConfig',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
