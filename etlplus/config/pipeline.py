@@ -24,6 +24,7 @@ from typing import Self
 
 from ..enums import FileFormat
 from ..file import File
+from ..types import StrAnyMap
 from .api import ApiConfig
 from .connector import parse_connector
 from .jobs import JobConfig
@@ -37,12 +38,6 @@ from .utils import maybe_mapping
 
 
 __all__ = ['PipelineConfig', 'load_pipeline_config']
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 def _build_jobs(
