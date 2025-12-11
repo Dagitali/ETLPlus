@@ -26,11 +26,7 @@ from ..enums import FileFormat
 from ..file import File
 from .api import ApiConfig
 from .connector import parse_connector
-from .jobs import ExtractRef
 from .jobs import JobConfig
-from .jobs import LoadRef
-from .jobs import TransformRef
-from .jobs import ValidationRef
 from .profile import ProfileConfig
 from .types import Connector
 from .utils import coerce_dict
@@ -67,27 +63,9 @@ def _build_jobs(
     """
     jobs: list[JobConfig] = []
     for job_raw in (raw.get('jobs', []) or []):
-        if not (job := maybe_mapping(job_raw)):
-            continue
-        name = job.get('name')
-        if not isinstance(name, str):
-            continue
-
-        extract = _build_extract_ref(job.get('extract'))
-        validate = _build_validation_ref(job.get('validate'))
-        transform = _build_transform_ref(job.get('transform'))
-        load = _build_load_ref(job.get('load'))
-
-        jobs.append(
-            JobConfig(
-                name=name,
-                description=job.get('description'),
-                extract=extract,
-                validate=validate,
-                transform=transform,
-                load=load,
-            ),
-        )
+        job_cfg = JobConfig.from_obj(job_raw)
+        if job_cfg is not None:
+            jobs.append(job_cfg)
 
     return jobs
 
@@ -162,102 +140,6 @@ def _build_connectors(
             continue
 
     return items
-
-
-def _build_extract_ref(
-    value: Any,
-) -> ExtractRef | None:
-    """
-    Build an ``ExtractRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw extract reference value.
-    Returns
-    -------
-    ExtractRef | None
-        Constructed extract reference, or ``None`` if invalid.
-    """
-    data = maybe_mapping(value)
-    if not data or not data.get('source'):
-        return None
-    return ExtractRef(
-        source=str(data.get('source')),
-        options=coerce_dict(data.get('options')),
-    )
-
-
-def _build_load_ref(
-    value: Any,
-) -> LoadRef | None:
-    """
-    Build a ``LoadRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw load reference value.
-
-    Returns
-    -------
-    LoadRef | None
-        Constructed load reference, or ``None`` if invalid.
-    """
-    data = maybe_mapping(value)
-    if not data or not data.get('target'):
-        return None
-    return LoadRef(
-        target=str(data.get('target')),
-        overrides=coerce_dict(data.get('overrides')),
-    )
-
-
-def _build_transform_ref(
-    value: Any,
-) -> TransformRef | None:
-    """
-    Build a ``TransformRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw transform reference value.
-
-    Returns
-    -------
-    TransformRef | None
-        Constructed transform reference, or ``None`` if invalid.
-    """
-    data = maybe_mapping(value)
-    if not data or not data.get('pipeline'):
-        return None
-    return TransformRef(pipeline=str(data.get('pipeline')))
-
-
-def _build_validation_ref(
-    value: Any,
-) -> ValidationRef | None:
-    """
-    Build a ``ValidationRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw validation reference value.
-    Returns
-    -------
-    ValidationRef | None
-        Constructed validation reference, or ``None`` if invalid.
-    """
-    data = maybe_mapping(value)
-    if not data or not data.get('ruleset'):
-        return None
-    return ValidationRef(
-        ruleset=str(data.get('ruleset')),
-        severity=data.get('severity'),
-        phase=data.get('phase'),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
