@@ -20,8 +20,11 @@ import csv
 import os
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from textwrap import dedent
 from typing import Any
+from typing import Literal
+from typing import cast
 
 from . import __version__
 from .config import load_pipeline_config
@@ -31,9 +34,260 @@ from .file import File
 from .load import load
 from .run import run
 from .transform import transform
+from .types import JSONData
 from .utils import json_type
 from .utils import print_json
 from .validate import validate
+
+# SECTION: CONSTANTS ======================================================= #
+
+
+FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_FORMAT_ERROR_STATES = {'error', 'fail', 'strict'}
+_FORMAT_SILENT_STATES = {'ignore', 'silent'}
+
+
+# SECTION: HELPERS ========================================================= #
+
+
+def _emit_behavioral_notice(
+    message: str,
+    behavior: str,
+) -> None:
+    """
+    Print or raise based on the configured behavior.
+
+    Parameters
+    ----------
+    message : str
+        The message to emit.
+    behavior : str
+        The effective format-behavior mode.
+
+    Raises
+    -------
+    ValueError
+        If the behavior is in the error states.
+    """
+    if behavior in _FORMAT_ERROR_STATES:
+        raise ValueError(message)
+    if behavior in _FORMAT_SILENT_STATES:
+        return
+    print(f'Warning: {message}', file=sys.stderr)
+
+
+def _format_behavior(
+    strict: bool,
+) -> str:
+    """
+    Return the effective format-behavior mode.
+
+    Parameters
+    ----------
+    strict : bool
+        Whether to enforce strict format behavior.
+
+    Returns
+    -------
+    str
+        The effective format-behavior mode.
+    """
+    if strict:
+        return 'error'
+    env_value = os.getenv(FORMAT_ENV_KEY, 'warn')
+    return (env_value or 'warn').strip().lower()
+
+
+def _handle_format_guard(
+    *,
+    io_context: Literal['source', 'target'],
+    resource_type: str,
+    format_explicit: bool,
+    strict: bool,
+) -> None:
+    """
+    Warn or raise when --format is used alongside file resources.
+
+    Parameters
+    ----------
+    io_context : Literal['source', 'target']
+        Whether this is a source or target resource.
+    resource_type : str
+        The type of resource being processed.
+    format_explicit : bool
+        Whether the --format option was explicitly provided.
+    strict : bool
+        Whether to enforce strict format behavior.
+    """
+    if resource_type != 'file' or not format_explicit:
+        return
+    message = (
+        f'--format is ignored for file {io_context}s; '
+        'inferred from filename extension.'
+    )
+    behavior = _format_behavior(strict)
+    _emit_behavioral_notice(message, behavior)
+
+
+def _list_sections(
+    cfg: Any,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    """
+    Build sectioned metadata output for the list command.
+
+    Parameters
+    ----------
+    cfg : Any
+        The loaded pipeline configuration.
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    dict[str, Any]
+        Metadata output for the list command.
+    """
+    sections: dict[str, Any] = {}
+    if getattr(args, 'pipelines', False):
+        sections['pipelines'] = [getattr(cfg, 'name', None)]
+    if getattr(args, 'sources', False):
+        sections['sources'] = [
+            getattr(src, 'name', None) for src in getattr(cfg, 'sources', [])
+        ]
+    if getattr(args, 'targets', False):
+        sections['targets'] = [
+            getattr(tgt, 'name', None) for tgt in getattr(cfg, 'targets', [])
+        ]
+    if getattr(args, 'transforms', False):
+        sections['transforms'] = [
+            getattr(trf, 'name', None)
+            for trf in getattr(cfg, 'transforms', [])
+        ]
+    if not sections:
+        sections['jobs'] = _pipeline_summary(cfg)['jobs']
+    return sections
+
+
+def _materialize_csv_payload(
+    source: object,
+) -> JSONData | str:
+    """
+    Return parsed CSV rows when ``source`` points at a CSV file.
+
+    Parameters
+    ----------
+    source : object
+        The source of data.
+
+    Returns
+    -------
+    JSONData | str
+        Parsed CSV rows or the original source if not a CSV file.
+    """
+    if not isinstance(source, str):
+        return cast(JSONData, source)
+    path = Path(source)
+    if path.suffix.lower() != '.csv' or not path.is_file():
+        return source
+    return _read_csv_rows(path)
+
+
+def _pipeline_summary(
+    cfg: Any,
+) -> dict[str, Any]:
+    """
+    Return a human-friendly snapshot of a pipeline config.
+
+    Parameters
+    ----------
+    cfg : Any
+        The loaded pipeline configuration.
+
+    Returns
+    -------
+    dict[str, Any]
+        A human-friendly snapshot of a pipeline config.
+    """
+    sources = [
+        getattr(src, 'name', None)
+        for src in getattr(cfg, 'sources', [])
+    ]
+    targets = [
+        getattr(tgt, 'name', None)
+        for tgt in getattr(cfg, 'targets', [])
+    ]
+    jobs = [
+        getattr(job, 'name', None)
+        for job in getattr(cfg, 'jobs', [])
+        if getattr(job, 'name', None)
+    ]
+    return {
+        'name': getattr(cfg, 'name', None),
+        'version': getattr(cfg, 'version', None),
+        'sources': sources,
+        'targets': targets,
+        'jobs': jobs,
+    }
+
+
+def _read_csv_rows(
+    path: Path,
+) -> list[dict[str, str]]:
+    """
+    Read CSV rows into dictionaries.
+
+    Parameters
+    ----------
+    path : Path
+        Path to a CSV file.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        List of dictionaries, each representing a row in the CSV file.
+    """
+
+    with path.open(newline='', encoding='utf-8') as handle:
+        reader = csv.DictReader(handle)
+        return [dict(row) for row in reader]
+
+
+def _write_json_output(
+    data: Any,
+    output_path: str | None,
+    *,
+    success_message: str,
+) -> bool:
+    """
+    Optionally persist JSON data to disk.
+
+    Parameters
+    ----------
+    data : Any
+        Data to write.
+    output_path : str | None
+        Path to write the output to. None to print to stdout.
+    success_message : str
+        Message to print upon successful write.
+
+    Returns
+    -------
+    bool
+        True if output was written to a file, False if printed to stdout.
+    """
+
+    if not output_path:
+        return False
+    File(Path(output_path), FileFormat.JSON).write_json(data)
+    print(f'{success_message} {output_path}')
+    return True
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -56,42 +310,28 @@ def cmd_extract(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If strict format behavior is enabled and `--format` is provided for a
-        file source.
     """
-    format_explicit = getattr(args, '_format_explicit', False)
-    format_value = getattr(args, 'format', None)
-    strict_format = getattr(args, 'strict_format', False)
-    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
-    behavior = 'error' if strict_format else env_behavior
-
-    # For file sources, infer format from extension, and ignore --format.
-    if args.source_type == 'file' and format_explicit:
-        message = (
-            '--format is ignored for file sources; '
-            'inferred from filename extension.'
-        )
-        if behavior in {'error', 'fail', 'strict'}:
-            raise ValueError(message)
-        if behavior not in {'ignore', 'silent'}:
-            print(f'Warning: {message}', file=sys.stderr)
+    _handle_format_guard(
+        io_context='source',
+        resource_type=args.source_type,
+        format_explicit=getattr(args, '_format_explicit', False),
+        strict=getattr(args, 'strict_format', False),
+    )
 
     if args.source_type == 'file':
         result = extract(args.source_type, args.source)
     else:
         result = extract(
-            args.source_type, args.source,
-            file_format=format_value,
+            args.source_type,
+            args.source,
+            file_format=getattr(args, 'format', None),
         )
 
-    if getattr(args, 'output', None):
-        File(args.output, FileFormat.JSON).write_json(result)
-        print(f'Data extracted and saved to {args.output}')
-    else:
+    if not _write_json_output(
+        result,
+        getattr(args, 'output', None),
+        success_message='Data extracted and saved to',
+    ):
         print_json(result)
 
     return 0
@@ -112,57 +352,22 @@ def cmd_validate(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If strict format behavior is enabled and `--format` is provided for a
-        file source.
     """
-    format_explicit = getattr(args, '_format_explicit', False)
-    # format_value = getattr(args, 'format', None)
-    strict_format = getattr(args, 'strict_format', False)
-    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
-    behavior = 'error' if strict_format else env_behavior
+    payload = _materialize_csv_payload(args.source)
+    result = validate(payload, args.rules)
 
-    source_path = args.source
-
-    # For file sources, infer format from extension, and ignore --format.
-    if (
-        isinstance(source_path, str)
-        and source_path.lower().endswith('.csv')
-        and format_explicit
-    ):
-        message = (
-            '--format is ignored for file sources; '
-            'inferred from filename extension.'
-        )
-        if behavior in {'error', 'fail', 'strict'}:
-            raise ValueError(message)
-        if behavior not in {'ignore', 'silent'}:
-            print(f'Warning: {message}', file=sys.stderr)
-
-    # CSV support
-    if (
-        isinstance(source_path, str)
-        and source_path.lower().endswith('.csv')
-        and os.path.isfile(source_path)
-    ):
-        with open(source_path, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            data_to_validate = [dict(row) for row in reader]
-        result = validate(data_to_validate, args.rules)
-    else:
-        result = validate(source_path, args.rules)
-
-    if getattr(args, 'output', None):
+    output_path = getattr(args, 'output', None)
+    if output_path:
         validated_data = result.get('data')
         if validated_data is not None:
-            File(args.output, FileFormat.JSON).write_json(validated_data)
-            print(f'Validation result saved to {args.output}')
+            _write_json_output(
+                validated_data,
+                output_path,
+                success_message='Validation result saved to',
+            )
         else:
             print(
-                f'Validation failed, no data to save for {args.output}',
+                f'Validation failed, no data to save for {output_path}',
                 file=sys.stderr,
             )
     else:
@@ -186,52 +391,15 @@ def cmd_transform(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If strict format behavior is enabled and `--format` is provided for a
-        file source.
     """
-    format_explicit = getattr(args, '_format_explicit', False)
-    # format_value = getattr(args, 'format', None)
-    strict_format = getattr(args, 'strict_format', False)
-    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
-    behavior = 'error' if strict_format else env_behavior
+    payload = _materialize_csv_payload(args.source)
+    data = transform(payload, args.operations)
 
-    source_path = args.source
-    # For file sources, infer format from extension, and ignore --format.
-    if (
-        isinstance(source_path, str)
-        and source_path.lower().endswith('.csv')
-        and format_explicit
+    if not _write_json_output(
+        data,
+        getattr(args, 'output', None),
+        success_message='Data transformed and saved to',
     ):
-        message = (
-            '--format is ignored for file sources; '
-            'inferred from filename extension.'
-        )
-        if behavior in {'error', 'fail', 'strict'}:
-            raise ValueError(message)
-        if behavior not in {'ignore', 'silent'}:
-            print(f'Warning: {message}', file=sys.stderr)
-
-    # CSV support
-    if (
-        isinstance(source_path, str)
-        and source_path.lower().endswith('.csv')
-        and os.path.isfile(source_path)
-    ):
-        with open(source_path, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            data_to_transform = [dict(row) for row in reader]
-        data = transform(data_to_transform, args.operations)
-    else:
-        data = transform(source_path, args.operations)
-
-    if getattr(args, 'output', None):
-        File(args.output, FileFormat.JSON).write_json(data)
-        print(f'Data transformed and saved to {args.output}')
-    else:
         print_json(data)
 
     return 0
@@ -252,42 +420,29 @@ def cmd_load(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If strict format behavior is enabled and `--format` is provided for a
-        file target.
     """
-    format_explicit = getattr(args, '_format_explicit', False)
-    format_value = getattr(args, 'format', None)
-    strict_format = getattr(args, 'strict_format', False)
-    env_behavior = os.getenv('ETLPLUS_FORMAT_BEHAVIOR', 'warn').lower()
-    behavior = 'error' if strict_format else env_behavior
-
-    # For file targets, infer format from extension, and ignore --format.
-    if args.target_type == 'file' and format_explicit:
-        message = (
-            '--format is ignored for file targets; '
-            'inferred from filename extension.'
-        )
-        if behavior in {'error', 'fail', 'strict'}:
-            raise ValueError(message)
-        if behavior not in {'ignore', 'silent'}:
-            print(f'Warning: {message}', file=sys.stderr)
+    _handle_format_guard(
+        io_context='target',
+        resource_type=args.target_type,
+        format_explicit=getattr(args, '_format_explicit', False),
+        strict=getattr(args, 'strict_format', False),
+    )
 
     if args.target_type == 'file':
         result = load(args.source, args.target_type, args.target)
     else:
         result = load(
-            args.source, args.target_type, args.target,
-            file_format=format_value,
+            args.source,
+            args.target_type,
+            args.target,
+            file_format=getattr(args, 'format', None),
         )
 
-    if getattr(args, 'output', None):
-        File(args.output, FileFormat.JSON).write_json(result)
-        print(f'Data loaded and saved to {args.output}')
-    else:
+    if not _write_json_output(
+        result,
+        getattr(args, 'output', None),
+        success_message='Data loaded and saved to',
+    ):
         print_json(result)
 
     return 0
@@ -311,30 +466,17 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     """
     cfg = load_pipeline_config(args.config, substitute=True)
 
-    # List mode
     if getattr(args, 'list', False) and not getattr(args, 'run', None):
-        jobs = [j.name for j in cfg.jobs if j.name]
-        print_json({'jobs': jobs})
+        print_json({'jobs': _pipeline_summary(cfg)['jobs']})
         return 0
 
-    # Run mode
     run_job = getattr(args, 'run', None)
     if run_job:
         result = run(job=run_job, config_path=args.config)
-
         print_json({'status': 'ok', 'result': result})
         return 0
 
-    # Default: print summary.
-    summary = {
-        'name': cfg.name,
-        'version': cfg.version,
-        'sources': [getattr(s, 'name', None) for s in cfg.sources],
-        'targets': [getattr(t, 'name', None) for t in cfg.targets],
-        'jobs': [j.name for j in cfg.jobs if j.name],
-    }
-    print_json(summary)
-
+    print_json(_pipeline_summary(cfg))
     return 0
 
 
@@ -353,9 +495,7 @@ def cmd_list(args: argparse.Namespace) -> int:
         Zero on success.
     """
     cfg = load_pipeline_config(args.config, substitute=True)
-    jobs = [j.name for j in cfg.jobs if j.name]
-    print_json({'jobs': jobs})
-
+    print_json(_list_sections(cfg, args))
     return 0
 
 
@@ -375,23 +515,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     """
     cfg = load_pipeline_config(args.config, substitute=True)
 
-    run_job = getattr(args, 'run', None)
-    if run_job:
-        result = run(job=run_job, config_path=args.config)
-
+    job_name = getattr(args, 'job', None) or getattr(args, 'pipeline', None)
+    if job_name:
+        result = run(job=job_name, config_path=args.config)
         print_json({'status': 'ok', 'result': result})
         return 0
 
-    # Default: print summary.
-    summary = {
-        'name': cfg.name,
-        'version': cfg.version,
-        'sources': [getattr(s, 'name', None) for s in cfg.sources],
-        'targets': [getattr(t, 'name', None) for t in cfg.targets],
-        'jobs': [j.name for j in cfg.jobs if j.name],
-    }
-    print_json(summary)
-
+    print_json(_pipeline_summary(cfg))
     return 0
 
 
