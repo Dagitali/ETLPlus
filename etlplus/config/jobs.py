@@ -13,7 +13,6 @@ Notes
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -35,9 +34,6 @@ __all__ = [
 
 
 # SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #
