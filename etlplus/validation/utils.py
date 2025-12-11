@@ -34,14 +34,14 @@ class ValidationResult(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-Ruleset = Mapping[str, Any]
+type Ruleset = Mapping[str, Any]
 
-ValidationPhase = Literal['before_transform', 'after_transform']
-ValidationWindow = Literal['before_transform', 'after_transform', 'both']
-ValidationSeverity = Literal['warn', 'error']
+type ValidationPhase = Literal['before_transform', 'after_transform']
+type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
+type ValidationSeverity = Literal['warn', 'error']
 
-ValidateFn = Callable[[Any, Mapping[str, Any]], ValidationResult]
-PrintFn = Callable[[Any], None]
+type ValidateFn = Callable[[Any, Mapping[str, Any]], ValidationResult]
+type PrintFn = Callable[[Any], None]
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -109,7 +109,7 @@ class ValidationSettings:
 
         Returns
         -------
-        ValidationSettings
+        Self
             Normalized settings object.
         """
         return cls(
@@ -120,6 +120,8 @@ class ValidationSettings:
             severity=_normalize_severity(severity),
         )
 
+    # -- Instance Methods -- #
+
     def should_run(self) -> bool:
         """
         Return ``True`` when validation should execute for the phase.
@@ -129,12 +131,9 @@ class ValidationSettings:
         bool
             ``True`` when validation should execute for the phase.
         """
-
-        should_execute = self.enabled and self.rules and _should_validate(
-            self.window,
-            self.phase,
-        )
-        return bool(should_execute)
+        if not self.enabled or not self.rules:
+            return False
+        return _should_validate(self.window, self.phase)
 
 
 # SECTION: FUNCTIONS ======================================================== #
