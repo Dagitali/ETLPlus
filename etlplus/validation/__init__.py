@@ -1,43 +1,39 @@
 """
 :mod:`etlplus.validation` package.
 
-The top-level module defining ``:mod:etlplus.validation``, a package of high-
-level data validation helpers.
-
-Summary
--------
-- Data schema validation using ``jsonschema``.
+Lightweight helpers for running validation routines conditionally inside
+pipeline jobs.
 
 Examples
 --------
----------
->>> from etlplus.validation import validate_json_schema
->>> schema = {
->>>     "type": "object",
->>>     "properties": {"name": {"type": "string"}},
->>>     "required": ["name"]
->>> }
+>>> from etlplus.validation import maybe_validate
 >>> payload = {"name": "Alice"}
->>> result = validate_json_schema(payload, schema)
->>> print(result)
-{'valid': True, 'data': {'name': 'Alice'}}
-
-Notes
------
-- Validation functions return a dict with ``valid: bool`` and optional ``data``
-  keys.
-- On validation failure, the result may include an ``errors`` key with details.
+>>> rules = {"required": ["name"]}
+>>> def fake_validator(data, config):
+...     missing = [key for key in config['required'] if key not in data]
+...     return {'valid': not missing, 'errors': missing}
+>>> maybe_validate(
+...     payload,
+...     when='both',
+...     enabled=True,
+...     rules=rules,
+...     phase='before_transform',
+...     severity='warn',
+...     validate_fn=fake_validator,
+...     print_json_fn=lambda msg: msg,
+... )
+{'name': 'Alice'}
 
 See Also
 --------
-- :mod:`etlplus.validation.utils` for utility functions to run validation
-  conditionally based on phase and severity.
+- :mod:`etlplus.validation.utils` for the implementation details and helper
+    utilities.
 """
 from __future__ import annotations
 
-from .utils import maybe_validate as validate_json_schema
+from .utils import maybe_validate
 
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['validate_json_schema']
+__all__ = ['maybe_validate']
