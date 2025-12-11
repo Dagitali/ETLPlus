@@ -18,6 +18,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 from typing import Any
 
+from ..types import StrAnyMap
 from ..utils import to_float
 from ..utils import to_int
 
@@ -40,12 +41,6 @@ __all__ = [
     'to_int',
     'to_float',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: FUNCTIONS ======================================================== #
