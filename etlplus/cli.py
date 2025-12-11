@@ -820,10 +820,13 @@ def create_parser() -> argparse.ArgumentParser:
 
     return parser
 
+
 # -- Main -- #
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+) -> int:
     """
     Handle CLI's main entry point.
 
