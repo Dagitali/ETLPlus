@@ -21,7 +21,6 @@ import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from textwrap import dedent
 from typing import Any
 from typing import Literal
 from typing import cast
@@ -42,6 +41,41 @@ from .validate import validate
 # SECTION: CONSTANTS ======================================================= #
 
 
+CLI_DESCRIPTION = '\n'.join(
+    [
+        'ETLPlus - A Swiss Army knife for simple ETL operations.',
+        '',
+        '    Provide a subcommand and options. Examples:',
+        '',
+        '    etlplus extract file in.csv -o out.json',
+        "    etlplus validate in.json --rules '{\"required\": [\"id\"]}'",
+        "    etlplus transform in.json --operations '{\"select\": [\"id\"]}'",
+        '    etlplus load in.json file out.json',
+        '',
+        '    Enforce error if --format is provided for files. Examples:',
+        '',
+        '    etlplus extract file in.csv --format csv --strict-format',
+        '    etlplus load in.json file out.csv --format csv --strict-format',
+    ],
+)
+
+CLI_EPILOG = '\n'.join(
+    [
+        'Environment:',
+        (
+            '    ETLPLUS_FORMAT_BEHAVIOR controls behavior when '
+            '--format is provided for files.'
+        ),
+        '    Values:',
+        '        - error|fail|strict: treat as error',
+        '        - warn (default): print a warning',
+        '        - ignore|silent: no message',
+        '',
+        'Note:',
+        '    --strict-format overrides the environment behavior.',
+    ],
+)
+
 FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 
 
@@ -52,7 +86,67 @@ _FORMAT_ERROR_STATES = {'error', 'fail', 'strict'}
 _FORMAT_SILENT_STATES = {'ignore', 'silent'}
 
 
-# SECTION: HELPERS ========================================================= #
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FormatContext = Literal['source', 'target']
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _FormatAction(argparse.Action):
+    """Argparse action that records when ``--format`` is provided."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:  # pragma: no cover - argparse wiring
+        setattr(namespace, self.dest, values)
+        namespace._format_explicit = True
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _add_format_options(
+    parser: argparse.ArgumentParser,
+    *,
+    context: FormatContext,
+) -> None:
+    """
+    Attach shared ``--format`` options to extract/load parsers.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser to add options to.
+    context : FormatContext
+        Whether this is a source or target resource.
+    """
+    parser.set_defaults(_format_explicit=False)
+    parser.add_argument(
+        '--strict-format',
+        action='store_true',
+        help=(
+            'Treat providing --format for file '
+            f'{context}s as an error (overrides environment behavior)'
+        ),
+    )
+    parser.add_argument(
+        '--format',
+        choices=['json', 'csv', 'xml', 'yaml'],
+        default='json',
+        action=_FormatAction,
+        help=(
+            f'Format of the {context} when not a file. For file {context}s '
+            'this option is ignored and the format is inferred from the '
+            'filename extension.'
+        ),
+    )
 
 
 def _emit_behavioral_notice(
@@ -70,7 +164,7 @@ def _emit_behavioral_notice(
         The effective format-behavior mode.
 
     Raises
-    -------
+    ------
     ValueError
         If the behavior is in the error states.
     """
@@ -252,7 +346,6 @@ def _read_csv_rows(
     list[dict[str, str]]
         List of dictionaries, each representing a row in the CSV file.
     """
-
     with path.open(newline='', encoding='utf-8') as handle:
         reader = csv.DictReader(handle)
         return [dict(row) for row in reader]
@@ -281,7 +374,6 @@ def _write_json_output(
     bool
         True if output was written to a file, False if printed to stdout.
     """
-
     if not output_path:
         return False
     File(Path(output_path), FileFormat.JSON).write_json(data)
@@ -539,37 +631,8 @@ def create_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog='etlplus',
-        description=dedent(
-            """
-            ETLPlus — A Swiss Army knife for simple ETL operations.
-
-                Provide a subcommand and options. Examples:
-
-                etlplus extract file in.csv -o out.json
-                etlplus validate in.json --rules '{"required": ['id]'}'
-                etlplus transform in.json --operations '{"select": ['id]'}'
-                etlplus load in.json file out.json
-
-                Enforce error if --format is provided for files. Examples:
-
-                etlplus extract file in.csv --format csv --strict-format
-                etlplus load in.json file out.csv --format csv --strict-format
-            """,
-        ).strip(),
-        epilog=dedent(
-            """
-            Environment:
-                ETLPLUS_FORMAT_BEHAVIOR controls
-                    behavior when --format is provided for files.
-                Values:
-                    - error|fail|strict: treat as error
-                    - warn (default): print a warning
-                    - ignore|silent: no message
-
-            Note:
-                --strict-format overrides the environment behavior.
-            """,
-        ).strip(),
+        description=CLI_DESCRIPTION,
+        epilog=CLI_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -593,19 +656,6 @@ def create_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    # Track if --format was explicitly provided by the user.
-
-    class _StoreWithFlag(argparse.Action):
-        def __call__(
-            self,
-            parser: argparse.ArgumentParser,
-            namespace: argparse.Namespace,
-            values: str | Sequence[Any] | None,
-            option_string: str | None = None,
-        ) -> None:
-            setattr(namespace, self.dest, values)
-            namespace._format_explicit = True
-
     extract_parser.add_argument(
         'source_type',
         choices=['file', 'database', 'api'],
@@ -622,26 +672,7 @@ def create_parser() -> argparse.ArgumentParser:
         '-o', '--output',
         help='Output file to save extracted data (JSON format)',
     )
-    extract_parser.set_defaults(_format_explicit=False)
-    extract_parser.add_argument(
-        '--strict-format',
-        action='store_true',
-        help=(
-            'Treat providing --format for file sources as an error '
-            '(overrides environment behavior)'
-        ),
-    )
-    extract_parser.add_argument(
-        '--format',
-        choices=['json', 'csv', 'xml', 'yaml'],
-        default='json',
-        action=_StoreWithFlag,
-        help=(
-            'Format of the source when not a file. For file sources; '
-            'this option is ignored and the format is inferred from the '
-            'filename extension.'
-        ),
-    )
+    _add_format_options(extract_parser, context='source')
     extract_parser.set_defaults(func=cmd_extract)
 
     # Define "validate" command.
@@ -706,39 +737,7 @@ def create_parser() -> argparse.ArgumentParser:
             'API URL)'
         ),
     )
-    # Track if --format was explicitly provided by the user.
-
-    class _LoadStoreWithFlag(argparse.Action):
-        def __call__(
-            self,
-            parser: argparse.ArgumentParser,
-            namespace: argparse.Namespace,
-            values: str | Sequence[Any] | None,
-            option_string: str | None = None,
-        ) -> None:
-            setattr(namespace, self.dest, values)
-            namespace._format_explicit = True
-
-    load_parser.set_defaults(_format_explicit=False)
-    load_parser.add_argument(
-        '--strict-format',
-        action='store_true',
-        help=(
-            'Treat providing --format for file targets as an error '
-            '(overrides environment behavior)'
-        ),
-    )
-    load_parser.add_argument(
-        '--format',
-        choices=['json', 'csv', 'xml', 'yaml'],
-        default='json',
-        action=_LoadStoreWithFlag,
-        help=(
-            'Format of the target when not a file. For file targets; '
-            'this option is ignored and the format is inferred from the '
-            'filename extension.'
-        ),
-    )
+    _add_format_options(load_parser, context='target')
     load_parser.set_defaults(func=cmd_load)
 
     # Define "pipeline" command (reads YAML config).
