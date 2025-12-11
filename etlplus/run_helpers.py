@@ -159,6 +159,29 @@ def _inherit_http_from_api_endpoint(
     session_cfg: SessionConfig | None,
     force_url: bool = False,
 ) -> tuple[Url | None, dict[str, str], SessionConfig | None]:
+    """
+    Return HTTP settings inherited from API + endpoint definitions.
+
+    Parameters
+    ----------
+    api_cfg : CfgApiConfig
+        API configuration.
+    ep : CfgEndpointConfig
+        Endpoint configuration.
+    url : Url | None
+        Existing URL to use when not forcing endpoint URL.
+    headers : dict[str, str]
+        Existing headers to augment.
+    session_cfg : SessionConfig | None
+        Existing session configuration to augment.
+    force_url : bool, optional
+        Whether to always use the endpoint URL.
+
+    Returns
+    -------
+    tuple[Url | None, dict[str, str], SessionConfig | None]
+        Resolved URL, headers, and session configuration.
+    """
     if force_url or not url:
         url = api_cfg.build_endpoint_url(ep)
     headers = {**api_cfg.headers, **headers}
@@ -198,6 +221,70 @@ def _merge_session_cfg_three(
     if isinstance(source_session_cfg, dict):
         merged.update(source_session_cfg)
     return cast(SessionConfig | None, (merged or None))
+
+
+# -- Mapping Helpers -- #
+
+def _copy_mapping(
+    mapping: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Return a shallow copy of *mapping* or an empty dict.
+
+    Parameters
+    ----------
+    mapping : Mapping[str, Any] | None
+        The mapping to copy.
+
+    Returns
+    -------
+    dict[str, Any]
+        A shallow copy of the mapping or an empty dict.
+    """
+    return dict(mapping) if isinstance(mapping, Mapping) else {}
+
+
+def _update_mapping(
+    target: dict[str, Any],
+    extra: Mapping[str, Any] | None,
+) -> None:
+    """
+    Update *target* with *extra* when provided.
+
+    Parameters
+    ----------
+    target : dict[str, Any]
+        The target mapping to update.
+    extra : Mapping[str, Any] | None
+        The extra mapping to update the target with.
+    """
+    if isinstance(extra, Mapping):
+        target.update(extra)
+
+
+# -- Session -- #
+
+
+def _build_session_optional(
+    cfg: SessionConfig | None,
+) -> requests.Session | None:
+    """
+    Return a configured session when *cfg* is a mapping.
+
+    Parameters
+    ----------
+    cfg : SessionConfig | None
+        Session configuration mapping.
+
+    Returns
+    -------
+    requests.Session | None
+        Configured session or ``None``.
+    """
+
+    if isinstance(cfg, dict):
+        return build_session(cfg)
+    return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -273,12 +360,16 @@ def compose_api_request_env(
     """
     ex_opts = ex_opts or {}
     url: Url | None = getattr(source_obj, 'url', None)
-    params: dict[str, Any] = dict(
-        getattr(source_obj, 'query_params', {}) or {},
+    source_params = cast(
+        Mapping[str, Any] | None,
+        getattr(source_obj, 'query_params', None),
     )
-    headers: dict[str, str] = dict(
-        getattr(source_obj, 'headers', {}) or {},
+    params: dict[str, Any] = _copy_mapping(source_params)
+    source_headers = cast(
+        Mapping[str, str] | None,
+        getattr(source_obj, 'headers', None),
     )
+    headers: dict[str, str] = _copy_mapping(source_headers)
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
     retry: ApiRetryPolicy | None = cast(
@@ -302,7 +393,11 @@ def compose_api_request_env(
         url, headers, session_cfg = _inherit_http_from_api_endpoint(
             api_cfg, ep, url, headers, session_cfg, force_url=True,
         )
-        params = ep.query_params | params
+        ep_params: dict[str, Any] = _copy_mapping(
+            cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
+        )
+        _update_mapping(ep_params, params)
+        params = ep_params
         pagination = (
             pagination
             or ep.pagination
@@ -334,8 +429,14 @@ def compose_api_request_env(
             for k, v in api_cfg.endpoints.items()
         }
         selected_endpoint_key = endpoint_name
-    params |= ex_opts.get('query_params', {})
-    headers |= ex_opts.get('headers', {})
+    _update_mapping(
+        params,
+        cast(Mapping[str, Any] | None, ex_opts.get('query_params')),
+    )
+    _update_mapping(
+        headers,
+        cast(Mapping[str, str] | None, ex_opts.get('headers')),
+    )
     timeout: Timeout = ex_opts.get('timeout')
     pag_ov = ex_opts.get('pagination', {})
     rl_ov = ex_opts.get('rate_limit', {})
@@ -348,7 +449,7 @@ def compose_api_request_env(
         if 'retry_network_errors' in ex_opts
         else None
     )
-    sess_ov: SessionConfig = cast(SessionConfig, ex_opts.get('session', {}))
+    sess_ov = cast(SessionConfig | None, ex_opts.get('session'))
     sleep_s = compute_rl_sleep_seconds(rate_limit, rl_ov) or 0.0
     if rty_ov is not None:
         retry = rty_ov
@@ -362,9 +463,7 @@ def compose_api_request_env(
         pagination,
         pag_ov,
     )
-    sess_obj = (
-        build_session(session_cfg) if isinstance(session_cfg, dict) else None
-    )
+    sess_obj = _build_session_optional(session_cfg)
     return {
         'use_endpoints': use_client_endpoints,
         'base_url': client_base_url,
@@ -414,10 +513,10 @@ def compose_api_target_env(
         str | None,
         ov.get('method') or getattr(target_obj, 'method', 'post'),
     )
-    headers: dict[str, str] = (
-        (getattr(target_obj, 'headers', {}) or {})
-        | cast(dict[str, str], ov.get('headers', {}))
+    headers = _copy_mapping(
+        cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
     )
+    _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
     timeout: Timeout = (
         cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
     )
@@ -437,7 +536,7 @@ def compose_api_target_env(
             sess_cfg,
             force_url=False,
         )
-    sess_obj = build_session(sess_cfg) if isinstance(sess_cfg, dict) else None
+    sess_obj = _build_session_optional(sess_cfg)
 
     return {
         'url': url,
