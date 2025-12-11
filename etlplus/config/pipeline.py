@@ -24,49 +24,20 @@ from typing import Self
 
 from ..enums import FileFormat
 from ..file import File
+from ..types import StrAnyMap
 from .api import ApiConfig
 from .connector import parse_connector
-from .jobs import ExtractRef
 from .jobs import JobConfig
-from .jobs import LoadRef
-from .jobs import TransformRef
-from .jobs import ValidationRef
 from .profile import ProfileConfig
 from .types import Connector
+from .utils import coerce_dict
 from .utils import deep_substitute
+from .utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['PipelineConfig', 'load_pipeline_config']
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
-
-
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _as_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return the value if it is a mapping; otherwise return ``None``.
-
-    Parameters
-    ----------
-    value : Any
-        The value to check.
-
-    Returns
-    -------
-    StrAnyMap | None
-        The mapping or ``None``.
-    """
-    return value if isinstance(value, Mapping) else None
 
 
 def _build_jobs(
@@ -86,28 +57,10 @@ def _build_jobs(
         Parsed job configurations.
     """
     jobs: list[JobConfig] = []
-    for j in (raw.get('jobs', []) or []):
-        if not isinstance(j, Mapping):
-            continue
-        name = j.get('name')
-        if not isinstance(name, str):
-            continue
-
-        extract = _build_extract_ref(j.get('extract'))
-        validate = _build_validation_ref(j.get('validate'))
-        transform = _build_transform_ref(j.get('transform'))
-        load = _build_load_ref(j.get('load'))
-
-        jobs.append(
-            JobConfig(
-                name=name,
-                description=j.get('description'),
-                extract=extract,
-                validate=validate,
-                transform=transform,
-                load=load,
-            ),
-        )
+    for job_raw in (raw.get('jobs', []) or []):
+        job_cfg = JobConfig.from_obj(job_raw)
+        if job_cfg is not None:
+            jobs.append(job_cfg)
 
     return jobs
 
@@ -173,111 +126,15 @@ def _build_connectors(
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
-        if not isinstance(obj, Mapping):
+        if not (entry := maybe_mapping(obj)):
             continue
         try:
-            items.append(parse_connector(obj))
+            items.append(parse_connector(entry))
         except TypeError:
             # Skip unsupported types or malformed entries
             continue
 
     return items
-
-
-def _build_extract_ref(
-    value: Any,
-) -> ExtractRef | None:
-    """
-    Build an ``ExtractRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw extract reference value.
-    Returns
-    -------
-    ExtractRef | None
-        Constructed extract reference, or ``None`` if invalid.
-    """
-    data = _as_mapping(value)
-    if not data or not data.get('source'):
-        return None
-    return ExtractRef(
-        source=str(data.get('source')),
-        options=dict(data.get('options', {}) or {}),
-    )
-
-
-def _build_load_ref(
-    value: Any,
-) -> LoadRef | None:
-    """
-    Build a ``LoadRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw load reference value.
-
-    Returns
-    -------
-    LoadRef | None
-        Constructed load reference, or ``None`` if invalid.
-    """
-    data = _as_mapping(value)
-    if not data or not data.get('target'):
-        return None
-    return LoadRef(
-        target=str(data.get('target')),
-        overrides=dict(data.get('overrides', {}) or {}),
-    )
-
-
-def _build_transform_ref(
-    value: Any,
-) -> TransformRef | None:
-    """
-    Build a ``TransformRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw transform reference value.
-
-    Returns
-    -------
-    TransformRef | None
-        Constructed transform reference, or ``None`` if invalid.
-    """
-    data = _as_mapping(value)
-    if not data or not data.get('pipeline'):
-        return None
-    return TransformRef(pipeline=str(data.get('pipeline')))
-
-
-def _build_validation_ref(
-    value: Any,
-) -> ValidationRef | None:
-    """
-    Build a ``ValidationRef`` from the provided value.
-
-    Parameters
-    ----------
-    value : Any
-        Raw validation reference value.
-    Returns
-    -------
-    ValidationRef | None
-        Constructed validation reference, or ``None`` if invalid.
-    """
-    data = _as_mapping(value)
-    if not data or not data.get('ruleset'):
-        return None
-    return ValidationRef(
-        ruleset=str(data.get('ruleset')),
-        severity=data.get('severity'),
-        phase=data.get('phase'),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -429,25 +286,26 @@ class PipelineConfig:
         version = raw.get('version')
 
         # Profile and vars
-        prof_raw = raw.get('profile', {}) or {}
+        prof_raw = maybe_mapping(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
-        vars_map: dict[str, Any] = dict(raw.get('vars', {}) or {})
+        vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
 
         # APIs
         apis: dict[str, ApiConfig] = {}
-        for api_name, api_obj in (_as_mapping(raw.get('apis')) or {}).items():
+        api_block = maybe_mapping(raw.get('apis')) or {}
+        for api_name, api_obj in api_block.items():
             apis[str(api_name)] = ApiConfig.from_obj(api_obj)
 
         # Databases and file systems (pass-through structures)
-        databases = dict(_as_mapping(raw.get('databases')) or {})
-        file_systems = dict(_as_mapping(raw.get('file_systems')) or {})
+        databases = coerce_dict(raw.get('databases'))
+        file_systems = coerce_dict(raw.get('file_systems'))
 
         # Sources
         sources = _build_sources(raw)
 
         # Validations/Transforms
-        validations = dict(_as_mapping(raw.get('validations')) or {})
-        transforms = dict(_as_mapping(raw.get('transforms')) or {})
+        validations = coerce_dict(raw.get('validations'))
+        transforms = coerce_dict(raw.get('transforms'))
 
         # Targets
         targets = _build_targets(raw)

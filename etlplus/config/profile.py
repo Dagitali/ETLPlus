@@ -13,21 +13,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 from typing import Self
 
+from ..types import StrAnyMap
 from .utils import cast_str_dict
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['ProfileConfig']
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #

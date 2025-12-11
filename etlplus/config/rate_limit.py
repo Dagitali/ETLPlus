@@ -20,10 +20,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Self
 from typing import overload
 
+from ..types import StrAnyMap
 from .mixins import BoundsWarningsMixin
 from .utils import to_float
 
@@ -35,12 +35,6 @@ if TYPE_CHECKING:
 
 
 __all__ = ['RateLimitConfig']
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #

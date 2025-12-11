@@ -15,7 +15,9 @@ Examples
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -117,9 +119,13 @@ class TestResolveSleepSeconds:
         expected_sleep : float
             The expected sleep seconds value.
         """
+        overrides = cast(
+            Mapping[str, float | int | None] | None,
+            config,
+        )
         assert RateLimiter.resolve_sleep_seconds(
             rate_limit=rate_limit,
-            overrides=config,
+            overrides=overrides,
         ) == expected_sleep
 
     def test_overrides_max_per_sec(self) -> None:
