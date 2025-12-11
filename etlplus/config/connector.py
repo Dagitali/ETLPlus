@@ -41,6 +41,7 @@ from typing import Any
 from typing import Self
 from typing import overload
 
+from ..types import StrAnyMap
 from .pagination import PaginationConfig
 from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
@@ -66,12 +67,6 @@ __all__ = [
     # Functions
     'parse_connector',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type StrAnyMap = Mapping[str, Any]
 
 
 # SECTION: CLASSES ========================================================== #
