@@ -1,33 +1,26 @@
 """
 :mod:`etlplus` package.
 
-The top-level module defining ``:mod:etlplus``, a package for enabling simple
-ETL operations.
+Top-level facade for the ETLPlus toolkit.
 
-Notes
------
-This package provides tools for:
+Importing :mod:`etlplus` exposes the handful of coarse-grained helpers most
+users care about: ``extract``, ``transform``, ``load``, ``validate``, and
+``run``. Each helper delegates to the richer modules under ``etlplus.*`` while
+presenting a compact public API surface.
 
-- Extracting data from files, databases, and REST APIs
-- Validating data from various sources
-- Transforming data
-- Loading data to files, databases, and REST APIs
+Examples
+--------
+>>> from etlplus import extract, transform
+>>> raw = extract('file', 'input.json')
+>>> curated = transform(raw, {'select': ['id', 'name']})
 
-Public API
-----------
-extract : callable
-    Extract data from files, databases, or REST APIs.
-load : callable
-    Persist data to files, databases, or send to REST APIs.
-transform : callable
-    Filter, map, select, sort, and aggregate records.
-run : callable
-    Run ETL jobs defined in pipeline configuration files.
-validate : callable
-    Validate data against simple schema-like rules.
+See Also
+--------
+- :mod:`etlplus.cli` for the command-line interface
+- :mod:`etlplus.run` for orchestrating pipeline jobs
 """
+from .__version__ import __version__
 
-__version__ = '0.1.0'
 __author__ = 'ETLPlus Team'
 
 from .extract import extract
@@ -39,4 +32,11 @@ from .validate import validate
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['extract', 'load', 'run', 'transform', 'validate']
+__all__ = [
+    '__version__',
+    'extract',
+    'load',
+    'run',
+    'transform',
+    'validate',
+]

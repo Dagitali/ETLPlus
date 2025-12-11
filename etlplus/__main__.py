@@ -1,17 +1,22 @@
 """
 :mod:`etlplus.__main__` module.
 
-Thin wrapper so `python -m etlplus` invokes the same CLI entrypoint as the
-console script defined in `pyproject.toml`.
+Thin wrapper supporting `python -m etlplus` by delegating to the CLI
+entrypoint.
 """
-from __future__ import annotations
-
-import sys
-
 from .cli import main
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _run() -> int:
+    """Return the exit status from :func:`etlplus.cli.main`."""
+
+    return main()
+
 
 # SECTION: MAIN EXECUTION =================================================== #
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == '__main__':  # pragma: no cover - exercised via CLI
+    raise SystemExit(_run())

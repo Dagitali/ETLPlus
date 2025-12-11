@@ -110,7 +110,8 @@ class ApiTargetEnv(BaseApiHttpEnv, total=False):
     - Precedence for inherited values matches original logic:
         overrides -> target -> API profile defaults.
     - Target composition does not include pagination/rate-limit/retry since
-      loads are single-request operations; only headers/timeout/session apply.
+        loads are single-request operations; only headers/timeout/session
+        apply.
     """
 
     # Request
