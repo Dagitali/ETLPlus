@@ -63,7 +63,7 @@ from typing import TypedDict
 from typing import cast
 from typing import overload
 
-from ..config.mixins import BoundsWarningsMixin
+from ..mixins import BoundsWarningsMixin
 from ..types import JSONDict
 from ..types import JSONRecords
 from ..utils import to_int
