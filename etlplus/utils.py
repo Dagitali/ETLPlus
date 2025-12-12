@@ -111,6 +111,11 @@ def print_json(
     ----------
     obj : Any
         Object to serialize as JSON.
+
+    Returns
+    -------
+    None
+        This helper writes directly to ``stdout``.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
 
