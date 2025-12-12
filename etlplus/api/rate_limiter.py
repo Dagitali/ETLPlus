@@ -25,7 +25,7 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ..config.mixins import BoundsWarningsMixin
+from ..mixins import BoundsWarningsMixin
 from ..types import StrAnyMap
 from ..utils import to_float
 from ..utils import to_positive_float
