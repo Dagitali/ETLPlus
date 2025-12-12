@@ -301,7 +301,7 @@ type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 @dataclass(slots=True)
 class PaginationConfig(BoundsWarningsMixin):
     """
-    Configuration for pagination in API requests.
+    Configuration container for API request pagination settings.
 
     Attributes
     ----------
