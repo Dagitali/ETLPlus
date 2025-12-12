@@ -41,9 +41,9 @@ from typing import Any
 from typing import Self
 from typing import overload
 
+from ..api import PaginationConfig
 from ..api import RateLimitConfig
 from ..types import StrAnyMap
-from .pagination import PaginationConfig
 from .utils import cast_str_dict
 from .utils import coerce_dict
 
@@ -61,15 +61,15 @@ __all__ = [
     # Classes
     'ConnectorApi', 'ConnectorDb', 'ConnectorFile',
 
-    # Type aliases
-    'Connector',
-
     # Functions
     'parse_connector',
+
+    # Type aliases
+    'Connector',
 ]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(slots=True)
