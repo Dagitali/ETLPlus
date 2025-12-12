@@ -29,13 +29,13 @@ from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
 from etlplus.api import PaginationConfigMap
+from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigMap
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
 from tests.unit.api.test_u_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #
