@@ -18,6 +18,7 @@ from __future__ import annotations
 from .api import ApiConfig
 from .api import ApiProfileConfig
 from .api import EndpointConfig
+from .connector import Connector
 from .connector import ConnectorApi
 from .connector import ConnectorDb
 from .connector import ConnectorFile
@@ -32,7 +33,6 @@ from .pipeline import PipelineConfig
 from .pipeline import load_pipeline_config
 from .profile import ProfileConfig
 from .rate_limit import RateLimitConfig
-from .types import Connector
 from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #

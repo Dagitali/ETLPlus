@@ -18,6 +18,7 @@ from requests import Response  # type: ignore[import]
 
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import Timeout
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .retry_manager import RetryManager
@@ -28,7 +29,9 @@ from .transport import build_session_with_adapters
 # SECTION: TYPE ALIASES ==================================================== #
 
 
-type TimeoutInput = float | tuple[float | None, float | None] | None
+# ``requests`` accepts either a scalar timeout or a ``(connect, read)`` pair.
+type TimeoutPair = tuple[Timeout, Timeout]
+type TimeoutInput = Timeout | TimeoutPair
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -51,7 +54,7 @@ class RequestManager:
     retry_network_errors : bool, optional
         Whether to retry on network errors. Default is ``False``.
     default_timeout : TimeoutInput, optional
-        Default timeout for requests in seconds. Default is 10.0.
+        Default timeout for requests (seconds or ``(connect, read)`` tuple).
     session : requests.Session | None, optional
         Optional pre-configured session to use. Default is ``None``.
     session_factory : Callable[[], requests.Session] | None, optional
@@ -70,7 +73,7 @@ class RequestManager:
     retry_network_errors : bool
         Whether to retry on network errors.
     default_timeout : TimeoutInput
-        Default timeout for requests in seconds.
+        Default timeout for requests (seconds or ``(connect, read)`` tuple).
     session : requests.Session | None
         Optional pre-configured session to use.
     session_factory : Callable[[], requests.Session] | None
@@ -329,7 +332,7 @@ class RequestManager:
         session : requests.Session | None
             Optional HTTP session to use.
         timeout : TimeoutInput
-            Timeout for the request (float, tuple, or ``None``).
+            Timeout for the request (seconds or ``(connect, read)`` tuple).
         request_callable : Callable[..., JSONData] | None, optional
             Optional custom request function.
         **kwargs : Any
@@ -480,12 +483,13 @@ class RequestManager:
         Parameters
         ----------
         timeout : TimeoutInput | object
-            Supplied timeout value or sentinel.
+            Supplied timeout (seconds or ``(connect, read)`` tuple) or
+            sentinel.
 
         Returns
         -------
         TimeoutInput
-            Resolved timeout value.
+            Resolved timeout value (seconds or ``(connect, read)`` tuple).
         """
         if timeout is _MISSING:
             return cast(TimeoutInput, self.default_timeout)
@@ -542,7 +546,7 @@ class RequestManager:
         session : requests.Session | None
             Optional session object to use for the request.
         timeout : TimeoutInput
-            Timeout value for the request.
+            Timeout value (seconds or ``(connect, read)`` tuple).
         **kwargs : Any
             Additional keyword arguments for the request.
 

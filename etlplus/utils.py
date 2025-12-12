@@ -105,12 +105,17 @@ def print_json(
     obj: Any,
 ) -> None:
     """
-    Pretty-print JSON to stdout using UTF-8 without ASCII escaping.
+    Pretty-print ``obj`` as UTF-8 JSON without ASCII escaping.
 
     Parameters
     ----------
     obj : Any
         Object to serialize as JSON.
+
+    Returns
+    -------
+    None
+        This helper writes directly to ``stdout``.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
 
@@ -146,7 +151,19 @@ def to_maximum_float(
     default: float,
 ) -> float:
     """
-    Return the greater of ``default`` and the coerced float value.
+    Return the greater of ``default`` and ``value`` after float coercion.
+
+    Parameters
+    ----------
+    value : Any
+        Candidate input coerced with :func:`to_float`.
+    default : float
+        Baseline float value that acts as the lower bound.
+
+    Returns
+    -------
+    float
+        ``default`` if coercion fails; else ``max(coerced, default)``.
     """
     result = to_float(value, default)
     return max(_value_or_default(result, default), default)
@@ -157,7 +174,19 @@ def to_minimum_float(
     default: float,
 ) -> float:
     """
-    Return the lesser of ``default`` and the coerced float value.
+    Return the lesser of ``default`` and ``value`` after float coercion.
+
+    Parameters
+    ----------
+    value : Any
+        Candidate input coerced with :func:`to_float`.
+    default : float
+        Baseline float value that acts as the upper bound.
+
+    Returns
+    -------
+    float
+        ``default`` if coercion fails; else ``min(coerced, default)``.
     """
     result = to_float(value, default)
     return min(_value_or_default(result, default), default)
@@ -166,6 +195,16 @@ def to_minimum_float(
 def to_positive_float(value: Any) -> float | None:
     """
     Return a positive float when coercion succeeds.
+
+    Parameters
+    ----------
+    value : Any
+        Value coerced using :func:`to_float`.
+
+    Returns
+    -------
+    float | None
+        Positive float if coercion succeeds and ``value > 0``; else ``None``.
     """
     result = to_float(value)
     if result is None or result <= 0:
@@ -204,7 +243,19 @@ def to_maximum_int(
     default: int,
 ) -> int:
     """
-    Return the greater of ``default`` and the coerced integer value.
+    Return the greater of ``default`` and ``value`` after integer coercion.
+
+    Parameters
+    ----------
+    value : Any
+        Candidate input coerced with :func:`to_int`.
+    default : int
+        Baseline integer that acts as the lower bound.
+
+    Returns
+    -------
+    int
+        ``default`` if coercion fails; else ``max(coerced, default)``.
     """
     result = to_int(value, default)
     return max(_value_or_default(result, default), default)
@@ -215,7 +266,19 @@ def to_minimum_int(
     default: int,
 ) -> int:
     """
-    Return the lesser of ``default`` and the coerced integer value.
+    Return the lesser of ``default`` and ``value`` after integer coercion.
+
+    Parameters
+    ----------
+    value : Any
+        Candidate input coerced with :func:`to_int`.
+    default : int
+        Baseline integer acting as the upper bound.
+
+    Returns
+    -------
+    int
+        ``default`` if coercion fails; else ``min(coerced, default)``.
     """
     result = to_int(value, default)
     return min(_value_or_default(result, default), default)
@@ -229,9 +292,23 @@ def to_positive_int(
 ) -> int:
     """
     Return a positive integer, falling back to ``minimum`` when needed.
+
+    Parameters
+    ----------
+    value : Any
+        Candidate input coerced with :func:`to_int`.
+    default : int
+        Fallback value when coercion fails; clamped by ``minimum``.
+    minimum : int
+        Inclusive lower bound for the result. Defaults to ``1``.
+
+    Returns
+    -------
+    int
+        Positive integer respecting ``minimum``.
     """
     result = to_int(value, default, minimum=minimum)
-    return result if result is not None else minimum
+    return _value_or_default(result, minimum)
 
 
 # -- Generic Number Coercion -- #
@@ -241,32 +318,23 @@ def to_number(
     value: object,
 ) -> float | None:
     """
-    Coerce numeric string to number or return ``None``.
+    Coerce ``value`` to a ``float`` using the internal float coercer.
 
     Parameters
     ----------
     value : object
-        Value that may be an ``int``, ``float``, or string representing
-        a number (leading/trailing whitespace is ignored).
+        Value that may be numeric or a numeric string. Booleans and blanks
+        return ``None`` for consistency with :func:`to_float`.
 
     Returns
     -------
     float | None
-        The coerced numeric value as a ``float`` when possible, else
-        ``None`` if the input is not numeric.
+        ``float(value)`` if coercion succeeds; else ``None``.
     """
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        s = value.strip()
-        try:
-            return float(s)
-        except ValueError:
-            return None
-    return None
+    return _coerce_float(value)
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================= #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _clamp(
@@ -386,7 +454,7 @@ def _integral_from_float(
     Returns
     -------
     int | None
-        Integer form of ``candidate`` or ``None`` if not integral.
+        Integer form of ``candidate``; else ``None`` if not integral.
     """
     if candidate is None or not candidate.is_integer():
         return None
@@ -468,7 +536,7 @@ def _value_or_default(
     default: Num,
 ) -> Num:
     """
-    Return ``value`` when not ``None``; otherwise ``default``.
+    Return ``value`` if not ``None``; else ``default``.
 
     Parameters
     ----------

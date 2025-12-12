@@ -38,16 +38,12 @@ from typing import TypedDict
 from ..api import PaginationConfigMap
 from ..api import RateLimitConfigMap
 from ..types import StrAnyMap
-from .connector import ConnectorApi
-from .connector import ConnectorDb
-from .connector import ConnectorFile
 
 # SECTION: EXPORTS  ========================================================= #
 
 
 __all__ = [
     # Type aliases
-    'Connector',
     'ConnectorType',
     # 'PaginationType',
 
@@ -60,8 +56,6 @@ __all__ = [
 
 # SECTION: TYPE ALIASES ===================================================== #
 
-
-type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 
 # Literal type for supported connector kinds
 type ConnectorType = Literal['api', 'database', 'file']
