@@ -20,8 +20,8 @@ from typing import Any
 
 import pytest
 
+from etlplus.api import RateLimitConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: TESTS ============================================================ #
