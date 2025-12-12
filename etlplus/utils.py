@@ -158,7 +158,7 @@ def to_maximum_float(
     Returns
     -------
     float
-        ``default`` if coercion fails, else ``max(coerced, default)``.
+        ``default`` if coercion fails; else ``max(coerced, default)``.
     """
     result = to_float(value, default)
     return max(_value_or_default(result, default), default)
@@ -181,7 +181,7 @@ def to_minimum_float(
     Returns
     -------
     float
-        ``default`` if coercion fails, else ``min(coerced, default)``.
+        ``default`` if coercion fails; else ``min(coerced, default)``.
     """
     result = to_float(value, default)
     return min(_value_or_default(result, default), default)
@@ -199,7 +199,7 @@ def to_positive_float(value: Any) -> float | None:
     Returns
     -------
     float | None
-        Positive float if coercion succeeds and ``value > 0``; ``None`` if mot.
+        Positive float if coercion succeeds and ``value > 0``; else ``None``.
     """
     result = to_float(value)
     if result is None or result <= 0:
@@ -250,7 +250,7 @@ def to_maximum_int(
     Returns
     -------
     int
-        ``default`` if coercion fails, else ``max(coerced, default)``.
+        ``default`` if coercion fails; else ``max(coerced, default)``.
     """
     result = to_int(value, default)
     return max(_value_or_default(result, default), default)
@@ -273,7 +273,7 @@ def to_minimum_int(
     Returns
     -------
     int
-        ``default`` if coercion fails, else ``min(coerced, default)``.
+        ``default`` if coercion fails; else ``min(coerced, default)``.
     """
     result = to_int(value, default)
     return min(_value_or_default(result, default), default)
@@ -303,7 +303,7 @@ def to_positive_int(
         Positive integer respecting ``minimum``.
     """
     result = to_int(value, default, minimum=minimum)
-    return result if result is not None else minimum
+    return _value_or_default(result, minimum)
 
 
 # -- Generic Number Coercion -- #
@@ -324,7 +324,7 @@ def to_number(
     Returns
     -------
     float | None
-        ``float(value)`` if coercion succeeds, else ``None``.
+        ``float(value)`` if coercion succeeds; else ``None``.
     """
     return _coerce_float(value)
 
@@ -449,7 +449,7 @@ def _integral_from_float(
     Returns
     -------
     int | None
-        Integer form of ``candidate`,` else ``None`` if not integral.
+        Integer form of ``candidate``; else ``None`` if not integral.
     """
     if candidate is None or not candidate.is_integer():
         return None
@@ -531,7 +531,7 @@ def _value_or_default(
     default: Num,
 ) -> Num:
     """
-    Return ``value`` if not ``None``, else ``default``.
+    Return ``value`` if not ``None``; else ``default``.
 
     Parameters
     ----------
