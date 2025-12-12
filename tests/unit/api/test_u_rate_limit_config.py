@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.config.test_u_rate_limit` module.
+:mod:`tests.unit.api.test_u_rate_limit_config` module.
 
-Unit tests for ``etlplus.config.rate_limit``.
+Unit tests for :class:`etlplus.api.rate_limiter.RateLimitConfig`.
 
 Notes
 -----
@@ -15,7 +15,7 @@ from collections.abc import Iterable
 
 import pytest
 
-from etlplus.config import RateLimitConfig
+from etlplus.api import RateLimitConfig
 
 # SECTION: TESTS ============================================================ #
 
