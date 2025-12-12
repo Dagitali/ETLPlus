@@ -36,9 +36,11 @@ from .types import RateLimitOverrides
 
 __all__ = [
     # Classes
+    'RateLimiter',
+
+    # Data Classes
     'RateLimitConfig',
     'RateLimitPlan',
-    'RateLimiter',
 
     # Typed Dicts
     'RateLimitConfigMap',
