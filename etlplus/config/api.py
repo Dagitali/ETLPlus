@@ -28,9 +28,9 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
+from ..api import RateLimitConfig
 from ..types import StrAnyMap
 from .pagination import PaginationConfig
-from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
 from .utils import coerce_dict
 from .utils import maybe_mapping
