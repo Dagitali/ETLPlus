@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import TypedDict
 
+from ..config.mixins import BoundsWarningsMixin
 from ..utils import to_float
 from ..utils import to_positive_float
 from .types import RateLimitOverrides
@@ -143,7 +144,7 @@ def _normalized_rate_values(
 
 
 @dataclass(slots=True)
-class RateLimitConfig:
+class RateLimitConfig(BoundsWarningsMixin):
     """Lightweight container for optional rate-limit settings."""
 
     sleep_seconds: float | int | None = None
@@ -163,10 +164,16 @@ class RateLimitConfig:
     def validate_bounds(self) -> list[str]:
         """Return human-readable warnings for suspicious numeric bounds."""
         warnings: list[str] = []
-        if (sleep := to_float(self.sleep_seconds)) is not None and sleep < 0:
-            warnings.append('sleep_seconds should be >= 0')
-        if (rate := to_float(self.max_per_sec)) is not None and rate <= 0:
-            warnings.append('max_per_sec should be > 0')
+        self._warn_if(
+            (sleep := to_float(self.sleep_seconds)) is not None and sleep < 0,
+            'sleep_seconds should be >= 0',
+            warnings,
+        )
+        self._warn_if(
+            (rate := to_float(self.max_per_sec)) is not None and rate <= 0,
+            'max_per_sec should be > 0',
+            warnings,
+        )
         return warnings
 
     # -- Class Methods -- #
