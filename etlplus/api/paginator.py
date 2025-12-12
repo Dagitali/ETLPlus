@@ -45,9 +45,12 @@ from typing import Any
 from typing import ClassVar
 from typing import Literal
 from typing import Required
+from typing import Self
 from typing import TypedDict
 from typing import cast
+from typing import overload
 
+from ..config.mixins import BoundsWarningsMixin
 from ..types import JSONDict
 from ..types import JSONRecords
 from ..utils import to_int
@@ -67,6 +70,9 @@ __all__ = [
     # Classes
     'Paginator',
 
+    # Data Classes
+    'PaginationConfig',
+
     # Enums
     'PaginationType',
 
@@ -84,6 +90,33 @@ _MISSING = object()
 
 
 # SECTION: INTERNAL HELPERS ================================================ #
+
+
+def _normalize_pagination_type(
+    value: Any,
+) -> PaginationType | None:
+    """
+    Normalize a value into a :class:`PaginationType` enum member.
+
+    Parameters
+    ----------
+    value : Any
+        Input value to normalize.
+
+    Returns
+    -------
+    PaginationType | None
+        Corresponding enum member, or ``None`` if unrecognized.
+    """
+    match str(value).strip().lower() if value is not None else '':
+        case 'page':
+            return PaginationType.PAGE
+        case 'offset':
+            return PaginationType.OFFSET
+        case 'cursor':
+            return PaginationType.CURSOR
+        case _:
+            return None
 
 
 def _resolve_path(
@@ -247,6 +280,121 @@ class PagePaginationConfigMap(TypedDict, total=False):
 
 
 type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True)
+class PaginationConfig(BoundsWarningsMixin):
+    """Configuration for pagination in API requests."""
+
+    type: PaginationType | None = None  # "page" | "offset" | "cursor"
+
+    # Page/offset
+    page_param: str | None = None
+    size_param: str | None = None
+    start_page: int | None = None
+    page_size: int | None = None
+
+    # Cursor
+    cursor_param: str | None = None
+    cursor_path: str | None = None
+    start_cursor: str | int | None = None
+
+    # General
+    records_path: str | None = None
+    fallback_path: str | None = None
+    max_pages: int | None = None
+    max_records: int | None = None
+
+    def validate_bounds(self) -> list[str]:
+        """Return non-raising warnings for suspicious numeric bounds."""
+        warnings: list[str] = []
+
+        self._warn_if(
+            (mp := self.max_pages) is not None and mp <= 0,
+            'max_pages should be > 0',
+            warnings,
+        )
+        self._warn_if(
+            (mr := self.max_records) is not None and mr <= 0,
+            'max_records should be > 0',
+            warnings,
+        )
+
+        match (self.type or '').strip().lower():
+            case 'page' | 'offset':
+                self._warn_if(
+                    (sp := self.start_page) is not None and sp < 1,
+                    'start_page should be >= 1',
+                    warnings,
+                )
+                self._warn_if(
+                    (ps := self.page_size) is not None and ps <= 0,
+                    'page_size should be > 0',
+                    warnings,
+                )
+            case 'cursor':
+                self._warn_if(
+                    (ps := self.page_size) is not None and ps <= 0,
+                    'page_size should be > 0 for cursor pagination',
+                    warnings,
+                )
+            case _:
+                pass
+
+        return warnings
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: None,
+    ) -> None: ...
+
+    @classmethod
+    @overload
+    def from_obj(
+        cls,
+        obj: PaginationConfigMap,
+    ) -> Self: ...
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Mapping[str, Any] | None,
+    ) -> Self | None:
+        """
+        Parse a mapping into a :class:`PaginationConfig` instance.
+
+        Parameters
+        ----------
+        obj : Mapping[str, Any] | None
+            Input mapping to parse.
+
+        Returns
+        -------
+        PaginationConfig | None
+            Parsed pagination configuration, or ``None`` if input is ``None``.
+        """
+        if not isinstance(obj, Mapping):
+            return None
+
+        return cls(
+            type=_normalize_pagination_type(obj.get('type')),
+            page_param=obj.get('page_param'),
+            size_param=obj.get('size_param'),
+            start_page=to_int(obj.get('start_page')),
+            page_size=to_int(obj.get('page_size')),
+            cursor_param=obj.get('cursor_param'),
+            cursor_path=obj.get('cursor_path'),
+            start_cursor=obj.get('start_cursor'),
+            records_path=obj.get('records_path'),
+            fallback_path=obj.get('fallback_path'),
+            max_pages=to_int(obj.get('max_pages')),
+            max_records=to_int(obj.get('max_records')),
+        )
 
 
 # SECTION: CLASSES ========================================================== #
