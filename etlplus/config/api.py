@@ -28,9 +28,9 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
+from ..api import PaginationConfig
 from ..api import RateLimitConfig
 from ..types import StrAnyMap
-from .pagination import PaginationConfig
 from .utils import cast_str_dict
 from .utils import coerce_dict
 from .utils import maybe_mapping
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    # Data Classes
     'ApiConfig',
     'ApiProfileConfig',
     'EndpointConfig',
@@ -95,7 +96,7 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
     return parsed
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(slots=True)

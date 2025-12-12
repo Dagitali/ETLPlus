@@ -23,15 +23,16 @@ from ..utils import to_float
 from ..utils import to_int
 
 if TYPE_CHECKING:
+    from ..api import PaginationConfig
+    from ..api import PaginationType
     from ..api import RateLimitConfig
-    from .pagination import PaginationConfig
-    from .pagination import PaginationType
 
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
     'cast_str_dict',
     'coerce_dict',
     'deep_substitute',
@@ -214,7 +215,7 @@ def pagination_from_defaults(
 
     # Locally import inside function to avoid circular dependencies; narrow to
     # literal.
-    from .pagination import PaginationConfig
+    from ..api import PaginationConfig
 
     return PaginationConfig(
         type=_coerce_pagination_type(obj.get('type')),
