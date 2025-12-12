@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.config.test_u_pagination` module.
+:mod:`tests.unit.api.test_u_pagination_config` module.
 
-Unit tests for ``etlplus.config.pagination``.
+Unit tests for :class:`etlplus.api.PaginationConfig`.
 
 Notes
 -----
@@ -15,7 +15,7 @@ from typing import Literal
 
 import pytest
 
-from etlplus.config import PaginationConfig
+from etlplus.api import PaginationConfig
 from etlplus.config.utils import pagination_from_defaults
 
 # SECTION: TESTS ============================================================ #
