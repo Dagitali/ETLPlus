@@ -41,14 +41,23 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+# HTTP headers represented as a string-to-string mapping.
 type Headers = StrStrMap
+
+# Query or body parameters allowing arbitrary JSON-friendly values.
 type Params = StrAnyMap
+
+# Fully qualified resource locator consumed by transport helpers.
 type Url = str
 
+# Callable signature used by pagination helpers to fetch data pages.
 type FetchPageCallable = Callable[
     [Url, Params | None, int | None],
     JSONData,
 ]
 
+# Value accepted by rate-limit override mappings (seconds or counts).
 type RateLimitOverrideValue = float | int | None
+
+# Optional mapping of rate-limit fields to override values.
 type RateLimitOverrides = Mapping[str, RateLimitOverrideValue] | None
