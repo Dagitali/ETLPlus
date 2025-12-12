@@ -41,9 +41,9 @@ from typing import Any
 from typing import Self
 from typing import overload
 
+from ..api import RateLimitConfig
 from ..types import StrAnyMap
 from .pagination import PaginationConfig
-from .rate_limit import RateLimitConfig
 from .utils import cast_str_dict
 from .utils import coerce_dict
 
