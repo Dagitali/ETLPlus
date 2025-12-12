@@ -17,7 +17,8 @@ from typing import Protocol
 
 import pytest
 
-from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api import RateLimitConfig
+from etlplus.api import RateLimiter
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import ConnectorApi
@@ -28,7 +29,6 @@ from etlplus.config import JobConfig
 from etlplus.config import LoadRef
 from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
 
 # SECTION: HELPERS ========================================================== #
 
