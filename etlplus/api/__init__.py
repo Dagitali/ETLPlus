@@ -76,6 +76,7 @@ from .auth import EndpointCredentialsBearer
 from .endpoint_client import EndpointClient
 from .paginator import CursorPaginationConfigMap
 from .paginator import PagePaginationConfigMap
+from .paginator import PaginationConfig
 from .paginator import PaginationConfigMap
 from .paginator import PaginationType
 from .paginator import Paginator
@@ -105,6 +106,7 @@ __all__ = [
     'RetryManager',
 
     # Data Classes
+    'PaginationConfig',
     'RateLimitConfig', 'RateLimitPlan',
     'RetryStrategy',
 
