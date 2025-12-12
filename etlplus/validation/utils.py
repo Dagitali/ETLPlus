@@ -12,12 +12,13 @@ offloading ancillary concerns to composable helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from typing import Self
 from typing import TypedDict
+
+from ..types import StrAnyMap
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 
@@ -34,13 +35,13 @@ class ValidationResult(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type Ruleset = Mapping[str, Any]
+type Ruleset = StrAnyMap
 
 type ValidationPhase = Literal['before_transform', 'after_transform']
 type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
 type ValidationSeverity = Literal['warn', 'error']
 
-type ValidateFn = Callable[[Any, Mapping[str, Any]], ValidationResult]
+type ValidateFn = Callable[[Any, Ruleset], ValidationResult]
 type PrintFn = Callable[[Any], None]
 
 
@@ -144,7 +145,7 @@ def maybe_validate(
     when: str,
     *,
     enabled: bool,
-    rules: Mapping[str, Any] | None,
+    rules: Ruleset | None,
     phase: str,
     severity: str,
     validate_fn: ValidateFn,
@@ -162,7 +163,7 @@ def maybe_validate(
         ``"after_transform"``, or ``"both"``.
     enabled : bool
         Global flag to toggle validation.
-    rules : Mapping[str, Any] | None
+    rules : Ruleset | None
         Validation rules to apply. ``None`` or empty mappings short-circuit.
     phase : str
         Current pipeline phase requesting validation.
