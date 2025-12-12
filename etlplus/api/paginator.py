@@ -375,7 +375,7 @@ class PaginationConfig(BoundsWarningsMixin):
 
         Returns
         -------
-        PaginationConfig | None
+        Self | None
             Parsed pagination configuration, or ``None`` if input is ``None``.
         """
         if not isinstance(obj, Mapping):
