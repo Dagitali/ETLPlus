@@ -28,7 +28,6 @@ from .jobs import JobConfig
 from .jobs import LoadRef
 from .jobs import TransformRef
 from .jobs import ValidationRef
-from .pagination import PaginationConfig
 from .pipeline import PipelineConfig
 from .pipeline import load_pipeline_config
 from .profile import ProfileConfig
@@ -42,7 +41,6 @@ __all__ = [
     'ApiConfig',
     'ApiProfileConfig',
     'EndpointConfig',
-    'PaginationConfig',
 
     # Connectors
     'Connector',
