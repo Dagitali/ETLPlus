@@ -16,11 +16,11 @@ from typing import Any
 
 import pytest
 
+from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 from etlplus.config import ApiConfig
 from etlplus.config import ApiProfileConfig
 from etlplus.config import EndpointConfig
-from etlplus.config import PaginationConfig
 
 # SECTION: TESTS ============================================================ #
 
