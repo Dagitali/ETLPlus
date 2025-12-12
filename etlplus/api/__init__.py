@@ -79,6 +79,7 @@ from .paginator import PagePaginationConfigMap
 from .paginator import PaginationConfigMap
 from .paginator import PaginationType
 from .paginator import Paginator
+from .rate_limiter import RateLimitConfig
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
 from .rate_limiter import RateLimitPlan
@@ -100,9 +101,11 @@ __all__ = [
     'EndpointClient',
     'EndpointCredentialsBearer',
     'Paginator',
-    'RateLimitPlan',
     'RateLimiter',
     'RetryManager',
+
+    # Data Classes
+    'RateLimitConfig', 'RateLimitPlan',
     'RetryStrategy',
 
     # Enums
