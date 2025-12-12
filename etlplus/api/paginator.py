@@ -10,6 +10,13 @@ configuration and behavior. It supports instantiation from a configuration
 mapping, fetching pages via a supplied callback, and iterating over records
 across pages.
 
+Notes
+-----
+- TypedDict shapes are editor hints; runtime parsing remains permissive
+    (``from_obj`` accepts ``Mapping[str, Any]``).
+- Numeric fields are normalized with tolerant casts; ``validate_bounds``
+    returns warnings instead of raising.
+
 Examples
 --------
 Create a paginator from config and use it to fetch all records from an API
@@ -33,6 +40,12 @@ endpoint:
 ...     rate_limiter=RateLimiter.fixed(0.5),
 ... )
 >>> all_records = paginator.paginate('https://api.example.com/v1/items')
+
+See Also
+--------
+- :meth:`PaginationConfig.validate_bounds`
+- :func:`etlplus.config.utils.to_int`
+- :func:`etlplus.config.utils.to_float`
 """
 from __future__ import annotations
 
@@ -287,7 +300,38 @@ type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 
 @dataclass(slots=True)
 class PaginationConfig(BoundsWarningsMixin):
-    """Configuration for pagination in API requests."""
+    """
+    Configuration for pagination in API requests.
+
+    Attributes
+    ----------
+    type : PaginationType | None
+        Pagination type: "page", "offset", or "cursor".
+    page_param : str | None
+        Name of the page parameter.
+    size_param : str | None
+        Name of the page size parameter.
+    start_page : int | None
+        Starting page number.
+    page_size : int | None
+        Number of records per page.
+    cursor_param : str | None
+        Name of the cursor parameter.
+    cursor_path : str | None
+        JSONPath expression to extract the cursor from the response.
+    start_cursor : str | int | None
+        Starting cursor value.
+    records_path : str | None
+        JSONPath expression to extract the records from the response.
+    fallback_path : str | None
+        Secondary JSONPath checked when ``records_path`` yields nothing.
+    max_pages : int | None
+        Maximum number of pages to retrieve.
+    max_records : int | None
+        Maximum number of records to retrieve.
+    """
+
+    # -- Attributes -- #
 
     type: PaginationType | None = None  # "page" | "offset" | "cursor"
 
@@ -308,10 +352,22 @@ class PaginationConfig(BoundsWarningsMixin):
     max_pages: int | None = None
     max_records: int | None = None
 
+    # -- Instance Methods -- #
+
     def validate_bounds(self) -> list[str]:
-        """Return non-raising warnings for suspicious numeric bounds."""
+        """
+        Return non-raising warnings for suspicious numeric bounds.
+
+        Uses structural pattern matching to keep branching concise.
+
+        Returns
+        -------
+        list[str]
+            Warning messages (empty if all values look sane).
+        """
         warnings: list[str] = []
 
+        # General limits
         self._warn_if(
             (mp := self.max_pages) is not None and mp <= 0,
             'max_pages should be > 0',
@@ -346,6 +402,8 @@ class PaginationConfig(BoundsWarningsMixin):
 
         return warnings
 
+    # -- Class Methods -- #
+
     @classmethod
     @overload
     def from_obj(
@@ -371,12 +429,18 @@ class PaginationConfig(BoundsWarningsMixin):
         Parameters
         ----------
         obj : Mapping[str, Any] | None
-            Input mapping to parse.
+            Mapping with optional pagination fields, or ``None``.
 
         Returns
         -------
         Self | None
-            Parsed pagination configuration, or ``None`` if input is ``None``.
+            Parsed pagination configuration, or ``None`` if ``obj`` isn't a
+            mapping.
+
+        Notes
+        -----
+        Tolerant: unknown keys ignored; numeric fields coerced via
+        ``to_int``; non-mapping inputs return ``None``.
         """
         if not isinstance(obj, Mapping):
             return None
