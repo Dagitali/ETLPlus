@@ -55,13 +55,13 @@ Notes
 -----
 - ``EndpointClient.endpoints`` is read-only at runtime.
 - Pagination defaults are centralized on the client (``page``, ``per_page``,
-  ``cursor``, ``limit``; start page ``1``; page size ``100``).
+    ``cursor``, ``limit``; start page ``1``; page size ``100``).
 - Retries are opt-in via the ``retry`` parameter; backoff uses jitter.
 - Use ``retry_network_errors=True`` to also retry timeouts/connection errors.
 - Prefer :data:`JSONRecords` (list of :data:`JSONDict`) for paginated
-  responses; scalar/record aliases are exported for convenience.
+    responses; scalar/record aliases are exported for convenience.
 - The underlying :class:`Paginator` is exported for advanced scenarios that
-  need to stream pages manually.
+    need to stream pages manually.
 
 See Also
 --------
