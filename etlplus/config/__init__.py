@@ -32,7 +32,6 @@ from .pagination import PaginationConfig
 from .pipeline import PipelineConfig
 from .pipeline import load_pipeline_config
 from .profile import ProfileConfig
-from .rate_limit import RateLimitConfig
 from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
@@ -44,7 +43,6 @@ __all__ = [
     'ApiProfileConfig',
     'EndpointConfig',
     'PaginationConfig',
-    'RateLimitConfig',
 
     # Connectors
     'Connector',
