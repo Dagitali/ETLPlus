@@ -14,7 +14,7 @@ Public (re-export safe) helpers:
 - build_endpoint_client(base_url, base_path, endpoints, env)
 - compute_rl_sleep_seconds(rate_limit, overrides)
 - paginate_with_client(client, endpoint_key, params, headers,
-  timeout, pagination, sleep_seconds)
+    timeout, pagination, sleep_seconds)
 
 Notes
 -----
@@ -33,7 +33,8 @@ import requests  # type: ignore[import]
 
 from .api import EndpointClient
 from .api import Headers
-from .api import PaginationConfigMap as ApiPaginationConfig
+from .api import PaginationConfig
+from .api import PaginationConfigMap
 from .api import Params
 from .api import RateLimitConfig
 from .api import RateLimitConfigMap
@@ -42,23 +43,25 @@ from .api import RetryPolicy
 from .api import Url
 from .config.api import ApiConfig as CfgApiConfig
 from .config.api import EndpointConfig as CfgEndpointConfig
-from .config.pagination import PaginationConfig as CfgPaginationConfig
 from .types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
+    'build_endpoint_client',
     'build_pagination_cfg',
     'build_session',
     'compose_api_request_env',
     'compose_api_target_env',
-    'build_endpoint_client',
     'compute_rl_sleep_seconds',
     'paginate_with_client',
-    'SessionConfig',
+
+    # Typed Dicts
     'ApiRequestEnv',
     'ApiTargetEnv',
+    'SessionConfig',
 ]
 
 
@@ -78,7 +81,7 @@ class ApiRequestEnv(TypedDict, total=False):
     endpoints_map: dict[str, str] | None
     endpoint_key: str | None
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
     retry: RetryPolicy | None
     retry_network_errors: bool
@@ -459,7 +462,7 @@ def compose_api_request_env(
         base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
-    pag_cfg: ApiPaginationConfig | None = build_pagination_cfg(
+    pag_cfg: PaginationConfigMap | None = build_pagination_cfg(
         pagination,
         pag_ov,
     )
@@ -551,22 +554,22 @@ def compose_api_target_env(
 
 
 def build_pagination_cfg(
-    pagination: CfgPaginationConfig | None,
+    pagination: PaginationConfig | None,
     overrides: Mapping[str, Any] | None,
-) -> ApiPaginationConfig | None:
+) -> PaginationConfigMap | None:
     """
     Build pagination configuration.
 
     Parameters
     ----------
-    pagination : CfgPaginationConfig | None
+    pagination : PaginationConfig | None
         Pagination configuration.
     overrides : Mapping[str, Any] | None
         Override configuration options.
 
     Returns
     -------
-    ApiPaginationConfig | None
+    PaginationConfigMap | None
         Pagination configuration.
     """
     ptype: str | None = None
@@ -660,7 +663,7 @@ def build_pagination_cfg(
         case _:
             pass
 
-    return cast(ApiPaginationConfig, cfg)
+    return cast(PaginationConfigMap, cfg)
 
 
 # -- Pagination Invocation -- #
@@ -672,7 +675,7 @@ def paginate_with_client(
     params: Params | None,
     headers: Headers | None,
     timeout: Timeout,
-    pagination: ApiPaginationConfig | None,
+    pagination: PaginationConfigMap | None,
     sleep_seconds: float | None,
 ) -> Any:
     """
@@ -690,7 +693,7 @@ def paginate_with_client(
         Headers to include in the API request.
     timeout : Timeout
         Timeout configuration for the API request.
-    pagination : ApiPaginationConfig | None
+    pagination : PaginationConfigMap | None
         Pagination configuration for the API request.
     sleep_seconds : float | None
         Sleep duration between API requests.
