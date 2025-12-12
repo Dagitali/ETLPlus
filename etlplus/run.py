@@ -16,7 +16,7 @@ from urllib.parse import urlunsplit
 import requests  # type: ignore[import]
 
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfigMap as ApiPaginationConfig
+from .api import PaginationConfigMap
 from .api import RetryPolicy
 from .api import Url
 from .config import load_pipeline_config
@@ -85,7 +85,7 @@ class ApiRequestEnv(BaseApiHttpEnv, total=False):
 
     # Request
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
 
     # Reliability
@@ -257,7 +257,7 @@ def run(
                     cast(Mapping[str, Any] | None, env.get('params')),
                     cast(Mapping[str, str] | None, env.get('headers')),
                     env.get('timeout'),
-                    cast(ApiPaginationConfig | None, env.get('pagination')),
+                    cast(PaginationConfigMap | None, env.get('pagination')),
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
