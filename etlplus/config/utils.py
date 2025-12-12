@@ -23,9 +23,9 @@ from ..utils import to_float
 from ..utils import to_int
 
 if TYPE_CHECKING:
+    from ..api import RateLimitConfig
     from .pagination import PaginationConfig
     from .pagination import PaginationType
-    from .rate_limit import RateLimitConfig
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -259,7 +259,7 @@ def rate_limit_from_defaults(
         return None
 
     # Local import to avoid circular dependency with rate_limit -> utils
-    from .rate_limit import RateLimitConfig as _RateLimitConfig
+    from ..api import RateLimitConfig as _RateLimitConfig
 
     return _RateLimitConfig(
         sleep_seconds=to_float(sleep_seconds),
