@@ -24,7 +24,6 @@ from ..utils import to_int
 
 if TYPE_CHECKING:
     from ..api import PaginationConfig
-    from ..api import PaginationType
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -173,62 +172,9 @@ def pagination_from_defaults(
         A PaginationConfig instance with numeric fields coerced to int/float
         where applicable, or None if parsing failed.
     """
-    if not isinstance(obj, Mapping):
-        return None
+    from ..api import PaginationConfig as _PaginationConfig
 
-    # Start with direct keys if present.
-    page_param = obj.get('page_param')
-    size_param = obj.get('size_param')
-    start_page = obj.get('start_page')
-    page_size = obj.get('page_size')
-    cursor_param = obj.get('cursor_param')
-    cursor_path = obj.get('cursor_path')
-    start_cursor = obj.get('start_cursor')
-    records_path = obj.get('records_path')
-    fallback_path = obj.get('fallback_path')
-    max_pages = obj.get('max_pages')
-    max_records = obj.get('max_records')
-
-    # Map from nested shapes when provided.
-    params_blk = maybe_mapping(obj.get('params'))
-    if params_blk:
-        page_param = page_param or params_blk.get('page')
-        size_param = (
-            size_param
-            or params_blk.get('per_page')
-            or params_blk.get('limit')
-        )
-        cursor_param = cursor_param or params_blk.get('cursor')
-        fallback_path = fallback_path or params_blk.get('fallback_path')
-
-    resp_blk = maybe_mapping(obj.get('response'))
-    if resp_blk:
-        records_path = records_path or resp_blk.get('items_path')
-        cursor_path = cursor_path or resp_blk.get('next_cursor_path')
-        fallback_path = fallback_path or resp_blk.get('fallback_path')
-
-    dflt_blk = maybe_mapping(obj.get('defaults'))
-    if dflt_blk:
-        page_size = page_size or dflt_blk.get('per_page')
-
-    # Locally import inside function to avoid circular dependencies; narrow to
-    # literal.
-    from ..api import PaginationConfig
-
-    return PaginationConfig(
-        type=_coerce_pagination_type(obj.get('type')),
-        page_param=page_param,
-        size_param=size_param,
-        start_page=to_int(start_page),
-        page_size=to_int(page_size),
-        cursor_param=cursor_param,
-        cursor_path=cursor_path,
-        start_cursor=start_cursor,
-        records_path=records_path,
-        fallback_path=fallback_path,
-        max_pages=to_int(max_pages),
-        max_records=to_int(max_records),
-    )
+    return _PaginationConfig.from_defaults(obj)
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -260,19 +206,3 @@ def _replace_tokens(
         if token in out:
             out = out.replace(token, str(replacement))
     return out
-
-
-def _coerce_pagination_type(
-    value: Any,
-) -> PaginationType | None:
-    from ..api import PaginationType
-
-    match str(value).strip().lower() if value is not None else '':
-        case 'page':
-            return PaginationType.PAGE
-        case 'offset':
-            return PaginationType.OFFSET
-        case 'cursor':
-            return PaginationType.CURSOR
-        case _:
-            return None
