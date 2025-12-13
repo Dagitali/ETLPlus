@@ -195,6 +195,42 @@ class RateLimitConfig(BoundsWarningsMixin):
     # -- Class Methods -- #
 
     @classmethod
+    def from_defaults(
+        cls,
+        obj: StrAnyMap | None,
+    ) -> Self | None:
+        """
+        Parse default rate-limit mapping, returning ``None`` if empty.
+
+        Only supports ``sleep_seconds`` and ``max_per_sec`` keys. Other keys
+        are ignored.
+
+        Parameters
+        ----------
+        obj : StrAnyMap | None
+            Defaults mapping (non-mapping inputs return ``None``).
+
+        Returns
+        -------
+        Self | None
+            Parsed instance with numeric fields coerced, or ``None`` if no
+            relevant keys are present or parsing failed.
+        """
+        if not isinstance(obj, Mapping):
+            return None
+
+        sleep_seconds = obj.get('sleep_seconds')
+        max_per_sec = obj.get('max_per_sec')
+
+        if sleep_seconds is None and max_per_sec is None:
+            return None
+
+        return cls(
+            sleep_seconds=to_float(sleep_seconds),
+            max_per_sec=to_float(max_per_sec),
+        )
+
+    @classmethod
     @overload
     def from_obj(
         cls,
