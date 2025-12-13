@@ -28,6 +28,9 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..types import StrAnyMap
+from ._parsing import cast_str_dict
+from ._parsing import coerce_dict
+from ._parsing import maybe_mapping
 from .endpoint_client import EndpointClient
 from .paginator import PaginationConfig
 from .rate_limiter import RateLimitConfig
@@ -49,66 +52,7 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _cast_str_dict(
-    mapping: StrAnyMap | None,
-) -> dict[str, str]:
-    """
-    Return a ``dict`` with keys/values coerced to ``str`` when possible.
-
-    Parameters
-    ----------
-    mapping : StrAnyMap | None
-        Input mapping; ``None`` yields ``{}``.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary with all keys and values converted via :func:`str()`.
-    """
-    if not mapping:
-        return {}
-    return {str(key): str(value) for key, value in mapping.items()}
-
-
-def _coerce_dict(
-    value: Any,
-) -> dict[str, Any]:
-    """
-    Return a shallow ``dict`` copy when *value* is mapping-like.
-
-    Parameters
-    ----------
-    value : Any
-        Mapping-like object to copy. ``None`` returns an empty dict.
-
-    Returns
-    -------
-    dict[str, Any]
-        Shallow copy of the mapping or empty dict.
-    """
-    return dict(value) if isinstance(value, Mapping) else {}
-
-
-def _maybe_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return *value* only when it behaves like a mapping; otherwise ``None``.
-
-    Parameters
-    ----------
-    value : Any
-        Value to check.
-
-    Returns
-    -------
-    StrAnyMap | None
-        The original value if mapping-like; otherwise ``None``.
-    """
-    return value if isinstance(value, Mapping) else None
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _effective_service_defaults(
@@ -168,7 +112,7 @@ def _parse_endpoints(
     dict[str, EndpointConfig]
         Parsed endpoint configurations.
     """
-    if not (mapping := _maybe_mapping(raw)):
+    if not (mapping := maybe_mapping(raw)):
         return {}
     return {
         str(name): EndpointConfig.from_obj(data)
@@ -190,11 +134,11 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
     dict[str, ApiProfileConfig]
             Parsed API profile configurations.
     """
-    if not (mapping := _maybe_mapping(raw)):
+    if not (mapping := maybe_mapping(raw)):
         return {}
     parsed: dict[str, ApiProfileConfig] = {}
     for name, profile_raw in mapping.items():
-        if not (profile_map := _maybe_mapping(profile_raw)):
+        if not (profile_map := maybe_mapping(profile_raw)):
             continue
         parsed[str(name)] = ApiProfileConfig.from_obj(profile_map)
     return parsed
@@ -265,14 +209,14 @@ class ApiProfileConfig:
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        defaults_raw = _coerce_dict(obj.get('defaults'))
+        defaults_raw = coerce_dict(obj.get('defaults'))
         merged_headers = (
-            _cast_str_dict(defaults_raw.get('headers'))
-            | _cast_str_dict(obj.get('headers'))
+            cast_str_dict(defaults_raw.get('headers'))
+            | cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
-        auth = _coerce_dict(obj.get('auth'))
+        auth = coerce_dict(obj.get('auth'))
 
         pag_def = PaginationConfig.from_defaults(
             defaults_raw.get('pagination'),
@@ -430,7 +374,7 @@ class ApiConfig:
         profiles = _parse_profiles(obj.get('profiles'))
 
         tl_base = obj.get('base_url')
-        tl_headers = _cast_str_dict(obj.get('headers'))
+        tl_headers = cast_str_dict(obj.get('headers'))
 
         base_url, headers = _effective_service_defaults(
             profiles=profiles,
@@ -530,8 +474,8 @@ class EndpointConfig:
                 return cls(
                     path=path,
                     method=obj.get('method'),
-                    path_params=_coerce_dict(path_params_raw),
-                    query_params=_coerce_dict(query_params_raw),
+                    path_params=coerce_dict(path_params_raw),
+                    query_params=coerce_dict(query_params_raw),
                     body=obj.get('body'),
                     pagination=PaginationConfig.from_obj(
                         obj.get('pagination'),
