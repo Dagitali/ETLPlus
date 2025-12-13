@@ -25,7 +25,6 @@ from ..utils import to_int
 if TYPE_CHECKING:
     from ..api import PaginationConfig
     from ..api import PaginationType
-    from ..api import RateLimitConfig
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -38,7 +37,6 @@ __all__ = [
     'deep_substitute',
     'maybe_mapping',
     'pagination_from_defaults',
-    'rate_limit_from_defaults',
     'to_int',
     'to_float',
 ]
@@ -230,41 +228,6 @@ def pagination_from_defaults(
         fallback_path=fallback_path,
         max_pages=to_int(max_pages),
         max_records=to_int(max_records),
-    )
-
-
-def rate_limit_from_defaults(
-    obj: StrAnyMap | None,
-) -> RateLimitConfig | None:
-    """
-    Return numeric rate-limit bounds from defaults mapping.
-
-    Only supports sleep_seconds and max_per_sec. Other keys are ignored.
-
-    Parameters
-    ----------
-    obj : StrAnyMap | None
-        Defaults mapping (non-mapping inputs return ``None``).
-
-    Returns
-    -------
-    RateLimitConfig | None
-        A RateLimitConfig instance with numeric fields coerced, or None if
-        parsing failed.
-    """
-    if not isinstance(obj, Mapping):
-        return None
-    sleep_seconds = obj.get('sleep_seconds')
-    max_per_sec = obj.get('max_per_sec')
-    if sleep_seconds is None and max_per_sec is None:
-        return None
-
-    # Local import to avoid circular dependency with rate_limit -> utils
-    from ..api import RateLimitConfig as _RateLimitConfig
-
-    return _RateLimitConfig(
-        sleep_seconds=to_float(sleep_seconds),
-        max_per_sec=to_float(max_per_sec),
     )
 
 
