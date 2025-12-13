@@ -73,6 +73,9 @@ See Also
 from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
+from .config import ApiConfig
+from .config import ApiProfileConfig
+from .config import EndpointConfig
 from .endpoint_client import EndpointClient
 from .paginator import CursorPaginationConfigMap
 from .paginator import PagePaginationConfigMap
@@ -106,6 +109,9 @@ __all__ = [
     'RetryManager',
 
     # Data Classes
+    'ApiConfig',
+    'ApiProfileConfig',
+    'EndpointConfig',
     'PaginationConfig',
     'RateLimitConfig', 'RateLimitPlan',
     'RetryStrategy',
