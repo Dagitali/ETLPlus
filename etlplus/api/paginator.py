@@ -66,6 +66,7 @@ from typing import overload
 from ..mixins import BoundsWarningsMixin
 from ..types import JSONDict
 from ..types import JSONRecords
+from ..types import StrAnyMap
 from ..utils import to_int
 from ..utils import to_maximum_int
 from ..utils import to_positive_int
@@ -403,6 +404,76 @@ class PaginationConfig(BoundsWarningsMixin):
         return warnings
 
     # -- Class Methods -- #
+
+    @classmethod
+    def from_defaults(
+        cls,
+        obj: StrAnyMap | None,
+    ) -> Self | None:
+        """
+        Parse nested defaults mapping used by profile + endpoint configs.
+
+        Parameters
+        ----------
+        obj : StrAnyMap | None
+            Defaults mapping (non-mapping inputs return ``None``).
+
+        Returns
+        -------
+        Self | None
+            A :class:`PaginationConfig` instance with numeric fields coerced to
+            int/float where applicable, or ``None`` if parsing failed.
+        """
+        if not isinstance(obj, Mapping):
+            return None
+
+        def _maybe_mapping(value: Any) -> Mapping[str, Any] | None:
+            return value if isinstance(value, Mapping) else None
+
+        # Start with direct keys if present.
+        page_param = obj.get('page_param')
+        size_param = obj.get('size_param')
+        start_page = obj.get('start_page')
+        page_size = obj.get('page_size')
+        cursor_param = obj.get('cursor_param')
+        cursor_path = obj.get('cursor_path')
+        start_cursor = obj.get('start_cursor')
+        records_path = obj.get('records_path')
+        fallback_path = obj.get('fallback_path')
+        max_pages = obj.get('max_pages')
+        max_records = obj.get('max_records')
+
+        # Map from nested shapes when provided.
+        if (params_blk := _maybe_mapping(obj.get('params'))):
+            page_param = page_param or params_blk.get('page')
+            size_param = (
+                size_param
+                or params_blk.get('per_page')
+                or params_blk.get('limit')
+            )
+            cursor_param = cursor_param or params_blk.get('cursor')
+            fallback_path = fallback_path or params_blk.get('fallback_path')
+        if (resp_blk := _maybe_mapping(obj.get('response'))):
+            records_path = records_path or resp_blk.get('items_path')
+            cursor_path = cursor_path or resp_blk.get('next_cursor_path')
+            fallback_path = fallback_path or resp_blk.get('fallback_path')
+        if (dflt_blk := _maybe_mapping(obj.get('defaults'))):
+            page_size = page_size or dflt_blk.get('per_page')
+
+        return cls(
+            type=_normalize_pagination_type(obj.get('type')),
+            page_param=page_param,
+            size_param=size_param,
+            start_page=to_int(start_page),
+            page_size=to_int(page_size),
+            cursor_param=cursor_param,
+            cursor_path=cursor_path,
+            start_cursor=start_cursor,
+            records_path=records_path,
+            fallback_path=fallback_path,
+            max_pages=to_int(max_pages),
+            max_records=to_int(max_records),
+        )
 
     @classmethod
     @overload
