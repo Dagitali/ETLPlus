@@ -22,10 +22,10 @@ from pathlib import Path
 from typing import Any
 from typing import Self
 
+from ..api import ApiConfig
 from ..enums import FileFormat
 from ..file import File
 from ..types import StrAnyMap
-from .api import ApiConfig
 from .connector import Connector
 from .connector import parse_connector
 from .jobs import JobConfig

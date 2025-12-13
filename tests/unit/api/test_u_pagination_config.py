@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.config.test_u_pagination` module.
+:mod:`tests.unit.api.test_u_pagination_config` module.
 
-Unit tests for ``etlplus.config.pagination``.
+Unit tests for :class:`etlplus.api.PaginationConfig`.
 
 Notes
 -----
@@ -15,8 +15,7 @@ from typing import Literal
 
 import pytest
 
-from etlplus.config import PaginationConfig
-from etlplus.config.utils import pagination_from_defaults
+from etlplus.api import PaginationConfig
 
 # SECTION: TESTS ============================================================ #
 
@@ -34,7 +33,7 @@ class TestPaginationConfig:
 
     def test_defaults_apply_response_fallback_path(self) -> None:
         """Defaults mapping should surface response fallback_path."""
-        cfg = pagination_from_defaults(
+        cfg = PaginationConfig.from_defaults(
             {
                 'type': 'page',
                 'response': {
@@ -52,7 +51,7 @@ class TestPaginationConfig:
         """
         Nested fallback_path should not override explicit top-level value.
         """
-        cfg = pagination_from_defaults(
+        cfg = PaginationConfig.from_defaults(
             {
                 'fallback_path': 'top.level.records',
                 'response': {'fallback_path': 'ignored.path'},

@@ -16,8 +16,8 @@ from urllib.parse import urlunsplit
 import requests  # type: ignore[import]
 
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfigMap as ApiPaginationConfig
-from .api import RetryPolicy as ApiRetryPolicy
+from .api import PaginationConfigMap
+from .api import RetryPolicy
 from .api import Url
 from .config import load_pipeline_config
 from .extract import extract
@@ -46,11 +46,8 @@ __all__ = ['run']
 # - CfgEndpointConfig: etlplus.config.api.EndpointConfig (config layer)
 # - CfgPaginationConfig: etlplus.config.pagination.PaginationConfig
 #   (config layer)
-# - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
-#   (config layer)
 # - ApiPaginationConfig: etlplus.api.paginator.PaginationConfigMap
 #   (client layer)
-# - ApiRetryPolicy: etlplus.api.retry_manager.RetryPolicy (client layer)
 # - SessionConfig (below): runner-only TypedDict for HTTP session options
 
 
@@ -88,11 +85,11 @@ class ApiRequestEnv(BaseApiHttpEnv, total=False):
 
     # Request
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
 
     # Reliability
-    retry: ApiRetryPolicy | None
+    retry: RetryPolicy | None
     retry_network_errors: bool
 
 
@@ -260,7 +257,7 @@ def run(
                     cast(Mapping[str, Any] | None, env.get('params')),
                     cast(Mapping[str, str] | None, env.get('headers')),
                     env.get('timeout'),
-                    cast(ApiPaginationConfig | None, env.get('pagination')),
+                    cast(PaginationConfigMap | None, env.get('pagination')),
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:

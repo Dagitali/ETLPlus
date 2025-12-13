@@ -15,29 +15,21 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
 from typing import Any
 
 from ..types import StrAnyMap
 from ..utils import to_float
 from ..utils import to_int
 
-if TYPE_CHECKING:
-    from .pagination import PaginationConfig
-    from .pagination import PaginationType
-    from .rate_limit import RateLimitConfig
-
-
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
     'cast_str_dict',
     'coerce_dict',
     'deep_substitute',
     'maybe_mapping',
-    'pagination_from_defaults',
-    'rate_limit_from_defaults',
     'to_int',
     'to_float',
 ]
@@ -154,119 +146,6 @@ def maybe_mapping(
     return value if isinstance(value, Mapping) else None
 
 
-def pagination_from_defaults(
-    obj: StrAnyMap | None,
-) -> PaginationConfig | None:
-    """
-    Extract pagination type and integer bounds from defaults mapping.
-
-    Tolerates either a flat PaginationConfig-like mapping or a nested shape
-    with "params" and "response" blocks. Unknown keys are ignored.
-
-    Parameters
-    ----------
-    obj : StrAnyMap | None
-        Defaults mapping (non-mapping inputs return ``None``).
-
-    Returns
-    -------
-    PaginationConfig | None
-        A PaginationConfig instance with numeric fields coerced to int/float
-        where applicable, or None if parsing failed.
-    """
-    if not isinstance(obj, Mapping):
-        return None
-
-    # Start with direct keys if present.
-    page_param = obj.get('page_param')
-    size_param = obj.get('size_param')
-    start_page = obj.get('start_page')
-    page_size = obj.get('page_size')
-    cursor_param = obj.get('cursor_param')
-    cursor_path = obj.get('cursor_path')
-    start_cursor = obj.get('start_cursor')
-    records_path = obj.get('records_path')
-    fallback_path = obj.get('fallback_path')
-    max_pages = obj.get('max_pages')
-    max_records = obj.get('max_records')
-
-    # Map from nested shapes when provided.
-    params_blk = maybe_mapping(obj.get('params'))
-    if params_blk:
-        page_param = page_param or params_blk.get('page')
-        size_param = (
-            size_param
-            or params_blk.get('per_page')
-            or params_blk.get('limit')
-        )
-        cursor_param = cursor_param or params_blk.get('cursor')
-        fallback_path = fallback_path or params_blk.get('fallback_path')
-
-    resp_blk = maybe_mapping(obj.get('response'))
-    if resp_blk:
-        records_path = records_path or resp_blk.get('items_path')
-        cursor_path = cursor_path or resp_blk.get('next_cursor_path')
-        fallback_path = fallback_path or resp_blk.get('fallback_path')
-
-    dflt_blk = maybe_mapping(obj.get('defaults'))
-    if dflt_blk:
-        page_size = page_size or dflt_blk.get('per_page')
-
-    # Locally import inside function to avoid circular dependencies; narrow to
-    # literal.
-    from .pagination import PaginationConfig
-
-    return PaginationConfig(
-        type=_coerce_pagination_type(obj.get('type')),
-        page_param=page_param,
-        size_param=size_param,
-        start_page=to_int(start_page),
-        page_size=to_int(page_size),
-        cursor_param=cursor_param,
-        cursor_path=cursor_path,
-        start_cursor=start_cursor,
-        records_path=records_path,
-        fallback_path=fallback_path,
-        max_pages=to_int(max_pages),
-        max_records=to_int(max_records),
-    )
-
-
-def rate_limit_from_defaults(
-    obj: StrAnyMap | None,
-) -> RateLimitConfig | None:
-    """
-    Return numeric rate-limit bounds from defaults mapping.
-
-    Only supports sleep_seconds and max_per_sec. Other keys are ignored.
-
-    Parameters
-    ----------
-    obj : StrAnyMap | None
-        Defaults mapping (non-mapping inputs return ``None``).
-
-    Returns
-    -------
-    RateLimitConfig | None
-        A RateLimitConfig instance with numeric fields coerced, or None if
-        parsing failed.
-    """
-    if not isinstance(obj, Mapping):
-        return None
-    sleep_seconds = obj.get('sleep_seconds')
-    max_per_sec = obj.get('max_per_sec')
-    if sleep_seconds is None and max_per_sec is None:
-        return None
-
-    # Local import to avoid circular dependency with rate_limit -> utils
-    from .rate_limit import RateLimitConfig as _RateLimitConfig
-
-    return _RateLimitConfig(
-        sleep_seconds=to_float(sleep_seconds),
-        max_per_sec=to_float(max_per_sec),
-    )
-
-
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
@@ -296,19 +175,3 @@ def _replace_tokens(
         if token in out:
             out = out.replace(token, str(replacement))
     return out
-
-
-def _coerce_pagination_type(
-    value: Any,
-) -> PaginationType | None:
-    from ..api import PaginationType
-
-    match str(value).strip().lower() if value is not None else '':
-        case 'page':
-            return PaginationType.PAGE
-        case 'offset':
-            return PaginationType.OFFSET
-        case 'cursor':
-            return PaginationType.CURSOR
-        case _:
-            return None

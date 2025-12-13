@@ -14,7 +14,7 @@ Public (re-export safe) helpers:
 - build_endpoint_client(base_url, base_path, endpoints, env)
 - compute_rl_sleep_seconds(rate_limit, overrides)
 - paginate_with_client(client, endpoint_key, params, headers,
-  timeout, pagination, sleep_seconds)
+    timeout, pagination, sleep_seconds)
 
 Notes
 -----
@@ -31,34 +31,37 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
+from .api import ApiConfig
 from .api import EndpointClient
+from .api import EndpointConfig
 from .api import Headers
-from .api import PaginationConfigMap as ApiPaginationConfig
+from .api import PaginationConfig
+from .api import PaginationConfigMap
 from .api import Params
-from .api import RateLimitConfigMap as ApiRateLimitConfig
+from .api import RateLimitConfig
+from .api import RateLimitConfigMap
 from .api import RateLimiter
-from .api import RetryPolicy as ApiRetryPolicy
+from .api import RetryPolicy
 from .api import Url
-from .config.api import ApiConfig as CfgApiConfig
-from .config.api import EndpointConfig as CfgEndpointConfig
-from .config.pagination import PaginationConfig as CfgPaginationConfig
-from .config.rate_limit import RateLimitConfig as CfgRateLimitConfig
 from .types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
+    'build_endpoint_client',
     'build_pagination_cfg',
     'build_session',
     'compose_api_request_env',
     'compose_api_target_env',
-    'build_endpoint_client',
     'compute_rl_sleep_seconds',
     'paginate_with_client',
-    'SessionConfig',
+
+    # Typed Dicts
     'ApiRequestEnv',
     'ApiTargetEnv',
+    'SessionConfig',
 ]
 
 
@@ -78,9 +81,9 @@ class ApiRequestEnv(TypedDict, total=False):
     endpoints_map: dict[str, str] | None
     endpoint_key: str | None
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
-    retry: ApiRetryPolicy | None
+    retry: RetryPolicy | None
     retry_network_errors: bool
 
 
@@ -117,7 +120,7 @@ def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
     endpoint_name: str,
-) -> tuple[CfgApiConfig, CfgEndpointConfig]:
+) -> tuple[ApiConfig, EndpointConfig]:
     """
     Retrieve API configuration and endpoint configuration.
 
@@ -132,7 +135,7 @@ def _get_api_cfg_and_endpoint(
 
     Returns
     -------
-    tuple[CfgApiConfig, CfgEndpointConfig]
+    tuple[ApiConfig, EndpointConfig]
         The API configuration and endpoint configuration.
 
     Raises
@@ -152,8 +155,8 @@ def _get_api_cfg_and_endpoint(
 
 
 def _inherit_http_from_api_endpoint(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
     url: Url | None,
     headers: dict[str, str],
     session_cfg: SessionConfig | None,
@@ -164,9 +167,9 @@ def _inherit_http_from_api_endpoint(
 
     Parameters
     ----------
-    api_cfg : CfgApiConfig
+    api_cfg : ApiConfig
         API configuration.
-    ep : CfgEndpointConfig
+    ep : EndpointConfig
         Endpoint configuration.
     url : Url | None
         Existing URL to use when not forcing endpoint URL.
@@ -190,8 +193,8 @@ def _inherit_http_from_api_endpoint(
 
 
 def _merge_session_cfg_three(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
     source_session_cfg: SessionConfig | None,
 ) -> SessionConfig | None:
     """
@@ -199,9 +202,9 @@ def _merge_session_cfg_three(
 
     Parameters
     ----------
-    api_cfg : CfgApiConfig
+    api_cfg : ApiConfig
         API configuration.
-    ep : CfgEndpointConfig
+    ep : EndpointConfig
         Endpoint configuration.
     source_session_cfg : SessionConfig | None
         Source session configuration.
@@ -372,8 +375,8 @@ def compose_api_request_env(
     headers: dict[str, str] = _copy_mapping(source_headers)
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
-    retry: ApiRetryPolicy | None = cast(
-        ApiRetryPolicy | None, getattr(source_obj, 'retry', None),
+    retry: RetryPolicy | None = cast(
+        RetryPolicy | None, getattr(source_obj, 'retry', None),
     )
     retry_network_errors = bool(
         getattr(source_obj, 'retry_network_errors', False),
@@ -409,7 +412,7 @@ def compose_api_request_env(
             or api_cfg.effective_rate_limit_defaults()
         )
         retry = cast(
-            ApiRetryPolicy | None,
+            RetryPolicy | None,
             (
                 retry
                 or getattr(ep, 'retry', None)
@@ -440,8 +443,8 @@ def compose_api_request_env(
     timeout: Timeout = ex_opts.get('timeout')
     pag_ov = ex_opts.get('pagination', {})
     rl_ov = ex_opts.get('rate_limit', {})
-    rty_ov: ApiRetryPolicy | None = cast(
-        ApiRetryPolicy | None,
+    rty_ov: RetryPolicy | None = cast(
+        RetryPolicy | None,
         (ex_opts.get('retry') if 'retry' in ex_opts else None),
     )
     rne_ov = (
@@ -459,7 +462,7 @@ def compose_api_request_env(
         base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
-    pag_cfg: ApiPaginationConfig | None = build_pagination_cfg(
+    pag_cfg: PaginationConfigMap | None = build_pagination_cfg(
         pagination,
         pag_ov,
     )
@@ -551,22 +554,22 @@ def compose_api_target_env(
 
 
 def build_pagination_cfg(
-    pagination: CfgPaginationConfig | None,
+    pagination: PaginationConfig | None,
     overrides: Mapping[str, Any] | None,
-) -> ApiPaginationConfig | None:
+) -> PaginationConfigMap | None:
     """
     Build pagination configuration.
 
     Parameters
     ----------
-    pagination : CfgPaginationConfig | None
+    pagination : PaginationConfig | None
         Pagination configuration.
     overrides : Mapping[str, Any] | None
         Override configuration options.
 
     Returns
     -------
-    ApiPaginationConfig | None
+    PaginationConfigMap | None
         Pagination configuration.
     """
     ptype: str | None = None
@@ -660,7 +663,7 @@ def build_pagination_cfg(
         case _:
             pass
 
-    return cast(ApiPaginationConfig, cfg)
+    return cast(PaginationConfigMap, cfg)
 
 
 # -- Pagination Invocation -- #
@@ -672,7 +675,7 @@ def paginate_with_client(
     params: Params | None,
     headers: Headers | None,
     timeout: Timeout,
-    pagination: ApiPaginationConfig | None,
+    pagination: PaginationConfigMap | None,
     sleep_seconds: float | None,
 ) -> Any:
     """
@@ -690,7 +693,7 @@ def paginate_with_client(
         Headers to include in the API request.
     timeout : Timeout
         Timeout configuration for the API request.
-    pagination : ApiPaginationConfig | None
+    pagination : PaginationConfigMap | None
         Pagination configuration for the API request.
     sleep_seconds : float | None
         Sleep duration between API requests.
@@ -727,7 +730,7 @@ def paginate_with_client(
 
 
 def compute_rl_sleep_seconds(
-    rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
+    rate_limit: RateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
 ) -> float:
     """
@@ -735,7 +738,7 @@ def compute_rl_sleep_seconds(
 
     Parameters
     ----------
-    rate_limit : CfgRateLimitConfig | Mapping[str, Any] | None
+    rate_limit : RateLimitConfig | Mapping[str, Any] | None
         Rate limit configuration.
     overrides : Mapping[str, Any] | None
         Override values for rate limit configuration.
@@ -754,7 +757,7 @@ def compute_rl_sleep_seconds(
     else:
         rl_map = cast(Mapping[str, Any] | None, rate_limit)
 
-    rl_mapping = cast(ApiRateLimitConfig | None, rl_map)
+    rl_mapping = cast(RateLimitConfigMap | None, rl_map)
     override_mapping = cast(Mapping[str, Any] | None, overrides)
     return RateLimiter.resolve_sleep_seconds(
         rate_limit=rl_mapping,

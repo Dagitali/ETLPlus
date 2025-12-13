@@ -25,17 +25,17 @@ import pytest
 import requests  # type: ignore[import]
 
 import etlplus.api.rate_limiter as rate_limiter_mod
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
+from etlplus.api import EndpointConfig
 from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PaginationConfig
 from etlplus.api import PaginationConfigMap
+from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigMap
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
-from etlplus.config import EndpointConfig
-from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
 from tests.unit.api.test_u_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #

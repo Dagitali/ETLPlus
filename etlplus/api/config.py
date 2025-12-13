@@ -1,19 +1,19 @@
 """
-:mod:`etlplus.config.api` module.
+:mod:`etlplus.api.config` module.
 
-Configuration models for REST API services and endpoints.
+Configuration dataclasses for REST API services, profiles, and endpoints.
+
+These models used to live under :mod:`etlplus.config`, but they belong in the
+API layer because they compose runtime types such as
+:class:`etlplus.api.EndpointClient`, :class:`etlplus.api.PaginationConfig`, and
+:class:`etlplus.api.RateLimitConfig`.
 
 Notes
 -----
-- TypedDict shapes are editor hints; runtime parsing remains permissive
-    (``from_obj`` accepts ``Mapping[str, Any]``).
-- Profile-level defaults (pagination and rate limit) are normalized at parse
-    time and exposed via convenience accessors.
-
-See Also
---------
-- :class:`ApiProfileConfig` — canonical parsing for profiles (used when
-    processing the ``profiles`` section).
+- TypedDict references remain editor hints only; ``from_obj`` accepts
+    ``Mapping[str, Any]`` for permissive parsing.
+- Helper functions near the bottom keep parsing logic centralized and avoid
+    leaking implementation details.
 """
 from __future__ import annotations
 
@@ -27,26 +27,22 @@ from typing import overload
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-from ..api import EndpointClient
 from ..types import StrAnyMap
-from .pagination import PaginationConfig
-from .rate_limit import RateLimitConfig
-from .utils import cast_str_dict
-from .utils import coerce_dict
-from .utils import maybe_mapping
-from .utils import pagination_from_defaults
-from .utils import rate_limit_from_defaults
+from .endpoint_client import EndpointClient
+from .paginator import PaginationConfig
+from .rate_limiter import RateLimitConfig
 
 if TYPE_CHECKING:
-    from .types import ApiConfigMap
-    from .types import ApiProfileConfigMap
-    from .types import EndpointMap
+    from ..config.types import ApiConfigMap
+    from ..config.types import ApiProfileConfigMap
+    from ..config.types import EndpointMap
 
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Data Classes
     'ApiConfig',
     'ApiProfileConfig',
     'EndpointConfig',
@@ -56,12 +52,93 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
+def _cast_str_dict(
+    mapping: StrAnyMap | None,
+) -> dict[str, str]:
+    """
+    Return a ``dict`` with keys/values coerced to ``str`` when possible.
+
+    Parameters
+    ----------
+    mapping : StrAnyMap | None
+        Input mapping; ``None`` yields ``{}``.
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary with all keys and values converted via :func:`str()`.
+    """
+    if not mapping:
+        return {}
+    return {str(key): str(value) for key, value in mapping.items()}
+
+
+def _coerce_dict(
+    value: Any,
+) -> dict[str, Any]:
+    """
+    Return a shallow ``dict`` copy when *value* is mapping-like.
+
+    Parameters
+    ----------
+    value : Any
+        Mapping-like object to copy. ``None`` returns an empty dict.
+
+    Returns
+    -------
+    dict[str, Any]
+        Shallow copy of the mapping or empty dict.
+    """
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _maybe_mapping(
+    value: Any,
+) -> StrAnyMap | None:
+    """
+    Return *value* only when it behaves like a mapping; otherwise ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value to check.
+
+    Returns
+    -------
+    StrAnyMap | None
+        The original value if mapping-like; otherwise ``None``.
+    """
+    return value if isinstance(value, Mapping) else None
+
+
 def _effective_service_defaults(
     *,
     profiles: Mapping[str, ApiProfileConfig],
     fallback_base: Any,
     fallback_headers: dict[str, str],
 ) -> tuple[str, dict[str, str]]:
+    """
+    Return ``(base_url, headers)`` using ``profiles`` when present.
+
+    Parameters
+    ----------
+    profiles : Mapping[str, ApiProfileConfig]
+        Named profile configurations.
+    fallback_base : Any
+        Top-level base URL when no profiles are defined.
+    fallback_headers : dict[str, str]
+        Top-level headers when no profiles are defined.
+
+    Returns
+    -------
+    tuple[str, dict[str, str]]
+        Effective ``(base_url, headers)`` pair.
+
+    Raises
+    ------
+    TypeError
+        If no profiles are defined and ``fallback_base`` is not a string.
+    """
     if profiles:
         name = 'default' if 'default' in profiles else next(iter(profiles))
         selected = profiles[name]
@@ -75,8 +152,23 @@ def _effective_service_defaults(
     return fallback_base, fallback_headers
 
 
-def _parse_endpoints(raw: Any) -> dict[str, EndpointConfig]:
-    if not (mapping := maybe_mapping(raw)):
+def _parse_endpoints(
+    raw: Any,
+) -> dict[str, EndpointConfig]:
+    """
+    Return parsed endpoint configs keyed by name.
+
+    Parameters
+    ----------
+    raw : Any
+        Raw endpoint mapping.
+
+    Returns
+    -------
+    dict[str, EndpointConfig]
+        Parsed endpoint configurations.
+    """
+    if not (mapping := _maybe_mapping(raw)):
         return {}
     return {
         str(name): EndpointConfig.from_obj(data)
@@ -85,17 +177,30 @@ def _parse_endpoints(raw: Any) -> dict[str, EndpointConfig]:
 
 
 def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
-    if not (mapping := maybe_mapping(raw)):
+    """
+    Return parsed API profiles keyed by name.
+
+    Parameters
+    ----------
+    raw : Any
+        Raw profiles mapping.
+
+    Returns
+    -------
+    dict[str, ApiProfileConfig]
+            Parsed API profile configurations.
+    """
+    if not (mapping := _maybe_mapping(raw)):
         return {}
     parsed: dict[str, ApiProfileConfig] = {}
     for name, profile_raw in mapping.items():
-        if not (profile_map := maybe_mapping(profile_raw)):
+        if not (profile_map := _maybe_mapping(profile_raw)):
             continue
         parsed[str(name)] = ApiProfileConfig.from_obj(profile_map)
     return parsed
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(slots=True)
@@ -153,45 +258,26 @@ class ApiProfileConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """
-        Parse a mapping into an ``ApiProfileConfig`` instance.
-
-        Parameters
-        ----------
-        obj : StrAnyMap
-            Mapping with at least ``base_url``.
-
-        Returns
-        -------
-        Self
-            Parsed profile configuration.
-
-        Raises
-        ------
-        TypeError
-            If ``obj`` is not a mapping or ``base_url`` is missing/invalid.
-
-        Notes
-        -----
-        TypedDict shape: ``ApiProfileConfigMap`` (editor/type-checker hint).
-        """
+        """Parse a mapping into an :class:`ApiProfileConfig` instance."""
         if not isinstance(obj, Mapping):
             raise TypeError('ApiProfileConfig must be a mapping')
 
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        defaults_raw = coerce_dict(obj.get('defaults'))
+        defaults_raw = _coerce_dict(obj.get('defaults'))
         merged_headers = (
-            cast_str_dict(defaults_raw.get('headers'))
-            | cast_str_dict(obj.get('headers'))
+            _cast_str_dict(defaults_raw.get('headers'))
+            | _cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
-        auth = coerce_dict(obj.get('auth'))
+        auth = _coerce_dict(obj.get('auth'))
 
-        pag_def = pagination_from_defaults(defaults_raw.get('pagination'))
-        rl_def = rate_limit_from_defaults(defaults_raw.get('rate_limit'))
+        pag_def = PaginationConfig.from_defaults(
+            defaults_raw.get('pagination'),
+        )
+        rl_def = RateLimitConfig.from_defaults(defaults_raw.get('rate_limit'))
 
         return cls(
             base_url=base,
@@ -233,14 +319,7 @@ class ApiConfig:
 
     def _selected_profile(self) -> ApiProfileConfig | None:
         """
-        Return the active profile object ("default" preferred) or None.
-
-        Uses a tiny helper for selection and avoids duplicating logic.
-
-        Returns
-        -------
-        ApiProfileConfig | None
-            The selected profile configuration, or None if no profiles exist.
+        Return the active profile object (``default`` preferred) or ``None``.
         """
         if not (profiles := self.profiles):
             return None
@@ -256,18 +335,15 @@ class ApiConfig:
         """
         Return an attribute on the selected profile, if available.
 
-        This centralizes profile selection logic so "effective_*" helpers
-        become one-liners. Returns None if no profile or attribute missing.
-
         Parameters
         ----------
         attr : str
-            Attribute name to fetch from the selected profile.
+            Attribute name to retrieve.
 
         Returns
         -------
         Any
-            The attribute value, or ``None`` when unavailable.
+            Attribute value or ``None`` if no profile is selected.
         """
         prof = self._selected_profile()
 
@@ -280,21 +356,17 @@ class ApiConfig:
         endpoint: EndpointConfig,
     ) -> str:
         """
-        Compose a full URL from base_url, base_path, and endpoint.path.
-
-        Implementation delegates URL joining to EndpointClient so that
-        path composition stays consistent with the client (including
-        handling of leading/trailing slashes and optional base_path).
+        Compose a full URL from ``base_url``, ``base_path``, and endpoint path.
 
         Parameters
         ----------
         endpoint : EndpointConfig
-            The endpoint configuration.
+            Endpoint configuration.
 
         Returns
         -------
         str
-            The full URL for the endpoint.
+            Full endpoint URL.
         """
         client = EndpointClient(
             base_url=self.base_url,
@@ -305,24 +377,12 @@ class ApiConfig:
         return client.url('__ep__')
 
     def effective_base_path(self) -> str | None:
-        """
-        Return the selected profile's base_path, if any.
-
-        Returns
-        -------
-        str | None
-            The base path from the selected profile, or None if not set.
-        """
+        """Return the selected profile's ``base_path``, if any."""
         return self._profile_attr('base_path')
 
     def effective_base_url(self) -> str:
         """
-        Compute base_url combined with effective base_path, if present.
-
-        Returns
-        -------
-        str
-            The effective base URL including base_path.
+        Compute ``base_url`` combined with effective ``base_path`` when set.
         """
         parts = urlsplit(self.base_url)
         base_path = parts.path.rstrip('/')
@@ -335,27 +395,11 @@ class ApiConfig:
         )
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
-        """
-        Return selected profile pagination_defaults, if any.
-
-        Returns
-        -------
-        PaginationConfig | None
-            The pagination defaults from the selected profile, or None if not
-            set.
-        """
+        """Return selected profile ``pagination_defaults``, if any."""
         return self._profile_attr('pagination_defaults')
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
-        """
-        Return selected profile rate_limit_defaults, if any.
-
-        Returns
-        -------
-        RateLimitConfig | None
-            The rate limit defaults from the selected profile, or None if not
-            set.
-        """
+        """Return selected profile ``rate_limit_defaults``, if any."""
         return self._profile_attr('rate_limit_defaults')
 
     # -- Class Methods -- #
@@ -379,41 +423,15 @@ class ApiConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """Parse a mapping into an ``ApiConfig`` instance.
-
-        Parameters
-        ----------
-        obj : StrAnyMap
-            Mapping containing either ``base_url`` or a ``profiles`` block.
-
-        Returns
-        -------
-        Self
-            Parsed API configuration.
-
-        Raises
-        ------
-        TypeError
-            If ``obj`` is not a mapping or mandatory keys are missing.
-
-        Notes
-        -----
-        TypedDict shape: ``ApiConfigMap`` (editor/type-checker hint).
-        """
-        # Accept any mapping-like object; provide a consistent error otherwise.
+        """Parse a mapping into an :class:`ApiConfig` instance."""
         if not isinstance(obj, Mapping):
             raise TypeError('ApiConfig must be a mapping')
 
-        # Optional: profiles structure
-        # See also: ApiProfileConfig.from_obj for profile parsing logic.
         profiles = _parse_profiles(obj.get('profiles'))
 
-        # Top-level fallbacks (or legacy flat shape).
         tl_base = obj.get('base_url')
-        tl_headers = cast_str_dict(obj.get('headers'))
+        tl_headers = _cast_str_dict(obj.get('headers'))
 
-        # Determine effective base_url/headers for backward compatibility
-        # Always compute a concrete str for base_url.
         base_url, headers = _effective_service_defaults(
             profiles=profiles,
             fallback_base=tl_base,
@@ -484,31 +502,9 @@ class EndpointConfig:
         cls,
         obj: str | StrAnyMap,
     ) -> Self:
-        """Parse a string or mapping into an ``EndpointConfig`` instance.
-
-        Parameters
-        ----------
-        obj : str | StrAnyMap
-            Either a bare path string or a mapping with endpoint fields.
-
-        Returns
-        -------
-        Self
-            Parsed endpoint configuration.
-
-        Raises
-        ------
-        TypeError
-            If the input is neither str nor mapping, ``path`` is missing, or
-            ``query_params`` is not a mapping.
-        ValueError
-            If ``path_params`` is provided but is not a mapping.
-
-        Notes
-        -----
-        TypedDict shape: :class:`EndpointMap` (editor/type-checker hint).
         """
-        # Allow either a bare string path or a mapping with explicit fields.
+        Parse a string or mapping into an :class:`EndpointConfig` instance.
+        """
         match obj:
             case str():
                 return cls(path=obj, method=None)
@@ -534,8 +530,8 @@ class EndpointConfig:
                 return cls(
                     path=path,
                     method=obj.get('method'),
-                    path_params=coerce_dict(path_params_raw),
-                    query_params=coerce_dict(query_params_raw),
+                    path_params=_coerce_dict(path_params_raw),
+                    query_params=_coerce_dict(query_params_raw),
                     body=obj.get('body'),
                     pagination=PaginationConfig.from_obj(
                         obj.get('pagination'),

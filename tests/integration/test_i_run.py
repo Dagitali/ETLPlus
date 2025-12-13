@@ -18,11 +18,11 @@ from typing import Any
 
 from pytest import MonkeyPatch
 
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import EndpointConfig
 from etlplus.config import ConnectorApi
 from etlplus.config import ConnectorFile
-from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
