@@ -31,7 +31,9 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
+from .api import ApiConfig
 from .api import EndpointClient
+from .api import EndpointConfig
 from .api import Headers
 from .api import PaginationConfig
 from .api import PaginationConfigMap
@@ -41,8 +43,6 @@ from .api import RateLimitConfigMap
 from .api import RateLimiter
 from .api import RetryPolicy
 from .api import Url
-from .config.api import ApiConfig as CfgApiConfig
-from .config.api import EndpointConfig as CfgEndpointConfig
 from .types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
@@ -120,7 +120,7 @@ def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
     endpoint_name: str,
-) -> tuple[CfgApiConfig, CfgEndpointConfig]:
+) -> tuple[ApiConfig, EndpointConfig]:
     """
     Retrieve API configuration and endpoint configuration.
 
@@ -135,7 +135,7 @@ def _get_api_cfg_and_endpoint(
 
     Returns
     -------
-    tuple[CfgApiConfig, CfgEndpointConfig]
+    tuple[ApiConfig, EndpointConfig]
         The API configuration and endpoint configuration.
 
     Raises
@@ -155,8 +155,8 @@ def _get_api_cfg_and_endpoint(
 
 
 def _inherit_http_from_api_endpoint(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
     url: Url | None,
     headers: dict[str, str],
     session_cfg: SessionConfig | None,
@@ -167,9 +167,9 @@ def _inherit_http_from_api_endpoint(
 
     Parameters
     ----------
-    api_cfg : CfgApiConfig
+    api_cfg : ApiConfig
         API configuration.
-    ep : CfgEndpointConfig
+    ep : EndpointConfig
         Endpoint configuration.
     url : Url | None
         Existing URL to use when not forcing endpoint URL.
@@ -193,8 +193,8 @@ def _inherit_http_from_api_endpoint(
 
 
 def _merge_session_cfg_three(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
     source_session_cfg: SessionConfig | None,
 ) -> SessionConfig | None:
     """
@@ -202,9 +202,9 @@ def _merge_session_cfg_three(
 
     Parameters
     ----------
-    api_cfg : CfgApiConfig
+    api_cfg : ApiConfig
         API configuration.
-    ep : CfgEndpointConfig
+    ep : EndpointConfig
         Endpoint configuration.
     source_session_cfg : SessionConfig | None
         Source session configuration.
