@@ -70,6 +70,7 @@ from ..types import StrAnyMap
 from ..utils import to_int
 from ..utils import to_maximum_int
 from ..utils import to_positive_int
+from ._parsing import maybe_mapping
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .rate_limiter import RateLimiter
@@ -427,9 +428,6 @@ class PaginationConfig(BoundsWarningsMixin):
         if not isinstance(obj, Mapping):
             return None
 
-        def _maybe_mapping(value: Any) -> Mapping[str, Any] | None:
-            return value if isinstance(value, Mapping) else None
-
         # Start with direct keys if present.
         page_param = obj.get('page_param')
         size_param = obj.get('size_param')
@@ -444,7 +442,7 @@ class PaginationConfig(BoundsWarningsMixin):
         max_records = obj.get('max_records')
 
         # Map from nested shapes when provided.
-        if (params_blk := _maybe_mapping(obj.get('params'))):
+        if (params_blk := maybe_mapping(obj.get('params'))):
             page_param = page_param or params_blk.get('page')
             size_param = (
                 size_param
@@ -453,11 +451,11 @@ class PaginationConfig(BoundsWarningsMixin):
             )
             cursor_param = cursor_param or params_blk.get('cursor')
             fallback_path = fallback_path or params_blk.get('fallback_path')
-        if (resp_blk := _maybe_mapping(obj.get('response'))):
+        if (resp_blk := maybe_mapping(obj.get('response'))):
             records_path = records_path or resp_blk.get('items_path')
             cursor_path = cursor_path or resp_blk.get('next_cursor_path')
             fallback_path = fallback_path or resp_blk.get('fallback_path')
-        if (dflt_blk := _maybe_mapping(obj.get('defaults'))):
+        if (dflt_blk := maybe_mapping(obj.get('defaults'))):
             page_size = page_size or dflt_blk.get('per_page')
 
         return cls(
