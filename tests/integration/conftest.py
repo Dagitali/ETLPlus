@@ -17,14 +17,14 @@ from typing import Protocol
 
 import pytest
 
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import EndpointConfig
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimiter
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
 from etlplus.config import ConnectorApi
 from etlplus.config import ConnectorFile
-from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
