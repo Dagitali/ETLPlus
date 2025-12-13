@@ -15,9 +15,6 @@ Notes
 """
 from __future__ import annotations
 
-from .api import ApiConfig
-from .api import ApiProfileConfig
-from .api import EndpointConfig
 from .connector import Connector
 from .connector import ConnectorApi
 from .connector import ConnectorDb
@@ -37,11 +34,6 @@ from .types import ConnectorType
 
 
 __all__ = [
-    # API
-    'ApiConfig',
-    'ApiProfileConfig',
-    'EndpointConfig',
-
     # Connectors
     'Connector',
     'ConnectorType',
