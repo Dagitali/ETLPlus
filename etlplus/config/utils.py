@@ -15,16 +15,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
 from typing import Any
 
 from ..types import StrAnyMap
 from ..utils import to_float
 from ..utils import to_int
-
-if TYPE_CHECKING:
-    from ..api import PaginationConfig
-
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -35,7 +30,6 @@ __all__ = [
     'coerce_dict',
     'deep_substitute',
     'maybe_mapping',
-    'pagination_from_defaults',
     'to_int',
     'to_float',
 ]
@@ -150,31 +144,6 @@ def maybe_mapping(
         The input value if it is a mapping; ``None`` if not.
     """
     return value if isinstance(value, Mapping) else None
-
-
-def pagination_from_defaults(
-    obj: StrAnyMap | None,
-) -> PaginationConfig | None:
-    """
-    Extract pagination type and integer bounds from defaults mapping.
-
-    Tolerates either a flat PaginationConfig-like mapping or a nested shape
-    with "params" and "response" blocks. Unknown keys are ignored.
-
-    Parameters
-    ----------
-    obj : StrAnyMap | None
-        Defaults mapping (non-mapping inputs return ``None``).
-
-    Returns
-    -------
-    PaginationConfig | None
-        A PaginationConfig instance with numeric fields coerced to int/float
-        where applicable, or None if parsing failed.
-    """
-    from ..api import PaginationConfig as _PaginationConfig
-
-    return _PaginationConfig.from_defaults(obj)
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
