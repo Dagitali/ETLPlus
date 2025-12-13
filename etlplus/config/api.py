@@ -35,7 +35,6 @@ from .utils import cast_str_dict
 from .utils import coerce_dict
 from .utils import maybe_mapping
 from .utils import pagination_from_defaults
-from .utils import rate_limit_from_defaults
 
 if TYPE_CHECKING:
     from .types import ApiConfigMap
@@ -192,7 +191,7 @@ class ApiProfileConfig:
         auth = coerce_dict(obj.get('auth'))
 
         pag_def = pagination_from_defaults(defaults_raw.get('pagination'))
-        rl_def = rate_limit_from_defaults(defaults_raw.get('rate_limit'))
+        rl_def = RateLimitConfig.from_defaults(defaults_raw.get('rate_limit'))
 
         return cls(
             base_url=base,
