@@ -11,13 +11,13 @@ Focus
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
 import pytest
 
 from etlplus.api.pagination_client import PaginationClient
 from etlplus.api.paginator import PaginationType
+from etlplus.api.types import RequestOptions
 
 
 @pytest.mark.unit
@@ -27,7 +27,7 @@ class TestPaginationClient:
     @staticmethod
     def _noop_fetch(
         _url: str,
-        _params: Mapping[str, Any] | None,
+        _request: RequestOptions,
         _page: int | None,
     ) -> dict[str, Any]:
         """Return an empty payload for pagination client construction."""
@@ -53,7 +53,7 @@ class TestPaginationClient:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
             seen_pages.append(page)
@@ -84,7 +84,7 @@ class TestPaginationClient:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
             seen_pages.append(page)
