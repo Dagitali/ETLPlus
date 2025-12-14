@@ -147,7 +147,7 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiProfileConfig:
     """
     Profile configuration for a REST API service.
@@ -233,7 +233,7 @@ class ApiProfileConfig:
         )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiConfig:
     """
     Configuration for a REST API service.
@@ -392,7 +392,7 @@ class ApiConfig:
         )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class EndpointConfig:
     """
     Configuration for a single API endpoint.
