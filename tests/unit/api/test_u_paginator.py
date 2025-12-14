@@ -30,17 +30,18 @@ from etlplus.api.paginator import PaginationConfigMap
 from etlplus.api.paginator import PaginationType
 from etlplus.api.paginator import Paginator
 from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api.types import RequestOptions
 
 # SECTION: HELPERS ========================================================== #
 
 
 def _dummy_fetch(
     url: str,
-    params: Mapping[str, Any] | None,
+    request: RequestOptions,
     page: int | None,
-) -> Mapping[str, Any]:
+) -> dict[str, Any]:
     """Simple fetch stub that echoes input for Paginator construction."""
-    return {'url': url, 'params': params or {}, 'page': page}
+    return {'url': url, 'params': request.params or {}, 'page': page}
 
 
 class RecordingClient(EndpointClient):
@@ -272,10 +273,10 @@ class TestPaginator:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             _page: int | None,
-        ) -> Mapping[str, Any]:
-            return cast(Mapping[str, Any], payloads.pop(0))
+        ) -> dict[str, Any]:
+            return cast(dict[str, Any], payloads.pop(0))
 
         limiter_calls: list[int] = []
 
