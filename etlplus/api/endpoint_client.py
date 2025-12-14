@@ -41,7 +41,6 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
-from functools import partial
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
@@ -353,8 +352,7 @@ class EndpointClient:
         self,
         *,
         pagination: Mapping[str, Any] | None,
-        headers: Headers | None,
-        timeout: float | int | None,
+        request: RequestOptions,
         sleep_seconds: float,
         rate_limit_overrides: RateLimitOverrides,
     ) -> PaginationClient:
@@ -365,10 +363,8 @@ class EndpointClient:
         ----------
         pagination : Mapping[str, Any] | None
             Pagination configuration.
-        headers : Headers | None
-            HTTP headers to include in requests.
-        timeout : float | int | None
-            Timeout for HTTP requests.
+        request : RequestOptions
+            Base request metadata passed to each fetch.
         sleep_seconds : float
             Number of seconds to sleep between requests.
         rate_limit_overrides : RateLimitOverrides
@@ -389,15 +385,11 @@ class EndpointClient:
             if effective_sleep > 0
             else None
         )
-        fetch = partial(
-            self._fetch_page,
-            headers=headers,
-            timeout=timeout,
-        )
         return PaginationClient(
             pagination=pagination,
-            fetch=fetch,
+            fetch=self._fetch_page,
             rate_limiter=rate_limiter,
+            request=request,
         )
 
     def _fetch_page(
@@ -405,9 +397,6 @@ class EndpointClient:
         url_: Url,
         request: RequestOptions,
         page_index: int | None,
-        *,
-        headers: Headers | None,
-        timeout: float | int | None,
     ) -> JSONData:
         """
         Fetch a single page using shared pagination guardrails.
@@ -420,10 +409,6 @@ class EndpointClient:
             Request metadata produced by ``Paginator``.
         page_index : int | None
             Index of the page being fetched.
-        headers : Headers | None
-            HTTP headers to include in the request.
-        timeout : float | int | None
-            Timeout for the request.
 
         Returns
         -------
@@ -435,24 +420,7 @@ class EndpointClient:
         PaginationError
             If the request fails.
         """
-        merged_headers: Headers | None = None
-        if headers:
-            merged_headers = dict(headers)
-        if request.headers:
-            merged_headers = {
-                **(merged_headers or {}),
-                **dict(request.headers),
-            }
-
-        eff_timeout = (
-            request.timeout if request.timeout is not None else timeout
-        )
-
-        call_kw = EndpointClient.build_request_kwargs(
-            params=request.params,
-            headers=merged_headers,
-            timeout=eff_timeout,
-        )
+        call_kw = request.as_kwargs()
         try:
             return self.get(url_, **call_kw)
         except ApiRequestError as exc:
@@ -713,13 +681,15 @@ class EndpointClient:
         # Normalize pagination config for typed access.
         pg_map = cast(Mapping[str, Any] | None, pagination)
         ptype = Paginator.detect_type(pg_map, default=None)
+        request = RequestOptions(
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
         if ptype is None:
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return self.get(url, **kw)
+            return self.get(url, **request.as_kwargs())
 
         # For known pagination types, delegate through paginate_url_iter to
         # preserve subclass overrides (tests rely on this shim behavior).
@@ -772,10 +742,15 @@ class EndpointClient:
         JSONDict
             Record dictionaries extracted from each page.
         """
-        runner = self._build_pagination_client(
-            pagination=cast(Mapping[str, Any] | None, pagination),
+        base_request = RequestOptions(
+            params=params,
             headers=headers,
             timeout=timeout,
+        )
+
+        runner = self._build_pagination_client(
+            pagination=cast(Mapping[str, Any] | None, pagination),
+            request=base_request,
             sleep_seconds=sleep_seconds,
             rate_limit_overrides=rate_limit_overrides,
         )
@@ -907,41 +882,6 @@ class EndpointClient:
                 time.sleep(sleep_seconds)
             else:
                 sleeper(sleep_seconds)
-
-    @staticmethod
-    def build_request_kwargs(
-        *,
-        params: Params | None = None,
-        headers: Headers | None = None,
-        timeout: float | int | None = None,
-    ) -> dict[str, Any]:
-        """
-        Build kwargs for ``requests.get``.
-
-        Only include keys that have non-empty values to keep kwargs tidy.
-
-        Parameters
-        ----------
-        params : Params | None, optional
-            Query parameters to include in the request.
-        headers : Headers | None, optional
-            Headers to include in the request.
-        timeout : float | int | None, optional
-            Timeout for the request in seconds.
-
-        Returns
-        -------
-        dict[str, Any]
-            Dictionary of keyword arguments for ``requests.get``.
-        """
-        kw: dict[str, Any] = {}
-        if params:
-            kw['params'] = dict(params)
-        if headers:
-            kw['headers'] = dict(headers)
-        if timeout is not None:
-            kw['timeout'] = timeout
-        return kw
 
     # -- Internal Static Methods -- #
 
