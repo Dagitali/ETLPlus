@@ -26,6 +26,7 @@ from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
 from etlplus.api import PaginationType
+from etlplus.api import RequestOptions
 from etlplus.api import RetryPolicy
 from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_mocks import MockSession
@@ -286,6 +287,93 @@ class TestCursorPagination:
         assert items == [1]
         params = calls[0].get('params', {})
         assert params.get('limit') == expected_limit
+
+
+@pytest.mark.unit
+class TestRequestOptionIntegration:
+    """Tests covering RequestOptions propagation across helpers."""
+
+    def test_paginate_url_uses_request_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Non-paginated calls honor explicitly supplied RequestOptions."""
+        client = EndpointClient(
+            base_url='https://api.example.com', endpoints={},
+        )
+
+        captured: dict[str, Any] = {}
+
+        def fake_get(
+            self: EndpointClient,
+            url: str,
+            **kwargs: Any,
+        ) -> dict[str, bool]:
+            captured['url'] = url
+            captured['kwargs'] = kwargs
+            return {'ok': True}
+
+        monkeypatch.setattr(EndpointClient, 'get', fake_get)
+
+        seed = RequestOptions(
+            params={'seed': '1'},
+            headers={'X-Seed': 'yes'},
+            timeout=4.5,
+        )
+        out = client.paginate_url(
+            'https://api.example.com/items',
+            None,
+            None,
+            None,
+            None,
+            request=seed,
+        )
+
+        assert out == {'ok': True}
+        assert captured['url'] == 'https://api.example.com/items'
+        assert captured['kwargs']['params'] == {'seed': '1'}
+        assert captured['kwargs']['headers'] == {'X-Seed': 'yes'}
+        assert captured['kwargs']['timeout'] == 4.5
+
+    def test_paginate_url_iter_overrides_request_params(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Paginated iterations override RequestOptions params per call."""
+        client = EndpointClient(base_url='https://example.test', endpoints={})
+        observed: list[RequestOptions] = []
+
+        def fake_fetch(
+            self: EndpointClient,
+            url: str,
+            request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            observed.append(request)
+            return {'items': []}
+
+        monkeypatch.setattr(EndpointClient, '_fetch_page', fake_fetch)
+
+        list(
+            client.paginate_url_iter(
+                'https://example.test/items',
+                {'seed': 1},
+                {'X-Seed': 'yes'},
+                2.0,
+                {
+                    'type': PaginationType.PAGE,
+                    'records_path': 'items',
+                    'page_size': 1,
+                },
+                request=RequestOptions(params={'initial': 5}),
+            ),
+        )
+
+        assert observed
+        first = observed[0]
+        assert first.params == {'seed': 1, 'page': 1, 'per_page': 1}
+        assert first.headers == {'X-Seed': 'yes'}
+        assert first.timeout == 2.0
 
     def test_adds_limit_and_advances_cursor(
         self,
