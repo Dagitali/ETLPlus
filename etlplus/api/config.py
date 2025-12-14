@@ -156,11 +156,11 @@ class ApiProfileConfig:
     ----------
     base_url : str
         Base URL for the API.
-    headers : dict[str, str]
+    headers : Mapping[str, str]
         Profile-level default headers (merged with defaults.headers).
     base_path : str | None
         Optional base path prefixed to endpoint paths when composing URLs.
-    auth : dict[str, Any]
+    auth : Mapping[str, Any]
         Optional auth block (provider-specific shape, passed through).
     pagination_defaults : PaginationConfig | None
         Optional pagination defaults applied to endpoints referencing this
@@ -173,9 +173,9 @@ class ApiProfileConfig:
     # -- Attributes -- #
 
     base_url: str
-    headers: dict[str, str] = field(default_factory=dict)
+    headers: Mapping[str, str] = field(default_factory=dict)
     base_path: str | None = None
-    auth: dict[str, Any] = field(default_factory=dict)
+    auth: Mapping[str, Any] = field(default_factory=dict)
 
     # Optional defaults carried at profile level
     pagination_defaults: PaginationConfig | None = None
@@ -242,22 +242,22 @@ class ApiConfig:
     ----------
     base_url : str
         Effective base URL (derived from profiles or top-level input).
-    headers : dict[str, str]
+    headers : Mapping[str, str]
         Effective headers (profile + top-level merged with precedence).
-    endpoints : dict[str, EndpointConfig]
+    endpoints : Mapping[str, EndpointConfig]
         Endpoint configurations keyed by name.
-    profiles : dict[str, ApiProfileConfig]
+    profiles : Mapping[str, ApiProfileConfig]
         Named profile configurations; first or ``default`` becomes active.
     """
 
     # -- Attributes -- #
 
     base_url: str
-    headers: dict[str, str] = field(default_factory=dict)
-    endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
+    headers: Mapping[str, str] = field(default_factory=dict)
+    endpoints: Mapping[str, EndpointConfig] = field(default_factory=dict)
 
     # See also: ApiProfileConfig.from_obj for profile parsing logic.
-    profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
+    profiles: Mapping[str, ApiProfileConfig] = field(default_factory=dict)
 
     # -- Internal Instance Methods -- #
 
@@ -403,9 +403,9 @@ class EndpointConfig:
         Endpoint path (relative to base URL).
     method : str | None
         Optional HTTP method (default is GET when omitted at runtime).
-    path_params : dict[str, Any]
+    path_params : Mapping[str, Any]
         Path parameters used when constructing the request URL.
-    query_params : dict[str, Any]
+    query_params : Mapping[str, Any]
         Default query string parameters.
     body : Any | None
         Request body structure (pass-through, format-specific).
@@ -419,8 +419,8 @@ class EndpointConfig:
 
     path: str
     method: str | None = None
-    path_params: dict[str, Any] = field(default_factory=dict)
-    query_params: dict[str, Any] = field(default_factory=dict)
+    path_params: Mapping[str, Any] = field(default_factory=dict)
+    query_params: Mapping[str, Any] = field(default_factory=dict)
     body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
