@@ -761,6 +761,7 @@ class Paginator:
         url: Url,
         *,
         params: Params | None = None,
+        request: RequestOptions | None = None,
     ) -> Generator[JSONDict]:
         """
         Yield record dicts across pages for the configured strategy.
@@ -771,6 +772,8 @@ class Paginator:
             Absolute URL of the endpoint to fetch.
         params : Params | None, optional
             Optional query parameters for the request.
+        request : RequestOptions | None, optional
+            Pre-built request metadata snapshot to clone per page.
 
         Yields
         ------
@@ -785,7 +788,9 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        base_request = RequestOptions(params=params)
+        base_request = request or RequestOptions(params=params)
+        if request is not None and params is not None:
+            base_request = request.with_params(params)
 
         match self.type:
             case PaginationType.PAGE | PaginationType.OFFSET:
