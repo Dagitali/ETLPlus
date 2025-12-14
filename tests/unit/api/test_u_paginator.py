@@ -71,6 +71,7 @@ class RecordingClient(EndpointClient):
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
@@ -82,6 +83,7 @@ class RecordingClient(EndpointClient):
                 'headers': headers,
                 'timeout': timeout,
                 'pagination': pagination,
+                'request': request,
                 'sleep_seconds': sleep_seconds,
                 'rate_limit_overrides': rate_limit_overrides,
             },
@@ -104,10 +106,12 @@ class FakePageClient(EndpointClient):
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
         # Ignore all arguments; just simulate three records from two pages.
+        _ = request  # keep signature compatibility while avoiding unused var
         yield {'id': 1}
         yield {'id': 2}
         yield {'id': 3}
@@ -227,6 +231,43 @@ class TestPaginator:
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
         assert paginator.page_size == expected_page_size
+
+    def test_paginate_accepts_request_options(self) -> None:
+        """Paginator.paginate accepts RequestOptions overrides for params."""
+
+        seen: list[RequestOptions] = []
+
+        def fetch(
+            _url: str,
+            request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            seen.append(request)
+            return {'items': []}
+
+        paginator = Paginator.from_config(
+            {
+                'type': PaginationType.PAGE,
+                'records_path': 'items',
+            },
+            fetch=fetch,
+        )
+
+        seed = RequestOptions(headers={'X': 'seed'}, params={'initial': 1})
+        list(
+            paginator.paginate(
+                'https://example.test/items',
+                params={'page': 3},
+                request=seed,
+            ),
+        )
+
+        assert seen
+        first = seen[0]
+        assert first.params is not None
+        assert first.params.get('page') == 3
+        assert first.params.get(paginator.size_param) == paginator.page_size
+        assert first.headers == {'X': 'seed'}
 
     def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
         """
