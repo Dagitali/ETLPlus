@@ -754,7 +754,7 @@ class Paginator:
         JSONRecords
             List of record dicts aggregated across all fetched pages.
         """
-        prepared = self._prepare_request(request=request)
+        prepared = request or RequestOptions()
         return list(
             self.paginate_iter(
                 url,
@@ -791,7 +791,7 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        base_request = self._prepare_request(request=request)
+        base_request = request or RequestOptions()
 
         match self.type:
             case PaginationType.PAGE | PaginationType.OFFSET:
@@ -1237,15 +1237,3 @@ class Paginator:
             else:
                 return None
         return cur if isinstance(cur, (str, int)) else None
-
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _prepare_request(
-        *,
-        request: RequestOptions | None,
-    ) -> RequestOptions:
-        """Return a RequestOptions snapshot defaulting to an empty one."""
-        if request is None:
-            return RequestOptions()
-        return request
