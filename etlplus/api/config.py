@@ -10,8 +10,8 @@ API layer because they compose runtime types such as
 
 Notes
 -----
-- TypedDict references remain editor hints only; ``from_obj`` accepts
-    ``Mapping[str, Any]`` for permissive parsing.
+- TypedDict references remain editor hints only; :meth:`from_obj` accepts
+    ``StrAnyMap`` for permissive parsing.
 - Helper functions near the bottom keep parsing logic centralized and avoid
     leaking implementation details.
 """
@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..types import StrAnyMap
+from ..types import StrStrMap
 from ._parsing import cast_str_dict
 from ._parsing import coerce_dict
 from ._parsing import maybe_mapping
@@ -156,11 +157,11 @@ class ApiProfileConfig:
     ----------
     base_url : str
         Base URL for the API.
-    headers : Mapping[str, str]
+    headers : StrStrMap
         Profile-level default headers (merged with defaults.headers).
     base_path : str | None
         Optional base path prefixed to endpoint paths when composing URLs.
-    auth : Mapping[str, Any]
+    auth : StrAnyMap
         Optional auth block (provider-specific shape, passed through).
     pagination_defaults : PaginationConfig | None
         Optional pagination defaults applied to endpoints referencing this
@@ -173,9 +174,9 @@ class ApiProfileConfig:
     # -- Attributes -- #
 
     base_url: str
-    headers: Mapping[str, str] = field(default_factory=dict)
+    headers: StrStrMap = field(default_factory=dict)
     base_path: str | None = None
-    auth: Mapping[str, Any] = field(default_factory=dict)
+    auth: StrAnyMap = field(default_factory=dict)
 
     # Optional defaults carried at profile level
     pagination_defaults: PaginationConfig | None = None
@@ -242,7 +243,7 @@ class ApiConfig:
     ----------
     base_url : str
         Effective base URL (derived from profiles or top-level input).
-    headers : Mapping[str, str]
+    headers : StrStrMap
         Effective headers (profile + top-level merged with precedence).
     endpoints : Mapping[str, EndpointConfig]
         Endpoint configurations keyed by name.
@@ -253,7 +254,7 @@ class ApiConfig:
     # -- Attributes -- #
 
     base_url: str
-    headers: Mapping[str, str] = field(default_factory=dict)
+    headers: StrStrMap = field(default_factory=dict)
     endpoints: Mapping[str, EndpointConfig] = field(default_factory=dict)
 
     # See also: ApiProfileConfig.from_obj for profile parsing logic.
@@ -403,9 +404,9 @@ class EndpointConfig:
         Endpoint path (relative to base URL).
     method : str | None
         Optional HTTP method (default is GET when omitted at runtime).
-    path_params : Mapping[str, Any]
+    path_params : StrAnyMap
         Path parameters used when constructing the request URL.
-    query_params : Mapping[str, Any]
+    query_params : StrAnyMap
         Default query string parameters.
     body : Any | None
         Request body structure (pass-through, format-specific).
@@ -419,8 +420,8 @@ class EndpointConfig:
 
     path: str
     method: str | None = None
-    path_params: Mapping[str, Any] = field(default_factory=dict)
-    query_params: Mapping[str, Any] = field(default_factory=dict)
+    path_params: StrAnyMap = field(default_factory=dict)
+    query_params: StrAnyMap = field(default_factory=dict)
     body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
