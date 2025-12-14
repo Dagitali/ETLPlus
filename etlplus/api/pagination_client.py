@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import cast
 
@@ -57,6 +58,8 @@ class PaginationClient:
         Stored fetch callback invoked by ``Paginator``.
     rate_limiter : RateLimiter | None
         Limiter applied between requests when configured.
+    request : RequestOptions
+        Default request metadata applied to each fetch.
     """
 
     # -- Attributes -- #
@@ -64,6 +67,7 @@ class PaginationClient:
     pagination: Mapping[str, Any] | None
     fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
+    request: RequestOptions = field(default_factory=RequestOptions)
 
     # -- Properties -- #
 
@@ -118,10 +122,14 @@ class PaginationClient:
         params : Params | None, optional
             Optional query parameters to include in the request.
         """
-        request = RequestOptions(params=params)
+        effective_request = (
+            self.request
+            if params is None
+            else self.request.with_params(params)
+        )
 
         if not self.is_paginated:
-            yield from self._iterate_single_page(url, request)
+            yield from self._iterate_single_page(url, effective_request)
             return
 
         paginator = Paginator.from_config(
@@ -129,7 +137,10 @@ class PaginationClient:
             fetch=self.fetch,
             rate_limiter=self.rate_limiter,
         )
-        yield from paginator.paginate_iter(url, params=request.params)
+        yield from paginator.paginate_iter(
+            url,
+            request=effective_request,
+        )
 
     # -- InternalInstance Methods -- #
 
@@ -146,7 +157,7 @@ class PaginationClient:
         url : Url
             Base URL to fetch pages from.
         request : RequestOptions
-            Request snapshot to include in the fetch call.
+            Request metadata to forward to the fetch callback.
 
         Yields
         ------
