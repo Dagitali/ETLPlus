@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from dataclasses import field
 from typing import Any
 from typing import cast
 
@@ -58,8 +57,6 @@ class PaginationClient:
         Stored fetch callback invoked by ``Paginator``.
     rate_limiter : RateLimiter | None
         Limiter applied between requests when configured.
-    request : RequestOptions
-        Default request metadata applied to each fetch.
     """
 
     # -- Attributes -- #
@@ -67,7 +64,6 @@ class PaginationClient:
     pagination: Mapping[str, Any] | None
     fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
-    request: RequestOptions = field(default_factory=RequestOptions)
 
     # -- Properties -- #
 
@@ -88,6 +84,7 @@ class PaginationClient:
         url: Url,
         *,
         params: Params | None = None,
+        request: RequestOptions | None = None,
     ) -> JSONRecords:
         """
         Collect records across pages into a list.
@@ -104,13 +101,14 @@ class PaginationClient:
         JSONRecords
             List of JSON records.
         """
-        return list(self.iterate(url, params=params))
+        return list(self.iterate(url, params=params, request=request))
 
     def iterate(
         self,
         url: Url,
         *,
         params: Params | None = None,
+        request: RequestOptions | None = None,
     ) -> Generator[JSONDict]:
         """
         Yield records for the configured pagination strategy.
@@ -121,12 +119,12 @@ class PaginationClient:
             Base URL to fetch pages from.
         params : Params | None, optional
             Optional query parameters to include in the request.
+        request : RequestOptions | None, optional
+            Snapshot of request metadata (params/headers/timeout) to clone
+            for this invocation. ``params`` overrides the snapshot when both
+            are supplied.
         """
-        effective_request = (
-            self.request
-            if params is None
-            else self.request.with_params(params)
-        )
+        effective_request = self._compose_request(request, params)
 
         if not self.is_paginated:
             yield from self._iterate_single_page(url, effective_request)
@@ -171,3 +169,31 @@ class PaginationClient:
             pg.get('records_path'),
             pg.get('fallback_path'),
         )
+
+    # -- Internal Helpers -- #
+
+    @staticmethod
+    def _compose_request(
+        request: RequestOptions | None,
+        params: Params | None,
+    ) -> RequestOptions:
+        """
+        Return a request snapshot honoring optional parameter overrides.
+
+        Parameters
+        ----------
+        request : RequestOptions | None
+            Base request snapshot.
+        params : Params | None
+            Optional query parameters to override.
+
+        Returns
+        -------
+        RequestOptions
+            Composed request snapshot.
+        """
+        if request is None:
+            return RequestOptions(params=params)
+        if params is None:
+            return request
+        return request.with_params(params)
