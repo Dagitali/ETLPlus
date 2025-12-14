@@ -30,8 +30,8 @@ endpoint:
 ...     "records_path": "data.items",
 ...     "max_pages": 10,
 ... }
->>> def fetch(url, params, page):
-...     response = requests.get(url, params=params)
+>>> def fetch(url, request, page):
+...     response = requests.get(url, params=request.params)
 ...     response.raise_for_status()
 ...     return response.json()
 >>> paginator = Paginator.from_config(
@@ -75,7 +75,6 @@ from .errors import ApiRequestError
 from .errors import PaginationError
 from .rate_limiter import RateLimiter
 from .types import FetchPageCallable
-from .types import Params
 from .types import RequestOptions
 from .types import Url
 
@@ -737,7 +736,6 @@ class Paginator:
         self,
         url: Url,
         *,
-        params: Params | None = None,
         request: RequestOptions | None = None,
     ) -> JSONRecords:
         """
@@ -747,19 +745,16 @@ class Paginator:
         ----------
         url : Url
             Absolute URL of the endpoint to fetch.
-        params : Params | None, optional
-            Optional query parameters for the request.
         request : RequestOptions | None, optional
-            Request metadata snapshot reused across pages. When both ``params``
-            and ``request`` are supplied, ``params`` overrides the snapshot's
-            query parameters.
+            Request metadata snapshot reused across pages. Provide
+            ``RequestOptions.with_params`` to override query parameters.
 
         Returns
         -------
         JSONRecords
             List of record dicts aggregated across all fetched pages.
         """
-        prepared = self._prepare_request(params=params, request=request)
+        prepared = self._prepare_request(request=request)
         return list(
             self.paginate_iter(
                 url,
@@ -771,7 +766,6 @@ class Paginator:
         self,
         url: Url,
         *,
-        params: Params | None = None,
         request: RequestOptions | None = None,
     ) -> Generator[JSONDict]:
         """
@@ -781,11 +775,8 @@ class Paginator:
         ----------
         url : Url
             Absolute URL of the endpoint to fetch.
-        params : Params | None, optional
-            Optional query parameters for the request.
         request : RequestOptions | None, optional
-            Pre-built request metadata snapshot to clone per page. When
-            ``params`` is provided it overrides the snapshot's params.
+            Pre-built request metadata snapshot to clone per page.
 
         Yields
         ------
@@ -800,7 +791,7 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        base_request = self._prepare_request(params=params, request=request)
+        base_request = self._prepare_request(request=request)
 
         match self.type:
             case PaginationType.PAGE | PaginationType.OFFSET:
@@ -1252,12 +1243,9 @@ class Paginator:
     @staticmethod
     def _prepare_request(
         *,
-        params: Params | None,
         request: RequestOptions | None,
     ) -> RequestOptions:
-        """Return a RequestOptions snapshot honoring optional overrides."""
+        """Return a RequestOptions snapshot defaulting to an empty one."""
         if request is None:
-            return RequestOptions(params=params)
-        if params is None:
-            return request
-        return request.with_params(params)
+            return RequestOptions()
+        return request
