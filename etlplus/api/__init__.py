@@ -95,6 +95,7 @@ from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
 from .types import Headers
 from .types import Params
+from .types import RequestOptions
 from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
@@ -113,7 +114,9 @@ __all__ = [
     'ApiProfileConfig',
     'EndpointConfig',
     'PaginationConfig',
-    'RateLimitConfig', 'RateLimitPlan',
+    'RateLimitConfig',
+    'RateLimitPlan',
+    'RequestOptions',
     'RetryStrategy',
 
     # Enums
