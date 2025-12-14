@@ -71,6 +71,7 @@ from .transport import HTTPAdapterMountConfig
 from .types import Headers
 from .types import Params
 from .types import RateLimitOverrides
+from .types import RequestOptions
 from .types import Url
 
 # SECTION: CLASSES ========================================================== #
@@ -402,7 +403,7 @@ class EndpointClient:
     def _fetch_page(
         self,
         url_: Url,
-        params: Params | None,
+        request: RequestOptions,
         page_index: int | None,
         *,
         headers: Headers | None,
@@ -415,8 +416,8 @@ class EndpointClient:
         ----------
         url_ : Url
             Absolute URL to request.
-        params : Params | None
-            Query parameters for the request.
+        request : RequestOptions
+            Request metadata produced by ``Paginator``.
         page_index : int | None
             Index of the page being fetched.
         headers : Headers | None
@@ -434,10 +435,23 @@ class EndpointClient:
         PaginationError
             If the request fails.
         """
+        merged_headers: Headers | None = None
+        if headers:
+            merged_headers = dict(headers)
+        if request.headers:
+            merged_headers = {
+                **(merged_headers or {}),
+                **dict(request.headers),
+            }
+
+        eff_timeout = (
+            request.timeout if request.timeout is not None else timeout
+        )
+
         call_kw = EndpointClient.build_request_kwargs(
-            params=params,
-            headers=headers,
-            timeout=timeout,
+            params=request.params,
+            headers=merged_headers,
+            timeout=eff_timeout,
         )
         try:
             return self.get(url_, **call_kw)
