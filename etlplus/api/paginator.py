@@ -738,6 +738,7 @@ class Paginator:
         url: Url,
         *,
         params: Params | None = None,
+        request: RequestOptions | None = None,
     ) -> JSONRecords:
         """
         Collect all records across pages into a list of dicts.
@@ -748,13 +749,23 @@ class Paginator:
             Absolute URL of the endpoint to fetch.
         params : Params | None, optional
             Optional query parameters for the request.
+        request : RequestOptions | None, optional
+            Request metadata snapshot reused across pages. When both ``params``
+            and ``request`` are supplied, ``params`` overrides the snapshot's
+            query parameters.
 
         Returns
         -------
         JSONRecords
             List of record dicts aggregated across all fetched pages.
         """
-        return list(self.paginate_iter(url, params=params))
+        prepared = self._prepare_request(params=params, request=request)
+        return list(
+            self.paginate_iter(
+                url,
+                request=prepared,
+            ),
+        )
 
     def paginate_iter(
         self,
@@ -773,7 +784,8 @@ class Paginator:
         params : Params | None, optional
             Optional query parameters for the request.
         request : RequestOptions | None, optional
-            Pre-built request metadata snapshot to clone per page.
+            Pre-built request metadata snapshot to clone per page. When
+            ``params`` is provided it overrides the snapshot's params.
 
         Yields
         ------
@@ -788,9 +800,7 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
-        base_request = request or RequestOptions(params=params)
-        if request is not None and params is not None:
-            base_request = request.with_params(params)
+        base_request = self._prepare_request(params=params, request=request)
 
         match self.type:
             case PaginationType.PAGE | PaginationType.OFFSET:
@@ -799,15 +809,6 @@ class Paginator:
             case PaginationType.CURSOR:
                 yield from self._iterate_cursor_style(url, base_request)
                 return
-
-        # Fallback: single page, coalesce, and yield as-is.
-        self.last_page = 1
-        page_data = self._fetch_page(url, base_request)
-        yield from self.coalesce_records(
-            page_data,
-            self.records_path,
-            self.fallback_path,
-        )
 
     # -- Internal Instance Methods -- #
 
@@ -845,6 +846,11 @@ class Paginator:
                 {k: v for k, v in overrides.items() if v is not None},
             )
         return request.with_params(combined)
+
+    def _enforce_rate_limit(self) -> None:
+        """Apply configured pacing between subsequent page fetches."""
+        if self.rate_limiter is not None:
+            self.rate_limiter.enforce()
 
     def _fetch_page(
         self,
@@ -971,7 +977,7 @@ class Paginator:
         Generator[JSONDict]
             Iterator over normalized record dictionaries for each page.
         """
-        current = self.start_page
+        current = self._resolve_start_page(request)
         pages = 0
         emitted = 0
 
@@ -1055,6 +1061,35 @@ class Paginator:
             return current + self.page_size
         return current + 1
 
+    def _resolve_start_page(
+        self,
+        request: RequestOptions,
+    ) -> int:
+        """
+        Allow per-call overrides of the first page via request params.
+
+        Parameters
+        ----------
+        request : RequestOptions
+            Request metadata snapshot passed by the caller.
+
+        Returns
+        -------
+        int
+            Starting page number or offset for this pagination session.
+        """
+        if not request.params:
+            return self.start_page
+        maybe = request.params.get(self.page_param)
+        if maybe is None:
+            return self.start_page
+        parsed = to_int(maybe)
+        if parsed is None:
+            return self.start_page
+        if self.type == PaginationType.OFFSET:
+            return parsed if parsed >= 0 else self.START_PAGES[self.type]
+        return parsed if parsed >= 1 else self.START_PAGES[self.type]
+
     def _stop_limits(
         self, pages: int,
         recs: int,
@@ -1079,11 +1114,6 @@ class Paginator:
         if isinstance(self.max_records, int) and recs >= self.max_records:
             return True
         return False
-
-    def _enforce_rate_limit(self) -> None:
-        """Apply configured pacing between subsequent page fetches."""
-        if self.rate_limiter is not None:
-            self.rate_limiter.enforce()
 
     # -- Static Methods -- #
 
@@ -1216,3 +1246,18 @@ class Paginator:
             else:
                 return None
         return cur if isinstance(cur, (str, int)) else None
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _prepare_request(
+        *,
+        params: Params | None,
+        request: RequestOptions | None,
+    ) -> RequestOptions:
+        """Return a RequestOptions snapshot honoring optional overrides."""
+        if request is None:
+            return RequestOptions(params=params)
+        if params is None:
+            return request
+        return request.with_params(params)
