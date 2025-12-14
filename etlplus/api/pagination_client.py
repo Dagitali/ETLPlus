@@ -20,6 +20,7 @@ from .paginator import Paginator
 from .rate_limiter import RateLimiter
 from .types import FetchPageCallable
 from .types import Params
+from .types import RequestOptions
 from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
@@ -117,8 +118,10 @@ class PaginationClient:
         params : Params | None, optional
             Optional query parameters to include in the request.
         """
+        request = RequestOptions(params=params)
+
         if not self.is_paginated:
-            yield from self._iterate_single_page(url, params)
+            yield from self._iterate_single_page(url, request)
             return
 
         paginator = Paginator.from_config(
@@ -126,14 +129,14 @@ class PaginationClient:
             fetch=self.fetch,
             rate_limiter=self.rate_limiter,
         )
-        yield from paginator.paginate_iter(url, params=params)
+        yield from paginator.paginate_iter(url, params=request.params)
 
     # -- InternalInstance Methods -- #
 
     def _iterate_single_page(
         self,
         url: Url,
-        params: Params | None,
+        request: RequestOptions,
     ) -> Generator[JSONDict]:
         """
         Iterate records for non-paginated responses.
@@ -142,8 +145,8 @@ class PaginationClient:
         ----------
         url : Url
             Base URL to fetch pages from.
-        params : Params | None
-            Optional query parameters to include in the request.
+        request : RequestOptions
+            Request snapshot to include in the fetch call.
 
         Yields
         ------
@@ -151,7 +154,7 @@ class PaginationClient:
             JSON records from the response.
         """
         pg = cast(dict[str, Any], self.pagination or {})
-        page_data = self.fetch(url, params, None)
+        page_data = self.fetch(url, request, None)
         yield from Paginator.coalesce_records(
             page_data,
             pg.get('records_path'),

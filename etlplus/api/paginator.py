@@ -76,6 +76,7 @@ from .errors import PaginationError
 from .rate_limiter import RateLimiter
 from .types import FetchPageCallable
 from .types import Params
+from .types import RequestOptions
 from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
@@ -784,17 +785,19 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
 
+        base_request = RequestOptions(params=params)
+
         match self.type:
             case PaginationType.PAGE | PaginationType.OFFSET:
-                yield from self._iterate_page_style(url, params)
+                yield from self._iterate_page_style(url, base_request)
                 return
             case PaginationType.CURSOR:
-                yield from self._iterate_cursor_style(url, params)
+                yield from self._iterate_cursor_style(url, base_request)
                 return
 
         # Fallback: single page, coalesce, and yield as-is.
         self.last_page = 1
-        page_data = self._fetch_page(url, params)
+        page_data = self._fetch_page(url, base_request)
         yield from self.coalesce_records(
             page_data,
             self.records_path,
@@ -803,20 +806,20 @@ class Paginator:
 
     # -- Internal Instance Methods -- #
 
-    def _compose_params(
+    def _compose_request(
         self,
-        params: Params | None,
+        request: RequestOptions,
         *,
         defaults: Mapping[str, Any] | None = None,
         overrides: Mapping[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> RequestOptions:
         """
-        Merge caller params, defaults, and overrides into one mapping.
+        Merge caller params, defaults, and overrides into a new request.
 
         Parameters
         ----------
-        params : Params | None
-            Base query parameters supplied by the caller.
+        request : RequestOptions
+            Base request metadata supplied by the caller.
         defaults : Mapping[str, Any] | None, optional
             Default key/value pairs inserted when missing.
         overrides : Mapping[str, Any] | None, optional
@@ -825,10 +828,10 @@ class Paginator:
 
         Returns
         -------
-        dict[str, Any]
-            Combined query parameters prepared for the fetch callback.
+        RequestOptions
+            Copy of ``request`` with merged params preserved.
         """
-        combined: dict[str, Any] = dict(params or {})
+        combined: dict[str, Any] = dict(request.params or {})
         if defaults:
             for key, value in defaults.items():
                 combined.setdefault(key, value)
@@ -836,12 +839,12 @@ class Paginator:
             combined.update(
                 {k: v for k, v in overrides.items() if v is not None},
             )
-        return combined
+        return request.with_params(combined)
 
     def _fetch_page(
         self,
         url: Url,
-        params: Params | None,
+        request: RequestOptions,
     ) -> Any:
         """
         Fetch a single page and attach page index on failure.
@@ -855,8 +858,8 @@ class Paginator:
         ----------
         url : Url
             Absolute URL of the endpoint to fetch.
-        params : Params | None
-            Optional query parameters for the request.
+        request : RequestOptions
+            Request metadata (params/headers/timeout) for the fetch.
 
         Returns
         -------
@@ -873,7 +876,7 @@ class Paginator:
         if self.fetch is None:
             raise ValueError('Paginator.fetch must be provided')
         try:
-            return self.fetch(url, params, self.last_page)
+            return self.fetch(url, request, self.last_page)
         except ApiRequestError as e:
             raise PaginationError(
                 url=e.url,
@@ -888,7 +891,7 @@ class Paginator:
     def _iterate_cursor_style(
         self,
         url: Url,
-        query_params: Params | None,
+        request: RequestOptions,
     ) -> Generator[JSONDict]:
         """
         Yield record dicts for cursor-based pagination strategies.
@@ -897,8 +900,8 @@ class Paginator:
         ----------
         url : Url
             Endpoint URL to paginate.
-        query_params : Params | None
-            Base query parameters passed by the caller.
+        request : RequestOptions
+            Base request metadata passed by the caller.
 
         Yields
         ------
@@ -916,13 +919,13 @@ class Paginator:
                 if cursor is not None
                 else None
             )
-            req_params = self._compose_params(
-                query_params,
+            req_options = self._compose_request(
+                request,
                 defaults={self.limit_param: self.page_size},
                 overrides=overrides,
             )
 
-            page_data = self._fetch_page(url, req_params)
+            page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
                 page_data,
                 self.records_path,
@@ -946,7 +949,7 @@ class Paginator:
     def _iterate_page_style(
         self,
         url: Url,
-        query_params: Params | None,
+        request: RequestOptions,
     ) -> Generator[JSONDict]:
         """
         Yield record dicts for page/offset pagination strategies.
@@ -955,8 +958,8 @@ class Paginator:
         ----------
         url : Url
             Endpoint URL to paginate.
-        query_params : Params | None
-            Base query parameters passed by the caller.
+        request : RequestOptions
+            Base request metadata passed by the caller.
 
         Yields
         ------
@@ -969,14 +972,14 @@ class Paginator:
 
         while True:
             self.last_page = pages + 1
-            req_params = self._compose_params(
-                query_params,
+            req_options = self._compose_request(
+                request,
                 overrides={
                     self.page_param: current,
                     self.size_param: self.page_size,
                 },
             )
-            page_data = self._fetch_page(url, req_params)
+            page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
                 page_data,
                 self.records_path,
