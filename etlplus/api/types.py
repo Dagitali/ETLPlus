@@ -68,22 +68,46 @@ class RateLimitOverrideMap(TypedDict, total=False):
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class RequestOptions:
-    """Immutable snapshot of per-request options."""
+    """
+    Immutable snapshot of per-request options.
+
+    Attributes
+    ----------
+    params : Params | None
+        Query or body parameters.
+    headers : Headers | None
+        HTTP headers.
+    timeout : float | None
+        Request timeout in seconds.
+    """
+
+    # -- Attributes -- #
 
     params: Params | None = None
     headers: Headers | None = None
-    timeout: float | int | None = None
+    timeout: float | None = None
+
+    # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
         if self.params:
-            self.params = dict(self.params)
+            object.__setattr__(self, 'params', dict(self.params))
         if self.headers:
-            self.headers = dict(self.headers)
+            object.__setattr__(self, 'headers', dict(self.headers))
+
+    # -- Instance Methods -- #
 
     def as_kwargs(self) -> dict[str, Any]:
-        """Convert options into ``requests``-compatible kwargs."""
+        """
+        Convert options into ``requests``-compatible kwargs.
+
+        Returns
+        -------
+        dict[str, Any]
+            Keyword arguments for ``requests`` methods.
+        """
         kw: dict[str, Any] = {}
         if self.params:
             kw['params'] = dict(self.params)
@@ -94,7 +118,19 @@ class RequestOptions:
         return kw
 
     def with_params(self, params: Params | None) -> RequestOptions:
-        """Return a copy with ``params`` replaced while preserving context."""
+        """
+        Return a copy with ``params`` replaced while preserving context.
+
+        Parameters
+        ----------
+        params : Params | None
+            New query or body parameters.
+
+        Returns
+        -------
+        RequestOptions
+            New instance with updated parameters.
+        """
         return RequestOptions(
             params=dict(params) if params else None,
             headers=self.headers,
