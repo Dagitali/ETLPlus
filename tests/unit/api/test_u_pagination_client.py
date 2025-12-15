@@ -103,6 +103,8 @@ class TestPaginationClient:
 
     def test_iterate_allows_request_overrides(self) -> None:
         """Explicit request snapshots can be supplied per invocation."""
+        # pylint: disable=unused-argument
+
         payload = {'payload': {'items': [{'id': 1}]}}
         captured: list[RequestOptions] = []
 
@@ -136,6 +138,8 @@ class TestPaginationClient:
 
     def test_iterate_with_paginator_respects_request_snapshot(self) -> None:
         """Paginator-backed iterations clone the provided RequestOptions."""
+        # pylint: disable=unused-argument
+
         cfg = {
             'type': 'page',
             'records_path': 'items',
