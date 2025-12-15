@@ -806,7 +806,6 @@ class EndpointClient:
         )
         yield from runner.iterate(
             url,
-            params=params,
             request=base_request,
         )
 

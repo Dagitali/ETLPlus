@@ -19,7 +19,6 @@ from .paginator import PaginationType
 from .paginator import Paginator
 from .rate_limiter import RateLimiter
 from .types import FetchPageCallable
-from .types import Params
 from .types import RequestOptions
 from .types import Url
 
@@ -83,7 +82,6 @@ class PaginationClient:
         self,
         url: Url,
         *,
-        params: Params | None = None,
         request: RequestOptions | None = None,
     ) -> JSONRecords:
         """
@@ -93,21 +91,18 @@ class PaginationClient:
         ----------
         url : Url
             Base URL to fetch pages from.
-        params : Params | None, optional
-            Optional query parameters to include in the request.
 
         Returns
         -------
         JSONRecords
             List of JSON records.
         """
-        return list(self.iterate(url, params=params, request=request))
+        return list(self.iterate(url, request=request))
 
     def iterate(
         self,
         url: Url,
         *,
-        params: Params | None = None,
         request: RequestOptions | None = None,
     ) -> Generator[JSONDict]:
         """
@@ -117,14 +112,11 @@ class PaginationClient:
         ----------
         url : Url
             Base URL to fetch pages from.
-        params : Params | None, optional
-            Optional query parameters to include in the request.
         request : RequestOptions | None, optional
             Snapshot of request metadata (params/headers/timeout) to clone
-            for this invocation. ``params`` overrides the snapshot when both
-            are supplied.
+            for this invocation.
         """
-        effective_request = self._compose_request(request, params)
+        effective_request = request or RequestOptions()
 
         if not self.is_paginated:
             yield from self._iterate_single_page(url, effective_request)
@@ -169,31 +161,3 @@ class PaginationClient:
             pg.get('records_path'),
             pg.get('fallback_path'),
         )
-
-    # -- Internal Helpers -- #
-
-    @staticmethod
-    def _compose_request(
-        request: RequestOptions | None,
-        params: Params | None,
-    ) -> RequestOptions:
-        """
-        Return a request snapshot honoring optional parameter overrides.
-
-        Parameters
-        ----------
-        request : RequestOptions | None
-            Base request snapshot.
-        params : Params | None
-            Optional query parameters to override.
-
-        Returns
-        -------
-        RequestOptions
-            Composed request snapshot.
-        """
-        if request is None:
-            return RequestOptions(params=params)
-        if params is None:
-            return request
-        return request.with_params(params)
