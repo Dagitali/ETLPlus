@@ -52,7 +52,6 @@ from __future__ import annotations
 from collections.abc import Generator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
 from functools import partial
 from typing import Any
 from typing import ClassVar
@@ -63,6 +62,7 @@ from typing import TypedDict
 from typing import cast
 from typing import overload
 
+from ..enums import CoercibleStrEnum
 from ..mixins import BoundsWarningsMixin
 from ..types import JSONDict
 from ..types import JSONRecords
@@ -104,34 +104,7 @@ __all__ = [
 _MISSING = object()
 
 
-# SECTION: INTERNAL HELPERS ================================================ #
-
-
-def _normalize_pagination_type(
-    value: Any,
-) -> PaginationType | None:
-    """
-    Normalize a value into a :class:`PaginationType` enum member.
-
-    Parameters
-    ----------
-    value : Any
-        Input value to normalize.
-
-    Returns
-    -------
-    PaginationType | None
-        Corresponding enum member, or ``None`` if unrecognized.
-    """
-    match str(value).strip().lower() if value is not None else '':
-        case 'page':
-            return PaginationType.PAGE
-        case 'offset':
-            return PaginationType.OFFSET
-        case 'cursor':
-            return PaginationType.CURSOR
-        case _:
-            return None
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _resolve_path(
@@ -168,8 +141,10 @@ def _resolve_path(
 # SECTION: ENUMS ============================================================ #
 
 
-class PaginationType(StrEnum):
+class PaginationType(CoercibleStrEnum):
     """Enumeration of supported pagination types for REST API responses."""
+
+    # -- Constants -- #
 
     PAGE = 'page'
     OFFSET = 'offset'
@@ -459,7 +434,7 @@ class PaginationConfig(BoundsWarningsMixin):
             page_size = page_size or dflt_blk.get('per_page')
 
         return cls(
-            type=_normalize_pagination_type(obj.get('type')),
+            type=PaginationType.try_coerce(obj.get('type')),
             page_param=page_param,
             size_param=size_param,
             start_page=to_int(start_page),
@@ -515,7 +490,7 @@ class PaginationConfig(BoundsWarningsMixin):
             return None
 
         return cls(
-            type=_normalize_pagination_type(obj.get('type')),
+            type=PaginationType.try_coerce(obj.get('type')),
             page_param=obj.get('page_param'),
             size_param=obj.get('size_param'),
             start_page=to_int(obj.get('start_page')),
