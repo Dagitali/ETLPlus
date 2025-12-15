@@ -803,41 +803,6 @@ class Paginator:
 
     # -- Internal Instance Methods -- #
 
-    def _compose_request(
-        self,
-        request: RequestOptions,
-        *,
-        defaults: Mapping[str, Any] | None = None,
-        overrides: Mapping[str, Any] | None = None,
-    ) -> RequestOptions:
-        """
-        Merge caller params, defaults, and overrides into a new request.
-
-        Parameters
-        ----------
-        request : RequestOptions
-            Base request metadata supplied by the caller.
-        defaults : Mapping[str, Any] | None, optional
-            Default key/value pairs inserted when missing.
-        overrides : Mapping[str, Any] | None, optional
-            Override values that always replace existing entries when
-            non-``None``.
-
-        Returns
-        -------
-        RequestOptions
-            Copy of ``request`` with merged params preserved.
-        """
-        combined: dict[str, Any] = dict(request.params or {})
-        if defaults:
-            for key, value in defaults.items():
-                combined.setdefault(key, value)
-        if overrides:
-            combined.update(
-                {k: v for k, v in overrides.items() if v is not None},
-            )
-        return request.with_params(combined)
-
     def _enforce_rate_limit(self) -> None:
         """Apply configured pacing between subsequent page fetches."""
         if self.rate_limiter is not None:
@@ -921,11 +886,17 @@ class Paginator:
                 if cursor is not None
                 else None
             )
-            req_options = self._compose_request(
-                request,
-                defaults={self.limit_param: self.page_size},
-                overrides=overrides,
+            combined: dict[str, Any] = (
+                {self.limit_param: self.page_size}
+                | dict(request.params or {})
             )
+            if overrides:
+                combined |= {
+                    k: v
+                    for k, v in overrides.items()
+                    if v is not None
+                }
+            req_options = request.with_params(combined)
 
             page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
@@ -974,13 +945,11 @@ class Paginator:
 
         while True:
             self.last_page = pages + 1
-            req_options = self._compose_request(
-                request,
-                overrides={
-                    self.page_param: current,
-                    self.size_param: self.page_size,
-                },
-            )
+            merged = dict(request.params or {}) | {
+                self.page_param: current,
+                self.size_param: self.page_size,
+            }
+            req_options = request.with_params(merged)
             page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
                 page_data,
