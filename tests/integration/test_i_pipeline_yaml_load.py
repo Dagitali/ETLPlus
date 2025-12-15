@@ -12,6 +12,8 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 
 from etlplus.config import PipelineConfig
@@ -44,5 +46,5 @@ class TestPipelineYamlLoad:
         gh = cfg.apis['github']
         assert 'org_repos' in gh.endpoints
 
-        # Profiles modeled if present.
-        assert isinstance(getattr(gh, 'profiles', {}), dict)
+        # Profiles modeled if present (mapping proxies acceptable).
+        assert isinstance(getattr(gh, 'profiles', {}), Mapping)
