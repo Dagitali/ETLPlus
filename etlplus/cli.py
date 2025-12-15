@@ -79,6 +79,8 @@ CLI_EPILOG = '\n'.join(
 
 FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 
+PROJECT_URL = 'https://github.com/Dagitali/ETLPlus'
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -744,7 +746,10 @@ def create_parser() -> argparse.ArgumentParser:
     # Define "pipeline" command (reads YAML config).
     pipe_parser = subparsers.add_parser(
         'pipeline',
-        help='Inspect pipeline YAML (list jobs)',
+        help=(
+            'Inspect or run pipeline YAML (see '
+            f'{PROJECT_URL}/blob/main/docs/pipeline-guide.md)'
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     pipe_parser.add_argument(
@@ -800,7 +805,10 @@ def create_parser() -> argparse.ArgumentParser:
     # Define "run" command.
     run_parser = subparsers.add_parser(
         'run',
-        help='Run an ETL pipeline',
+        help=(
+            'Run an ETL pipeline (see '
+            f'{PROJECT_URL}/blob/main/docs/run-module.md)'
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     run_parser.add_argument(
