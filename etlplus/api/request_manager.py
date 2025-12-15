@@ -33,6 +33,7 @@ from .transport import build_session_with_adapters
 type TimeoutPair = tuple[Timeout, Timeout]
 type TimeoutInput = Timeout | TimeoutPair
 
+
 # SECTION: CONSTANTS ======================================================== #
 
 

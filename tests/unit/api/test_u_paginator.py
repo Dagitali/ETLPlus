@@ -66,9 +66,6 @@ class RecordingClient(EndpointClient):
     def paginate_url_iter(
         self,
         url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
-        timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         request: RequestOptions | None = None,
@@ -79,9 +76,6 @@ class RecordingClient(EndpointClient):
         type(self)._paginate_calls.append(
             {
                 'url': url,
-                'params': params,
-                'headers': headers,
-                'timeout': timeout,
                 'pagination': pagination,
                 'request': request,
                 'sleep_seconds': sleep_seconds,
@@ -101,9 +95,6 @@ class FakePageClient(EndpointClient):
     def paginate_url_iter(
         self,
         url: str,
-        params: Mapping[str, Any] | None,
-        headers: Mapping[str, Any] | None,
-        timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         request: RequestOptions | None = None,

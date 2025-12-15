@@ -136,9 +136,7 @@ class TestContextManager:
             session_factory=lambda: sess,
         )
         with client:
-            out = client.paginate_url(
-                'https://api.example.com/items', None, None, None, None,
-            )
+            out = client.paginate_url('https://api.example.com/items', None)
             assert out == {'ok': True}
         assert sess.closed is True
         assert request_once_stub['urls'] == ['https://api.example.com/items']
@@ -175,9 +173,7 @@ class TestContextManager:
             endpoints={},
         )
         with client:
-            out = client.paginate_url(
-                'https://api.example.com/items', None, None, None, None,
-            )
+            out = client.paginate_url('https://api.example.com/items', None)
             assert out == {'ok': True}
 
         # After context exit, the created session should be closed.
@@ -207,9 +203,7 @@ class TestContextManager:
             session=sess,
         )
         with client:
-            out = client.paginate_url(
-                'https://api.example.com/items', None, None, None, None,
-            )
+            out = client.paginate_url('https://api.example.com/items', None)
             assert out == {'ok': True}
         assert sess.closed is False
         assert request_once_stub['urls'] == ['https://api.example.com/items']
@@ -272,13 +266,7 @@ class TestCursorPagination:
             page_size=raw_page_size,
             records_path='items',
         )
-        out = client.paginate_url(
-            'https://example.test/x',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        out = client.paginate_url('https://example.test/x', cfg)
         assert isinstance(out, list)
 
         # mypy treats list element as Any due to external library response
@@ -323,9 +311,6 @@ class TestRequestOptionIntegration:
         out = client.paginate_url(
             'https://api.example.com/items',
             None,
-            None,
-            None,
-            None,
             request=seed,
         )
 
@@ -357,15 +342,16 @@ class TestRequestOptionIntegration:
         list(
             client.paginate_url_iter(
                 'https://example.test/items',
-                {'seed': 1},
-                {'X-Seed': 'yes'},
-                2.0,
                 {
                     'type': PaginationType.PAGE,
                     'records_path': 'items',
                     'page_size': 1,
                 },
-                request=RequestOptions(params={'initial': 5}),
+                request=RequestOptions(
+                    params={'seed': 1},
+                    headers={'X-Seed': 'yes'},
+                    timeout=2.0,
+                ),
             ),
         )
 
@@ -418,13 +404,7 @@ class TestRequestOptionIntegration:
             page_size=10,
             records_path='items',
         )
-        data = client.paginate_url(
-            'https://example.test/x',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        data = client.paginate_url('https://example.test/x', cfg)
         assert isinstance(data, list)
         assert len(calls) >= 2
         values = [cast(dict, r)['i'] for r in data]  # type: ignore[index]
@@ -557,9 +537,6 @@ class TestRequestOptionIntegration:
         out = list(
             client.paginate_url_iter(
                 'https://api.example.com/v1/items',
-                params=None,
-                headers=None,
-                timeout=None,
                 pagination=pg,
                 rate_limit_overrides={'max_per_sec': 4},
             ),
@@ -630,13 +607,7 @@ class TestRequestOptionIntegration:
             records_path='items',
         )
 
-        out = client.paginate_url(
-            'https://example.test/x',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        out = client.paginate_url('https://example.test/x', cfg)
         assert out == [{'i': 1}]
 
         # One sleep from the single retry attempt.
@@ -683,9 +654,7 @@ class TestErrors:
 
         monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
-            client.paginate_url(
-                'https://api.example.com/v1/x', None, None, None, None,
-            )
+            client.paginate_url('https://api.example.com/v1/x', None)
         err = ei.value
         assert err.status == 401
         assert err.attempts == 1
@@ -752,13 +721,7 @@ class TestOffsetPagination:
             },
         )
 
-        data = client.paginate_url(
-            'https://example.test/api',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        data = client.paginate_url('https://example.test/api', cfg)
 
         # Expected behavior: collects up to max_records using offset stepping.
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
@@ -815,13 +778,7 @@ class TestPagePagination:
             start_page=1,
             page_size=2,
         )
-        data = client.paginate_url(
-            'https://example.test/api',
-            None,
-            None,
-            5,
-            cfg,
-        )
+        data = client.paginate_url('https://example.test/api', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
@@ -868,13 +825,7 @@ class TestPagePagination:
             page_size=3,
             max_records=5,  # Should truncate 2nd page (total would be 6).
         )
-        data = client.paginate_url(
-            'https://example.test/x',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        data = client.paginate_url('https://example.test/x', cfg)
         assert len(data) == 5
         assert all('p' in r for r in data)
 
@@ -922,13 +873,7 @@ class TestPagePagination:
             page_size=0,
             max_pages=3,
         )
-        data = client.paginate_url(
-            'https://example.test/x',
-            None,
-            None,
-            None,
-            cfg,
-        )
+        data = client.paginate_url('https://example.test/x', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
@@ -1018,9 +963,6 @@ class TestPagePagination:
 
         out = client.paginate_url(
             'https://example.test/x',
-            None,
-            None,
-            None,
             cast(Any, {'type': 'weird'}),
         )
         assert out == {'foo': 'bar'}
@@ -1161,9 +1103,7 @@ class TestRetryLogic:
         monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
-            client.paginate_url(
-                'https://api.example.com/v1/x', None, None, None, None,
-            )
+            client.paginate_url('https://api.example.com/v1/x', None)
         err = ei.value
         assert isinstance(err, api_errors.ApiRequestError)
         assert err.status == 503
@@ -1225,9 +1165,7 @@ class TestRetryLogic:
                 retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
             ),
         )
-        out = client.paginate_url(
-            'https://api.example.com/items', None, None, None, None,
-        )
+        out = client.paginate_url('https://api.example.com/items', None)
         assert out == {'ok': True}
 
         # Should have slept twice (between the 3 attempts).
@@ -1287,9 +1225,7 @@ class TestRetryLogic:
             retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
             retry_network_errors=True,
         )
-        out = client.paginate_url(
-            'https://api.example.com/items', None, None, None, None,
-        )
+        out = client.paginate_url('https://api.example.com/items', None)
         assert out == {'ok': True}
 
         # Should have slept twice (after 2 failures).

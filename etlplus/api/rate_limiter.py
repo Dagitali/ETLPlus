@@ -82,15 +82,31 @@ class RateLimitConfigMap(TypedDict, total=False):
 def _coerce_rate_limit_map(
     rate_limit: StrAnyMap | RateLimitConfig | None,
 ) -> RateLimitConfigMap | None:
-    """Normalize legacy inputs into a concrete mapping."""
+    """
+    Normalize user inputs into a :class:`RateLimitConfigMap`.
+
+    This helper is the single entry point for converting loosely-typed
+    configuration into the canonical mapping consumed by downstream
+    helpers.
+
+    Parameters
+    ----------
+    rate_limit : StrAnyMap | RateLimitConfig | None
+        User-supplied rate-limit configuration.
+
+    Returns
+    -------
+    RateLimitConfigMap | None
+        Normalized mapping, or ``None`` if input couldn't be parsed.
+    """
     if rate_limit is None:
         return None
     if isinstance(rate_limit, RateLimitConfig):
         mapping = rate_limit.as_mapping()
         return mapping or None
     if isinstance(rate_limit, Mapping):
-        candidate = RateLimitConfig.from_obj(rate_limit)
-        return candidate.as_mapping() if candidate else None
+        cfg = RateLimitConfig.from_obj(rate_limit)
+        return cfg.as_mapping() if cfg else None
     return None
 
 
@@ -263,22 +279,20 @@ class RateLimitConfig(BoundsWarningsMixin):
         Parameters
         ----------
         obj : StrAnyMap | RateLimitConfig | None
-            Mapping with optional rate-limit fields, or ``None``.
+            Existing config instance or mapping with optional
+            rate-limit fields, or ``None``.
 
         Returns
         -------
         Self | None
             Parsed instance, or ``None`` if ``obj`` isn't a mapping.
         """
+        if obj is None:
+            return None
+        if isinstance(obj, cls):
+            return obj
         if not isinstance(obj, Mapping):
             return None
-
-        # if obj is None:
-        #     return None
-        # if isinstance(obj, cls):
-        #     return obj
-        # if not isinstance(obj, Mapping):
-        #     return None
 
         return cls(
             sleep_seconds=to_float(obj.get('sleep_seconds')),

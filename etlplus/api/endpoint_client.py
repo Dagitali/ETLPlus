@@ -67,8 +67,6 @@ from .rate_limiter import RateLimiter
 from .request_manager import RequestManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
-from .types import Headers
-from .types import Params
 from .types import RateLimitOverrides
 from .types import RequestOptions
 from .types import Url
@@ -388,39 +386,6 @@ class EndpointClient:
             rate_limiter=rate_limiter,
         )
 
-    @staticmethod
-    def _compose_request_options(
-        *,
-        params: Params | None,
-        headers: Headers | None,
-        timeout: float | int | None,
-        request: RequestOptions | None,
-    ) -> RequestOptions:
-        """Return a request snapshot with optional overrides applied."""
-        if request is None:
-            return RequestOptions(
-                params=params,
-                headers=headers,
-                timeout=timeout,
-            )
-
-        final_params = request.params
-        final_headers = request.headers
-        final_timeout = request.timeout
-
-        if params is not None:
-            final_params = params
-        if headers is not None:
-            final_headers = headers
-        if timeout is not None:
-            final_timeout = timeout
-
-        return RequestOptions(
-            params=final_params,
-            headers=final_headers,
-            timeout=final_timeout,
-        )
-
     def _fetch_page(
         self,
         url_: Url,
@@ -548,9 +513,6 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Params | None = None,
-        headers: Headers | None = None,
-        timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
@@ -571,18 +533,10 @@ class EndpointClient:
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present on
             ``base_url``).
-        params : Params | None
-            Query parameters to include in the request.
-        headers : Headers | None
-            Headers to include in the request.
-        timeout : float | int | None
-            Timeout for the request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
         request : RequestOptions | None, optional
-            Pre-built request metadata snapshot. When provided, ``params``,
-            ``headers``, and ``timeout`` override the snapshot when not
-            ``None``.
+            Pre-built request metadata snapshot (params/headers/timeout).
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -602,9 +556,6 @@ class EndpointClient:
         )
         return self.paginate_url(
             url,
-            params=params,
-            headers=headers,
-            timeout=timeout,
             pagination=pagination,
             request=request,
             sleep_seconds=sleep_seconds,
@@ -617,9 +568,6 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        params: Params | None = None,
-        headers: Headers | None = None,
-        timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
@@ -642,17 +590,10 @@ class EndpointClient:
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present).
-        params : Params | None
-            Query parameters to include in each request.
-        headers : Headers | None
-            Headers to include in each request.
-        timeout : float | int | None
-            Timeout for each request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
         request : RequestOptions | None, optional
-            Pre-built request metadata snapshot overridden by ``params``,
-            ``headers``, or ``timeout`` when those arguments are supplied.
+            Pre-built request metadata snapshot (params/headers/timeout).
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -671,9 +612,6 @@ class EndpointClient:
         )
         yield from self.paginate_url_iter(
             url=url,
-            params=params,
-            headers=headers,
-            timeout=timeout,
             pagination=pagination,
             request=request,
             sleep_seconds=sleep_seconds,
@@ -683,9 +621,6 @@ class EndpointClient:
     def paginate_url(
         self,
         url: Url,
-        params: Params | None,
-        headers: Headers | None,
-        timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         request: RequestOptions | None = None,
@@ -699,17 +634,10 @@ class EndpointClient:
         ----------
         url : Url
             Absolute URL to paginate.
-        params : Params | None
-            Query parameters to include in the request.
-        headers : Headers | None
-            Headers to include in the request.
-        timeout : float | int | None
-            Timeout for the request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
         request : RequestOptions | None, optional
             Optional request snapshot with existing params/headers/timeout.
-            Call-level arguments override the snapshot when provided.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -725,12 +653,7 @@ class EndpointClient:
         # Normalize pagination config for typed access.
         pg_map = cast(Mapping[str, Any] | None, pagination)
         ptype = Paginator.detect_type(pg_map, default=None)
-        request_obj = self._compose_request_options(
-            params=params,
-            headers=headers,
-            timeout=timeout,
-            request=request,
-        )
+        request_obj = request or RequestOptions()
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
         if ptype is None:
@@ -738,12 +661,12 @@ class EndpointClient:
 
         # For known pagination types, delegate through paginate_url_iter to
         # preserve subclass overrides (tests rely on this shim behavior).
+        # Pass the composed ``request_obj`` as the baseline snapshot and
+        # avoid re-specifying params/headers/timeout so pagination glue
+        # does not re-merge the same values a second time.
         return list(
             self.paginate_url_iter(
                 url,
-                params,
-                headers,
-                timeout,
                 pagination=pagination,
                 request=request_obj,
                 sleep_seconds=sleep_seconds,
@@ -754,9 +677,6 @@ class EndpointClient:
     def paginate_url_iter(
         self,
         url: Url,
-        params: Params | None,
-        headers: Headers | None,
-        timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
         request: RequestOptions | None = None,
@@ -770,17 +690,10 @@ class EndpointClient:
         ----------
         url : Url
             Absolute URL to paginate.
-        params : Params | None
-            Query parameters to include in each request.
-        headers : Headers | None
-            Headers to include in each request.
-        timeout : float | int | None
-            Timeout for each request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
         request : RequestOptions | None, optional
-            Optional request snapshot reused across pages. ``params``,
-            ``headers``, and ``timeout`` override the snapshot when provided.
+            Optional request snapshot reused across pages.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -792,12 +705,7 @@ class EndpointClient:
         JSONDict
             Record dictionaries extracted from each page.
         """
-        base_request = self._compose_request_options(
-            params=params,
-            headers=headers,
-            timeout=timeout,
-            request=request,
-        )
+        base_request = request or RequestOptions()
 
         runner = self._build_pagination_client(
             pagination=cast(Mapping[str, Any] | None, pagination),
