@@ -755,12 +755,7 @@ class Paginator:
             List of record dicts aggregated across all fetched pages.
         """
         prepared = request or RequestOptions()
-        return list(
-            self.paginate_iter(
-                url,
-                request=prepared,
-            ),
-        )
+        return list(self.paginate_iter(url, request=prepared))
 
     def paginate_iter(
         self,
