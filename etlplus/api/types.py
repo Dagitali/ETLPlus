@@ -22,6 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from typing import TypedDict
+from typing import cast
 
 from ..types import JSONData
 from ..types import StrAnyMap
@@ -44,6 +45,12 @@ __all__ = [
     # Typed Dicts
     'RateLimitOverrideMap',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_UNSET = object()
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -117,24 +124,56 @@ class RequestOptions:
             kw['timeout'] = self.timeout
         return kw
 
-    def with_params(self, params: Params | None) -> RequestOptions:
+    def evolve(
+        self,
+        *,
+        params: Params | None | object = _UNSET,
+        headers: Headers | None | object = _UNSET,
+        timeout: float | None | object = _UNSET,
+    ) -> RequestOptions:
         """
-        Return a copy with ``params`` replaced while preserving context.
+        Return a copy with the provided fields replaced.
 
         Parameters
         ----------
-        params : Params | None
-            New query or body parameters.
+        params : Params | None | object, optional
+            Replacement params mapping. ``None`` clears params. When
+            omitted, the existing params are preserved.
+        headers : Headers | None | object, optional
+            Replacement headers mapping. ``None`` clears headers. When
+            omitted, the existing headers are preserved.
+        timeout : float | None | object, optional
+            Replacement timeout. ``None`` clears the timeout. When
+            omitted, the existing timeout is preserved.
 
         Returns
         -------
         RequestOptions
-            New instance with updated parameters.
+            New snapshot reflecting the provided overrides.
         """
+        if params is _UNSET:
+            next_params = self.params
+        elif params is None:
+            next_params = None
+        else:
+            next_params = cast(dict, params)
+
+        if headers is _UNSET:
+            next_headers = self.headers
+        elif headers is None:
+            next_headers = None
+        else:
+            next_headers = cast(dict, headers)
+
+        if timeout is _UNSET:
+            next_timeout = self.timeout
+        else:
+            next_timeout = cast(float | None, timeout)
+
         return RequestOptions(
-            params=dict(params) if params else None,
-            headers=self.headers,
-            timeout=self.timeout,
+            params=next_params,
+            headers=next_headers,
+            timeout=next_timeout,
         )
 
 

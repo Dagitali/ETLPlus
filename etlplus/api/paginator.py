@@ -746,8 +746,7 @@ class Paginator:
         url : Url
             Absolute URL of the endpoint to fetch.
         request : RequestOptions | None, optional
-            Request metadata snapshot reused across pages. Provide
-            ``RequestOptions.with_params`` to override query parameters.
+            Request metadata snapshot reused across pages.
 
         Returns
         -------
@@ -891,7 +890,7 @@ class Paginator:
                     for k, v in overrides.items()
                     if v is not None
                 }
-            req_options = request.with_params(combined)
+            req_options = request.evolve(params=combined)
 
             page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
@@ -944,7 +943,7 @@ class Paginator:
                 self.page_param: current,
                 self.size_param: self.page_size,
             }
-            req_options = request.with_params(merged)
+            req_options = request.evolve(params=merged)
             page_data = self._fetch_page(url, req_options)
             batch = self.coalesce_records(
                 page_data,
