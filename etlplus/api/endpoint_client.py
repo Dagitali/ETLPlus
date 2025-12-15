@@ -6,7 +6,7 @@ paginating API responses with optional retries and rate limiting.
 
 Notes
 -----
-    - Pagination/record aliases are exported from :mod:`etlplus.api.paginator`.
+- Pagination/record aliases are exported from :mod:`etlplus.api.paginator`.
 - Retry-related types live in :mod:`etlplus.api.retry_manager`.
 - Pagination requires a ``PaginationConfig``. See
     :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the

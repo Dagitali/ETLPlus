@@ -225,6 +225,7 @@ class TestPaginator:
 
     def test_paginate_accepts_request_options(self) -> None:
         """Paginator.paginate accepts RequestOptions overrides for params."""
+        # pylint: disable=unused-argument
 
         seen: list[RequestOptions] = []
 
