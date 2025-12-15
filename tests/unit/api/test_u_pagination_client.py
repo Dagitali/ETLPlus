@@ -120,11 +120,11 @@ class TestPaginationClient:
         )
 
         seed = RequestOptions(headers={'X-Seed': '1'}, timeout=5)
+        call_request = seed.with_params({'page': 9})
         rows = list(
             client.iterate(
                 'https://example.test/items',
-                params={'page': 9},
-                request=seed,
+                request=call_request,
             ),
         )
 
@@ -153,12 +153,12 @@ class TestPaginationClient:
 
         client = PaginationClient(pagination=cfg, fetch=fetch)
         request = RequestOptions(params={'seed': '1'}, headers={'A': 'B'})
+        call_request = request.with_params({'page': 2})
 
         list(
             client.iterate(
                 'https://example.test/items',
-                params={'page': 2},
-                request=request,
+                request=call_request,
             ),
         )
 
