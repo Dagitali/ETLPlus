@@ -67,6 +67,7 @@ __all__ = [
     'StepApplier', 'SortKey',
 
     # Type Aliases (Networking / Runtime)
+    'Sleeper',
     'Timeout',
 ]
 
@@ -208,5 +209,8 @@ type SortKey = tuple[int, Any]
 
 # -- Networking / Runtime -- #
 
+# Sleep function used by retry helpers.
+type Sleeper = Callable[[float], None]
+
 # Numeric timeout in seconds or ``None`` for no timeout.
-type Timeout = float | int | None
+type Timeout = float | None
