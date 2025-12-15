@@ -254,7 +254,7 @@ class TestPaginator:
         )
 
         seed = RequestOptions(headers={'X': 'seed'}, params={'initial': 1})
-        override = seed.with_params({'page': 3})
+        override = seed.evolve(params={'page': 3})
         list(
             paginator.paginate(
                 'https://example.test/items',
