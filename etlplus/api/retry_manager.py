@@ -29,6 +29,7 @@ from typing import TypedDict
 import requests  # type: ignore[import]
 
 from ..types import JSONData
+from ..types import Sleeper
 from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_positive_int
@@ -46,6 +47,17 @@ __all__ = [
     # Typed Dicts
     'RetryPolicy',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset({
+    429,
+    502,
+    503,
+    504,
+})
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -77,19 +89,6 @@ class RetryPolicy(TypedDict, total=False):
     max_attempts: int
     backoff: float
     retry_on: list[int]
-
-
-# SECTION: CONSTANTS & TYPE ALIASES ======================================== #
-
-
-type Sleeper = Callable[[float], None]
-
-DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset({
-    429,
-    502,
-    503,
-    504,
-})
 
 
 # SECTION: DATA CLASSES ===================================================== #
