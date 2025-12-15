@@ -17,6 +17,7 @@ import requests  # type: ignore[import]
 
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
 from .api import PaginationConfigMap
+from .api import RequestOptions
 from .api import RetryPolicy
 from .api import Url
 from .config import load_pipeline_config
@@ -255,12 +256,17 @@ def run(
                     ),
                     session=env.get('session'),
                 )
+
+                request_options = RequestOptions(
+                    params=cast(Mapping[str, Any] | None, env.get('params')),
+                    headers=cast(Mapping[str, str] | None, env.get('headers')),
+                    timeout=cast(Timeout | None, env.get('timeout')),
+                )
+
                 data = client.paginate_url(
                     cast(str, url),
-                    cast(Mapping[str, Any] | None, env.get('params')),
-                    cast(Mapping[str, str] | None, env.get('headers')),
-                    env.get('timeout'),
                     cast(PaginationConfigMap | None, env.get('pagination')),
+                    request=request_options,
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
