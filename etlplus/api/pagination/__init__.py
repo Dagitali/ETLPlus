@@ -14,12 +14,12 @@ Notes
 """
 from __future__ import annotations
 
+from .client import PaginationClient
 from .config import CursorPaginationConfigMap
 from .config import PagePaginationConfigMap
 from .config import PaginationConfig
 from .config import PaginationConfigMap
 from .config import PaginationType
-from .pagination_client import PaginationClient
 from .paginator import Paginator
 
 # SECTION: EXPORTS ========================================================== #
