@@ -100,6 +100,7 @@ def extract_from_database(
 
 def extract_from_api(
     url: str,
+    method: HttpMethod | str = HttpMethod.GET,
     **kwargs: Any,
 ) -> JSONData:
     """
@@ -109,9 +110,12 @@ def extract_from_api(
     ----------
     url : str
         API endpoint URL.
+    method : HttpMethod | str, optional
+        HTTP method to use. Defaults to ``GET``.
     **kwargs : Any
-        Extra arguments forwarded to `requests.get` (e.g., `timeout`). To use a
-        pre-configured `requests.Session`, provide it via `session`.
+        Extra arguments forwarded to the underlying ``requests`` call
+        (for example, ``timeout``). To use a pre-configured
+        :class:`requests.Session`, provide it via ``session``.
 
     Returns
     -------
@@ -121,20 +125,24 @@ def extract_from_api(
     Raises
     ------
     TypeError
-        If a provided `session` does not expose a callable `get` method.
+        If a provided ``session`` does not expose the required HTTP
+        method (for example, ``get``).
     """
+    http_method = HttpMethod.coerce(method)
+
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
     session = kwargs.pop('session', None)
-    if session is not None:
-        get_method = getattr(session, 'get', None)
-        if not callable(get_method):
-            raise TypeError(
-                'Session must expose a callable "get" method',
-            )
-        response = get_method(url, timeout=timeout, **kwargs)
-    else:
-        response = requests.get(url, timeout=timeout, **kwargs)
+    requester = session or requests
+
+    request_callable = getattr(requester, http_method.value, None)
+    if not callable(request_callable):
+        raise TypeError(
+            'Session object must supply a callable '
+            f'"{http_method.value}" method',
+        )
+
+    response = request_callable(url, timeout=timeout, **kwargs)
     response.raise_for_status()
 
     content_type = response.headers.get('content-type', '').lower()
@@ -200,12 +208,10 @@ def extract(
         case DataConnectorType.DATABASE:
             return extract_from_database(str(source))
         case DataConnectorType.API:
-            return extract_from_api(
-                str(source),
-                method=HttpMethod.GET,
-                **kwargs,
-            )
+            # API extraction always uses an HTTP method; default is GET.
+            # ``file_format`` is ignored for APIs.
+            return extract_from_api(str(source), **kwargs)
         case _:
-            # `coerce_data_connector_type` covers invalid entries, but keep
-            # explicit guard.
+            # ``coerce_data_connector_type`` covers invalid entries, but keep
+            # explicit guard for defensive programming.
             raise ValueError(f'Invalid source type: {source_type}')
