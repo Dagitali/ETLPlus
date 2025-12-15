@@ -20,6 +20,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Self
@@ -27,6 +28,7 @@ from typing import overload
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+from ..enums import HttpMethod
 from ..types import StrAnyMap
 from ..types import StrStrMap
 from ._parsing import cast_str_dict
@@ -51,6 +53,12 @@ __all__ = [
     'ApiProfileConfig',
     'EndpointConfig',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_HTTP_METHODS: tuple[str, ...] = tuple(member.name for member in HttpMethod)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -95,6 +103,44 @@ def _effective_service_defaults(
     if not isinstance(fallback_base, str):
         raise TypeError('ApiConfig requires "base_url" (str)')
     return fallback_base, fallback_headers
+
+
+def _normalize_method(
+    value: Any,
+) -> Any | None:
+    """
+    Return a validated HTTP method string or pass through custom inputs.
+
+    Parameters
+    ----------
+    value : Any
+        Raw method value.
+
+    Returns
+    -------
+    Any | None
+        Normalized method string, ``None``, or original input.
+
+    Raises
+    ------
+    ValueError
+        If the string value is not a supported HTTP method.
+    """
+    if value is None:
+        return None
+    if isinstance(value, HttpMethod):
+        return value.name
+    if isinstance(value, str):
+        normalized = value.strip().upper()
+        if not normalized:
+            return None
+        if normalized not in _HTTP_METHODS:
+            raise ValueError(
+                f'Unsupported HTTP method {normalized!r}; '
+                f'must be one of {_HTTP_METHODS}',
+            )
+        return normalized
+    return value
 
 
 def _parse_endpoints(
@@ -182,6 +228,20 @@ class ApiProfileConfig:
     pagination_defaults: PaginationConfig | None = None
     rate_limit_defaults: RateLimitConfig | None = None
 
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'headers',
+            MappingProxyType(dict(self.headers)),
+        )
+        object.__setattr__(
+            self,
+            'auth',
+            MappingProxyType(dict(self.auth)),
+        )
+
     # -- Class Methods -- #
 
     @classmethod
@@ -203,7 +263,24 @@ class ApiProfileConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """Parse a mapping into an :class:`ApiProfileConfig` instance."""
+        """
+        Parse a mapping into an :class:`ApiProfileConfig` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Raw profile configuration.
+
+        Returns
+        -------
+        Self
+            Parsed profile configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        """
         if not isinstance(obj, Mapping):
             raise TypeError('ApiProfileConfig must be a mapping')
 
@@ -259,6 +336,25 @@ class ApiConfig:
 
     # See also: ApiProfileConfig.from_obj for profile parsing logic.
     profiles: Mapping[str, ApiProfileConfig] = field(default_factory=dict)
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'headers',
+            MappingProxyType(dict(self.headers)),
+        )
+        object.__setattr__(
+            self,
+            'endpoints',
+            MappingProxyType({str(k): v for k, v in self.endpoints.items()}),
+        )
+        object.__setattr__(
+            self,
+            'profiles',
+            MappingProxyType({str(k): v for k, v in self.profiles.items()}),
+        )
 
     # -- Internal Instance Methods -- #
 
@@ -368,7 +464,24 @@ class ApiConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """Parse a mapping into an :class:`ApiConfig` instance."""
+        """
+        Parse a mapping into an :class:`ApiConfig` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Raw API configuration.
+
+        Returns
+        -------
+        Self
+            Parsed API configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        """
         if not isinstance(obj, Mapping):
             raise TypeError('ApiConfig must be a mapping')
 
@@ -426,6 +539,20 @@ class EndpointConfig:
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'path_params',
+            MappingProxyType(dict(self.path_params)),
+        )
+        object.__setattr__(
+            self,
+            'query_params',
+            MappingProxyType(dict(self.query_params)),
+        )
+
     # -- Class Methods -- #
 
     @classmethod
@@ -449,6 +576,23 @@ class EndpointConfig:
     ) -> Self:
         """
         Parse a string or mapping into an :class:`EndpointConfig` instance.
+
+        Parameters
+        ----------
+        obj : str | StrAnyMap
+            Raw endpoint configuration.
+
+        Returns
+        -------
+        Self
+            Parsed endpoint configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        ValueError
+            If provided method is not a supported HTTP method.
         """
         match obj:
             case str():
@@ -474,7 +618,7 @@ class EndpointConfig:
 
                 return cls(
                     path=path,
-                    method=obj.get('method'),
+                    method=_normalize_method(obj.get('method')),
                     path_params=coerce_dict(path_params_raw),
                     query_params=coerce_dict(query_params_raw),
                     body=obj.get('body'),
