@@ -1,8 +1,10 @@
 """
-:mod:`etlplus.api.pagination_client` module.
+:mod:`etlplus.api.client` module.
 
-Client-facing helper that wires pagination configuration, fetch callbacks,
-and optional rate limiting into :class:`Paginator` instances.
+Client-facing pagination driver for REST API responses.
+
+This module wires pagination configuration, fetch callbacks, and optional rate
+limiting into :class:`etlplus.api.pagination.Paginator` instances.
 """
 from __future__ import annotations
 
@@ -118,6 +120,11 @@ class PaginationClient:
         request : RequestOptions | None, optional
             Snapshot of request metadata (params/headers/timeout) to clone
             for this invocation.
+
+        Yields
+        ------
+        Generator[JSONDict]
+            Iterator over JSON records from one or more pages.
         """
         effective_request = request or RequestOptions()
 
@@ -135,7 +142,7 @@ class PaginationClient:
             request=effective_request,
         )
 
-    # -- InternalInstance Methods -- #
+    # -- Internal Instance Methods -- #
 
     def _iterate_single_page(
         self,
