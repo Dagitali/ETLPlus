@@ -286,6 +286,8 @@ class TestRequestOptionIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Non-paginated calls honor explicitly supplied RequestOptions."""
+        # pylint: disable=unused-argument
+
         client = EndpointClient(
             base_url='https://api.example.com', endpoints={},
         )
@@ -325,6 +327,8 @@ class TestRequestOptionIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
+        # pylint: disable=unused-argument
+
         client = EndpointClient(base_url='https://example.test', endpoints={})
         observed: list[RequestOptions] = []
 
