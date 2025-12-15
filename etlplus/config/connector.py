@@ -72,7 +72,7 @@ __all__ = [
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorApi:
     """
     Configuration for an API-based data connector.
@@ -174,7 +174,7 @@ class ConnectorApi:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorDb:
     """
     Configuration for a database-based data connector.
@@ -251,7 +251,7 @@ class ConnectorDb:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorFile:
     """
     Configuration for a file-based data connector.

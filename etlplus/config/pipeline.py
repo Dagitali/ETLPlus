@@ -158,7 +158,7 @@ def load_pipeline_config(
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class PipelineConfig:
     """
     Configuration for the data processing pipeline.

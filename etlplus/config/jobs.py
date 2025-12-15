@@ -39,7 +39,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ExtractRef:
     """
     Reference to a data source for extraction.
@@ -88,7 +88,7 @@ class ExtractRef:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class JobConfig:
     """
     Configuration for a data processing job.
@@ -158,7 +158,7 @@ class JobConfig:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class LoadRef:
     """
     Reference to a data target for loading.
@@ -207,7 +207,7 @@ class LoadRef:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class TransformRef:
     """
     Reference to a transformation pipeline.
@@ -250,7 +250,7 @@ class TransformRef:
         return cls(pipeline=pipeline)
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ValidationRef:
     """
     Reference to a validation rule set.

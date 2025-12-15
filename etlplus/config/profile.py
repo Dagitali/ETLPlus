@@ -27,7 +27,7 @@ __all__ = ['ProfileConfig']
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ProfileConfig:
     """
     Configuration for pipeline profiles.
