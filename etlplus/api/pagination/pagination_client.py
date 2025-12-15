@@ -12,15 +12,15 @@ from dataclasses import dataclass
 from typing import Any
 from typing import cast
 
-from ..types import JSONDict
-from ..types import JSONRecords
-from .paginator import PaginationConfigMap
-from .paginator import PaginationType
+from ...types import JSONDict
+from ...types import JSONRecords
+from ..rate_limiter import RateLimiter
+from ..types import FetchPageCallable
+from ..types import RequestOptions
+from ..types import Url
+from .config import PaginationConfigMap
+from .config import PaginationType
 from .paginator import Paginator
-from .rate_limiter import RateLimiter
-from .types import FetchPageCallable
-from .types import RequestOptions
-from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
 
