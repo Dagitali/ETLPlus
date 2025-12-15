@@ -27,6 +27,7 @@ from typing import cast
 
 from . import __version__
 from .config import load_pipeline_config
+from .enums import DataConnectorType
 from .enums import FileFormat
 from .extract import extract
 from .file import File
@@ -138,7 +139,7 @@ def _add_format_options(
     )
     parser.add_argument(
         '--format',
-        choices=['json', 'csv', 'xml', 'yaml'],
+        choices=list(FileFormat.choices()),
         default='json',
         action=_FormatAction,
         help=(
@@ -658,7 +659,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     extract_parser.add_argument(
         'source_type',
-        choices=['file', 'database', 'api'],
+        choices=list(DataConnectorType.choices()),
         help='Type of source to extract from',
     )
     extract_parser.add_argument(
@@ -727,7 +728,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     load_parser.add_argument(
         'target_type',
-        choices=['file', 'database', 'api'],
+        choices=list(DataConnectorType.choices()),
         help='Type of target to load to',
     )
     load_parser.add_argument(
