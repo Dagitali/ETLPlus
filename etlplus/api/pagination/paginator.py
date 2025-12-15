@@ -1,51 +1,21 @@
 """
 :mod:`etlplus.api.pagination.paginator` module.
 
-Centralized logic for handling REST API endpoint responses, including:
-- Pagination strategies (page, offset, cursor).
-- Record extraction from JSON payloads.
+Core pagination runtime for REST API responses.
 
-This module provides a :class:`Paginator` class that encapsulates pagination
-configuration and behavior. It supports instantiation from a configuration
-mapping, fetching pages via a supplied callback, and iterating over records
-across pages.
-
-Notes
------
-- TypedDict shapes are editor hints; runtime parsing remains permissive
-    (``from_obj`` accepts ``Mapping[str, Any]``).
-- Numeric fields are normalized with tolerant casts; ``validate_bounds``
-    returns warnings instead of raising.
+This module implements :class:`Paginator`, which encapsulates pagination
+behaviour for page-, offset-, and cursor-based APIs. It delegates
+configuration parsing to :mod:`etlplus.api.pagination.config` and focuses on
+executing requests, extracting records, and enforcing limits.
 
 Examples
 --------
-Create a paginator from config and use it to fetch all records from an API
-endpoint:
->>> cfg = {
-...     "type": "page",
-...     "page_param": "page",
-...     "size_param": "per_page",
-...     "start_page": 1,
-...     "page_size": 100,
-...     "records_path": "data.items",
-...     "max_pages": 10,
-... }
->>> def fetch(url, request, page):
-...     response = requests.get(url, params=request.params)
-...     response.raise_for_status()
-...     return response.json()
->>> paginator = Paginator.from_config(
-...     cfg,
-...     fetch=fetch,
-...     rate_limiter=RateLimiter.fixed(0.5),
-... )
->>> all_records = paginator.paginate('https://api.example.com/v1/items')
-
-See Also
---------
-- :meth:`PaginationConfig.validate_bounds`
-- :func:`etlplus.config.utils.to_int`
-- :func:`etlplus.config.utils.to_float`
+>>> from etlplus.api.pagination import Paginator, PaginationType
+>>> from etlplus.api.types import RequestOptions, Url
+>>> def fetch(url: Url, req: RequestOptions, page: int | None) -> dict:
+...     ...  # issue HTTP request and return JSON payload
+>>> paginator = Paginator(type=PaginationType.PAGE, page_size=100)
+>>> rows = list(paginator.paginate_iter('https://api.example.com/items'))
 """
 from __future__ import annotations
 
@@ -745,15 +715,15 @@ class Paginator:
         """
         if not config:
             return default
+
         raw = config.get('type')
-        if isinstance(raw, PaginationType):
-            return raw
         if raw is None:
             return default
-        try:
-            return PaginationType(str(raw).strip().lower())
-        except ValueError:
-            return default
+
+        # Delegate normalization to CoercibleStrEnum implementation,
+        # allowing aliases and consistent error handling.
+        coerced = PaginationType.try_coerce(raw)
+        return coerced if coerced is not None else default
 
     @staticmethod
     def next_cursor_from(
