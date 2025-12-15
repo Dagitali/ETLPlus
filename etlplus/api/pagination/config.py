@@ -1,51 +1,21 @@
 """
 :mod:`etlplus.api.pagination.config` module.
 
-Centralized logic for handling REST API endpoint responses, including:
-- Pagination strategies (page, offset, cursor).
-- Record extraction from JSON payloads.
+Pagination configuration shapes for REST API pagination.
 
-This module provides a :class:`Paginator` class that encapsulates pagination
-configuration and behavior. It supports instantiation from a configuration
-mapping, fetching pages via a supplied callback, and iterating over records
-across pages.
+This module defines the configuration schema for pagination strategies used
+by :mod:`etlplus.api.pagination`. It exposes:
+
+- :class:`PaginationType` – enumeration of supported pagination modes.
+- :class:`PaginationConfig` – normalized configuration container.
+- ``*PaginationConfigMap`` TypedDicts – loose, user-facing config mappings.
 
 Notes
 -----
 - TypedDict shapes are editor hints; runtime parsing remains permissive
-    (``from_obj`` accepts ``Mapping[str, Any]``).
+    (``from_obj`` accepts any :class:`collections.abc.Mapping`).
 - Numeric fields are normalized with tolerant casts; ``validate_bounds``
     returns warnings instead of raising.
-
-Examples
---------
-Create a paginator from config and use it to fetch all records from an API
-endpoint:
->>> cfg = {
-...     "type": "page",
-...     "page_param": "page",
-...     "size_param": "per_page",
-...     "start_page": 1,
-...     "page_size": 100,
-...     "records_path": "data.items",
-...     "max_pages": 10,
-... }
->>> def fetch(url, request, page):
-...     response = requests.get(url, params=request.params)
-...     response.raise_for_status()
-...     return response.json()
->>> paginator = Paginator.from_config(
-...     cfg,
-...     fetch=fetch,
-...     rate_limiter=RateLimiter.fixed(0.5),
-... )
->>> all_records = paginator.paginate('https://api.example.com/v1/items')
-
-See Also
---------
-- :meth:`PaginationConfig.validate_bounds`
-- :func:`etlplus.config.utils.to_int`
-- :func:`etlplus.config.utils.to_float`
 """
 from __future__ import annotations
 
