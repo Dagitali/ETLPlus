@@ -10,8 +10,8 @@ API layer because they compose runtime types such as
 
 Notes
 -----
-- TypedDict references remain editor hints only; ``from_obj`` accepts
-    ``Mapping[str, Any]`` for permissive parsing.
+- TypedDict references remain editor hints only; :meth:`from_obj` accepts
+    ``StrAnyMap`` for permissive parsing.
 - Helper functions near the bottom keep parsing logic centralized and avoid
     leaking implementation details.
 """
@@ -20,6 +20,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Self
@@ -27,7 +28,12 @@ from typing import overload
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+from ..enums import HttpMethod
 from ..types import StrAnyMap
+from ..types import StrStrMap
+from ._parsing import cast_str_dict
+from ._parsing import coerce_dict
+from ._parsing import maybe_mapping
 from .endpoint_client import EndpointClient
 from .paginator import PaginationConfig
 from .rate_limiter import RateLimitConfig
@@ -49,66 +55,13 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-def _cast_str_dict(
-    mapping: StrAnyMap | None,
-) -> dict[str, str]:
-    """
-    Return a ``dict`` with keys/values coerced to ``str`` when possible.
-
-    Parameters
-    ----------
-    mapping : StrAnyMap | None
-        Input mapping; ``None`` yields ``{}``.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary with all keys and values converted via :func:`str()`.
-    """
-    if not mapping:
-        return {}
-    return {str(key): str(value) for key, value in mapping.items()}
+_HTTP_METHODS: tuple[str, ...] = tuple(member.name for member in HttpMethod)
 
 
-def _coerce_dict(
-    value: Any,
-) -> dict[str, Any]:
-    """
-    Return a shallow ``dict`` copy when *value* is mapping-like.
-
-    Parameters
-    ----------
-    value : Any
-        Mapping-like object to copy. ``None`` returns an empty dict.
-
-    Returns
-    -------
-    dict[str, Any]
-        Shallow copy of the mapping or empty dict.
-    """
-    return dict(value) if isinstance(value, Mapping) else {}
-
-
-def _maybe_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return *value* only when it behaves like a mapping; otherwise ``None``.
-
-    Parameters
-    ----------
-    value : Any
-        Value to check.
-
-    Returns
-    -------
-    StrAnyMap | None
-        The original value if mapping-like; otherwise ``None``.
-    """
-    return value if isinstance(value, Mapping) else None
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _effective_service_defaults(
@@ -152,6 +105,44 @@ def _effective_service_defaults(
     return fallback_base, fallback_headers
 
 
+def _normalize_method(
+    value: Any,
+) -> Any | None:
+    """
+    Return a validated HTTP method string or pass through custom inputs.
+
+    Parameters
+    ----------
+    value : Any
+        Raw method value.
+
+    Returns
+    -------
+    Any | None
+        Normalized method string, ``None``, or original input.
+
+    Raises
+    ------
+    ValueError
+        If the string value is not a supported HTTP method.
+    """
+    if value is None:
+        return None
+    if isinstance(value, HttpMethod):
+        return value.name
+    if isinstance(value, str):
+        normalized = value.strip().upper()
+        if not normalized:
+            return None
+        if normalized not in _HTTP_METHODS:
+            raise ValueError(
+                f'Unsupported HTTP method {normalized!r}; '
+                f'must be one of {_HTTP_METHODS}',
+            )
+        return normalized
+    return value
+
+
 def _parse_endpoints(
     raw: Any,
 ) -> dict[str, EndpointConfig]:
@@ -168,7 +159,7 @@ def _parse_endpoints(
     dict[str, EndpointConfig]
         Parsed endpoint configurations.
     """
-    if not (mapping := _maybe_mapping(raw)):
+    if not (mapping := maybe_mapping(raw)):
         return {}
     return {
         str(name): EndpointConfig.from_obj(data)
@@ -190,11 +181,11 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
     dict[str, ApiProfileConfig]
             Parsed API profile configurations.
     """
-    if not (mapping := _maybe_mapping(raw)):
+    if not (mapping := maybe_mapping(raw)):
         return {}
     parsed: dict[str, ApiProfileConfig] = {}
     for name, profile_raw in mapping.items():
-        if not (profile_map := _maybe_mapping(profile_raw)):
+        if not (profile_map := maybe_mapping(profile_raw)):
             continue
         parsed[str(name)] = ApiProfileConfig.from_obj(profile_map)
     return parsed
@@ -203,7 +194,7 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiProfileConfig:
     """
     Profile configuration for a REST API service.
@@ -212,11 +203,11 @@ class ApiProfileConfig:
     ----------
     base_url : str
         Base URL for the API.
-    headers : dict[str, str]
+    headers : StrStrMap
         Profile-level default headers (merged with defaults.headers).
     base_path : str | None
         Optional base path prefixed to endpoint paths when composing URLs.
-    auth : dict[str, Any]
+    auth : StrAnyMap
         Optional auth block (provider-specific shape, passed through).
     pagination_defaults : PaginationConfig | None
         Optional pagination defaults applied to endpoints referencing this
@@ -229,13 +220,27 @@ class ApiProfileConfig:
     # -- Attributes -- #
 
     base_url: str
-    headers: dict[str, str] = field(default_factory=dict)
+    headers: StrStrMap = field(default_factory=dict)
     base_path: str | None = None
-    auth: dict[str, Any] = field(default_factory=dict)
+    auth: StrAnyMap = field(default_factory=dict)
 
     # Optional defaults carried at profile level
     pagination_defaults: PaginationConfig | None = None
     rate_limit_defaults: RateLimitConfig | None = None
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'headers',
+            MappingProxyType(dict(self.headers)),
+        )
+        object.__setattr__(
+            self,
+            'auth',
+            MappingProxyType(dict(self.auth)),
+        )
 
     # -- Class Methods -- #
 
@@ -258,21 +263,38 @@ class ApiProfileConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """Parse a mapping into an :class:`ApiProfileConfig` instance."""
+        """
+        Parse a mapping into an :class:`ApiProfileConfig` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Raw profile configuration.
+
+        Returns
+        -------
+        Self
+            Parsed profile configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        """
         if not isinstance(obj, Mapping):
             raise TypeError('ApiProfileConfig must be a mapping')
 
         if not isinstance((base := obj.get('base_url')), str):
             raise TypeError('ApiProfileConfig requires "base_url" (str)')
 
-        defaults_raw = _coerce_dict(obj.get('defaults'))
+        defaults_raw = coerce_dict(obj.get('defaults'))
         merged_headers = (
-            _cast_str_dict(defaults_raw.get('headers'))
-            | _cast_str_dict(obj.get('headers'))
+            cast_str_dict(defaults_raw.get('headers'))
+            | cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
-        auth = _coerce_dict(obj.get('auth'))
+        auth = coerce_dict(obj.get('auth'))
 
         pag_def = PaginationConfig.from_defaults(
             defaults_raw.get('pagination'),
@@ -289,7 +311,7 @@ class ApiProfileConfig:
         )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiConfig:
     """
     Configuration for a REST API service.
@@ -298,22 +320,41 @@ class ApiConfig:
     ----------
     base_url : str
         Effective base URL (derived from profiles or top-level input).
-    headers : dict[str, str]
+    headers : StrStrMap
         Effective headers (profile + top-level merged with precedence).
-    endpoints : dict[str, EndpointConfig]
+    endpoints : Mapping[str, EndpointConfig]
         Endpoint configurations keyed by name.
-    profiles : dict[str, ApiProfileConfig]
+    profiles : Mapping[str, ApiProfileConfig]
         Named profile configurations; first or ``default`` becomes active.
     """
 
     # -- Attributes -- #
 
     base_url: str
-    headers: dict[str, str] = field(default_factory=dict)
-    endpoints: dict[str, EndpointConfig] = field(default_factory=dict)
+    headers: StrStrMap = field(default_factory=dict)
+    endpoints: Mapping[str, EndpointConfig] = field(default_factory=dict)
 
     # See also: ApiProfileConfig.from_obj for profile parsing logic.
-    profiles: dict[str, ApiProfileConfig] = field(default_factory=dict)
+    profiles: Mapping[str, ApiProfileConfig] = field(default_factory=dict)
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'headers',
+            MappingProxyType(dict(self.headers)),
+        )
+        object.__setattr__(
+            self,
+            'endpoints',
+            MappingProxyType({str(k): v for k, v in self.endpoints.items()}),
+        )
+        object.__setattr__(
+            self,
+            'profiles',
+            MappingProxyType({str(k): v for k, v in self.profiles.items()}),
+        )
 
     # -- Internal Instance Methods -- #
 
@@ -423,14 +464,31 @@ class ApiConfig:
         cls,
         obj: StrAnyMap,
     ) -> Self:
-        """Parse a mapping into an :class:`ApiConfig` instance."""
+        """
+        Parse a mapping into an :class:`ApiConfig` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Raw API configuration.
+
+        Returns
+        -------
+        Self
+            Parsed API configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        """
         if not isinstance(obj, Mapping):
             raise TypeError('ApiConfig must be a mapping')
 
         profiles = _parse_profiles(obj.get('profiles'))
 
         tl_base = obj.get('base_url')
-        tl_headers = _cast_str_dict(obj.get('headers'))
+        tl_headers = cast_str_dict(obj.get('headers'))
 
         base_url, headers = _effective_service_defaults(
             profiles=profiles,
@@ -448,7 +506,7 @@ class ApiConfig:
         )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class EndpointConfig:
     """
     Configuration for a single API endpoint.
@@ -459,9 +517,9 @@ class EndpointConfig:
         Endpoint path (relative to base URL).
     method : str | None
         Optional HTTP method (default is GET when omitted at runtime).
-    path_params : dict[str, Any]
+    path_params : StrAnyMap
         Path parameters used when constructing the request URL.
-    query_params : dict[str, Any]
+    query_params : StrAnyMap
         Default query string parameters.
     body : Any | None
         Request body structure (pass-through, format-specific).
@@ -475,11 +533,25 @@ class EndpointConfig:
 
     path: str
     method: str | None = None
-    path_params: dict[str, Any] = field(default_factory=dict)
-    query_params: dict[str, Any] = field(default_factory=dict)
+    path_params: StrAnyMap = field(default_factory=dict)
+    query_params: StrAnyMap = field(default_factory=dict)
     body: Any | None = None
     pagination: PaginationConfig | None = None
     rate_limit: RateLimitConfig | None = None
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'path_params',
+            MappingProxyType(dict(self.path_params)),
+        )
+        object.__setattr__(
+            self,
+            'query_params',
+            MappingProxyType(dict(self.query_params)),
+        )
 
     # -- Class Methods -- #
 
@@ -504,6 +576,23 @@ class EndpointConfig:
     ) -> Self:
         """
         Parse a string or mapping into an :class:`EndpointConfig` instance.
+
+        Parameters
+        ----------
+        obj : str | StrAnyMap
+            Raw endpoint configuration.
+
+        Returns
+        -------
+        Self
+            Parsed endpoint configuration.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or of incorrect type.
+        ValueError
+            If provided method is not a supported HTTP method.
         """
         match obj:
             case str():
@@ -529,9 +618,9 @@ class EndpointConfig:
 
                 return cls(
                     path=path,
-                    method=obj.get('method'),
-                    path_params=_coerce_dict(path_params_raw),
-                    query_params=_coerce_dict(query_params_raw),
+                    method=_normalize_method(obj.get('method')),
+                    path_params=coerce_dict(path_params_raw),
+                    query_params=coerce_dict(query_params_raw),
                     body=obj.get('body'),
                     pagination=PaginationConfig.from_obj(
                         obj.get('pagination'),

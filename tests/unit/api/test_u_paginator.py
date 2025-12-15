@@ -30,17 +30,18 @@ from etlplus.api.paginator import PaginationConfigMap
 from etlplus.api.paginator import PaginationType
 from etlplus.api.paginator import Paginator
 from etlplus.api.rate_limiter import RateLimiter
+from etlplus.api.types import RequestOptions
 
 # SECTION: HELPERS ========================================================== #
 
 
 def _dummy_fetch(
     url: str,
-    params: Mapping[str, Any] | None,
+    request: RequestOptions,
     page: int | None,
-) -> Mapping[str, Any]:
+) -> dict[str, Any]:
     """Simple fetch stub that echoes input for Paginator construction."""
-    return {'url': url, 'params': params or {}, 'page': page}
+    return {'url': url, 'params': request.params or {}, 'page': page}
 
 
 class RecordingClient(EndpointClient):
@@ -70,6 +71,7 @@ class RecordingClient(EndpointClient):
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
@@ -81,6 +83,7 @@ class RecordingClient(EndpointClient):
                 'headers': headers,
                 'timeout': timeout,
                 'pagination': pagination,
+                'request': request,
                 'sleep_seconds': sleep_seconds,
                 'rate_limit_overrides': rate_limit_overrides,
             },
@@ -103,10 +106,12 @@ class FakePageClient(EndpointClient):
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: Mapping[str, Any] | None = None,
     ) -> Iterator[dict]:
         # Ignore all arguments; just simulate three records from two pages.
+        _ = request  # keep signature compatibility while avoiding unused var
         yield {'id': 1}
         yield {'id': 2}
         yield {'id': 3}
@@ -227,6 +232,43 @@ class TestPaginator:
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
         assert paginator.page_size == expected_page_size
 
+    def test_paginate_accepts_request_options(self) -> None:
+        """Paginator.paginate accepts RequestOptions overrides for params."""
+
+        seen: list[RequestOptions] = []
+
+        def fetch(
+            _url: str,
+            request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            seen.append(request)
+            return {'items': []}
+
+        paginator = Paginator.from_config(
+            {
+                'type': PaginationType.PAGE,
+                'records_path': 'items',
+            },
+            fetch=fetch,
+        )
+
+        seed = RequestOptions(headers={'X': 'seed'}, params={'initial': 1})
+        override = seed.evolve(params={'page': 3})
+        list(
+            paginator.paginate(
+                'https://example.test/items',
+                request=override,
+            ),
+        )
+
+        assert seen
+        first = seen[0]
+        assert first.params is not None
+        assert first.params.get('page') == 3
+        assert first.params.get(paginator.size_param) == paginator.page_size
+        assert first.headers == {'X': 'seed'}
+
     def test_paginate_and_paginate_iter_are_thin_shims(self) -> None:
         """
         Test that paginate and paginate_iter delegate to paginate_url_iter.
@@ -272,10 +314,10 @@ class TestPaginator:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             _page: int | None,
-        ) -> Mapping[str, Any]:
-            return cast(Mapping[str, Any], payloads.pop(0))
+        ) -> dict[str, Any]:
+            return cast(dict[str, Any], payloads.pop(0))
 
         limiter_calls: list[int] = []
 

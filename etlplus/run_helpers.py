@@ -43,6 +43,7 @@ from .api import RateLimitConfigMap
 from .api import RateLimiter
 from .api import RetryPolicy
 from .api import Url
+from .api.types import RateLimitOverrideMap
 from .types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
@@ -758,10 +759,26 @@ def compute_rl_sleep_seconds(
         rl_map = cast(Mapping[str, Any] | None, rate_limit)
 
     rl_mapping = cast(RateLimitConfigMap | None, rl_map)
-    override_mapping = cast(Mapping[str, Any] | None, overrides)
+
+    typed_override: RateLimitOverrideMap | None = None
+    if overrides:
+        filtered: dict[str, float | None] = {}
+        if 'sleep_seconds' in overrides:
+            filtered['sleep_seconds'] = cast(
+                float | None,
+                overrides.get('sleep_seconds'),
+            )
+        if 'max_per_sec' in overrides:
+            filtered['max_per_sec'] = cast(
+                float | None,
+                overrides.get('max_per_sec'),
+            )
+        if filtered:
+            typed_override = cast(RateLimitOverrideMap, filtered)
+
     return RateLimiter.resolve_sleep_seconds(
         rate_limit=rl_mapping,
-        overrides=override_mapping,
+        overrides=typed_override,
     )
 
 

@@ -11,13 +11,13 @@ Focus
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
 import pytest
 
 from etlplus.api.pagination_client import PaginationClient
 from etlplus.api.paginator import PaginationType
+from etlplus.api.types import RequestOptions
 
 
 @pytest.mark.unit
@@ -27,7 +27,7 @@ class TestPaginationClient:
     @staticmethod
     def _noop_fetch(
         _url: str,
-        _params: Mapping[str, Any] | None,
+        _request: RequestOptions,
         _page: int | None,
     ) -> dict[str, Any]:
         """Return an empty payload for pagination client construction."""
@@ -53,7 +53,7 @@ class TestPaginationClient:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
             seen_pages.append(page)
@@ -84,7 +84,7 @@ class TestPaginationClient:
 
         def fetch(
             _url: str,
-            _params: Mapping[str, Any] | None,
+            _request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
             seen_pages.append(page)
@@ -100,3 +100,71 @@ class TestPaginationClient:
         assert rows == [{'id': 1}, {'id': 2}]
         assert seen_pages[:3] == [1, 2, 3]
         assert client.pagination_type == PaginationType.PAGE
+
+    def test_iterate_allows_request_overrides(self) -> None:
+        """Explicit request snapshots can be supplied per invocation."""
+        payload = {'payload': {'items': [{'id': 1}]}}
+        captured: list[RequestOptions] = []
+
+        def fetch(
+            _url: str,
+            request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            captured.append(request)
+            return payload
+
+        client = PaginationClient(
+            pagination={'records_path': 'payload.items'},
+            fetch=fetch,
+        )
+
+        seed = RequestOptions(headers={'X-Seed': '1'}, timeout=5)
+        call_request = seed.evolve(params={'page': 9})
+        rows = list(
+            client.iterate(
+                'https://example.test/items',
+                request=call_request,
+            ),
+        )
+
+        assert rows == [{'id': 1}]
+        assert len(captured) == 1
+        assert captured[0].headers == {'X-Seed': '1'}
+        assert captured[0].params == {'page': 9}
+        assert captured[0].timeout == 5
+
+    def test_iterate_with_paginator_respects_request_snapshot(self) -> None:
+        """Paginator-backed iterations clone the provided RequestOptions."""
+        cfg = {
+            'type': 'page',
+            'records_path': 'items',
+            'page_size': 1,
+        }
+        observed: list[RequestOptions] = []
+
+        def fetch(
+            _url: str,
+            request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            observed.append(request)
+            return {'items': []}
+
+        client = PaginationClient(pagination=cfg, fetch=fetch)
+        request = RequestOptions(params={'seed': '1'}, headers={'A': 'B'})
+        call_request = request.evolve(params={'page': 2})
+
+        list(
+            client.iterate(
+                'https://example.test/items',
+                request=call_request,
+            ),
+        )
+
+        assert observed
+        first = observed[0]
+        assert first.params is not None
+        assert first.params.get('page') == 2
+        assert first.params.get('per_page') == cfg['page_size']
+        assert first.headers == {'A': 'B'}

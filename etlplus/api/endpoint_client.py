@@ -41,7 +41,6 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
-from functools import partial
 from types import MappingProxyType
 from types import TracebackType
 from typing import Any
@@ -71,6 +70,7 @@ from .transport import HTTPAdapterMountConfig
 from .types import Headers
 from .types import Params
 from .types import RateLimitOverrides
+from .types import RequestOptions
 from .types import Url
 
 # SECTION: CLASSES ========================================================== #
@@ -352,8 +352,6 @@ class EndpointClient:
         self,
         *,
         pagination: Mapping[str, Any] | None,
-        headers: Headers | None,
-        timeout: float | int | None,
         sleep_seconds: float,
         rate_limit_overrides: RateLimitOverrides,
     ) -> PaginationClient:
@@ -364,10 +362,6 @@ class EndpointClient:
         ----------
         pagination : Mapping[str, Any] | None
             Pagination configuration.
-        headers : Headers | None
-            HTTP headers to include in requests.
-        timeout : float | int | None
-            Timeout for HTTP requests.
         sleep_seconds : float
             Number of seconds to sleep between requests.
         rate_limit_overrides : RateLimitOverrides
@@ -388,25 +382,50 @@ class EndpointClient:
             if effective_sleep > 0
             else None
         )
-        fetch = partial(
-            self._fetch_page,
-            headers=headers,
-            timeout=timeout,
-        )
         return PaginationClient(
             pagination=pagination,
-            fetch=fetch,
+            fetch=self._fetch_page,
             rate_limiter=rate_limiter,
+        )
+
+    @staticmethod
+    def _compose_request_options(
+        *,
+        params: Params | None,
+        headers: Headers | None,
+        timeout: float | int | None,
+        request: RequestOptions | None,
+    ) -> RequestOptions:
+        """Return a request snapshot with optional overrides applied."""
+        if request is None:
+            return RequestOptions(
+                params=params,
+                headers=headers,
+                timeout=timeout,
+            )
+
+        final_params = request.params
+        final_headers = request.headers
+        final_timeout = request.timeout
+
+        if params is not None:
+            final_params = params
+        if headers is not None:
+            final_headers = headers
+        if timeout is not None:
+            final_timeout = timeout
+
+        return RequestOptions(
+            params=final_params,
+            headers=final_headers,
+            timeout=final_timeout,
         )
 
     def _fetch_page(
         self,
         url_: Url,
-        params: Params | None,
+        request: RequestOptions,
         page_index: int | None,
-        *,
-        headers: Headers | None,
-        timeout: float | int | None,
     ) -> JSONData:
         """
         Fetch a single page using shared pagination guardrails.
@@ -415,14 +434,10 @@ class EndpointClient:
         ----------
         url_ : Url
             Absolute URL to request.
-        params : Params | None
-            Query parameters for the request.
+        request : RequestOptions
+            Request metadata produced by ``Paginator``.
         page_index : int | None
             Index of the page being fetched.
-        headers : Headers | None
-            HTTP headers to include in the request.
-        timeout : float | int | None
-            Timeout for the request.
 
         Returns
         -------
@@ -434,11 +449,7 @@ class EndpointClient:
         PaginationError
             If the request fails.
         """
-        call_kw = EndpointClient.build_request_kwargs(
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
+        call_kw = request.as_kwargs()
         try:
             return self.get(url_, **call_kw)
         except ApiRequestError as exc:
@@ -541,6 +552,7 @@ class EndpointClient:
         headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
@@ -567,6 +579,10 @@ class EndpointClient:
             Timeout for the request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
+        request : RequestOptions | None, optional
+            Pre-built request metadata snapshot. When provided, ``params``,
+            ``headers``, and ``timeout`` override the snapshot when not
+            ``None``.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -590,6 +606,7 @@ class EndpointClient:
             headers=headers,
             timeout=timeout,
             pagination=pagination,
+            request=request,
             sleep_seconds=sleep_seconds,
             rate_limit_overrides=rate_limit_overrides,
         )
@@ -604,6 +621,7 @@ class EndpointClient:
         headers: Headers | None = None,
         timeout: float | int | None = None,
         pagination: PaginationConfigMap | None = None,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
@@ -632,6 +650,9 @@ class EndpointClient:
             Timeout for each request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
+        request : RequestOptions | None, optional
+            Pre-built request metadata snapshot overridden by ``params``,
+            ``headers``, or ``timeout`` when those arguments are supplied.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -654,6 +675,7 @@ class EndpointClient:
             headers=headers,
             timeout=timeout,
             pagination=pagination,
+            request=request,
             sleep_seconds=sleep_seconds,
             rate_limit_overrides=rate_limit_overrides,
         )
@@ -666,6 +688,7 @@ class EndpointClient:
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
     ) -> JSONData:
@@ -684,6 +707,9 @@ class EndpointClient:
             Timeout for the request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
+        request : RequestOptions | None, optional
+            Optional request snapshot with existing params/headers/timeout.
+            Call-level arguments override the snapshot when provided.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -699,23 +725,27 @@ class EndpointClient:
         # Normalize pagination config for typed access.
         pg_map = cast(Mapping[str, Any] | None, pagination)
         ptype = Paginator.detect_type(pg_map, default=None)
+        request_obj = self._compose_request_options(
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            request=request,
+        )
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
         if ptype is None:
-            kw = EndpointClient.build_request_kwargs(
-                params=params, headers=headers, timeout=timeout,
-            )
-            return self.get(url, **kw)
+            return self.get(url, **request_obj.as_kwargs())
 
         # For known pagination types, delegate through paginate_url_iter to
         # preserve subclass overrides (tests rely on this shim behavior).
         return list(
             self.paginate_url_iter(
-                url=url,
-                params=params,
-                headers=headers,
-                timeout=timeout,
+                url,
+                params,
+                headers,
+                timeout,
                 pagination=pagination,
+                request=request_obj,
                 sleep_seconds=sleep_seconds,
                 rate_limit_overrides=rate_limit_overrides,
             ),
@@ -729,6 +759,7 @@ class EndpointClient:
         timeout: float | int | None,
         pagination: PaginationConfigMap | None,
         *,
+        request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
     ) -> Iterator[JSONDict]:
@@ -747,6 +778,9 @@ class EndpointClient:
             Timeout for each request.
         pagination : PaginationConfigMap | None
             Pagination configuration.
+        request : RequestOptions | None, optional
+            Optional request snapshot reused across pages. ``params``,
+            ``headers``, and ``timeout`` override the snapshot when provided.
         sleep_seconds : float
             Time to sleep between requests.
         rate_limit_overrides : RateLimitOverrides, optional
@@ -758,14 +792,22 @@ class EndpointClient:
         JSONDict
             Record dictionaries extracted from each page.
         """
-        runner = self._build_pagination_client(
-            pagination=cast(Mapping[str, Any] | None, pagination),
+        base_request = self._compose_request_options(
+            params=params,
             headers=headers,
             timeout=timeout,
+            request=request,
+        )
+
+        runner = self._build_pagination_client(
+            pagination=cast(Mapping[str, Any] | None, pagination),
             sleep_seconds=sleep_seconds,
             rate_limit_overrides=rate_limit_overrides,
         )
-        yield from runner.iterate(url, params=params)
+        yield from runner.iterate(
+            url,
+            request=base_request,
+        )
 
     # -- Instance Methods (Endpoints)-- #
 
@@ -893,41 +935,6 @@ class EndpointClient:
                 time.sleep(sleep_seconds)
             else:
                 sleeper(sleep_seconds)
-
-    @staticmethod
-    def build_request_kwargs(
-        *,
-        params: Params | None = None,
-        headers: Headers | None = None,
-        timeout: float | int | None = None,
-    ) -> dict[str, Any]:
-        """
-        Build kwargs for ``requests.get``.
-
-        Only include keys that have non-empty values to keep kwargs tidy.
-
-        Parameters
-        ----------
-        params : Params | None, optional
-            Query parameters to include in the request.
-        headers : Headers | None, optional
-            Headers to include in the request.
-        timeout : float | int | None, optional
-            Timeout for the request in seconds.
-
-        Returns
-        -------
-        dict[str, Any]
-            Dictionary of keyword arguments for ``requests.get``.
-        """
-        kw: dict[str, Any] = {}
-        if params:
-            kw['params'] = dict(params)
-        if headers:
-            kw['headers'] = dict(headers)
-        if timeout is not None:
-            kw['timeout'] = timeout
-        return kw
 
     # -- Internal Static Methods -- #
 
