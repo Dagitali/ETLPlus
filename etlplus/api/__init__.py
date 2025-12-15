@@ -66,7 +66,7 @@ Notes
 See Also
 --------
 - :mod:`etlplus.api.rate_limiter` for rate-limit helpers
-- :mod:`etlplus.api.paginator` for pagination config shapes and record helpers
+- :mod:`etlplus.api.pagination.config` for pagination config shapes
 - :mod:`etlplus.api.retry_manager` for retry policies
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
 """
@@ -77,12 +77,13 @@ from .config import ApiConfig
 from .config import ApiProfileConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
-from .paginator import CursorPaginationConfigMap
-from .paginator import PagePaginationConfigMap
-from .paginator import PaginationConfig
-from .paginator import PaginationConfigMap
-from .paginator import PaginationType
-from .paginator import Paginator
+from .pagination import CursorPaginationConfigMap
+from .pagination import PagePaginationConfigMap
+from .pagination import PaginationClient
+from .pagination import PaginationConfig
+from .pagination import PaginationConfigMap
+from .pagination import PaginationType
+from .pagination import Paginator
 from .rate_limiter import RateLimitConfig
 from .rate_limiter import RateLimitConfigMap
 from .rate_limiter import RateLimiter
@@ -113,6 +114,7 @@ __all__ = [
     'ApiConfig',
     'ApiProfileConfig',
     'EndpointConfig',
+    'PaginationClient',
     'PaginationConfig',
     'RateLimitConfig',
     'RateLimitPlan',
