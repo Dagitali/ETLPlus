@@ -91,6 +91,9 @@ class PaginationClient:
         ----------
         url : Url
             Base URL to fetch pages from.
+        request : RequestOptions | None, optional
+            Snapshot of request metadata (params/headers/timeout) to clone
+            for this invocation.
 
         Returns
         -------
