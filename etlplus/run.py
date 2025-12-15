@@ -20,6 +20,8 @@ from .api import PaginationConfigMap
 from .api import RetryPolicy
 from .api import Url
 from .config import load_pipeline_config
+from .enums import DataConnectorType
+from .enums import coerce_data_connector_type
 from .extract import extract
 from .load import load
 from .run_helpers import compose_api_request_env
@@ -192,9 +194,10 @@ def run(
     ex_opts: dict[str, Any] = job_obj.extract.options or {}
 
     data: Any
-    stype = getattr(source_obj, 'type', None)
+    stype_raw = getattr(source_obj, 'type', None)
+    stype = coerce_data_connector_type(stype_raw or '')
     match stype:
-        case 'file':
+        case DataConnectorType.FILE:
             path = getattr(source_obj, 'path', None)
             fmt = ex_opts.get('format') or getattr(
                 source_obj, 'format', 'json',
@@ -202,10 +205,10 @@ def run(
             if not path:
                 raise ValueError('File source missing "path"')
             data = extract('file', path, file_format=fmt)
-        case 'database':
+        case DataConnectorType.DATABASE:
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
-        case 'api':
+        case DataConnectorType.API:
             env = compose_api_request_env(cfg, source_obj, ex_opts)
             if (
                 env.get('use_endpoints')
@@ -261,7 +264,9 @@ def run(
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
-            raise ValueError(f'Unsupported source type: {stype}')
+            # ``coerce_data_connector_type`` already raises for invalid
+            # connector types; this branch is defensive only.
+            raise ValueError(f'Unsupported source type: {stype_raw}')
 
     # DRY: unified validation helper (pre/post transform)
     val_ref = job_obj.validate
@@ -319,9 +324,10 @@ def run(
     target_obj = targets_by_name[target_name]
     overrides = job_obj.load.overrides or {}
 
-    ttype = getattr(target_obj, 'type', None)
+    ttype_raw = getattr(target_obj, 'type', None)
+    ttype = coerce_data_connector_type(ttype_raw or '')
     match ttype:
-        case 'file':
+        case DataConnectorType.FILE:
             path = (
                 overrides.get('path')
                 or getattr(target_obj, 'path', None)
@@ -332,7 +338,7 @@ def run(
             if not path:
                 raise ValueError('File target missing "path"')
             result = load(data, 'file', path, file_format=fmt)
-        case 'api':
+        case DataConnectorType.API:
             env_t = compose_api_target_env(cfg, target_obj, overrides)
             url_t = env_t.get('url')
             if not url_t:
@@ -351,13 +357,15 @@ def run(
                 method=cast(str | Any, env_t.get('method') or 'post'),
                 **kwargs_t,
             )
-        case 'database':
+        case DataConnectorType.DATABASE:
             conn = overrides.get('connection_string') or getattr(
                 target_obj, 'connection_string', '',
             )
             result = load(data, 'database', str(conn))
         case _:
-            raise ValueError(f'Unsupported target type: {ttype}')
+            # ``coerce_data_connector_type`` already raises for invalid
+            # connector types; this branch is defensive only.
+            raise ValueError(f'Unsupported target type: {ttype_raw}')
 
     # Return the terminal load result directly; callers (e.g., CLI) can wrap
     # it in their own envelope when needed.
