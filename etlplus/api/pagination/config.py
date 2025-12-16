@@ -57,40 +57,6 @@ __all__ = [
 _MISSING = object()
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _resolve_path(
-    obj: Any,
-    path: str | None,
-) -> Any:
-    """
-    Resolve dotted ``path`` within ``obj`` or return ``_MISSING``.
-
-    Parameters
-    ----------
-    obj : Any
-        JSON payload from an API response.
-    path : str | None
-        Dotted path to the target value within ``obj``.
-
-    Returns
-    -------
-    Any
-        Target value from the payload, or ``_MISSING`` if the path does not
-        exist.
-    """
-    if not isinstance(path, str) or not path:
-        return obj
-    cur: Any = obj
-    for part in path.split('.'):
-        if isinstance(cur, dict) and part in cur:
-            cur = cur[part]
-        else:
-            return _MISSING
-    return cur
-
-
 # SECTION: ENUMS ============================================================ #
 
 
@@ -228,7 +194,7 @@ type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class PaginationConfig(BoundsWarningsMixin):
     """
     Configuration container for API request pagination settings.

@@ -61,12 +61,12 @@ from .errors import PaginationError
 from .pagination import PaginationClient
 from .pagination import PaginationConfigMap
 from .pagination import Paginator
-from .rate_limiter import RateLimitConfigMap
-from .rate_limiter import RateLimiter
+from .rate_limiting import RateLimitConfigMap
+from .rate_limiting import RateLimiter
+from .rate_limiting import RateLimitOverrides
 from .request_manager import RequestManager
 from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
-from .types import RateLimitOverrides
 from .types import RequestOptions
 from .types import Url
 

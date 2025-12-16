@@ -16,7 +16,7 @@ from collections.abc import Callable
 
 import pytest
 
-import etlplus.api.rate_limiter as rate_limiter_mod
+import etlplus.api.rate_limiting.rate_limiter as rate_limiter_mod
 import etlplus.api.retry_manager as retry_manager_mod
 from etlplus.api import EndpointClient
 

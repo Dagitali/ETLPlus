@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_rate_limit_config` module.
 
-Unit tests for :class:`etlplus.api.rate_limiter.RateLimitConfig`.
+Unit tests for :class:`etlplus.api.rate_limiting.RateLimitConfig`.
 
 Notes
 -----
@@ -29,6 +29,24 @@ class TestRateLimitConfig:
     -----
     Tests equality semantics and type coercion for rate limit configuration.
     """
+
+    def test_config_honors_overrides(self) -> None:
+        """Overrides replace base config values."""
+        config = RateLimitConfig.from_inputs(
+            rate_limit={'max_per_sec': 2},
+            overrides={'sleep_seconds': 0.1},
+        )
+        assert config.sleep_seconds == pytest.approx(0.1)
+        assert config.max_per_sec == pytest.approx(10.0)
+
+    def test_config_prefers_sleep_seconds(self) -> None:
+        """Sleep seconds take precedence over max_per_sec."""
+        config = RateLimitConfig.from_inputs(
+            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
+        )
+        assert config.enabled is True
+        assert config.sleep_seconds == pytest.approx(0.2)
+        assert config.max_per_sec == pytest.approx(5.0)
 
     def test_equality_semantics(
         self,
