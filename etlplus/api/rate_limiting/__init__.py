@@ -1,16 +1,19 @@
 """
 :mod:`etlplus.api.rate_limiting` package.
 
-High-level helpers for building REST API clients with rate limiting.
+High-level helpers for limiting HTTP request rates.
 
-Notes
------
-- Pagination defaults are centralized on the client (``page``, ``per_page``,
-    ``cursor``, ``limit``; start page ``1``; page size ``100``).
-- Prefer :data:`JSONRecords` (list of :data:`JSONDict`) for paginated
-    responses; scalar/record aliases are exported for convenience.
-- The underlying :class:`Paginator` is exported for advanced scenarios that
-    need to stream pages manually.
+This subpackage exposes small, focused primitives for configuring and
+enforcing HTTP request rate limits:
+
+- :class:`RateLimitConfig` – immutable configuration for sleep and
+    maximum requests-per-second.
+- :class:`RateLimiter` – runtime helper that sleeps between requests
+    according to a resolved configuration.
+
+These utilities are intentionally minimal and orthogonal to the rest of
+the API surface, following KISS and high cohesion/low coupling
+principles.
 """
 from __future__ import annotations
 
