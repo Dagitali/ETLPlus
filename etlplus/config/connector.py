@@ -44,8 +44,8 @@ from typing import overload
 from ..api import PaginationConfig
 from ..api import RateLimitConfig
 from ..types import StrAnyMap
-from .utils import cast_str_dict
-from .utils import coerce_dict
+from ..utils import cast_str_dict
+from ..utils import coerce_dict
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
     from .types import ConnectorApiConfigMap
