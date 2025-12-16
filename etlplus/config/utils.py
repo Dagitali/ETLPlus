@@ -84,13 +84,24 @@ def _prepare_substitutions(
     vars_map: StrAnyMap | None,
     env_map: Mapping[str, Any] | None,
 ) -> tuple[tuple[str, Any], ...]:
+    """Merge variable and environment maps into an ordered substitutions list.
+
+    Parameters
+    ----------
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, Any] | None
+        Environment-backed values that override entries from ``vars_map``.
+
+    Returns
+    -------
+    tuple[tuple[str, Any], ...]
+        Immutable sequence of ``(name, value)`` pairs suitable for token
+        replacement.
+    """
     if not vars_map and not env_map:
         return ()
-    merged: dict[str, Any] = {}
-    if vars_map:
-        merged.update(vars_map)
-    if env_map:
-        merged.update(env_map)
+    merged: dict[str, Any] = {**(vars_map or {}), **(env_map or {})}
     return tuple(merged.items())
 
 
