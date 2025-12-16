@@ -24,7 +24,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiter as rate_limiter_mod
+import etlplus.api.rate_limiting.rate_limiter as rate_limiter_mod
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import CursorPaginationConfigMap
