@@ -31,8 +31,8 @@ from typing import overload
 from ...enums import CoercibleStrEnum
 from ...mixins import BoundsWarningsMixin
 from ...types import StrAnyMap
+from ...utils import maybe_mapping
 from ...utils import to_int
-from .._parsing import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 

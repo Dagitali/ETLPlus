@@ -8,10 +8,12 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Callable
+from collections.abc import Mapping
 from typing import Any
 from typing import TypeVar
 
 from .types import JSONData
+from .types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -21,6 +23,11 @@ __all__ = [
     'count_records',
     'json_type',
     'print_json',
+
+    # Mapping utilities
+    'cast_str_dict',
+    'coerce_dict',
+    'maybe_mapping',
 
     # Float coercion
     'to_float',
@@ -36,19 +43,63 @@ __all__ = [
 
     # Generic number coercion
     'to_number',
+
+    # Text processing
+    'normalized_str',
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
+# SECTION: TYPE VARS ======================================================== #
 
 
 Num = TypeVar('Num', int, float)
+# type Num = int | float
 
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
 # -- Data Utilities -- #
+
+
+def cast_str_dict(
+    mapping: StrAnyMap | None,
+) -> dict[str, str]:
+    """
+    Return a new ``dict`` with keys and values coerced to ``str``.
+
+    Parameters
+    ----------
+    mapping : StrAnyMap | None
+        Mapping to normalize; ``None`` yields ``{}``.
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary of the original key/value pairs converted via ``str()``.
+    """
+    if not mapping:
+        return {}
+    return {str(key): str(value) for key, value in mapping.items()}
+
+
+def coerce_dict(
+    value: Any,
+) -> dict[str, Any]:
+    """
+    Return a ``dict`` copy when ``value`` is mapping-like.
+
+    Parameters
+    ----------
+    value : Any
+        Mapping-like object to copy. ``None`` returns an empty dict.
+
+    Returns
+    -------
+    dict[str, Any]
+        Shallow copy of ``value`` converted to a standard ``dict``.
+    """
+    return dict(value) if isinstance(value, Mapping) else {}
 
 
 def count_records(
@@ -99,6 +150,25 @@ def json_type(
         raise argparse.ArgumentTypeError(
             f'Invalid JSON: {e.msg} (pos {e.pos})',
         ) from e
+
+
+def maybe_mapping(
+    value: Any,
+) -> StrAnyMap | None:
+    """
+    Return ``value`` when it is mapping-like; otherwise ``None``.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+
+    Returns
+    -------
+    StrAnyMap | None
+        The input value if it is a mapping; ``None`` if not.
+    """
+    return value if isinstance(value, Mapping) else None
 
 
 def print_json(
@@ -332,6 +402,29 @@ def to_number(
         ``float(value)`` if coercion succeeds; else ``None``.
     """
     return _coerce_float(value)
+
+
+# -- Text Processing -- #
+
+
+def normalized_str(
+    value: str | None,
+) -> str:
+    """
+    Return lower-cased, trimmed text for normalization helpers.
+
+    Parameters
+    ----------
+    value : str | None
+        Optional user-provided text.
+
+    Returns
+    -------
+    str
+        Normalized string with surrounding whitespace removed and converted
+        to lowercase. ``""`` when *value* is ``None``.
+    """
+    return (value or '').strip().lower()
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #

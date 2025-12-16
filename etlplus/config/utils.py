@@ -18,67 +18,17 @@ from collections.abc import Mapping
 from typing import Any
 
 from ..types import StrAnyMap
-from ..utils import to_float
-from ..utils import to_int
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Functions
-    'cast_str_dict',
-    'coerce_dict',
     'deep_substitute',
-    'maybe_mapping',
-    'to_int',
-    'to_float',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def cast_str_dict(
-    mapping: StrAnyMap | None,
-) -> dict[str, str]:
-    """
-    Return a new ``dict`` with all values coerced to ``str``.
-
-    This is commonly used for HTTP headers where values can be numbers or
-    other primitives but need to be serialized as strings.
-
-    Parameters
-    ----------
-    mapping : StrAnyMap | None
-        Mapping whose values are stringified; ``None`` yields ``{}``.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary of the original key/value pairs converted via ``str()``.
-    """
-    if not mapping:
-        return {}
-    return {str(key): str(value) for key, value in mapping.items()}
-
-
-def coerce_dict(
-    value: Any,
-) -> dict[str, Any]:
-    """
-    Return a ``dict`` copy when ``value`` is mapping-like.
-
-    Parameters
-    ----------
-    value : Any
-        Mapping-like object to copy. ``None`` returns an empty dict.
-
-    Returns
-    -------
-    dict[str, Any]
-        Shallow copy of ``value`` converted to a standard ``dict``.
-    """
-    return dict(value) if isinstance(value, Mapping) else {}
 
 
 def deep_substitute(
@@ -127,25 +77,6 @@ def deep_substitute(
     return _apply(value)
 
 
-def maybe_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return ``value`` when it is mapping-like; otherwise ``None``.
-
-    Parameters
-    ----------
-    value : Any
-        Value to test.
-
-    Returns
-    -------
-    StrAnyMap | None
-        The input value if it is a mapping; ``None`` if not.
-    """
-    return value if isinstance(value, Mapping) else None
-
-
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
@@ -153,13 +84,24 @@ def _prepare_substitutions(
     vars_map: StrAnyMap | None,
     env_map: Mapping[str, Any] | None,
 ) -> tuple[tuple[str, Any], ...]:
+    """Merge variable and environment maps into an ordered substitutions list.
+
+    Parameters
+    ----------
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, Any] | None
+        Environment-backed values that override entries from ``vars_map``.
+
+    Returns
+    -------
+    tuple[tuple[str, Any], ...]
+        Immutable sequence of ``(name, value)`` pairs suitable for token
+        replacement.
+    """
     if not vars_map and not env_map:
         return ()
-    merged: dict[str, Any] = {}
-    if vars_map:
-        merged.update(vars_map)
-    if env_map:
-        merged.update(env_map)
+    merged: dict[str, Any] = {**(vars_map or {}), **(env_map or {})}
     return tuple(merged.items())
 
 

@@ -19,6 +19,7 @@ from typing import Self
 from typing import TypedDict
 
 from ..types import StrAnyMap
+from ..utils import normalized_str
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 
@@ -289,7 +290,7 @@ def _normalize_phase(
         Normalized validation phase. Defaults to ``"before_transform"`` when
         unspecified.
     """
-    match (value or '').strip().lower():
+    match normalized_str(value):
         case 'after_transform':
             return 'after_transform'
         case _:
@@ -312,7 +313,7 @@ def _normalize_severity(
     ValidationSeverity
         Normalized severity. Defaults to ``"error"`` when unspecified.
     """
-    return 'warn' if (value or '').strip().lower() == 'warn' else 'error'
+    return 'warn' if normalized_str(value) == 'warn' else 'error'
 
 
 def _normalize_window(
@@ -331,7 +332,7 @@ def _normalize_window(
     ValidationWindow
         Normalized validation window. Defaults to ``"both"`` when unspecified.
     """
-    match (value or '').strip().lower():
+    match normalized_str(value):
         case 'before_transform':
             return 'before_transform'
         case 'after_transform':

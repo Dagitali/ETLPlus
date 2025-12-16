@@ -26,13 +26,13 @@ from ..api import ApiConfig
 from ..enums import FileFormat
 from ..file import File
 from ..types import StrAnyMap
+from ..utils import coerce_dict
+from ..utils import maybe_mapping
 from .connector import Connector
 from .connector import parse_connector
 from .jobs import JobConfig
 from .profile import ProfileConfig
-from .utils import coerce_dict
 from .utils import deep_substitute
-from .utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
