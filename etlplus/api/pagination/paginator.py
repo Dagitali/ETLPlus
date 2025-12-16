@@ -34,7 +34,7 @@ from ...utils import to_maximum_int
 from ...utils import to_positive_int
 from ..errors import ApiRequestError
 from ..errors import PaginationError
-from ..rate_limiter import RateLimiter
+from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions
 from ..types import Url
