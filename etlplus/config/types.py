@@ -117,7 +117,7 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     --------
     - etlplus.config.api.ApiProfileConfig.from_obj: consumes this block
     - etlplus.config.pagination.PaginationConfig.from_obj: parses pagination
-    - etlplus.api.rate_limiter.RateLimitConfig.from_obj: parses rate_limit
+    - etlplus.api.rate_limiting.RateLimitConfig.from_obj: parses rate_limit
     """
 
     headers: StrAnyMap
