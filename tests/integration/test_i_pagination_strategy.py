@@ -44,7 +44,25 @@ class PageScenario:
     max_records: int | None = None
 
 
-def _write_pipeline(tmp_path, yaml_text: str) -> str:
+def _write_pipeline(
+    tmp_path: Path,
+    yaml_text: str,
+) -> str:
+    """
+    Write a temporary pipeline.yml file and return its path.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory provided by pytest.
+    yaml_text : str
+        YAML configuration content to write.
+
+    Returns
+    -------
+    str
+        String path to the written pipeline.yml file.
+    """
     p = tmp_path / 'pipeline.yml'
     p.write_text(yaml_text, encoding='utf-8')
     return str(p)
@@ -57,7 +75,10 @@ class TestPaginationStrategies:
     """Integration test suite for pagination strategies."""
 
     @pytest.fixture(autouse=True)
-    def _no_sleep(self, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: D401
+    def _no_sleep(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """
+        Disable time.sleep to keep pagination tests fast and deterministic.
+        """
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     def test_cursor_mode(
@@ -65,7 +86,7 @@ class TestPaginationStrategies:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """Test cursor-based pagination end-to-end via CLI."""
         # pylint: disable=unused-argument
 
@@ -146,8 +167,8 @@ jobs:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-    ) -> None:  # noqa: D401
-        """Test cursor pagination without ``records_path`` via CLI."""
+    ) -> None:
+        """Test cursor pagination when ``records_path`` is omitted."""
         # pylint: disable=unused-argument
 
         # Omits records_path and relies on fallback coalescing behavior.
