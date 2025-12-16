@@ -14,10 +14,11 @@ Notes
 """
 from __future__ import annotations
 
-from .rate_limiter import RateLimitConfig
-from .rate_limiter import RateLimitConfigMap
+from .config import RateLimitConfig
+from .config import RateLimitConfigMap
+from .config import RateLimitOverrides
+from .config import RateLimitPlan
 from .rate_limiter import RateLimiter
-from .rate_limiter import RateLimitPlan
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,6 +29,9 @@ __all__ = [
 
     # Data Classes
     'RateLimitConfig',
+
+    # Type Aliases
+    'RateLimitOverrides',
 
     # Type Dicts
     'RateLimitConfigMap',
