@@ -98,9 +98,11 @@ def test_target_service_endpoint_uses_base_path(
     # Stub network POST to avoid real DNS / HTTP.
     import requests  # type: ignore[import]
 
-    def _fake_post(url, json=None, timeout=None, **_k):  # noqa: D401
+    def _fake_post(url, json=None, timeout=None, **_k):
+        """Return a fake HTTP response object for POST calls."""
+
         class R:
-            """Fake response object."""
+            """Lightweight fake response object used for testing."""
             status_code = 200
             text = 'ok'
 
