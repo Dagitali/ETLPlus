@@ -1,19 +1,21 @@
 """
 :mod:`etlplus.api.rate_limiting.rate_limiter` module.
 
-Centralized logic for limiting HTTP request rates.
+Rate limiting configuration primitives.
+
+This module defines the lightweight, typed configuration objects used by
+``etlplus.api.rate_limiting``. The configuration layer is intentionally
+separated from the runtime :class:`RateLimiter` so that higher-level
+configs can depend on it without pulling in runtime behavior.
 
 Examples
 --------
-Create a limiter from static configuration and apply it before each
-request:
+Build a configuration and normalize it into a mapping::
 
-    cfg = {"max_per_sec": 5}
-    limiter = RateLimiter.from_config(cfg)
+    from etlplus.api.rate_limiting import RateLimitConfig
 
-    for payload in batch:
-        limiter.enforce()
-        client.send(payload)
+    cfg = RateLimitConfig(sleep_seconds=0.5)
+    as_mapping = cfg.as_mapping()
 """
 from __future__ import annotations
 
@@ -184,11 +186,15 @@ class RateLimitConfig(BoundsWarningsMixin):
 
     @property
     def enabled(self) -> bool:
-        """Whether this plan enforces a delay."""
-        if self.sleep_seconds:
-            return self.sleep_seconds > 0
-        else:
-            return False
+        """
+        Whether this configuration enables rate limiting.
+
+        The configuration is considered enabled when either
+        ``sleep_seconds`` or ``max_per_sec`` contains a positive,
+        numeric value after coercion.
+        """
+        sleep, per_sec = _normalized_rate_values(self.as_mapping())
+        return sleep is not None or per_sec is not None
 
     # -- Instance Methods -- #
 
@@ -258,20 +264,20 @@ class RateLimitConfig(BoundsWarningsMixin):
     def from_inputs(
         cls,
         *,
-        rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
+        rate_limit: StrAnyMap | RateLimitConfig | None = None,
         overrides: RateLimitOverrides = None,
     ) -> Self:
         """
-        Normalize user config and overrides into a single plan.
+        Normalize rate-limit config and overrides into a single instance.
         """
         normalized = _coerce_rate_limit_map(rate_limit)
         cfg = _merge_rate_limit(normalized, overrides)
-        sleep, per_sec = _normalized_rate_values(cfg)
+        sleep, max_per_sec = _normalized_rate_values(cfg)
         if sleep is not None:
             return cls(sleep_seconds=sleep, max_per_sec=1.0 / sleep)
-        if per_sec is not None:
-            delay = 1.0 / per_sec
-            return cls(sleep_seconds=delay, max_per_sec=per_sec)
+        if max_per_sec is not None:
+            delay = 1.0 / max_per_sec
+            return cls(sleep_seconds=delay, max_per_sec=max_per_sec)
         return cls()
 
     @classmethod
@@ -330,6 +336,9 @@ class RateLimitConfig(BoundsWarningsMixin):
 
 # SECTION: TYPE ALIASES ===================================================== #
 
+
+# Common input type accepted by helpers and runtime utilities.
+type RateLimitInput = StrAnyMap | RateLimitConfig | None
 
 # Optional mapping of rate-limit fields to override values.
 type RateLimitOverrides = RateLimitConfigMap | None
