@@ -31,9 +31,9 @@ from urllib.parse import urlunsplit
 from ..enums import HttpMethod
 from ..types import StrAnyMap
 from ..types import StrStrMap
-from ._parsing import cast_str_dict
-from ._parsing import coerce_dict
-from ._parsing import maybe_mapping
+from ..utils import cast_str_dict
+from ..utils import coerce_dict
+from ..utils import maybe_mapping
 from .endpoint_client import EndpointClient
 from .pagination import PaginationConfig
 from .rate_limiter import RateLimitConfig
