@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_paginator` module.
 
-Unit tests for :class:`etlplus.api.paginationpaginator.Paginator`.
+Unit tests for :class:`etlplus.api.pagination.Paginator`.
 
 Notes
 -----
