@@ -43,16 +43,6 @@ __all__ = ['run']
 
 # SECTION: TYPED DICTS ====================================================== #
 
-# Types glossary (config vs API client)
-# ------------------------------------
-# - CfgApiConfig: etlplus.config.api.ApiConfig (config layer)
-# - CfgEndpointConfig: etlplus.config.api.EndpointConfig (config layer)
-# - CfgPaginationConfig: etlplus.config.pagination.PaginationConfig
-#   (config layer)
-# - ApiPaginationConfig: etlplus.api.paginator.PaginationConfigMap
-#   (client layer)
-# - SessionConfig (below): runner-only TypedDict for HTTP session options
-
 
 class BaseApiHttpEnv(TypedDict, total=False):
     """

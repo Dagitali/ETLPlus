@@ -35,7 +35,7 @@ from ._parsing import cast_str_dict
 from ._parsing import coerce_dict
 from ._parsing import maybe_mapping
 from .endpoint_client import EndpointClient
-from .paginator import PaginationConfig
+from .pagination import PaginationConfig
 from .rate_limiter import RateLimitConfig
 
 if TYPE_CHECKING:

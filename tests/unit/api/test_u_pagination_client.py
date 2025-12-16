@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_pagination_client` module.
 
-Unit tests for :class:`etlplus.api.pagination_client.PaginationClient`.
+Unit tests for :class:`etlplus.api.pagination.client.PaginationClient`.
 
 Focus
 ------
@@ -15,9 +15,11 @@ from typing import Any
 
 import pytest
 
-from etlplus.api.pagination_client import PaginationClient
-from etlplus.api.paginator import PaginationType
+from etlplus.api.pagination import PaginationClient
+from etlplus.api.pagination import PaginationType
 from etlplus.api.types import RequestOptions
+
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
