@@ -87,7 +87,6 @@ from .pagination import Paginator
 from .rate_limiting import RateLimitConfig
 from .rate_limiting import RateLimitConfigMap
 from .rate_limiting import RateLimiter
-from .rate_limiting import RateLimitPlan
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
 from .retry_manager import RetryStrategy
@@ -117,7 +116,6 @@ __all__ = [
     'PaginationClient',
     'PaginationConfig',
     'RateLimitConfig',
-    'RateLimitPlan',
     'RequestOptions',
     'RetryStrategy',
 

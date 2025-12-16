@@ -28,7 +28,6 @@ from ...utils import to_positive_float
 from .config import RateLimitConfig
 from .config import RateLimitConfigMap
 from .config import RateLimitOverrides
-from .config import RateLimitPlan
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,7 +38,6 @@ __all__ = [
 
     # Data Classes
     'RateLimitConfig',
-    'RateLimitPlan',
 
     # Typed Dicts
     'RateLimitConfigMap',
@@ -294,11 +292,12 @@ class RateLimiter:
         RateLimiter
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
-        plan = RateLimitPlan.from_inputs(rate_limit=cfg)
-        return cls(
-            sleep_seconds=plan.sleep_seconds,
-            max_per_sec=plan.max_per_sec,
-        )
+        config = RateLimitConfig.from_inputs(rate_limit=cfg)
+        if config is None:
+            return cls.disabled()
+
+        # RateLimiter.__post_init__ will normalize and enforce invariants.
+        return cls(**config.as_mapping())
 
     @classmethod
     def resolve_sleep_seconds(
@@ -346,8 +345,11 @@ class RateLimiter:
         ... )
         0.25
         """
-        plan = RateLimitPlan.from_inputs(
-            rate_limit=rate_limit,
-            overrides=overrides,
-        )
-        return plan.sleep_seconds if plan.enabled else 0.0
+        normalized = _coerce_rate_limit_map(rate_limit)
+        cfg = _merge_rate_limit(normalized, overrides)
+        sleep, per_sec = _normalized_rate_values(cfg)
+        if sleep is not None:
+            return sleep
+        if per_sec is not None:
+            return 1.0 / per_sec
+        return 0.0

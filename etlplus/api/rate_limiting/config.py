@@ -35,7 +35,6 @@ from ...utils import to_positive_float
 __all__ = [
     # Data Classes
     'RateLimitConfig',
-    'RateLimitPlan',
 
     # Type Aliases
     'RateLimitOverrides',
@@ -162,23 +161,34 @@ class RateLimitConfigMap(TypedDict, total=False):
 # SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
+# @dataclass(frozen=True, kw_only=True, slots=True)
 class RateLimitConfig(BoundsWarningsMixin):
     """
     Lightweight container for optional API request rate-limit settings.
 
     Attributes
     ----------
-    sleep_seconds : float | int | None
+    sleep_seconds : float | None, optional
         Number of seconds to sleep between requests.
-    max_per_sec : float | int | None
+    max_per_sec : float | None, optional
         Maximum number of requests per second.
     """
 
     # -- Attributes -- #
 
-    sleep_seconds: float | int | None = None
-    max_per_sec: float | int | None = None
+    sleep_seconds: float | None = None
+    max_per_sec: float | None = None
+
+    # -- Properties -- #
+
+    @property
+    def enabled(self) -> bool:
+        """Whether this plan enforces a delay."""
+        if self.sleep_seconds:
+            return self.sleep_seconds > 0
+        else:
+            return False
 
     # -- Instance Methods -- #
 
@@ -245,6 +255,26 @@ class RateLimitConfig(BoundsWarningsMixin):
         )
 
     @classmethod
+    def from_inputs(
+        cls,
+        *,
+        rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
+        overrides: RateLimitOverrides = None,
+    ) -> Self:
+        """
+        Normalize user config and overrides into a single plan.
+        """
+        normalized = _coerce_rate_limit_map(rate_limit)
+        cfg = _merge_rate_limit(normalized, overrides)
+        sleep, per_sec = _normalized_rate_values(cfg)
+        if sleep is not None:
+            return cls(sleep_seconds=sleep, max_per_sec=1.0 / sleep)
+        if per_sec is not None:
+            delay = 1.0 / per_sec
+            return cls(sleep_seconds=delay, max_per_sec=per_sec)
+        return cls()
+
+    @classmethod
     @overload
     def from_obj(
         cls,
@@ -296,45 +326,6 @@ class RateLimitConfig(BoundsWarningsMixin):
             sleep_seconds=to_float(obj.get('sleep_seconds')),
             max_per_sec=to_float(obj.get('max_per_sec')),
         )
-
-
-@dataclass(slots=True, frozen=True)
-class RateLimitPlan:
-    """Canonical, normalized view of rate-limit inputs."""
-
-    # -- Attributes -- #
-
-    sleep_seconds: float = 0.0
-    max_per_sec: float | None = None
-
-    # -- Properties -- #
-
-    @property
-    def enabled(self) -> bool:
-        """Whether this plan enforces a delay."""
-        return self.sleep_seconds > 0
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def from_inputs(
-        cls,
-        *,
-        rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
-        overrides: RateLimitOverrides = None,
-    ) -> RateLimitPlan:
-        """
-        Normalize user config and overrides into a single plan.
-        """
-        normalized = _coerce_rate_limit_map(rate_limit)
-        cfg = _merge_rate_limit(normalized, overrides)
-        sleep, per_sec = _normalized_rate_values(cfg)
-        if sleep is not None:
-            return cls(sleep_seconds=sleep, max_per_sec=1.0 / sleep)
-        if per_sec is not None:
-            delay = 1.0 / per_sec
-            return cls(sleep_seconds=delay, max_per_sec=per_sec)
-        return cls()
 
 
 # SECTION: TYPE ALIASES ===================================================== #

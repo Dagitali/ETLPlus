@@ -17,7 +17,6 @@ from __future__ import annotations
 from .config import RateLimitConfig
 from .config import RateLimitConfigMap
 from .config import RateLimitOverrides
-from .config import RateLimitPlan
 from .rate_limiter import RateLimiter
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,6 +34,4 @@ __all__ = [
 
     # Type Dicts
     'RateLimitConfigMap',
-    'RateLimitPlan',
-
 ]
