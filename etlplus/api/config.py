@@ -36,7 +36,7 @@ from ..utils import coerce_dict
 from ..utils import maybe_mapping
 from .endpoint_client import EndpointClient
 from .pagination import PaginationConfig
-from .rate_limiter import RateLimitConfig
+from .rate_limiting import RateLimitConfig
 
 if TYPE_CHECKING:
     from ..config.types import ApiConfigMap
