@@ -21,15 +21,14 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from typing import Self
-from typing import overload
 
-from ...mixins import BoundsWarningsMixin
 from ...types import StrAnyMap
 from ...utils import to_float
 from ...utils import to_positive_float
-from ..types import RateLimitConfigMap
-from ..types import RateLimitOverrides
+from .config import RateLimitConfig
+from .config import RateLimitConfigMap
+from .config import RateLimitOverrides
+from .config import RateLimitPlan
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -130,184 +129,6 @@ def _normalized_rate_values(
         to_positive_float(cfg.get('sleep_seconds')),
         to_positive_float(cfg.get('max_per_sec')),
     )
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(slots=True)
-class RateLimitConfig(BoundsWarningsMixin):
-    """
-    Lightweight container for optional API request rate-limit settings.
-
-    Attributes
-    ----------
-    sleep_seconds : float | int | None
-        Number of seconds to sleep between requests.
-    max_per_sec : float | int | None
-        Maximum number of requests per second.
-    """
-
-    # -- Attributes -- #
-
-    sleep_seconds: float | int | None = None
-    max_per_sec: float | int | None = None
-
-    # -- Instance Methods -- #
-
-    def as_mapping(self) -> RateLimitConfigMap:
-        """Return a normalized mapping consumable by rate-limit helpers."""
-        cfg: RateLimitConfigMap = {}
-        if (sleep := to_float(self.sleep_seconds)) is not None:
-            cfg['sleep_seconds'] = sleep
-        if (rate := to_float(self.max_per_sec)) is not None:
-            cfg['max_per_sec'] = rate
-        return cfg
-
-    def validate_bounds(self) -> list[str]:
-        """Return human-readable warnings for suspicious numeric bounds."""
-        warnings: list[str] = []
-        self._warn_if(
-            (sleep := to_float(self.sleep_seconds)) is not None and sleep < 0,
-            'sleep_seconds should be >= 0',
-            warnings,
-        )
-        self._warn_if(
-            (rate := to_float(self.max_per_sec)) is not None and rate <= 0,
-            'max_per_sec should be > 0',
-            warnings,
-        )
-        return warnings
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def from_defaults(
-        cls,
-        obj: StrAnyMap | None,
-    ) -> Self | None:
-        """
-        Parse default rate-limit mapping, returning ``None`` if empty.
-
-        Only supports ``sleep_seconds`` and ``max_per_sec`` keys. Other keys
-        are ignored.
-
-        Parameters
-        ----------
-        obj : StrAnyMap | None
-            Defaults mapping (non-mapping inputs return ``None``).
-
-        Returns
-        -------
-        Self | None
-            Parsed instance with numeric fields coerced, or ``None`` if no
-            relevant keys are present or parsing failed.
-        """
-        if not isinstance(obj, Mapping):
-            return None
-
-        sleep_seconds = obj.get('sleep_seconds')
-        max_per_sec = obj.get('max_per_sec')
-
-        if sleep_seconds is None and max_per_sec is None:
-            return None
-
-        return cls(
-            sleep_seconds=to_float(sleep_seconds),
-            max_per_sec=to_float(max_per_sec),
-        )
-
-    @classmethod
-    @overload
-    def from_obj(
-        cls,
-        obj: None,
-    ) -> None: ...
-
-    @classmethod
-    @overload
-    def from_obj(
-        cls,
-        obj: StrAnyMap,
-    ) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(
-        cls,
-        obj: RateLimitConfigMap,
-    ) -> Self: ...
-
-    @classmethod
-    def from_obj(
-        cls,
-        obj: StrAnyMap | RateLimitConfig | None,
-    ) -> Self | None:
-        """
-        Parse a mapping or existing config into a :class:`RateLimitConfig`
-        instance.
-
-        Parameters
-        ----------
-        obj : StrAnyMap | RateLimitConfig | None
-            Existing config instance or mapping with optional
-            rate-limit fields, or ``None``.
-
-        Returns
-        -------
-        Self | None
-            Parsed instance, or ``None`` if ``obj`` isn't a mapping.
-        """
-        if obj is None:
-            return None
-        if isinstance(obj, cls):
-            return obj
-        if not isinstance(obj, Mapping):
-            return None
-
-        return cls(
-            sleep_seconds=to_float(obj.get('sleep_seconds')),
-            max_per_sec=to_float(obj.get('max_per_sec')),
-        )
-
-
-@dataclass(slots=True, frozen=True)
-class RateLimitPlan:
-    """Canonical, normalized view of rate-limit inputs."""
-
-    # -- Attributes -- #
-
-    sleep_seconds: float = 0.0
-    max_per_sec: float | None = None
-
-    # -- Properties -- #
-
-    @property
-    def enabled(self) -> bool:
-        """Whether this plan enforces a delay."""
-        return self.sleep_seconds > 0
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def from_inputs(
-        cls,
-        *,
-        rate_limit: Mapping[str, Any] | RateLimitConfig | None = None,
-        overrides: RateLimitOverrides = None,
-    ) -> RateLimitPlan:
-        """
-        Normalize user config and overrides into a single plan.
-        """
-        normalized = _coerce_rate_limit_map(rate_limit)
-        cfg = _merge_rate_limit(normalized, overrides)
-        sleep, per_sec = _normalized_rate_values(cfg)
-        if sleep is not None:
-            return cls(sleep_seconds=sleep, max_per_sec=1.0 / sleep)
-        if per_sec is not None:
-            delay = 1.0 / per_sec
-            return cls(sleep_seconds=delay, max_per_sec=per_sec)
-        return cls()
 
 
 # SECTION: CLASSES ========================================================== #
