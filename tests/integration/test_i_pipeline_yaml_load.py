@@ -28,10 +28,10 @@ class TestPipelineYamlLoad:
     def test_load_repo_pipeline_yaml(
         self,
         substitute: bool,
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
-        Test loading the repository pipeline YAML with optional env
-        substitution.
+        Test loading the repository pipeline YAML with optional environment
+        variable substitution.
         """
 
         # Ensure the repository pipeline YAML parses under current models.
