@@ -65,7 +65,7 @@ class TestPaginationConfig:
     def test_from_obj_coerces_numeric_fields(
         self,
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
         Test that from_obj coerces numeric fields correctly.
 
@@ -95,7 +95,7 @@ class TestPaginationConfig:
     def test_from_obj_ignores_bad_numeric_values(
         self,
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
         Test that from_obj ignores bad numeric values.
 
@@ -121,7 +121,7 @@ class TestPaginationConfig:
     def test_offset_mode_warnings(
         self,
         pagination_config_factory: Callable[..., PaginationConfig],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
         Test that offset mode warnings are produced correctly.
 
