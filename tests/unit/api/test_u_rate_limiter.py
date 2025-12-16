@@ -22,7 +22,6 @@ import pytest
 
 from etlplus.api.rate_limiting import RateLimitConfigMap
 from etlplus.api.rate_limiting import RateLimiter
-from etlplus.api.rate_limiting import RateLimitPlan
 
 # SECTION: FIXTURES ======================================================== #
 
@@ -44,29 +43,6 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 
 # SECTION: TESTS =========================================================== #
-
-
-@pytest.mark.unit
-class TestRateLimitPlan:
-    """Unit tests for :class:`RateLimitPlan`."""
-
-    def test_plan_prefers_sleep_seconds(self) -> None:
-        """Sleep seconds take precedence over max_per_sec."""
-        plan = RateLimitPlan.from_inputs(
-            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
-        )
-        assert plan.enabled is True
-        assert plan.sleep_seconds == pytest.approx(0.2)
-        assert plan.max_per_sec == pytest.approx(5.0)
-
-    def test_plan_honors_overrides(self) -> None:
-        """Overrides replace base config values."""
-        plan = RateLimitPlan.from_inputs(
-            rate_limit={'max_per_sec': 2},
-            overrides={'sleep_seconds': 0.1},
-        )
-        assert plan.sleep_seconds == pytest.approx(0.1)
-        assert plan.max_per_sec == pytest.approx(10.0)
 
 
 @pytest.mark.unit
@@ -144,6 +120,13 @@ class TestResolveSleepSeconds:
             rate_limit={'max_per_sec': 2},
             overrides=None,
         ) == 0.5
+
+    def test_sleep_seconds_precedence(self) -> None:
+        """Sleep seconds take precedence over max_per_sec when both set."""
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
+            overrides=None,
+        ) == pytest.approx(0.2)
 
 
 @pytest.mark.unit
