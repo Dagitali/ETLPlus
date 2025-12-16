@@ -43,8 +43,8 @@ class TestPipelineSmoke:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         data_in: list[object] | list[dict[str, int | str]],
-    ) -> None:  # noqa: D401
-        """Test file→file job via CLI with various input data."""
+    ) -> None:
+        """Test file→file jobs via CLI for multiple input datasets."""
         # Prepare input and output paths.
         input_path = tmp_path / 'input.json'
         output_path = tmp_path / 'output.json'
