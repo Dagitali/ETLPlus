@@ -43,13 +43,17 @@ __all__ = [
 
     # Generic number coercion
     'to_number',
+
+    # Text processing
+    'normalized_str',
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
+# SECTION: TYPE VARS ======================================================== #
 
 
 Num = TypeVar('Num', int, float)
+# type Num = int | float
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -398,6 +402,29 @@ def to_number(
         ``float(value)`` if coercion succeeds; else ``None``.
     """
     return _coerce_float(value)
+
+
+# -- Text Processing -- #
+
+
+def normalized_str(
+    value: str | None,
+) -> str:
+    """
+    Return lower-cased, trimmed text for normalization helpers.
+
+    Parameters
+    ----------
+    value : str | None
+        Optional user-provided text.
+
+    Returns
+    -------
+    str
+        Normalized string with surrounding whitespace removed and converted
+        to lowercase. ``""`` when *value* is ``None``.
+    """
+    return (value or '').strip().lower()
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
