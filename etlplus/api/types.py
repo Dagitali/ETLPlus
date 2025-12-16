@@ -21,7 +21,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from typing import TypedDict
 from typing import cast
 
 from ..types import JSONData
@@ -39,11 +38,7 @@ __all__ = [
     'FetchPageCallable',
     'Headers',
     'Params',
-    'RateLimitOverrides',
     'Url',
-
-    # Typed Dicts
-    'RateLimitConfigMap',
 ]
 
 
@@ -51,35 +46,6 @@ __all__ = [
 
 
 _UNSET = object()
-
-
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class RateLimitConfigMap(TypedDict, total=False):
-    """
-    Configuration mapping for HTTP request rate limits.
-
-    All keys are optional and intended to be mutually exclusive, positive
-    values.
-
-    Attributes
-    ----------
-    sleep_seconds : float, optional
-        Delay in seconds between requests.
-    max_per_sec : float, optional
-        Maximum requests per second.
-
-    Examples
-    --------
-    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
-    ... # sleep ~= 0.25s between calls
-    """
-
-    # -- Attributes -- #
-
-    sleep_seconds: float
-    max_per_sec: float
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -204,6 +170,3 @@ type FetchPageCallable = Callable[
     [Url, RequestOptions, int | None],
     JSONData,
 ]
-
-# Optional mapping of rate-limit fields to override values.
-type RateLimitOverrides = RateLimitConfigMap | None
