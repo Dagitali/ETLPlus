@@ -43,7 +43,7 @@ __all__ = [
     'Url',
 
     # Typed Dicts
-    'RateLimitOverrideMap',
+    'RateLimitConfigMap',
 ]
 
 
@@ -56,20 +56,30 @@ _UNSET = object()
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RateLimitOverrideMap(TypedDict, total=False):
+class RateLimitConfigMap(TypedDict, total=False):
     """
-    Overrides accepted by rate-limit helpers.
+    Configuration mapping for HTTP request rate limits.
+
+    All keys are optional and intended to be mutually exclusive, positive
+    values.
 
     Attributes
     ----------
-    sleep_seconds : float | None
-        Override for sleep seconds between requests.
-    max_per_sec : float | None
-        Override for maximum requests per second.
+    sleep_seconds : float, optional
+        Delay in seconds between requests.
+    max_per_sec : float, optional
+        Maximum requests per second.
+
+    Examples
+    --------
+    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
+    ... # sleep ~= 0.25s between calls
     """
 
-    sleep_seconds: float | None
-    max_per_sec: float | None
+    # -- Attributes -- #
+
+    sleep_seconds: float
+    max_per_sec: float
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -196,4 +206,4 @@ type FetchPageCallable = Callable[
 ]
 
 # Optional mapping of rate-limit fields to override values.
-type RateLimitOverrides = RateLimitOverrideMap | None
+type RateLimitOverrides = RateLimitConfigMap | None

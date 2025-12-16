@@ -22,13 +22,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from typing import Self
-from typing import TypedDict
 from typing import overload
 
 from ..mixins import BoundsWarningsMixin
 from ..types import StrAnyMap
 from ..utils import to_float
 from ..utils import to_positive_float
+from .types import RateLimitConfigMap
 from .types import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,35 +45,6 @@ __all__ = [
     # Typed Dicts
     'RateLimitConfigMap',
 ]
-
-
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class RateLimitConfigMap(TypedDict, total=False):
-    """
-    Configuration mapping for limiting HTTP request rates.
-
-    All keys are optional and intended to be mutually exclusive, positive
-    values.
-
-    Attributes
-    ----------
-    sleep_seconds : float | int, optional
-        Number of seconds to sleep between requests.
-    max_per_sec : float | int, optional
-        Maximum requests per second.
-
-    Examples
-    --------
-    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
-    ... # sleep ~= 0.25s between calls
-    """
-
-    # -- Attributes -- #
-
-    sleep_seconds: float | int
-    max_per_sec: float | int
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
