@@ -18,15 +18,13 @@ request:
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
-from ...types import StrAnyMap
 from ...utils import to_float
 from ...utils import to_positive_float
 from .config import RateLimitConfig
 from .config import RateLimitConfigMap
+from .config import RateLimitInput
 from .config import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
@@ -42,91 +40,6 @@ __all__ = [
     # Typed Dicts
     'RateLimitConfigMap',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_rate_limit_map(
-    rate_limit: StrAnyMap | RateLimitConfig | None,
-) -> RateLimitConfigMap | None:
-    """
-    Normalize user inputs into a :class:`RateLimitConfigMap`.
-
-    This helper is the single entry point for converting loosely-typed
-    configuration into the canonical mapping consumed by downstream
-    helpers.
-
-    Parameters
-    ----------
-    rate_limit : StrAnyMap | RateLimitConfig | None
-        User-supplied rate-limit configuration.
-
-    Returns
-    -------
-    RateLimitConfigMap | None
-        Normalized mapping, or ``None`` if input couldn't be parsed.
-    """
-    if rate_limit is None:
-        return None
-    if isinstance(rate_limit, RateLimitConfig):
-        mapping = rate_limit.as_mapping()
-        return mapping or None
-    if isinstance(rate_limit, Mapping):
-        cfg = RateLimitConfig.from_obj(rate_limit)
-        return cfg.as_mapping() if cfg else None
-    return None
-
-
-def _merge_rate_limit(
-    rate_limit: StrAnyMap | None,
-    overrides: RateLimitOverrides = None,
-) -> dict[str, Any]:
-    """
-    Merge ``rate_limit`` and ``overrides`` honoring override precedence.
-
-    Parameters
-    ----------
-    rate_limit : StrAnyMap | None
-        Base rate-limit configuration.
-    overrides : RateLimitOverrides, optional
-        Override configuration with precedence over ``rate_limit``.
-
-    Returns
-    -------
-    dict[str, Any]
-        Merged configuration with overrides applied.
-    """
-    merged: dict[str, Any] = {}
-    if rate_limit:
-        merged.update(rate_limit)
-    if overrides:
-        merged.update({k: v for k, v in overrides.items() if v is not None})
-    return merged
-
-
-def _normalized_rate_values(
-    cfg: Mapping[str, Any] | None,
-) -> tuple[float | None, float | None]:
-    """
-    Return sanitized ``(sleep_seconds, max_per_sec)`` pair.
-
-    Parameters
-    ----------
-    cfg : Mapping[str, Any] | None
-        Rate-limit configuration.
-
-    Returns
-    -------
-    tuple[float | None, float | None]
-        Normalized ``(sleep_seconds, max_per_sec)`` values.
-    """
-    if not cfg:
-        return None, None
-    return (
-        to_positive_float(cfg.get('sleep_seconds')),
-        to_positive_float(cfg.get('max_per_sec')),
-    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -268,7 +181,7 @@ class RateLimiter:
     @classmethod
     def from_config(
         cls,
-        cfg: Mapping[str, Any] | RateLimitConfig | None,
+        cfg: RateLimitInput,
     ) -> RateLimiter:
         """
         Build a :class:`RateLimiter` from a configuration mapping.
@@ -284,8 +197,8 @@ class RateLimiter:
 
         Parameters
         ----------
-        cfg : Mapping[str, Any] | RateLimitConfig | None
-            Configuration mapping from which to derive rate-limit settings.
+        cfg : RateLimitInput
+            Rate-limit configuration from which to derive settings.
 
         Returns
         -------
@@ -303,7 +216,7 @@ class RateLimiter:
     def resolve_sleep_seconds(
         cls,
         *,
-        rate_limit: RateLimitConfigMap | RateLimitConfig | None,
+        rate_limit: RateLimitInput,
         overrides: RateLimitOverrides = None,
     ) -> float:
         """
@@ -320,7 +233,7 @@ class RateLimiter:
 
         Parameters
         ----------
-        rate_limit : RateLimitConfigMap | RateLimitConfig | None
+        rate_limit : RateLimitInput
             Base rate-limit configuration. May contain ``"sleep_seconds"`` or
             ``"max_per_sec"``.
         overrides : RateLimitOverrides, optional
@@ -345,11 +258,10 @@ class RateLimiter:
         ... )
         0.25
         """
-        normalized = _coerce_rate_limit_map(rate_limit)
-        cfg = _merge_rate_limit(normalized, overrides)
-        sleep, per_sec = _normalized_rate_values(cfg)
-        if sleep is not None:
-            return sleep
-        if per_sec is not None:
-            return 1.0 / per_sec
-        return 0.0
+        config = RateLimitConfig.from_inputs(
+            rate_limit=rate_limit,
+            overrides=overrides,
+        )
+        if config is None or not config.sleep_seconds:
+            return 0.0
+        return float(config.sleep_seconds)
