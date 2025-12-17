@@ -65,7 +65,9 @@ from .rate_limiting import RateLimitConfigMap
 from .rate_limiting import RateLimiter
 from .rate_limiting import RateLimitOverrides
 from .request_manager import RequestManager
+from .retry_manager import RetryManager
 from .retry_manager import RetryPolicy
+from .retry_manager import RetryStrategy
 from .transport import HTTPAdapterMountConfig
 from .types import RequestOptions
 from .types import Url
@@ -238,12 +240,14 @@ class EndpointClient:
     DEFAULT_LIMIT_PARAM: ClassVar[str] = 'limit'
 
     # Retry defaults (only used if a policy is provided)
-    DEFAULT_RETRY_MAX_ATTEMPTS: ClassVar[int] = 3
-    DEFAULT_RETRY_BACKOFF: ClassVar[float] = 0.5
-    DEFAULT_RETRY_ON: ClassVar[tuple[int, ...]] = (429, 502, 503, 504)
+    DEFAULT_RETRY_MAX_ATTEMPTS: ClassVar[int] = RetryStrategy.DEFAULT_ATTEMPTS
+    DEFAULT_RETRY_BACKOFF: ClassVar[float] = RetryStrategy.DEFAULT_BACKOFF
+    DEFAULT_RETRY_ON: ClassVar[tuple[int, ...]] = tuple(
+        RetryManager.DEFAULT_STATUS_CODES,
+    )
 
     # Cap for jittered backoff sleeps (seconds)
-    DEFAULT_RETRY_CAP: ClassVar[float] = 30.0
+    DEFAULT_RETRY_CAP: ClassVar[float] = RetryManager.DEFAULT_CAP
 
     # Default timeout applied when callers do not explicitly provide one.
     DEFAULT_TIMEOUT: ClassVar[float] = 10.0
