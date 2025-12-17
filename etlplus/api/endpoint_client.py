@@ -62,7 +62,7 @@ from ..types import JSONDict
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .pagination import PaginationClient
-from .pagination import PaginationConfigMap
+from .pagination import PaginationInput
 from .pagination import Paginator
 from .rate_limiting import RateLimitConfigMap
 from .rate_limiting import RateLimiter
@@ -355,7 +355,7 @@ class EndpointClient:
     def _build_pagination_client(
         self,
         *,
-        pagination: Mapping[str, Any] | None,
+        pagination: PaginationInput,
         sleep_seconds: float,
         rate_limit_overrides: RateLimitOverrides,
     ) -> PaginationClient:
@@ -364,8 +364,8 @@ class EndpointClient:
 
         Parameters
         ----------
-        pagination : Mapping[str, Any] | None
-            Pagination configuration.
+        pagination : PaginationInput
+            Pagination configuration mapping or :class:`PaginationConfig`.
         sleep_seconds : float
             Number of seconds to sleep between requests.
         rate_limit_overrides : RateLimitOverrides
@@ -519,7 +519,7 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        pagination: PaginationConfigMap | None = None,
+        pagination: PaginationInput = None,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
@@ -539,8 +539,8 @@ class EndpointClient:
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present on
             ``base_url``).
-        pagination : PaginationConfigMap | None
-            Pagination configuration.
+        pagination : PaginationInput, optional
+            Pagination configuration mapping or :class:`PaginationConfig`.
         request : RequestOptions | None, optional
             Pre-built request metadata snapshot (params/headers/timeout).
         sleep_seconds : float
@@ -574,7 +574,7 @@ class EndpointClient:
         *,
         path_parameters: Mapping[str, str] | None = None,
         query_parameters: Mapping[str, str] | None = None,
-        pagination: PaginationConfigMap | None = None,
+        pagination: PaginationInput = None,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
         rate_limit_overrides: RateLimitOverrides = None,
@@ -596,8 +596,8 @@ class EndpointClient:
             Values to substitute into placeholders in the endpoint path.
         query_parameters : Mapping[str, str] | None
             Query parameters to append (merged with any already present).
-        pagination : PaginationConfigMap | None
-            Pagination configuration.
+        pagination : PaginationInput, optional
+            Pagination configuration mapping or :class:`PaginationConfig`.
         request : RequestOptions | None, optional
             Pre-built request metadata snapshot (params/headers/timeout).
         sleep_seconds : float
@@ -627,7 +627,7 @@ class EndpointClient:
     def paginate_url(
         self,
         url: Url,
-        pagination: PaginationConfigMap | None,
+        pagination: PaginationInput = None,
         *,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
@@ -640,8 +640,8 @@ class EndpointClient:
         ----------
         url : Url
             Absolute URL to paginate.
-        pagination : PaginationConfigMap | None
-            Pagination configuration.
+        pagination : PaginationInput, optional
+            Pagination configuration mapping or :class:`PaginationConfig`.
         request : RequestOptions | None, optional
             Optional request snapshot with existing params/headers/timeout.
         sleep_seconds : float
@@ -657,8 +657,11 @@ class EndpointClient:
             dicts aggregated across pages for paginated calls.
         """
         # Normalize pagination config for typed access.
-        pg_map = cast(Mapping[str, Any] | None, pagination)
-        ptype = Paginator.detect_type(pg_map, default=None)
+        if pagination is not None and not isinstance(pagination, Mapping):
+            ptype = getattr(pagination, 'type', None)
+        else:
+            pg_map = cast(Mapping[str, Any] | None, pagination)
+            ptype = Paginator.detect_type(pg_map, default=None)
         request_obj = request or RequestOptions()
 
         # Preserve raw JSON behavior for non-paginated and unknown types.
@@ -683,7 +686,7 @@ class EndpointClient:
     def paginate_url_iter(
         self,
         url: Url,
-        pagination: PaginationConfigMap | None,
+        pagination: PaginationInput = None,
         *,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
@@ -696,8 +699,8 @@ class EndpointClient:
         ----------
         url : Url
             Absolute URL to paginate.
-        pagination : PaginationConfigMap | None
-            Pagination configuration.
+        pagination : PaginationInput, optional
+            Pagination configuration mapping or :class:`PaginationConfig`.
         request : RequestOptions | None, optional
             Optional request snapshot reused across pages.
         sleep_seconds : float
@@ -714,7 +717,7 @@ class EndpointClient:
         base_request = request or RequestOptions()
 
         runner = self._build_pagination_client(
-            pagination=cast(Mapping[str, Any] | None, pagination),
+            pagination=pagination,
             sleep_seconds=sleep_seconds,
             rate_limit_overrides=rate_limit_overrides,
         )
