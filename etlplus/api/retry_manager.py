@@ -154,6 +154,8 @@ class RetryManager:
     ----------
     DEFAULT_STATUS_CODES : ClassVar[frozenset[int]]
         Default HTTP status codes considered retryable.
+    DEFAULT_CAP : ClassVar[float]
+        Default maximum sleep seconds for jittered backoff.
     policy : RetryPolicy
         Retry policy configuration.
     retry_network_errors : bool
@@ -167,13 +169,16 @@ class RetryManager:
         Normalized view of the retry policy (backoff, attempts, codes).
     """
 
-    # -- Attributes -- #
+    # -- Class Attributes -- #
 
     DEFAULT_STATUS_CODES: ClassVar[frozenset[int]] = DEFAULT_RETRY_STATUS_CODES
+    DEFAULT_CAP: ClassVar[float] = 30.0
+
+    # -- Instance Attributes-- #
 
     policy: RetryPolicy
     retry_network_errors: bool = False
-    cap: float = 30.0
+    cap: float = DEFAULT_CAP
     sleeper: Sleeper = time.sleep
     strategy: RetryStrategy = field(init=False, repr=False)
 
