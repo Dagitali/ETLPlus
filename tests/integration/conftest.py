@@ -7,6 +7,7 @@ Notes
 -----
 - Fixtures are designed for reuse and DRY test setup.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -190,6 +191,7 @@ def pipeline_cfg_factory(
     Callable[..., PipelineConfig]
         Factory function to create :class:`PipelineConfig` instances.
     """
+
     def _make(
         *,
         pagination_defaults: PaginationConfig | None = None,
@@ -212,7 +214,10 @@ def pipeline_cfg_factory(
         src = ConnectorApi(name='s', type='api', api='svc', endpoint='items')
         out_path = tmp_path / 'out.json'
         tgt = ConnectorFile(
-            name='t', type='file', format='json', path=str(out_path),
+            name='t',
+            type='file',
+            format='json',
+            path=str(out_path),
         )
         return PipelineConfig(
             apis={'svc': api},
@@ -271,6 +276,7 @@ def run_patched(
 
         # Optionally force the resolved rate-limit delay to a constant.
         if sleep_seconds is not None:
+
             def _fixed_resolve(
                 cls: type[RateLimiter],
                 *,

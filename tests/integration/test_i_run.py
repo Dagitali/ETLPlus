@@ -10,6 +10,7 @@ Notes
 - Patches nothing network-related; uses real file source for realism.
 - Asserts composed URL and capture of API load invocation via fixture.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -103,6 +104,7 @@ def test_target_service_endpoint_uses_base_path(
 
         class R:
             """Lightweight fake response object used for testing."""
+
             status_code = 200
             text = 'ok'
 
@@ -115,6 +117,7 @@ def test_target_service_endpoint_uses_base_path(
                 return None
 
         return R()
+
     monkeypatch.setattr(requests, 'post', _fake_post)
 
     result = run_mod.run('send')
@@ -124,7 +127,6 @@ def test_target_service_endpoint_uses_base_path(
 
     # Ensure headers merged include Content-Type from target.
     assert isinstance(capture_load_to_api['headers'], dict)
-    assert (
-        capture_load_to_api['headers'].get('Content-Type')
-        == 'application/json'
-    )
+    assert capture_load_to_api['headers'].get(
+        'Content-Type',
+    ) == 'application/json'

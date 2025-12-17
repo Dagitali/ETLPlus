@@ -15,6 +15,7 @@ request:
         limiter.enforce()
         client.send(payload)
 """
+
 from __future__ import annotations
 
 import time
@@ -33,10 +34,8 @@ from .config import RateLimitOverrides
 __all__ = [
     # Classes
     'RateLimiter',
-
     # Data Classes
     'RateLimitConfig',
-
     # Typed Dicts
     'RateLimitConfigMap',
 ]

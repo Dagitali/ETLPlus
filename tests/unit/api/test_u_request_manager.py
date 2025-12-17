@@ -4,6 +4,7 @@
 Unit tests covering :class:`etlplus.api.request_manager.RequestManager` adapter
 plumbing.
 """
+
 from __future__ import annotations
 
 from typing import Any

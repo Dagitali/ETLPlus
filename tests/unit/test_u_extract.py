@@ -11,6 +11,7 @@ Notes
 - Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,7 +83,9 @@ class TestExtract:
         path = tmp_path / f'data.{file_format}'
         write(str(path))
         result = extract(
-            'file', str(path), file_format=file_format,
+            'file',
+            str(path),
+            file_format=file_format,
         )
         assert result == expected_extracts
 

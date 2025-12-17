@@ -11,6 +11,7 @@ Notes
 - Numeric coercion helpers are intentionally forgiving: invalid values
     become ``None`` rather than raising.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -113,7 +114,7 @@ def _replace_tokens(
         return text
     out = text
     for name, replacement in substitutions:
-        token = f"${{{name}}}"
+        token = f'${{{name}}}'
         if token in out:
             out = out.replace(token, str(replacement))
     return out

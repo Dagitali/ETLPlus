@@ -10,6 +10,7 @@ Notes
 - Uses ``PipelineConfig.from_yaml`` on the repo's example config.
 - Asserts basic API modeling and presence of expected endpoints.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping

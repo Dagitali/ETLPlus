@@ -6,6 +6,7 @@ HTTP request orchestration with retries and session lifecycle control.
 This module wraps ``requests`` sessions with retry-aware helpers that manage
 timeouts, HTTP adapters, and context-managed session lifecycles.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

@@ -7,6 +7,7 @@ Notes
 -----
 - Uses minimal ``dict`` payloads.
 """
+
 from __future__ import annotations
 
 import pytest

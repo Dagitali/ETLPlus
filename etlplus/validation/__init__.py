@@ -33,6 +33,7 @@ See Also
 - :mod:`etlplus.validation.utils` for implementation details and helper
     utilities.
 """
+
 from __future__ import annotations
 
 from .utils import maybe_validate

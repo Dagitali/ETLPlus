@@ -8,6 +8,7 @@ Notes
 - Accepts ``Mapping[str, Any]`` and normalizes to concrete types.
 - Environment values are coerced to strings.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping

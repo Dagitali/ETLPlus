@@ -20,6 +20,7 @@ Examples
 ... except ApiRequestError as e:
 ...     print("request failed", e.url)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -102,10 +103,10 @@ class ApiRequestError(requests.RequestException):
     # -- Magic Methods (Object Representation) -- #
 
     def __str__(self) -> str:  # pragma: no cover - formatting only
-        base = f"request failed url={self.url!r} status={self.status}"
-        meta = f" attempts={self.attempts} retried={self.retried}"
+        base = f'request failed url={self.url!r} status={self.status}'
+        meta = f' attempts={self.attempts} retried={self.retried}'
 
-        return f"ApiRequestError({base}{meta})"
+        return f'ApiRequestError({base}{meta})'
 
     # -- Instance Methods -- #
 
@@ -158,7 +159,7 @@ class PaginationError(ApiRequestError):
     def __str__(self) -> str:  # pragma: no cover - formatting only
         base = super().__str__()
 
-        return f"PaginationError({base} page={self.page})"
+        return f'PaginationError({base} page={self.page})'
 
     # -- Instance Methods -- #
 

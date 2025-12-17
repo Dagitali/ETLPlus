@@ -16,6 +16,7 @@ Examples
 >>> headers: Headers = {'Authorization': 'Bearer token'}
 >>> params: Params = {'query': 'search term', 'limit': 50}
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -33,7 +34,6 @@ from ..types import StrStrMap
 __all__ = [
     # Data Classes
     'RequestOptions',
-
     # Type Aliases
     'FetchPageCallable',
     'Headers',

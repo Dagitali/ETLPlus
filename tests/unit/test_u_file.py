@@ -8,6 +8,7 @@ Notes
 - Uses ``tmp_path`` for filesystem isolation.
 - Exercises JSON detection and defers errors for unknown extensions.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

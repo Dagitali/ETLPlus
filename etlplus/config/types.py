@@ -28,6 +28,7 @@ Examples
 >>> from etlplus.api import RetryPolicy
 >>> rp: RetryPolicy = {"max_attempts": 3, "backoff": 0.5}
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -46,11 +47,14 @@ __all__ = [
     # Type aliases
     'ConnectorType',
     # 'PaginationType',
-
     # TypedDicts
-    'ApiProfileDefaultsMap', 'ApiProfileConfigMap', 'ApiConfigMap',
+    'ApiProfileDefaultsMap',
+    'ApiProfileConfigMap',
+    'ApiConfigMap',
     'EndpointMap',
-    'ConnectorApiConfigMap', 'ConnectorDbConfigMap', 'ConnectorFileConfigMap',
+    'ConnectorApiConfigMap',
+    'ConnectorDbConfigMap',
+    'ConnectorFileConfigMap',
 ]
 
 

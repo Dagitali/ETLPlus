@@ -21,6 +21,7 @@ Notes
 These helpers intentionally accept permissive ``Any``/``Mapping`` inputs to
 avoid tight coupling with config dataclasses while keeping runtime flexible.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -57,7 +58,6 @@ __all__ = [
     'compose_api_target_env',
     'compute_rl_sleep_seconds',
     'paginate_with_client',
-
     # Typed Dicts
     'ApiRequestEnv',
     'ApiTargetEnv',
@@ -228,6 +228,7 @@ def _merge_session_cfg_three(
 
 # -- Mapping Helpers -- #
 
+
 def _copy_mapping(
     mapping: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -326,6 +327,7 @@ def build_endpoint_client(
     # propagate here by preferring the class on the run module if present.
     try:
         from . import run as run_mod  # local import to avoid cycles
+
         ClientClass = getattr(run_mod, 'EndpointClient', EndpointClient)
     except (ImportError, AttributeError):  # pragma: no cover - fallback path
         ClientClass = EndpointClient
@@ -376,13 +378,15 @@ def compose_api_request_env(
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
     retry: RetryPolicy | None = cast(
-        RetryPolicy | None, getattr(source_obj, 'retry', None),
+        RetryPolicy | None,
+        getattr(source_obj, 'retry', None),
     )
     retry_network_errors = bool(
         getattr(source_obj, 'retry_network_errors', False),
     )
     session_cfg = cast(
-        SessionConfig | None, getattr(source_obj, 'session', None),
+        SessionConfig | None,
+        getattr(source_obj, 'session', None),
     )
     api_name = getattr(source_obj, 'api', None)
     endpoint_name = getattr(source_obj, 'endpoint', None)
@@ -394,7 +398,12 @@ def compose_api_request_env(
     if api_name and endpoint_name:
         api_cfg, ep = _get_api_cfg_and_endpoint(cfg, api_name, endpoint_name)
         url, headers, session_cfg = _inherit_http_from_api_endpoint(
-            api_cfg, ep, url, headers, session_cfg, force_url=True,
+            api_cfg,
+            ep,
+            url,
+            headers,
+            session_cfg,
+            force_url=True,
         )
         ep_params: dict[str, Any] = _copy_mapping(
             cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
@@ -402,20 +411,19 @@ def compose_api_request_env(
         _update_mapping(ep_params, params)
         params = ep_params
         pagination = (
-            pagination
-            or ep.pagination
-            or api_cfg.effective_pagination_defaults()
+            pagination or
+            ep.pagination or
+            api_cfg.effective_pagination_defaults()
         )
         rate_limit = (
-            rate_limit
-            or ep.rate_limit
-            or api_cfg.effective_rate_limit_defaults()
+            rate_limit or
+            ep.rate_limit or
+            api_cfg.effective_rate_limit_defaults()
         )
         retry = cast(
             RetryPolicy | None,
             (
-                retry
-                or getattr(ep, 'retry', None)
+                retry or getattr(ep, 'retry', None)
                 or getattr(api_cfg, 'retry', None)
             ),
         )
@@ -428,8 +436,8 @@ def compose_api_request_env(
         client_base_url = api_cfg.base_url
         client_base_path = api_cfg.effective_base_path()
         client_endpoints_map = {
-            k: v.path
-            for k, v in api_cfg.endpoints.items()
+            k: v.path for k,
+            v in api_cfg.endpoints.items()
         }
         selected_endpoint_key = endpoint_name
     _update_mapping(
@@ -520,9 +528,11 @@ def compose_api_target_env(
         cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
     )
     _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
-    timeout: Timeout = (
-        cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
-    )
+    timeout: Timeout = cast(
+        Timeout, ov.get(
+            'timeout',
+        ),
+    ) if 'timeout' in ov else None
     sess_cfg: SessionConfig | None = cast(
         SessionConfig | None,
         ov.get('session'),
@@ -602,41 +612,33 @@ def build_pagination_cfg(
             page_size = overrides.get('page_size') if overrides else None
             if pagination:
                 page_param = (
-                    page_param
-                    or getattr(pagination, 'page_param', None)
-                    or 'page'
+                    page_param or getattr(
+                        pagination, 'page_param', None,
+                    ) or 'page'
                 )
                 size_param = (
-                    size_param
-                    or getattr(pagination, 'size_param', None)
-                    or 'per_page'
+                    size_param or getattr(
+                        pagination, 'size_param', None,
+                    ) or 'per_page'
                 )
-                start_page = (
-                    start_page
-                    or getattr(pagination, 'start_page', None)
-                    or 1
-                )
-                page_size = (
-                    page_size
-                    or getattr(pagination, 'page_size', None)
-                    or 100
-                )
-            cfg.update({
-                'page_param': str(page_param or 'page'),
-                'size_param': str(size_param or 'per_page'),
-                'start_page': int(start_page or 1),
-                'page_size': int(page_size or 100),
-            })
+                start_page = start_page or getattr(
+                    pagination, 'start_page', None,
+                ) or 1
+                page_size = page_size or getattr(
+                    pagination, 'page_size', None,
+                ) or 100
+            cfg.update(
+                {
+                    'page_param': str(page_param or 'page'),
+                    'size_param': str(size_param or 'per_page'),
+                    'start_page': int(start_page or 1),
+                    'page_size': int(page_size or 100),
+                },
+            )
         case 'cursor':
-            cursor_param = (
-                overrides.get('cursor_param') if overrides else None
-            )
-            cursor_path = (
-                overrides.get('cursor_path') if overrides else None
-            )
-            page_size = (
-                overrides.get('page_size') if overrides else None
-            )
+            cursor_param = overrides.get('cursor_param') if overrides else None
+            cursor_path = overrides.get('cursor_path') if overrides else None
+            page_size = overrides.get('page_size') if overrides else None
             start_cursor = None
             if pagination:
                 cursor_param = (
@@ -644,22 +646,21 @@ def build_pagination_cfg(
                     or getattr(pagination, 'cursor_param', None)
                     or 'cursor'
                 )
-                cursor_path = (
-                    cursor_path
-                    or getattr(pagination, 'cursor_path', None)
+                cursor_path = cursor_path or getattr(
+                    pagination, 'cursor_path', None,
                 )
-                page_size = (
-                    page_size
-                    or getattr(pagination, 'page_size', None)
-                    or 100
-                )
+                page_size = page_size or getattr(
+                    pagination, 'page_size', None,
+                ) or 100
                 start_cursor = getattr(pagination, 'start_cursor', None)
-            cfg.update({
-                'cursor_param': str(cursor_param or 'cursor'),
-                'cursor_path': cursor_path,
-                'page_size': int(page_size or 100),
-                'start_cursor': start_cursor,
-            })
+            cfg.update(
+                {
+                    'cursor_param': str(cursor_param or 'cursor'),
+                    'cursor_path': cursor_path,
+                    'page_size': int(page_size or 100),
+                    'start_cursor': start_cursor,
+                },
+            )
         case _:
             pass
 

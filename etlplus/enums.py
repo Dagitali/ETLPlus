@@ -3,6 +3,7 @@
 
 Shared enumeration types used across ETLPlus modules.
 """
+
 from __future__ import annotations
 
 import enum
@@ -227,7 +228,6 @@ class FileFormat(CoercibleStrEnum):
         return {
             # Common shorthand
             'yml': 'yaml',
-
             # MIME types
             'text/csv': 'csv',
             'application/json': 'json',
@@ -323,9 +323,16 @@ class OperatorName(CoercibleStrEnum):
             A mapping of alias names to their corresponding enum member names.
         """
         return {
-            '==': 'eq', '=': 'eq', '!=': 'ne', '<>': 'ne',
-            '>=': 'gte', '≥': 'gte', '<=': 'lte', '≤': 'lte',
-            '>': 'gt', '<': 'lt',
+            '==': 'eq',
+            '=': 'eq',
+            '!=': 'ne',
+            '<>': 'ne',
+            '>=': 'gte',
+            '≥': 'gte',
+            '<=': 'lte',
+            '≤': 'lte',
+            '>': 'gt',
+            '<': 'lt',
         }
 
 

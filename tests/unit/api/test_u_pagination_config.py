@@ -7,6 +7,7 @@ Notes
 -----
 - Parametrized across page, offset, and cursor pagination styles.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -131,7 +132,9 @@ class TestPaginationConfig:
             Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
-            type='offset', start_page=0, page_size=-1,
+            type='offset',
+            start_page=0,
+            page_size=-1,
         )
         warnings = pc.validate_bounds()
         assert 'start_page should be >= 1' in warnings
@@ -173,13 +176,15 @@ class TestPaginationConfig:
         # No page/offset or cursor-specific warnings for unknown types.
         assert not any('start_page should be >= 1' in w for w in warnings)
         assert not any(
-            'page_size should be > 0 for cursor pagination' in w
-            for w in warnings
+            'page_size should be > 0 for cursor pagination'
+            in w for w in warnings
         )
         assert not any('page_size should be > 0' in w for w in warnings)
 
         pc2 = pagination_config_factory(
-            type='offset', start_page=0, page_size=-1,
+            type='offset',
+            start_page=0,
+            page_size=-1,
         )
         warnings2 = pc2.validate_bounds()
         assert 'start_page should be >= 1' in warnings2
@@ -223,14 +228,14 @@ class TestPaginationConfig:
             assert 'start_page should be >= 1' in warnings
             assert 'page_size should be > 0' in warnings
             assert not any(
-                'page_size should be > 0 for cursor pagination' in w
-                for w in warnings
+                'page_size should be > 0 for cursor pagination'
+                in w for w in warnings
             )
         else:  # cursor
             assert not any('start_page should be >= 1' in w for w in warnings)
             assert any(
-                'page_size should be > 0 for cursor pagination' in w
-                for w in warnings
+                'page_size should be > 0 for cursor pagination'
+                in w for w in warnings
             )
 
     def test_valid_values_no_warnings(

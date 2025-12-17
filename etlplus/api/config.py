@@ -15,6 +15,7 @@ Notes
 - Helper functions near the bottom keep parsing logic centralized and avoid
     leaking implementation details.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -289,8 +290,8 @@ class ApiProfileConfig:
 
         defaults_raw = coerce_dict(obj.get('defaults'))
         merged_headers = (
-            cast_str_dict(defaults_raw.get('headers'))
-            | cast_str_dict(obj.get('headers'))
+            cast_str_dict(defaults_raw.get('headers')) |
+            cast_str_dict(obj.get('headers'))
         )
 
         base_path = obj.get('base_path')
@@ -603,16 +604,14 @@ class EndpointConfig:
                     raise TypeError('EndpointConfig requires a "path" (str)')
 
                 path_params_raw = obj.get('path_params')
-                if (
-                    path_params_raw is not None
-                    and not isinstance(path_params_raw, Mapping)
+                if path_params_raw is not None and not isinstance(
+                    path_params_raw, Mapping,
                 ):
                     raise ValueError('path_params must be a mapping if set')
 
                 query_params_raw = obj.get('query_params')
-                if (
-                    query_params_raw is not None
-                    and not isinstance(query_params_raw, Mapping)
+                if query_params_raw is not None and not isinstance(
+                    query_params_raw, Mapping,
                 ):
                     raise TypeError('query_params must be a mapping if set')
 

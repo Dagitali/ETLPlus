@@ -31,6 +31,7 @@ See Also
     :mod:`etlplus.config.types.ConnectorDbConfigMap`,
     :mod:`etlplus.config.types.ConnectorFileConfigMap`.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -59,11 +60,11 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 
 __all__ = [
     # Classes
-    'ConnectorApi', 'ConnectorDb', 'ConnectorFile',
-
+    'ConnectorApi',
+    'ConnectorDb',
+    'ConnectorFile',
     # Functions
     'parse_connector',
-
     # Type aliases
     'Connector',
 ]
@@ -360,8 +361,8 @@ def parse_connector(obj: Mapping[str, Any]) -> Connector:
             return ConnectorApi.from_obj(obj)
         case _:
             raise TypeError(
-                'Unsupported connector type; expected one of '
-                '{file, database, api}',
+                'Unsupported connector type; '
+                'expected one of {file, database, api}',
             )
 
 

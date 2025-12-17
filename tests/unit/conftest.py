@@ -7,6 +7,7 @@ Notes
 -----
 - Fixtures are designed for reuse and DRY test setup.
 """
+
 from __future__ import annotations
 
 import csv
@@ -105,6 +106,7 @@ def api_profile_defaults_factory() -> Callable[..., dict[str, Any]]:
     ...     headers={'X': '1'},
     ... )
     """
+
     def _make(
         *,
         pagination: dict[str, Any] | None = None,
@@ -171,6 +173,7 @@ def client_factory() -> Callable[..., EndpointClient]:
     Callable[..., EndpointClient]
         Function that builds :class:`EndpointClient` instances.
     """
+
     def _make(
         *,
         base_url: str = 'https://api.example.com',
@@ -196,6 +199,7 @@ def cursor_cfg() -> Callable[..., CursorPaginationConfigMap]:
     Callable[..., CursorPaginationConfigMap]
         Function that builds :class:`CursorPaginationConfigMap` instances.
     """
+
     def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfigMap:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
@@ -214,6 +218,7 @@ def offset_cfg() -> Callable[..., PagePaginationConfigMap]:
     Callable[..., PagePaginationConfigMap]
         Function that builds PagePaginationConfigMap instances.
     """
+
     def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'offset'}
         base.update(kwargs)
@@ -360,6 +365,7 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
+
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
         monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
@@ -394,6 +400,7 @@ def page_cfg() -> Callable[..., PagePaginationConfigMap]:
     Callable[..., PagePaginationConfigMap]
         Function that builds :class:`PagePaginationConfigMap` instances.
     """
+
     def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
@@ -414,6 +421,7 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
         Function that builds retry configuration dicts for
         :class:`EndpointClient`.
     """
+
     def _make(**kwargs: Any) -> dict[str, Any]:
         base: dict[str, Any] = {
             'max_attempts': kwargs.pop('max_attempts', 3),
@@ -452,7 +460,7 @@ def token_sequence(
     ) -> object:
         calls['n'] += 1
         # _Resp is defined in test_u_auth.py, so return a dict for generality.
-        return {'access_token': f"t{calls['n']}", 'expires_in': 60}
+        return {'access_token': f't{calls["n"]}', 'expires_in': 60}
 
     monkeypatch.setattr(requests, 'post', fake_post)
 
@@ -472,6 +480,7 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
     Callable[[dict[str, Any]], ApiConfig]
         Function that builds ApiConfig instances from dicts.
     """
+
     def _make(obj: dict[str, Any]) -> ApiConfig:
         return ApiConfig.from_obj(obj)
 
@@ -504,6 +513,7 @@ def api_obj_factory_fixture(
     >>> obj = api_obj_factory(base_path='/v1', headers={'X': '1'})
     ... cfg = ApiConfig.from_obj(obj)
     """
+
     def _make(
         *,
         use_profiles: bool | None = False,
@@ -559,6 +569,7 @@ def endpoint_config_factory() -> Callable[[str], EndpointConfig]:
     Callable[[str], EndpointConfig]
         Function that builds :class:`EndpointConfig` instances.
     """
+
     def _make(obj: str) -> EndpointConfig:
         return EndpointConfig.from_obj(obj)
 
@@ -576,6 +587,7 @@ def pagination_config_factory() -> Callable[..., PaginationConfig]:
     Callable[..., PaginationConfig]
         Function that builds :class:`PaginationConfig` instances.
     """
+
     def _make(**kwargs: Any) -> PaginationConfig:  # noqa: ANN401
         return PaginationConfig(**kwargs)
 
@@ -584,7 +596,8 @@ def pagination_config_factory() -> Callable[..., PaginationConfig]:
 
 @pytest.fixture
 def pagination_from_obj_factory() -> Callable[
-    [Any], PaginationConfig,
+    [Any],
+    PaginationConfig,
 ]:
     """
     Create a factory to build :class:`PaginationConfig` via `from_obj` mapping.
@@ -594,6 +607,7 @@ def pagination_from_obj_factory() -> Callable[
     Callable[[Any], PaginationConfig]
         Function that builds :class:`PaginationConfig` instances from mapping.
     """
+
     def _make(obj: PaginationConfigMap) -> PaginationConfig:  # noqa: ANN401
         return PaginationConfig.from_obj(obj)
 
@@ -611,6 +625,7 @@ def pipeline_yaml_factory() -> Callable[[str, Path], Path]:
     Callable[[str, Path], Path]
         Function that writes YAML to a temporary file and returns the path.
     """
+
     def _make(yaml_text: str, tmp_dir: Path) -> Path:
         p = tmp_dir / 'cfg.yml'
         p.write_text(yaml_text.strip(), encoding='utf-8')
@@ -629,6 +644,7 @@ def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
     Callable[..., PipelineConfig]
         Function that builds :class:`PipelineConfig` from a YAML file.
     """
+
     def _make(
         path: Path,
         *,
@@ -654,6 +670,7 @@ def profile_config_factory() -> Callable[[dict[str, Any]], ApiProfileConfig]:
     Callable[[dict[str, Any]], ApiProfileConfig]
         Function that builds :class:`ApiProfileConfig` instances.
     """
+
     def _make(obj: dict[str, Any]) -> ApiProfileConfig:
         return ApiProfileConfig.from_obj(obj)
 
@@ -671,6 +688,7 @@ def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
     Callable[..., RateLimitConfig]
         Function that builds :class:`RateLimitConfig` instances.
     """
+
     def _make(**kwargs: Any) -> RateLimitConfig:  # noqa: ANN401
         return RateLimitConfig(**kwargs)
 
@@ -679,7 +697,8 @@ def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
 
 @pytest.fixture
 def rate_limit_from_obj_factory() -> Callable[
-    [RateLimitConfigMap], RateLimitConfig,
+    [RateLimitConfigMap],
+    RateLimitConfig,
 ]:
     """
     Create a factory to build :class:`RateLimitConfig` via `from_obj` mapping.
@@ -689,6 +708,7 @@ def rate_limit_from_obj_factory() -> Callable[
     Callable[[RateLimitConfigMap], RateLimitConfig]
         Function that builds :class:`RateLimitConfig` from mapping.
     """
+
     def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
         return RateLimitConfig.from_obj(obj)
 
@@ -738,14 +758,17 @@ def csv_writer() -> Callable[[str], None]:
     Callable[[str], None]
         Function that writes a sample CSV file to the given path.
     """
+
     def _write(path: str) -> None:
         with open(path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=['name', 'age'])
             writer.writeheader()
-            writer.writerows([
-                {'name': 'John', 'age': '30'},
-                {'name': 'Jane', 'age': '25'},
-            ])
+            writer.writerows(
+                [
+                    {'name': 'John', 'age': '30'},
+                    {'name': 'Jane', 'age': '25'},
+                ],
+            )
 
     return _write
 
@@ -762,9 +785,12 @@ def temp_json_file() -> Callable[[dict[str, Any]], str]:
         Function that writes a dict to a temporary JSON file and returns its
         path.
     """
+
     def _write(data: dict[str, Any]) -> str:
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
+            mode='w',
+            suffix='.json',
+            delete=False,
         ) as f:
             json.dump(data, f)
             return f.name

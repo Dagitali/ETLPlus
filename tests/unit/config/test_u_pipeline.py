@@ -9,6 +9,7 @@ Notes
 - Uses internal ``_build_connectors`` helper to exercise parsing logic.
 - Validates profile environment is included in substitution.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -79,7 +80,7 @@ class TestPipelineBuildConnectors:
                     'api': 'hub',
                     'endpoint': 'post',
                 },
-                {'name': 'bad', 'type': 'unknown'},   # Skipped.
+                {'name': 'bad', 'type': 'unknown'},  # Skipped.
             ],
         }
 

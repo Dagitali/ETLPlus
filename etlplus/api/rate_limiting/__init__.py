@@ -15,6 +15,7 @@ Notes
 - Utilities are intentionally minimal and orthogonal to the rest of the API
     surface, following KISS and high cohesion/low coupling principles.
 """
+
 from __future__ import annotations
 
 from .config import RateLimitConfig
@@ -28,13 +29,10 @@ from .rate_limiter import RateLimiter
 __all__ = [
     # Classes
     'RateLimiter',
-
     # Data Classes
     'RateLimitConfig',
-
     # Type Aliases
     'RateLimitOverrides',
-
     # Type Dicts
     'RateLimitConfigMap',
 ]

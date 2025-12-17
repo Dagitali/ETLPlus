@@ -3,6 +3,7 @@
 
 Small shared helpers used across modules.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,27 +24,22 @@ __all__ = [
     'count_records',
     'json_type',
     'print_json',
-
     # Mapping utilities
     'cast_str_dict',
     'coerce_dict',
     'maybe_mapping',
-
     # Float coercion
     'to_float',
     'to_maximum_float',
     'to_minimum_float',
     'to_positive_float',
-
     # Int coercion
     'to_int',
     'to_maximum_int',
     'to_minimum_int',
     'to_positive_int',
-
     # Generic number coercion
     'to_number',
-
     # Text processing
     'normalized_str',
 ]
@@ -615,11 +611,7 @@ def _validate_bounds(
     ValueError
         If both bounds are provided and ``minimum > maximum``.
     """
-    if (
-        minimum is not None
-        and maximum is not None
-        and minimum > maximum
-    ):
+    if minimum is not None and maximum is not None and minimum > maximum:
         raise ValueError('minimum cannot exceed maximum')
     return minimum, maximum
 
