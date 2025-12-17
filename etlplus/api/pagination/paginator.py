@@ -457,17 +457,15 @@ class Paginator:
 
         while True:
             self.last_page = pages + 1
-            overrides = {
-                self.cursor_param: cursor,
-            } if cursor is not None else None
-            combined: dict[str, Any] = (
-                {self.limit_param: self.page_size} |
-                dict(request.params or {})
+            overrides = (
+                {self.cursor_param: cursor} if cursor is not None else None
             )
+            combined: dict[str, Any] = {
+                self.limit_param: self.page_size,
+            } | dict(request.params or {})
             if overrides:
                 combined |= {
-                    k: v for k, v in overrides.items()
-                    if v is not None
+                    k: v for k, v in overrides.items() if v is not None
                 }
             req_options = request.evolve(params=combined)
 
@@ -687,8 +685,7 @@ class Paginator:
             data = None
 
         if fallback_path and (
-            data is None or
-            (isinstance(data, list) and not data)
+            data is None or (isinstance(data, list) and not data)
         ):
             fallback = resolver(fallback_path)
             if fallback is not _MISSING:
