@@ -44,10 +44,13 @@ __all__ = [
     # Enums
     'PaginationType',
 
+    # Type Aliases
+    'PaginationConfigMap',
+    'PaginationInput',
+
     # Typed Dicts
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
-    'PaginationConfigMap',
 ]
 
 
@@ -189,6 +192,10 @@ class PagePaginationConfigMap(TypedDict, total=False):
 
 
 type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+
+# External callers may pass either a raw mapping-shaped config or an already
+# constructed PaginationConfig instance, or omit pagination entirely.
+type PaginationInput = PaginationConfigMap | 'PaginationConfig' | None
 
 
 # SECTION: DATA CLASSES ===================================================== #
