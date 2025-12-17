@@ -16,6 +16,7 @@ Examples
     python tools/run_pipeline.py --config in/pipeline.yml \
         --job api_to_file_github_repos
 """
+
 from __future__ import annotations
 
 import argparse
@@ -118,8 +119,11 @@ def _extract_from_source(
         rate = {**rate, **resolve(ov.get('rate_limit', {}))}
         sleep_s = rate.get('sleep_seconds')
         max_per_sec = rate.get('max_per_sec')
-        if sleep_s is None and isinstance(max_per_sec, (int, float)) and \
-                max_per_sec > 0:
+        if (
+            sleep_s is None
+            and isinstance(max_per_sec, (int, float))
+            and max_per_sec > 0
+        ):
             sleep_s = 1.0 / float(max_per_sec)
         if not isinstance(sleep_s, (int, float)):
             sleep_s = 0.0
@@ -158,8 +162,7 @@ def _extract_from_source(
                 data = None
 
             if fallback_path and (
-                data is None
-                or (isinstance(data, list) and not data)
+                data is None or (isinstance(data, list) and not data)
             ):
                 fb = _get_path(x, fallback_path)
                 if fb is not _missing:
@@ -196,7 +199,11 @@ def _extract_from_source(
             if 'timeout' in ov:
                 req_kwargs['timeout'] = ov['timeout']
                 return extract(
-                    stype, url, file_format=None, method='GET', **req_kwargs,
+                    stype,
+                    url,
+                    file_format=None,
+                    method='GET',
+                    **req_kwargs,
                 )
 
         results: JSONList = []
@@ -222,7 +229,11 @@ def _extract_from_source(
                     req_kwargs['timeout'] = ov['timeout']
 
                 page_data = extract(
-                    stype, url, file_format=None, method='GET', **req_kwargs,
+                    stype,
+                    url,
+                    file_format=None,
+                    method='GET',
+                    **req_kwargs,
                 )
                 batch = _coalesce_records(page_data)
                 results.extend(batch)
@@ -263,7 +274,11 @@ def _extract_from_source(
                     req_kwargs['timeout'] = ov['timeout']
 
                 page_data = extract(
-                    stype, url, file_format=None, method='GET', **req_kwargs,
+                    stype,
+                    url,
+                    file_format=None,
+                    method='GET',
+                    **req_kwargs,
                 )
                 batch = _coalesce_records(page_data)
                 results.extend(batch)
@@ -308,7 +323,11 @@ def _extract_from_source(
         if 'timeout' in ov:
             req_kwargs['timeout'] = ov['timeout']
         return extract(
-            stype, url, file_format=None, method='GET', **req_kwargs,
+            stype,
+            url,
+            file_format=None,
+            method='GET',
+            **req_kwargs,
         )
 
     if stype == 'database':
@@ -346,10 +365,12 @@ def _load_to_target(
     if ttype == 'api':
         url = resolve(ov.get('url', target_cfg.get('url')))
         method = ov.get('method', target_cfg.get('method', 'post'))
-        headers = resolve({
-            **target_cfg.get('headers', {}),
-            **ov.get('headers', {}),
-        })
+        headers = resolve(
+            {
+                **target_cfg.get('headers', {}),
+                **ov.get('headers', {}),
+            },
+        )
         kwargs: JSONDict = {}
         if headers:
             kwargs['headers'] = headers
@@ -452,7 +473,10 @@ def main(
     source_obj = sources_by_name[source_name]
     extract_overrides = extract_cfg.get('options', {})
     data = _extract_from_source(
-        source_obj, extract_overrides, vars_map, env_map,
+        source_obj,
+        extract_overrides,
+        vars_map,
+        env_map,
     )
 
     # Validate (optional) with severity/phase.
@@ -515,11 +539,17 @@ def main(
     load_overrides = load_cfg.get('overrides', {})
 
     result = _load_to_target(
-        data, target_obj, load_overrides, vars_map, env_map,
+        data,
+        target_obj,
+        load_overrides,
+        vars_map,
+        env_map,
     )
     print(
         json.dumps(
-            {'status': 'ok', 'result': result}, indent=2, ensure_ascii=False,
+            {'status': 'ok', 'result': result},
+            indent=2,
+            ensure_ascii=False,
         ),
     )
     return 0

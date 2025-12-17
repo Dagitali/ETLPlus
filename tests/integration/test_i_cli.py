@@ -11,6 +11,7 @@ Notes
 - Tests extract/validate/transform/load flows via CLI arguments.
 - Uses ``tempfile`` and ``pathlib.Path`` for filesystem isolation.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,7 +31,8 @@ class TestCliEndToEnd:
     """Integration test suite for :mod:`etlplus.cli`."""
 
     def test_extract_format_error_strict_flag(
-        self, monkeypatch: MonkeyPatch,
+        self,
+        monkeypatch: MonkeyPatch,
         capsys: CaptureFixture[str],
     ) -> None:
         """
@@ -38,7 +40,9 @@ class TestCliEndToEnd:
         errors.
         """
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
+            mode='w',
+            suffix='.json',
+            delete=False,
         ) as f:
             json.dump({'x': 1}, f)
             temp_path = f.name
@@ -47,8 +51,13 @@ class TestCliEndToEnd:
                 sys,
                 'argv',
                 [
-                    'etlplus', 'extract', 'file', temp_path,
-                    '--format', 'json',  '--strict-format',
+                    'etlplus',
+                    'extract',
+                    'file',
+                    temp_path,
+                    '--format',
+                    'json',
+                    '--strict-format',
                 ],
             )
             result = main()
@@ -68,7 +77,9 @@ class TestCliEndToEnd:
         warns.
         """
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
+            mode='w',
+            suffix='.json',
+            delete=False,
         ) as f:
             json.dump({'x': 1}, f)
             temp_path = f.name
@@ -77,8 +88,12 @@ class TestCliEndToEnd:
                 sys,
                 'argv',
                 [
-                    'etlplus', 'extract', 'file', temp_path,
-                    '--format', 'json',
+                    'etlplus',
+                    'extract',
+                    'file',
+                    temp_path,
+                    '--format',
+                    'json',
                 ],
             )
             result = main()
@@ -104,8 +119,14 @@ class TestCliEndToEnd:
                 sys,
                 'argv',
                 [
-                    'etlplus', 'load', json_data, 'file', str(output_path),
-                    '--format', 'csv', '--strict-format',
+                    'etlplus',
+                    'load',
+                    json_data,
+                    'file',
+                    str(output_path),
+                    '--format',
+                    'csv',
+                    '--strict-format',
                 ],
             )
             result = main()
@@ -115,7 +136,8 @@ class TestCliEndToEnd:
             assert not output_path.exists()
 
     def test_load_format_warns_default(
-        self, monkeypatch: MonkeyPatch,
+        self,
+        monkeypatch: MonkeyPatch,
         capsys: CaptureFixture[str],
     ) -> None:
         """
@@ -128,8 +150,13 @@ class TestCliEndToEnd:
                 sys,
                 'argv',
                 [
-                    'etlplus', 'load', json_data, 'file', str(output_path),
-                    '--format', 'csv',
+                    'etlplus',
+                    'load',
+                    json_data,
+                    'file',
+                    str(output_path),
+                    '--format',
+                    'csv',
                 ],
             )
             result = main()
@@ -161,7 +188,9 @@ class TestCliEndToEnd:
         Test that running :func:`main` with the ``extract`` file command works.
         """
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
+            mode='w',
+            suffix='.json',
+            delete=False,
         ) as f:
             test_data = {'name': 'John', 'age': 30}
             json.dump(test_data, f)
@@ -243,7 +272,9 @@ class TestCliEndToEnd:
         ``output`` option works.
         """
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False,
+            mode='w',
+            suffix='.json',
+            delete=False,
         ) as f:
             test_data = {'name': 'John', 'age': 30}
             json.dump(test_data, f)
@@ -255,8 +286,12 @@ class TestCliEndToEnd:
                     sys,
                     'argv',
                     [
-                        'etlplus', 'extract', 'file', temp_path,
-                        '-o', str(output_path),
+                        'etlplus',
+                        'extract',
+                        'file',
+                        temp_path,
+                        '-o',
+                        str(output_path),
                     ],
                 )
                 result = main()
@@ -298,8 +333,13 @@ class TestCliEndToEnd:
             sys,
             'argv',
             [
-                'etlplus', 'extract', 'file', 'data.csv',
-                '--format', 'csv', '--strict-format',
+                'etlplus',
+                'extract',
+                'file',
+                'data.csv',
+                '--format',
+                'csv',
+                '--strict-format',
             ],
         )
         result = main()

@@ -11,6 +11,7 @@ Notes
 - Centralizes temporary file creation via a fixture in conftest.py.
 - Class-based suite for clarity and DRYness.
 """
+
 from __future__ import annotations
 
 import csv
@@ -74,8 +75,11 @@ class TestLoad:
         """
         mock_data = {'test': 'data'}
         result = cast(
-            dict[str, Any], load(
-                mock_data, target_type, target,
+            dict[str, Any],
+            load(
+                mock_data,
+                target_type,
+                target,
             ),
         )
         assert result['status'] == expected_status
@@ -121,8 +125,12 @@ class TestLoad:
         path = tmp_path / f'output.{file_format}'
         write(str(path), expected_data)
         result = cast(
-            dict[str, Any], load(
-                expected_data, 'file', str(path), file_format=file_format,
+            dict[str, Any],
+            load(
+                expected_data,
+                'file',
+                str(path),
+                file_format=file_format,
             ),
         )
         assert result['status'] == 'success'
@@ -313,10 +321,12 @@ class TestLoadData:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+
         class _FakeStdin:
             def read(self) -> str:
                 """Simulate reading JSON data from stdin."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
+
         monkeypatch.setattr('sys.stdin', _FakeStdin())
         result = load_data('-')
         assert isinstance(result, dict)
@@ -402,7 +412,9 @@ class TestLoadToFile:
         output_path = tmp_path / 'output.csv'
         mock_data = {'name': 'John', 'age': 30}
         result: dict[str, Any] = load_to_file(
-            mock_data, str(output_path), 'csv',
+            mock_data,
+            str(output_path),
+            'csv',
         )
         assert result['status'] == 'success'
         assert output_path.exists()
@@ -422,13 +434,16 @@ class TestLoadToFile:
         output_path = tmp_path / 'subdir' / 'output.json'
         mock_data = {'test': 'data'}
         result: dict[str, Any] = load_to_file(
-            mock_data, str(output_path), 'json',
+            mock_data,
+            str(output_path),
+            'json',
         )
         assert result['status'] == 'success'
         assert output_path.exists()
 
     def test_to_file_unsupported_format(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """
         Test error raised for unsupported file format.
@@ -458,7 +473,9 @@ class TestLoadToFile:
         output_path = tmp_path / 'output.json'
         mock_data = {'name': 'John', 'age': 30}
         result: dict[str, Any] = load_to_file(
-            mock_data, str(output_path), 'json',
+            mock_data,
+            str(output_path),
+            'json',
         )
         assert result['status'] == 'success'
         assert output_path.exists()

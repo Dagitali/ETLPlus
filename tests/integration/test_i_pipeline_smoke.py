@@ -10,6 +10,7 @@ Notes
 - Invokes ``etlplus pipeline --run <job>`` end-to-end.
 - Validates output file contents against input data shape.
 """
+
 from __future__ import annotations
 
 import json

@@ -8,6 +8,7 @@ Notes
 - Mixins are stateless helpers.
 - ``__slots__`` prevents accidental attribute mutation at runtime.
 """
+
 from __future__ import annotations
 
 from typing import Final

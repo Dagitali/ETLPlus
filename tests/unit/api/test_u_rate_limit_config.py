@@ -8,6 +8,7 @@ Notes
 - Ensures graceful handling of non-mapping inputs and type coercion for
     rate limit configuration.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -114,6 +115,7 @@ class TestRateLimitConfig:
         rate_limit_from_obj_factory : Callable[[object], object]
             Factory for creating RateLimitConfig from mapping or iterable.
         """
+
         class Weird(Iterable):
             """A weird iterable that is not a mapping."""
 

@@ -13,6 +13,7 @@ Examples
 --------
 >>> pytest tests/unit/api/test_u_rate_limiter.py
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -66,11 +67,15 @@ class TestResolveSleepSeconds:
         'rate_limit, config, expected_sleep',
         [
             pytest.param(
-                {'sleep_seconds': -1}, None, 0.0,
+                {'sleep_seconds': -1},
+                None,
+                0.0,
                 id='negative_sleep_seconds',
             ),
             pytest.param(
-                None, {'max_per_sec': 'oops'}, 0.0,
+                None,
+                {'max_per_sec': 'oops'},
+                0.0,
                 id='non_numeric_max_per_sec',
             ),
         ],
@@ -95,31 +100,43 @@ class TestResolveSleepSeconds:
             The expected sleep seconds value.
         """
         overrides = cast(RateLimitConfigMap | None, config)
-        assert RateLimiter.resolve_sleep_seconds(
-            rate_limit=rate_limit,
-            overrides=overrides,
-        ) == expected_sleep
+        assert (
+            RateLimiter.resolve_sleep_seconds(
+                rate_limit=rate_limit,
+                overrides=overrides,
+            )
+            == expected_sleep
+        )
 
     def test_overrides_max_per_sec(self) -> None:
         """Test that max_per_sec in config overrides other values."""
-        assert RateLimiter.resolve_sleep_seconds(
-            rate_limit=None,
-            overrides={'max_per_sec': 4},
-        ) == 0.25
+        assert (
+            RateLimiter.resolve_sleep_seconds(
+                rate_limit=None,
+                overrides={'max_per_sec': 4},
+            )
+            == 0.25
+        )
 
     def test_overrides_sleep_seconds(self) -> None:
         """Test that sleep_seconds in config overrides other values."""
-        assert RateLimiter.resolve_sleep_seconds(
-            rate_limit=None,
-            overrides={'sleep_seconds': 0.2},
-        ) == 0.2
+        assert (
+            RateLimiter.resolve_sleep_seconds(
+                rate_limit=None,
+                overrides={'sleep_seconds': 0.2},
+            )
+            == 0.2
+        )
 
     def test_rate_limit_fallback(self) -> None:
         """Test fallback to rate limit config when override is None."""
-        assert RateLimiter.resolve_sleep_seconds(
-            rate_limit={'max_per_sec': 2},
-            overrides=None,
-        ) == 0.5
+        assert (
+            RateLimiter.resolve_sleep_seconds(
+                rate_limit={'max_per_sec': 2},
+                overrides=None,
+            )
+            == 0.5
+        )
 
     def test_sleep_seconds_precedence(self) -> None:
         """Sleep seconds take precedence over max_per_sec when both set."""
@@ -337,6 +354,7 @@ class TestRateLimiterEnforce:
         def fake_sleep(value: float) -> None:  # pragma: no cover
             # Should not run.
             calls.append(value)
+
         monkeypatch.setattr(
             'etlplus.api.rate_limiting.rate_limiter.time.sleep',
             fake_sleep,

@@ -8,6 +8,7 @@ Notes
 - Uses small in-memory datasets to validate each operation.
 - Ensures stable behavior for edge cases (empty inputs, missing fields).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -59,11 +60,12 @@ class TestApplyAggregate:
             {'name': 'Bob', 'value': 15},
         ]
         result = apply_aggregate(data, {'field': 'value', 'func': func})
-        key = f"{func}_value" if func != 'count' else 'count_value'
+        key = f'{func}_value' if func != 'count' else 'count_value'
         assert result[key] == expected_result
 
     def test_aggregate_callable_with_alias(self) -> None:
         """Test aggregating with a callable and custom alias."""
+
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
 
@@ -439,8 +441,7 @@ class TestTransform:
                     {
                         'field': 'city',
                         'op': (
-                            lambda value, prefix:
-                                str(value).startswith(prefix)
+                            lambda value, prefix: str(value).startswith(prefix)
                         ),
                         'value': 'New',
                     },

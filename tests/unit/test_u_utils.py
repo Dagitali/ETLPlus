@@ -7,6 +7,7 @@ Notes
 -----
 - Unit tests for shared numeric coercion helpers.
 """
+
 from __future__ import annotations
 
 import pytest

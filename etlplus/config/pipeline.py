@@ -12,6 +12,7 @@ Notes
 - Optional variable substitution merges ``profile.env`` (lower precedence)
     with the provided/environment variables (higher precedence).
 """
+
 from __future__ import annotations
 
 import os
@@ -57,7 +58,7 @@ def _build_jobs(
         Parsed job configurations.
     """
     jobs: list[JobConfig] = []
-    for job_raw in (raw.get('jobs', []) or []):
+    for job_raw in raw.get('jobs', []) or []:
         job_cfg = JobConfig.from_obj(job_raw)
         if job_cfg is not None:
             jobs.append(job_cfg)
@@ -125,7 +126,7 @@ def _build_connectors(
         Constructed connector instances (malformed entries skipped).
     """
     items: list[Connector] = []
-    for obj in (raw.get(key, []) or []):
+    for obj in raw.get(key, []) or []:
         if not (entry := maybe_mapping(obj)):
             continue
         try:
@@ -252,9 +253,7 @@ class PipelineConfig:
             # Merge order: profile.env first (lowest), then provided env or
             # os.environ (highest). External env overrides profile defaults.
             base_env = dict(getattr(cfg.profile, 'env', {}) or {})
-            external = (
-                dict(env) if env is not None else dict(os.environ)
-            )
+            external = dict(env) if env is not None else dict(os.environ)
             env_map = base_env | external
             resolved = deep_substitute(raw, cfg.vars, env_map)
             cfg = cls.from_dict(resolved)

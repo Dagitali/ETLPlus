@@ -8,6 +8,7 @@ Notes
 - Provides ``MockResponse`` with a simplified ``json`` implementation.
 - Provides ``MockSession`` capturing ``get`` calls and close state.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -41,9 +42,11 @@ class MockResponse(Response):  # pragma: no cover - behavior trivial
         super().__init__()
         self._payload = payload
         self.status_code = 200
-        self.headers = CaseInsensitiveDict({
-            'content-type': 'application/json',
-        })
+        self.headers = CaseInsensitiveDict(
+            {
+                'content-type': 'application/json',
+            },
+        )
 
     # -- Instance Methods -- #
 

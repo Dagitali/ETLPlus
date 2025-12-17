@@ -3,6 +3,7 @@
 
 Unit tests for :mod:`etlplus.api.retry_manager` helpers.
 """
+
 from __future__ import annotations
 
 from typing import cast

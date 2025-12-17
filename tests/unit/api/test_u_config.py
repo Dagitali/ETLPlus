@@ -9,6 +9,7 @@ Notes
 - Uses factories for building profile defaults mappings.
 - Verifies precedence and propagation of headers and ``base_path``.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -342,6 +343,7 @@ class TestApiProfileConfig:
     Tests parsing and precedence of defaults, headers, and required fields in
     API profile configuration.
     """
+
     @pytest.mark.parametrize(
         'defaults',
         [
@@ -431,19 +433,23 @@ class TestApiProfileConfig:
             'base_url': 'https://api.example.com',
             'defaults': api_profile_defaults_factory(
                 pagination={
-                    'type': 'page', 'page_param': 'p', 'size_param': 's',
+                    'type': 'page',
+                    'page_param': 'p',
+                    'size_param': 's',
                 },
                 rate_limit={'sleep_seconds': 0.1, 'max_per_sec': 5},
             ),
         }
         prof = profile_config_factory(obj)
 
-    # Ensure types are parsed.
+        # Ensure types are parsed.
         assert isinstance(
-            prof.pagination_defaults, (PaginationConfig, type(None)),
+            prof.pagination_defaults,
+            (PaginationConfig, type(None)),
         )
         assert isinstance(
-            prof.rate_limit_defaults, (RateLimitConfig, type(None)),
+            prof.rate_limit_defaults,
+            (RateLimitConfig, type(None)),
         )
 
         # Spot-check key fields.
@@ -515,13 +521,15 @@ class TestEndpointConfig:
         endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
             Factory for building :class:`EndpointConfig` from dicts.
         """
-        ep = endpoint_config_factory({
-            'method': 'POST',
-            'path': '/users/{id}/avatar',
-            'path_params': {'id': 'int'},
-            'query_params': {'size': 'large'},
-            'body': {'type': 'file', 'file_path': './x.png'},
-        })
+        ep = endpoint_config_factory(
+            {
+                'method': 'POST',
+                'path': '/users/{id}/avatar',
+                'path_params': {'id': 'int'},
+                'query_params': {'size': 'large'},
+                'body': {'type': 'file', 'file_path': './x.png'},
+            },
+        )
         assert ep.method == 'POST'
         assert ep.path_params == {'id': 'int'}
         assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
@@ -558,8 +566,10 @@ class TestEndpointConfig:
             ),  # int -> dict() raises TypeError
         ],
         ids=[
-            'missing-path', 'path-not-str',
-            'path_params-not-mapping', 'query_params-not-mapping',
+            'missing-path',
+            'path-not-str',
+            'path_params-not-mapping',
+            'query_params-not-mapping',
         ],
     )
     def test_invalid_payloads_raise(
@@ -615,11 +625,13 @@ class TestEndpointConfig:
         endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
             Factory for building :class:`EndpointConfig` from dicts.
         """
-        ep = endpoint_config_factory({
-            'method': 'GET',
-            'path': '/users',
-            'query_params': {'active': True},
-        })
+        ep = endpoint_config_factory(
+            {
+                'method': 'GET',
+                'path': '/users',
+                'query_params': {'active': True},
+            },
+        )
         assert ep.path == '/users'
         assert ep.method == 'GET'
         assert ep.query_params.get('active') is True

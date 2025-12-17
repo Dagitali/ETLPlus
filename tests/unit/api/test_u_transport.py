@@ -13,6 +13,7 @@ Examples
 --------
 >>> pytest tests/unit/api/test_u_transport.py
 """
+
 from __future__ import annotations
 
 import pytest
@@ -48,11 +49,11 @@ class TestBuildHttpAdapter:
         adapter = build_http_adapter(cfg)
         assert adapter is not None
 
-    # Should be mountable on :class:`requests.Session`.
+        # Should be mountable on :class:`requests.Session`.
         s = requests.Session()
         s.mount('https://', adapter)
 
-    # max_retries is either an int or a urllib3 Retry instance.
+        # max_retries is either an int or a urllib3 Retry instance.
         mr = adapter.max_retries
         if isinstance(mr, int):
             assert mr == 3 or mr == 0

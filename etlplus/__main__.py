@@ -4,6 +4,7 @@
 Thin wrapper supporting `python -m etlplus` by delegating to the CLI
 entrypoint.
 """
+
 from .cli import main
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #

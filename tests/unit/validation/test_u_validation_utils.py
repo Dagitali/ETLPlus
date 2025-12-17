@@ -9,6 +9,7 @@ Notes
 - Uses factories for building profile defaults mappings.
 - Verifies precedence and propagation of headers and ``base_path``.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -22,6 +23,7 @@ from etlplus.validation.utils import ValidationResult
 def _printer(messages: list[dict[str, object]]):
     def _inner(message: dict[str, object]) -> None:
         messages.append(message)
+
     return _inner
 
 
@@ -136,6 +138,7 @@ def test_success_returns_result_data() -> None:
     """
     Test that validation returns the mutated data when validation succeeds.
     """
+
     def validator(_payload, _rules) -> ValidationResult:
         return ValidationResult(valid=True, data={'mutated': True})
 

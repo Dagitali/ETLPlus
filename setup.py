@@ -11,6 +11,7 @@ Notes
 - Requires Python >= 3.8 (see ``python_requires``).
 - Development extras are provided under ``extras_require['dev']``.
 """
+
 from setuptools import find_packages
 from setuptools import setup
 
@@ -22,7 +23,7 @@ with open('README.md', encoding='utf-8') as fh:
 
 setup(
     name='etlplus',
-    version='0.3.0',
+    version='0.3.1',
     author='ETLPlus Team',
     description='A Swiss Army knife for enabling simple ETL operations',
     long_description=long_description,

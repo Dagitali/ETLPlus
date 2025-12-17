@@ -12,6 +12,7 @@ Notes
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
+
 from __future__ import annotations
 
 import json

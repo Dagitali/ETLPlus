@@ -4,6 +4,7 @@
 Shared helpers for reading and writing structured and semi-structured data
 files.
 """
+
 from __future__ import annotations
 
 import csv
@@ -47,6 +48,7 @@ _YAML_CACHE: dict[str, Any] = {}
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
+
 
 def _dict_to_element(
     name: str,
@@ -224,9 +226,11 @@ class File:
         FileFormat
             The resolved file format.
         """
-        return self.file_format \
-            if self.file_format is not None \
+        return (
+            self.file_format
+            if self.file_format is not None
             else self._guess_format()
+        )
 
     def _guess_format(self) -> FileFormat:
         """
@@ -247,8 +251,8 @@ class File:
             return _EXT_TO_FORMAT[ext]
         except KeyError as e:
             raise ValueError(
-                'Cannot infer file format from extension '
-                f'{self.path.suffix!r}',
+                'Cannot infer file format from '
+                f'extension {self.path.suffix!r}',
             ) from e
 
     # -- Instance Methods (Generic API) -- #

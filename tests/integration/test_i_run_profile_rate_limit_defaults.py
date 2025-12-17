@@ -13,6 +13,7 @@ Notes
 - Uses ``run_patched`` to inject forced sleep seconds when computing from
     ``max_per_sec``.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

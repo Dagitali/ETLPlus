@@ -11,6 +11,7 @@ Notes
 - All attributes are simple and optional where appropriate, keeping parsing
     tolerant.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -270,7 +271,7 @@ class ValidationRef:
 
     ruleset: str
     severity: str | None = None  # warn|error
-    phase: str | None = None     # before_transform|after_transform|both
+    phase: str | None = None  # before_transform|after_transform|both
 
     # -- Class Methods -- #
 

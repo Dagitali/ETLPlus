@@ -35,6 +35,7 @@ Using enums for keys and functions::
     }
     result = transform(data, ops)
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -194,7 +195,8 @@ def _normalize_specs(
     if config is None:
         return []
     if isinstance(config, Sequence) and not isinstance(
-        config, (str, bytes, bytearray),
+        config,
+        (str, bytes, bytearray),
     ):
         # Already a sequence of step specs; normalize to a list.
         return list(config)  # type: ignore[list-item]
@@ -331,6 +333,7 @@ def _resolve_operator(
     TypeError
         If *op* cannot be interpreted as an operator.
     """
+
     def _wrap_numeric(op_name: OperatorName) -> Callable[[Any, Any], bool]:
         base = op_name.func
         if op_name in {
@@ -341,12 +344,14 @@ def _resolve_operator(
             OperatorName.EQ,
             OperatorName.NE,
         }:
+
             def compare(a: Any, b: Any) -> bool:  # noqa: ANN401 - generic
                 a_num = to_number(a)
                 b_num = to_number(b)
                 if a_num is not None and b_num is not None:
                     return bool(base(a_num, b_num))
                 return bool(base(a, b))
+
             return compare
         # Non-numeric operators: use base behavior
         return base
@@ -469,7 +474,7 @@ def _derive_agg_key(
     else:
         label = str(func_raw)
 
-    return label if not field else f"{label}_{field}"
+    return label if not field else f'{label}_{field}'
 
 
 def _eval_condition(
@@ -525,7 +530,8 @@ def _eval_condition(
 
 
 def _apply_aggregate_step(
-    rows: JSONList, spec: AggregateSpec,
+    rows: JSONList,
+    spec: AggregateSpec,
 ) -> JSONList:
     """
     Apply a single aggregate spec and return a one-row result list.
@@ -700,9 +706,11 @@ def _is_plain_fields_list(obj: Any) -> bool:
         True if obj is a non-text sequence of non-mapping items, False
         otherwise.
     """
-    return isinstance(obj, Sequence) \
-        and not isinstance(obj, (str, bytes, bytearray)) \
+    return (
+        isinstance(obj, Sequence)
+        and not isinstance(obj, (str, bytes, bytearray))
         and not any(isinstance(x, Mapping) for x in obj)
+    )
 
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
@@ -804,11 +812,13 @@ def apply_map(
             for old_key, new_key in rename_map.items()
             if old_key in record
         }
-        renamed.update({
-            key: value
-            for key, value in record.items()
-            if key not in rename_map
-        })
+        renamed.update(
+            {
+                key: value
+                for key, value in record.items()
+                if key not in rename_map
+            },
+        )
         result.append(renamed)
 
     return result
@@ -908,7 +918,7 @@ def apply_aggregate(
     try:
         aggregator = _resolve_aggregator(func)
     except TypeError:
-        return {'error': f"Unknown aggregation function: {func}"}
+        return {'error': f'Unknown aggregation function: {func}'}
 
     nums, present = _collect_numeric_and_presence(records, field)
     key_name = _derive_agg_key(func, field, alias)

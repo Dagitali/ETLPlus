@@ -8,6 +8,7 @@ Notes
 - Exercises type, required, and range checks on fields.
 - Uses temporary files to verify load/validate convenience helpers.
 """
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -43,7 +44,8 @@ class TestValidateField:
         assert 'required' in result['errors'][0].lower()
 
     @pytest.mark.parametrize(
-        'value, rule, expected_valid', [
+        'value, rule, expected_valid',
+        [
             (None, {'required': True}, False),
             ('test', {'type': 'string'}, True),
             (123, {'type': 'string'}, False),
