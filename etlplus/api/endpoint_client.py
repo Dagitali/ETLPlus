@@ -1,15 +1,18 @@
 """
 :mod:`etlplus.api.endpoint_client` module.
 
-Endpoint client utilities for registering endpoint paths, composing URLs, and
-paginating API responses with optional retries and rate limiting.
+Endpoint client for composing URLs, requests, and pagination.
+
+This module provides :class:`EndpointClient`, a small frozen dataclass that
+registers endpoint paths under a base URL, applies retry and rate-limiting
+policies, and wires pagination helpers to fetch JSON records from REST APIs.
 
 Notes
 -----
 - Retry-related types live in :mod:`etlplus.api.retry_manager`.
-- Pagination requires a ``PaginationConfig``. See
-    :class:`PagePaginationConfig` and :class:`CursorPaginationConfig` for the
-    accepted shapes.
+- Pagination requires a ``PaginationConfig``; see
+    :class:`PagePaginationConfigMap` and :class:`CursorPaginationConfigMap` for
+    the accepted shapes.
 
 Examples
 --------
