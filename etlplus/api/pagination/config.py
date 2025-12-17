@@ -339,9 +339,9 @@ class PaginationConfig(BoundsWarningsMixin):
         if params_blk := maybe_mapping(obj.get('params')):
             page_param = page_param or params_blk.get('page')
             size_param = (
-                size_param or params_blk.get(
-                    'per_page',
-                ) or params_blk.get('limit')
+                size_param
+                or params_blk.get('per_page')
+                or params_blk.get('limit')
             )
             cursor_param = cursor_param or params_blk.get('cursor')
             fallback_path = fallback_path or params_blk.get('fallback_path')
@@ -435,5 +435,6 @@ type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 # constructed PaginationConfig instance, or omit pagination entirely. Accept a
 # loose mapping here to reflect the runtime behavior while still providing
 # stronger TypedDict hints for common shapes.
-type PaginationInput = \
+type PaginationInput = (
     PaginationConfigMap | PaginationConfig | StrAnyMap | None
+)
