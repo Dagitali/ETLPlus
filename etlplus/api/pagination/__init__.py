@@ -23,6 +23,7 @@ from .config import CursorPaginationConfigMap
 from .config import PagePaginationConfigMap
 from .config import PaginationConfig
 from .config import PaginationConfigMap
+from .config import PaginationInput
 from .config import PaginationType
 from .paginator import Paginator
 
@@ -43,5 +44,6 @@ __all__ = [
     # Type Aliases
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
+    'PaginationInput',
     'PaginationConfigMap',
 ]
