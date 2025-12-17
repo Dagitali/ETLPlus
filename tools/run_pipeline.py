@@ -78,8 +78,7 @@ def _deep_substitute(
 
     if isinstance(value, dict):
         return {
-            k: _deep_substitute(v, vars_map, env_map)
-            for k, v in value.items()
+            k: _deep_substitute(v, vars_map, env_map) for k, v in value.items()
         }
 
     if isinstance(value, list):
