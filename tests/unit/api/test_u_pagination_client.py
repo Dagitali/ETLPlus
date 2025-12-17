@@ -9,6 +9,7 @@ Focus
 - Exercises the single-page fallback path honoring ``records_path``.
 - Verifies that post-mutation iteration delegates into :class:`Paginator`.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -15,10 +15,10 @@ Examples
 --------
 >>> pytest tests/unit/api/test_u_paginator.py
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator
-from collections.abc import Mapping
 from typing import Any
 from typing import cast
 
@@ -28,9 +28,10 @@ from etlplus.api import EndpointClient
 from etlplus.api import RateLimiter
 from etlplus.api import RequestOptions
 from etlplus.api.pagination import PagePaginationConfigMap
-from etlplus.api.pagination import PaginationConfigMap
+from etlplus.api.pagination import PaginationInput
 from etlplus.api.pagination import PaginationType
 from etlplus.api.pagination import Paginator
+from etlplus.api.rate_limiting import RateLimitConfigMap
 
 # SECTION: HELPERS ========================================================== #
 
@@ -66,12 +67,12 @@ class RecordingClient(EndpointClient):
     def paginate_url_iter(
         self,
         url: str,
-        pagination: PaginationConfigMap | None,
+        pagination: PaginationInput = None,
         *,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
-    ) -> Iterator[dict]:
+        rate_limit_overrides: RateLimitConfigMap | None = None,
+    ) -> Iterator[dict[str, Any]]:
         """Record arguments and yield a single marker record."""
         type(self)._paginate_calls.append(
             {
@@ -95,12 +96,12 @@ class FakePageClient(EndpointClient):
     def paginate_url_iter(
         self,
         url: str,
-        pagination: PaginationConfigMap | None,
+        pagination: PaginationInput = None,
         *,
         request: RequestOptions | None = None,
         sleep_seconds: float = 0.0,
-        rate_limit_overrides: Mapping[str, Any] | None = None,
-    ) -> Iterator[dict]:
+        rate_limit_overrides: RateLimitConfigMap | None = None,
+    ) -> Iterator[dict[str, Any]]:
         # Ignore all arguments; just simulate three records from two pages.
         _ = request  # keep signature compatibility while avoiding unused var
         yield {'id': 1}
@@ -148,10 +149,12 @@ class TestPaginator:
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
-        assert paginator.page_param == \
-            Paginator.PAGE_PARAMS[PaginationType.PAGE]
-        assert paginator.size_param == \
-            Paginator.SIZE_PARAMS[PaginationType.PAGE]
+        assert (
+            paginator.page_param == Paginator.PAGE_PARAMS[PaginationType.PAGE]
+        )
+        assert (
+            paginator.size_param == Paginator.SIZE_PARAMS[PaginationType.PAGE]
+        )
         assert paginator.limit_param == Paginator.LIMIT_PARAM
         assert paginator.cursor_param == Paginator.CURSOR_PARAM
         assert paginator.records_path is None

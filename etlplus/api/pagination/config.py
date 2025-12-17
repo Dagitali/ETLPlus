@@ -186,16 +186,6 @@ class PagePaginationConfigMap(TypedDict, total=False):
     page_size: int
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
-
-# External callers may pass either a raw mapping-shaped config or an already
-# constructed PaginationConfig instance, or omit pagination entirely.
-type PaginationInput = PaginationConfigMap | 'PaginationConfig' | None
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -434,3 +424,16 @@ class PaginationConfig(BoundsWarningsMixin):
             max_records=to_int(obj.get('max_records')),
             limit_param=obj.get('limit_param'),
         )
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+
+# External callers may pass either a raw mapping-shaped config or an already
+# constructed PaginationConfig instance, or omit pagination entirely. Accept a
+# loose mapping here to reflect the runtime behavior while still providing
+# stronger TypedDict hints for common shapes.
+type PaginationInput = \
+    PaginationConfigMap | PaginationConfig | StrAnyMap | None
