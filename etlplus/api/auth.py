@@ -427,7 +427,6 @@ class EndpointCredentialsBearer(AuthBase):
         bool
             ``True`` when a token is present and not expired.
         """
-        return (
-            self.token is not None and
-            time.time() < (self.expiry - CLOCK_SKEW_SEC)
+        return self.token is not None and time.time() < (
+            self.expiry - CLOCK_SKEW_SEC
         )
