@@ -2,6 +2,9 @@
 :mod:`etlplus.api.request_manager` module.
 
 HTTP request orchestration with retries and session lifecycle control.
+
+This module wraps ``requests`` sessions with retry-aware helpers that manage
+timeouts, HTTP adapters, and context-managed session lifecycles.
 """
 from __future__ import annotations
 
@@ -21,8 +24,8 @@ from ..types import JSONDict
 from ..types import Timeout
 from .errors import ApiAuthError
 from .errors import ApiRequestError
+from .retry_manager import RetryInput
 from .retry_manager import RetryManager
-from .retry_manager import RetryPolicy
 from .transport import HTTPAdapterMountConfig
 from .transport import build_session_with_adapters
 
@@ -87,7 +90,7 @@ class RequestManager:
 
     # -- Attributes -- #
 
-    retry: RetryPolicy | None = None
+    retry: RetryInput = None
     retry_network_errors: bool = False
     default_timeout: TimeoutInput = 10.0
     session: requests.Session | None = None
