@@ -127,6 +127,7 @@ def test_target_service_endpoint_uses_base_path(
 
     # Ensure headers merged include Content-Type from target.
     assert isinstance(capture_load_to_api['headers'], dict)
-    assert capture_load_to_api['headers'].get(
-        'Content-Type',
-    ) == 'application/json'
+    assert (
+        capture_load_to_api['headers'].get('Content-Type')
+        == 'application/json'
+    )

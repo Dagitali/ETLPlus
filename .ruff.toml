@@ -7,7 +7,7 @@
 #
 # Target Python 3.13, keep it fast and opinionated but not overbearing.
 
-line-length = 88
+line-length = 79  # 88 is Ruff's default, popularized by Black.
 target-version = "py313"
 
 [lint]

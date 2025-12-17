@@ -176,8 +176,8 @@ class TestPaginationConfig:
         # No page/offset or cursor-specific warnings for unknown types.
         assert not any('start_page should be >= 1' in w for w in warnings)
         assert not any(
-            'page_size should be > 0 for cursor pagination'
-            in w for w in warnings
+            'page_size should be > 0 for cursor pagination' in w
+            for w in warnings
         )
         assert not any('page_size should be > 0' in w for w in warnings)
 
@@ -228,14 +228,14 @@ class TestPaginationConfig:
             assert 'start_page should be >= 1' in warnings
             assert 'page_size should be > 0' in warnings
             assert not any(
-                'page_size should be > 0 for cursor pagination'
-                in w for w in warnings
+                'page_size should be > 0 for cursor pagination' in w
+                for w in warnings
             )
         else:  # cursor
             assert not any('start_page should be >= 1' in w for w in warnings)
             assert any(
-                'page_size should be > 0 for cursor pagination'
-                in w for w in warnings
+                'page_size should be > 0 for cursor pagination' in w
+                for w in warnings
             )
 
     def test_valid_values_no_warnings(
