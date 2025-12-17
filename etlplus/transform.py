@@ -590,7 +590,8 @@ def _apply_filter_step(
     op_func = _resolve_operator(op)
 
     return [
-        r for r in records
+        r
+        for r in records
         if _eval_condition(r, field, op_func, value, catch_all=True)
     ]
 
