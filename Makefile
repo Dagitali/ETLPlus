@@ -160,6 +160,13 @@ dev: venv ## Install package + dev tools (pytest, ruff, mypy, etc.)
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev]
 	@$(call ECHO_OK,"Installed etlplus + dev extras")
 
+.PHONY: dist
+dist: ## Build sdist and wheel into ./dist using pyproject.toml
+	@$(PYTHON) -m pip install --upgrade build twine >/dev/null
+	@$(PYTHON) -m build
+	@$(PYTHON) -m twine check dist/*
+	@$(call ECHO_OK,"Built and validated distribution artifacts in ./dist")
+
 .PHONY: fix
 fix: ## Auto-fix with ruff
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)
