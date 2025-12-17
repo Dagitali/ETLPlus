@@ -1,0 +1,22 @@
+---
+users:
+  - name: John Doe
+    email: john@example.com
+    age: 30
+    status: active
+  - name: Jane Smith
+    email: jane@example.com
+    age: 25
+    status: inactive
+  - name: Alice Johnson
+    email: alice@example.com
+    age: 27
+    status: active
+  - name: Bob Lee
+    email: bob@example.com
+    age: 22
+    status: active
+  - name: Maria Garcia
+    email: maria@example.com
+    age: 40
+    status: active
