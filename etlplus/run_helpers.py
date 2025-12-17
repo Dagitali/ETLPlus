@@ -411,19 +411,20 @@ def compose_api_request_env(
         _update_mapping(ep_params, params)
         params = ep_params
         pagination = (
-            pagination or
-            ep.pagination or
-            api_cfg.effective_pagination_defaults()
+            pagination
+            or ep.pagination
+            or api_cfg.effective_pagination_defaults()
         )
         rate_limit = (
-            rate_limit or
-            ep.rate_limit or
-            api_cfg.effective_rate_limit_defaults()
+            rate_limit
+            or ep.rate_limit
+            or api_cfg.effective_rate_limit_defaults()
         )
         retry = cast(
             RetryPolicy | None,
             (
-                retry or getattr(ep, 'retry', None)
+                retry
+                or getattr(ep, 'retry', None)
                 or getattr(api_cfg, 'retry', None)
             ),
         )
@@ -436,8 +437,7 @@ def compose_api_request_env(
         client_base_url = api_cfg.base_url
         client_base_path = api_cfg.effective_base_path()
         client_endpoints_map = {
-            k: v.path for k,
-            v in api_cfg.endpoints.items()
+            k: v.path for k, v in api_cfg.endpoints.items()
         }
         selected_endpoint_key = endpoint_name
     _update_mapping(
@@ -528,11 +528,9 @@ def compose_api_target_env(
         cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
     )
     _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
-    timeout: Timeout = cast(
-        Timeout, ov.get(
-            'timeout',
-        ),
-    ) if 'timeout' in ov else None
+    timeout: Timeout = (
+        cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
+    )
     sess_cfg: SessionConfig | None = cast(
         SessionConfig | None,
         ov.get('session'),
@@ -612,21 +610,21 @@ def build_pagination_cfg(
             page_size = overrides.get('page_size') if overrides else None
             if pagination:
                 page_param = (
-                    page_param or getattr(
-                        pagination, 'page_param', None,
-                    ) or 'page'
+                    page_param
+                    or getattr(pagination, 'page_param', None)
+                    or 'page'
                 )
                 size_param = (
-                    size_param or getattr(
-                        pagination, 'size_param', None,
-                    ) or 'per_page'
+                    size_param
+                    or getattr(pagination, 'size_param', None)
+                    or 'per_page'
                 )
-                start_page = start_page or getattr(
-                    pagination, 'start_page', None,
-                ) or 1
-                page_size = page_size or getattr(
-                    pagination, 'page_size', None,
-                ) or 100
+                start_page = (
+                    start_page or getattr(pagination, 'start_page', None) or 1
+                )
+                page_size = (
+                    page_size or getattr(pagination, 'page_size', None) or 100
+                )
             cfg.update(
                 {
                     'page_param': str(page_param or 'page'),
@@ -647,11 +645,13 @@ def build_pagination_cfg(
                     or 'cursor'
                 )
                 cursor_path = cursor_path or getattr(
-                    pagination, 'cursor_path', None,
+                    pagination,
+                    'cursor_path',
+                    None,
                 )
-                page_size = page_size or getattr(
-                    pagination, 'page_size', None,
-                ) or 100
+                page_size = (
+                    page_size or getattr(pagination, 'page_size', None) or 100
+                )
                 start_cursor = getattr(pagination, 'start_cursor', None)
             cfg.update(
                 {
