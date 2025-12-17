@@ -38,6 +38,8 @@ from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions
 from ..types import Url
+from .config import PaginationConfig
+from .config import PaginationInput
 from .config import PaginationType
 
 # SECTION: EXPORTS ========================================================== #
@@ -241,7 +243,7 @@ class Paginator:
     @classmethod
     def from_config(
         cls,
-        config: Mapping[str, Any],
+        config: PaginationInput,
         *,
         fetch: FetchPageCallable,
         rate_limiter: RateLimiter | None = None,
@@ -251,8 +253,8 @@ class Paginator:
 
         Parameters
         ----------
-        config : Mapping[str, Any]
-            Pagination configuration mapping.
+        config : PaginationInput
+            Pagination configuration mapping or :class:`PaginationConfig`.
         fetch : FetchPageCallable
             Callback used to fetch a single page for a request given the
             absolute URL, the request params mapping, and the 1-based page
@@ -265,26 +267,46 @@ class Paginator:
         Paginator
             Configured paginator instance.
         """
-        ptype = cls.detect_type(config, default=PaginationType.PAGE)
+        # Normalize configuration into a mapping for downstream helpers.
+        if isinstance(config, PaginationConfig):
+            cfg: Mapping[str, Any] = {
+                'type': config.type,
+                'page_param': config.page_param,
+                'size_param': config.size_param,
+                'start_page': config.start_page,
+                'page_size': config.page_size,
+                'cursor_param': config.cursor_param,
+                'cursor_path': config.cursor_path,
+                'start_cursor': config.start_cursor,
+                'records_path': config.records_path,
+                'fallback_path': config.fallback_path,
+                'max_pages': config.max_pages,
+                'max_records': config.max_records,
+                'limit_param': config.limit_param,
+            }
+        else:
+            cfg = cast(Mapping[str, Any], config or {})
+
+        ptype = cls.detect_type(cfg, default=PaginationType.PAGE)
         assert ptype is not None
 
         return cls(
             type=ptype,
-            page_size=to_positive_int(config.get('page_size'), cls.PAGE_SIZE),
+            page_size=to_positive_int(cfg.get('page_size'), cls.PAGE_SIZE),
             start_page=to_maximum_int(
-                config.get('start_page'),
+                cfg.get('start_page'),
                 cls.START_PAGES[ptype],
             ),
-            start_cursor=config.get('start_cursor'),
-            records_path=config.get('records_path'),
-            fallback_path=config.get('fallback_path'),
-            cursor_path=config.get('cursor_path'),
-            max_pages=to_int(config.get('max_pages'), None, minimum=1),
-            max_records=to_int(config.get('max_records'), None, minimum=1),
-            page_param=config.get('page_param', ''),
-            size_param=config.get('size_param', ''),
-            cursor_param=config.get('cursor_param', ''),
-            limit_param=config.get('limit_param', ''),
+            start_cursor=cfg.get('start_cursor'),
+            records_path=cfg.get('records_path'),
+            fallback_path=cfg.get('fallback_path'),
+            cursor_path=cfg.get('cursor_path'),
+            max_pages=to_int(cfg.get('max_pages'), None, minimum=1),
+            max_records=to_int(cfg.get('max_records'), None, minimum=1),
+            page_param=cfg.get('page_param', ''),
+            size_param=cfg.get('size_param', ''),
+            cursor_param=cfg.get('cursor_param', ''),
+            limit_param=cfg.get('limit_param', ''),
             fetch=fetch,
             rate_limiter=rate_limiter,
         )
