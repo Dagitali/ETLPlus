@@ -1,5 +1,5 @@
 """
-etlplus.config.pipeline module.
+:mod:`etlplus.config.pipeline` module.
 
 Pipeline configuration model and helpers for job orchestration.
 
@@ -22,19 +22,17 @@ from pathlib import Path
 from typing import Any
 from typing import Self
 
+from ..api import ApiConfig
 from ..enums import FileFormat
 from ..file import File
-from .api import ApiConfig
+from ..types import StrAnyMap
+from ..utils import coerce_dict
+from ..utils import maybe_mapping
+from .connector import Connector
 from .connector import parse_connector
-from .jobs import ExtractRef
 from .jobs import JobConfig
-from .jobs import LoadRef
-from .jobs import TransformRef
-from .jobs import ValidationRef
 from .profile import ProfileConfig
-from .types import Connector
 from .utils import deep_substitute
-
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -42,18 +40,15 @@ from .utils import deep_substitute
 __all__ = ['PipelineConfig', 'load_pipeline_config']
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
-
-
 def _build_jobs(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[JobConfig]:
     """
     Return a list of ``JobConfig`` objects parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -62,74 +57,23 @@ def _build_jobs(
         Parsed job configurations.
     """
     jobs: list[JobConfig] = []
-    for j in (raw.get('jobs', []) or []):
-        if not isinstance(j, dict):
-            continue
-        name = j.get('name')
-        if not isinstance(name, str):
-            continue
-        # Extract
-        extract = None
-        if (
-            isinstance(ex_raw := j.get('extract') or {}, dict)
-            and ex_raw.get('source')
-        ):
-            extract = ExtractRef(
-                source=str(ex_raw.get('source')),
-                options=dict(ex_raw.get('options', {}) or {}),
-            )
-        # Validate
-        validate = None
-        if (
-            isinstance(v_raw := j.get('validate') or {}, dict)
-            and v_raw.get('ruleset')
-        ):
-            validate = ValidationRef(
-                ruleset=str(v_raw.get('ruleset')),
-                severity=v_raw.get('severity'),
-                phase=v_raw.get('phase'),
-            )
-        # Transform
-        transform = None
-        if (
-            isinstance(tr_raw := j.get('transform') or {}, dict)
-            and tr_raw.get('pipeline')
-        ):
-            transform = TransformRef(pipeline=str(tr_raw.get('pipeline')))
-        # Load
-        load = None
-        if (
-            isinstance(ld_raw := j.get('load') or {}, dict)
-            and ld_raw.get('target')
-        ):
-            load = LoadRef(
-                target=str(ld_raw.get('target')),
-                overrides=dict(ld_raw.get('overrides', {}) or {}),
-            )
-
-        jobs.append(
-            JobConfig(
-                name=name,
-                description=j.get('description'),
-                extract=extract,
-                validate=validate,
-                transform=transform,
-                load=load,
-            ),
-        )
+    for job_raw in (raw.get('jobs', []) or []):
+        job_cfg = JobConfig.from_obj(job_raw)
+        if job_cfg is not None:
+            jobs.append(job_cfg)
 
     return jobs
 
 
 def _build_sources(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[Connector]:
     """
     Return a list of source connectors parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -141,14 +85,14 @@ def _build_sources(
 
 
 def _build_targets(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
 ) -> list[Connector]:
     """
     Return a list of target connectors parsed from the mapping.
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
 
     Returns
@@ -160,7 +104,7 @@ def _build_targets(
 
 
 def _build_connectors(
-    raw: Mapping[str, Any],
+    raw: StrAnyMap,
     key: str,
 ) -> list[Connector]:
     """
@@ -170,7 +114,7 @@ def _build_connectors(
 
     Parameters
     ----------
-    raw : Mapping[str, Any]
+    raw : StrAnyMap
         Raw pipeline mapping.
     key : str
         List-containing top-level key ("sources" or "targets").
@@ -182,10 +126,10 @@ def _build_connectors(
     """
     items: list[Connector] = []
     for obj in (raw.get(key, []) or []):
-        if not isinstance(obj, dict):
+        if not (entry := maybe_mapping(obj)):
             continue
         try:
-            items.append(parse_connector(obj))
+            items.append(parse_connector(entry))
         except TypeError:
             # Skip unsupported types or malformed entries
             continue
@@ -214,7 +158,7 @@ def load_pipeline_config(
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class PipelineConfig:
     """
     Configuration for the data processing pipeline.
@@ -322,14 +266,14 @@ class PipelineConfig:
     @classmethod
     def from_dict(
         cls,
-        raw: Mapping[str, Any],
+        raw: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``PipelineConfig`` instance.
 
         Parameters
         ----------
-        raw : Mapping[str, Any]
+        raw : StrAnyMap
             Raw pipeline mapping.
 
         Returns
@@ -342,25 +286,26 @@ class PipelineConfig:
         version = raw.get('version')
 
         # Profile and vars
-        prof_raw = raw.get('profile', {}) or {}
+        prof_raw = maybe_mapping(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
-        vars_map: dict[str, Any] = dict(raw.get('vars', {}) or {})
+        vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
 
         # APIs
         apis: dict[str, ApiConfig] = {}
-        for api_name, api_obj in (raw.get('apis', {}) or {}).items():
+        api_block = maybe_mapping(raw.get('apis')) or {}
+        for api_name, api_obj in api_block.items():
             apis[str(api_name)] = ApiConfig.from_obj(api_obj)
 
         # Databases and file systems (pass-through structures)
-        databases = dict(raw.get('databases', {}) or {})
-        file_systems = dict(raw.get('file_systems', {}) or {})
+        databases = coerce_dict(raw.get('databases'))
+        file_systems = coerce_dict(raw.get('file_systems'))
 
         # Sources
         sources = _build_sources(raw)
 
         # Validations/Transforms
-        validations = dict(raw.get('validations', {}) or {})
-        transforms = dict(raw.get('transforms', {}) or {})
+        validations = coerce_dict(raw.get('validations'))
+        transforms = coerce_dict(raw.get('transforms'))
 
         # Targets
         targets = _build_targets(raw)

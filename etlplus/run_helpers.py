@@ -1,5 +1,5 @@
 """
-etlplus.run_helpers module.
+:mod:`etlplus.run_helpers` module.
 
 Helper functions and small utilities used by ``etlplus.run`` to compose API
 request/load environments, pagination configs, session objects, and endpoint
@@ -14,7 +14,7 @@ Public (re-export safe) helpers:
 - build_endpoint_client(base_url, base_path, endpoints, env)
 - compute_rl_sleep_seconds(rate_limit, overrides)
 - paginate_with_client(client, endpoint_key, params, headers,
-  timeout, pagination, sleep_seconds)
+    timeout, pagination, sleep_seconds)
 
 Notes
 -----
@@ -24,47 +24,45 @@ avoid tight coupling with config dataclasses while keeping runtime flexible.
 from __future__ import annotations
 
 import inspect
+from collections.abc import Mapping
 from typing import Any
-from typing import cast
-from typing import Mapping
 from typing import TypedDict
+from typing import cast
 
 import requests  # type: ignore[import]
 
-from .api import compute_sleep_seconds
+from .api import ApiConfig
 from .api import EndpointClient
-from .api import PaginationConfig as ApiPaginationConfig
-from .api.types import RetryPolicy as ApiRetryPolicy
-from .config.api import ApiConfig as CfgApiConfig
-from .config.api import EndpointConfig as CfgEndpointConfig
-from .config.pagination import PaginationConfig as CfgPaginationConfig
-from .config.rate_limit import RateLimitConfig as CfgRateLimitConfig
+from .api import EndpointConfig
+from .api import Headers
+from .api import PaginationConfig
+from .api import PaginationConfigMap
+from .api import Params
+from .api import RateLimitConfig
+from .api import RateLimitConfigMap
+from .api import RateLimiter
+from .api import RetryPolicy
+from .api import Url
 from .types import Timeout
-
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
+    'build_endpoint_client',
     'build_pagination_cfg',
     'build_session',
     'compose_api_request_env',
     'compose_api_target_env',
-    'build_endpoint_client',
     'compute_rl_sleep_seconds',
     'paginate_with_client',
-    'SessionConfig',
+
+    # Typed Dicts
     'ApiRequestEnv',
     'ApiTargetEnv',
+    'SessionConfig',
 ]
-
-
-# SECTION: TYPES ============================================================ #
-
-
-type Headers = Mapping[str, str]
-type Params = Mapping[str, Any]
-type URL = str
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -73,7 +71,7 @@ type URL = str
 class ApiRequestEnv(TypedDict, total=False):
     """API request environment configuration."""
 
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
     session: requests.Session | None
@@ -83,16 +81,16 @@ class ApiRequestEnv(TypedDict, total=False):
     endpoints_map: dict[str, str] | None
     endpoint_key: str | None
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
-    retry: ApiRetryPolicy | None
+    retry: RetryPolicy | None
     retry_network_errors: bool
 
 
 class ApiTargetEnv(TypedDict, total=False):
     """API target environment configuration."""
 
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
     session: requests.Session | None
@@ -112,7 +110,7 @@ class SessionConfig(TypedDict, total=False):
     trust_env: bool
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 # -- API Environment Composition -- #
@@ -122,7 +120,7 @@ def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
     endpoint_name: str,
-) -> tuple[CfgApiConfig, CfgEndpointConfig]:
+) -> tuple[ApiConfig, EndpointConfig]:
     """
     Retrieve API configuration and endpoint configuration.
 
@@ -137,7 +135,7 @@ def _get_api_cfg_and_endpoint(
 
     Returns
     -------
-    tuple[CfgApiConfig, CfgEndpointConfig]
+    tuple[ApiConfig, EndpointConfig]
         The API configuration and endpoint configuration.
 
     Raises
@@ -157,13 +155,36 @@ def _get_api_cfg_and_endpoint(
 
 
 def _inherit_http_from_api_endpoint(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
-    url: URL | None,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
+    url: Url | None,
     headers: dict[str, str],
     session_cfg: SessionConfig | None,
     force_url: bool = False,
-) -> tuple[URL | None, dict[str, str], SessionConfig | None]:
+) -> tuple[Url | None, dict[str, str], SessionConfig | None]:
+    """
+    Return HTTP settings inherited from API + endpoint definitions.
+
+    Parameters
+    ----------
+    api_cfg : ApiConfig
+        API configuration.
+    ep : EndpointConfig
+        Endpoint configuration.
+    url : Url | None
+        Existing URL to use when not forcing endpoint URL.
+    headers : dict[str, str]
+        Existing headers to augment.
+    session_cfg : SessionConfig | None
+        Existing session configuration to augment.
+    force_url : bool, optional
+        Whether to always use the endpoint URL.
+
+    Returns
+    -------
+    tuple[Url | None, dict[str, str], SessionConfig | None]
+        Resolved URL, headers, and session configuration.
+    """
     if force_url or not url:
         url = api_cfg.build_endpoint_url(ep)
     headers = {**api_cfg.headers, **headers}
@@ -172,8 +193,8 @@ def _inherit_http_from_api_endpoint(
 
 
 def _merge_session_cfg_three(
-    api_cfg: CfgApiConfig,
-    ep: CfgEndpointConfig,
+    api_cfg: ApiConfig,
+    ep: EndpointConfig,
     source_session_cfg: SessionConfig | None,
 ) -> SessionConfig | None:
     """
@@ -181,9 +202,9 @@ def _merge_session_cfg_three(
 
     Parameters
     ----------
-    api_cfg : CfgApiConfig
+    api_cfg : ApiConfig
         API configuration.
-    ep : CfgEndpointConfig
+    ep : EndpointConfig
         Endpoint configuration.
     source_session_cfg : SessionConfig | None
         Source session configuration.
@@ -203,6 +224,70 @@ def _merge_session_cfg_three(
     if isinstance(source_session_cfg, dict):
         merged.update(source_session_cfg)
     return cast(SessionConfig | None, (merged or None))
+
+
+# -- Mapping Helpers -- #
+
+def _copy_mapping(
+    mapping: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Return a shallow copy of *mapping* or an empty dict.
+
+    Parameters
+    ----------
+    mapping : Mapping[str, Any] | None
+        The mapping to copy.
+
+    Returns
+    -------
+    dict[str, Any]
+        A shallow copy of the mapping or an empty dict.
+    """
+    return dict(mapping) if isinstance(mapping, Mapping) else {}
+
+
+def _update_mapping(
+    target: dict[str, Any],
+    extra: Mapping[str, Any] | None,
+) -> None:
+    """
+    Update *target* with *extra* when provided.
+
+    Parameters
+    ----------
+    target : dict[str, Any]
+        The target mapping to update.
+    extra : Mapping[str, Any] | None
+        The extra mapping to update the target with.
+    """
+    if isinstance(extra, Mapping):
+        target.update(extra)
+
+
+# -- Session -- #
+
+
+def _build_session_optional(
+    cfg: SessionConfig | None,
+) -> requests.Session | None:
+    """
+    Return a configured session when *cfg* is a mapping.
+
+    Parameters
+    ----------
+    cfg : SessionConfig | None
+        Session configuration mapping.
+
+    Returns
+    -------
+    requests.Session | None
+        Configured session or ``None``.
+    """
+
+    if isinstance(cfg, dict):
+        return build_session(cfg)
+    return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -242,7 +327,7 @@ def build_endpoint_client(
     try:
         from . import run as run_mod  # local import to avoid cycles
         ClientClass = getattr(run_mod, 'EndpointClient', EndpointClient)
-    except Exception:  # pragma: no cover - fallback path
+    except (ImportError, AttributeError):  # pragma: no cover - fallback path
         ClientClass = EndpointClient
     return ClientClass(
         base_url=base_url,
@@ -277,17 +362,21 @@ def compose_api_request_env(
         The composed API request environment.
     """
     ex_opts = ex_opts or {}
-    url: URL | None = getattr(source_obj, 'url', None)
-    params: dict[str, Any] = dict(
-        getattr(source_obj, 'query_params', {}) or {},
+    url: Url | None = getattr(source_obj, 'url', None)
+    source_params = cast(
+        Mapping[str, Any] | None,
+        getattr(source_obj, 'query_params', None),
     )
-    headers: dict[str, str] = dict(
-        getattr(source_obj, 'headers', {}) or {},
+    params: dict[str, Any] = _copy_mapping(source_params)
+    source_headers = cast(
+        Mapping[str, str] | None,
+        getattr(source_obj, 'headers', None),
     )
+    headers: dict[str, str] = _copy_mapping(source_headers)
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
-    retry: ApiRetryPolicy | None = cast(
-        ApiRetryPolicy | None, getattr(source_obj, 'retry', None),
+    retry: RetryPolicy | None = cast(
+        RetryPolicy | None, getattr(source_obj, 'retry', None),
     )
     retry_network_errors = bool(
         getattr(source_obj, 'retry_network_errors', False),
@@ -307,7 +396,11 @@ def compose_api_request_env(
         url, headers, session_cfg = _inherit_http_from_api_endpoint(
             api_cfg, ep, url, headers, session_cfg, force_url=True,
         )
-        params = ep.query_params | params
+        ep_params: dict[str, Any] = _copy_mapping(
+            cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
+        )
+        _update_mapping(ep_params, params)
+        params = ep_params
         pagination = (
             pagination
             or ep.pagination
@@ -319,7 +412,7 @@ def compose_api_request_env(
             or api_cfg.effective_rate_limit_defaults()
         )
         retry = cast(
-            ApiRetryPolicy | None,
+            RetryPolicy | None,
             (
                 retry
                 or getattr(ep, 'retry', None)
@@ -339,13 +432,19 @@ def compose_api_request_env(
             for k, v in api_cfg.endpoints.items()
         }
         selected_endpoint_key = endpoint_name
-    params |= ex_opts.get('query_params', {})
-    headers |= ex_opts.get('headers', {})
+    _update_mapping(
+        params,
+        cast(Mapping[str, Any] | None, ex_opts.get('query_params')),
+    )
+    _update_mapping(
+        headers,
+        cast(Mapping[str, str] | None, ex_opts.get('headers')),
+    )
     timeout: Timeout = ex_opts.get('timeout')
     pag_ov = ex_opts.get('pagination', {})
     rl_ov = ex_opts.get('rate_limit', {})
-    rty_ov: ApiRetryPolicy | None = cast(
-        ApiRetryPolicy | None,
+    rty_ov: RetryPolicy | None = cast(
+        RetryPolicy | None,
         (ex_opts.get('retry') if 'retry' in ex_opts else None),
     )
     rne_ov = (
@@ -353,7 +452,7 @@ def compose_api_request_env(
         if 'retry_network_errors' in ex_opts
         else None
     )
-    sess_ov: SessionConfig = cast(SessionConfig, ex_opts.get('session', {}))
+    sess_ov = cast(SessionConfig | None, ex_opts.get('session'))
     sleep_s = compute_rl_sleep_seconds(rate_limit, rl_ov) or 0.0
     if rty_ov is not None:
         retry = rty_ov
@@ -363,13 +462,11 @@ def compose_api_request_env(
         base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
-    pag_cfg: ApiPaginationConfig | None = build_pagination_cfg(
+    pag_cfg: PaginationConfigMap | None = build_pagination_cfg(
         pagination,
         pag_ov,
     )
-    sess_obj = (
-        build_session(session_cfg) if isinstance(session_cfg, dict) else None
-    )
+    sess_obj = _build_session_optional(session_cfg)
     return {
         'use_endpoints': use_client_endpoints,
         'base_url': client_base_url,
@@ -411,18 +508,18 @@ def compose_api_target_env(
         Composed API target environment.
     """
     ov = overrides or {}
-    url: URL | None = cast(
-        URL | None,
+    url: Url | None = cast(
+        Url | None,
         ov.get('url') or getattr(target_obj, 'url', None),
     )
     method: str | None = cast(
         str | None,
         ov.get('method') or getattr(target_obj, 'method', 'post'),
     )
-    headers: dict[str, str] = (
-        (getattr(target_obj, 'headers', {}) or {})
-        | cast(dict[str, str], ov.get('headers', {}))
+    headers = _copy_mapping(
+        cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
     )
+    _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
     timeout: Timeout = (
         cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
     )
@@ -442,7 +539,7 @@ def compose_api_target_env(
             sess_cfg,
             force_url=False,
         )
-    sess_obj = build_session(sess_cfg) if isinstance(sess_cfg, dict) else None
+    sess_obj = _build_session_optional(sess_cfg)
 
     return {
         'url': url,
@@ -457,22 +554,22 @@ def compose_api_target_env(
 
 
 def build_pagination_cfg(
-    pagination: CfgPaginationConfig | None,
+    pagination: PaginationConfig | None,
     overrides: Mapping[str, Any] | None,
-) -> ApiPaginationConfig | None:
+) -> PaginationConfigMap | None:
     """
     Build pagination configuration.
 
     Parameters
     ----------
-    pagination : CfgPaginationConfig | None
+    pagination : PaginationConfig | None
         Pagination configuration.
     overrides : Mapping[str, Any] | None
         Override configuration options.
 
     Returns
     -------
-    ApiPaginationConfig | None
+    PaginationConfigMap | None
         Pagination configuration.
     """
     ptype: str | None = None
@@ -566,7 +663,7 @@ def build_pagination_cfg(
         case _:
             pass
 
-    return cast(ApiPaginationConfig, cfg)
+    return cast(PaginationConfigMap, cfg)
 
 
 # -- Pagination Invocation -- #
@@ -578,7 +675,7 @@ def paginate_with_client(
     params: Params | None,
     headers: Headers | None,
     timeout: Timeout,
-    pagination: ApiPaginationConfig | None,
+    pagination: PaginationConfigMap | None,
     sleep_seconds: float | None,
 ) -> Any:
     """
@@ -596,7 +693,7 @@ def paginate_with_client(
         Headers to include in the API request.
     timeout : Timeout
         Timeout configuration for the API request.
-    pagination : ApiPaginationConfig | None
+    pagination : PaginationConfigMap | None
         Pagination configuration for the API request.
     sleep_seconds : float | None
         Sleep duration between API requests.
@@ -633,23 +730,23 @@ def paginate_with_client(
 
 
 def compute_rl_sleep_seconds(
-    rate_limit: CfgRateLimitConfig | Mapping[str, Any] | None,
+    rate_limit: RateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
-) -> float | None:
+) -> float:
     """
     Compute sleep seconds from rate limit configuration and overrides.
 
     Parameters
     ----------
-    rate_limit : CfgRateLimitConfig | Mapping[str, Any] | None
+    rate_limit : RateLimitConfig | Mapping[str, Any] | None
         Rate limit configuration.
     overrides : Mapping[str, Any] | None
         Override values for rate limit configuration.
 
     Returns
     -------
-    float | None
-        Sleep duration in seconds, or None if not applicable.
+    float
+        Sleep duration in seconds (0.0 when disabled).
     """
     rl_map: Mapping[str, Any] | None
     if rate_limit and hasattr(rate_limit, 'sleep_seconds'):
@@ -660,7 +757,28 @@ def compute_rl_sleep_seconds(
     else:
         rl_map = cast(Mapping[str, Any] | None, rate_limit)
 
-    return compute_sleep_seconds(cast(Any, rl_map), overrides or {})
+    rl_mapping = cast(RateLimitConfigMap | None, rl_map)
+
+    typed_override: RateLimitConfigMap | None = None
+    if overrides:
+        filtered: dict[str, float | None] = {}
+        if 'sleep_seconds' in overrides:
+            filtered['sleep_seconds'] = cast(
+                float | None,
+                overrides.get('sleep_seconds'),
+            )
+        if 'max_per_sec' in overrides:
+            filtered['max_per_sec'] = cast(
+                float | None,
+                overrides.get('max_per_sec'),
+            )
+        if filtered:
+            typed_override = cast(RateLimitConfigMap, filtered)
+
+    return RateLimiter.resolve_sleep_seconds(
+        rate_limit=rl_mapping,
+        overrides=typed_override,
+    )
 
 
 # -- Session -- #
@@ -691,7 +809,7 @@ def build_session(
     params = cfg.get('params')
     if isinstance(params, dict):
         try:
-            setattr(s, 'params', params)
+            s.params = params
         except (AttributeError, TypeError):
             pass
     auth = cfg.get('auth')

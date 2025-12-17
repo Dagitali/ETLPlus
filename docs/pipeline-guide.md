@@ -3,7 +3,7 @@
 This guide explains how to author an ETLPlus pipeline YAML, using the example at `in/pipeline.yml`
 as a reference.
 
-ETLPlus focuses on simple, JSON-first ETL.  The pipeline file is a declarative description that your
+ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative description that your
 runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
 `validate`, `transform`, and `load`.
 
@@ -25,13 +25,13 @@ vars:
   out_dir: out
 ```
 
-- `profile.env` is a convenient place to document expected environment variables.  Resolve them in
+- `profile.env` is a convenient place to document expected environment variables. Resolve them in
   your runner before invoking ETLPlus functions.
 - `vars` collects reusable paths/values for templating.
 
 ## APIs
 
-Declare HTTP APIs and endpoints under `apis`.  You can define headers, endpoints, and pagination:
+Declare HTTP APIs and endpoints under `apis`. You can define headers, endpoints, and pagination:
 
 ```yaml
 apis:
@@ -56,7 +56,7 @@ apis:
           max_per_sec: 2
 ```
 
-Note: Use `query_params` for URL query string pairs (e.g., `?key=value`).  Older keys like `params`
+Note: Use `query_params` for URL query string pairs (e.g., `?key=value`). Older keys like `params`
 or `query` are not supported to avoid ambiguity with body/form fields.
 
 ### Profiles, base_path, and auth
@@ -88,8 +88,8 @@ apis:
         path: "/orgs/${GITHUB_ORG}/repos"
 ```
 
-At runtime, the model computes an effective base URL by composing `base_url` and `base_path`.
-If you build an HTTP client from the config, prefer using the composed URL. For convenience, the
+At runtime, the model computes an effective base URL by composing `base_url` and `base_path`. If you
+build an HTTP client from the config, prefer using the composed URL. For convenience, the
 `ApiConfig` model exposes:
 
 - `effective_base_url()`: returns `base_url` + `base_path` (when present)
@@ -107,6 +107,16 @@ Pagination tips (mirrors `etlplus.api`):
 - Page/offset styles: use `page_param`, `size_param`, `start_page`, and `page_size`.
 - Cursor style: specify `cursor_param` and `cursor_path` (e.g., `data.nextCursor`).
 - Extract records from nested payloads with `records_path` (e.g., `data.items`).
+- Rate limiting: set `rate_limit.sleep_seconds` or `rate_limit.max_per_sec` on the API or endpoint
+  to define default pacing. Job runners merge `jobs[].extract.options.rate_limit` over those
+  defaults and forward the merged mapping into `EndpointClient.paginate(...,
+  rate_limit_overrides=...)`, so you can temporarily slow down or speed up a single job without
+  editing the shared API profile. The paginator enforces that effective delay via a shared
+  `RateLimiter` before each page fetch.
+
+Client helpers (``etlplus.api.EndpointClient``) now return the ``JSONRecords`` alias (a ``list`` of
+``JSONDict``) so pipelines and custom runners can rely on typed payloads when aggregating paginated
+responses.
 
 See `etlplus/api/README.md` for the code-level pagination API.
 
@@ -142,8 +152,8 @@ At runtime, the request is issued to:
 https://api.example.com/v1/items
 ```
 
-No extra wiring is needed — the composed base URL (including `base_path`) is
-used under the hood when the job runs.
+No extra wiring is needed — the composed base URL (including `base_path`) is used under the hood
+when the job runs.
 
 ## Databases
 
@@ -229,17 +239,23 @@ sources:
 Tip: You can also override query parameters per job using
 `jobs[].extract.options.query_params: { ... }`.
 
+Rate limit overrides follow the same pattern: populate `jobs[].extract.options.rate_limit` with
+either `sleep_seconds` or `max_per_sec` to override an API or endpoint default for that specific
+job. Those values are merged into the client configuration and forwarded to
+`EndpointClient.paginate(..., rate_limit_overrides=...)`, ensuring only that job’s paginator is sped
+up or slowed down.
+
 Environment / format inference note:
 
 When extracting from file sources, ETLPlus infers the format from the filename extension (e.g.
-`.csv`, `.json`, `.xml`, `.yaml`).  Passing an explicit CLI `--format` for files is ignored unless
-strict mode is enabled.  To enforce an error if contributors still specify a redundant `--format`
+`.csv`, `.json`, `.xml`, `.yaml`). Passing an explicit CLI `--format` for files is ignored unless
+strict mode is enabled. To enforce an error if contributors still specify a redundant `--format`
 flag in scripts or CI runners, set the environment variable `ETLPLUS_FORMAT_BEHAVIOR=error` or use
-the CLI flag `--strict-format`.  This keeps pipelines cleaner by relying on naming conventions.
+the CLI flag `--strict-format`. This keeps pipelines cleaner by relying on naming conventions.
 
-Note: When using a service + endpoint in a source, URL composition (including
-`base_path`) is handled automatically. See “Runner behavior with base_path
-(sources and targets)” in the APIs section.
+Note: When using a service + endpoint in a source, URL composition (including `base_path`) is
+handled automatically. See “Runner behavior with base_path (sources and targets)” in the APIs
+section.
 
 ## Validations
 
@@ -298,8 +314,8 @@ targets:
       Content-Type: application/json
 ```
 
-Note: API targets that reference a service + endpoint also honor `base_path`
-via the same runner behavior described in the APIs section.
+Note: API targets that reference a service + endpoint also honor `base_path` via the same runner
+behavior described in the APIs section.
 
 Service + endpoint target example:
 
@@ -326,9 +342,8 @@ targets:
 
 ## Connector parsing and extension
 
-Under the hood, source and target entries are parsed via a single tolerant
-constructor that looks at the `type` field and builds a concrete connector
-dataclass:
+Under the hood, source and target entries are parsed via a single tolerant constructor that looks at
+the `type` field and builds a concrete connector dataclass:
 
 - `type: file` → `ConnectorFile`
 - `type: database` → `ConnectorDb`
@@ -347,7 +362,7 @@ and extend the internal parser to handle its `type` value.
 
 ## Jobs
 
-Jobs orchestrate the flow end-to-end.  Each job can reference a source, validations, transform, and
+Jobs orchestrate the flow end-to-end. Each job can reference a source, validations, transform, and
 target:
 
 ```yaml
@@ -357,6 +372,54 @@ jobs:
     validate: { ruleset: customers_basic }
     transform: { pipeline: clean_customers }
     load: { target: customers_json_out }
+
+## Running pipelines (CLI and Python)
+
+Once you have a pipeline YAML, you can run jobs either from the
+command line or directly from Python.
+
+### CLI: `etlplus pipeline` and `etlplus run`
+
+List jobs defined in a pipeline file:
+
+```bash
+etlplus pipeline --config examples/configs/pipeline.yml --list
+```
+
+Run a specific job end-to-end (extract → validate → transform → load):
+
+```bash
+etlplus pipeline --config examples/configs/pipeline.yml --run file_to_file_customers
+
+# Equivalent, using the dedicated run command
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+```
+
+Notes:
+
+- Both commands read the same YAML schema described in this guide.
+- Environment-variable substitution (e.g. `${GITHUB_TOKEN}`) is applied the same way as when loading
+  configs via the Python API.
+- For more details on the orchestration implementation, see
+  [Runner internals: etlplus.run](run-module.md).
+
+### Python: `etlplus.run.run`
+
+To trigger a job programmatically, use the high-level runner function exposed by the package:
+
+```python
+from etlplus.run import run as run_job
+
+result = run_job(
+    job="file_to_file_customers",
+    config_path="examples/configs/pipeline.yml",
+)
+
+print(result["status"], result.get("records"))
+```
+
+The `run()` function returns the final load result as a `JSONDict` envelope, which typically
+includes `status`, `message`, and implementation-specific metadata such as record counts.
 ```
 
 ## Minimal working example
@@ -404,8 +467,8 @@ For the HTTP client and pagination API, see `etlplus/api/README.md`.
 
 ## Design notes: Mapping inputs, dict outputs
 
-ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `PipelineConfig.from_dict`)
-accept `Mapping[str, Any]` rather than `dict[str, Any]` for inputs. Why?
+ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `PipelineConfig.from_dict`) accept
+`Mapping[str, Any]` rather than `dict[str, Any]` for inputs. Why?
 
 - Flexibility: callers can pass any mapping-like object (e.g., YAML loaders that return custom
   mappings) without copying into a `dict` first.

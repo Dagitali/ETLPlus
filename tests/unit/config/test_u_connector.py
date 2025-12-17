@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_connector`` module.
+:mod:`tests.unit.config.test_u_connector` module.
 
 Unit tests for ``etlplus.config.connector``.
 
@@ -12,7 +12,6 @@ from __future__ import annotations
 import pytest
 
 from etlplus.config import parse_connector
-
 
 # SECTION: TESTS ============================================================ #
 

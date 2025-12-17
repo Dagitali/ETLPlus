@@ -1,5 +1,5 @@
 """
-etlplus.api package.
+:mod:`etlplus.api` package.
 
 High-level helpers for building REST API clients with pagination, retry,
 rate limiting, and transport configuration.
@@ -55,36 +55,48 @@ Notes
 -----
 - ``EndpointClient.endpoints`` is read-only at runtime.
 - Pagination defaults are centralized on the client (``page``, ``per_page``,
-  ``cursor``, ``limit``; start page ``1``; page size ``100``).
+    ``cursor``, ``limit``; start page ``1``; page size ``100``).
 - Retries are opt-in via the ``retry`` parameter; backoff uses jitter.
 - Use ``retry_network_errors=True`` to also retry timeouts/connection errors.
+- Prefer :data:`JSONRecords` (list of :data:`JSONDict`) for paginated
+    responses; scalar/record aliases are exported for convenience.
+- The underlying :class:`Paginator` is exported for advanced scenarios that
+    need to stream pages manually.
 
 See Also
 --------
-- :mod:`etlplus.api.types` for shared types (``PaginationConfig``,
-  ``RetryPolicy``, HTTP adapter configs)
+- :mod:`etlplus.api.rate_limiting` for rate-limit helpers and config shapes
+- :mod:`etlplus.api.pagination` for pagination helpers and config shapes
+- :mod:`etlplus.api.retry_manager` for retry policies
 - :mod:`etlplus.api.transport` for HTTPAdapter helpers
-- :func:`etlplus.api.compute_sleep_seconds` for deriving inter-request delay
-  from rate limit settings
 """
 from __future__ import annotations
 
 from .auth import EndpointCredentialsBearer
-from .client import EndpointClient
-from .rate_limiter import compute_sleep_seconds
-from .rate_limiter import RateLimitConfig
-from .rate_limiter import RateLimiter
+from .config import ApiConfig
+from .config import ApiProfileConfig
+from .config import EndpointConfig
+from .endpoint_client import EndpointClient
+from .pagination import CursorPaginationConfigMap
+from .pagination import PagePaginationConfigMap
+from .pagination import PaginationClient
+from .pagination import PaginationConfig
+from .pagination import PaginationConfigMap
+from .pagination import PaginationType
+from .pagination import Paginator
+from .rate_limiting import RateLimitConfig
+from .rate_limiting import RateLimitConfigMap
+from .rate_limiting import RateLimiter
+from .retry_manager import RetryManager
+from .retry_manager import RetryPolicy
+from .retry_manager import RetryStrategy
+from .transport import HTTPAdapterMountConfig
+from .transport import HTTPAdapterRetryConfig
 from .transport import build_http_adapter
-from .types import CursorPaginationConfig
-from .types import HTTPAdapterMountConfig
-from .types import HTTPAdapterRetryConfig
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import PagePaginationConfig
-from .types import PaginationConfig
-from .types import RetryPolicy
-
+from .types import Headers
+from .types import Params
+from .types import RequestOptions
+from .types import Url
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -93,16 +105,35 @@ __all__ = [
     # Classes
     'EndpointClient',
     'EndpointCredentialsBearer',
-    'RateLimitConfig',
+    'Paginator',
     'RateLimiter',
+    'RetryManager',
+
+    # Data Classes
+    'ApiConfig',
+    'ApiProfileConfig',
+    'EndpointConfig',
+    'PaginationClient',
+    'PaginationConfig',
+    'RateLimitConfig',
+    'RequestOptions',
+    'RetryStrategy',
+
+    # Enums
+    'PaginationType',
 
     # Functions
     'build_http_adapter',
-    'compute_sleep_seconds',
 
-    # Common types
-    'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
-    'CursorPaginationConfig', 'PagePaginationConfig',
+    # Type Aliases
+    'CursorPaginationConfigMap',
+    'Headers',
+    'HTTPAdapterMountConfig',
+    'HTTPAdapterRetryConfig',
+    'PagePaginationConfigMap',
+    'PaginationConfigMap',
+    'Params',
+    'RateLimitConfigMap',
     'RetryPolicy',
+    'Url',
 ]

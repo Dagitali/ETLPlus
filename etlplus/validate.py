@@ -1,5 +1,5 @@
 """
-etlplus.validation module.
+:mod:`etlplus.validation` module.
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 
@@ -27,10 +27,10 @@ True
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 from typing import Final
 from typing import Literal
-from typing import Mapping
 from typing import TypedDict
 
 from .load import load_data
@@ -39,8 +39,7 @@ from .types import Record
 from .types import StrAnyMap
 from .types import StrPath
 
-
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
@@ -134,7 +133,7 @@ class Validation(TypedDict):
 type RulesMap = Mapping[str, FieldRules]
 
 
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _coerce_rule(

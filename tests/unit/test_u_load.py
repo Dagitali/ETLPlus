@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_load`` module.
+:mod:`tests.unit.test_u_load` module.
 
 Unit tests for ``etlplus.load``.
 
@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import cast
 
 import pytest
@@ -25,7 +25,6 @@ import pytest
 from etlplus.load import load
 from etlplus.load import load_data
 from etlplus.load import load_to_file
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -82,7 +81,7 @@ class TestLoad:
         assert result['status'] == expected_status
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_data',
         [
             (
                 'json',
@@ -99,7 +98,7 @@ class TestLoad:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str, Any], None],
-        expected: Any,
+        expected_data: Any,
     ) -> None:
         """
         Test loading data to a file with a supported format.
@@ -112,7 +111,7 @@ class TestLoad:
             File format of the data.
         write : Callable[[str, Any], None]
             Function to write data to the file.
-        expected : Any
+        expected_data : Any
             Expected data to write and read.
 
         Notes
@@ -120,11 +119,10 @@ class TestLoad:
         Supported format should not raise an error.
         """
         path = tmp_path / f'output.{file_format}'
-        mock_data = expected
-        write(str(path), mock_data)
+        write(str(path), expected_data)
         result = cast(
             dict[str, Any], load(
-                mock_data, 'file', str(path), file_format=file_format,
+                expected_data, 'file', str(path), file_format=file_format,
             ),
         )
         assert result['status'] == 'success'
@@ -219,6 +217,11 @@ class TestLoadErrors:
             Arguments to pass to the function.
         err_msg : str | None
             Expected error message substring, if applicable.
+
+        Raises
+        ------
+        AssertionError
+            If the expected exception is not raised.
         """
         with pytest.raises(exc_type) as e:
             call(*args)
@@ -228,9 +231,9 @@ class TestLoadErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert False, (
-                    f'Expected {exc_type.__name__} with message: {err_msg}'
-                )
+                raise AssertionError(
+                    f'Expected {exc_type.__name__} with message: {err_msg}',
+                ) from e.value
 
 
 @pytest.mark.unit
@@ -244,7 +247,7 @@ class TestLoadData:
     """
 
     @pytest.mark.parametrize(
-        'input_data,expected',
+        'input_data,expected_output',
         [
             ({'test': 'data'}, {'test': 'data'}),
             ([{'test': 'data'}], [{'test': 'data'}]),
@@ -253,7 +256,7 @@ class TestLoadData:
     def test_data_passthrough(
         self,
         input_data: dict[str, Any] | list[dict[str, Any]],
-        expected: dict[str, Any] | list[dict[str, Any]],
+        expected_output: dict[str, Any] | list[dict[str, Any]],
     ) -> None:
         """
         Test passthrough for dict and list input.
@@ -262,10 +265,10 @@ class TestLoadData:
         ----------
         input_data : dict[str, Any] | list[dict[str, Any]]
             Input data to load.
-        expected : dict[str, Any] | list[dict[str, Any]]
+        expected_output : dict[str, Any] | list[dict[str, Any]]
             Expected output.
         """
-        assert load_data(input_data) == expected
+        assert load_data(input_data) == expected_output
 
     def test_data_from_file(
         self,
@@ -312,6 +315,7 @@ class TestLoadData:
         """
         class _FakeStdin:
             def read(self) -> str:
+                """Simulate reading JSON data from stdin."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
         monkeypatch.setattr('sys.stdin', _FakeStdin())
         result = load_data('-')

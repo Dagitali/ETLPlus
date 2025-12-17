@@ -36,8 +36,7 @@ from etlplus.types import StrAnyMap
 from etlplus.types import StrStrMap
 from etlplus.validate import validate
 
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _deep_substitute(
@@ -130,6 +129,7 @@ def _extract_from_source(
         pagination = {**pagination, **resolve(ov.get('pagination', {}))}
         ptype = str(pagination.get('type', '')).strip().lower()
         records_path = pagination.get('records_path')
+        fallback_path = pagination.get('fallback_path')
         max_pages = pagination.get('max_pages')
         max_records = pagination.get('max_records')
 
@@ -140,18 +140,33 @@ def _extract_from_source(
         def _coalesce_records(x: Any) -> JSONList:
             # Optionally drill into a dict via a simple dotted path to
             # find the records array.
-            def _get_path(obj: Any, path: str) -> Any:
+            _missing = object()
+
+            def _get_path(obj: Any, path: str | None) -> Any:
+                if not isinstance(path, str) or not path:
+                    return obj
                 cur = obj
                 for part in path.split('.'):
-                    if isinstance(cur, dict):
-                        cur = cur.get(part)
+                    if isinstance(cur, dict) and part in cur:
+                        cur = cur[part]
                     else:
-                        return None
+                        return _missing
                 return cur
 
-            data = x
-            if isinstance(records_path, str) and records_path:
-                data = _get_path(x, records_path)
+            data = _get_path(x, records_path)
+            if data is _missing:
+                data = None
+
+            if fallback_path and (
+                data is None
+                or (isinstance(data, list) and not data)
+            ):
+                fb = _get_path(x, fallback_path)
+                if fb is not _missing:
+                    data = fb
+
+            if data is None and not records_path:
+                data = x
 
             if isinstance(data, list):
                 # Keep only dict items (normalize scalars into dicts)
@@ -357,7 +372,23 @@ def _load_to_target(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+) -> int:
+    """
+    Run ETLPlus jobs from a YAML pipeline configuration.
+
+    Parameters
+    ----------
+    argv : list[str] | None, optional
+        List of command-line arguments to parse. If None, defaults to
+        sys.argv[1:].
+
+    Returns
+    -------
+    int
+        Exit code (0 for success, non-zero for errors).
+    """
     ap = argparse.ArgumentParser(
         description='Run ETLPlus jobs from a YAML pipeline config',
     )
@@ -387,8 +418,8 @@ def main(argv: list[str] | None = None) -> int:
     profile = cfg.get('profile', {}) or {}
     profile_env: dict[str, str] = profile.get('env', {}) or {}
 
-    # Compose env: profile.env overrides current environment
-    # if the same key also exists in os.environ
+    # Compose env: profile.env overrides current environment if the same key
+    # also exists in os.environ.
     env_map: dict[str, str] = dict(os.environ)
     env_map.update({k: str(v) for k, v in profile_env.items()})
 
@@ -424,7 +455,7 @@ def main(argv: list[str] | None = None) -> int:
         source_obj, extract_overrides, vars_map, env_map,
     )
 
-    # Validate (optional) with severity/phase
+    # Validate (optional) with severity/phase.
     if 'validate' in job:
         vcfg = job['validate'] or {}
         ruleset_name = vcfg.get('ruleset')
@@ -450,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
         if phase in {'before_transform', 'both'}:
             data = _handle_validation(data)
 
-    # Transform (optional)
+    # Transform (optional).
     if 'transform' in job:
         pipeline_name = job['transform'].get('pipeline')
         operations = transforms.get(pipeline_name, {})
@@ -475,7 +506,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(msg)
                     raise SystemExit(1)
 
-    # Load
+    # Load.
     load_cfg = job.get('load', {})
     target_name = load_cfg.get('target')
     if target_name not in targets_by_name:

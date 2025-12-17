@@ -1,5 +1,5 @@
 """
-etlplus.config.connector module.
+:mod:`etlplus.config.connector` module.
 
 A module defining configuration types for data source/target connectors in ETL
 pipelines. A "connector" is any I/O endpoint:
@@ -36,22 +36,22 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
-from typing import overload
-from typing import Self
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Self
+from typing import overload
 
-from .pagination import PaginationConfig
-from .rate_limit import RateLimitConfig
-from .utils import cast_str_dict
+from ..api import PaginationConfig
+from ..api import RateLimitConfig
+from ..types import StrAnyMap
+from ..utils import cast_str_dict
+from ..utils import coerce_dict
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .types import (
-        ConnectorApiConfigMap,
-        ConnectorDbConfigMap,
-        ConnectorFileConfigMap,
-        ConnectorType,
-    )
+    from .types import ConnectorApiConfigMap
+    from .types import ConnectorDbConfigMap
+    from .types import ConnectorFileConfigMap
+    from .types import ConnectorType
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -61,18 +61,18 @@ __all__ = [
     # Classes
     'ConnectorApi', 'ConnectorDb', 'ConnectorFile',
 
-    # Type aliases
-    'Connector',
-
     # Functions
     'parse_connector',
+
+    # Type aliases
+    'Connector',
 ]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorApi:
     """
     Configuration for an API-based data connector.
@@ -130,19 +130,19 @@ class ConnectorApi:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorApi`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
@@ -166,7 +166,7 @@ class ConnectorApi:
             url=obj.get('url'),
             method=obj.get('method'),
             headers=headers,
-            query_params=dict(obj.get('query_params', {}) or {}),
+            query_params=coerce_dict(obj.get('query_params')),
             pagination=PaginationConfig.from_obj(obj.get('pagination')),
             rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             api=obj.get('api') or obj.get('service'),
@@ -174,7 +174,7 @@ class ConnectorApi:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorDb:
     """
     Configuration for a database-based data connector.
@@ -212,19 +212,19 @@ class ConnectorDb:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorDb`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
@@ -251,7 +251,7 @@ class ConnectorDb:
         )
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ConnectorFile:
     """
     Configuration for a file-based data connector.
@@ -286,19 +286,19 @@ class ConnectorFile:
 
     @classmethod
     @overload
-    def from_obj(cls, obj: Mapping[str, Any]) -> Self: ...
+    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any],
+        obj: StrAnyMap,
     ) -> Self:
         """
         Parse a mapping into a ``ConnectorFile`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any]
+        obj : StrAnyMap
             Mapping with at least ``name``.
 
         Returns
@@ -320,7 +320,7 @@ class ConnectorFile:
             type='file',
             format=obj.get('format'),
             path=obj.get('path'),
-            options=dict(obj.get('options', {}) or {}),
+            options=coerce_dict(obj.get('options')),
         )
 
 

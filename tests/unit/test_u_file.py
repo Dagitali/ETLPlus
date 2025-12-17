@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_file`` module.
+:mod:`tests.unit.test_u_file` module.
 
 Unit tests for ``etlplus.file``.
 
@@ -16,7 +16,6 @@ import pytest
 
 from etlplus.enums import FileFormat
 from etlplus.file import File
-
 
 # SECTION: TESTS =========================================================== #
 

@@ -1,5 +1,5 @@
 """
-``tests`` package.
+:mod:`tests` package.
 
 Test suites for the ETLPlus package.
 

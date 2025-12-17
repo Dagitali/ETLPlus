@@ -1,5 +1,5 @@
+from collections.abc import Mapping
 from typing import cast
-from typing import Mapping
 
 from etlplus import extract
 from etlplus import load

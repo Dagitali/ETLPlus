@@ -33,8 +33,37 @@ etlplus transform examples/data/sample.json \
 
 ## Pipelines
 
-For larger workflows, author a pipeline YAML and run it with your own orchestration or helper script.
-See the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example `in/pipeline.yml` for a richer configuration.
+For larger workflows, author a pipeline YAML and run it with your own orchestration or helper
+script.
+
+- Authoring: see the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example
+  `in/pipeline.yml` or `examples/configs/pipeline.yml`.
+- Runner internals and Python entrypoint: see `docs/run-module.md` for `etlplus.run.run`.
+
+CLI examples:
+
+```bash
+# List jobs defined in a pipeline file
+etlplus pipeline --config examples/configs/pipeline.yml --list
+
+# Run a specific job end-to-end
+etlplus pipeline --config examples/configs/pipeline.yml --run file_to_file_customers
+
+# Equivalent, using the dedicated run command
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+```
+
+Python example:
+
+```python
+from etlplus.run import run as run_job
+
+result = run_job(
+    job="file_to_file_customers",
+    config_path="examples/configs/pipeline.yml",
+)
+print(result["status"], result.get("records"))
+```
 
 Design notes on config typing and merges:
 - Mapping inputs, dict outputs, and merge semantics are documented in

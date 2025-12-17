@@ -1,5 +1,5 @@
 """
-``tests.unit.conftest`` module.
+:mod:`tests.unit.conftest` module.
 
 Configures pytest-based unit tests and provides shared fixtures.
 
@@ -11,34 +11,32 @@ from __future__ import annotations
 
 import csv
 import json
+import random
 import tempfile
 import types
-from os import PathLike
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
-from typing import cast
 from typing import TypedDict
 from typing import Unpack
+from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api import CursorPaginationConfig
+import etlplus.api.rate_limiting.rate_limiter as rate_limiter_mod
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
-from etlplus.api import PagePaginationConfig
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
-from etlplus.config import EndpointConfig
-from etlplus.config import PaginationConfig
+from etlplus.api import EndpointConfig
+from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PaginationConfig
+from etlplus.api import PaginationConfigMap
+from etlplus.api import RateLimitConfig
+from etlplus.api import RateLimitConfigMap
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
-from etlplus.config.types import PaginationConfigMap
-from etlplus.config.types import RateLimitConfigMap
-from etlplus.enums import DataConnectorType
-from etlplus.enums import FileFormat
 from tests.unit.api.test_u_mocks import MockSession
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -132,8 +130,8 @@ def capture_sleeps(
     """
     Capture sleep durations from retry/backoff logic.
 
-    Patches :meth:`EndpointClient.apply_sleep` so tests can assert
-    jitter/backoff behavior without actually waiting.
+    Patches :class:`RateLimiter` so tests can assert jitter/backoff behavior
+    without actually waiting.
 
     Parameters
     ----------
@@ -147,13 +145,13 @@ def capture_sleeps(
     """
     values: list[float] = []
 
-    def _sleep(s: float, *, _sleeper=None) -> None:  # noqa: D401, ANN001
-        values.append(s)
+    def _enforce(self: rate_limiter_mod.RateLimiter) -> None:  # noqa: D401
+        values.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        EndpointClient,
-        'apply_sleep',
-        staticmethod(_sleep),
+        rate_limiter_mod.RateLimiter,
+        'enforce',
+        _enforce,
         raising=False,
     )
 
@@ -189,47 +187,47 @@ def client_factory() -> Callable[..., EndpointClient]:
 
 
 @pytest.fixture
-def cursor_cfg() -> Callable[..., CursorPaginationConfig]:
+def cursor_cfg() -> Callable[..., CursorPaginationConfigMap]:
     """
     Create a factory for building immutable cursor pagination config objects.
 
     Returns
     -------
-    Callable[..., CursorPaginationConfig]
-        Function that builds CursorPaginationConfig instances.
+    Callable[..., CursorPaginationConfigMap]
+        Function that builds :class:`CursorPaginationConfigMap` instances.
     """
-    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfig:
+    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfigMap:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
-        return cast(CursorPaginationConfig, _freeze(base))
+        return cast(CursorPaginationConfigMap, _freeze(base))
 
     return _make
 
 
 @pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfig]:
+def offset_cfg() -> Callable[..., PagePaginationConfigMap]:
     """
     Create a factory for building immutable offset pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds PagePaginationConfig instances.
+    Callable[..., PagePaginationConfigMap]
+        Function that builds PagePaginationConfigMap instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'offset'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationConfigMap, _freeze(base))
 
     return _make
 
 
 @pytest.fixture
-def extract_stub(
+def request_once_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
-    Patch :func:`EndpointClient._extract` and capture calls for assertion.
+    Patch :meth:`EndpointClient.request_once` and capture calls.
 
     Parameters
     ----------
@@ -243,17 +241,28 @@ def extract_stub(
             urls: list[str]
             kwargs: list[dict[str, Any]]
     """
-    import etlplus.api.client as cmod  # local import to avoid cycles
+    # pylint: disable=unused-argument
+
+    import etlplus.api.request_manager as rmod  # local import to avoid cycles
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
-    def _fake_extract(kind: str, url: str, **kwargs: Any):  # noqa: D401
-        assert kind == 'api'
+    def _fake_request(
+        self: rmod.RequestManager,
+        method: str,
+        url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        request_callable: Callable[..., Any] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:  # noqa: D401
+        assert method == 'GET'
         calls['urls'].append(url)
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(cmod, '_extract', _fake_extract)
+    monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
 
     return calls
 
@@ -262,11 +271,13 @@ def extract_stub(
 def extract_stub_factory() -> Callable[..., Any]:
     """
     Create a factory to build a per-use stub factory for patching
-    :func:`_extract` without relying on function-scoped fixtures
+    the low-level HTTP helper without relying on function-scoped fixtures
     (Hypothesis-friendly).
 
-    Each invocation patches :func:`etlplus.api.client._extract` for the
-    duration of the context manager and restores the original afterwards.
+    Each invocation patches
+    :meth:`etlplus.api.endpoint_client.EndpointClient.request_once` for the
+    duration of the context manager and restores the original
+    afterwards.
 
     Returns
     -------
@@ -279,38 +290,50 @@ def extract_stub_factory() -> Callable[..., Any]:
     ...     client.paginate(...)
     ...     assert calls['urls'] == [...]
     """
+    # pylint: disable=unused-argument
+
     import contextlib
-    import etlplus.api.client as cmod  # Local import to avoid cycles
+
+    import etlplus.api.request_manager as rmod  # Local import to avoid cycles
 
     @contextlib.contextmanager
     def _make(
         *,
         return_value: Any | None = None,
     ):  # noqa: D401
+        # pylint: disable=protected-access
+
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
-        def _fake_extract(
-            source_type: DataConnectorType | str,
-            source: str | Path | PathLike[str],
-            file_format: FileFormat | str | None = None,
+        def _fake_request(
+            self: rmod.RequestManager,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            request_callable: Callable[..., Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, Any] | list[dict[str, Any]]:  # noqa: D401
-            calls['urls'].append(str(source))
-            calls['kwargs'].append(
-                {
-                    'source_type': source_type,
-                    'file_format': file_format,
-                    **kwargs,
-                },
-            )
+            calls['urls'].append(url)
+            calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = getattr(cmod, '_extract')
-        cmod._extract = _fake_extract  # type: ignore[attr-defined]
+        saved = rmod.RequestManager.request_once
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            rmod.RequestManager,
+            'request_once',
+            _fake_request,
+        )
         try:
             yield calls
         finally:
-            cmod._extract = saved  # type: ignore[attr-defined]
+            monkeypatch.setattr(
+                rmod.RequestManager,
+                'request_once',
+                saved,
+            )
 
     return _make
 
@@ -337,11 +360,9 @@ def jitter(
     >>> vals = jitter([0.1, 0.2])
     ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
     """
-    import etlplus.api.client as cmod  # local import to avoid cycles
-
     def _set(values: list[float]) -> list[float]:
         seq = iter(values)
-        monkeypatch.setattr(cmod.random, 'uniform', lambda a, b: next(seq))
+        monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
         return values
 
     return _set
@@ -364,19 +385,19 @@ def mock_session() -> MockSession:
 
 
 @pytest.fixture
-def page_cfg() -> Callable[..., PagePaginationConfig]:
+def page_cfg() -> Callable[..., PagePaginationConfigMap]:
     """
     Create a factory to build immutable page-number pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfig]
-        Function that builds :class:`PagePaginationConfig` instances.
+    Callable[..., PagePaginationConfigMap]
+        Function that builds :class:`PagePaginationConfigMap` instances.
     """
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfig:
+    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
-        return cast(PagePaginationConfig, _freeze(base))
+        return cast(PagePaginationConfigMap, _freeze(base))
 
     return _make
 
@@ -421,6 +442,8 @@ def token_sequence(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
+    # pylint: disable=unused-argument
+
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
@@ -455,8 +478,8 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
     return _make
 
 
-@pytest.fixture
-def api_obj_factory(
+@pytest.fixture(name='api_obj_factory')
+def api_obj_factory_fixture(
     base_url_: str,
     sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
@@ -513,8 +536,8 @@ def api_obj_factory(
     return _make
 
 
-@pytest.fixture
-def base_url_() -> str:
+@pytest.fixture(name='base_url_')
+def base_url_fixture() -> str:
     """
     Return a common base URL string for config tests.
 
@@ -672,8 +695,8 @@ def rate_limit_from_obj_factory() -> Callable[
     return _make
 
 
-@pytest.fixture
-def sample_endpoints_() -> dict[str, dict[str, Any]]:
+@pytest.fixture(name='sample_endpoints_')
+def sample_endpoints_fixture() -> dict[str, dict[str, Any]]:
     """
     Return a common endpoints mapping for config tests.
 

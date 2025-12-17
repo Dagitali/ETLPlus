@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_transform`` module.
+:mod:`tests.unit.test_u_transform` module.
 
 Unit tests for ``etlplus.transform``.
 
@@ -10,7 +10,7 @@ Notes
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 
@@ -21,7 +21,6 @@ from etlplus.transform import apply_select
 from etlplus.transform import apply_sort
 from etlplus.transform import transform
 
-
 # SECTION: TESTS =========================================================== #
 
 
@@ -30,7 +29,7 @@ class TestApplyAggregate:
     """Unit test suite for :func:`etlplus.transform.apply_aggregate`."""
 
     @pytest.mark.parametrize(
-        'func, expected',
+        'func, expected_result',
         [
             ('avg', 15),
             ('count', 3),
@@ -42,7 +41,7 @@ class TestApplyAggregate:
     def test_aggregate(
         self,
         func: str,
-        expected: int,
+        expected_result: int,
     ) -> None:
         """
         Test aggregating the ``value`` field with built-in functions.
@@ -51,7 +50,7 @@ class TestApplyAggregate:
         ----------
         func : str
             Aggregation function to apply.
-        expected : int
+        expected_result : int
             Expected result of the aggregation.
         """
         data = [
@@ -61,7 +60,7 @@ class TestApplyAggregate:
         ]
         result = apply_aggregate(data, {'field': 'value', 'func': func})
         key = f"{func}_value" if func != 'count' else 'count_value'
-        assert result[key] == expected
+        assert result[key] == expected_result
 
     def test_aggregate_callable_with_alias(self) -> None:
         """Test aggregating with a callable and custom alias."""
@@ -89,7 +88,7 @@ class TestApplyFilter:
     """Unit test suite for :func:`etlplus.transform.apply_filter`."""
 
     @pytest.mark.parametrize(
-        'data, op, value, expected',
+        'data, op, value, expected_names',
         [
             (
                 [
@@ -108,7 +107,7 @@ class TestApplyFilter:
         data: list[dict[str, str]],
         op: Callable[[str, str], bool],
         value: str,
-        expected: list[str],
+        expected_names: list[str],
     ) -> None:
         """
         Test filtering with a custom callable operator.
@@ -121,7 +120,7 @@ class TestApplyFilter:
             Operator function.
         value : str
             Value to filter by.
-        expected : list[str]
+        expected_names : list[str]
             Expected names after filter.
         """
         result = apply_filter(
@@ -132,10 +131,10 @@ class TestApplyFilter:
                 'value': value,
             },
         )
-        assert [item['name'] for item in result] == expected
+        assert [item['name'] for item in result] == expected_names
 
     @pytest.mark.parametrize(
-        'data, op, value, expected',
+        'data, op, value, expected_count',
         [
             (
                 [
@@ -173,7 +172,7 @@ class TestApplyFilter:
         data: list[dict],
         op: str,
         value: int | str,
-        expected: int,
+        expected_count: int,
     ) -> None:
         """
         Test filtering with numeric operators.
@@ -186,11 +185,11 @@ class TestApplyFilter:
             Operator name.
         value : int | str
             Value to filter by.
-        expected : int
+        expected_count : int
             Expected number of filtered records.
         """
         result = apply_filter(data, {'field': 'age', 'op': op, 'value': value})
-        assert len(result) == expected
+        assert len(result) == expected_count
 
     def test_apply_filter_in(self) -> None:
         """
@@ -257,7 +256,7 @@ class TestApplySort:
     """Unit test suite for :func:`etlplus.transform.apply_sort`."""
 
     @pytest.mark.parametrize(
-        'reverse, expected',
+        'reverse, expected_sorted_ages',
         [
             (False, [25, 30, 35]),
             (True, [35, 30, 25]),
@@ -266,7 +265,7 @@ class TestApplySort:
     def test_sort(
         self,
         reverse: bool,
-        expected: list[int],
+        expected_sorted_ages: list[int],
     ) -> None:
         """
         Test sorting records by a field.
@@ -275,7 +274,7 @@ class TestApplySort:
         ----------
         reverse : bool
             Whether to sort in descending order.
-        expected : list[int]
+        expected_sorted_ages : list[int]
             Expected sorted ages.
 
         Notes
@@ -288,7 +287,7 @@ class TestApplySort:
             {'name': 'Bob', 'age': 35},
         ]
         result = apply_sort(data, 'age', reverse=reverse)
-        assert [item['age'] for item in result] == expected
+        assert [item['age'] for item in result] == expected_sorted_ages
 
 
 @pytest.mark.unit

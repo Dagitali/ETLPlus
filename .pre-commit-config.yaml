@@ -47,7 +47,7 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.9.1
+    rev: v4.10.0
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -98,7 +98,7 @@ repos:
 
   ### Markdown ###
 
-  # Table of Contents updates
+  # Markdown: Table of Contents updates
   - repo: https://github.com/frnmst/md-toc
     rev: 9.0.0
     hooks:
@@ -112,16 +112,16 @@ repos:
       - id: add-trailing-comma
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.0
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: [--py37-plus]
+        args: [--py313-plus]
 
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.16.0
-    hooks:
-      - id: reorder-python-imports
-        args: [--py3-plus]
+  # - repo: https://github.com/asottile/reorder_python_imports
+  #   rev: v3.16.0
+  #   hooks:
+  #     - id: reorder-python-imports
+  #       args: [--py3-plus]
 
   # Formatting (authoritative)
   # - repo: https://github.com/psf/black
@@ -135,28 +135,28 @@ repos:
   #   hooks:
   #     - id: setup-cfg-fmt
 
-  # Linting, import ordering, pyupgrade-like rules
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.14.2
-  #   hooks:
-  #     - id: ruff
-  #       args:
-  #         - --fix
-  #         - --exit-non-zero-on-fix
-  #       # Ruff will:
-  #       # - enforce E/F/W/B/I/UP as configured in .ruff.toml
-  #       # - sort imports (isort-like)
-  #       # - apply pyupgrade-like rules for py313
-  #     # - id: ruff-format
+  # Python: linting, import ordering, pyupgrade-like rules
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.8
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
+        # Ruff will:
+        # - enforce E/F/W/B/I/UP as configured in .ruff.toml
+        # - sort imports (isort-like)
+        # - apply pyupgrade-like rules for py313
+      # - id: ruff-format
 
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.2
     hooks:
       - id: autopep8
 
-  # Type checking
+  # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+    rev: v1.19.0
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --install-types, --non-interactive]

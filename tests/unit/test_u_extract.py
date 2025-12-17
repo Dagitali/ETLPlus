@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_extract`` module.
+:mod:`tests.unit.test_u_extract` module.
 
 Unit tests for ``etlplus.extract``.
 
@@ -14,15 +14,14 @@ Notes
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import Callable
 
 import pytest
 
 from etlplus.extract import extract
 from etlplus.extract import extract_from_file
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -43,7 +42,7 @@ class TestExtract:
             extract('invalid', 'source')
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_extracts',
         [
             (
                 'json',
@@ -60,7 +59,7 @@ class TestExtract:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str], None],
-        expected: Any,
+        expected_extracts: Any,
     ) -> None:
         """
         Test extracting data from a file with a supported format.
@@ -73,7 +72,7 @@ class TestExtract:
             File format of the data.
         write : Callable[[str], None]
             Function to write data to the file.
-        expected : Any
+        expected_extracts : Any
             Expected extracted data.
 
         Notes
@@ -85,7 +84,7 @@ class TestExtract:
         result = extract(
             'file', str(path), file_format=file_format,
         )
-        assert result == expected
+        assert result == expected_extracts
 
 
 @pytest.mark.unit
@@ -135,6 +134,11 @@ class TestExtractErrors:
             Arguments to pass to the function.
         err_msg : str | None
             Expected error message substring, if applicable.
+
+        Raises
+        ------
+        AssertionError
+            If the expected exception is not raised.
         """
         with pytest.raises(exc_type) as e:
             call(*args)
@@ -144,9 +148,9 @@ class TestExtractErrors:
             case ValueError() if err_msg and err_msg in str(e.value):
                 pass
             case _:
-                assert False, (
-                    f'Expected {exc_type.__name__} with message: {err_msg}'
-                )
+                raise AssertionError(
+                    f'Expected {exc_type.__name__} with message: {err_msg}',
+                ) from e.value
 
 
 @pytest.mark.unit
@@ -160,7 +164,7 @@ class TestExtractFromFile:
     """
 
     @pytest.mark.parametrize(
-        'file_format,write,expected',
+        'file_format,write,expected_extracts',
         [
             (
                 'json',
@@ -195,7 +199,7 @@ class TestExtractFromFile:
         tmp_path: Path,
         file_format: str,
         write: Callable[[str], None] | None,
-        expected: Any,
+        expected_extracts: Any,
         request: pytest.FixtureRequest,
     ) -> None:
         """
@@ -210,7 +214,7 @@ class TestExtractFromFile:
         write : Callable[[str], None] | None
             Optional function to write data to the file. For CSV, the
             ``csv_writer`` fixture is used instead.
-        expected : Any
+        expected_extracts : Any
             Expected extracted data.
         request : pytest.FixtureRequest
             Pytest fixture request object used to access other fixtures.
@@ -241,7 +245,7 @@ class TestExtractFromFile:
             else:
                 assert name == 'John'
         else:
-            assert result == expected
+            assert result == expected_extracts
 
     @pytest.mark.parametrize(
         'file_format,content,err_msg',

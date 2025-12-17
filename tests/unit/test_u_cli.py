@@ -1,5 +1,5 @@
 """
-``tests.unit.test_u_cli`` module.
+:mod:`tests.unit.test_u_cli` module.
 
 Unit tests for ``etlplus.cli``.
 
@@ -13,7 +13,6 @@ from __future__ import annotations
 import pytest
 
 from etlplus.cli import create_parser
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -37,7 +36,7 @@ class TestCreateParser:
         assert parser.prog == 'etlplus'
 
     @pytest.mark.parametrize(
-        'cmd_args,expected',
+        'cmd_args,expected_args',
         [
             (
                 ['extract', 'file', '/path/to/file.json'],
@@ -98,21 +97,21 @@ class TestCreateParser:
     def test_parser_commands(
         self,
         cmd_args: list[str],
-        expected: dict[str, object],
+        expected_args: dict[str, object],
     ) -> None:
         """
-        Parameterized test for CLI command parsing and argument mapping.
+        Test CLI command parsing and argument mapping.
 
         Parameters
         ----------
         cmd_args : list[str]
             CLI arguments to parse.
-        expected : dict[str, object]
+        expected_args : dict[str, object]
             Expected parsed argument values.
         """
         parser = create_parser()
         args = parser.parse_args(cmd_args)
-        for key, val in expected.items():
+        for key, val in expected_args.items():
             assert getattr(args, key, None) == val
 
     def test_parser_version(self) -> None:

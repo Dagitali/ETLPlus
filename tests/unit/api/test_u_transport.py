@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_transport`` module.
+:mod:`tests.unit.api.test_u_transport` module.
 
 Unit tests for ``etlplus.api.transport``.
 
@@ -20,12 +20,10 @@ import requests  # type: ignore[import]
 
 from etlplus.api.transport import build_http_adapter
 
-
 # SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
 class TestBuildHttpAdapter:
     """
     Unit test suite for :func:`build_http_adapter`.

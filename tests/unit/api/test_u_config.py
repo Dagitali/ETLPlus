@@ -1,7 +1,7 @@
 """
-``tests.unit.config.test_u_api`` module.
+:mod:`tests.unit.api.test_u_config` module.
 
-Unit tests for ``etlplus.config.api``.
+Unit tests for :mod:`etlplus.api.config`.
 
 Notes
 -----
@@ -11,17 +11,16 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 import pytest
 
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
-from etlplus.config import EndpointConfig
-from etlplus.config import PaginationConfig
-from etlplus.config import RateLimitConfig
-
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import EndpointConfig
+from etlplus.api import PaginationConfig
+from etlplus.api import RateLimitConfig
 
 # SECTION: TESTS ============================================================ #
 
@@ -292,7 +291,7 @@ class TestApiConfig:
         ----------
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
-       """
+        """
         obj = {
             'profiles': {
                 'default': {
@@ -482,7 +481,7 @@ class TestApiProfileConfig:
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
         """
-        Test that base_url is required for ApiProfileConfig.
+        Test that base_url is required for :class:`ApiProfileConfig`.
 
         Parameters
         ----------
@@ -533,7 +532,7 @@ class TestEndpointConfig:
         endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:
         """
-        Test that from_str sets no method for EndpointConfig.
+        Test that from_str sets no method for :class:`EndpointConfig`.
 
         Parameters
         ----------
@@ -545,7 +544,7 @@ class TestEndpointConfig:
         assert ep.method is None
 
     @pytest.mark.parametrize(
-        'payload, expected_exc',
+        'payload, expected_exception',
         [
             ({'method': 'GET'}, TypeError),  # missing path
             ({'path': 123}, TypeError),  # path wrong type
@@ -566,7 +565,7 @@ class TestEndpointConfig:
     def test_invalid_payloads_raise(
         self,
         payload: dict[str, object],
-        expected_exc: type[Exception],
+        expected_exception: type[Exception],
         endpoint_config_factory: Callable[[str], EndpointConfig],
     ) -> None:
         """
@@ -576,12 +575,12 @@ class TestEndpointConfig:
         ----------
         payload : dict[str, object]
             Payload to test for error handling.
-        expected_exc : type[Exception]
+        expected_exception : type[Exception]
             Expected exception type.
         endpoint_config_factory : Callable[[str], EndpointConfig]
             Factory for building :class:`EndpointConfig` from string.
         """
-        with pytest.raises(expected_exc):
+        with pytest.raises(expected_exception):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
 
     def test_lenient_fields_do_not_raise(
@@ -609,7 +608,7 @@ class TestEndpointConfig:
     ) -> None:
         """
         Test that method and query_params are parsed correctly in
-        EndpointConfig.
+        :class:`EndpointConfig`.
 
         Parameters
         ----------

@@ -1,5 +1,5 @@
 """
-etlplus.enums module.
+:mod:`etlplus.enums` module.
 
 Shared enumeration types used across ETLPlus modules.
 """
@@ -13,7 +13,6 @@ from typing import Self
 from .types import AggregateFunc
 from .types import OperatorFunc
 from .types import StrStrMap
-
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -356,7 +355,7 @@ class PipelineStep(CoercibleStrEnum):
         return _PIPELINE_ORDER_INDEX[self]
 
 
-# SECTION: PROTECTED CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS ============================================== #
 
 
 # Precomputed order index for PipelineStep; avoids recomputing on each access.

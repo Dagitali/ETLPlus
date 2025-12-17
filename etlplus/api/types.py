@@ -1,343 +1,172 @@
 """
-etlplus.api.types module.
+:mod:`etlplus.api.types` module.
 
-Centralized type aliases and ``TypedDict``-based configurations used in the
-:mod:`etlplus.api` package.
+HTTP-centric type aliases for :mod:`etlplus.api` helpers.
 
-Contents
---------
-- JSON aliases: ``JSONDict``, ``JSONList``, ``JSONData``
-- Pagination configs: ``PagePaginationConfig``, ``CursorPaginationConfig``,
-  and the union ``PaginationConfig``
-- Rate limiting: ``RateLimitConfig``
-- Retry policy: ``RetryPolicy``
-- HTTP transport: ``HTTPAdapterRetryConfig``, ``HTTPAdapterMountConfig``
+Notes
+-----
+- Keeps pagination, transport, and higher-level modules decoupled from
+    ``typing`` details.
+- Uses ``Mapping`` inputs to accept both ``dict`` and mapping-like objects.
 
 Examples
 --------
->>> from etlplus.api import PaginationConfig
->>> pg: PaginationConfig = {"type": "page", "page_size": 100}
->>> from etlplus.api import RetryPolicy
->>> rp: RetryPolicy = {"max_attempts": 3, "backoff": 0.5}
+>>> from etlplus.api import Url, Headers, Params
+>>> url: Url = 'https://api.example.com/data'
+>>> headers: Headers = {'Authorization': 'Bearer token'}
+>>> params: Params = {'query': 'search term', 'limit': 50}
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
-from typing import Literal
-from typing import NotRequired
-from typing import TypedDict
+from typing import cast
 
+from ..types import JSONData
+from ..types import StrAnyMap
+from ..types import StrStrMap
 
-# SECTION: PUBLIC API  ===================================================== #
+# SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # Aliases
-    'JSONDict', 'JSONList', 'JSONData', 'PaginationConfig',
+    # Data Classes
+    'RequestOptions',
 
-    # HTTP adapter config
-    'HTTPAdapterMountConfig', 'HTTPAdapterRetryConfig',
-
-    # Pagination configs
-    'CursorPaginationConfig', 'PagePaginationConfig',
-
-    # Rate limit / retry
-    'RateLimitConfig', 'RetryPolicy',
+    # Type Aliases
+    'FetchPageCallable',
+    'Headers',
+    'Params',
+    'Url',
 ]
 
 
-# SECTION: TYPED DICTS (HTTP Adapter / Retry) =============================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-class HTTPAdapterRetryConfig(TypedDict, total=False):
+_UNSET = object()
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class RequestOptions:
     """
-    Retry configuration for urllib3 ``Retry``.
-
-    Used by requests' ``HTTPAdapter``.
-
-    Summary
-    -------
-    Keys mirror the ``Retry`` constructor where relevant. All keys are
-    optional; omit any you don't need. When converted downstream, collection-
-    valued fields are normalized to tuples/frozensets.
+    Immutable snapshot of per-request options.
 
     Attributes
     ----------
-    total : int
-        Retry counters matching urllib3 semantics.
-    connect : int
-        Number of connection-related retries.
-    read : int
-        Number of read-related retries.
-    redirect : int
-        Number of redirect-related retries.
-    status : int
-        Number of status-related retries.
-    backoff_factor : float
-        Base factor for exponential backoff between attempts.
-    status_forcelist : list[int] | tuple[int, ...]
-        HTTP status codes that should always be retried.
-    allowed_methods : list[str] | set[str] | tuple[str, ...]
-        Idempotent HTTP methods eligible for retry.
-    raise_on_status : bool
-        Whether to raise after exhausting status-based retries.
-    respect_retry_after_header : bool
-        Honor ``Retry-After`` response headers when present.
-
-    Examples
-    --------
-    >>> retry_cfg: HTTPAdapterRetryConfig = {
-    ...     'total': 5,
-    ...     'backoff_factor': 0.5,
-    ...     'status_forcelist': [429, 503],
-    ...     'allowed_methods': ['GET'],
-    ... }
+    params : Params | None
+        Query or body parameters.
+    headers : Headers | None
+        HTTP headers.
+    timeout : float | None
+        Request timeout in seconds.
     """
 
     # -- Attributes -- #
 
-    total: int
-    connect: int
-    read: int
-    redirect: int
-    status: int
-    backoff_factor: float
-    status_forcelist: list[int] | tuple[int, ...]
-    allowed_methods: list[str] | set[str] | tuple[str, ...]
-    raise_on_status: bool
-    respect_retry_after_header: bool
+    params: Params | None = None
+    headers: Headers | None = None
+    timeout: float | None = None
 
+    # -- Magic Methods (Object Lifecycle) -- #
 
-class HTTPAdapterMountConfig(TypedDict, total=False):
-    """
-    Configuration mapping for mounting an ``HTTPAdapter`` on a ``Session``.
+    def __post_init__(self) -> None:
+        if self.params:
+            object.__setattr__(self, 'params', dict(self.params))
+        if self.headers:
+            object.__setattr__(self, 'headers', dict(self.headers))
 
-    Summary
-    -------
-    Provides connection pooling and optional retry behavior. Values are
-    forwarded into ``HTTPAdapter`` and, when a retry dict is supplied,
-    converted to a ``Retry`` instance where supported.
+    # -- Instance Methods -- #
 
-    Attributes
-    ----------
-    prefix : str
-        Prefix to mount the adapter on (e.g., ``'https://'`` or specific base).
-    pool_connections : int
-        Number of urllib3 connection pools to cache.
-    pool_maxsize : int
-        Maximum connections per pool.
-    pool_block : bool
-        Whether the pool should block for connections instead of creating new
-        ones.
-    max_retries : int | HTTPAdapterRetryConfig
-        Retry configuration passed to ``HTTPAdapter`` (int) or converted to
-        ``Retry``.
+    def as_kwargs(self) -> dict[str, Any]:
+        """
+        Convert options into ``requests``-compatible kwargs.
 
-    Examples
-    --------
-    >>> adapter_cfg: HTTPAdapterMountConfig = {
-    ...     'prefix': 'https://',
-    ...     'pool_connections': 10,
-    ...     'pool_maxsize': 10,
-    ...     'pool_block': False,
-    ...     'max_retries': {
-    ...         'total': 3,
-    ...         'backoff_factor': 0.5,
-    ...     },
-    ... }
-    """
+        Returns
+        -------
+        dict[str, Any]
+            Keyword arguments for ``requests`` methods.
+        """
+        kw: dict[str, Any] = {}
+        if self.params:
+            kw['params'] = dict(self.params)
+        if self.headers:
+            kw['headers'] = dict(self.headers)
+        if self.timeout is not None:
+            kw['timeout'] = self.timeout
+        return kw
 
-    # -- Attributes -- #
+    def evolve(
+        self,
+        *,
+        params: Params | None | object = _UNSET,
+        headers: Headers | None | object = _UNSET,
+        timeout: float | None | object = _UNSET,
+    ) -> RequestOptions:
+        """
+        Return a copy with the provided fields replaced.
 
-    prefix: str
-    pool_connections: int
-    pool_maxsize: int
-    pool_block: bool
-    max_retries: int | HTTPAdapterRetryConfig
+        Parameters
+        ----------
+        params : Params | None | object, optional
+            Replacement params mapping. ``None`` clears params. When
+            omitted, the existing params are preserved.
+        headers : Headers | None | object, optional
+            Replacement headers mapping. ``None`` clears headers. When
+            omitted, the existing headers are preserved.
+        timeout : float | None | object, optional
+            Replacement timeout. ``None`` clears the timeout. When
+            omitted, the existing timeout is preserved.
 
+        Returns
+        -------
+        RequestOptions
+            New snapshot reflecting the provided overrides.
+        """
+        if params is _UNSET:
+            next_params = self.params
+        elif params is None:
+            next_params = None
+        else:
+            next_params = cast(dict, params)
 
-# SECTION: TYPED DICTS (Pagination) ========================================= #
+        if headers is _UNSET:
+            next_headers = self.headers
+        elif headers is None:
+            next_headers = None
+        else:
+            next_headers = cast(dict, headers)
 
+        if timeout is _UNSET:
+            next_timeout = self.timeout
+        else:
+            next_timeout = cast(float | None, timeout)
 
-class CursorPaginationConfig(TypedDict):
-    """
-    Configuration for cursor-based pagination.
-
-    Summary
-    -------
-    Supports fetching successive result pages using a cursor token returned in
-    each response. Values are all optional except ``type``.
-
-    Attributes
-    ----------
-    type : Literal['cursor']
-        Pagination type discriminator.
-    records_path : NotRequired[str]
-        Dotted path to the records list in each page payload.
-    max_pages : NotRequired[int]
-        Maximum number of pages to fetch.
-    max_records : NotRequired[int]
-        Maximum number of records to fetch across all pages.
-    cursor_param : NotRequired[str]
-        Query parameter name carrying the cursor value.
-    cursor_path : NotRequired[str]
-        Dotted path inside the payload pointing to the next cursor.
-    start_cursor : NotRequired[str | int]
-        Initial cursor value used for the first request.
-    page_size : NotRequired[int]
-        Number of records per page.
-
-    Examples
-    --------
-    >>> cfg: CursorPaginationConfig = {
-    ...     'type': 'cursor',
-    ...     'records_path': 'data.items',
-    ...     'cursor_param': 'cursor',
-    ...     'cursor_path': 'data.nextCursor',
-    ...     'page_size': 100,
-    ... }
-    """
-
-    # -- Attributes -- #
-
-    type: Literal['cursor']
-    records_path: NotRequired[str]
-    max_pages: NotRequired[int]
-    max_records: NotRequired[int]
-    cursor_param: NotRequired[str]
-    cursor_path: NotRequired[str]
-    start_cursor: NotRequired[str | int]
-    page_size: NotRequired[int]
-
-
-class PagePaginationConfig(TypedDict):
-    """
-    Configuration for 'page' and 'offset' pagination types.
-
-    Summary
-    -------
-    Controls page-number or offset-based pagination. Values are optional
-    except ``type``.
-
-    Attributes
-    ----------
-    type : Literal['page', 'offset']
-        Pagination type discriminator.
-    records_path : NotRequired[str]
-        Dotted path to the records list in each page payload.
-    max_pages : NotRequired[int]
-        Maximum number of pages to fetch.
-    max_records : NotRequired[int]
-        Maximum number of records to fetch across all pages.
-    page_param : NotRequired[str]
-        Query parameter name carrying the page number.
-    size_param : NotRequired[str]
-        Query parameter name carrying the page size.
-    start_page : NotRequired[int]
-        Starting page number (1-based).
-    page_size : NotRequired[int]
-        Number of records per page.
-
-    Examples
-    --------
-    >>> cfg: PagePaginationConfig = {
-    ...     'type': 'page',
-    ...     'records_path': 'data.items',
-    ...     'page_param': 'page',
-    ...     'size_param': 'per_page',
-    ...     'start_page': 1,
-    ...     'page_size': 100,
-    ... }
-    """
-
-    # -- Attributes -- #
-
-    type: Literal['page', 'offset']
-    records_path: NotRequired[str]
-    max_pages: NotRequired[int]
-    max_records: NotRequired[int]
-    page_param: NotRequired[str]
-    size_param: NotRequired[str]
-    start_page: NotRequired[int]
-    page_size: NotRequired[int]
-
-
-# SECTION: TYPED DICTS (Rate Limits / Retries) ============================== #
-
-
-class RateLimitConfig(TypedDict):
-    """
-    Optional rate limit configuration.
-
-    Summary
-    -------
-    Provides either a fixed delay (``sleep_seconds``) or derives one from a
-    maximum requests-per-second value (``max_per_sec``).
-
-    Attributes
-    ----------
-    sleep_seconds : NotRequired[float | int]
-        Fixed delay between requests.
-    max_per_sec : NotRequired[float | int]
-        Maximum requests per second; converted to ``1 / max_per_sec`` seconds
-        between requests when positive.
-
-    Examples
-    --------
-    >>> rl: RateLimitConfig = {'max_per_sec': 4}
-    ... # sleep ~= 0.25s between calls
-    """
-
-    # -- Attributes -- #
-
-    sleep_seconds: NotRequired[float | int]
-    max_per_sec: NotRequired[float | int]
-
-
-class RetryPolicy(TypedDict):
-    """
-    Optional retry policy for HTTP requests.
-
-    Summary
-    -------
-    Controls exponential backoff with jitter (applied externally) and retry
-    eligibility by HTTP status code.
-
-    Attributes
-    ----------
-    max_attempts : NotRequired[int]
-        Maximum number of attempts (including the first). If omitted, a default
-        may be applied by callers.
-    backoff : NotRequired[float]
-        Base backoff seconds; attempt ``n`` sleeps ``backoff * 2**(n-1)``
-        before retrying.
-    retry_on : NotRequired[list[int]]
-        HTTP status codes that should trigger a retry.
-
-    Examples
-    --------
-    >>> rp: RetryPolicy = {
-    ...     'max_attempts': 5,
-    ...     'backoff': 0.5,
-    ...     'retry_on': [429, 502, 503, 504],
-    ... }
-    """
-
-    # -- Attributes -- #
-
-    max_attempts: NotRequired[int]
-    backoff: NotRequired[float]
-    retry_on: NotRequired[list[int]]
+        return RequestOptions(
+            params=next_params,
+            headers=next_headers,
+            timeout=next_timeout,
+        )
 
 
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type JSONDict = dict[str, Any]
-type JSONList = list[JSONDict]
-type JSONData = JSONDict | JSONList
+# HTTP headers represented as a string-to-string mapping.
+type Headers = StrStrMap
 
-type JSONRecord = dict[str, bool | float | int | str | None]
-type JSONRecords = list[JSONRecord]
+# Query or body parameters allowing arbitrary JSON-friendly values.
+type Params = StrAnyMap
 
-type PaginationConfig = PagePaginationConfig | CursorPaginationConfig
+# Fully qualified resource locator consumed by transport helpers.
+type Url = str
+
+# Callable signature used by pagination helpers to fetch data pages.
+type FetchPageCallable = Callable[
+    [Url, RequestOptions, int | None],
+    JSONData,
+]

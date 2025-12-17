@@ -1,17 +1,16 @@
 """
-etlplus.config.mixins module.
+:mod:`etlplus.mixins` module.
 
-Lightweight mixins used by configuration models.
+Shared mixin utilities used across configuration and API layers.
 
 Notes
------
-- Mixins are stateless and declare ``__slots__ = ()`` to avoid accidental
-    attribute creation.
+------
+- Mixins are stateless helpers.
+- ``__slots__`` prevents accidental attribute mutation at runtime.
 """
 from __future__ import annotations
 
 from typing import Final
-
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -19,15 +18,15 @@ from typing import Final
 __all__ = ['BoundsWarningsMixin']
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: EXPORTS ========================================================== #
 
 
 class BoundsWarningsMixin:
     """
-    Small helper for accumulating non-raising warnings.
+    Append human-readable warnings without raising exceptions.
 
-    Usage
-    -----
+    Examples
+    --------
     >>> warnings: list[str] = []
     >>> BoundsWarningsMixin._warn_if(True, 'oops', warnings)
     >>> warnings
@@ -46,7 +45,8 @@ class BoundsWarningsMixin:
         message: str,
         bucket: list[str],
     ) -> None:
-        """Append a warning to a list if a condition is met.
+        """
+        Append a warning to a list if a condition is met.
 
         Parameters
         ----------

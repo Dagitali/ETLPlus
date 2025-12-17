@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_auth`` module.
+:mod:`tests.unit.api.test_u_auth` module.
 
 Unit tests for ``etlplus.api.auth``.
 
@@ -24,7 +24,6 @@ import requests  # type: ignore[import]
 
 from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -51,6 +50,7 @@ class _Resp:
         self.text = str(payload)
 
     def raise_for_status(self) -> None:
+        """Raise HTTPError if status code indicates an error."""
         if self.status_code >= 400:
             err = requests.HTTPError('boom')
             err.response = types.SimpleNamespace(
@@ -60,14 +60,15 @@ class _Resp:
             raise err
 
     def json(self) -> dict[str, Any]:
+        """Return the JSON payload."""
         return self._payload
 
 
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture
-def token_sequence(
+@pytest.fixture(name='token_sequence')
+def token_sequence_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, int]:
     """
@@ -83,6 +84,8 @@ def token_sequence(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
+    # pylint: disable=unused-argument
+
     calls: dict[str, int] = {'n': 0}
 
     def fake_post(
@@ -93,6 +96,7 @@ def token_sequence(
         return _Resp({'access_token': f"t{calls['n']}", 'expires_in': 60})
 
     monkeypatch.setattr(requests, 'post', fake_post)
+
     return calls
 
 
@@ -100,7 +104,6 @@ def token_sequence(
 
 
 @pytest.mark.unit
-@pytest.mark.usefixtures()
 class TestEndpointCredentialsBearer:
     """
     Unit test suite for :class:`EndpointCredentialsBearer`.
@@ -117,7 +120,7 @@ class TestEndpointCredentialsBearer:
         token_sequence: dict[str, int],
     ) -> None:
         """
-        Test that EndpointCredentialsBearer fetches and caches tokens
+        Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
         correctly.
 
         Parameters
@@ -149,13 +152,16 @@ class TestEndpointCredentialsBearer:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that EndpointCredentialsBearer refreshes token when expiring.
+        Test that :class:`EndpointCredentialsBearer` refreshes token when
+        expiring.
 
         Parameters
         ----------
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         calls: dict[str, int] = {'n': 0}
 
         def fake_post(
@@ -212,6 +218,9 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=protected-access
+        # pylint: disable=unused-argument
+
         def fake_post(
             *args,
             **kwargs,
@@ -223,6 +232,7 @@ class TestEndpointCredentialsBearer:
 
             class _R:
                 def raise_for_status(self):
+                    """Raise HTTPError for 401 response."""
                     e = requests.HTTPError('401')
                     e.response = resp  # type: ignore[attr-defined]
                     raise e
@@ -252,6 +262,8 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+        # pylint: disable=unused-argument
+
         def fake_post(
             *args,
             **kwargs,
@@ -286,9 +298,11 @@ class TestEndpointCredentialsBearer:
             text = 'not json'
 
             def raise_for_status(self):
+                """Raise nothing for HTTP 200 OK status."""
                 return None
 
             def json(self):
+                """Raise ValueError for invalid JSON."""
                 raise ValueError('invalid json')
 
         monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())

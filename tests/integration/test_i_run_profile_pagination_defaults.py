@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_run_profile_pagination_defaults`` module.
+:mod:`tests.integration.test_i_run_profile_pagination_defaults` module.
 
 Integration tests for profile-level pagination defaults. Validates that
 ``run()`` inherits pagination defaults from the API profile when not overridden
@@ -13,24 +13,31 @@ Notes
 """
 from __future__ import annotations
 
-from etlplus.config import PaginationConfig
+from collections.abc import Callable
+from typing import Any
 
+from etlplus.api import PaginationConfig
+from etlplus.api import PaginationType
+from etlplus.config import PipelineConfig
+from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 # SECTION: TESTS ============================================================ #
 
 
 class TestRunProfilePaginationDefaults:
+    """Integration test suite for profile-level pagination defaults."""
 
     def test_job_level_pagination_overrides_profile_defaults(
         self,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[type[Client], list[Client]],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:
+        """Test that job-level pagination options override profile defaults."""
         # Profile defaults exist, but job-level options will override.
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
-                type='page',
+                type=PaginationType.PAGE,
                 page_param='page',
                 size_param='per_page',
                 start_page=5,
@@ -38,17 +45,20 @@ class TestRunProfilePaginationDefaults:
             ),
         )
         job = cfg.jobs[0]
-        job.extract.options = {
-            'pagination': {
-                'type': 'cursor',
-                'cursor_param': 'cursor',
-                'cursor_path': 'next',
-                'page_size': 25,
-            },
-        }
+        if job.extract is not None:
+            job.extract.options = {
+                'pagination': {
+                    'type': 'cursor',
+                    'cursor_param': 'cursor',
+                    'cursor_path': 'next',
+                    'page_size': 25,
+                },
+            }
+        else:
+            raise ValueError('job.extract is None; cannot set options')
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         assert result.get('status') == 'ok'
         assert created, 'Expected client to be constructed'
@@ -63,13 +73,14 @@ class TestRunProfilePaginationDefaults:
 
     def test_profile_pagination_defaults_applied(
         self,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[type[Client], list[Client]],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:
+        """Test that profile-level pagination defaults are applied."""
         cfg = pipeline_cfg_factory(
             pagination_defaults=PaginationConfig(
-                type='page',
+                type=PaginationType.PAGE,
                 page_param='page',
                 size_param='per_page',
                 start_page=5,
@@ -77,8 +88,8 @@ class TestRunProfilePaginationDefaults:
             ),
         )
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         # Sanity.
         assert result.get('status') == 'ok'

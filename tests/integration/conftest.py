@@ -1,5 +1,5 @@
 """
-``tests.integration.conftest`` module.
+:mod:`tests.integration.conftest` module.
 
 Configures pytest-based integration tests and provides shared fixtures.
 
@@ -11,24 +11,24 @@ from __future__ import annotations
 
 import importlib
 import pathlib
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import Protocol
 
 import pytest
 
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import EndpointConfig
+from etlplus.api import PaginationConfig
+from etlplus.api import RateLimitConfig
+from etlplus.api import RateLimiter
 from etlplus.config import ConnectorApi
 from etlplus.config import ConnectorFile
-from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
-from etlplus.config import PaginationConfig
 from etlplus.config import PipelineConfig
-from etlplus.config import RateLimitConfig
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -132,6 +132,12 @@ def fake_endpoint_client() -> tuple[
     created: list[FakeEndpointClientProtocol] = []
 
     class FakeClient:
+        """
+        Fake :class:`EndpointClient` capturing :meth:`paginate` arguments.
+        """
+
+        # pylint: disable=unused-argument
+
         seen: dict[str, Any]
 
         def __init__(
@@ -148,11 +154,14 @@ def fake_endpoint_client() -> tuple[
 
         def paginate(
             self,
-            *argsrgs,
+            *args,
             pagination: Any | None = None,
             sleep_seconds: float = 0.0,
             **kwargs,
         ) -> Any:
+            """
+            Capture pagination config and sleep seconds.
+            """
             self.seen['pagination'] = pagination
             self.seen['sleep_seconds'] = sleep_seconds
             return [{'ok': True}]
@@ -250,6 +259,8 @@ def run_patched(
         *,
         sleep_seconds: float | None = None,
     ) -> dict[str, Any]:
+        # pylint: disable=unused-argument
+
         # Patch config loader and EndpointClient.
         monkeypatch.setattr(
             run_mod,
@@ -258,12 +269,21 @@ def run_patched(
         )
         monkeypatch.setattr(run_mod, 'EndpointClient', endpoint_client_cls)
 
-        # Optionally force compute_sleep_seconds to a constant.
+        # Optionally force the resolved rate-limit delay to a constant.
         if sleep_seconds is not None:
+            def _fixed_resolve(
+                cls: type[RateLimiter],
+                *,
+                rate_limit: Any | None = None,
+                overrides: Any | None = None,
+            ) -> float:
+                # ignore inputs and return deterministic delay for assertions
+                return sleep_seconds
+
             monkeypatch.setattr(
-                run_mod,
-                'compute_sleep_seconds',
-                lambda *_a, **_k: sleep_seconds,
+                RateLimiter,
+                'resolve_sleep_seconds',
+                classmethod(_fixed_resolve),
             )
 
         # Avoid real IO in load().

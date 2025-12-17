@@ -1,5 +1,5 @@
 """
-etlplus.transformation module.
+:mod:`etlplus.transform` module.
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
@@ -37,10 +37,10 @@ Using enums for keys and functions::
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
-from typing import Callable
 from typing import cast
 
 from .enums import AggregateName
@@ -66,8 +66,7 @@ from .types import StepSpec
 from .types import StrPath
 from .utils import to_number
 
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 # -- Aggregators -- #
@@ -706,7 +705,7 @@ def _is_plain_fields_list(obj: Any) -> bool:
         and not any(isinstance(x, Mapping) for x in obj)
 
 
-# SECTION: PROTECTED CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS ============================================== #
 
 
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (
@@ -726,7 +725,7 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 
-# SECTION: PUBLIC API ======================================================= #
+# SECTION: EXPORTS ========================================================== #
 
 
 def apply_filter(

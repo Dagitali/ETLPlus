@@ -108,7 +108,7 @@ ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "
 filtered = transform(data, ops)
 rules = {"name": {"type": "string", "required": True}, "email": {"type": "string", "required": True}}
 assert validate(filtered, rules)["valid"]
-load(filtered, "file", "temp/sample_output.json", format="json")
+load(filtered, "file", "temp/sample_output.json", file_format="json")
 ```
 
 ## Usage
@@ -237,6 +237,11 @@ transformed = transform(data, operations)
 # Load data
 load(transformed, "file", "temp/sample_output.json", format="json")
 ```
+
+For YAML-driven pipelines executed end-to-end (extract → validate → transform → load), see:
+
+- Authoring: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
+- Runner API and internals: [`docs/run-module.md`](docs/run-module.md)
 
 ### Complete ETL Pipeline Example
 
@@ -417,6 +422,22 @@ pytest tests/ --cov=etlplus --cov-report=html
 ```bash
 flake8 etlplus/
 black etlplus/
+```
+
+### Releasing to PyPI
+
+For maintainers, releases are built from the root using the modern `pyproject.toml` configuration:
+
+```bash
+make dist          # build sdist + wheel into ./dist and run twine check
+```
+
+Then upload the artifacts in `dist/` with `twine` (installed by `make dist`):
+
+```bash
+export TWINE_USERNAME="__token__"
+export TWINE_PASSWORD="pypi-..."  # your PyPI API token
+python -m twine upload dist/*
 ```
 
 ## Links

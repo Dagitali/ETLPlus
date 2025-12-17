@@ -1,25 +1,28 @@
 """
-etlplus.run module.
+:mod:`etlplus.run` module.
 
 A module for running ETL jobs defined in YAML configurations.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
-from typing import cast
 from typing import Final
-from typing import Mapping
 from typing import TypedDict
+from typing import cast
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
 
-from .api import compute_sleep_seconds  # noqa: F401 (tests may monkeypatch)
 from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfig as ApiPaginationConfig
-from .api.types import RetryPolicy as ApiRetryPolicy
+from .api import PaginationConfigMap
+from .api import RequestOptions
+from .api import RetryPolicy
+from .api import Url
 from .config import load_pipeline_config
+from .enums import DataConnectorType
+from .enums import coerce_data_connector_type
 from .extract import extract
 from .load import load
 from .run_helpers import compose_api_request_env
@@ -32,31 +35,10 @@ from .utils import print_json
 from .validate import validate
 from .validation.utils import maybe_validate
 
-
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['run']
-
-
-# SECTION: TYPES ============================================================ #
-
-
-# Types glossary (config vs API client)
-# ------------------------------------
-# - CfgApiConfig: etlplus.config.api.ApiConfig (config layer)
-# - CfgEndpointConfig: etlplus.config.api.EndpointConfig (config layer)
-# - CfgPaginationConfig: etlplus.config.pagination.PaginationConfig
-#   (config layer)
-# - CfgRateLimitConfig: etlplus.config.rate_limit.RateLimitConfig
-#   (config layer)
-# - ApiPaginationConfig: etlplus.api.types.PaginationConfig (client layer)
-# - ApiRetryPolicy: etlplus.api.types.RetryPolicy (client layer)
-# - SessionConfig (below): runner-only TypedDict for HTTP session options
-
-type Headers = Mapping[str, str]
-type Params = Mapping[str, Any]
-type URL = str
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -70,7 +52,7 @@ class BaseApiHttpEnv(TypedDict, total=False):
     """
 
     # Request details
-    url: URL | None
+    url: Url | None
     headers: dict[str, str]
     timeout: Timeout
 
@@ -96,11 +78,11 @@ class ApiRequestEnv(BaseApiHttpEnv, total=False):
 
     # Request
     params: dict[str, Any]
-    pagination: ApiPaginationConfig | None
+    pagination: PaginationConfigMap | None
     sleep_seconds: float
 
     # Reliability
-    retry: ApiRetryPolicy | None
+    retry: RetryPolicy | None
     retry_network_errors: bool
 
 
@@ -118,7 +100,8 @@ class ApiTargetEnv(BaseApiHttpEnv, total=False):
     - Precedence for inherited values matches original logic:
         overrides -> target -> API profile defaults.
     - Target composition does not include pagination/rate-limit/retry since
-      loads are single-request operations; only headers/timeout/session apply.
+        loads are single-request operations; only headers/timeout/session
+        apply.
     """
 
     # Request
@@ -181,16 +164,6 @@ def run(
     ValueError
         If the job is not found or if there are configuration issues.
     """
-    # Propagate a possibly monkeypatched compute_sleep_seconds into helpers,
-    # to preserve existing test contracts that patch run.compute_sleep_seconds.
-    try:
-        from . import run_helpers as _rh  # local import to avoid cycles
-        # Propagate monkeypatched function to helpers
-        _rh.compute_sleep_seconds = compute_sleep_seconds
-    except (ImportError, AttributeError):
-        # Safe to ignore; helpers will use their own reference.
-        pass
-
     cfg_path = config_path or DEFAULT_CONFIG_PATH
     cfg = load_pipeline_config(cfg_path, substitute=True)
 
@@ -212,9 +185,10 @@ def run(
     ex_opts: dict[str, Any] = job_obj.extract.options or {}
 
     data: Any
-    stype = getattr(source_obj, 'type', None)
+    stype_raw = getattr(source_obj, 'type', None)
+    stype = coerce_data_connector_type(stype_raw or '')
     match stype:
-        case 'file':
+        case DataConnectorType.FILE:
             path = getattr(source_obj, 'path', None)
             fmt = ex_opts.get('format') or getattr(
                 source_obj, 'format', 'json',
@@ -222,10 +196,10 @@ def run(
             if not path:
                 raise ValueError('File source missing "path"')
             data = extract('file', path, file_format=fmt)
-        case 'database':
+        case DataConnectorType.DATABASE:
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
-        case 'api':
+        case DataConnectorType.API:
             env = compose_api_request_env(cfg, source_obj, ex_opts)
             if (
                 env.get('use_endpoints')
@@ -272,16 +246,23 @@ def run(
                     ),
                     session=env.get('session'),
                 )
+
+                request_options = RequestOptions(
+                    params=cast(Mapping[str, Any] | None, env.get('params')),
+                    headers=cast(Mapping[str, str] | None, env.get('headers')),
+                    timeout=cast(Timeout | None, env.get('timeout')),
+                )
+
                 data = client.paginate_url(
                     cast(str, url),
-                    cast(Mapping[str, Any] | None, env.get('params')),
-                    cast(Mapping[str, str] | None, env.get('headers')),
-                    env.get('timeout'),
-                    cast(ApiPaginationConfig | None, env.get('pagination')),
+                    cast(PaginationConfigMap | None, env.get('pagination')),
+                    request=request_options,
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
-            raise ValueError(f'Unsupported source type: {stype}')
+            # ``coerce_data_connector_type`` already raises for invalid
+            # connector types; this branch is defensive only.
+            raise ValueError(f'Unsupported source type: {stype_raw}')
 
     # DRY: unified validation helper (pre/post transform)
     val_ref = job_obj.validate
@@ -339,9 +320,10 @@ def run(
     target_obj = targets_by_name[target_name]
     overrides = job_obj.load.overrides or {}
 
-    ttype = getattr(target_obj, 'type', None)
+    ttype_raw = getattr(target_obj, 'type', None)
+    ttype = coerce_data_connector_type(ttype_raw or '')
     match ttype:
-        case 'file':
+        case DataConnectorType.FILE:
             path = (
                 overrides.get('path')
                 or getattr(target_obj, 'path', None)
@@ -352,7 +334,7 @@ def run(
             if not path:
                 raise ValueError('File target missing "path"')
             result = load(data, 'file', path, file_format=fmt)
-        case 'api':
+        case DataConnectorType.API:
             env_t = compose_api_target_env(cfg, target_obj, overrides)
             url_t = env_t.get('url')
             if not url_t:
@@ -371,13 +353,15 @@ def run(
                 method=cast(str | Any, env_t.get('method') or 'post'),
                 **kwargs_t,
             )
-        case 'database':
+        case DataConnectorType.DATABASE:
             conn = overrides.get('connection_string') or getattr(
                 target_obj, 'connection_string', '',
             )
             result = load(data, 'database', str(conn))
         case _:
-            raise ValueError(f'Unsupported target type: {ttype}')
+            # ``coerce_data_connector_type`` already raises for invalid
+            # connector types; this branch is defensive only.
+            raise ValueError(f'Unsupported target type: {ttype_raw}')
 
     # Return the terminal load result directly; callers (e.g., CLI) can wrap
     # it in their own envelope when needed.

@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_pipeline_smoke`` module.
+:mod:`tests.integration.test_i_pipeline_smoke` module.
 
 Pipeline smoke integration test suite exercising a minimal file→file job via
 the CLI. Parametrized to verify both empty and non-empty inputs.
@@ -14,16 +14,18 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
 from etlplus.cli import main
 
-
 # SECTION: TESTS ============================================================ #
 
 
 class TestPipelineSmoke:
+    """Integration test suite for file→file job via CLI."""
+
     @pytest.mark.parametrize(
         'data_in',
         [
@@ -37,11 +39,12 @@ class TestPipelineSmoke:
     )
     def test_file_to_file(
         self,
-        monkeypatch,
-        tmp_path,
-        capsys,
-        data_in,
-    ) -> None:  # noqa: D401
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        data_in: list[object] | list[dict[str, int | str]],
+    ) -> None:
+        """Test file→file jobs via CLI for multiple input datasets."""
         # Prepare input and output paths.
         input_path = tmp_path / 'input.json'
         output_path = tmp_path / 'output.json'

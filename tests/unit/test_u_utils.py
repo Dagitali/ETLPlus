@@ -1,5 +1,5 @@
 """
-tests.unit.test_u_utils module.
+:mod:`tests.unit.test_u_utils` module.
 
 Unit tests for ``etlplus.utils``.
 
@@ -14,7 +14,6 @@ import pytest
 from etlplus.utils import to_float
 from etlplus.utils import to_int
 from etlplus.utils import to_number
-
 
 # SECTION: TESTS =========================================================== #
 
@@ -39,7 +38,7 @@ class TestUtils:
     """
 
     @pytest.mark.parametrize(
-        'value,expected',
+        'value,expected_result',
         [
             (2, 2.0),
             (2.5, 2.5),
@@ -51,7 +50,7 @@ class TestUtils:
     def test_to_float_coercion(
         self,
         value: int | float | str | None,
-        expected: float | None,
+        expected_result: float | None,
     ) -> None:
         """
         Test float coercion for various input types.
@@ -60,13 +59,13 @@ class TestUtils:
         ----------
         value : int | float | str | None
             Input value to coerce to float.
-        expected : float | None
+        expected_result : float | None
             Expected result after coercion.
         """
-        assert to_float(value) == expected
+        assert to_float(value) == expected_result
 
     @pytest.mark.parametrize(
-        'value,expected',
+        'value,expected_result',
         [
             (10, 10),
             ('10', 10),
@@ -80,7 +79,7 @@ class TestUtils:
     def test_to_int_coercion(
         self,
         value: int | str | None,
-        expected: int | None,
+        expected_result: int | None,
     ) -> None:
         """
         Test int coercion for various input types.
@@ -89,10 +88,10 @@ class TestUtils:
         ----------
         value : int | str | None
             Input value to coerce to int.
-        expected : int | None
+        expected_result : int | None
             Expected result after coercion.
         """
-        assert to_int(value) == expected
+        assert to_int(value) == expected_result
 
     @pytest.mark.parametrize(
         'value',
@@ -113,7 +112,7 @@ class TestUtils:
         assert to_number(value) is None
 
     @pytest.mark.parametrize(
-        'value,expected',
+        'value,expected_result',
         [
             ('42', 42.0),
             ('  10.5 ', 10.5),
@@ -122,7 +121,7 @@ class TestUtils:
     def test_to_number_with_numeric_strings(
         self,
         value: str,
-        expected: float,
+        expected_result: float,
     ) -> None:
         """
         Test to_number with valid numeric string inputs.
@@ -131,13 +130,13 @@ class TestUtils:
         ----------
         value : str
             Input string to test.
-        expected : float
+        expected_result : float
             Expected result after conversion.
         """
-        assert to_number(value) == expected
+        assert to_number(value) == expected_result
 
     @pytest.mark.parametrize(
-        'value,expected',
+        'value,expected_result',
         [
             (5, 5.0),
             (3.14, 3.14),
@@ -146,7 +145,7 @@ class TestUtils:
     def test_to_number_with_numeric_types(
         self,
         value: int | float,
-        expected: float,
+        expected_result: float,
     ) -> None:
         """
         Test to_number with numeric types (int, float).
@@ -155,7 +154,7 @@ class TestUtils:
         ----------
         value : int | float
             Input value to test.
-        expected : float
+        expected_result : float
             Expected result after conversion.
         """
-        assert to_number(value) == expected
+        assert to_number(value) == expected_result

@@ -1,7 +1,7 @@
 """
-``tests.unit.config.test_u_rate_limit`` module.
+:mod:`tests.unit.api.test_u_rate_limit_config` module.
 
-Unit tests for ``etlplus.config.rate_limit``.
+Unit tests for :class:`etlplus.api.rate_limiting.RateLimitConfig`.
 
 Notes
 -----
@@ -10,13 +10,12 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
-from typing import Callable
 
 import pytest
 
-from etlplus.config import RateLimitConfig
-
+from etlplus.api import RateLimitConfig
 
 # SECTION: TESTS ============================================================ #
 
@@ -24,12 +23,30 @@ from etlplus.config import RateLimitConfig
 @pytest.mark.unit
 class TestRateLimitConfig:
     """
-    Test suite for :class:`RateLimitConfig`.
+    Unit test suite for :class:`RateLimitConfig`.
 
     Notes
     -----
     Tests equality semantics and type coercion for rate limit configuration.
     """
+
+    def test_config_honors_overrides(self) -> None:
+        """Overrides replace base config values."""
+        config = RateLimitConfig.from_inputs(
+            rate_limit={'max_per_sec': 2},
+            overrides={'sleep_seconds': 0.1},
+        )
+        assert config.sleep_seconds == pytest.approx(0.1)
+        assert config.max_per_sec == pytest.approx(10.0)
+
+    def test_config_prefers_sleep_seconds(self) -> None:
+        """Sleep seconds take precedence over max_per_sec."""
+        config = RateLimitConfig.from_inputs(
+            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
+        )
+        assert config.enabled is True
+        assert config.sleep_seconds == pytest.approx(0.2)
+        assert config.max_per_sec == pytest.approx(5.0)
 
     def test_equality_semantics(
         self,
@@ -98,6 +115,8 @@ class TestRateLimitConfig:
             Factory for creating RateLimitConfig from mapping or iterable.
         """
         class Weird(Iterable):
+            """A weird iterable that is not a mapping."""
+
             def __iter__(self):  # type: ignore[override]
                 yield 'sleep_seconds'
                 yield '1'

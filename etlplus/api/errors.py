@@ -1,5 +1,5 @@
 """
-etlplus.api.errors module.
+:mod:`etlplus.api.errors` module.
 
 Exception types with rich context for debugging REST API failures.
 
@@ -23,16 +23,25 @@ Examples
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+from typing import Any
 
 import requests  # type: ignore[import]
 
-from .types import RetryPolicy
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .retry_manager import RetryPolicy
+
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['ApiAuthError', 'ApiRequestError', 'PaginationError']
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ApiRequestError(requests.RequestException):
     """
     Base error for API request failures with rich context.
@@ -74,6 +83,11 @@ class ApiRequestError(requests.RequestException):
     ... except ApiRequestError as e:
     ...     print(e.status, e.attempts)
     500 1
+
+    Notes
+    -----
+    The :meth:`as_dict` helper returns a structured payload suitable for
+    structured logging or telemetry.
     """
 
     # -- Attributes -- #
@@ -93,12 +107,25 @@ class ApiRequestError(requests.RequestException):
 
         return f"ApiRequestError({base}{meta})"
 
+    # -- Instance Methods -- #
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return structured error context for logging or telemetry."""
+        return {
+            'url': self.url,
+            'status': self.status,
+            'attempts': self.attempts,
+            'retried': self.retried,
+            'retry_policy': self.retry_policy,
+            'cause': repr(self.cause) if self.cause else None,
+        }
+
 
 class ApiAuthError(ApiRequestError):
     """Authentication/authorization failure (e.g., 401/403)."""
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class PaginationError(ApiRequestError):
     """
     Error raised during pagination with page context.
@@ -132,3 +159,11 @@ class PaginationError(ApiRequestError):
         base = super().__str__()
 
         return f"PaginationError({base} page={self.page})"
+
+    # -- Instance Methods -- #
+
+    def as_dict(self) -> dict[str, Any]:
+        """Extend base context with pagination metadata."""
+        payload = super().as_dict()
+        payload['page'] = self.page
+        return payload

@@ -1,5 +1,5 @@
 """
-``tests.unit.api.test_u_mocks`` module.
+`:mod:`tests.unit.api.test_u_mocks` module.
 
 Reusable mocked objects for API client unit tests.
 
@@ -13,10 +13,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from requests import Response                        # type: ignore[import]
-from requests import Session                         # type: ignore[import]
+from requests import Response  # type: ignore[import]
+from requests import Session  # type: ignore[import]
 from requests.structures import CaseInsensitiveDict  # type: ignore[import]
-
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,7 +27,7 @@ __all__ = ['MockResponse', 'MockSession']
 
 
 @pytest.mark.unit
-class MockResponse(Response):  # pragma: no cover - behaviour trivial
+class MockResponse(Response):  # pragma: no cover - behavior trivial
     """
     Minimal ``Response`` subclass returning a provided JSON payload.
 

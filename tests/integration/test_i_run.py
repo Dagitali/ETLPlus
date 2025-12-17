@@ -1,7 +1,7 @@
 """
-``tests.integration.test_i_run`` module.
+:mod:`tests.integration.test_i_run` module.
 
-Validates ``run()`` orchestration end-to-end for service + endpoint URL
+Validates :func:`run` orchestration end-to-end for service + endpoint URL
 composition under a minimal pipeline wiring (file source → API target).
 
 Notes
@@ -13,17 +13,20 @@ Notes
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
+from typing import Any
 
-from etlplus.config import ApiConfig
-from etlplus.config import ApiProfileConfig
+from pytest import MonkeyPatch
+
+from etlplus.api import ApiConfig
+from etlplus.api import ApiProfileConfig
+from etlplus.api import EndpointConfig
 from etlplus.config import ConnectorApi
 from etlplus.config import ConnectorFile
-from etlplus.config import EndpointConfig
 from etlplus.config import ExtractRef
 from etlplus.config import JobConfig
 from etlplus.config import LoadRef
 from etlplus.config import PipelineConfig
-
 
 # SECTION: HELPERS ========================================================== #
 
@@ -35,10 +38,13 @@ run_mod = importlib.import_module('etlplus.run')
 
 
 def test_target_service_endpoint_uses_base_path(
-    monkeypatch,
-    tmp_path,
-    capture_load_to_api,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    capture_load_to_api: dict[str, Any],
 ):
+    """Test that API target URL composes profile base_path + endpoint path."""
+    # pylint: disable=unused-argument
+
     # Make a simple source file so extract step succeeds without mocks.
     src_path = tmp_path / 'data.json'
     src_path.write_text('{"ok": true}\n', encoding='utf-8')
@@ -58,7 +64,7 @@ def test_target_service_endpoint_uses_base_path(
 
     # Pipeline wiring: file source -> api target (service + endpoint).
     cfg = PipelineConfig(
-        apis={'myapi': api},
+        apis={'my_api': api},
         sources=[
             ConnectorFile(
                 name='local_json',
@@ -71,7 +77,7 @@ def test_target_service_endpoint_uses_base_path(
             ConnectorApi(
                 name='ingest_out',
                 type='api',
-                api='myapi',
+                api='my_api',
                 endpoint='ingest',
                 method='post',
                 headers={'Content-Type': 'application/json'},
@@ -90,17 +96,22 @@ def test_target_service_endpoint_uses_base_path(
     monkeypatch.setattr(run_mod, 'load_pipeline_config', lambda *_a, **_k: cfg)
 
     # Stub network POST to avoid real DNS / HTTP.
-    import requests
+    import requests  # type: ignore[import]
 
-    def _fake_post(url, json=None, timeout=None, **_k):  # noqa: D401
+    def _fake_post(url, json=None, timeout=None, **_k):
+        """Return a fake HTTP response object for POST calls."""
+
         class R:
+            """Lightweight fake response object used for testing."""
             status_code = 200
             text = 'ok'
 
-            def json(self_inner):
+            def json(self):
+                """Return JSON data."""
                 return {'echo': json}
 
-            def raise_for_status(self_inner):
+            def raise_for_status(self):
+                """Raise nothing for HTTP 200 OK status."""
                 return None
 
         return R()

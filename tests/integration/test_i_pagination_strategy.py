@@ -1,5 +1,5 @@
 """
-``tests.integration.test_i_pagination_strategy`` module.
+:mod:`tests.integration.test_i_pagination_strategy` module.
 
 Integration tests for pagination strategies. We mock API extraction for both
 page/offset and cursor modes and drive the CLI entry point to exercise the
@@ -8,7 +8,7 @@ public path under real configuration semantics.
 Notes
 -----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
-    client module's internal ``_extract`` suffices to intercept page fetches.
+    RequestManager ``request_once`` helper suffices to intercept page fetches.
 - Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
@@ -17,21 +17,26 @@ from __future__ import annotations
 import json
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-import etlplus.api.client as cmod
+import etlplus.api.request_manager as rmod
 import etlplus.cli as cli_mod
 from etlplus.cli import main
-
+from etlplus.config.pipeline import PipelineConfig
+from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
 
 
 @dataclass(slots=True)
 class PageScenario:
+    """Test scenario for page/offset pagination."""
+
     name: str
     page_size: int
     pages: list[list[dict[str, int]]]
@@ -39,7 +44,25 @@ class PageScenario:
     max_records: int | None = None
 
 
-def _write_pipeline(tmp_path, yaml_text: str) -> str:
+def _write_pipeline(
+    tmp_path: Path,
+    yaml_text: str,
+) -> str:
+    """
+    Write a temporary pipeline.yml file and return its path.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory provided by pytest.
+    yaml_text : str
+        YAML configuration content to write.
+
+    Returns
+    -------
+    str
+        String path to the written pipeline.yml file.
+    """
     p = tmp_path / 'pipeline.yml'
     p.write_text(yaml_text, encoding='utf-8')
     return str(p)
@@ -49,16 +72,24 @@ def _write_pipeline(tmp_path, yaml_text: str) -> str:
 
 
 class TestPaginationStrategies:
+    """Integration test suite for pagination strategies."""
+
     @pytest.fixture(autouse=True)
-    def _no_sleep(self, monkeypatch) -> None:  # noqa: D401
+    def _no_sleep(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """
+        Disable time.sleep to keep pagination tests fast and deterministic.
+        """
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     def test_cursor_mode(
         self,
-        monkeypatch,
-        tmp_path,
-        capsys,
-    ) -> None:  # noqa: D401
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test cursor-based pagination end-to-end via CLI."""
+        # pylint: disable=unused-argument
+
         out_path = tmp_path / 'cursor.json'
         pipeline_yaml = f"""
 name: cursor_test
@@ -100,9 +131,21 @@ jobs:
                 return {'data': [{'id': 'c'}], 'next': None}
             return {'data': [], 'next': None}
 
+        def fake_request(
+            self: rmod.RequestManager,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         # Patch extract targets consistent with the page/offset test.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
 
         monkeypatch.setattr(
             sys,
@@ -121,10 +164,13 @@ jobs:
 
     def test_cursor_mode_missing_records_path(
         self,
-        monkeypatch,
-        tmp_path,
-        capsys,
-    ) -> None:  # noqa: D401
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test cursor pagination when ``records_path`` is omitted."""
+        # pylint: disable=unused-argument
+
         # Omits records_path and relies on fallback coalescing behavior.
         out_path = tmp_path / 'cursor_no_records_path.json'
         pipeline_yaml = f"""
@@ -166,8 +212,20 @@ jobs:
                 return {'items': [{'id': 'z'}], 'next': None}
             return {'items': [], 'next': None}
 
+        def fake_request(
+            self: rmod.RequestManager,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
         monkeypatch.setattr(
             sys,
             'argv',
@@ -209,10 +267,13 @@ jobs:
     def test_page_offset_modes(
         self,
         scenario: PageScenario,
-        monkeypatch,
-        tmp_path,
-        capsys,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """Test page/offset pagination end-to-end via CLI."""
+        # pylint: disable=unused-argument
+
         # Prepare output path.
         out_path = tmp_path / f'{scenario.name}.json'
         max_records_yaml = (
@@ -248,7 +309,7 @@ jobs:
 """
         cfg = _write_pipeline(tmp_path, pipeline_yaml)
 
-        # Mock extract to return 2 items for page 1 and 1 item for page 2.
+        # Mock extract to return scenario-driven items per page.
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
@@ -260,12 +321,24 @@ jobs:
                 return scenario.pages[page - 1]
             return []
 
+        def fake_request(
+            self: rmod.RequestManager,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            assert method == 'GET'
+            return fake_extract('api', url, **kwargs)
+
         # Patch extract targets:
         # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - cmod._extract: paginate now delegates to EndpointClient, which uses
-        #   the client's internal extractor per page.
+        # - RequestManager.request_once: paginate now delegates to the
+        #   shared HTTP helper per page.
         monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(cmod, '_extract', fake_extract)
+        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
 
         # Run CLI.
         monkeypatch.setattr(
@@ -344,23 +417,30 @@ jobs:
     def test_pagination_edge_cases(
         self,
         scenario: dict,
-        pipeline_cfg_factory,
-        fake_endpoint_client,
-        run_patched,
+        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        fake_endpoint_client: tuple[
+            type[FakeEndpointClientProtocol],
+            list[FakeEndpointClientProtocol],
+        ],
+        run_patched: Callable[..., dict[str, Any]],
     ) -> None:  # noqa: D401
-        """Edge cases for pagination coalescing using shared fixtures.
+        """
+        Test edge cases for pagination coalescing using shared fixtures.
 
         This drives the runner wiring directly (not CLI) to assert the exact
         pagination mapping seen by the client after defaults/overrides.
         """
         cfg = pipeline_cfg_factory()
         job = cfg.jobs[0]
-        opts = job.extract.options or {}
+        opts = {}
+        if job.extract is not None and hasattr(job.extract, 'options'):
+            opts = dict(job.extract.options)
         opts.update({'pagination': scenario['pagination']})
-        job.extract.options = opts
+        if job.extract is not None:
+            job.extract.options = opts
 
-        FakeClient, created = fake_endpoint_client
-        result = run_patched(cfg, FakeClient)
+        fake_client, created = fake_endpoint_client
+        result = run_patched(cfg, fake_client)
 
         assert result.get('status') in {'ok', 'success'}
         assert created, 'Expected client to be constructed'

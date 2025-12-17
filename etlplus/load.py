@@ -1,5 +1,5 @@
 """
-etlplus.load module.
+:mod:`etlplus.load` module.
 
 Helpers to load data into files, databases, and REST APIs.
 """
@@ -13,12 +13,12 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .enums import coerce_data_connector_type
-from .enums import coerce_file_format
-from .enums import coerce_http_method
 from .enums import DataConnectorType
 from .enums import FileFormat
 from .enums import HttpMethod
+from .enums import coerce_data_connector_type
+from .enums import coerce_file_format
+from .enums import coerce_http_method
 from .file import File
 from .types import JSONData
 from .types import JSONDict
@@ -26,8 +26,7 @@ from .types import JSONList
 from .types import StrPath
 from .utils import count_records
 
-
-# SECTION: PROTECTED FUNCTIONS ============================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _parse_json_string(

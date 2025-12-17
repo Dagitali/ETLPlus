@@ -1,5 +1,5 @@
 """
-etlplus.config.profile module.
+:mod:`etlplus.config.profile` module.
 
 Profile model for pipeline-level defaults and environment.
 
@@ -13,11 +13,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 from typing import Self
 
-from .utils import cast_str_dict
-
+from ..types import StrAnyMap
+from ..utils import cast_str_dict
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,7 +27,7 @@ __all__ = ['ProfileConfig']
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ProfileConfig:
     """
     Configuration for pipeline profiles.
@@ -51,13 +50,13 @@ class ProfileConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: Mapping[str, Any] | None,
+        obj: StrAnyMap | None,
     ) -> Self:
         """Parse a mapping into a ``ProfileConfig`` instance.
 
         Parameters
         ----------
-        obj : Mapping[str, Any] | None
+        obj : StrAnyMap | None
             Mapping with optional profile fields, or ``None``.
 
         Returns

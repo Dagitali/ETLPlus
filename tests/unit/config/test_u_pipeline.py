@@ -1,5 +1,5 @@
 """
-``tests.unit.config.test_u_pipeline`` module.
+:mod:`tests.unit.config.test_u_pipeline` module.
 
 Unit tests for ``etlplus.config.pipeline``.
 
@@ -11,17 +11,16 @@ Notes
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
 from etlplus.config.connector import ConnectorApi
 from etlplus.config.connector import ConnectorDb
 from etlplus.config.connector import ConnectorFile
-from etlplus.config.pipeline import _build_connectors
 from etlplus.config.pipeline import PipelineConfig
-
+from etlplus.config.pipeline import _build_connectors
 
 # SECTION: TESTS ============================================================ #
 
