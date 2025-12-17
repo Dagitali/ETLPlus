@@ -20,7 +20,8 @@ from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions
 from ..types import Url
-from .config import PaginationConfigMap
+from .config import PaginationConfig
+from .config import PaginationInput
 from .config import PaginationType
 from .paginator import Paginator
 
@@ -43,8 +44,8 @@ class PaginationClient:
 
     Parameters
     ----------
-    pagination : Mapping[str, Any] | None
-        Pagination configuration mapping.
+    pagination : PaginationInput
+        Pagination configuration mapping or :class:`PaginationConfig`.
     fetch : FetchPageCallable
         Callback used to fetch a single page.
     rate_limiter : RateLimiter | None, optional
@@ -52,7 +53,7 @@ class PaginationClient:
 
     Attributes
     ----------
-    pagination : Mapping[str, Any] | None
+    pagination : PaginationInput
         Resolved pagination configuration.
     fetch : FetchPageCallable
         Stored fetch callback invoked by ``Paginator``.
@@ -62,7 +63,7 @@ class PaginationClient:
 
     # -- Attributes -- #
 
-    pagination: Mapping[str, Any] | None
+    pagination: PaginationInput
     fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
 
@@ -76,7 +77,12 @@ class PaginationClient:
     @property
     def pagination_type(self) -> PaginationType | None:
         """Return the normalized pagination type when available."""
-        return Paginator.detect_type(self.pagination, default=None)
+        if isinstance(self.pagination, PaginationConfig):
+            return self.pagination.type
+        return Paginator.detect_type(
+            cast(Mapping[str, Any] | None, self.pagination),
+            default=None,
+        )
 
     # -- Instance Methods -- #
 
@@ -133,7 +139,7 @@ class PaginationClient:
             return
 
         paginator = Paginator.from_config(
-            cast(PaginationConfigMap, self.pagination),
+            cast(PaginationInput, self.pagination),
             fetch=self.fetch,
             rate_limiter=self.rate_limiter,
         )
@@ -164,10 +170,18 @@ class PaginationClient:
         Generator[JSONDict]
             JSON records from the response.
         """
-        pg = cast(dict[str, Any], self.pagination or {})
+        pg_records_path: str | None
+        pg_fallback_path: str | None
+        if isinstance(self.pagination, Mapping):
+            pg = cast(Mapping[str, Any], self.pagination)
+            pg_records_path = cast(str | None, pg.get('records_path'))
+            pg_fallback_path = cast(str | None, pg.get('fallback_path'))
+        else:
+            pg_records_path = getattr(self.pagination, 'records_path', None)
+            pg_fallback_path = getattr(self.pagination, 'fallback_path', None)
         page_data = self.fetch(url, request, None)
         yield from Paginator.coalesce_records(
             page_data,
-            pg.get('records_path'),
-            pg.get('fallback_path'),
+            pg_records_path,
+            pg_fallback_path,
         )

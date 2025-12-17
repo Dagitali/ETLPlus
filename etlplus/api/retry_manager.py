@@ -1,8 +1,10 @@
 """
 :mod:`etlplus.api.retry_manager` module.
 
-Centralized logic for retrying HTTP requests, including:
-- Retry policies with exponential backoff.
+Retry policies and exponential backoff helpers.
+
+This module centralizes retry behavior for HTTP requests, including policy
+parsing and exponential backoff with jitter.
 
 Examples
 --------
@@ -46,6 +48,9 @@ __all__ = [
 
     # Typed Dicts
     'RetryPolicy',
+
+    # Type Aliases
+    'RetryInput',
 ]
 
 
@@ -91,6 +96,12 @@ class RetryPolicy(TypedDict, total=False):
     retry_on: list[int]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type RetryInput = RetryPolicy | None
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -112,7 +123,7 @@ class RetryStrategy:
     @classmethod
     def from_policy(
         cls,
-        policy: RetryPolicy | None,
+        policy: RetryInput,
         *,
         default_codes: frozenset[int] = DEFAULT_RETRY_STATUS_CODES,
     ) -> RetryStrategy:
@@ -154,6 +165,8 @@ class RetryManager:
     ----------
     DEFAULT_STATUS_CODES : ClassVar[frozenset[int]]
         Default HTTP status codes considered retryable.
+    DEFAULT_CAP : ClassVar[float]
+        Default maximum sleep seconds for jittered backoff.
     policy : RetryPolicy
         Retry policy configuration.
     retry_network_errors : bool
@@ -167,13 +180,16 @@ class RetryManager:
         Normalized view of the retry policy (backoff, attempts, codes).
     """
 
-    # -- Attributes -- #
+    # -- Class Attributes -- #
 
     DEFAULT_STATUS_CODES: ClassVar[frozenset[int]] = DEFAULT_RETRY_STATUS_CODES
+    DEFAULT_CAP: ClassVar[float] = 30.0
+
+    # -- Instance Attributes-- #
 
     policy: RetryPolicy
     retry_network_errors: bool = False
-    cap: float = 30.0
+    cap: float = DEFAULT_CAP
     sleeper: Sleeper = time.sleep
     strategy: RetryStrategy = field(init=False, repr=False)
 

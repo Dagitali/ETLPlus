@@ -1,12 +1,16 @@
 """
 :mod:`etlplus.api.pagination` package.
 
-High-level helpers for building REST API clients with pagination.
+Pagination configuration and runtime helpers for REST API responses.
+
+This package groups configuration shapes, paginator utilities, and a
+client-facing driver for traversing page-, offset-, and cursor-based JSON
+responses.
 
 Notes
 -----
-- Pagination defaults are centralized on the client (``page``, ``per_page``,
-    ``cursor``, ``limit``; start page ``1``; page size ``100``).
+- Pagination defaults are centralized on :class:`EndpointClient` (``page``,
+    ``per_page``, ``cursor``, ``limit``; start page ``1``; page size ``100``).
 - Prefer :data:`JSONRecords` (list of :data:`JSONDict`) for paginated
     responses; scalar/record aliases are exported for convenience.
 - The underlying :class:`Paginator` is exported for advanced scenarios that
@@ -19,6 +23,7 @@ from .config import CursorPaginationConfigMap
 from .config import PagePaginationConfigMap
 from .config import PaginationConfig
 from .config import PaginationConfigMap
+from .config import PaginationInput
 from .config import PaginationType
 from .paginator import Paginator
 
@@ -39,5 +44,6 @@ __all__ = [
     # Type Aliases
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
+    'PaginationInput',
     'PaginationConfigMap',
 ]

@@ -44,10 +44,13 @@ __all__ = [
     # Enums
     'PaginationType',
 
+    # Type Aliases
+    'PaginationConfigMap',
+    'PaginationInput',
+
     # Typed Dicts
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',
-    'PaginationConfigMap',
 ]
 
 
@@ -190,6 +193,10 @@ class PagePaginationConfigMap(TypedDict, total=False):
 
 type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
 
+# External callers may pass either a raw mapping-shaped config or an already
+# constructed PaginationConfig instance, or omit pagination entirely.
+type PaginationInput = PaginationConfigMap | 'PaginationConfig' | None
+
 
 # SECTION: DATA CLASSES ===================================================== #
 
@@ -217,6 +224,9 @@ class PaginationConfig(BoundsWarningsMixin):
         JSONPath expression to extract the cursor from the response.
     start_cursor : str | int | None
         Starting cursor value.
+    limit_param : str | None
+        Query parameter name carrying the page size for cursor-based
+        pagination when the API uses a separate limit field.
     records_path : str | None
         JSONPath expression to extract the records from the response.
     fallback_path : str | None
@@ -241,6 +251,7 @@ class PaginationConfig(BoundsWarningsMixin):
     cursor_param: str | None = None
     cursor_path: str | None = None
     start_cursor: str | int | None = None
+    limit_param: str | None = None
 
     # General
     records_path: str | None = None
@@ -334,6 +345,7 @@ class PaginationConfig(BoundsWarningsMixin):
         fallback_path = obj.get('fallback_path')
         max_pages = obj.get('max_pages')
         max_records = obj.get('max_records')
+        limit_param = obj.get('limit_param')
 
         # Map from nested shapes when provided.
         if (params_blk := maybe_mapping(obj.get('params'))):
@@ -365,6 +377,7 @@ class PaginationConfig(BoundsWarningsMixin):
             fallback_path=fallback_path,
             max_pages=to_int(max_pages),
             max_records=to_int(max_records),
+            limit_param=limit_param,
         )
 
     @classmethod
@@ -421,4 +434,5 @@ class PaginationConfig(BoundsWarningsMixin):
             fallback_path=obj.get('fallback_path'),
             max_pages=to_int(obj.get('max_pages')),
             max_records=to_int(obj.get('max_records')),
+            limit_param=obj.get('limit_param'),
         )
