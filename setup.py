@@ -23,7 +23,7 @@ with open('README.md', encoding='utf-8') as fh:
 
 setup(
     name='etlplus',
-    version='0.3.1',
+    version='0.3.2',
     author='ETLPlus Team',
     description='A Swiss Army knife for enabling simple ETL operations',
     long_description=long_description,
