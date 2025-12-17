@@ -34,6 +34,7 @@ Examples
 ... }
 >>> rows = client.paginate("list", pagination=pg)
 """
+
 from __future__ import annotations
 
 import time
@@ -382,9 +383,7 @@ class EndpointClient:
             rate_limit_overrides,
         )
         rate_limiter = (
-            RateLimiter.fixed(effective_sleep)
-            if effective_sleep > 0
-            else None
+            RateLimiter.fixed(effective_sleep) if effective_sleep > 0 else None
         )
         return PaginationClient(
             pagination=pagination,

@@ -3,6 +3,7 @@
 
 Helpers to load data into files, databases, and REST APIs.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,7 +54,7 @@ def _parse_json_string(
     try:
         loaded = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid data source: {raw}") from exc
+        raise ValueError(f'Invalid data source: {raw}') from exc
 
     if isinstance(loaded, dict):
         return cast(JSONDict, loaded)
@@ -251,8 +252,8 @@ def load_to_api(
     request_callable = getattr(requester, http_method.value, None)
     if not callable(request_callable):
         raise TypeError(
-            'Session object must supply a callable '
-            f'"{http_method.value}" method',
+            'Session object must supply a '
+            f'callable "{http_method.value}" method',
         )
 
     response = request_callable(url, json=data, timeout=timeout, **kwargs)
@@ -324,7 +325,8 @@ def load(
         case DataConnectorType.API:
             api_method = method if method is not None else HttpMethod.POST
             return load_to_api(
-                data, str(target),
+                data,
+                str(target),
                 method=api_method,
                 **kwargs,
             )

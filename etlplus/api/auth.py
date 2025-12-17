@@ -32,6 +32,7 @@ Basic usage with ``requests.Session``
 >>> r = s.get("https://api.example.com/v1/items")
 >>> r.raise_for_status()
 """
+
 from __future__ import annotations
 
 import logging
@@ -427,6 +428,6 @@ class EndpointCredentialsBearer(AuthBase):
             ``True`` when a token is present and not expired.
         """
         return (
-            self.token is not None
-            and time.time() < (self.expiry - CLOCK_SKEW_SEC)
+            self.token is not None and
+            time.time() < (self.expiry - CLOCK_SKEW_SEC)
         )

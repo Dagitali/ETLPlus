@@ -18,7 +18,8 @@ def main() -> None:
 
     # Transform: filter and select.
     ops = cast(
-        PipelineConfig, {
+        PipelineConfig,
+        {
             'filter': {'field': 'age', 'op': 'gt', 'value': 25},
             'select': ['name', 'email'],
         },
@@ -27,7 +28,8 @@ def main() -> None:
 
     # Validate the transformed data.
     rules = cast(
-        Mapping[str, FieldRules], {
+        Mapping[str, FieldRules],
+        {
             'name': {'type': 'string', 'required': True},
             'email': {'type': 'string', 'required': True},
         },
@@ -39,7 +41,7 @@ def main() -> None:
 
     # Load to JSON file
     load(transformed, 'file', OUTPUT_PATH, file_format='json')
-    print(f"Wrote {OUTPUT_PATH}")
+    print(f'Wrote {OUTPUT_PATH}')
 
 
 if __name__ == '__main__':

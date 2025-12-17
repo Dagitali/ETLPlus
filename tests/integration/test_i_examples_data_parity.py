@@ -9,6 +9,7 @@ Notes
 - Compares sample CSV and JSON files in the examples/data directory.
 - Normalizes data types for accurate comparison.
 """
+
 from pathlib import Path
 from typing import Any
 
@@ -67,5 +68,6 @@ def test_examples_sample_csv_json_parity_integration():
         )
 
     assert sorted(csv_norm, key=sort_key) == sorted(
-        json_norm, key=sort_key,
+        json_norm,
+        key=sort_key,
     ), 'CSV and JSON records must be identical'

@@ -118,6 +118,7 @@ def patch_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # Additional fixtures for retry/jitter testing wired to RetryManager.sleeper.
 
+
 @pytest.fixture
 def capture_sleeps(
     monkeypatch: pytest.MonkeyPatch,
@@ -136,8 +137,10 @@ def capture_sleeps(
 
     def _init(self, *args, **kwargs):
         if 'sleeper' not in kwargs:
+
             def _sleeper(seconds: float) -> None:
                 sleeps.append(seconds)
+
             kwargs['sleeper'] = _sleeper
         original_init(self, *args, **kwargs)
 

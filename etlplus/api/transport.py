@@ -22,6 +22,7 @@ Examples
 ... }
 >>> adapter = build_http_adapter(cfg)
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -42,7 +43,6 @@ __all__ = [
     # Classes
     'HTTPAdapterMountConfig',
     'HTTPAdapterRetryConfig',
-
     # Functions
     'build_http_adapter',
     'build_session_with_adapters',

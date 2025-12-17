@@ -6,6 +6,7 @@ Client-facing pagination driver for REST API responses.
 This module wires pagination configuration, fetch callbacks, and optional rate
 limiting into :class:`etlplus.api.pagination.Paginator` instances.
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator

@@ -3,6 +3,7 @@
 
 Helpers to extract data from files, databases, and REST APIs.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -138,7 +139,7 @@ def extract_from_api(
     request_callable = getattr(requester, http_method.value, None)
     if not callable(request_callable):
         raise TypeError(
-            'Session object must supply a callable '
+            'Session object must supply a callable'
             f'"{http_method.value}" method',
         )
 

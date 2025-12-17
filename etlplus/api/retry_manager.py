@@ -16,6 +16,7 @@ Retry a request with exponential backoff::
     >>> mgr.get_sleep_time(1)
     0.123  # jittered value in [0, min(backoff, cap)]
 """
+
 from __future__ import annotations
 
 import random
@@ -45,10 +46,8 @@ __all__ = [
     # Classes
     'RetryStrategy',
     'RetryManager',
-
     # Typed Dicts
     'RetryPolicy',
-
     # Type Aliases
     'RetryInput',
 ]
@@ -57,12 +56,14 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset({
-    429,
-    502,
-    503,
-    504,
-})
+DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset(
+    {
+        429,
+        502,
+        503,
+        504,
+    },
+)
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -133,11 +134,14 @@ class RetryStrategy:
             policy.get('max_attempts'),
             cls.DEFAULT_ATTEMPTS,
         )
-        backoff = to_float(
-            policy.get('backoff'),
-            default=cls.DEFAULT_BACKOFF,
-            minimum=0.0,
-        ) or cls.DEFAULT_BACKOFF
+        backoff = (
+            to_float(
+                policy.get('backoff'),
+                default=cls.DEFAULT_BACKOFF,
+                minimum=0.0,
+            )
+            or cls.DEFAULT_BACKOFF
+        )
         retry_on = policy.get('retry_on') or []
         normalized: set[int] = set()
         for code in retry_on:

@@ -11,6 +11,7 @@ Notes
 - Uses in-memory pipeline config factory and a fake endpoint client.
 - Asserts pagination mapping passed to the client matches expectations.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

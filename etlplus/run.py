@@ -3,6 +3,7 @@
 
 A module for running ETL jobs defined in YAML configurations.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -191,7 +192,9 @@ def run(
         case DataConnectorType.FILE:
             path = getattr(source_obj, 'path', None)
             fmt = ex_opts.get('format') or getattr(
-                source_obj, 'format', 'json',
+                source_obj,
+                'format',
+                'json',
             )
             if not path:
                 raise ValueError('File source missing "path"')
@@ -271,12 +274,8 @@ def run(
         # Type narrowing for static checkers
         assert val_ref is not None
         rules = cfg.validations.get(val_ref.ruleset, {})
-        severity = (
-            (val_ref.severity or 'error').lower()
-        )
-        phase = (
-            (val_ref.phase or 'before_transform').lower()
-        )
+        severity = (val_ref.severity or 'error').lower()
+        phase = (val_ref.phase or 'before_transform').lower()
     else:
         rules = {}
         severity = 'error'
@@ -324,12 +323,11 @@ def run(
     ttype = coerce_data_connector_type(ttype_raw or '')
     match ttype:
         case DataConnectorType.FILE:
-            path = (
-                overrides.get('path')
-                or getattr(target_obj, 'path', None)
-            )
+            path = overrides.get('path') or getattr(target_obj, 'path', None)
             fmt = overrides.get('format') or getattr(
-                target_obj, 'format', 'json',
+                target_obj,
+                'format',
+                'json',
             )
             if not path:
                 raise ValueError('File target missing "path"')
@@ -355,7 +353,9 @@ def run(
             )
         case DataConnectorType.DATABASE:
             conn = overrides.get('connection_string') or getattr(
-                target_obj, 'connection_string', '',
+                target_obj,
+                'connection_string',
+                '',
             )
             result = load(data, 'database', str(conn))
         case _:

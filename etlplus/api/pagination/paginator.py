@@ -17,6 +17,7 @@ Examples
 >>> paginator = Paginator(type=PaginationType.PAGE, page_size=100)
 >>> rows = list(paginator.paginate_iter('https://api.example.com/items'))
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -456,19 +457,16 @@ class Paginator:
 
         while True:
             self.last_page = pages + 1
-            overrides = (
-                {self.cursor_param: cursor}
-                if cursor is not None
-                else None
-            )
+            overrides = {
+                self.cursor_param: cursor,
+            } if cursor is not None else None
             combined: dict[str, Any] = (
-                {self.limit_param: self.page_size}
-                | dict(request.params or {})
+                {self.limit_param: self.page_size} |
+                dict(request.params or {})
             )
             if overrides:
                 combined |= {
-                    k: v
-                    for k, v in overrides.items()
+                    k: v for k, v in overrides.items()
                     if v is not None
                 }
             req_options = request.evolve(params=combined)
@@ -626,7 +624,8 @@ class Paginator:
         return parsed if parsed >= 1 else self.START_PAGES[self.type]
 
     def _stop_limits(
-        self, pages: int,
+        self,
+        pages: int,
         recs: int,
     ) -> bool:
         """
@@ -688,8 +687,8 @@ class Paginator:
             data = None
 
         if fallback_path and (
-            data is None
-            or (isinstance(data, list) and not data)
+            data is None or
+            (isinstance(data, list) and not data)
         ):
             fallback = resolver(fallback_path)
             if fallback is not _MISSING:
@@ -768,11 +767,7 @@ class Paginator:
             The extracted cursor value if present and of type ``str`` or
             ``int``; otherwise ``None``.
         """
-        if not (
-            isinstance(path, str)
-            and path
-            and isinstance(data_obj, dict)
-        ):
+        if not (isinstance(path, str) and path and isinstance(data_obj, dict)):
             return None
         cur: Any = data_obj
         for part in path.split('.'):

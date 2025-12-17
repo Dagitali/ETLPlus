@@ -16,6 +16,7 @@ Notes
 - The underlying :class:`Paginator` is exported for advanced scenarios that
     need to stream pages manually.
 """
+
 from __future__ import annotations
 
 from .client import PaginationClient
@@ -34,13 +35,10 @@ __all__ = [
     # Classes
     'PaginationClient',
     'Paginator',
-
     # Data Classes
     'PaginationConfig',
-
     # Enums
     'PaginationType',
-
     # Type Aliases
     'CursorPaginationConfigMap',
     'PagePaginationConfigMap',

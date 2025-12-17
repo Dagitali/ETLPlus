@@ -24,6 +24,7 @@ Examples
 >>> validate(data, rules)['valid']
 True
 """
+
 from __future__ import annotations
 
 import re
@@ -43,8 +44,11 @@ from .types import StrPath
 
 
 __all__ = [
-    'FieldRules', 'FieldValidation', 'Validation',
-    'validate_field', 'validate',
+    'FieldRules',
+    'FieldValidation',
+    'Validation',
+    'validate_field',
+    'validate',
 ]
 
 
@@ -173,7 +177,7 @@ def _coerce_rule(
         val = rules.get(key)
         if val is None:
             return None
-    # Calling the type as a coercer is fine at runtime
+        # Calling the type as a coercer is fine at runtime
         return coercer(val)  # type: ignore[call-arg]
     except (TypeError, ValueError):
         errors.append(f"Rule '{key}' must be {type_desc}")

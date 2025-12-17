@@ -13,6 +13,7 @@ Examples
 --------
 >>> pytest tests/unit/api/test_u_auth.py
 """
+
 from __future__ import annotations
 
 import time
@@ -93,7 +94,7 @@ def token_sequence_fixture(
         **kwargs,
     ) -> _Resp:
         calls['n'] += 1
-        return _Resp({'access_token': f"t{calls['n']}", 'expires_in': 60})
+        return _Resp({'access_token': f't{calls["n"]}', 'expires_in': 60})
 
     monkeypatch.setattr(requests, 'post', fake_post)
 
@@ -293,6 +294,7 @@ class TestEndpointCredentialsBearer:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
+
         class _R:
             status_code = 200
             text = 'not json'

@@ -13,6 +13,7 @@ Notes
 - The models use ``@dataclass(slots=True)`` and avoid mutating inputs.
 - TypedDicts are editor/type-checking hints and are not enforced at runtime.
 """
+
 from __future__ import annotations
 
 from .connector import Connector
@@ -41,18 +42,15 @@ __all__ = [
     'ConnectorDb',
     'ConnectorFile',
     'parse_connector',
-
     # Jobs / Refs
     'ExtractRef',
     'JobConfig',
     'LoadRef',
     'TransformRef',
     'ValidationRef',
-
     # Pipeline
     'PipelineConfig',
     'load_pipeline_config',
-
     # Profile
     'ProfileConfig',
 ]

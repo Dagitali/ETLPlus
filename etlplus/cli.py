@@ -13,6 +13,7 @@ Subcommands
 - ``transform``: transform records
 - ``load``: load data to files, databases, or REST APIs
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,8 +50,8 @@ CLI_DESCRIPTION = '\n'.join(
         '    Provide a subcommand and options. Examples:',
         '',
         '    etlplus extract file in.csv -o out.json',
-        "    etlplus validate in.json --rules '{\"required\": [\"id\"]}'",
-        "    etlplus transform in.json --operations '{\"select\": [\"id\"]}'",
+        '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
+        '    etlplus transform in.json --operations \'{"select": ["id"]}\'',
         '    etlplus load in.json file out.json',
         '',
         '    Enforce error if --format is provided for files. Examples:',
@@ -641,7 +642,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        '-V', '--version',
+        '-V',
+        '--version',
         action='version',
         version=f'%(prog)s {__version__}',
     )
@@ -654,9 +656,7 @@ def create_parser() -> argparse.ArgumentParser:
     # Define "extract" command.
     extract_parser = subparsers.add_parser(
         'extract',
-        help=(
-            'Extract data from sources (files, databases, REST APIs)'
-        ),
+        help=('Extract data from sources (files, databases, REST APIs)'),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     extract_parser.add_argument(
@@ -667,12 +667,13 @@ def create_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument(
         'source',
         help=(
-            'Source location (file path, database connection string, or '
-            'API URL)'
+            'Source location '
+            '(file path, database connection string, or API URL)'
         ),
     )
     extract_parser.add_argument(
-        '-o', '--output',
+        '-o',
+        '--output',
         help='Output file to save extracted data (JSON format)',
     )
     _add_format_options(extract_parser, context='source')
@@ -713,7 +714,8 @@ def create_parser() -> argparse.ArgumentParser:
         help='Transformation operations as JSON string',
     )
     transform_parser.add_argument(
-        '-o', '--output',
+        '-o',
+        '--output',
         help='Output file to save transformed data',
     )
     transform_parser.set_defaults(func=cmd_transform)
@@ -736,8 +738,8 @@ def create_parser() -> argparse.ArgumentParser:
     load_parser.add_argument(
         'target',
         help=(
-            'Target location (file path, database connection string, or '
-            'API URL)'
+            'Target location '
+            '(file path, database connection string, or API URL)'
         ),
     )
     _add_format_options(load_parser, context='target')
@@ -806,8 +808,8 @@ def create_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser(
         'run',
         help=(
-            'Run an ETL pipeline (see '
-            f'{PROJECT_URL}/blob/main/docs/run-module.md)'
+            'Run an ETL pipeline '
+            f'(see {PROJECT_URL}/blob/main/docs/run-module.md)'
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -817,11 +819,13 @@ def create_parser() -> argparse.ArgumentParser:
         help='Path to pipeline YAML configuration file',
     )
     run_parser.add_argument(
-        '-j', '--job',
+        '-j',
+        '--job',
         help='Name of the job to run',
     )
     run_parser.add_argument(
-        '-p', '--pipeline',
+        '-p',
+        '--pipeline',
         help='Name of the pipeline to run',
     )
     run_parser.set_defaults(func=cmd_run)

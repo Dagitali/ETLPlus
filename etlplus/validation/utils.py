@@ -9,6 +9,7 @@ resulting surface keeps ``maybe_validate`` focused on orchestration while
 offloading ancillary concerns to composable helpers.
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

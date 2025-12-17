@@ -8,6 +8,7 @@ Notes
 - Hermetic: no file or network I/O.
 - Uses fixtures from `tests/unit/conftest.py` when needed.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -72,7 +73,8 @@ class TestCreateParser:
                     '/path/to/file.json',
                     'file',
                     '/path/to/output.csv',
-                    '--format', 'csv',
+                    '--format',
+                    'csv',
                 ],
                 {
                     'command': 'load',

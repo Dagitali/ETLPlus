@@ -17,6 +17,7 @@ Build a configuration and normalize it into a mapping::
     cfg = RateLimitConfig(sleep_seconds=0.5)
     as_mapping = cfg.as_mapping()
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -37,10 +38,8 @@ from ...utils import to_positive_float
 __all__ = [
     # Data Classes
     'RateLimitConfig',
-
     # Type Aliases
     'RateLimitOverrides',
-
     # Typed Dicts
     'RateLimitConfigMap',
 ]

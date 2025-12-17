@@ -9,6 +9,7 @@ Notes
 - Mocks network calls via patched extract helpers.
 - Includes optional Hypothesis-based property tests when available.
 """
+
 from __future__ import annotations
 
 import types
@@ -34,18 +35,23 @@ from tests.unit.api.test_u_mocks import MockSession
 # SECTION: HELPERS ========================================================== #
 
 
+MOCK_BASE_URL = 'https://api.example.com/v1'
+
 # Optional Hypothesis import with safe stubs when missing.
 try:  # pragma: no try
     from hypothesis import given  # type: ignore[import-not-found]
     from hypothesis import strategies as st  # type: ignore[import-not-found]
+
     _HYP_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _HYP_AVAILABLE = False
 
     def given(*_a, **_k):  # type: ignore[unused-ignore]
         """No-op decorator when Hypothesis is unavailable."""
+
         def _wrap(fn):
             return pytest.mark.skip(reason='needs hypothesis')(fn)
+
         return _wrap
 
     class _Strategy:  # minimal chainable strategy stub
@@ -98,7 +104,7 @@ def make_http_error(status: int) -> requests.HTTPError:
     requests.HTTPError
         HTTPError with attached response.
     """
-    err = requests.HTTPError(f"HTTP {status}")
+    err = requests.HTTPError(f'HTTP {status}')
     resp = requests.Response()
     resp.status_code = status
     err.response = resp  # type: ignore[attr-defined]
@@ -289,7 +295,8 @@ class TestRequestOptionIntegration:
         # pylint: disable=unused-argument
 
         client = EndpointClient(
-            base_url='https://api.example.com', endpoints={},
+            base_url='https://api.example.com',
+            endpoints={},
         )
 
         captured: dict[str, Any] = {}
@@ -440,7 +447,7 @@ class TestRequestOptionIntegration:
             Factory for cursor pagination config.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
         )
         # pylint: disable=unused-argument
@@ -530,7 +537,7 @@ class TestRequestOptionIntegration:
         )
 
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'items': '/items'},
             rate_limit={'max_per_sec': 2},
         )
@@ -540,7 +547,7 @@ class TestRequestOptionIntegration:
 
         out = list(
             client.paginate_url_iter(
-                'https://api.example.com/v1/items',
+                f'{MOCK_BASE_URL}/items',
                 pagination=pg,
                 rate_limit_overrides={'max_per_sec': 4},
             ),
@@ -639,7 +646,7 @@ class TestErrors:
 
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'x': '/x'},
         )
         # pylint: disable=unused-argument
@@ -658,7 +665,7 @@ class TestErrors:
 
         monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
-            client.paginate_url('https://api.example.com/v1/x', None)
+            client.paginate_url(f'{MOCK_BASE_URL}/x', None)
         err = ei.value
         assert err.status == 401
         assert err.attempts == 1
@@ -898,7 +905,7 @@ class TestPagePagination:
             Factory for page pagination config.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
         )
         # pylint: disable=unused-argument
@@ -998,7 +1005,7 @@ class TestRateLimitPrecedence:
         """
         # :func:`capture_sleeps` fixture already records rate-limiter pacing.
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
             rate_limit={'max_per_sec': 2},  # would imply 0.5s if used
         )
@@ -1080,7 +1087,7 @@ class TestRetryLogic:
             Factory for retry configuration.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1',
+            base_url=MOCK_BASE_URL,
             endpoints={'x': '/x'},
             retry=cast(
                 RetryPolicy,
@@ -1107,7 +1114,7 @@ class TestRetryLogic:
         monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
-            client.paginate_url('https://api.example.com/v1/x', None)
+            client.paginate_url(f'{MOCK_BASE_URL}/x', None)
         err = ei.value
         assert isinstance(err, api_errors.ApiRequestError)
         assert err.status == 503
@@ -1255,6 +1262,7 @@ class TestUrlComposition:
     - Uses pytest parameterization for variant coverage.
     - Ensures all composed URLs match expected output.
     """
+
     @pytest.mark.parametrize(
         'base_url, base_path, endpoint, expected_url',
         [
@@ -1326,7 +1334,7 @@ class TestUrlComposition:
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1?existing=a&dup=1',
+            base_url=f'{MOCK_BASE_URL}?existing=a&dup=1',
             endpoints={'item': '/users/{id}'},
         )
 
@@ -1338,8 +1346,7 @@ class TestUrlComposition:
         )
         assert out == {'ok': True}
         assert request_once_stub['urls'][0] == (
-            'https://api.example.com/v1/users/A%2FB%20C?'
-            'existing=a&dup=1&q=x+y&dup=2'
+            f'{MOCK_BASE_URL}/users/A%2FB%20C?existing=a&dup=1&q=x+y&dup=2'
         )
 
     def test_query_merging_duplicate_base_params(
@@ -1355,7 +1362,7 @@ class TestUrlComposition:
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1?dup=1&dup=2&z=9',
+            base_url=f'{MOCK_BASE_URL}?dup=1&dup=2&z=9',
             endpoints={'e': '/ep'},
         )
         client.paginate(
@@ -1364,7 +1371,7 @@ class TestUrlComposition:
             pagination=None,
         )
         assert request_once_stub['urls'][0] == (
-            'https://api.example.com/v1/ep?dup=1&dup=2&z=9&dup=3&a=1'
+            f'{MOCK_BASE_URL}/ep?dup=1&dup=2&z=9&dup=3&a=1'
         )
 
     def test_query_param_ordering(
@@ -1380,14 +1387,16 @@ class TestUrlComposition:
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url='https://api.example.com/v1?z=9&dup=1',
+            base_url=f'{MOCK_BASE_URL}?z=9&dup=1',
             endpoints={'e': '/ep'},
         )
         client.paginate(
-            'e', query_parameters={'a': '1', 'dup': '2'}, pagination=None,
+            'e',
+            query_parameters={'a': '1', 'dup': '2'},
+            pagination=None,
         )
         assert request_once_stub['urls'][0] == (
-            'https://api.example.com/v1/ep?z=9&dup=1&a=1&dup=2'
+            f'{MOCK_BASE_URL}/ep?z=9&dup=1&a=1&dup=2'
         )
 
 
@@ -1429,11 +1438,13 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url='https://api.example.com/v1',
+                base_url=MOCK_BASE_URL,
                 endpoints={'item': '/users/{id}'},
             )
             client.paginate(
-                'item', path_parameters={'id': id_value}, pagination=None,
+                'item',
+                path_parameters={'id': id_value},
+                pagination=None,
             )
             assert calls['urls'], 'no URL captured'
             url = calls['urls'].pop()
@@ -1466,7 +1477,7 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url='https://api.example.com/v1',
+                base_url=MOCK_BASE_URL,
                 endpoints={'e': '/ep'},
             )
             client.paginate('e', query_parameters=params, pagination=None)

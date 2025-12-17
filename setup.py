@@ -11,6 +11,7 @@ Notes
 - Requires Python >= 3.8 (see ``python_requires``).
 - Development extras are provided under ``extras_require['dev']``.
 """
+
 from setuptools import find_packages
 from setuptools import setup
 

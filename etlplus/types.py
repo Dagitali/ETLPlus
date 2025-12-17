@@ -26,6 +26,7 @@ True
 >>> isinstance(config, dict)
 True
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -41,31 +42,41 @@ from typing import Literal
 
 __all__ = [
     # Type Aliases (Data)
-    'JSONData', 'JSONDict', 'JSONList',
-    'JSONScalar', 'JSONValue',
-    'Record', 'Records',
-    'JSONRecord', 'JSONRecords',
-
+    'JSONData',
+    'JSONDict',
+    'JSONList',
+    'JSONScalar',
+    'JSONValue',
+    'Record',
+    'Records',
+    'JSONRecord',
+    'JSONRecords',
     # Type Aliases (File System)
     'StrPath',
-
     # Type Aliases (Functions)
-    'AggregateFunc', 'OperatorFunc',
-
+    'AggregateFunc',
+    'OperatorFunc',
     # Type Aliases (Records & Fields)
-    'FieldName', 'Fields',
-
+    'FieldName',
+    'Fields',
     # Type Aliases (Transform Specs)
-    'StrAnyMap', 'StrSeqMap', 'StrStrMap',
-    'AggregateSpec', 'FilterSpec', 'MapSpec', 'SelectSpec', 'SortSpec',
-
+    'StrAnyMap',
+    'StrSeqMap',
+    'StrStrMap',
+    'AggregateSpec',
+    'FilterSpec',
+    'MapSpec',
+    'SelectSpec',
+    'SortSpec',
     # Type Aliases (Pipelines)
-    'StepOrSteps', 'StepSeq', 'StepSpec',
-    'PipelineStepName', 'PipelineConfig',
-
+    'StepOrSteps',
+    'StepSeq',
+    'StepSpec',
+    'PipelineStepName',
+    'PipelineConfig',
     # Type Aliases (Helpers)
-    'StepApplier', 'SortKey',
-
+    'StepApplier',
+    'SortKey',
     # Type Aliases (Networking / Runtime)
     'Sleeper',
     'Timeout',
