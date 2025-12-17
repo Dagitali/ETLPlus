@@ -424,6 +424,22 @@ flake8 etlplus/
 black etlplus/
 ```
 
+### Releasing to PyPI
+
+For maintainers, releases are built from the root using the modern `pyproject.toml` configuration:
+
+```bash
+make dist          # build sdist + wheel into ./dist and run twine check
+```
+
+Then upload the artifacts in `dist/` with `twine` (installed by `make dist`):
+
+```bash
+export TWINE_USERNAME="__token__"
+export TWINE_PASSWORD="pypi-..."  # your PyPI API token
+python -m twine upload dist/*
+```
+
 ## Links
 
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
