@@ -27,6 +27,7 @@ from typing import Literal
 from typing import cast
 
 from . import __version__
+from .config import PipelineConfig
 from .config import load_pipeline_config
 from .enums import DataConnectorType
 from .enums import FileFormat
@@ -233,7 +234,7 @@ def _handle_format_guard(
 
 
 def _list_sections(
-    cfg: Any,
+    cfg: PipelineConfig,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
     """
@@ -241,7 +242,7 @@ def _list_sections(
 
     Parameters
     ----------
-    cfg : Any
+    cfg : PipelineConfig
         The loaded pipeline configuration.
     args : argparse.Namespace
         Parsed command-line arguments.
@@ -253,19 +254,14 @@ def _list_sections(
     """
     sections: dict[str, Any] = {}
     if getattr(args, 'pipelines', False):
-        sections['pipelines'] = [getattr(cfg, 'name', None)]
+        sections['pipelines'] = [cfg.name]
     if getattr(args, 'sources', False):
-        sections['sources'] = [
-            getattr(src, 'name', None) for src in getattr(cfg, 'sources', [])
-        ]
+        sections['sources'] = [src.name for src in cfg.sources]
     if getattr(args, 'targets', False):
-        sections['targets'] = [
-            getattr(tgt, 'name', None) for tgt in getattr(cfg, 'targets', [])
-        ]
+        sections['targets'] = [tgt.name for tgt in cfg.targets]
     if getattr(args, 'transforms', False):
         sections['transforms'] = [
-            getattr(trf, 'name', None)
-            for trf in getattr(cfg, 'transforms', [])
+            getattr(trf, 'name', None) for trf in cfg.transforms
         ]
     if not sections:
         sections['jobs'] = _pipeline_summary(cfg)['jobs']
@@ -297,14 +293,14 @@ def _materialize_csv_payload(
 
 
 def _pipeline_summary(
-    cfg: Any,
+    cfg: PipelineConfig,
 ) -> dict[str, Any]:
     """
     Return a human-friendly snapshot of a pipeline config.
 
     Parameters
     ----------
-    cfg : Any
+    cfg : PipelineConfig
         The loaded pipeline configuration.
 
     Returns
@@ -312,22 +308,12 @@ def _pipeline_summary(
     dict[str, Any]
         A human-friendly snapshot of a pipeline config.
     """
-    sources = [
-        getattr(src, 'name', None)
-        for src in getattr(cfg, 'sources', [])
-    ]
-    targets = [
-        getattr(tgt, 'name', None)
-        for tgt in getattr(cfg, 'targets', [])
-    ]
-    jobs = [
-        getattr(job, 'name', None)
-        for job in getattr(cfg, 'jobs', [])
-        if getattr(job, 'name', None)
-    ]
+    sources = [src.name for src in cfg.sources]
+    targets = [tgt.name for tgt in cfg.targets]
+    jobs = [job.name for job in cfg.jobs]
     return {
-        'name': getattr(cfg, 'name', None),
-        'version': getattr(cfg, 'version', None),
+        'name': cfg.name,
+        'version': cfg.version,
         'sources': sources,
         'targets': targets,
         'jobs': jobs,
