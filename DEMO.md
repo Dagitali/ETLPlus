@@ -25,7 +25,7 @@ This document demonstrates the ETLPlus package in action.
 
 ```bash
 $ etlplus --version
-etlplus 0.3.1
+etlplus 0.3.2
 
 $ etlplus --help
 usage: etlplus [-h] [--version] {extract,validate,transform,load} ...
