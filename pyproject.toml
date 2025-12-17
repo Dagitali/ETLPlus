@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "etlplus"
-version = "0.1.0"
+version = "0.3.0"
 description = "A Swiss Army knife for simple ETL operations"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13,<3.15"
@@ -95,6 +95,9 @@ ignore = [
 
 [tool.setuptools.package-data]
 etlplus = ["py.typed"]
+
+[tool.setuptools]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = [".", "src"]
