@@ -163,7 +163,7 @@ def _update_demo(
     if start == -1 or end == -1:
         raise RuntimeError('Could not locate snippet markers in DEMO.md')
     start += len(START_MARKER)
-    replacement = f"\n```bash\n{snippet_body}```\n"
+    replacement = f'\n```bash\n{snippet_body}```\n'
     new_text = text[:start] + replacement + text[end:]
     DEMO_FILE.write_text(new_text, encoding='utf-8')
 
@@ -176,7 +176,7 @@ def main() -> None:
     snippet_body = _record_version_output()
     SNIPPET_FILE.write_text(snippet_body, encoding='utf-8')
     _update_demo(snippet_body)
-    print(f"Updated {SNIPPET_FILE.relative_to(ROOT)} and DEMO.md")
+    print(f'Updated {SNIPPET_FILE.relative_to(ROOT)} and DEMO.md')
 
 
 # SECTION: MAIN EXECUTION =================================================== #
