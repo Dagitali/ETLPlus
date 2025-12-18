@@ -23,10 +23,14 @@ This document demonstrates the ETLPlus package in action.
 
 ## Installation Verification
 
+<!-- snippet:start installation_version -->
 ```bash
 $ etlplus --version
-etlplus 0.3.3
+etlplus 0.3.4
+```
+<!-- snippet:end installation_version -->
 
+```bash
 $ etlplus --help
 usage: etlplus [-h] [--version] {extract,validate,transform,load} ...
 

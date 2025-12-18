@@ -424,6 +424,19 @@ flake8 etlplus/
 black etlplus/
 ```
 
+### Updating Demo Snippets
+
+`DEMO.md` shows the real output of `etlplus --version` captured from a freshly built wheel. Regenerate
+the snippet (and the companion file [docs/snippets/installation_version.md](docs/snippets/installation_version.md)) after changing anything that affects the version string:
+
+```bash
+make demo-snippets
+```
+
+The helper script in [tools/update_demo_snippets.py](tools/update_demo_snippets.py) builds the wheel,
+installs it into a throwaway virtual environment, runs `etlplus --version`, and rewrites the snippet
+between the markers in [DEMO.md](DEMO.md).
+
 ### Releasing to PyPI
 
 `setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag

@@ -33,14 +33,15 @@ dependencies = [
 [project.optional-dependencies]
 # Development-only tools (install with: pip install -e .[dev])
 dev = [
+  "black>=25.9.0",
+  "build>=1.2.2",
+  "flake8>=7.3.0",
   "PyYAML>=6.0.3",
+  "pydoclint>=0.8.1",
+  "pydocstyle>=6.3.0",
   "pytest>=8.4.2",
   "pytest-cov>=7.0.0",
-  "black>=25.9.0",
-  "flake8>=7.3.0",
   "ruff>=0.14.4",
-  "pydocstyle>=6.3.0",
-  "pydoclint>=0.8.1",
 ]
 docs = [
   "sphinx>=4.0.0",
