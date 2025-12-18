@@ -12,7 +12,7 @@ Notes
 - Development extras are provided under ``extras_require['dev']``.
 """
 
-from setuptools import find_packages
+from setuptools import find_packages  # type: ignore[import]
 from setuptools import setup
 
 # SECTION: SETUP ============================================================ #
