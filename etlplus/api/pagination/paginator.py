@@ -4,9 +4,9 @@
 Core pagination runtime for REST API responses.
 
 This module implements :class:`Paginator`, which encapsulates pagination
-behaviour for page-, offset-, and cursor-based APIs. It delegates
-configuration parsing to :mod:`etlplus.api.pagination.config` and focuses on
-executing requests, extracting records, and enforcing limits.
+behavior for page-, offset-, and cursor-based APIs. It delegates configuration
+parsing to :mod:`etlplus.api.pagination.config` and focuses on executing
+requests, extracting records, and enforcing limits.
 
 Examples
 --------

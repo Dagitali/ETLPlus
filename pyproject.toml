@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "etlplus"
-version = "0.3.2"
+version = "0.3.3"
 description = "A Swiss Army knife for simple ETL operations"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13,<3.15"

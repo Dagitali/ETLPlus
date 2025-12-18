@@ -12,7 +12,7 @@ Notes
 - Development extras are provided under ``extras_require['dev']``.
 """
 
-from setuptools import find_packages
+from setuptools import find_packages  # type: ignore[import]
 from setuptools import setup
 
 # SECTION: SETUP ============================================================ #
@@ -23,7 +23,7 @@ with open('README.md', encoding='utf-8') as fh:
 
 setup(
     name='etlplus',
-    version='0.3.2',
+    version='0.3.3',
     author='ETLPlus Team',
     description='A Swiss Army knife for enabling simple ETL operations',
     long_description=long_description,

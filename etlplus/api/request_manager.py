@@ -54,7 +54,7 @@ class RequestManager:
 
     Parameters
     ----------
-    retry : RetryPolicy | None, optional
+    retry : RetryInput, optional
         Retry policy to apply to requests. Default is ``None``.
     retry_network_errors : bool, optional
         Whether to retry on network errors. Default is ``False``.
@@ -73,7 +73,7 @@ class RequestManager:
 
     Attributes
     ----------
-    retry : RetryPolicy | None
+    retry : RetryInput
         Retry policy to apply to requests.
     retry_network_errors : bool
         Whether to retry on network errors.
