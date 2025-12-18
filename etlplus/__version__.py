@@ -4,4 +4,4 @@ etlplus.__version__ module.
 Stores the current version of the package.
 """
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
