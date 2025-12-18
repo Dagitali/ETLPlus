@@ -22,13 +22,16 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy: &python-matrix
+      matrix:
+        python-version: ['3.13', '3.14']
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/python-bootstrap
         with:
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
           python-bootstrap: ".[dev]"
       - name: Ruff check
         run: |
@@ -38,9 +41,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.13', '3.14']
+    strategy: *python-matrix
     steps:
       - uses: actions/checkout@v4
         with:
