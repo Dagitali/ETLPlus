@@ -23,7 +23,8 @@ with open('README.md', encoding='utf-8') as fh:
 
 setup(
     name='etlplus',
-    version='0.3.3',
+    use_scm_version=True,
+    setup_requires=['setuptools-scm'],
     author='ETLPlus Team',
     description='A Swiss Army knife for enabling simple ETL operations',
     long_description=long_description,
