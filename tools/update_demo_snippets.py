@@ -30,7 +30,7 @@ def _build_wheel(
     out_dir: Path,
 ) -> Path:
     """
-    Build a wheel into *out_dir* and return its path.
+    Build a wheel into ``out_dir`` and return its path.
 
     Requires the 'build' package.
 
@@ -45,9 +45,9 @@ def _build_wheel(
         Path to the built wheel.
 
     Raises
-    -------
+    ------
     RuntimeError
-        If no wheel was produced.
+        If ``python -m build`` did not produce a wheel.
     """
     _run([sys.executable, '-m', 'build', '--wheel', '--outdir', str(out_dir)])
     wheels = sorted(out_dir.glob('*.whl'), key=lambda p: p.stat().st_mtime)
@@ -70,7 +70,7 @@ def _create_venv(
     Returns
     -------
     tuple[Path, Path]
-        Paths to the `pip` and `etlplus` executables within the venv.
+        Paths to the ``pip`` and ``etlplus`` executables within the venv.
     """
     venv.EnvBuilder(with_pip=True, clear=True).create(venv_dir)
     bin_dir = venv_dir / ('Scripts' if os.name == 'nt' else 'bin')
@@ -153,7 +153,7 @@ def _update_demo(
         This function modifies DEMO.md in place and does not return anything.
 
     Raises
-    -------
+    ------
     RuntimeError
         If the snippet markers could not be found.
     """
