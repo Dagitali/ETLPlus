@@ -11,9 +11,22 @@ name: CI
 
 on:
   push:
-    branches: [ main, '**/feature/**', '**/fix/**', '**/chore/**' ]
+    branches:
+      # GitFlow branches
+      - main
+      - develop
+      - '**/feature/**'
+      - '**/bugfix/**'
+      - '**/release/**'
+      - '**/hotfix/**'
+
+      # Extended branches
+      - '**/chore/**'
+      - '**/ci/**'
+      - '**/docs/**'
     tags: [ 'v*.*.*' ]
   pull_request:
+    branches: [ main, develop ]
 
 permissions:
   contents: read
