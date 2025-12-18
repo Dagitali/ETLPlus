@@ -1,11 +1,11 @@
 [build-system]
 # Use a modern setuptools that supports PEP 621 & editable installs (PEP 660).
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "etlplus"
-version = "0.3.3"
+dynamic = ["version"]
 description = "A Swiss Army knife for simple ETL operations"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13,<3.15"
@@ -33,14 +33,15 @@ dependencies = [
 [project.optional-dependencies]
 # Development-only tools (install with: pip install -e .[dev])
 dev = [
+  "black>=25.9.0",
+  "build>=1.2.2",
+  "flake8>=7.3.0",
   "PyYAML>=6.0.3",
+  "pydoclint>=0.8.1",
+  "pydocstyle>=6.3.0",
   "pytest>=8.4.2",
   "pytest-cov>=7.0.0",
-  "black>=25.9.0",
-  "flake8>=7.3.0",
   "ruff>=0.14.4",
-  "pydocstyle>=6.3.0",
-  "pydoclint>=0.8.1",
 ]
 docs = [
   "sphinx>=4.0.0",
@@ -103,3 +104,6 @@ license-files = ["LICENSE"]
 where = [".", "src"]
 include = ["etlplus*"]
 exclude = ["tests*", "docs*", "examples*"]
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"

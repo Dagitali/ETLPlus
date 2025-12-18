@@ -155,6 +155,11 @@ clean-venv: ## Remove the virtual environment
 	@rm -rf "$(VENV_DIR)"
 	@$(call ECHO_OK,"Removed venv")
 
+.PHONY: demo-snippets
+demo-snippets: ## Rebuild recorded CLI snippets embedded in DEMO.md
+	@$(PYTHON) tools/update_demo_snippets.py
+	@$(call ECHO_OK,"Refreshed demo snippets")
+
 .PHONY: dev
 dev: venv ## Install package + dev tools (pytest, ruff, mypy, etc.)
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev]
@@ -248,7 +253,7 @@ venv: ## Create the virtual environment (at $(VENV_DIR))
 	else \
 		$(call ECHO_INFO, "Using existing venv: $(VENV_DIR)"); \
 	fi
-	@$(PYTHON) -m pip install --upgrade pip setuptools wheel >/dev/null
+	@$(PYTHON) -m pip install --upgrade pip setuptool wheel >/dev/null
 	@$(call ECHO_OK,"venv ready")
 
 ##@ CI

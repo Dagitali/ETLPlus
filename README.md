@@ -424,21 +424,37 @@ flake8 etlplus/
 black etlplus/
 ```
 
+### Updating Demo Snippets
+
+`DEMO.md` shows the real output of `etlplus --version` captured from a freshly built wheel. Regenerate
+the snippet (and the companion file [docs/snippets/installation_version.md](docs/snippets/installation_version.md)) after changing anything that affects the version string:
+
+```bash
+make demo-snippets
+```
+
+The helper script in [tools/update_demo_snippets.py](tools/update_demo_snippets.py) builds the wheel,
+installs it into a throwaway virtual environment, runs `etlplus --version`, and rewrites the snippet
+between the markers in [DEMO.md](DEMO.md).
+
 ### Releasing to PyPI
 
-For maintainers, releases are built from the root using the modern `pyproject.toml` configuration:
+`setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag
+driven—no hand-editing `pyproject.toml`, `setup.py`, or `etlplus/__version__.py`.
+
+1. Ensure `main` is green and the changelog/docs are up to date.
+2. Create and push a SemVer tag matching the `v*.*.*` pattern:
 
 ```bash
-make dist          # build sdist + wheel into ./dist and run twine check
+git tag -a v1.4.0 -m "Release v1.4.0"
+git push origin v1.4.0
 ```
 
-Then upload the artifacts in `dist/` with `twine` (installed by `make dist`):
+3. GitHub Actions fetches tags, builds the sdist/wheel, and publishes to PyPI via the `publish` job
+   in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
-```bash
-export TWINE_USERNAME="__token__"
-export TWINE_PASSWORD="pypi-..."  # your PyPI API token
-python -m twine upload dist/*
-```
+If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
+this exercises the same build path the workflow uses.
 
 ## Links
 
