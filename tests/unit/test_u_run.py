@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib
 from types import SimpleNamespace
 from typing import Any
+from typing import ClassVar
 
 import pytest
 
@@ -97,7 +98,7 @@ class TestRun:
         class DummyClient:
             """Dummy EndpointClient for testing purposes."""
 
-            instances: list[DummyClient] = []
+            instances: ClassVar[list[DummyClient]] = []
 
             def __init__(self, **kwargs: Any) -> None:
                 self.kwargs = kwargs
