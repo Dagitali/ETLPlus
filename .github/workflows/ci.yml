@@ -74,9 +74,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           python-bootstrap: "-e .[dev,yaml]"
-      - name: Run tests
+      - name: Run tests (with coverage)
         run: |
-          pytest -q
+          pytest -q \
+            --cov \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            tests/
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.13'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # Pinned v5.5.2
+        with:
+          fail_ci_if_error: true
+          files: coverage.xml
+          flags: unit
+          name: etlplus
+          token: ${{ secrets.CODECOV_TOKEN }}  # Omit for public repo
+          verbose: true
 
   build:
     name: Build distributions
