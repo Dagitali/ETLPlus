@@ -58,7 +58,8 @@ class TestRun:
     """Unit test suite for :func:`etlplus.run.run`."""
 
     def test_api_source_and_target_pipeline(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test an API-to-API ETL pipeline execution."""
         job = _make_job(name='api_job', source='api_src', target='api_tgt')
@@ -263,10 +264,16 @@ class TestRun:
         cfg = _base_config(
             _make_job(name='other', source='src', target='tgt'),
             SimpleNamespace(
-                name='src', type='file', path='/tmp/in.json', format='json',
+                name='src',
+                type='file',
+                path='/tmp/in.json',
+                format='json',
             ),
             SimpleNamespace(
-                name='tgt', type='file', path='/tmp/out.json', format='json',
+                name='tgt',
+                type='file',
+                path='/tmp/out.json',
+                format='json',
             ),
         )
         monkeypatch.setattr(
