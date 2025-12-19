@@ -79,6 +79,7 @@ jobs:
           pytest -q \
             --cov \
             --cov-branch \
+            --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml \
             tests/
