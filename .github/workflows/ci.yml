@@ -9,11 +9,11 @@
 # - The workflow includes jobs for linting, testing, building distributions,
 #   and publishing releases to GitHub and PyPI.
 # - The workflow is hardened by removing global permissions and setting per-job
-#.  scopes.
+#   scopes.
 # - To harden workflow security, global permissions are absent, and per-job
 #   permissions are set as needed.
-# - External action references are each pinned to a specific commit SHA for
-#   improved security and stability (e.g., reduced supply-chain attack risks).
+# - External GitHub Actions action references are each pinned to specific SHA
+#   to limit supply-chain risk.
 
 ---
 
@@ -46,10 +46,12 @@ jobs:
     strategy: &python-matrix
       matrix:
         python-version: ['3.13', '3.14']
-    permissions:
+    permissions: &permissions_read
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - &checkout_step
+        name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # Pinned v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/python-bootstrap
@@ -65,12 +67,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy: *python-matrix
-    permissions:
-      contents: read
+    permissions: *permissions_read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          fetch-depth: 0
+      - *checkout_step
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
@@ -82,14 +81,13 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: &release_tag_condition >
+      startsWith(github.ref, 'refs/tags/v') ||
+      startsWith(github.ref, 'refs/tags/rc')
     needs: [lint, test]
-    permissions:
-      contents: read
+    permissions: *permissions_read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          fetch-depth: 0
+      - *checkout_step
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: '3.13'
@@ -98,7 +96,7 @@ jobs:
         run: |
           python -m build
       - name: Upload distributions
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # Pinned v4
         with:
           name: dist-artifacts
           path: dist/*
@@ -107,21 +105,20 @@ jobs:
   release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: *release_tag_condition
     needs: build
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          fetch-depth: 0
-      - name: Download distributions
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+      - *checkout_step
+      - &download_dist_step
+        name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # Pinned v4
         with:
           name: dist-artifacts
           path: dist
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b  # v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b  # Pinned v2
         with:
           files: dist/*
           generate_release_notes: true
@@ -129,7 +126,7 @@ jobs:
   publish:
     name: Publish to PyPI
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: *release_tag_condition
     needs: build
     permissions:
       contents: read
@@ -138,15 +135,9 @@ jobs:
       name: pypi
       url: https://pypi.org/project/etlplus/
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          fetch-depth: 0
-      - name: Download distributions
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-        with:
-          name: dist-artifacts
-          path: dist
+      - *checkout_step
+      - *download_dist_step
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # Pinned v1
         with:
           verbose: true

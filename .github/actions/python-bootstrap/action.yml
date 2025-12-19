@@ -7,8 +7,8 @@
 # dependencies.
 #
 # Notes
-# - External action references are each pinned to a specific commit SHA for
-#   improved security and stability (e.g., reduced supply-chain attack risks).
+# - External GitHub Actions action references are each pinned to specific SHA
+#   to limit supply-chain risk.
 
 ---
 
@@ -29,7 +29,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # Pinned v5
       with:
         python-version: ${{ inputs.python-version }}
 
