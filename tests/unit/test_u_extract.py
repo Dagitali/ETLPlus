@@ -29,7 +29,7 @@ from etlplus.extract import extract_from_file
 # SECTION: HELPERS ========================================================== #
 
 
-MOCK_BASE_URL = 'https://api.example.com/v1'
+MOCK_BASE_URL = 'https://api.example.com'
 
 
 class _StubResponse:
@@ -302,7 +302,7 @@ class TestExtractFromApi:
 
         class NoGet:  # noqa: D401
             """Session stub without a 'GET' method."""
-            pass
+            pass   # pylint: disable=unnecessary-pass
 
         with pytest.raises(TypeError, match='callable"get"'):
             extract_from_api(f'{MOCK_BASE_URL}/data', session=NoGet())
