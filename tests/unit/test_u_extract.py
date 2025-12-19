@@ -302,7 +302,8 @@ class TestExtractFromApi:
 
         class NoGet:  # noqa: D401
             """Session stub without a 'GET' method."""
-            pass   # pylint: disable=unnecessary-pass
+
+            pass  # pylint: disable=unnecessary-pass
 
         with pytest.raises(TypeError, match='callable"get"'):
             extract_from_api(f'{MOCK_BASE_URL}/data', session=NoGet())
