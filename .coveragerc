@@ -1,0 +1,21 @@
+# .coveragerc
+# ETLPlus
+#
+# Copyright © 2025 Dagitali LLC. All rights reserved.
+#
+# An optional pytest-cov configuration file. Limits coverage measurement to the
+# ETLPlus package and ignore test modules.
+#
+# See:
+# 1. https://pytest-cov.readthedocs.io/en/latest/config.html
+
+[run]
+source = etlplus
+branch = true
+omit =
+    tests/*
+    */tests/*
+
+[report]
+skip_covered = true
+show_missing = true
