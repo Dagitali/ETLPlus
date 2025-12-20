@@ -25,8 +25,8 @@ from typing import Any
 
 import pytest
 
-import etlplus.api.request_manager as rmod
-import etlplus.cli as cli_mod
+import etlplus.api.request_manager as rm_module
+import etlplus.cli as cli_module
 from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
@@ -133,7 +133,7 @@ jobs:
             return {'data': [], 'next': None}
 
         def fake_request(
-            self: rmod.RequestManager,
+            self: rm_module.RequestManager,
             method: str,
             url: str,
             *,
@@ -145,8 +145,10 @@ jobs:
             return fake_extract('api', url, **kwargs)
 
         # Patch extract targets consistent with the page/offset test.
-        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(cli_module, 'extract', fake_extract)
+        monkeypatch.setattr(
+            rm_module.RequestManager, 'request_once', fake_request,
+        )
 
         monkeypatch.setattr(
             sys,
@@ -214,7 +216,7 @@ jobs:
             return {'items': [], 'next': None}
 
         def fake_request(
-            self: rmod.RequestManager,
+            self: rm_module.RequestManager,
             method: str,
             url: str,
             *,
@@ -225,8 +227,10 @@ jobs:
             assert method == 'GET'
             return fake_extract('api', url, **kwargs)
 
-        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(cli_module, 'extract', fake_extract)
+        monkeypatch.setattr(
+            rm_module.RequestManager, 'request_once', fake_request,
+        )
         monkeypatch.setattr(
             sys,
             'argv',
@@ -323,7 +327,7 @@ jobs:
             return []
 
         def fake_request(
-            self: rmod.RequestManager,
+            self: rm_module.RequestManager,
             method: str,
             url: str,
             *,
@@ -338,8 +342,10 @@ jobs:
         # - cli_mod.extract: CLI may call extract directly for some paths.
         # - RequestManager.request_once: paginate now delegates to the
         #   shared HTTP helper per page.
-        monkeypatch.setattr(cli_mod, 'extract', fake_extract)
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(cli_module, 'extract', fake_extract)
+        monkeypatch.setattr(
+            rm_module.RequestManager, 'request_once', fake_request,
+        )
 
         # Run CLI.
         monkeypatch.setattr(
