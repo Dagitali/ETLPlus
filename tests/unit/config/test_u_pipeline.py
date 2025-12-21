@@ -109,6 +109,7 @@ def pipeline_multi_cfg_fixture(
     path = pipeline_yaml_factory(MULTI_SOURCE_YAML.strip(), tmp_path)
     return pipeline_from_yaml_factory(path, substitute=True, env={})
 
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -194,8 +195,10 @@ jobs: []
         ('collection', 'name', 'expected_path'),
         [
             pytest.param(
-                'sources', 's1',
-                'one-${B}.json', id='source-missing',
+                'sources',
+                's1',
+                'one-${B}.json',
+                id='source-missing',
             ),
             pytest.param('sources', 's2', 'literal.json', id='source-literal'),
             pytest.param('targets', 't1', 'out-one.json', id='target'),
