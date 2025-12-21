@@ -16,6 +16,7 @@ import types
 import urllib.parse as urlparse
 from collections.abc import Callable
 from collections.abc import Sequence
+from functools import partial
 from typing import Any
 from typing import cast
 
@@ -163,6 +164,31 @@ def make_http_error(status: int) -> requests.HTTPError:
     return err
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='stub_request_manager')
+def stub_request_manager_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Sequence[dict[str, Any]]], list[dict[str, Any]]]:
+    """
+    Provide a callable that stubs ``RequestManager.request_once``.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Fixture used to patch request helpers.
+
+    Returns
+    -------
+    Callable[[Sequence[dict[str, Any]]], list[dict[str, Any]]]
+        Factory that applies :func:`_stub_request_manager` with captured
+        responses.
+    """
+
+    return partial(_stub_request_manager, monkeypatch)
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -280,9 +306,11 @@ class TestCursorPagination:
     )
     def test_page_size_normalizes(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         client_factory: Callable[..., EndpointClient],
+        stub_request_manager: Callable[
+            [Sequence[dict[str, Any]]], list[dict[str, Any]],
+        ],
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -291,19 +319,19 @@ class TestCursorPagination:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
+                                       list[dict[str, Any]]]
+            Fixture that patches the underlying :class:`RequestManager`.
         raw_page_size : Any
             Raw page size input.
         expected_limit : int
             Expected normalized limit.
         """
-        calls = _stub_request_manager(
-            monkeypatch,
+        calls = stub_request_manager(
             [{'items': [{'i': 1}], 'next': None}],
         )
 
@@ -415,24 +443,26 @@ class TestRequestOptionIntegration:
 
     def test_adds_limit_and_advances_cursor(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         client_factory: Callable[..., EndpointClient],
+        stub_request_manager: Callable[
+            [Sequence[dict[str, Any]]], list[dict[str, Any]],
+        ],
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
+                                       list[dict[str, Any]]]
+            Fixture that patches :class:`RequestManager` responses.
         """
-        calls = _stub_request_manager(
-            monkeypatch,
+        calls = stub_request_manager(
             [
                 {'items': [{'i': 1}], 'next': 'abc'},
                 {'items': [{'i': 2}], 'next': None},
