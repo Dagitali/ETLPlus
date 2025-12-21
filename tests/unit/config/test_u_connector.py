@@ -17,6 +17,11 @@ from etlplus.config.connector import ConnectorApi
 from etlplus.config.connector import ConnectorDb
 from etlplus.config.connector import ConnectorFile
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 # SECTION: TESTS ============================================================ #
 
 
