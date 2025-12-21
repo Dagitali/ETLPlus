@@ -15,37 +15,14 @@ Notes
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 import pytest
 
-# SECTION: HELPERS ========================================================== #
-
-
-class CliInvoke(Protocol):
-    """Protocol describing the shared CLI invocation helper."""
-
-    def __call__(
-        self,
-        *cli_args: str | Sequence[str],
-    ) -> tuple[int, str, str]:  # pragma: no cover - typing only
-        ...
-
-
-class JsonFactory(Protocol):
-    """Protocol describing the JSON payload factory helper."""
-
-    def __call__(
-        self,
-        payload: Any,
-        *,
-        filename: str | None = None,
-        ensure_ascii: bool = False,
-    ) -> Path:  # pragma: no cover - typing only
-        ...
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests._typing import CliInvoke
+    from tests._typing import JsonFactory
 
 
 pytestmark = pytest.mark.integration
