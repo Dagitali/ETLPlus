@@ -31,6 +31,12 @@ from tests.conftest import RequestFactory
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
+
+
 class _NonJsonResponse:
     """Response stub that raises :class:`ValueError` from ``json``."""
 
