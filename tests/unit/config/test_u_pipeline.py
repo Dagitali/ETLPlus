@@ -24,6 +24,11 @@ from etlplus.config.connector import ConnectorFile
 from etlplus.config.pipeline import PipelineConfig
 from etlplus.config.pipeline import _build_connectors
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 CONNECTOR_CASES = (
     pytest.param(
         'sources',
@@ -83,7 +88,7 @@ jobs: []
 """
 
 
-# SECTION: FIXTURE ========================================================== #
+# SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='connector_path_lookup')
@@ -163,7 +168,6 @@ def pipeline_multi_cfg_fixture(
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestPipelineBuildConnectors:
     """
     Unit test suite for :func:`_build_connectors`.
