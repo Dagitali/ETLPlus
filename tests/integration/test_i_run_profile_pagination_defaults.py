@@ -44,19 +44,15 @@ class TestRunProfilePaginationDefaults:
                 start_page=5,
                 page_size=50,
             ),
-        )
-        job = cfg.jobs[0]
-        if job.extract is not None:
-            job.extract.options = {
+            extract_options={
                 'pagination': {
                     'type': 'cursor',
                     'cursor_param': 'cursor',
                     'cursor_path': 'next',
                     'page_size': 25,
                 },
-            }
-        else:
-            raise ValueError('job.extract is None; cannot set options')
+            },
+        )
 
         fake_client, created = fake_endpoint_client
         result = run_patched(cfg, fake_client)
