@@ -18,6 +18,8 @@ run_mod = importlib.import_module('etlplus.run')
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
 MOCK_BASE_URL = 'https://api.example.com'
 
 
