@@ -11,6 +11,7 @@ Notes
 from __future__ import annotations
 
 import importlib
+import json
 import pathlib
 from collections.abc import Callable
 from typing import Any
@@ -55,8 +56,8 @@ class FakeEndpointClientProtocol(Protocol):
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture
-def capture_load_to_api(
+@pytest.fixture(name='capture_load_to_api')
+def capture_load_to_api_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
     """
@@ -112,8 +113,8 @@ def capture_load_to_api(
     return seen
 
 
-@pytest.fixture
-def fake_endpoint_client() -> tuple[
+@pytest.fixture(name='fake_endpoint_client')
+def fake_endpoint_client_fixture() -> tuple[
     type[FakeEndpointClientProtocol],
     list[FakeEndpointClientProtocol],
 ]:  # noqa: ANN201
@@ -170,8 +171,80 @@ def fake_endpoint_client() -> tuple[
     return FakeClient, created
 
 
-@pytest.fixture
-def pipeline_cfg_factory(
+@pytest.fixture(name='file_to_api_pipeline_factory')
+def file_to_api_pipeline_factory_fixture(
+    tmp_path: pathlib.Path,
+) -> Callable[..., PipelineConfig]:
+    """Build a pipeline wiring a JSON file source to an API target."""
+
+    def _make(
+        *,
+        payload: Any | None = None,
+        base_url: str = 'https://api.example.com',
+        base_path: str | None = '/v1',
+        endpoint_path: str = '/ingest',
+        endpoint_name: str = 'ingest',
+        method: str = 'post',
+        headers: dict[str, str] | None = None,
+        job_name: str = 'send',
+        target_name: str = 'ingest_out',
+    ) -> PipelineConfig:
+        source_path = tmp_path / f'{job_name}_input.json'
+        effective_payload = payload if payload is not None else {'ok': True}
+        text = (
+            effective_payload
+            if isinstance(effective_payload, str)
+            else json.dumps(effective_payload)
+        )
+        source_path.write_text(text, encoding='utf-8')
+
+        profile = ApiProfileConfig(
+            base_url=base_url,
+            headers={},
+            base_path=base_path or '',
+            auth={},
+            rate_limit_defaults=None,
+            pagination_defaults=None,
+        )
+        api = ApiConfig(
+            base_url=base_url,
+            profiles={'default': profile},
+            endpoints={endpoint_name: EndpointConfig(path=endpoint_path)},
+        )
+
+        src = ConnectorFile(
+            name='file_src',
+            type='file',
+            format='json',
+            path=str(source_path),
+        )
+        tgt = ConnectorApi(
+            name=target_name,
+            type='api',
+            api='svc',
+            endpoint=endpoint_name,
+            method=method,
+            headers=headers or {},
+        )
+
+        return PipelineConfig(
+            apis={'svc': api},
+            sources=[src],
+            targets=[tgt],
+            jobs=[
+                JobConfig(
+                    name=job_name,
+                    extract=ExtractRef(source='file_src'),
+                    load=LoadRef(target=target_name),
+                ),
+            ],
+        )
+
+    return _make
+
+
+@pytest.fixture(name='pipeline_cfg_factory')
+def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,
 ) -> Callable[..., PipelineConfig]:
     """
@@ -196,6 +269,7 @@ def pipeline_cfg_factory(
         *,
         pagination_defaults: PaginationConfig | None = None,
         rate_limit_defaults: RateLimitConfig | None = None,
+        extract_options: dict[str, Any] | None = None,
     ) -> PipelineConfig:
         prof = ApiProfileConfig(
             base_url='https://api.example.com',
@@ -219,24 +293,29 @@ def pipeline_cfg_factory(
             format='json',
             path=str(out_path),
         )
+        job = JobConfig(
+            name='job',
+            extract=ExtractRef(source='s'),
+            load=LoadRef(target='t'),
+        )
+        if extract_options is not None:
+            if job.extract is None:
+                msg = 'job.extract is None; cannot set options'
+                raise ValueError(msg)
+            job.extract.options = extract_options
+
         return PipelineConfig(
             apis={'svc': api},
             sources=[src],
             targets=[tgt],
-            jobs=[
-                JobConfig(
-                    name='job',
-                    extract=ExtractRef(source='s'),
-                    load=LoadRef(target='t'),
-                ),
-            ],
+            jobs=[job],
         )
 
     return _make
 
 
-@pytest.fixture
-def run_patched(
+@pytest.fixture(name='run_patched')
+def run_patched_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> Callable[..., dict[str, Any]]:
     """
