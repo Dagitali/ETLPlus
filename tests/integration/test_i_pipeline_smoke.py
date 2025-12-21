@@ -14,12 +14,15 @@ Notes
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
+from textwrap import dedent
+from typing import TYPE_CHECKING
 
 import pytest
 
-from etlplus.cli import main
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests.conftest import CliInvoke
+    from tests.conftest import JsonFactory
 
 # SECTION: TESTS ============================================================ #
 
@@ -40,57 +43,53 @@ class TestPipelineSmoke:
     )
     def test_file_to_file(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        json_file_factory: JsonFactory,
+        cli_invoke: CliInvoke,
         data_in: list[object] | list[dict[str, int | str]],
     ) -> None:
         """Test file→file jobs via CLI for multiple input datasets."""
-        # Prepare input and output paths.
-        input_path = tmp_path / 'input.json'
+        source_path = json_file_factory(data_in, filename='input.json')
         output_path = tmp_path / 'output.json'
-        input_path.write_text(json.dumps(data_in), encoding='utf-8')
 
         # Minimal pipeline config (file -> file).
-        pipeline_yaml = f"""
-name: Smoke Test
-sources:
-  - name: src
-    type: file
-    format: json
-    path: {input_path}
-targets:
-  - name: dest
-    type: file
-    format: json
-    path: {output_path}
-jobs:
-  - name: file_to_file_smoke
-    extract:
-      source: src
-    load:
-      target: dest
-"""
+        pipeline_yaml = dedent(
+            f"""
+            name: Smoke Test
+            sources:
+              - name: src
+                type: file
+                format: json
+                path: "{source_path}"
+            targets:
+              - name: dest
+                type: file
+                format: json
+                path: "{output_path}"
+            jobs:
+              - name: file_to_file_smoke
+                extract:
+                  source: src
+                load:
+                  target: dest
+            """,
+        ).strip()
         cfg_path = tmp_path / 'pipeline.yml'
         cfg_path.write_text(pipeline_yaml, encoding='utf-8')
 
-        # Run CLI: etlplus pipeline --config <cfg> --run file_to_file_smoke.
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            [
-                'etlplus',
+        code, out, err = cli_invoke(
+            (
                 'pipeline',
                 '--config',
                 str(cfg_path),
                 '--run',
                 'file_to_file_smoke',
-            ],
+            ),
         )
-        result = main()
-        assert result == 0
+        assert err == ''
+        assert code == 0
 
-        payload = json.loads(capsys.readouterr().out)
+        payload = json.loads(out)
 
         # CLI should have printed a JSON object with status ok.
         assert payload.get('status') == 'ok'
