@@ -18,6 +18,78 @@ import pytest
 
 from etlplus.cli import create_parser
 
+# SECTION: HELPERS ========================================================== #
+
+
+# Shared parser cases to keep param definitions DRY and self-documenting.
+CLI_CASES = (
+    pytest.param(
+        ['extract', 'file', '/path/to/file.json'],
+        {
+            'command': 'extract',
+            'source_type': 'file',
+            'source': '/path/to/file.json',
+            'format': 'json',
+        },
+        id='extract-default-format',
+    ),
+    pytest.param(
+        ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
+        {
+            'command': 'extract',
+            'source_type': 'file',
+            'source': '/path/to/file.csv',
+            'format': 'csv',
+            '_format_explicit': True,
+        },
+        id='extract-explicit-format',
+    ),
+    pytest.param(
+        ['load', '/path/to/file.json', 'file', '/path/to/output.json'],
+        {
+            'command': 'load',
+            'source': '/path/to/file.json',
+            'target_type': 'file',
+            'target': '/path/to/output.json',
+        },
+        id='load-default-format',
+    ),
+    pytest.param(
+        [
+            'load',
+            '/path/to/file.json',
+            'file',
+            '/path/to/output.csv',
+            '--format',
+            'csv',
+        ],
+        {
+            'command': 'load',
+            'source': '/path/to/file.json',
+            'target_type': 'file',
+            'target': '/path/to/output.csv',
+            'format': 'csv',
+            '_format_explicit': True,
+        },
+        id='load-explicit-format',
+    ),
+    pytest.param(
+        [],
+        {'command': None},
+        id='no-subcommand',
+    ),
+    pytest.param(
+        ['transform', '/path/to/file.json'],
+        {'command': 'transform', 'source': '/path/to/file.json'},
+        id='transform',
+    ),
+    pytest.param(
+        ['validate', '/path/to/file.json'],
+        {'command': 'validate', 'source': '/path/to/file.json'},
+        id='validate',
+    ),
+)
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -70,66 +142,7 @@ class TestCreateParser:
         assert cli_parser is not None
         assert cli_parser.prog == 'etlplus'
 
-    @pytest.mark.parametrize(
-        'cmd_args,expected_args',
-        [
-            (
-                ['extract', 'file', '/path/to/file.json'],
-                {
-                    'command': 'extract',
-                    'source_type': 'file',
-                    'source': '/path/to/file.json',
-                    'format': 'json',
-                },
-            ),
-            (
-                ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
-                {
-                    'command': 'extract',
-                    'source_type': 'file',
-                    'source': '/path/to/file.csv',
-                    'format': 'csv',
-                    '_format_explicit': True,
-                },
-            ),
-            (
-                ['load', '/path/to/file.json', 'file', '/path/to/output.json'],
-                {
-                    'command': 'load',
-                    'source': '/path/to/file.json',
-                    'target_type': 'file',
-                    'target': '/path/to/output.json',
-                },
-            ),
-            (
-                [
-                    'load',
-                    '/path/to/file.json',
-                    'file',
-                    '/path/to/output.csv',
-                    '--format',
-                    'csv',
-                ],
-                {
-                    'command': 'load',
-                    'source': '/path/to/file.json',
-                    'target_type': 'file',
-                    'target': '/path/to/output.csv',
-                    'format': 'csv',
-                    '_format_explicit': True,
-                },
-            ),
-            ([], {'command': None}),
-            (
-                ['transform', '/path/to/file.json'],
-                {'command': 'transform', 'source': '/path/to/file.json'},
-            ),
-            (
-                ['validate', '/path/to/file.json'],
-                {'command': 'validate', 'source': '/path/to/file.json'},
-            ),
-        ],
-    )
+    @pytest.mark.parametrize(('cmd_args', 'expected_args'), CLI_CASES)
     def test_parser_commands(
         self,
         parse_cli: Callable[[list[str]], argparse.Namespace],
