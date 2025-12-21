@@ -29,6 +29,9 @@ from etlplus.extract import extract_from_file
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
 MOCK_BASE_URL = 'https://api.example.com'
 
 
