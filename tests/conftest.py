@@ -22,6 +22,7 @@ from typing import Any
 from typing import Protocol
 
 import pytest
+from requests import PreparedRequest  # type: ignore[import]
 
 from etlplus.cli import main
 
@@ -78,6 +79,15 @@ class JsonFactory(Protocol):
         filename: str | None = None,
         ensure_ascii: bool = False,
     ) -> Path: ...
+
+
+class RequestFactory(Protocol):
+    """Protocol describing prepared-request factories."""
+
+    def __call__(
+        self,
+        url: str | None = None,
+    ) -> PreparedRequest: ...
 
 
 # SECTION: FIXTURES ========================================================= #
