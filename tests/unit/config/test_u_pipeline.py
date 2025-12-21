@@ -24,27 +24,6 @@ from etlplus.config.connector import ConnectorFile
 from etlplus.config.pipeline import PipelineConfig
 from etlplus.config.pipeline import _build_connectors
 
-MULTI_SOURCE_YAML = """
-name: TestMulti
-vars:
-  A: one
-sources:
-  - name: s1
-    type: file
-    format: json
-    path: "${A}-${B}.json"
-  - name: s2
-    type: file
-    format: json
-    path: "literal.json"
-targets:
-  - name: t1
-    type: file
-    format: json
-    path: "out-${A}.json"
-jobs: []
-"""
-
 CONNECTOR_CASES = (
     pytest.param(
         'sources',
@@ -82,23 +61,81 @@ CONNECTOR_CASES = (
     ),
 )
 
+MULTI_SOURCE_YAML = """
+name: TestMulti
+vars:
+  A: one
+sources:
+  - name: s1
+    type: file
+    format: json
+    path: "${A}-${B}.json"
+  - name: s2
+    type: file
+    format: json
+    path: "literal.json"
+targets:
+  - name: t1
+    type: file
+    format: json
+    path: "out-${A}.json"
+jobs: []
+"""
 
-@pytest.fixture(name='pipeline_multi_cfg')
-def pipeline_multi_cfg_fixture(
+
+# SECTION: FIXTURE ========================================================== #
+
+
+@pytest.fixture(name='pipeline_builder')
+def pipeline_builder_fixture(
     tmp_path: Path,
     pipeline_yaml_factory: Callable[[str, Path], Path],
     pipeline_from_yaml_factory: Callable[..., PipelineConfig],
-) -> PipelineConfig:
-    """Build a :class:`PipelineConfig` with multiple sources/targets.
+) -> Callable[..., PipelineConfig]:
+    """
+    Build :class:`PipelineConfig` instances from inline YAML strings.
 
     Parameters
     ----------
     tmp_path : Path
         Temporary directory managed by pytest.
     pipeline_yaml_factory : Callable[[str, Path], Path]
-        Factory that writes YAML content to disk.
+        Helper that writes YAML text to disk.
     pipeline_from_yaml_factory : Callable[..., PipelineConfig]
-        Factory that instantiates :class:`PipelineConfig` objects.
+        Factory that parses YAML into a :class:`PipelineConfig`.
+
+    Returns
+    -------
+    Callable[..., PipelineConfig]
+        Function that renders YAML text to a config with optional overrides.
+    """
+
+    def _build(
+        yaml_text: str,
+        *,
+        substitute: bool = True,
+        env: dict[str, str] | None = None,
+    ) -> PipelineConfig:
+        path = pipeline_yaml_factory(yaml_text.strip(), tmp_path)
+        return pipeline_from_yaml_factory(
+            path,
+            substitute=substitute,
+            env=env or {},
+        )
+
+    return _build
+
+
+@pytest.fixture(name='pipeline_multi_cfg')
+def pipeline_multi_cfg_fixture(
+    pipeline_builder: Callable[..., PipelineConfig],
+) -> PipelineConfig:
+    """Build a :class:`PipelineConfig` with multiple sources/targets.
+
+    Parameters
+    ----------
+    pipeline_builder : Callable[..., PipelineConfig]
+        Fixture that converts inline YAML strings into pipeline configs.
 
     Returns
     -------
@@ -106,8 +143,7 @@ def pipeline_multi_cfg_fixture(
         Parsed configuration with substitution enabled.
     """
 
-    path = pipeline_yaml_factory(MULTI_SOURCE_YAML.strip(), tmp_path)
-    return pipeline_from_yaml_factory(path, substitute=True, env={})
+    return pipeline_builder(MULTI_SOURCE_YAML)
 
 
 # SECTION: TESTS ============================================================ #
@@ -149,9 +185,7 @@ class TestPipelineConfig:
 
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
-        tmp_path: Path,
-        pipeline_yaml_factory: Callable[[str, Path], Path],
-        pipeline_from_yaml_factory: Callable[..., PipelineConfig],
+        pipeline_builder: Callable[..., PipelineConfig],
     ) -> None:  # noqa: D401
         """
         Test that :class:`PipelineConfig` includes profile environment
@@ -159,12 +193,8 @@ class TestPipelineConfig:
 
         Parameters
         ----------
-        tmp_path : Path
-            Temporary directory path.
-        pipeline_yaml_factory : Callable[[str, Path], Path]
-            Factory to create a pipeline YAML file.
-        pipeline_from_yaml_factory : Callable[..., PipelineConfig]
-            Factory to create a PipelineConfig from YAML.
+        pipeline_builder : Callable[..., PipelineConfig]
+            Fixture that renders YAML text into parsed configs.
         """
         yml = (
             """
@@ -184,8 +214,7 @@ jobs: []
 """
         ).strip()
 
-        p = pipeline_yaml_factory(yml, tmp_path)
-        cfg = pipeline_from_yaml_factory(p, substitute=True, env={})
+        cfg = pipeline_builder(yml)
 
         # After substitution, re-parse should keep the resolved path.
         s_item = next(s for s in cfg.sources if s.name == 's')
