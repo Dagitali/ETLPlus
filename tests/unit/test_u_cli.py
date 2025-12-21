@@ -11,9 +11,28 @@ Notes
 
 from __future__ import annotations
 
+import argparse
+
 import pytest
 
 from etlplus.cli import create_parser
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='cli_parser')
+def cli_parser_fixture() -> argparse.ArgumentParser:
+    """
+    Provide a fresh CLI parser per test case.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Newly constructed parser instance.
+    """
+
+    return create_parser()
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -28,13 +47,15 @@ class TestCreateParser:
     - Tests CLI parser creation and argument parsing for all commands.
     """
 
-    def test_create_parser(self) -> None:
+    def test_create_parser(
+        self,
+        cli_parser: argparse.ArgumentParser,
+    ) -> None:
         """
         Test that the CLI parser is created and configured correctly.
         """
-        parser = create_parser()
-        assert parser is not None
-        assert parser.prog == 'etlplus'
+        assert cli_parser is not None
+        assert cli_parser.prog == 'etlplus'
 
     @pytest.mark.parametrize(
         'cmd_args,expected_args',
@@ -98,6 +119,7 @@ class TestCreateParser:
     )
     def test_parser_commands(
         self,
+        cli_parser: argparse.ArgumentParser,
         cmd_args: list[str],
         expected_args: dict[str, object],
     ) -> None:
@@ -111,14 +133,15 @@ class TestCreateParser:
         expected_args : dict[str, object]
             Expected parsed argument values.
         """
-        parser = create_parser()
-        args = parser.parse_args(cmd_args)
+        args = cli_parser.parse_args(cmd_args)
         for key, val in expected_args.items():
             assert getattr(args, key, None) == val
 
-    def test_parser_version(self) -> None:
+    def test_parser_version(
+        self,
+        cli_parser: argparse.ArgumentParser,
+    ) -> None:
         """Test that the CLI parser provides version information."""
-        parser = create_parser()
         with pytest.raises(SystemExit) as exc_info:
-            parser.parse_args(['--version'])
+            cli_parser.parse_args(['--version'])
         assert exc_info.value.code == 0
