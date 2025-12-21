@@ -147,7 +147,9 @@ jobs:
         # Patch extract targets consistent with the page/offset test.
         monkeypatch.setattr(cli_module, 'extract', fake_extract)
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         monkeypatch.setattr(
@@ -229,7 +231,9 @@ jobs:
 
         monkeypatch.setattr(cli_module, 'extract', fake_extract)
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
         monkeypatch.setattr(
             sys,
@@ -344,7 +348,9 @@ jobs:
         #   shared HTTP helper per page.
         monkeypatch.setattr(cli_module, 'extract', fake_extract)
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         # Run CLI.
