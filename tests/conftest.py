@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Callable
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+from typing import Protocol
 
 import pytest
 
@@ -53,13 +53,40 @@ def _coerce_cli_args(
     return tuple(str(part) for part in cli_args)
 
 
+class CliInvoke(Protocol):
+    """Protocol describing the :func:`cli_invoke` fixture."""
+
+    def __call__(
+        self,
+        *cli_args: str | Sequence[str],
+    ) -> tuple[int, str, str]: ...
+
+
+class CliRunner(Protocol):
+    """Protocol describing the ``cli_runner`` fixture."""
+
+    def __call__(self, *cli_args: str | Sequence[str]) -> int: ...
+
+
+class JsonFactory(Protocol):
+    """Protocol describing the :func:`json_file_factory` fixture."""
+
+    def __call__(
+        self,
+        payload: Any,
+        *,
+        filename: str | None = None,
+        ensure_ascii: bool = False,
+    ) -> Path: ...
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='json_file_factory')
 def json_file_factory_fixture(
     tmp_path: Path,
-) -> Callable[[Any], Path]:
+) -> JsonFactory:
     """
     Create JSON files under ``tmp_path`` and return their paths.
 
@@ -70,7 +97,7 @@ def json_file_factory_fixture(
 
     Returns
     -------
-    Callable[[Any], Path]
+    JsonFactory
         Factory that persists the provided payload as JSON and returns the
         resulting path.
 
@@ -101,7 +128,7 @@ def json_file_factory_fixture(
 @pytest.fixture(name='cli_runner')
 def cli_runner_fixture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[Sequence[str] | tuple[str, ...]], int]:
+) -> CliRunner:
     """
     Invoke ``etlplus`` CLI commands with isolated ``sys.argv`` state.
 
@@ -112,7 +139,7 @@ def cli_runner_fixture(
 
     Returns
     -------
-    Callable[[Sequence[str] | tuple[str, ...]], int]
+    CliRunner
         Helper that accepts CLI arguments, runs :func:`etlplus.cli.main`, and
         returns the exit code.
 
@@ -131,22 +158,22 @@ def cli_runner_fixture(
 
 @pytest.fixture
 def cli_invoke(
-    cli_runner: Callable[[Sequence[str] | tuple[str, ...]], int],
+    cli_runner: CliRunner,
     capsys: pytest.CaptureFixture[str],
-) -> Callable[[Sequence[str] | tuple[str, ...]], tuple[int, str, str]]:
+) -> CliInvoke:
     """
     Run CLI commands and return exit code, stdout, and stderr.
 
     Parameters
     ----------
-    cli_runner : Callable[[Sequence[str] | tuple[str, ...]], int]
+    cli_runner : CliRunner
         Helper fixture defined above.
     capsys : pytest.CaptureFixture[str]
         Pytest fixture for capturing stdout/stderr.
 
     Returns
     -------
-    Callable[[Sequence[str] | tuple[str, ...]], tuple[int, str, str]]
+    CliInvoke
         Helper that yields ``(exit_code, stdout, stderr)`` tuples.
 
     Examples
