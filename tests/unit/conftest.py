@@ -269,7 +269,9 @@ def request_once_stub(
         return {'ok': True}
 
     monkeypatch.setattr(
-        rm_module.RequestManager, 'request_once', _fake_request,
+        rm_module.RequestManager,
+        'request_once',
+        _fake_request,
     )
 
     return calls
