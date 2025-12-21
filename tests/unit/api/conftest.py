@@ -20,6 +20,12 @@ import etlplus.api.rate_limiting.rate_limiter as rl_module
 import etlplus.api.retry_manager as rm_module
 from etlplus.api import EndpointClient
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
