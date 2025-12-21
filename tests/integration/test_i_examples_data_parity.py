@@ -13,7 +13,7 @@ Notes
 from pathlib import Path
 from typing import Any
 
-import pytest  # pylint: disable=unused-import
+import pytest
 
 from etlplus.file import File
 
