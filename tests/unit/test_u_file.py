@@ -35,9 +35,9 @@ class _StubYaml:
         handle: object,
     ) -> dict[str, str]:
         """Stub for PyYAML's ``safe_load`` function."""
-        text = handle.read() if hasattr(
-            handle, 'read',
-        ) else ''  # type: ignore[call-arg]
+        text = ''
+        if hasattr(handle, 'read'):  # type: ignore[call-arg]
+            text = handle.read()
         return {'loaded': str(text).strip()}
 
     def safe_dump(
