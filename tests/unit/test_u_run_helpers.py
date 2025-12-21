@@ -20,6 +20,9 @@ from etlplus.api import PaginationType
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
 MOCK_BASE_URL = 'https://api.example.com'
 
 
