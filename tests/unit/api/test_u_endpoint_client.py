@@ -15,6 +15,7 @@ from __future__ import annotations
 import types
 import urllib.parse as urlparse
 from collections.abc import Callable
+from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
@@ -90,6 +91,56 @@ def _ascii_no_amp_eq() -> Any:
     return st.text(alphabet=alpha, min_size=0, max_size=12)
 
 
+def _stub_request_manager(
+    monkeypatch: pytest.MonkeyPatch,
+    responses: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Patch ``RequestManager.request_once`` with deterministic responses.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest fixture for attribute patching.
+    responses : Sequence[dict[str, Any]]
+        Ordered responses returned per invocation. The last payload is reused
+        if the stub is called more times than there are entries.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Mutable call log containing ``url`` and ``kwargs`` for each request.
+    """
+
+    if not responses:
+        msg = 'responses must contain at least one payload'
+        raise ValueError(msg)
+
+    calls: list[dict[str, Any]] = []
+
+    def _fake_request(
+        self: rm_module.RequestManager,  # noqa: D401
+        method: str,
+        url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        request_callable: Callable[..., Any] | None = None,
+        **kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
+        idx = min(len(calls), len(responses) - 1)
+        calls.append({'method': method, 'url': url, 'kwargs': kwargs})
+        return responses[idx]
+
+    monkeypatch.setattr(
+        rm_module.RequestManager,
+        'request_once',
+        _fake_request,
+    )
+
+    return calls
+
+
 def make_http_error(status: int) -> requests.HTTPError:
     """
     Create a requests.HTTPError with attached response object.
@@ -122,6 +173,7 @@ class TestContextManager:
     def test_closes_factory_session(
         self,
         mock_session: MockSession,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -132,12 +184,13 @@ class TestContextManager:
         ----------
         mock_session : MockSession
             Mocked session object.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
         sess = mock_session
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
             endpoints={},
             session_factory=lambda: sess,
         )
@@ -150,6 +203,7 @@ class TestContextManager:
     def test_creates_and_closes_default_session(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -159,6 +213,8 @@ class TestContextManager:
         ----------
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
@@ -174,10 +230,7 @@ class TestContextManager:
         # Patch extract to avoid network and capture params.
         monkeypatch.setattr(ec_module.requests, 'Session', ctor)
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
-            endpoints={},
-        )
+        client = client_factory(endpoints={})
         with client:
             out = client.paginate_url('https://api.example.com/items', None)
             assert out == {'ok': True}
@@ -189,6 +242,7 @@ class TestContextManager:
     def test_does_not_close_external_session(
         self,
         mock_session: MockSession,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -199,12 +253,13 @@ class TestContextManager:
         ----------
         mock_session : MockSession
             Mocked session object.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
         sess = mock_session
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
             endpoints={},
             session=sess,
         )
@@ -227,6 +282,7 @@ class TestCursorPagination:
         self,
         monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -239,37 +295,19 @@ class TestCursorPagination:
             Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         raw_page_size : Any
             Raw page size input.
         expected_limit : int
             Expected normalized limit.
         """
-        # pylint: disable=unused-argument
-
-        calls: list[dict[str, Any]] = []
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:
-            assert method == 'GET'
-            calls.append(kwargs)
-
-            # End after first page to keep test minimal.
-            return {'items': [{'i': 1}], 'next': None}
-
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
+        calls = _stub_request_manager(
+            monkeypatch,
+            [{'items': [{'i': 1}], 'next': None}],
         )
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url='https://example.test', endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
@@ -283,7 +321,7 @@ class TestCursorPagination:
         # type.
         items = [cast(dict, r)['i'] for r in out]  # type: ignore[index]
         assert items == [1]
-        params = calls[0].get('params', {})
+        params = calls[0]['kwargs'].get('params', {})
         assert params.get('limit') == expected_limit
 
 
@@ -294,14 +332,12 @@ class TestRequestOptionIntegration:
     def test_paginate_url_uses_request_snapshot(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Non-paginated calls honor explicitly supplied RequestOptions."""
         # pylint: disable=unused-argument
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
-            endpoints={},
-        )
+        client = client_factory(endpoints={})
 
         captured: dict[str, Any] = {}
 
@@ -336,11 +372,12 @@ class TestRequestOptionIntegration:
     def test_paginate_url_iter_overrides_request_params(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
         # pylint: disable=unused-argument
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url='https://example.test', endpoints={})
         observed: list[RequestOptions] = []
 
         def fake_fetch(
@@ -380,6 +417,7 @@ class TestRequestOptionIntegration:
         self,
         monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
@@ -390,33 +428,17 @@ class TestRequestOptionIntegration:
             Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
-        calls: list[dict[str, Any]] = []
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:
-            assert method == 'GET'
-            calls.append(kwargs)
-            params = kwargs.get('params') or {}
-            if 'cursor' not in params:
-                return {'items': [{'i': 1}], 'next': 'abc'}
-            return {'items': [{'i': 2}], 'next': None}
-
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
+        calls = _stub_request_manager(
+            monkeypatch,
+            [
+                {'items': [{'i': 1}], 'next': 'abc'},
+                {'items': [{'i': 2}], 'next': None},
+            ],
         )
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url='https://example.test', endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
@@ -428,8 +450,8 @@ class TestRequestOptionIntegration:
         assert len(calls) >= 2
         values = [cast(dict, r)['i'] for r in data]  # type: ignore[index]
         assert values == [1, 2]
-        first = calls[0]
-        second = calls[1]
+        first = calls[0]['kwargs']
+        second = calls[1]['kwargs']
         assert first.get('params', {}).get('limit') == 10
         assert 'cursor' not in (first.get('params') or {})
         assert second.get('params', {}).get('cursor') == 'abc'
