@@ -15,7 +15,13 @@ from etlplus.api.retry_manager import RetryManager
 from etlplus.api.retry_manager import RetryPolicy
 from etlplus.api.retry_manager import RetryStrategy
 
+# SECTION: HELPERS ========================================================== #
+
+
 pytestmark = pytest.mark.unit
+
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestRetryStrategy:
