@@ -189,6 +189,23 @@ def stub_request_manager_fixture(
     return partial(_stub_request_manager, monkeypatch)
 
 
+@pytest.fixture(name='patch_request_once')
+def patch_request_once_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Provide a helper to patch ``RequestManager.request_once``."""
+
+    def _apply(handler: Callable[..., Any]) -> Callable[..., Any]:
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            handler,
+        )
+        return handler
+
+    return _apply
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -309,7 +326,8 @@ class TestCursorPagination:
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         client_factory: Callable[..., EndpointClient],
         stub_request_manager: Callable[
-            [Sequence[dict[str, Any]]], list[dict[str, Any]],
+            [Sequence[dict[str, Any]]],
+            list[dict[str, Any]],
         ],
         raw_page_size: Any,
         expected_limit: int,
@@ -446,7 +464,8 @@ class TestRequestOptionIntegration:
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         client_factory: Callable[..., EndpointClient],
         stub_request_manager: Callable[
-            [Sequence[dict[str, Any]]], list[dict[str, Any]],
+            [Sequence[dict[str, Any]]],
+            list[dict[str, Any]],
         ],
     ) -> None:
         """
@@ -489,8 +508,9 @@ class TestRequestOptionIntegration:
 
     def test_error_includes_page_number(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on
@@ -501,12 +521,14 @@ class TestRequestOptionIntegration:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for deterministic failures.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
+        client = client_factory(
             base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
         )
@@ -533,11 +555,7 @@ class TestRequestOptionIntegration:
                 }
             raise make_http_error(500)
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            extractor,
-        )
+        patch_request_once(extractor)
 
         cfg = cursor_cfg(
             cursor_param='cursor',
@@ -625,26 +643,29 @@ class TestRequestOptionIntegration:
 
     def test_retry_backoff_sleeps(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         capture_sleeps: list[float],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that cursor pagination applies retry backoff sleep on failure.
 
-        Cursor pagination applies retry backoff sleep on failure
+        Cursor pagination applies retry backoff sleep on failure.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
         capture_sleeps : list[float]
             List to capture sleep durations.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for deterministic retries.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -669,12 +690,8 @@ class TestRequestOptionIntegration:
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
-        client = EndpointClient(
+        patch_request_once(fake_request)
+        client = client_factory(
             base_url='https://example.test',
             endpoints={},
             retry={'max_attempts': 2, 'backoff': 0.5, 'retry_on': [503]},
@@ -701,7 +718,8 @@ class TestErrors:
 
     def test_auth_error_wrapping_on_single_attempt(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`ApiAuthError` is raised and wrapped on a single
@@ -709,11 +727,13 @@ class TestErrors:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
 
         """
-        client = EndpointClient(
+        client = client_factory(
             base_url=MOCK_BASE_URL,
             endpoints={'x': '/x'},
         )
@@ -731,7 +751,7 @@ class TestErrors:
             assert method == 'GET'
             raise make_http_error(401)
 
-        monkeypatch.setattr(rm_module.RequestManager, 'request_once', boom)
+        patch_request_once(boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
             client.paginate_url(f'{MOCK_BASE_URL}/x', None)
         err = ei.value
@@ -752,15 +772,18 @@ class TestOffsetPagination:
 
     def test_offset_pagination_behaves_like_offset(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that offset pagination behaves as expected.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution for deterministic pages.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -785,13 +808,12 @@ class TestOffsetPagination:
                 return []
             return [{'i': i} for i in range(off, off + limit)]
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
+        patch_request_once(fake_request)
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url='https://example.test',
+            endpoints={},
+        )
         cfg = cast(
             PagePaginationConfigMap,
             {
@@ -821,18 +843,21 @@ class TestPagePagination:
 
     def test_stops_on_short_final_batch(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that pagination stops on a short final batch.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -853,12 +878,11 @@ class TestPagePagination:
                 return [{'id': 3}]
             return []
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
+        patch_request_once(fake_request)
+        client = client_factory(
+            base_url='https://example.test',
+            endpoints={},
         )
-        client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -872,18 +896,21 @@ class TestPagePagination:
 
     def test_max_records_cap(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that max_records parameter truncates results as expected.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for fixed responses.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -902,13 +929,12 @@ class TestPagePagination:
             # Each page returns 3 records to force truncation.
             return [{'p': page, 'i': i} for i in range(3)]
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
+        patch_request_once(fake_request)
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url='https://example.test',
+            endpoints={},
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -922,18 +948,21 @@ class TestPagePagination:
 
     def test_page_size_normalization(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that page_size is normalized to 1 if set to 0.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -954,13 +983,12 @@ class TestPagePagination:
             # Return single record; page_size gets normalized to 1.
             return [{'id': page}]
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
+        patch_request_once(fake_request)
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url='https://example.test',
+            endpoints={},
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -975,20 +1003,23 @@ class TestPagePagination:
 
     def test_error_includes_page_number(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on failure.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
+        client = client_factory(
             base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
         )
@@ -1014,11 +1045,7 @@ class TestPagePagination:
             return {'items': [{'i': i} for i in range(size)]}
 
         # Return exactly `size` records to force continue until failure.
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            extractor,
-        )
+        patch_request_once(extractor)
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -1029,20 +1056,24 @@ class TestPagePagination:
 
         with pytest.raises(api_errors.PaginationError) as ei:
             client.paginate('list', pagination=cfg)
-        # assert ei.value.page == 4 and ei.value.status == 500
+        # The paginator reports the iteration count (2) rather than literal
+        # page 4.
         assert ei.value.page == 2 and ei.value.status == 500
 
     def test_unknown_type_returns_raw(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that unknown pagination type returns raw output.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -1057,12 +1088,11 @@ class TestPagePagination:
         ) -> dict[str, str] | None:  # noqa: ARG005
             return {'foo': 'bar'} if method == 'GET' else None
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            _raw_response,
+        patch_request_once(_raw_response)
+        client = client_factory(
+            base_url='https://example.test',
+            endpoints={},
         )
-        client = EndpointClient(base_url='https://example.test', endpoints={})
 
         out = client.paginate_url(
             'https://example.test/x',
@@ -1082,21 +1112,24 @@ class TestRateLimitPrecedence:
 
     def test_overrides_sleep_seconds_wins(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that explicit sleep_seconds overrides rate_limit config.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         capture_sleeps : list[float]
             List to capture sleep durations.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # :func:`capture_sleeps` fixture already records rate-limiter pacing.
-        client = EndpointClient(
+        client = client_factory(
             base_url=MOCK_BASE_URL,
             endpoints={'list': '/items'},
             rate_limit={'max_per_sec': 2},  # would imply 0.5s if used
@@ -1123,11 +1156,7 @@ class TestRateLimitPrecedence:
                 return [{'i': calls['n']}, {'i': calls['n'] + 10}]
             return []
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
+        patch_request_once(fake_request)
 
         list(
             client.paginate_iter(
@@ -1168,8 +1197,9 @@ class TestRetryLogic:
 
     def test_request_error_after_retries_exhausted(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         retry_cfg: Callable[..., dict[str, Any]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`ApiRequestError` is raised after retries are
@@ -1177,12 +1207,14 @@ class TestRetryLogic:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
+        client = client_factory(
             base_url=MOCK_BASE_URL,
             endpoints={'x': '/x'},
             retry=cast(
@@ -1207,7 +1239,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             raise make_http_error(503)
 
-        monkeypatch.setattr(rm_module.RequestManager, 'request_once', boom)
+        patch_request_once(boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
             client.paginate_url(f'{MOCK_BASE_URL}/x', None)
@@ -1219,24 +1251,27 @@ class TestRetryLogic:
 
     def test_full_jitter_backoff(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
         retry_cfg: Callable[..., dict[str, Any]],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that full jitter backoff is applied on retries.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         capture_sleeps : list[float]
             List to capture sleep durations.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -1262,13 +1297,9 @@ class TestRetryLogic:
                 raise err
             return {'ok': True}
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            _fake_request,
-        )
+        patch_request_once(_fake_request)
 
-        client = EndpointClient(
+        client = client_factory(
             base_url='https://api.example.com',
             endpoints={},
             retry=cast(
@@ -1287,24 +1318,27 @@ class TestRetryLogic:
 
     def test_retry_on_network_errors(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         capture_sleeps: list[float],
         retry_cfg: Callable[..., dict[str, Any]],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that network errors are retried and sleep durations are captured.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         capture_sleeps : list[float]
             List to capture sleep durations.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -1328,13 +1362,9 @@ class TestRetryLogic:
                 raise requests.ConnectionError('reset')
             return {'ok': True}
 
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            _fake_request,
-        )
+        patch_request_once(_fake_request)
 
-        client = EndpointClient(
+        client = client_factory(
             base_url='https://api.example.com',
             endpoints={},
             retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
