@@ -13,9 +13,14 @@ Notes
 from pathlib import Path
 from typing import Any
 
+import pytest  # pylint: disable=unused-import
+
 from etlplus.file import File
 
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
 
 
 def _norm_record(
