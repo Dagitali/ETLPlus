@@ -21,6 +21,12 @@ from etlplus.cli import create_parser
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
+
+
 # Shared parser cases to keep param definitions DRY and self-documenting.
 CLI_CASES = (
     pytest.param(
