@@ -19,6 +19,7 @@ import json
 import sys
 import time
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -443,14 +444,9 @@ jobs:
         This drives the runner wiring directly (not CLI) to assert the exact
         pagination mapping seen by the client after defaults/overrides.
         """
-        cfg = pipeline_cfg_factory()
-        job = cfg.jobs[0]
-        opts = {}
-        if job.extract is not None and hasattr(job.extract, 'options'):
-            opts = dict(job.extract.options)
-        opts.update({'pagination': scenario['pagination']})
-        if job.extract is not None:
-            job.extract.options = opts
+        cfg = pipeline_cfg_factory(
+            extract_options={'pagination': deepcopy(scenario['pagination'])},
+        )
 
         fake_client, created = fake_endpoint_client
         result = run_patched(cfg, fake_client)
