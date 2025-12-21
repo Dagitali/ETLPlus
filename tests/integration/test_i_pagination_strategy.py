@@ -70,6 +70,69 @@ def _write_pipeline(
     return str(p)
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='pipeline_cli_runner')
+def pipeline_cli_runner_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[..., str]:
+    """
+    Provide a helper that runs the CLI against a temporary pipeline.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory provided by pytest.
+    monkeypatch : pytest.MonkeyPatch
+        Fixture used to patch CLI dependencies.
+
+    Returns
+    -------
+    Callable[..., str]
+        Runner that writes the pipeline YAML, patches HTTP helpers, and
+        returns the resulting config path.
+    """
+
+    def _run(
+        *,
+        yaml_text: str,
+        run_name: str,
+        extract_func: Callable[..., Any],
+        request_func: Callable[..., Any] | None = None,
+    ) -> str:
+        cfg_path = _write_pipeline(tmp_path, yaml_text)
+        monkeypatch.setattr(cli_module, 'extract', extract_func)
+
+        def _default_request(
+            self: rm_module.RequestManager,
+            method: str,
+            url: str,
+            *,
+            session: Any,
+            timeout: Any,
+            **kwargs: Any,
+        ) -> Any:
+            return extract_func('api', url, **kwargs)
+
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            request_func or _default_request,
+        )
+        monkeypatch.setattr(
+            sys,
+            'argv',
+            ['etlplus', 'pipeline', '--config', cfg_path, '--run', run_name],
+        )
+        rc = main()
+        assert rc == 0
+        return cfg_path
+
+    return _run
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -85,12 +148,11 @@ class TestPaginationStrategies:
 
     def test_cursor_mode(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        pipeline_cli_runner: Callable[..., str],
     ) -> None:
         """Test cursor-based pagination end-to-end via CLI."""
-        # pylint: disable=unused-argument
 
         out_path = tmp_path / 'cursor.json'
         pipeline_yaml = f"""
@@ -118,9 +180,7 @@ jobs:
     load:
       target: dest
 """
-        cfg = _write_pipeline(tmp_path, pipeline_yaml)
 
-        # Mock extract('api', ...) to return cursor-driven pages.
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
@@ -133,36 +193,13 @@ jobs:
                 return {'data': [{'id': 'c'}], 'next': None}
             return {'data': [], 'next': None}
 
-        def fake_request(
-            self: rm_module.RequestManager,
-            method: str,
-            url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: Any,
-        ) -> Any:
-            assert method == 'GET'
-            return fake_extract('api', url, **kwargs)
-
-        # Patch extract targets consistent with the page/offset test.
-        monkeypatch.setattr(cli_module, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
+        pipeline_cli_runner(
+            yaml_text=pipeline_yaml,
+            run_name='api_cursor',
+            extract_func=fake_extract,
         )
 
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            ['etlplus', 'pipeline', '--config', cfg, '--run', 'api_cursor'],
-        )
-        rc = main()
-        assert rc == 0
-
-        out = capsys.readouterr().out
-        payload = json.loads(out)
+        payload = json.loads(capsys.readouterr().out)
         assert payload.get('status') == 'ok'
 
         data = json.loads(out_path.read_text(encoding='utf-8'))
@@ -170,13 +207,11 @@ jobs:
 
     def test_cursor_mode_missing_records_path(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        pipeline_cli_runner: Callable[..., str],
     ) -> None:
         """Test cursor pagination when ``records_path`` is omitted."""
-        # pylint: disable=unused-argument
-
         # Omits records_path and relies on fallback coalescing behavior.
         out_path = tmp_path / 'cursor_no_records_path.json'
         pipeline_yaml = f"""
@@ -204,7 +239,6 @@ jobs:
     load:
       target: dest
 """
-        cfg = _write_pipeline(tmp_path, pipeline_yaml)
 
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
@@ -218,38 +252,12 @@ jobs:
                 return {'items': [{'id': 'z'}], 'next': None}
             return {'items': [], 'next': None}
 
-        def fake_request(
-            self: rm_module.RequestManager,
-            method: str,
-            url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: Any,
-        ) -> Any:
-            assert method == 'GET'
-            return fake_extract('api', url, **kwargs)
+        pipeline_cli_runner(
+            yaml_text=pipeline_yaml,
+            run_name='api_cursor_no_records',
+            extract_func=fake_extract,
+        )
 
-        monkeypatch.setattr(cli_module, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
-        )
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            [
-                'etlplus',
-                'pipeline',
-                '--config',
-                cfg,
-                '--run',
-                'api_cursor_no_records',
-            ],
-        )
-        rc = main()
-        assert rc == 0
         payload = json.loads(capsys.readouterr().out)
         assert payload.get('status') == 'ok'
         data = json.loads(out_path.read_text(encoding='utf-8'))
@@ -277,13 +285,11 @@ jobs:
     def test_page_offset_modes(
         self,
         scenario: PageScenario,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        pipeline_cli_runner: Callable[..., str],
     ) -> None:
         """Test page/offset pagination end-to-end via CLI."""
-        # pylint: disable=unused-argument
-
         # Prepare output path.
         out_path = tmp_path / f'{scenario.name}.json'
         max_records_yaml = (
@@ -317,9 +323,8 @@ jobs:
     load:
       target: dest
 """
-        cfg = _write_pipeline(tmp_path, pipeline_yaml)
-
         # Mock extract to return scenario-driven items per page.
+
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
@@ -331,44 +336,11 @@ jobs:
                 return scenario.pages[page - 1]
             return []
 
-        def fake_request(
-            self: rm_module.RequestManager,
-            method: str,
-            url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: Any,
-        ) -> Any:
-            assert method == 'GET'
-            return fake_extract('api', url, **kwargs)
-
-        # Patch extract targets:
-        # - cli_mod.extract: CLI may call extract directly for some paths.
-        # - RequestManager.request_once: paginate now delegates to the
-        #   shared HTTP helper per page.
-        monkeypatch.setattr(cli_module, 'extract', fake_extract)
-        monkeypatch.setattr(
-            rm_module.RequestManager,
-            'request_once',
-            fake_request,
+        pipeline_cli_runner(
+            yaml_text=pipeline_yaml,
+            run_name=f'job_{scenario.name}',
+            extract_func=fake_extract,
         )
-
-        # Run CLI.
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            [
-                'etlplus',
-                'pipeline',
-                '--config',
-                cfg,
-                '--run',
-                f'job_{scenario.name}',
-            ],
-        )
-        rc = main()
-        assert rc == 0
 
         payload = json.loads(capsys.readouterr().out)
         assert payload.get('status') == 'ok'
