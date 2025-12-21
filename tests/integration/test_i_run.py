@@ -25,6 +25,9 @@ from etlplus.config import PipelineConfig
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.integration
+
+
 run_mod = importlib.import_module('etlplus.run')
 
 
