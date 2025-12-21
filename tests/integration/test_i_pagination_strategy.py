@@ -26,7 +26,7 @@ from textwrap import dedent
 from textwrap import indent
 from typing import Any
 
-import pytest
+import pytest  # pylint: disable=unused-import
 
 import etlplus.api.request_manager as rm_module
 import etlplus.cli as cli_module
@@ -35,6 +35,9 @@ from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
 
 
 def _build_api_pipeline_yaml(
@@ -111,6 +114,49 @@ def _write_pipeline(
     p = tmp_path / 'pipeline.yml'
     p.write_text(yaml_text, encoding='utf-8')
     return str(p)
+
+
+def _run_pipeline_and_collect(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    out_path: Path,
+    pipeline_cli_runner: Callable[..., str],
+    pipeline_yaml: str,
+    run_name: str,
+    extract_func: Callable[..., Any],
+) -> list[dict[str, Any]]:
+    """Run the CLI pipeline and return parsed output rows.
+
+    Parameters
+    ----------
+    capsys : pytest.CaptureFixture[str]
+        Pytest capture fixture for CLI stdout.
+    out_path : Path
+        File path where the pipeline writes JSON results.
+    pipeline_cli_runner : Callable[..., str]
+        Helper that writes the YAML to disk and invokes the CLI.
+    pipeline_yaml : str
+        YAML configuration to execute.
+    run_name : str
+        Job name passed to the CLI ``--run`` flag.
+    extract_func : Callable[..., Any]
+        Fake API extractor used to satisfy HTTP calls.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Parsed JSON rows written by the pipeline run.
+    """
+
+    pipeline_cli_runner(
+        yaml_text=pipeline_yaml,
+        run_name=run_name,
+        extract_func=extract_func,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload.get('status') == 'ok'
+    return json.loads(out_path.read_text(encoding='utf-8'))
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -224,16 +270,14 @@ class TestPaginationStrategies:
                 return {'data': [{'id': 'c'}], 'next': None}
             return {'data': [], 'next': None}
 
-        pipeline_cli_runner(
-            yaml_text=pipeline_yaml,
+        data = _run_pipeline_and_collect(
+            capsys=capsys,
+            out_path=out_path,
+            pipeline_cli_runner=pipeline_cli_runner,
+            pipeline_yaml=pipeline_yaml,
             run_name='api_cursor',
             extract_func=fake_extract,
         )
-
-        payload = json.loads(capsys.readouterr().out)
-        assert payload.get('status') == 'ok'
-
-        data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == ['a', 'b', 'c']
 
     def test_cursor_mode_missing_records_path(
@@ -271,15 +315,14 @@ class TestPaginationStrategies:
                 return {'items': [{'id': 'z'}], 'next': None}
             return {'items': [], 'next': None}
 
-        pipeline_cli_runner(
-            yaml_text=pipeline_yaml,
+        data = _run_pipeline_and_collect(
+            capsys=capsys,
+            out_path=out_path,
+            pipeline_cli_runner=pipeline_cli_runner,
+            pipeline_yaml=pipeline_yaml,
             run_name='api_cursor_no_records',
             extract_func=fake_extract,
         )
-
-        payload = json.loads(capsys.readouterr().out)
-        assert payload.get('status') == 'ok'
-        data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == ['x', 'y', 'z']
 
     @pytest.mark.parametrize(
@@ -342,17 +385,14 @@ class TestPaginationStrategies:
                 return scenario.pages[page - 1]
             return []
 
-        pipeline_cli_runner(
-            yaml_text=pipeline_yaml,
+        data = _run_pipeline_and_collect(
+            capsys=capsys,
+            out_path=out_path,
+            pipeline_cli_runner=pipeline_cli_runner,
+            pipeline_yaml=pipeline_yaml,
             run_name=job_name,
             extract_func=fake_extract,
         )
-
-        payload = json.loads(capsys.readouterr().out)
-        assert payload.get('status') == 'ok'
-
-        # Output should contain 3 aggregated items.
-        data = json.loads(out_path.read_text(encoding='utf-8'))
         assert [r['id'] for r in data] == scenario.expected_ids
 
     @pytest.mark.parametrize(
