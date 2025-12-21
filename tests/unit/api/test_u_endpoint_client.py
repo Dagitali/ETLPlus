@@ -264,7 +264,9 @@ class TestCursorPagination:
             return {'items': [{'i': 1}], 'next': None}
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
@@ -410,7 +412,9 @@ class TestRequestOptionIntegration:
             return {'items': [{'i': 2}], 'next': None}
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = cursor_cfg(
@@ -478,7 +482,9 @@ class TestRequestOptionIntegration:
             raise make_http_error(500)
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', extractor,
+            rm_module.RequestManager,
+            'request_once',
+            extractor,
         )
 
         cfg = cursor_cfg(
@@ -612,7 +618,9 @@ class TestRequestOptionIntegration:
             return {'items': [{'i': 1}], 'next': None}
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
         client = EndpointClient(
             base_url='https://example.test',
@@ -726,7 +734,9 @@ class TestOffsetPagination:
             return [{'i': i} for i in range(off, off + limit)]
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
@@ -792,7 +802,9 @@ class TestPagePagination:
             return []
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = page_cfg(
@@ -839,7 +851,9 @@ class TestPagePagination:
             return [{'p': page, 'i': i} for i in range(3)]
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
@@ -889,7 +903,9 @@ class TestPagePagination:
             return [{'id': page}]
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
@@ -947,7 +963,9 @@ class TestPagePagination:
 
         # Return exactly `size` records to force continue until failure.
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', extractor,
+            rm_module.RequestManager,
+            'request_once',
+            extractor,
         )
         cfg = page_cfg(
             page_param='page',
@@ -988,7 +1006,9 @@ class TestPagePagination:
             return {'foo': 'bar'} if method == 'GET' else None
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', _raw_response,
+            rm_module.RequestManager,
+            'request_once',
+            _raw_response,
         )
         client = EndpointClient(base_url='https://example.test', endpoints={})
 
@@ -1052,7 +1072,9 @@ class TestRateLimitPrecedence:
             return []
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
         )
 
         list(
@@ -1189,7 +1211,9 @@ class TestRetryLogic:
             return {'ok': True}
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', _fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            _fake_request,
         )
 
         client = EndpointClient(
@@ -1253,7 +1277,9 @@ class TestRetryLogic:
             return {'ok': True}
 
         monkeypatch.setattr(
-            rm_module.RequestManager, 'request_once', _fake_request,
+            rm_module.RequestManager,
+            'request_once',
+            _fake_request,
         )
 
         client = EndpointClient(
