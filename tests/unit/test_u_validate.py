@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from etlplus.validate import FieldRules
 from etlplus.validate import load_data
 from etlplus.validate import validate
 from etlplus.validate import validate_field
@@ -37,6 +38,20 @@ class TestLoadData:
 @pytest.mark.unit
 class TestValidateField:
     """Unit test suite for :func:`etlplus.validate.validate_field`."""
+
+    def test_enum_rule_requires_list(self) -> None:
+        """Test non-list enum rules adding an error entry."""
+
+        result = validate_field('a', {'enum': 'abc'})
+        assert result['valid'] is False
+        assert any('enum' in err for err in result['errors'])
+
+    def test_pattern_rule_with_invalid_regex(self) -> None:
+        """Test invalid regex patterns adding an error entry."""
+
+        result = validate_field('abc', {'pattern': '['})
+        assert result['valid'] is False
+        assert any('pattern' in err for err in result['errors'])
 
     def test_required_error_message(self) -> None:
         """Validate error message for required field."""
@@ -185,9 +200,27 @@ class TestValidate:
         elif isinstance(data, list):
             assert any(d.get('name') == 'John' for d in data)
 
+    def test_list_with_non_dict_items(self) -> None:
+        """Test lists containing non-dicts recording item-level errors."""
+
+        payload: list[Any] = [{'name': 'Ada'}, 'bad']
+        rules: dict[str, FieldRules] = {'name': {'type': 'string'}}
+        result = validate(payload, rules)
+        assert result['valid'] is False
+        assert '[1]' in result['field_errors']
+
     def test_no_rules(self) -> None:
         """Test without rules returns the data unchanged."""
         data = {'test': 'data'}
         result = validate(data)
         assert result['valid']
         assert result['data'] == data
+
+    def test_validate_handles_load_errors(self) -> None:
+        """Test invalid sources reporting errors via the errors collection."""
+
+        rules: dict[str, FieldRules] = {'name': {'required': True}}
+        result = validate('not json', rules)
+        assert result['valid'] is False
+        assert result['data'] is None
+        assert any('Failed to load data' in err for err in result['errors'])

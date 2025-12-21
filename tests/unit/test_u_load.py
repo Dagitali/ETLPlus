@@ -17,15 +17,98 @@ from __future__ import annotations
 import csv
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import cast
 
 import pytest
 
+from etlplus.enums import DataConnectorType
+from etlplus.enums import HttpMethod
+from etlplus.load import _parse_json_string
 from etlplus.load import load
 from etlplus.load import load_data
+from etlplus.load import load_to_api
+from etlplus.load import load_to_database
 from etlplus.load import load_to_file
+
+# SECTION: HELPERS ========================================================== #
+
+
+@dataclass(slots=True)
+class _CallRecord:
+    """Record of an HTTP method call in the stub session."""
+
+    method: str
+    url: str
+    json: object
+    timeout: float
+    kwargs: dict[str, Any]
+
+
+class _StubResponse:
+    """Minimal HTTP response stub for API load tests."""
+
+    def __init__(self, payload: object) -> None:
+        self._payload = payload
+        self.status_code = 200
+        self.text = 'ok'
+
+    def json(self) -> object:
+        """Return the stubbed JSON payload."""
+        return self._payload
+
+    def raise_for_status(self) -> None:
+        """No-op for status raising in stub."""
+        return None
+
+
+class _StubSession:
+    """Capture HTTP method calls to assert ``load_to_api`` behavior."""
+
+    def __init__(self, payload: object | None = None) -> None:
+        self.calls: list[_CallRecord] = []
+        self.payload = payload or {'ok': True}
+
+    def post(
+        self,
+        url: str,
+        *,
+        json: object,
+        timeout: float,
+        **kwargs: Any,
+    ) -> _StubResponse:  # noqa: ANN001
+        """Capture POST call details."""
+        record = _CallRecord(
+            method='post',
+            url=url,
+            json=json,
+            timeout=timeout,
+            kwargs=dict(kwargs),
+        )
+        self.calls.append(record)
+        return _StubResponse(self.payload)
+
+    def put(
+        self,
+        url: str,
+        *,
+        json: object,
+        timeout: float,
+        **kwargs: Any,
+    ) -> _StubResponse:  # noqa: ANN001
+        """Capture PUT call details."""
+        record = _CallRecord(
+            method='put',
+            url=url,
+            json=json,
+            timeout=timeout,
+            kwargs=dict(kwargs),
+        )
+        self.calls.append(record)
+        return _StubResponse(self.payload)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -482,3 +565,118 @@ class TestLoadToFile:
         with open(output_path, encoding='utf-8') as f:
             loaded_data = json.load(f)
         assert loaded_data == mock_data
+
+
+@pytest.mark.unit
+class TestLoadToApi:
+    """Unit tests for :func:`etlplus.load.load_to_api`."""
+
+    def test_load_to_api_success(self) -> None:
+        """Ensure payload and metadata are returned through stub session."""
+
+        session = _StubSession({'ok': True})
+        data = [{'name': 'Ada'}]
+
+        result = load_to_api(
+            data,
+            'https://example.test/api',
+            'post',
+            session=session,
+            headers={'X-Test': '1'},
+        )
+
+        assert result['status'] == 'success'
+        assert result['records'] == 1
+        assert result['method'] == 'POST'
+        api_calls: list[_CallRecord] = session.calls
+        assert api_calls
+        first_call: _CallRecord = api_calls[0]
+        assert first_call.kwargs['headers'] == {'X-Test': '1'}
+
+
+@pytest.mark.unit
+class TestLoadToDatabase:
+    """Unit tests for :func:`etlplus.load.load_to_database`."""
+
+    def test_load_to_api_requires_callable(self) -> None:
+        """Missing HTTP method on custom session should raise TypeError."""
+
+        class _BrokenSession:
+            pass
+
+        with pytest.raises(TypeError):
+            load_to_api(
+                {'ok': True},
+                'https://example.test/api',
+                HttpMethod.POST,
+                session=_BrokenSession(),
+            )
+
+    def test_load_to_database_returns_note(self) -> None:
+        """Placeholder implementation should echo the connection string."""
+
+        data = [{'name': 'Ada'}]
+        result = load_to_database(data, 'sqlite:///tmp.db')
+
+        assert result['status'] == 'not_implemented'
+        assert result['records'] == 1
+        assert 'sqlite' in result['connection_string']
+
+
+@pytest.mark.unit
+class TestParseJsonString:
+    """Unit tests for :func:`etlplus.load._parse_json_string`."""
+
+    def test_parse_invalid_root_raises(self) -> None:
+        """Only dicts or lists of dicts are accepted."""
+
+        with pytest.raises(ValueError):
+            _parse_json_string('"plain"')
+
+    def test_parse_list_with_non_dicts_raises(self) -> None:
+        """Mixed arrays should raise ValueError."""
+
+        with pytest.raises(ValueError):
+            _parse_json_string('[{"ok": 1}, 3]')
+
+
+@pytest.mark.unit
+class TestLoadApiOrchestrator:
+    """
+    Unit tests that ensure :func:`etlplus.load.load` delegates to API loader.
+    """
+
+    def test_load_api_with_default_method(self) -> None:
+        """Test :func:`load` defaulting to POST when API method omitted."""
+
+        session = _StubSession()
+        result = load(
+            {'name': 'api'},
+            DataConnectorType.API,
+            'https://example.test/api',
+            session=session,
+        )
+
+        result_dict = cast(dict[str, Any], result)
+        assert result_dict['status'] == 'success'
+        calls: list[_CallRecord] = session.calls
+        assert calls
+        first_call: _CallRecord = calls[0]
+        assert first_call.method == 'post'
+
+    def test_load_api_with_explicit_method(self) -> None:
+        """Test :func:`load` honoring custom :class:`HttpMethod`."""
+
+        session = _StubSession()
+        load(
+            {'name': 'api'},
+            DataConnectorType.API,
+            'https://example.test/api',
+            method=HttpMethod.PUT,
+            session=session,
+        )
+
+        calls: list[_CallRecord] = session.calls
+        assert calls
+        first_call: _CallRecord = calls[0]
+        assert first_call.method == 'put'

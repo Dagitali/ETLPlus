@@ -15,6 +15,10 @@ from collections.abc import Callable
 
 import pytest
 
+from etlplus.enums import PipelineStep
+from etlplus.transform import _is_plain_fields_list
+from etlplus.transform import _normalize_operation_keys
+from etlplus.transform import _normalize_specs
 from etlplus.transform import apply_aggregate
 from etlplus.transform import apply_filter
 from etlplus.transform import apply_map
@@ -216,6 +220,21 @@ class TestApplyFilter:
         )
         assert len(result) == 2
 
+    def test_filter_with_invalid_operator_returns_input(self) -> None:
+        """Unknown operators should result in the original data."""
+
+        data = [{'age': 30}]
+        result = apply_filter(
+            data,
+            {
+                'field': 'age',
+                'op': object(),
+                'value': 40,
+            },
+        )
+
+        assert result == data
+
 
 @pytest.mark.unit
 class TestApplyMap:
@@ -231,6 +250,7 @@ class TestApplyMap:
         assert all('new_name' in item for item in result)
         assert all('old_name' not in item for item in result)
         assert result[0]['new_name'] == 'John'
+        assert result[0]['age'] == 30
 
 
 @pytest.mark.unit
@@ -291,10 +311,24 @@ class TestApplySort:
         result = apply_sort(data, 'age', reverse=reverse)
         assert [item['age'] for item in result] == expected_sorted_ages
 
+    def test_sort_without_field_is_noop(self) -> None:
+        """Test sorting without a field should return the original data."""
+
+        data = [{'name': 'John'}]
+        assert apply_sort(data, None) == data
+
 
 @pytest.mark.unit
 class TestTransform:
     """Unit test suite for :func:`etlplus.transform.transform`."""
+
+    def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
+        """Test aggregate step should be skipped when spec is not a mapping."""
+
+        data = [{'value': 1}, {'value': 2}]
+        result = transform(data, {'aggregate': ['not-a-mapping']})
+        assert isinstance(result, list)
+        assert result == data
 
     def test_from_json_string(self) -> None:
         """
@@ -481,3 +515,43 @@ class TestTransform:
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]['age'] == 25
+
+
+@pytest.mark.unit
+class TestNormalizationHelpers:
+    """Unit tests for private normalization helpers."""
+
+    def test_normalize_operation_keys_accepts_enums(self) -> None:
+        """Test :class:`PipelineStep` keys normalizing to lowercase strings."""
+
+        operations = {
+            PipelineStep.FILTER: {'field': 'age', 'op': 'gt', 'value': 20},
+            'map': {'old': 'new'},
+        }
+
+        normalized = _normalize_operation_keys(operations)
+
+        assert set(normalized) == {'filter', 'map'}
+        assert normalized['filter']['field'] == 'age'
+
+    def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
+        """Test helper coercing scalars to list and keep sequences."""
+
+        single = {'field': 'age'}
+        assert _normalize_specs(None) == []
+        assert _normalize_specs(single) == [single]
+        assert _normalize_specs([single, single]) == [single, single]
+
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            (['name', 'age'], True),
+            (('city',), True),
+            (['name', {'nested': 'no'}], False),
+            ('name', False),
+        ],
+    )
+    def test_is_plain_fields_list(self, value: object, expected: bool) -> None:
+        """Test only plain sequences of non-mappings return ``True``."""
+
+        assert _is_plain_fields_list(value) is expected

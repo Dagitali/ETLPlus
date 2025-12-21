@@ -21,8 +21,8 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.endpoint_client as cmod
-import etlplus.api.request_manager as rmod
+import etlplus.api.endpoint_client as ec_module
+import etlplus.api.request_manager as rm_module
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
@@ -172,7 +172,7 @@ class TestContextManager:
             return s
 
         # Patch extract to avoid network and capture params.
-        monkeypatch.setattr(cmod.requests, 'Session', ctor)
+        monkeypatch.setattr(ec_module.requests, 'Session', ctor)
 
         client = EndpointClient(
             base_url='https://api.example.com',
@@ -263,7 +263,11 @@ class TestCursorPagination:
             # End after first page to keep test minimal.
             return {'items': [{'i': 1}], 'next': None}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = cursor_cfg(
@@ -407,7 +411,11 @@ class TestRequestOptionIntegration:
                 return {'items': [{'i': 1}], 'next': 'abc'}
             return {'items': [{'i': 2}], 'next': None}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
@@ -473,7 +481,11 @@ class TestRequestOptionIntegration:
                 }
             raise make_http_error(500)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', extractor)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            extractor,
+        )
 
         cfg = cursor_cfg(
             cursor_param='cursor',
@@ -531,7 +543,7 @@ class TestRequestOptionIntegration:
             return _StubPaginator()
 
         monkeypatch.setattr(
-            cmod.Paginator,
+            ec_module.Paginator,
             'from_config',
             classmethod(fake_from_config),
         )
@@ -605,7 +617,11 @@ class TestRequestOptionIntegration:
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
         client = EndpointClient(
             base_url='https://example.test',
             endpoints={},
@@ -663,7 +679,7 @@ class TestErrors:
             assert method == 'GET'
             raise make_http_error(401)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
+        monkeypatch.setattr(rm_module.RequestManager, 'request_once', boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
             client.paginate_url(f'{MOCK_BASE_URL}/x', None)
         err = ei.value
@@ -717,7 +733,11 @@ class TestOffsetPagination:
                 return []
             return [{'i': i} for i in range(off, off + limit)]
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = cast(
@@ -781,7 +801,11 @@ class TestPagePagination:
                 return [{'id': 3}]
             return []
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = page_cfg(
             page_param='page',
@@ -826,7 +850,11 @@ class TestPagePagination:
             # Each page returns 3 records to force truncation.
             return [{'p': page, 'i': i} for i in range(3)]
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = page_cfg(
@@ -874,7 +902,11 @@ class TestPagePagination:
             # Return single record; page_size gets normalized to 1.
             return [{'id': page}]
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
 
         client = EndpointClient(base_url='https://example.test', endpoints={})
         cfg = page_cfg(
@@ -930,7 +962,11 @@ class TestPagePagination:
             return {'items': [{'i': i} for i in range(size)]}
 
         # Return exactly `size` records to force continue until failure.
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', extractor)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            extractor,
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -969,7 +1005,11 @@ class TestPagePagination:
         ) -> dict[str, str] | None:  # noqa: ARG005
             return {'foo': 'bar'} if method == 'GET' else None
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _raw_response)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            _raw_response,
+        )
         client = EndpointClient(base_url='https://example.test', endpoints={})
 
         out = client.paginate_url(
@@ -1031,7 +1071,11 @@ class TestRateLimitPrecedence:
                 return [{'i': calls['n']}, {'i': calls['n'] + 10}]
             return []
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            fake_request,
+        )
 
         list(
             client.paginate_iter(
@@ -1111,7 +1155,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             raise make_http_error(503)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
+        monkeypatch.setattr(rm_module.RequestManager, 'request_once', boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
             client.paginate_url(f'{MOCK_BASE_URL}/x', None)
@@ -1166,7 +1210,11 @@ class TestRetryLogic:
                 raise err
             return {'ok': True}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            _fake_request,
+        )
 
         client = EndpointClient(
             base_url='https://api.example.com',
@@ -1228,7 +1276,11 @@ class TestRetryLogic:
                 raise requests.ConnectionError('reset')
             return {'ok': True}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            _fake_request,
+        )
 
         client = EndpointClient(
             base_url='https://api.example.com',

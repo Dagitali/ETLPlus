@@ -25,7 +25,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiting.rate_limiter as rate_limiter_mod
+import etlplus.api.rate_limiting.rate_limiter as rl_module
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import CursorPaginationConfigMap
@@ -147,11 +147,11 @@ def capture_sleeps(
     """
     values: list[float] = []
 
-    def _enforce(self: rate_limiter_mod.RateLimiter) -> None:  # noqa: D401
+    def _enforce(self: rl_module.RateLimiter) -> None:  # noqa: D401
         values.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        rate_limiter_mod.RateLimiter,
+        rl_module.RateLimiter,
         'enforce',
         _enforce,
         raising=False,
@@ -248,12 +248,13 @@ def request_once_stub(
     """
     # pylint: disable=unused-argument
 
-    import etlplus.api.request_manager as rmod  # local import to avoid cycles
+    # Locally import to avoid cycles.
+    import etlplus.api.request_manager as rm_module
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
     def _fake_request(
-        self: rmod.RequestManager,
+        self: rm_module.RequestManager,
         method: str,
         url: str,
         *,
@@ -267,7 +268,11 @@ def request_once_stub(
         calls['kwargs'].append(kwargs)
         return {'ok': True}
 
-    monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
+    monkeypatch.setattr(
+        rm_module.RequestManager,
+        'request_once',
+        _fake_request,
+    )
 
     return calls
 
@@ -299,7 +304,8 @@ def extract_stub_factory() -> Callable[..., Any]:
 
     import contextlib
 
-    import etlplus.api.request_manager as rmod  # Local import to avoid cycles
+    # Locally import to avoid cycles.
+    import etlplus.api.request_manager as rm_module
 
     @contextlib.contextmanager
     def _make(
@@ -311,7 +317,7 @@ def extract_stub_factory() -> Callable[..., Any]:
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
         def _fake_request(
-            self: rmod.RequestManager,
+            self: rm_module.RequestManager,
             method: str,
             url: str,
             *,
@@ -324,10 +330,10 @@ def extract_stub_factory() -> Callable[..., Any]:
             calls['kwargs'].append(kwargs)
             return {'ok': True} if return_value is None else return_value
 
-        saved = rmod.RequestManager.request_once
+        saved = rm_module.RequestManager.request_once
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
-            rmod.RequestManager,
+            rm_module.RequestManager,
             'request_once',
             _fake_request,
         )
@@ -335,7 +341,7 @@ def extract_stub_factory() -> Callable[..., Any]:
             yield calls
         finally:
             monkeypatch.setattr(
-                rmod.RequestManager,
+                rm_module.RequestManager,
                 'request_once',
                 saved,
             )
