@@ -86,6 +86,20 @@ jobs: []
 # SECTION: FIXTURE ========================================================== #
 
 
+@pytest.fixture(name='connector_path_lookup')
+def connector_path_lookup_fixture(
+    pipeline_multi_cfg: PipelineConfig,
+) -> Callable[[str, str], str | None]:
+    """Provide a helper to fetch connector paths by collection/name."""
+
+    def _lookup(collection: str, name: str) -> str | None:
+        container = getattr(pipeline_multi_cfg, collection)
+        connector = next(item for item in container if item.name == name)
+        return getattr(connector, 'path', None)
+
+    return _lookup
+
+
 @pytest.fixture(name='pipeline_builder')
 def pipeline_builder_fixture(
     tmp_path: Path,
@@ -238,7 +252,7 @@ jobs: []
         collection: str,
         name: str,
         expected_path: str,
-        pipeline_multi_cfg: PipelineConfig,
+        connector_path_lookup: Callable[[str, str], str | None],
     ) -> None:
         """
         Test that :class:`PipelineConfig` correctly handles multiple sources,
@@ -252,9 +266,8 @@ jobs: []
             Connector name to inspect.
         expected_path : str
             Expected path after substitution.
-        pipeline_multi_cfg : PipelineConfig
-            Fixture containing the parsed configuration.
+        connector_path_lookup : Callable[[str, str], str | None]
+            Helper that fetches connector paths from the parsed config.
         """
-        container = getattr(pipeline_multi_cfg, collection)
-        connector = next(item for item in container if item.name == name)
-        assert getattr(connector, 'path', None) == expected_path
+        path = connector_path_lookup(collection, name)
+        assert path == expected_path
