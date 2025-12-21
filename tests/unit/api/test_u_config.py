@@ -23,6 +23,12 @@ from etlplus.api import EndpointConfig
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TESTS ============================================================ #
 
 
