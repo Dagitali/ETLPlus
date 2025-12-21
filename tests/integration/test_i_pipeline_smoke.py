@@ -18,11 +18,17 @@ from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
-import pytest
+import pytest  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFactory
+
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
+
 
 # SECTION: TESTS ============================================================ #
 
