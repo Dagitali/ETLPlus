@@ -17,10 +17,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+import pytest
+
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from etlplus.config import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
+
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
+
 
 # SECTION: TESTS ============================================================ #
 
