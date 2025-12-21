@@ -26,7 +26,7 @@ from textwrap import dedent
 from textwrap import indent
 from typing import Any
 
-import pytest  # pylint: disable=unused-import
+import pytest
 
 import etlplus.api.request_manager as rm_module
 import etlplus.cli as cli_module
