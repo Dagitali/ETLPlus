@@ -137,7 +137,8 @@ class TestUtils:
         assert normalized_str(None) == ''
 
     def test_print_json_uses_utf8(
-        self, capsys: pytest.CaptureFixture[str],
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`print_json` avoids ASCII escaping."""
 
