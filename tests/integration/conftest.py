@@ -35,6 +35,12 @@ from etlplus.config import PipelineConfig
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.integration
+
+
+# SECTION: HELPERS ========================================================== #
+
+
 # Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
 
