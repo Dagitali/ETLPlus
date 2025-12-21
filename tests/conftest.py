@@ -117,6 +117,7 @@ def json_file_factory_fixture(
     >>> path.exists()
     True
     """
+
     def _create(
         payload: Any,
         *,
@@ -158,6 +159,7 @@ def cli_runner_fixture(
     >>> cli_runner(('extract', 'file', 'data.json'))
     0
     """
+
     def _run(*cli_args: str | Sequence[str]) -> int:
         args = _coerce_cli_args(cli_args)
         monkeypatch.setattr(sys, 'argv', ['etlplus', *args])
@@ -192,6 +194,7 @@ def cli_invoke(
     >>> code
     0
     """
+
     def _invoke(*cli_args: str | Sequence[str]) -> tuple[int, str, str]:
         exit_code = cli_runner(*cli_args)
         captured = capsys.readouterr()
