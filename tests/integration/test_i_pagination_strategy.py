@@ -22,6 +22,8 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
+from textwrap import indent
 from typing import Any
 
 import pytest
@@ -33,6 +35,47 @@ from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
+
+
+def _build_api_pipeline_yaml(
+    *,
+    name: str,
+    job_name: str,
+    out_path: Path,
+    options_block: str,
+    source_url: str = 'https://example.test/api',
+) -> str:
+    """Render a minimal pipeline YAML for a single API source job."""
+
+    cleaned_block = dedent(options_block).strip()
+    if not cleaned_block:
+        msg = 'options_block must not be empty'
+        raise ValueError(msg)
+
+    indented_options = indent(cleaned_block, ' ' * 8)
+
+    return (
+        f"""
+name: {name}
+sources:
+  - name: src
+    type: api
+    url: {source_url}
+targets:
+  - name: dest
+    type: file
+    format: json
+    path: {out_path}
+jobs:
+  - name: {job_name}
+    extract:
+      source: src
+      options:
+{indented_options}
+    load:
+      target: dest
+"""
+    ).strip()
 
 
 @dataclass(slots=True)
@@ -155,31 +198,19 @@ class TestPaginationStrategies:
         """Test cursor-based pagination end-to-end via CLI."""
 
         out_path = tmp_path / 'cursor.json'
-        pipeline_yaml = f"""
-name: cursor_test
-sources:
-  - name: src
-    type: api
-    url: https://example.test/api
-targets:
-  - name: dest
-    type: file
-    format: json
-    path: {out_path}
-jobs:
-  - name: api_cursor
-    extract:
-      source: src
-      options:
-        pagination:
-          type: cursor
-          cursor_param: cursor
-          cursor_path: next
-          page_size: 2
-          records_path: data
-    load:
-      target: dest
-"""
+        pipeline_yaml = _build_api_pipeline_yaml(
+            name='cursor_test',
+            job_name='api_cursor',
+            out_path=out_path,
+            options_block="""
+            pagination:
+              type: cursor
+              cursor_param: cursor
+              cursor_path: next
+              page_size: 2
+              records_path: data
+            """,
+        )
 
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
@@ -214,31 +245,19 @@ jobs:
         """Test cursor pagination when ``records_path`` is omitted."""
         # Omits records_path and relies on fallback coalescing behavior.
         out_path = tmp_path / 'cursor_no_records_path.json'
-        pipeline_yaml = f"""
-name: cursor_test_no_records_path
-sources:
-  - name: src
-    type: api
-    url: https://example.test/api
-targets:
-  - name: dest
-    type: file
-    format: json
-    path: {out_path}
-jobs:
-  - name: api_cursor_no_records
-    extract:
-      source: src
-      options:
-        pagination:
-          type: cursor
-          cursor_param: cursor
-          cursor_path: next
-          page_size: 2
-          # records_path intentionally omitted
-    load:
-      target: dest
-"""
+        pipeline_yaml = _build_api_pipeline_yaml(
+            name='cursor_test_no_records_path',
+            job_name='api_cursor_no_records',
+            out_path=out_path,
+            options_block="""
+            pagination:
+              type: cursor
+              cursor_param: cursor
+              cursor_path: next
+              page_size: 2
+              # records_path intentionally omitted
+            """,
+        )
 
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
@@ -290,39 +309,26 @@ jobs:
         pipeline_cli_runner: Callable[..., str],
     ) -> None:
         """Test page/offset pagination end-to-end via CLI."""
-        # Prepare output path.
         out_path = tmp_path / f'{scenario.name}.json'
-        max_records_yaml = (
-            f'\n          max_records: {scenario.max_records}'
+        max_records_line = (
+            f'\n  max_records: {scenario.max_records}'
             if scenario.max_records is not None
             else ''
         )
+        job_name = f'job_{scenario.name}'
 
-        # Minimal pipeline with API source using page/offset pagination.
-        pipeline_yaml = f"""
-name: {scenario.name}
-sources:
-  - name: src
-    type: api
-    url: https://example.test/api
-targets:
-  - name: dest
-    type: file
-    format: json
-    path: {out_path}
-jobs:
-  - name: job_{scenario.name}
-    extract:
-      source: src
-      options:
-        pagination:
-          type: page
-          page_param: page
-          size_param: per_page
-          page_size: {scenario.page_size}{max_records_yaml}
-    load:
-      target: dest
-"""
+        pipeline_yaml = _build_api_pipeline_yaml(
+            name=scenario.name,
+            job_name=job_name,
+            out_path=out_path,
+            options_block=f"""
+            pagination:
+              type: page
+              page_param: page
+              size_param: per_page
+              page_size: {scenario.page_size}{max_records_line}
+            """,
+        )
         # Mock extract to return scenario-driven items per page.
 
         def fake_extract(kind: str, _url: str, **kwargs: Any):
@@ -338,7 +344,7 @@ jobs:
 
         pipeline_cli_runner(
             yaml_text=pipeline_yaml,
-            run_name=f'job_{scenario.name}',
+            run_name=job_name,
             extract_func=fake_extract,
         )
 
