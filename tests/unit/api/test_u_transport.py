@@ -21,6 +21,11 @@ import requests  # type: ignore[import]
 
 from etlplus.api.transport import build_http_adapter
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 # SECTION: TESTS ============================================================ #
 
 
