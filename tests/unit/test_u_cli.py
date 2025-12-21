@@ -12,6 +12,7 @@ Notes
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 
 import pytest
 
@@ -32,6 +33,18 @@ def cli_parser_fixture() -> argparse.ArgumentParser:
     """
 
     return create_parser()
+
+
+@pytest.fixture(name='parse_cli')
+def parse_cli_fixture(
+    cli_parser: argparse.ArgumentParser,
+) -> Callable[[list[str]], argparse.Namespace]:
+    """Provide a callable that parses CLI args into a namespace."""
+
+    def _parse(args: list[str]) -> argparse.Namespace:
+        return cli_parser.parse_args(args)
+
+    return _parse
 
 
 # SECTION: TESTS ============================================================ #
@@ -119,7 +132,7 @@ class TestCreateParser:
     )
     def test_parser_commands(
         self,
-        cli_parser: argparse.ArgumentParser,
+        parse_cli: Callable[[list[str]], argparse.Namespace],
         cmd_args: list[str],
         expected_args: dict[str, object],
     ) -> None:
@@ -133,7 +146,7 @@ class TestCreateParser:
         expected_args : dict[str, object]
             Expected parsed argument values.
         """
-        args = cli_parser.parse_args(cmd_args)
+        args = parse_cli(cmd_args)
         for key, val in expected_args.items():
             assert getattr(args, key, None) == val
 
