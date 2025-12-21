@@ -37,7 +37,11 @@ from tests.unit.api.test_u_mocks import MockSession
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
 MOCK_BASE_URL = 'https://api.example.com/v1'
+EXAMPLE_BASE_URL = 'https://example.test'
 
 # Optional Hypothesis import with safe stubs when missing.
 try:  # pragma: no try
@@ -353,14 +357,14 @@ class TestCursorPagination:
             [{'items': [{'i': 1}], 'next': None}],
         )
 
-        client = client_factory(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
             page_size=raw_page_size,
             records_path='items',
         )
-        out = client.paginate_url('https://example.test/x', cfg)
+        out = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(out, list)
 
         # mypy treats list element as Any due to external library response
@@ -423,7 +427,7 @@ class TestRequestOptionIntegration:
         """Paginated iterations override RequestOptions params per call."""
         # pylint: disable=unused-argument
 
-        client = client_factory(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
 
         def fake_fetch(
@@ -439,7 +443,7 @@ class TestRequestOptionIntegration:
 
         list(
             client.paginate_url_iter(
-                'https://example.test/items',
+                f'{EXAMPLE_BASE_URL}/items',
                 {
                     'type': PaginationType.PAGE,
                     'records_path': 'items',
@@ -487,14 +491,14 @@ class TestRequestOptionIntegration:
                 {'items': [{'i': 2}], 'next': None},
             ],
         )
-        client = client_factory(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
             page_size=10,
             records_path='items',
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(data, list)
         assert len(calls) >= 2
         values = [cast(dict, r)['i'] for r in data]  # type: ignore[index]
@@ -692,7 +696,7 @@ class TestRequestOptionIntegration:
 
         patch_request_once(fake_request)
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
             retry={'max_attempts': 2, 'backoff': 0.5, 'retry_on': [503]},
         )
@@ -703,7 +707,7 @@ class TestRequestOptionIntegration:
             records_path='items',
         )
 
-        out = client.paginate_url('https://example.test/x', cfg)
+        out = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert out == [{'i': 1}]
 
         # One sleep from the single retry attempt.
@@ -811,7 +815,7 @@ class TestOffsetPagination:
         patch_request_once(fake_request)
 
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
         )
         cfg = cast(
@@ -826,7 +830,7 @@ class TestOffsetPagination:
             },
         )
 
-        data = client.paginate_url('https://example.test/api', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/api', cfg)
 
         # Expected behavior: collects up to max_records using offset stepping.
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
@@ -880,7 +884,7 @@ class TestPagePagination:
 
         patch_request_once(fake_request)
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
         )
         cfg = page_cfg(
@@ -889,7 +893,7 @@ class TestPagePagination:
             start_page=1,
             page_size=2,
         )
-        data = client.paginate_url('https://example.test/api', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/api', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
@@ -932,7 +936,7 @@ class TestPagePagination:
         patch_request_once(fake_request)
 
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
         )
         cfg = page_cfg(
@@ -942,7 +946,7 @@ class TestPagePagination:
             page_size=3,
             max_records=5,  # Should truncate 2nd page (total would be 6).
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert len(data) == 5
         assert all('p' in r for r in data)
 
@@ -986,7 +990,7 @@ class TestPagePagination:
         patch_request_once(fake_request)
 
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
         )
         cfg = page_cfg(
@@ -996,7 +1000,7 @@ class TestPagePagination:
             page_size=0,
             max_pages=3,
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
@@ -1090,12 +1094,12 @@ class TestPagePagination:
 
         patch_request_once(_raw_response)
         client = client_factory(
-            base_url='https://example.test',
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
         )
 
         out = client.paginate_url(
-            'https://example.test/x',
+            f'{EXAMPLE_BASE_URL}/x',
             cast(Any, {'type': 'weird'}),
         )
         assert out == {'foo': 'bar'}
