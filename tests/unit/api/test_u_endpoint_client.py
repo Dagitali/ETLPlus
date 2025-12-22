@@ -791,8 +791,9 @@ class TestErrors:
             Helper used to patch the request helper.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
-
         """
+        # pylint: disable=unused-argument
+
         client = client_factory(
             base_url=base_url,
             endpoints={'x': '/x'},
@@ -803,8 +804,8 @@ class TestErrors:
             method: str,
             url: str,
             *,
-            _session: Any,
-            _timeout: Any,
+            session: Any,
+            timeout: Any,
             **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
@@ -1249,6 +1250,8 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
+        # pylint: disable=unused-argument
+
         client = client_factory(
             base_url=base_url,
             endpoints={'x': '/x'},
@@ -1264,8 +1267,8 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            _session: Any,
-            _timeout: Any,
+            session: Any,
+            timeout: Any,
             **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
@@ -1309,6 +1312,8 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
+        # pylint: disable=unused-argument
+
         jitter([0.1, 0.2])
 
         # Patch HTTP helper to fail with 503 twice, then succeed.
@@ -1319,8 +1324,8 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            _session: Any,
-            _timeout: Any,
+            session: Any,
+            timeout: Any,
             **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
@@ -1377,6 +1382,8 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
+        # pylint: disable=unused-argument
+
         jitter([0.12, 0.18])
         attempts = {'n': 0}
 
@@ -1385,8 +1392,8 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            _session: Any,
-            _timeout: Any,
+            session: Any,
+            timeout: Any,
             **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
