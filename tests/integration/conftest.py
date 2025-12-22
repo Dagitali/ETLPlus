@@ -180,13 +180,13 @@ def fake_endpoint_client_fixture() -> tuple[
 @pytest.fixture(name='file_to_api_pipeline_factory')
 def file_to_api_pipeline_factory_fixture(
     tmp_path: pathlib.Path,
+    base_url: str,
 ) -> Callable[..., PipelineConfig]:
     """Build a pipeline wiring a JSON file source to an API target."""
-
     def _make(
         *,
         payload: Any | None = None,
-        base_url: str = 'https://api.example.com',
+        base_url: str = base_url,
         base_path: str | None = '/v1',
         endpoint_path: str = '/ingest',
         endpoint_name: str = 'ingest',
@@ -252,6 +252,7 @@ def file_to_api_pipeline_factory_fixture(
 @pytest.fixture(name='pipeline_cfg_factory')
 def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,
+    base_url: str,
 ) -> Callable[..., PipelineConfig]:
     """
     Factory to build a minimal PipelineConfig for runner tests.
@@ -264,6 +265,8 @@ def pipeline_cfg_factory_fixture(
     ----------
     tmp_path : pathlib.Path
         The pytest temporary path fixture.
+    base_url : str
+        Common base URL used across tests.
 
     Returns
     -------
@@ -278,7 +281,7 @@ def pipeline_cfg_factory_fixture(
         extract_options: dict[str, Any] | None = None,
     ) -> PipelineConfig:
         prof = ApiProfileConfig(
-            base_url='https://api.example.com',
+            base_url=base_url,
             headers={},
             base_path='/v1',
             auth={},
