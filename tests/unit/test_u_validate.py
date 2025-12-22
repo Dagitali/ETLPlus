@@ -48,7 +48,8 @@ class TestValidateField:
     def test_enum_rule_requires_list(self) -> None:
         """Test non-list enum rules adding an error entry."""
 
-        result = validate_field('a', {'enum': 'abc'})
+        # Test expects the value for key ``enum`` to not be a list.
+        result = validate_field('a', {'enum': 'abc'})  # type: ignore
         assert result['valid'] is False
         assert any('enum' in err for err in result['errors'])
 
