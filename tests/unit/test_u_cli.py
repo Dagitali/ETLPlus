@@ -23,10 +23,6 @@ from etlplus.cli import create_parser
 
 pytestmark = pytest.mark.unit
 
-
-# SECTION: HELPERS ========================================================== #
-
-
 # Shared parser cases to keep param definitions DRY and self-documenting.
 CLI_CASES = (
     pytest.param(
@@ -160,6 +156,8 @@ class TestCreateParser:
 
         Parameters
         ----------
+        parse_cli : Callable[[list[str]], argparse.Namespace]
+            Fixture that parses CLI arguments.
         cmd_args : list[str]
             CLI arguments to parse.
         expected_args : dict[str, object]
