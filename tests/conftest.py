@@ -93,6 +93,13 @@ class RequestFactory(Protocol):
 # SECTION: FIXTURES ========================================================= #
 
 
+@pytest.fixture(name='base_url')
+def base_url_fixture() -> str:
+    """Return the canonical base URL shared across tests."""
+
+    return 'https://api.example.com'
+
+
 @pytest.fixture(name='json_file_factory')
 def json_file_factory_fixture(
     tmp_path: Path,
