@@ -184,6 +184,7 @@ class TestRun:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test a file-to-file ETL pipeline execution."""
+        # pylint: disable=unused-argument
         job = _make_job(name='file_job', source='file_src', target='file_tgt')
         cfg = _base_config(
             job,
