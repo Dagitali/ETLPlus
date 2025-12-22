@@ -155,16 +155,16 @@ def test_request_manager_invalid_session_adapters(
     try:
         with manager:
             pass
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         pytest.fail('RequestManager context should not raise on bad adapters')
 
 
 def test_request_manager_request_callable(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Test that request_callable is invoked and its result returned."""
     manager = RequestManager()
-    called = {}
+    called: dict[str, Any] = {}
 
     def fake_request_once(
         method: str,
@@ -172,7 +172,7 @@ def test_request_manager_request_callable(
         *,
         session: Any,
         timeout: Any,
-        request_callable=None,
+        request_callable: Any | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         called['method'] = method
@@ -183,7 +183,11 @@ def test_request_manager_request_callable(
         called['kwargs'] = kwargs
         return {'ok': True}
 
-    monkeypatch.setattr(manager, 'request_once', fake_request_once)
+    monkeypatch.setattr(
+        type(manager),
+        'request_once',
+        staticmethod(fake_request_once),
+    )
 
     result = manager.request(
         'POST',
