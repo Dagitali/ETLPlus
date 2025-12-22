@@ -13,6 +13,7 @@ Notes
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -29,10 +30,20 @@ from etlplus.config.pipeline import _build_connectors
 
 pytestmark = pytest.mark.unit
 
-CONNECTOR_CASES = (
-    pytest.param(
-        'sources',
-        [
+
+@dataclass(frozen=True, slots=True)
+class ConnectorCase:
+    """Connector collection test case definition."""
+
+    collection: str
+    entries: list[Any]
+    expected_types: set[type]
+
+
+CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
+    ConnectorCase(
+        collection='sources',
+        entries=[
             {'name': 'csv_in', 'type': 'file', 'path': '/tmp/in.csv'},
             {
                 'name': 'service_in',
@@ -45,12 +56,11 @@ CONNECTOR_CASES = (
             {'name': 'weird', 'type': 'unknown'},
             {'type': 'file'},
         ],
-        {ConnectorFile, ConnectorApi, ConnectorDb},
-        id='sources',
+        expected_types={ConnectorFile, ConnectorApi, ConnectorDb},
     ),
-    pytest.param(
-        'targets',
-        [
+    ConnectorCase(
+        collection='targets',
+        entries=[
             {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
             {'name': 'sink', 'type': 'database', 'table': 'events_out'},
             {
@@ -61,8 +71,7 @@ CONNECTOR_CASES = (
             },
             {'name': 'bad', 'type': 'unknown'},
         ],
-        {ConnectorFile, ConnectorDb, ConnectorApi},
-        id='targets',
+        expected_types={ConnectorFile, ConnectorDb, ConnectorApi},
     ),
 )
 
@@ -179,21 +188,18 @@ class TestPipelineBuildConnectors:
     """
 
     @pytest.mark.parametrize(
-        ('key', 'entries', 'expected_types'),
-        CONNECTOR_CASES,
+        'case', CONNECTOR_CASES, ids=lambda c: c.collection,
     )
     def test_build_connectors_filters_invalid_entries(
         self,
-        key: str,
-        entries: list[Any],
-        expected_types: set[type],
+        case: ConnectorCase,
     ) -> None:
         """Ensure :func:`_build_connectors` filters malformed entries."""
-        payload = {key: entries}
-        items = _build_connectors(payload, key)
+        payload = {case.collection: case.entries}
+        items = _build_connectors(payload, case.collection)
 
-        assert len(items) == len(expected_types)
-        assert {type(item) for item in items} == expected_types
+        assert len(items) == len(case.expected_types)
+        assert {type(item) for item in items} == case.expected_types
 
 
 class TestPipelineConfig:
