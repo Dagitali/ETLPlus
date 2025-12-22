@@ -41,6 +41,12 @@ pytestmark = pytest.mark.unit
 
 EXAMPLE_BASE_URL = 'https://example.test'
 
+type CursorConfigFactory = Callable[..., CursorPaginationConfigMap]
+type StubRequestManager = Callable[
+    [Sequence[dict[str, Any]]],
+    list[dict[str, Any]],
+]
+
 # Optional Hypothesis import with safe stubs when missing.
 try:  # pragma: no try
     from hypothesis import given  # type: ignore[import-not-found]
@@ -110,6 +116,7 @@ def _page_responder(
     Callable[..., list[dict[str, Any]]]
         Handler compatible with ``patch_request_once``.
     """
+    # pylint: disable=unused-argument
 
     def _handler(
         self: EndpointClient,
@@ -155,6 +162,7 @@ def _stub_request_manager(
     ValueError
         If ``responses`` is empty.
     """
+    # pylint: disable=unused-argument
 
     if not responses:
         msg = 'responses must contain at least one payload'
@@ -375,12 +383,9 @@ class TestCursorPagination:
     )
     def test_page_size_normalizes(
         self,
-        cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        cursor_cfg: CursorConfigFactory,
         client_factory: Callable[..., EndpointClient],
-        stub_request_manager: Callable[
-            [Sequence[dict[str, Any]]],
-            list[dict[str, Any]],
-        ],
+        stub_request_manager: StubRequestManager,
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -389,12 +394,11 @@ class TestCursorPagination:
 
         Parameters
         ----------
-        cursor_cfg : Callable[..., CursorPaginationConfigMap]
+        cursor_cfg : CursorConfigFactory
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
-        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
-                                       list[dict[str, Any]]]
+        stub_request_manager : StubRequestManager
             Fixture that patches the underlying :class:`RequestManager`.
         raw_page_size : Any
             Raw page size input.
@@ -473,6 +477,7 @@ class TestRequestOptionIntegration:
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
+        # pylint: disable=unused-argument
 
         client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
@@ -512,24 +517,20 @@ class TestRequestOptionIntegration:
 
     def test_adds_limit_and_advances_cursor(
         self,
-        cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        cursor_cfg: CursorConfigFactory,
         client_factory: Callable[..., EndpointClient],
-        stub_request_manager: Callable[
-            [Sequence[dict[str, Any]]],
-            list[dict[str, Any]],
-        ],
+        stub_request_manager: StubRequestManager,
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
 
         Parameters
         ----------
-        cursor_cfg : Callable[..., CursorPaginationConfigMap]
+        cursor_cfg : CursorConfigFactory
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
-        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
-                                       list[dict[str, Any]]]
+        stub_request_manager : StubRequestManager
             Fixture that patches :class:`RequestManager` responses.
         """
         calls = stub_request_manager(
@@ -561,7 +562,7 @@ class TestRequestOptionIntegration:
         self,
         base_url: str,
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
-        cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        cursor_cfg: CursorConfigFactory,
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
@@ -577,7 +578,7 @@ class TestRequestOptionIntegration:
             Common base URL used across tests.
         patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
             Helper that patches the request helper for deterministic failures.
-        cursor_cfg : Callable[..., CursorPaginationConfigMap]
+        cursor_cfg : CursorConfigFactory
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
@@ -700,7 +701,7 @@ class TestRequestOptionIntegration:
 
     def test_retry_backoff_sleeps(
         self,
-        cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        cursor_cfg: CursorConfigFactory,
         capture_sleeps: list[float],
         jitter: Callable[[list[float]], list[float]],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
@@ -713,7 +714,7 @@ class TestRequestOptionIntegration:
 
         Parameters
         ----------
-        cursor_cfg : Callable[..., CursorPaginationConfigMap]
+        cursor_cfg : CursorConfigFactory
             Factory for cursor pagination config.
         capture_sleeps : list[float]
             List to capture sleep durations.

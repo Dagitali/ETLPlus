@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests._typing import CliInvoke
-    from tests._typing import JsonFactory
+    from tests.conftest import CliInvoke
+    from tests.conftest import JsonFactory
 
 
 # SECTION: HELPERS ========================================================== #
