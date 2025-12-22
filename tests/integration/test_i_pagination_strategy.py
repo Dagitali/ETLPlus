@@ -91,6 +91,33 @@ class PageScenario:
     expected_ids: list[int]
     max_records: int | None = None
 
+    def render_options_block(self) -> str:
+        """Render a pagination options block for page-based scenarios."""
+
+        max_records_line = (
+            f'\n      max_records: {self.max_records}'
+            if self.max_records is not None
+            else ''
+        )
+        return dedent(
+            f"""
+            pagination:
+              type: page
+              page_param: page
+              size_param: per_page
+              page_size: {self.page_size}{max_records_line}
+            """,
+        )
+
+
+@dataclass(slots=True)
+class PaginationEdgeCase:
+    """Edge-case pagination scenario definitions."""
+
+    name: str
+    pagination: dict[str, Any]
+    expect: dict[str, Any]
+
 
 def _write_pipeline(
     tmp_path: Path,
@@ -327,7 +354,7 @@ class TestPaginationStrategies:
 
     @pytest.mark.parametrize(
         'scenario',
-        [
+        (
             PageScenario(
                 name='page_offset_basic',
                 page_size=2,
@@ -341,7 +368,7 @@ class TestPaginationStrategies:
                 expected_ids=[1, 2],
                 max_records=2,
             ),
-        ],
+        ),
         ids=lambda s: s.name,
     )
     def test_page_offset_modes(
@@ -353,24 +380,13 @@ class TestPaginationStrategies:
     ) -> None:
         """Test page/offset pagination end-to-end via CLI."""
         out_path = tmp_path / f'{scenario.name}.json'
-        max_records_line = (
-            f'\n{" " * 14}max_records: {scenario.max_records}'
-            if scenario.max_records is not None
-            else ''
-        )
         job_name = f'job_{scenario.name}'
 
         pipeline_yaml = _build_api_pipeline_yaml(
             name=scenario.name,
             job_name=job_name,
             out_path=out_path,
-            options_block=f"""
-            pagination:
-              type: page
-              page_param: page
-              size_param: per_page
-              page_size: {scenario.page_size}{max_records_line}
-            """,
+            options_block=scenario.render_options_block(),
         )
         # Mock extract to return scenario-driven items per page.
 
@@ -395,60 +411,58 @@ class TestPaginationStrategies:
         )
         assert [r['id'] for r in data] == scenario.expected_ids
 
-    @pytest.mark.parametrize(
-        'scenario',
-        [
-            {
-                'name': 'page_zero_start_coerces_to_one',
-                'pagination': {
-                    'type': 'page',
-                    'page_param': 'page',
-                    'size_param': 'per_page',
-                    'start_page': 0,
-                    'page_size': 10,
-                },
-                'expect': {'type': 'page', 'start_page': 1, 'page_size': 10},
+    EDGE_CASES = (
+        PaginationEdgeCase(
+            name='page_zero_start_coerces_to_one',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 0,
+                'page_size': 10,
             },
-            {
-                'name': 'page_zero_size_coerces_default',
-                'pagination': {
-                    'type': 'page',
-                    'page_param': 'page',
-                    'size_param': 'per_page',
-                    'start_page': 1,
-                    'page_size': 0,
-                },
-                'expect': {'type': 'page', 'start_page': 1, 'page_size': 100},
+            expect={'type': 'page', 'start_page': 1, 'page_size': 10},
+        ),
+        PaginationEdgeCase(
+            name='page_zero_size_coerces_default',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 1,
+                'page_size': 0,
             },
-            {
-                'name': 'cursor_zero_size_coerces_default',
-                'pagination': {
-                    'type': 'cursor',
-                    'cursor_param': 'cursor',
-                    'cursor_path': 'next',
-                    'page_size': 0,
-                },
-                'expect': {'type': 'cursor', 'page_size': 100},
+            expect={'type': 'page', 'start_page': 1, 'page_size': 100},
+        ),
+        PaginationEdgeCase(
+            name='cursor_zero_size_coerces_default',
+            pagination={
+                'type': 'cursor',
+                'cursor_param': 'cursor',
+                'cursor_path': 'next',
+                'page_size': 0,
             },
-            {
-                'name': 'limits_pass_through',
-                'pagination': {
-                    'type': 'page',
-                    'page_param': 'page',
-                    'size_param': 'per_page',
-                    'start_page': 1,
-                    'page_size': 5,
-                    'max_pages': 2,
-                    'max_records': 3,
-                },
-                'expect': {'type': 'page', 'max_pages': 2, 'max_records': 3},
+            expect={'type': 'cursor', 'page_size': 100},
+        ),
+        PaginationEdgeCase(
+            name='limits_pass_through',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 1,
+                'page_size': 5,
+                'max_pages': 2,
+                'max_records': 3,
             },
-        ],
-        ids=lambda s: s['name'],
+            expect={'type': 'page', 'max_pages': 2, 'max_records': 3},
+        ),
     )
+
+    @pytest.mark.parametrize('scenario', EDGE_CASES, ids=lambda s: s.name)
     def test_pagination_edge_cases(
         self,
-        scenario: dict,
+        scenario: PaginationEdgeCase,
         pipeline_cfg_factory: Callable[..., PipelineConfig],
         fake_endpoint_client: tuple[
             type[FakeEndpointClientProtocol],
@@ -463,7 +477,7 @@ class TestPaginationStrategies:
         pagination mapping seen by the client after defaults/overrides.
         """
         cfg = pipeline_cfg_factory(
-            extract_options={'pagination': deepcopy(scenario['pagination'])},
+            extract_options={'pagination': deepcopy(scenario.pagination)},
         )
 
         fake_client, created = fake_endpoint_client
@@ -474,5 +488,5 @@ class TestPaginationStrategies:
 
         seen_pag = created[0].seen.get('pagination')
         assert isinstance(seen_pag, dict)
-        for k, v in scenario['expect'].items():
+        for k, v in scenario.expect.items():
             assert seen_pag.get(k) == v
