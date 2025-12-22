@@ -183,6 +183,7 @@ def file_to_api_pipeline_factory_fixture(
     base_url: str,
 ) -> Callable[..., PipelineConfig]:
     """Build a pipeline wiring a JSON file source to an API target."""
+
     def _make(
         *,
         payload: Any | None = None,
