@@ -36,7 +36,7 @@ class DummySession:
 def test_request_manager_builds_adapter_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure adapter configs yield a managed session that gets closed."""
+    """Test that adapter configs yield a managed session that gets closed."""
     captured: dict[str, Any] = {}
     dummy_session = DummySession()
 
@@ -82,7 +82,7 @@ def test_request_manager_builds_adapter_session(
 def test_request_manager_context_reuses_adapter_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Context manager should reuse one adapter-backed session."""
+    """Test that context manager reuses one adapter-backed session."""
     dummy_session = DummySession()
     builder_calls: list[Any] = []
     sessions_used: list[Any] = []
@@ -133,3 +133,65 @@ def test_request_manager_context_reuses_adapter_session(
     assert sessions_used == [dummy_session, dummy_session]
     assert timeouts == [manager.default_timeout, manager.default_timeout]
     assert extra_kwargs == [{}, {}]
+
+
+def test_request_manager_invalid_session_adapters(
+    monkeypatch,
+):
+    """Test that invalid session_adapters do not raise on context enter."""
+    # Should not raise if session_adapters is invalid
+    manager = RequestManager(
+        session_adapters=[{'prefix': 'https://', 'pool_connections': 'bad'}],
+    )
+
+    def fake_builder(cfg: Any) -> None:
+        raise ValueError('bad config')
+
+    monkeypatch.setattr(
+        'etlplus.api.request_manager.build_session_with_adapters',
+        fake_builder,
+    )
+
+    try:
+        with manager:
+            pass
+    except Exception:
+        pytest.fail('RequestManager context should not raise on bad adapters')
+
+
+def test_request_manager_request_callable(
+    monkeypatch,
+):
+    """Test that request_callable is invoked and its result returned."""
+    manager = RequestManager()
+    called = {}
+
+    def fake_request_once(
+        method: str,
+        url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        request_callable=None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        called['method'] = method
+        called['url'] = url
+        called['session'] = session
+        called['timeout'] = timeout
+        called['request_callable'] = request_callable
+        called['kwargs'] = kwargs
+        return {'ok': True}
+
+    monkeypatch.setattr(manager, 'request_once', fake_request_once)
+
+    result = manager.request(
+        'POST',
+        'http://test',
+        request_callable=lambda *a, **k: {'ok': 'cb'},
+    )
+
+    assert result == {'ok': True}
+    assert called['method'] == 'POST'
+    assert called['url'] == 'http://test'
+    assert callable(called['request_callable'])
