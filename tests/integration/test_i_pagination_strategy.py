@@ -111,6 +111,77 @@ class PageScenario:
 
 
 @dataclass(slots=True)
+class CursorBatch:
+    """Single cursor pagination batch definition."""
+
+    records: list[dict[str, Any]]
+    next_cursor: str | None
+
+
+@dataclass(slots=True)
+class CursorScenario:
+    """Cursor pagination scenario definition for CLI integration tests."""
+
+    name: str
+    page_size: int
+    batches: tuple[CursorBatch, ...]
+    expected_ids: list[str]
+    options_block: str
+    records_key: str = 'data'
+
+    def render_options_block(self) -> str:
+        """Return the dedented pagination block for the scenario."""
+
+        return dedent(self.options_block)
+
+
+CURSOR_SCENARIOS: tuple[CursorScenario, ...] = (
+    CursorScenario(
+        name='cursor_records_path_explicit',
+        page_size=2,
+        records_key='data',
+        expected_ids=['a', 'b', 'c'],
+        options_block="""
+        pagination:
+          type: cursor
+          cursor_param: cursor
+          cursor_path: next
+          page_size: 2
+          records_path: data
+        """,
+        batches=(
+            CursorBatch(
+                records=[{'id': 'a'}, {'id': 'b'}],
+                next_cursor='tok1',
+            ),
+            CursorBatch(records=[{'id': 'c'}], next_cursor=None),
+        ),
+    ),
+    CursorScenario(
+        name='cursor_records_path_inferred',
+        page_size=2,
+        records_key='items',
+        expected_ids=['x', 'y', 'z'],
+        options_block="""
+        pagination:
+          type: cursor
+          cursor_param: cursor
+          cursor_path: next
+          page_size: 2
+          # records_path intentionally omitted
+        """,
+        batches=(
+            CursorBatch(
+                records=[{'id': 'x'}, {'id': 'y'}],
+                next_cursor='tok1',
+            ),
+            CursorBatch(records=[{'id': 'z'}], next_cursor=None),
+        ),
+    ),
+)
+
+
+@dataclass(slots=True)
 class PaginationEdgeCase:
     """Edge-case pagination scenario definitions."""
 
@@ -262,95 +333,70 @@ class TestPaginationStrategies:
         """
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
-    def test_cursor_mode(
+    @pytest.mark.parametrize(
+        'scenario', CURSOR_SCENARIOS, ids=lambda s: s.name,
+    )
+    def test_cursor_modes(
         self,
+        scenario: CursorScenario,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         pipeline_cli_runner: Callable[..., str],
     ) -> None:
-        """Test cursor-based pagination end-to-end via CLI."""
+        """
+        Test cursor-based pagination scenarios end-to-end via the CLI.
 
-        out_path = tmp_path / 'cursor.json'
+        Parameters
+        ----------
+        scenario : CursorScenario
+            Cursor pagination scenario to execute.
+        tmp_path : Path
+            Temporary directory managed by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Capture fixture for CLI stdout/stderr.
+        pipeline_cli_runner : Callable[..., str]
+            Helper that materializes and executes the pipeline configuration.
+        """
+
+        out_path = tmp_path / f'{scenario.name}.json'
         pipeline_yaml = _build_api_pipeline_yaml(
-            name='cursor_test',
-            job_name='api_cursor',
+            name=scenario.name,
+            job_name=f'job_{scenario.name}',
             out_path=out_path,
-            options_block="""
-            pagination:
-              type: cursor
-              cursor_param: cursor
-              cursor_path: next
-              page_size: 2
-              records_path: data
-            """,
+            options_block=scenario.render_options_block(),
         )
+
+        cursor_tracker: dict[str, str | None] = {'expected': None}
+        batches = iter(scenario.batches)
 
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
             cur = params.get('cursor')
-            limit = int(params.get('limit', 2))
-            assert limit == 2
-            if cur is None:
-                return {'data': [{'id': 'a'}, {'id': 'b'}], 'next': 'tok1'}
-            if cur == 'tok1':
-                return {'data': [{'id': 'c'}], 'next': None}
-            return {'data': [], 'next': None}
+            limit = int(params.get('limit', scenario.page_size))
+            assert cur == cursor_tracker['expected']
+            assert limit == scenario.page_size
+
+            try:
+                batch = next(batches)
+            except StopIteration:
+                return {scenario.records_key: [], 'next': None}
+
+            cursor_tracker['expected'] = batch.next_cursor
+            return {
+                scenario.records_key: batch.records,
+                'next': batch.next_cursor,
+            }
 
         data = _run_pipeline_and_collect(
             capsys=capsys,
             out_path=out_path,
             pipeline_cli_runner=pipeline_cli_runner,
             pipeline_yaml=pipeline_yaml,
-            run_name='api_cursor',
+            run_name=f'job_{scenario.name}',
             extract_func=fake_extract,
         )
-        assert [r['id'] for r in data] == ['a', 'b', 'c']
-
-    def test_cursor_mode_missing_records_path(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        pipeline_cli_runner: Callable[..., str],
-    ) -> None:
-        """Test cursor pagination when ``records_path`` is omitted."""
-        # Omits records_path and relies on fallback coalescing behavior.
-        out_path = tmp_path / 'cursor_no_records_path.json'
-        pipeline_yaml = _build_api_pipeline_yaml(
-            name='cursor_test_no_records_path',
-            job_name='api_cursor_no_records',
-            out_path=out_path,
-            options_block="""
-            pagination:
-              type: cursor
-              cursor_param: cursor
-              cursor_path: next
-              page_size: 2
-              # records_path intentionally omitted
-            """,
-        )
-
-        def fake_extract(kind: str, _url: str, **kwargs: Any):
-            assert kind == 'api'
-            params = kwargs.get('params') or {}
-            cur = params.get('cursor')
-            limit = int(params.get('limit', 2))
-            assert limit == 2
-            if cur is None:
-                return {'items': [{'id': 'x'}, {'id': 'y'}], 'next': 'tok1'}
-            if cur == 'tok1':
-                return {'items': [{'id': 'z'}], 'next': None}
-            return {'items': [], 'next': None}
-
-        data = _run_pipeline_and_collect(
-            capsys=capsys,
-            out_path=out_path,
-            pipeline_cli_runner=pipeline_cli_runner,
-            pipeline_yaml=pipeline_yaml,
-            run_name='api_cursor_no_records',
-            extract_func=fake_extract,
-        )
-        assert [r['id'] for r in data] == ['x', 'y', 'z']
+        assert [r['id'] for r in data] == scenario.expected_ids
 
     @pytest.mark.parametrize(
         'scenario',
