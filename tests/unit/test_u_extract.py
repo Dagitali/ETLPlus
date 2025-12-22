@@ -32,9 +32,6 @@ from etlplus.extract import extract_from_file
 pytestmark = pytest.mark.unit
 
 
-MOCK_BASE_URL = 'https://api.example.com'
-
-
 class _StubResponse:
     """Simple stand-in for :meth:`requests.Response`."""
 
@@ -229,7 +226,10 @@ class TestExtractFromApi:
         coercion.
     """
 
-    def test_custom_method_and_kwargs(self) -> None:
+    def test_custom_method_and_kwargs(
+        self,
+        base_url: str,
+    ) -> None:
         """
         Custom HTTP methods and kwargs should pass through to the session.
         """
@@ -240,7 +240,7 @@ class TestExtractFromApi:
         )
         session = _StubSession(response, method_name='post')
         result = extract_from_api(
-            f'{MOCK_BASE_URL}/hooks',
+            f'{base_url}/hooks',
             method='POST',
             session=session,
             timeout=2.5,
@@ -250,7 +250,10 @@ class TestExtractFromApi:
         assert session.calls[0]['kwargs']['timeout'] == 2.5
         assert session.calls[0]['kwargs']['headers'] == {'X-Test': '1'}
 
-    def test_invalid_json_fallback(self) -> None:
+    def test_invalid_json_fallback(
+        self,
+        base_url: str,
+    ) -> None:
         """Malformed JSON should fall back to raw content payloads."""
 
         response = _StubResponse(
@@ -259,7 +262,7 @@ class TestExtractFromApi:
             json_error=True,
         )
         session = _StubSession(response)
-        result = extract_from_api(f'{MOCK_BASE_URL}/bad', session=session)
+        result = extract_from_api(f'{base_url}/bad', session=session)
         assert result == {
             'content': '{"bad": true}',
             'content_type': 'application/json',
@@ -279,6 +282,7 @@ class TestExtractFromApi:
     )
     def test_json_payload_variants(
         self,
+        base_url: str,
         payload: Any,
         expected: Any,
     ) -> None:
@@ -294,11 +298,14 @@ class TestExtractFromApi:
             ),
         )
         session = _StubSession(response)
-        result = extract_from_api(f'{MOCK_BASE_URL}/data', session=session)
+        result = extract_from_api(f'{base_url}/data', session=session)
         assert result == expected
         assert session.calls[0]['kwargs']['timeout'] == 10.0
 
-    def test_missing_http_method_raises_type_error(self) -> None:
+    def test_missing_http_method_raises_type_error(
+        self,
+        base_url: str,
+    ) -> None:
         """
         Missing HTTP methods on the provided session should raise TypeError.
         """
@@ -309,9 +316,12 @@ class TestExtractFromApi:
             pass  # pylint: disable=unnecessary-pass
 
         with pytest.raises(TypeError, match='callable"get"'):
-            extract_from_api(f'{MOCK_BASE_URL}/data', session=NoGet())
+            extract_from_api(f'{base_url}/data', session=NoGet())
 
-    def test_non_json_content_type(self) -> None:
+    def test_non_json_content_type(
+        self,
+        base_url: str,
+    ) -> None:
         """Non-JSON content should be returned as raw text payloads."""
 
         response = _StubResponse(
@@ -319,7 +329,7 @@ class TestExtractFromApi:
             text='plain text response',
         )
         session = _StubSession(response)
-        result = extract_from_api(f'{MOCK_BASE_URL}/text', session=session)
+        result = extract_from_api(f'{base_url}/text', session=session)
         assert result == {
             'content': 'plain text response',
             'content_type': 'text/plain',
