@@ -84,9 +84,11 @@ def test_request_options_invalid_params_headers():
     """
     Test that :class:`RequestOptions` coerces mapping-like objects to dict.
     """
+
     # Should coerce mapping-like objects to dict.
     class DummyMap(dict):
         """Dummy mapping-like class for testing."""
+
         pass
 
     opts = RequestOptions(params=DummyMap(a=1), headers=DummyMap(X='y'))
