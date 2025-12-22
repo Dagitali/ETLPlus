@@ -89,8 +89,6 @@ def test_request_options_invalid_params_headers():
     class DummyMap(dict):
         """Dummy mapping-like class for testing."""
 
-        pass
-
     opts = RequestOptions(params=DummyMap(a=1), headers=DummyMap(X='y'))
     assert isinstance(opts.params, dict)
     assert isinstance(opts.headers, dict)
@@ -103,6 +101,8 @@ def test_request_options_invalid_params_headers():
 
 def test_type_aliases():
     """Test that type aliases are correct."""
+    # pylint: disable=unused-argument
+
     # url: Url = 'https://api.example.com/data'
     # headers: Headers = {'Authorization': 'token'}
     # params: Params = {'q': 'search'}
@@ -116,6 +116,8 @@ def test_type_aliases():
 
 def test_type_aliases_edge_cases():
     """Test type aliases with edge case values."""
+    # pylint: disable=unused-argument
+
     # Url must be str.
     url: Url = 'http://test/'
     assert isinstance(url, str)
