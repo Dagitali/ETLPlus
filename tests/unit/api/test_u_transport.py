@@ -20,6 +20,7 @@ import pytest
 import requests  # type: ignore[import]
 
 from etlplus.api.transport import build_http_adapter
+from etlplus.api.transport import build_session_with_adapters
 
 # SECTION: HELPERS ========================================================== #
 
@@ -66,6 +67,51 @@ class TestBuildHttpAdapter:
             # Retry object exposes total when urllib3 is available.
             total = getattr(mr, 'total', None)
             assert total in (0, 3)
+
+    def test_build_http_adapter_invalid_config(self):
+        """
+        Test that invalid config does not raise and returns a usable adapter.
+        """
+        cfg = {
+            'pool_connections': 'not-an-int',
+            'max_retries': {'total': 'bad'},
+        }
+        adapter = build_http_adapter(cfg)
+        assert isinstance(adapter, requests.adapters.HTTPAdapter)
+
+    def test_build_http_adapter_missing_keys(self):
+        """Test that missing keys are handled gracefully."""
+        cfg = {}
+        adapter = build_http_adapter(cfg)
+        assert isinstance(adapter, requests.adapters.HTTPAdapter)
+
+    def test_build_http_adapter_retry_dict_edge(self):
+        """Test retry dict with unknown keys is ignored."""
+        cfg = {
+            'max_retries': {'total': 2, 'unknown_key': 123},
+        }
+        adapter = build_http_adapter(cfg)
+        mr = adapter.max_retries
+        if isinstance(mr, int):
+            assert mr in (0, 2)
+        else:
+            assert getattr(mr, 'total', None) in (0, 2)
+
+    def test_build_session_with_adapters_invalid(self):
+        """
+        Test that invalid adapter configs are skipped but session is usable.
+        """
+        adapters_cfg = [
+            {'prefix': 'https://', 'pool_connections': 'bad'},
+            {'prefix': 'http://', 'max_retries': {'total': 'bad'}},
+        ]
+        session = requests.Session()
+        # Should not raise
+        try:
+            session = build_session_with_adapters(adapters_cfg)
+        except Exception:
+            pytest.fail('build_session_with_adapters should not raise')
+        assert isinstance(session, requests.Session)
 
     def test_integer_retries_fallback(self) -> None:
         """Test handling integer max_retries fallback."""
