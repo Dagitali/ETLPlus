@@ -56,10 +56,9 @@ class _StubYaml:
 
 
 @pytest.fixture
-def yaml_stub(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Generator[_StubYaml]:
+def yaml_stub() -> Generator[_StubYaml]:
     """Install a stub PyYAML module for YAML tests."""
+    # pylint: disable=protected-access
 
     stub = _StubYaml()
     file_module._YAML_CACHE.clear()
