@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import pytest
 
@@ -23,49 +24,60 @@ from etlplus.cli import create_parser
 
 pytestmark = pytest.mark.unit
 
+
+@dataclass(frozen=True, slots=True)
+class ParserCase:
+    """Declarative CLI parser test case."""
+
+    identifier: str
+    args: tuple[str, ...]
+    expected: dict[str, object]
+
+
 # Shared parser cases to keep param definitions DRY and self-documenting.
-CLI_CASES = (
-    pytest.param(
-        ['extract', 'file', '/path/to/file.json'],
-        {
+CLI_CASES: tuple[ParserCase, ...] = (
+    ParserCase(
+        identifier='extract-default-format',
+        args=('extract', 'file', '/path/to/file.json'),
+        expected={
             'command': 'extract',
             'source_type': 'file',
             'source': '/path/to/file.json',
             'format': 'json',
         },
-        id='extract-default-format',
     ),
-    pytest.param(
-        ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
-        {
+    ParserCase(
+        identifier='extract-explicit-format',
+        args=('extract', 'file', '/path/to/file.csv', '--format', 'csv'),
+        expected={
             'command': 'extract',
             'source_type': 'file',
             'source': '/path/to/file.csv',
             'format': 'csv',
             '_format_explicit': True,
         },
-        id='extract-explicit-format',
     ),
-    pytest.param(
-        ['load', '/path/to/file.json', 'file', '/path/to/output.json'],
-        {
+    ParserCase(
+        identifier='load-default-format',
+        args=('load', '/path/to/file.json', 'file', '/path/to/output.json'),
+        expected={
             'command': 'load',
             'source': '/path/to/file.json',
             'target_type': 'file',
             'target': '/path/to/output.json',
         },
-        id='load-default-format',
     ),
-    pytest.param(
-        [
+    ParserCase(
+        identifier='load-explicit-format',
+        args=(
             'load',
             '/path/to/file.json',
             'file',
             '/path/to/output.csv',
             '--format',
             'csv',
-        ],
-        {
+        ),
+        expected={
             'command': 'load',
             'source': '/path/to/file.json',
             'target_type': 'file',
@@ -73,22 +85,21 @@ CLI_CASES = (
             'format': 'csv',
             '_format_explicit': True,
         },
-        id='load-explicit-format',
     ),
-    pytest.param(
-        [],
-        {'command': None},
-        id='no-subcommand',
+    ParserCase(
+        identifier='no-subcommand',
+        args=(),
+        expected={'command': None},
     ),
-    pytest.param(
-        ['transform', '/path/to/file.json'],
-        {'command': 'transform', 'source': '/path/to/file.json'},
-        id='transform',
+    ParserCase(
+        identifier='transform',
+        args=('transform', '/path/to/file.json'),
+        expected={'command': 'transform', 'source': '/path/to/file.json'},
     ),
-    pytest.param(
-        ['validate', '/path/to/file.json'],
-        {'command': 'validate', 'source': '/path/to/file.json'},
-        id='validate',
+    ParserCase(
+        identifier='validate',
+        args=('validate', '/path/to/file.json'),
+        expected={'command': 'validate', 'source': '/path/to/file.json'},
     ),
 )
 
@@ -144,12 +155,11 @@ class TestCreateParser:
         assert cli_parser is not None
         assert cli_parser.prog == 'etlplus'
 
-    @pytest.mark.parametrize(('cmd_args', 'expected_args'), CLI_CASES)
+    @pytest.mark.parametrize('case', CLI_CASES, ids=lambda c: c.identifier)
     def test_parser_commands(
         self,
         parse_cli: Callable[[list[str]], argparse.Namespace],
-        cmd_args: list[str],
-        expected_args: dict[str, object],
+        case: ParserCase,
     ) -> None:
         """
         Test CLI command parsing and argument mapping.
@@ -158,13 +168,11 @@ class TestCreateParser:
         ----------
         parse_cli : Callable[[list[str]], argparse.Namespace]
             Fixture that parses CLI arguments.
-        cmd_args : list[str]
-            CLI arguments to parse.
-        expected_args : dict[str, object]
-            Expected parsed argument values.
+        case : ParserCase
+            Declarative parser scenario definition.
         """
-        args = parse_cli(cmd_args)
-        for key, val in expected_args.items():
+        args = parse_cli(list(case.args))
+        for key, val in case.expected.items():
             assert getattr(args, key, None) == val
 
     def test_parser_version(
