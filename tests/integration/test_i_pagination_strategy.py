@@ -354,7 +354,7 @@ class TestPaginationStrategies:
         """Test page/offset pagination end-to-end via CLI."""
         out_path = tmp_path / f'{scenario.name}.json'
         max_records_line = (
-            f"\n{' ' * 14}max_records: {scenario.max_records}"
+            f'\n{" " * 14}max_records: {scenario.max_records}'
             if scenario.max_records is not None
             else ''
         )
