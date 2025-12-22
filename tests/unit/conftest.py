@@ -180,6 +180,7 @@ def client_factory(
     Callable[..., EndpointClient]
         Function that builds :class:`EndpointClient` instances.
     """
+
     def _make(
         *,
         base_url: str = base_url,
