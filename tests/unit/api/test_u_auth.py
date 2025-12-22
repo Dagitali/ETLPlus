@@ -145,13 +145,15 @@ def bearer_factory_fixture() -> Callable[..., EndpointCredentialsBearer]:
 
 
 @pytest.fixture(name='request_factory')
-def request_factory_fixture() -> RequestFactory:
+def request_factory_fixture(
+    base_url: str,
+) -> RequestFactory:
     """Factory that builds prepared GET requests for the auth tests."""
 
     def _make(
         url: str | None = None,
     ) -> requests.PreparedRequest:
-        target = url or 'https://api.example.com/x'
+        target = url or f'{base_url}/x'
         return requests.Request('GET', target).prepare()
 
     return _make
@@ -174,6 +176,7 @@ class TestEndpointCredentialsBearer:
 
     def test_fetches_and_caches(
         self,
+        base_url: str,
         token_sequence: dict[str, int],
         bearer_factory: Callable[..., EndpointCredentialsBearer],
         request_factory: RequestFactory,
@@ -184,6 +187,8 @@ class TestEndpointCredentialsBearer:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         token_sequence : dict[str, int]
             Fixture tracking token fetch count.
         bearer_factory : Callable[..., EndpointCredentialsBearer]
@@ -200,13 +205,14 @@ class TestEndpointCredentialsBearer:
         assert r1.headers.get('Authorization') == 'Bearer t1'
 
         # Second call should not fetch a new token (still valid).
-        r2 = request_factory('https://api.example.com/y')
+        r2 = request_factory(f'{base_url}/y')
         s.auth(r2)
         assert r2.headers.get('Authorization') == 'Bearer t1'
         assert token_sequence['n'] == 1
 
     def test_refreshes_when_expiring(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
         request_factory: RequestFactory,
@@ -217,6 +223,8 @@ class TestEndpointCredentialsBearer:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         bearer_factory : Callable[..., EndpointCredentialsBearer]
@@ -260,7 +268,7 @@ class TestEndpointCredentialsBearer:
             lambda: auth.expiry - (CLOCK_SKEW_SEC / 2),
         )
 
-        r2 = request_factory('https://api.example.com/y')
+        r2 = request_factory(f'{base_url}/y')
         auth(r2)
         assert r2.headers['Authorization'] == 'Bearer long'
         assert calls['n'] == 2
