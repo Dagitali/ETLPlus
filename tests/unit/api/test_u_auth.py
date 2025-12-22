@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import time
 import types
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -25,8 +26,31 @@ import requests  # type: ignore[import]
 
 from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
+from tests.conftest import RequestFactory
 
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
+
+
+class _NonJsonResponse:
+    """Response stub that raises :class:`ValueError` from ``json``."""
+
+    status_code = 200
+    text = 'not json'
+
+    @staticmethod
+    def raise_for_status() -> None:
+        """HTTP 200 OK; no-op."""
+
+    @staticmethod
+    def json() -> dict[str, Any]:
+        """Raise ``ValueError`` to simulate malformed JSON payloads."""
+        raise ValueError('invalid json')
 
 
 class _Resp:
@@ -101,6 +125,40 @@ def token_sequence_fixture(
     return calls
 
 
+@pytest.fixture(name='bearer_factory')
+def bearer_factory_fixture() -> Callable[..., EndpointCredentialsBearer]:
+    """
+    Factory fixture that builds :class:`EndpointCredentialsBearer` objects.
+    """
+
+    def _make(**overrides: Any) -> EndpointCredentialsBearer:
+        params: dict[str, Any] = {
+            'token_url': 'https://auth.example.com/token',
+            'client_id': 'id',
+            'client_secret': 'secret',
+            'scope': 'read',
+        }
+        params.update(overrides)
+        return EndpointCredentialsBearer(**params)
+
+    return _make
+
+
+@pytest.fixture(name='request_factory')
+def request_factory_fixture(
+    base_url: str,
+) -> RequestFactory:
+    """Factory that builds prepared GET requests for the auth tests."""
+
+    def _make(
+        url: str | None = None,
+    ) -> requests.PreparedRequest:
+        target = url or f'{base_url}/x'
+        return requests.Request('GET', target).prepare()
+
+    return _make
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -118,7 +176,10 @@ class TestEndpointCredentialsBearer:
 
     def test_fetches_and_caches(
         self,
+        base_url: str,
         token_sequence: dict[str, int],
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+        request_factory: RequestFactory,
     ) -> None:
         """
         Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
@@ -126,31 +187,35 @@ class TestEndpointCredentialsBearer:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         token_sequence : dict[str, int]
             Fixture tracking token fetch count.
+        bearer_factory : Callable[..., EndpointCredentialsBearer]
+            Factory that builds :class:`EndpointCredentialsBearer` objects.
+        request_factory : RequestFactory
+            Factory that builds prepared requests.
         """
-        auth = EndpointCredentialsBearer(
-            token_url='https://auth.example.com/token',
-            client_id='id',
-            client_secret='secret',
-            scope='read',
-        )
+        auth = bearer_factory()
         s = requests.Session()
         s.auth = auth
 
-        r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
+        r1 = request_factory()
         s.auth(r1)
         assert r1.headers.get('Authorization') == 'Bearer t1'
 
         # Second call should not fetch a new token (still valid).
-        r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
+        r2 = request_factory(f'{base_url}/y')
         s.auth(r2)
         assert r2.headers.get('Authorization') == 'Bearer t1'
         assert token_sequence['n'] == 1
 
     def test_refreshes_when_expiring(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+        request_factory: RequestFactory,
     ) -> None:
         """
         Test that :class:`EndpointCredentialsBearer` refreshes token when
@@ -158,8 +223,14 @@ class TestEndpointCredentialsBearer:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
+        bearer_factory : Callable[..., EndpointCredentialsBearer]
+            Factory that builds :class:`EndpointCredentialsBearer` objects.
+        request_factory : RequestFactory
+            Factory that builds prepared requests.
         """
         # pylint: disable=unused-argument
 
@@ -183,15 +254,10 @@ class TestEndpointCredentialsBearer:
 
         monkeypatch.setattr(requests, 'post', fake_post)
 
-        auth = EndpointCredentialsBearer(
-            token_url='https://auth.example.com/token',
-            client_id='id',
-            client_secret='secret',
-            scope='read',
-        )
+        auth = bearer_factory()
 
         # First call obtains short token.
-        r1 = requests.Request('GET', 'https://api.example.com/x').prepare()
+        r1 = request_factory()
         auth(r1)
         assert r1.headers['Authorization'] == 'Bearer short'
 
@@ -202,119 +268,43 @@ class TestEndpointCredentialsBearer:
             lambda: auth.expiry - (CLOCK_SKEW_SEC / 2),
         )
 
-        r2 = requests.Request('GET', 'https://api.example.com/y').prepare()
+        r2 = request_factory(f'{base_url}/y')
         auth(r2)
         assert r2.headers['Authorization'] == 'Bearer long'
         assert calls['n'] == 2
 
-    def test_http_error_path_raises_http_error(
+    @pytest.mark.parametrize(
+        ('post_callable', 'expected_exception'),
+        [
+            pytest.param(
+                lambda *_a, **_k: _Resp({}, status=401),
+                requests.HTTPError,
+                id='http-error',
+            ),
+            pytest.param(
+                lambda *_a, **_k: _Resp({'expires_in': 60}),
+                RuntimeError,
+                id='missing-token',
+            ),
+            pytest.param(
+                lambda *_a, **_k: _NonJsonResponse(),
+                ValueError,
+                id='invalid-json',
+            ),
+        ],
+    )
+    def test_post_error_paths_raise(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+        request_factory: RequestFactory,
+        post_callable: Callable[..., Any],
+        expected_exception: type[Exception],
     ) -> None:
-        """
-        Test that HTTP error path raises HTTPError.
+        """Test that various POST failure paths raise the expected errors."""
 
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        """
-        # pylint: disable=protected-access
-        # pylint: disable=unused-argument
-
-        def fake_post(
-            *args,
-            **kwargs,
-        ):
-            # Simulate HTTP 401 with body; requests raises on raise_for_status.
-            resp = requests.Response()
-            resp.status_code = 401
-            resp._content = b'Unauthorized'  # type: ignore[attr-defined]
-
-            class _R:
-                def raise_for_status(self):
-                    """Raise HTTPError for 401 response."""
-                    e = requests.HTTPError('401')
-                    e.response = resp  # type: ignore[attr-defined]
-                    raise e
-
-            return _R()
-
-        monkeypatch.setattr(requests, 'post', fake_post)
-        auth = EndpointCredentialsBearer(
-            token_url='https://auth.example.com/token',
-            client_id='id',
-            client_secret='secret',
-            scope='read',
-        )
-        r = requests.Request('GET', 'https://api.example.com/x').prepare()
-        with pytest.raises(requests.HTTPError):
-            auth(r)
-
-    def test_missing_access_token_raises_runtime_error(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that missing access_token raises RuntimeError.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        """
-        # pylint: disable=unused-argument
-
-        def fake_post(
-            *args,
-            **kwargs,
-        ) -> _Resp:
-            return _Resp({'expires_in': 60})  # No access_token.
-
-        monkeypatch.setattr(requests, 'post', fake_post)
-        auth = EndpointCredentialsBearer(
-            token_url='https://auth.example.com/token',
-            client_id='id',
-            client_secret='secret',
-            scope='read',
-        )
-        r = requests.Request('GET', 'https://api.example.com/x').prepare()
-        with pytest.raises(RuntimeError):
-            auth(r)
-
-    def test_non_json_body_raises_value_error(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that non-JSON body raises ValueError.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        """
-
-        class _R:
-            status_code = 200
-            text = 'not json'
-
-            def raise_for_status(self):
-                """Raise nothing for HTTP 200 OK status."""
-                return None
-
-            def json(self):
-                """Raise ValueError for invalid JSON."""
-                raise ValueError('invalid json')
-
-        monkeypatch.setattr(requests, 'post', lambda *a, **k: _R())
-
-        auth = EndpointCredentialsBearer(
-            token_url='https://auth.example.com/token',
-            client_id='id',
-            client_secret='secret',
-            scope='read',
-        )
-        r = requests.Request('GET', 'https://api.example.com/x').prepare()
-        with pytest.raises(ValueError):
-            auth(r)
+        monkeypatch.setattr(requests, 'post', post_callable)
+        auth = bearer_factory()
+        request = request_factory()
+        with pytest.raises(expected_exception):
+            auth(request)

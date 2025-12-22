@@ -20,6 +20,12 @@ from etlplus.validate import load_data
 from etlplus.validate import validate
 from etlplus.validate import validate_field
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TESTS =========================================================== #
 
 

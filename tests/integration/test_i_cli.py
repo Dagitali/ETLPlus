@@ -1,28 +1,35 @@
 """
 :mod:`tests.integration.test_i_cli` module.
 
-End-to-end CLI integration test suite. Exercises the ``etlplus`` command for
-core subcommands without external dependencies by operating on temporary files
-and in-memory data.
+End-to-end CLI integration test suite that exercises the ``etlplus`` command
+without external dependencies. Tests rely on shared fixtures for CLI
+invocation and filesystem management to maximize reuse.
 
 Notes
 -----
-- Verifies usage output when no command is provided.
-- Tests extract/validate/transform/load flows via CLI arguments.
-- Uses ``tempfile`` and ``pathlib.Path`` for filesystem isolation.
+- Uses ``cli_invoke``/``cli_runner`` fixtures to avoid ad-hoc monkeypatching.
+- Creates JSON files through ``json_file_factory`` for deterministic cleanup.
+- Keeps docstrings NumPy-compliant for automated linting.
 """
 
 from __future__ import annotations
 
 import json
-import sys
-import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from pytest import CaptureFixture
-from pytest import MonkeyPatch
+import pytest
 
-from etlplus.cli import main
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests._typing import CliInvoke
+    from tests._typing import JsonFactory
+
+
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -30,319 +37,208 @@ from etlplus.cli import main
 class TestCliEndToEnd:
     """Integration test suite for :mod:`etlplus.cli`."""
 
-    def test_extract_format_error_strict_flag(
+    @pytest.mark.parametrize(
+        ('extra_flags', 'expected_code', 'expected_message'),
+        [
+            pytest.param(
+                ['--strict-format'],
+                1,
+                'Error:',
+                id='strict-errors',
+            ),
+            pytest.param(
+                [],
+                0,
+                'Warning:',
+                id='warns-default',
+            ),
+        ],
+    )
+    def test_extract_format_feedback(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        json_file_factory: JsonFactory,
+        cli_invoke: CliInvoke,
+        extra_flags: list[str],
+        expected_code: int,
+        expected_message: str,
     ) -> None:
-        """
-        Test that :func:`extract` with ``--strict-format`` and incorrect format
-        errors.
-        """
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.json',
-            delete=False,
-        ) as f:
-            json.dump({'x': 1}, f)
-            temp_path = f.name
-        try:
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                [
-                    'etlplus',
-                    'extract',
-                    'file',
-                    temp_path,
-                    '--format',
-                    'json',
-                    '--strict-format',
-                ],
-            )
-            result = main()
-            assert result == 1
-            captured = capsys.readouterr()
-            assert 'Error:' in captured.err
-        finally:
-            Path(temp_path).unlink()
+        """Verify ``extract`` error/warning flow with optional strict flag."""
+        source = json_file_factory({'x': 1}, filename='payload.json')
+        args: list[str] = [
+            'extract',
+            'file',
+            str(source),
+            '--format',
+            'json',
+            *extra_flags,
+        ]
+        code, _out, err = cli_invoke(args)
+        assert code == expected_code
+        assert expected_message in err
 
-    def test_extract_format_warns_default(
+    @pytest.mark.parametrize(
+        (
+            'extra_flags',
+            'expected_code',
+            'expected_message',
+            'expect_output',
+        ),
+        [
+            pytest.param(
+                ['--strict-format'],
+                1,
+                'Error:',
+                False,
+                id='strict-errors',
+            ),
+            pytest.param(
+                [],
+                0,
+                'Warning:',
+                True,
+                id='warns-default',
+            ),
+        ],
+    )
+    def test_load_format_feedback(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        extra_flags: list[str],
+        expected_code: int,
+        expected_message: str,
+        expect_output: bool,
     ) -> None:
         """
-        Test that :func:`extract` with default format and incorrect format
-        warns.
+        Validate ``load`` warnings/errors and resulting output file state.
         """
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.json',
-            delete=False,
-        ) as f:
-            json.dump({'x': 1}, f)
-            temp_path = f.name
-        try:
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                [
-                    'etlplus',
-                    'extract',
-                    'file',
-                    temp_path,
-                    '--format',
-                    'json',
-                ],
-            )
-            result = main()
-            assert result == 0
-            captured = capsys.readouterr()
-            assert 'Warning:' in captured.err
-        finally:
-            Path(temp_path).unlink()
+        output_path = tmp_path / 'output.csv'
+        args: list[str] = [
+            'load',
+            '{"name": "John"}',
+            'file',
+            str(output_path),
+            '--format',
+            'csv',
+            *extra_flags,
+        ]
+        code, _out, err = cli_invoke(args)
+        assert code == expected_code
+        assert expected_message in err
+        assert output_path.exists() is expect_output
 
-    def test_load_format_error_strict_flag(
-        self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
-    ) -> None:
-        """
-        Test that :func:`load` with ``--strict-format`` and incorrect format
-        errors.
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = Path(tmpdir) / 'output.csv'
-            json_data = '{"name": "John"}'
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                [
-                    'etlplus',
-                    'load',
-                    json_data,
-                    'file',
-                    str(output_path),
-                    '--format',
-                    'csv',
-                    '--strict-format',
-                ],
-            )
-            result = main()
-            assert result == 1
-            captured = capsys.readouterr()
-            assert 'Error:' in captured.err
-            assert not output_path.exists()
-
-    def test_load_format_warns_default(
-        self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
-    ) -> None:
-        """
-        Test that `:func:`load` with default format and incorrect format warns.
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = Path(tmpdir) / 'output.csv'
-            json_data = '{"name": "John"}'
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                [
-                    'etlplus',
-                    'load',
-                    json_data,
-                    'file',
-                    str(output_path),
-                    '--format',
-                    'csv',
-                ],
-            )
-            result = main()
-            assert result == 0
-            captured = capsys.readouterr()
-            assert 'Warning:' in captured.err
-            assert output_path.exists()
-
-    def test_main_no_command(
-        self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
-    ) -> None:
-        """
-        Test that running :func:`main` with no command shows usage.
-        """
-        monkeypatch.setattr(sys, 'argv', ['etlplus'])
-        result = main()
-        assert result == 0
-        captured = capsys.readouterr()
-        assert 'usage:' in captured.out.lower()
+    def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
+        """Test that running :func:`main` with no command shows usage."""
+        code, out, _err = cli_invoke()
+        assert code == 0
+        assert 'usage:' in out.lower()
 
     def test_main_extract_file(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        json_file_factory: JsonFactory,
+        cli_invoke: CliInvoke,
     ) -> None:
-        """
-        Test that running :func:`main` with the ``extract`` file command works.
-        """
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.json',
-            delete=False,
-        ) as f:
-            test_data = {'name': 'John', 'age': 30}
-            json.dump(test_data, f)
-            temp_path = f.name
-        try:
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                ['etlplus', 'extract', 'file', temp_path],
-            )
-            result = main()
-            assert result == 0
-            captured = capsys.readouterr()
-            output_data = json.loads(captured.out)
-            assert output_data == test_data
-        finally:
-            Path(temp_path).unlink()
+        """Test that ``extract file`` prints the serialized payload."""
+        payload = {'name': 'John', 'age': 30}
+        source = json_file_factory(payload, filename='input.json')
+        code, out, _err = cli_invoke(('extract', 'file', str(source)))
+        assert code == 0
+        assert json.loads(out) == payload
 
     def test_main_validate_data(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        cli_invoke: CliInvoke,
     ) -> None:
         """
         Test that running :func:`main` with the ``validate`` command works.
         """
         json_data = '{"name": "John", "age": 30}'
-        monkeypatch.setattr(sys, 'argv', ['etlplus', 'validate', json_data])
-        result = main()
-        assert result == 0
-        output = json.loads(capsys.readouterr().out)
-        assert output['valid'] is True
+        code, out, _err = cli_invoke(('validate', json_data))
+        assert code == 0
+        assert json.loads(out)['valid'] is True
 
     def test_main_transform_data(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        cli_invoke: CliInvoke,
     ) -> None:
         """
         Test that running :func:`main` with the ``transform`` command works.
         """
         json_data = '[{"name": "John", "age": 30}]'
         operations = '{"select": ["name"]}'
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            ['etlplus', 'transform', json_data, '--operations', operations],
+        code, out, _err = cli_invoke(
+            ('transform', json_data, '--operations', operations),
         )
-        result = main()
-        assert result == 0
-        output = json.loads(capsys.readouterr().out)
+        assert code == 0
+        output = json.loads(out)
         assert len(output) == 1 and 'age' not in output[0]
 
     def test_main_load_file(
         self,
-        monkeypatch: MonkeyPatch,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
     ) -> None:
         """
         Test that running :func:`main` with the ``load`` file command works.
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = Path(tmpdir) / 'output.json'
-            json_data = '{"name": "John", "age": 30}'
-            monkeypatch.setattr(
-                sys,
-                'argv',
-                ['etlplus', 'load', json_data, 'file', str(output_path)],
-            )
-            result = main()
-            assert result == 0
-            assert output_path.exists()
+        output_path = tmp_path / 'output.json'
+        json_data = '{"name": "John", "age": 30}'
+        code, _out, _err = cli_invoke(
+            ('load', json_data, 'file', str(output_path)),
+        )
+        assert code == 0
+        assert output_path.exists()
 
     def test_main_extract_with_output(
         self,
-        monkeypatch: MonkeyPatch,
+        tmp_path: Path,
+        json_file_factory: JsonFactory,
+        cli_invoke: CliInvoke,
     ) -> None:
-        """
-        Test that running :func:`main` with the ``extract`` file command and
-        ``output`` option works.
-        """
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.json',
-            delete=False,
-        ) as f:
-            test_data = {'name': 'John', 'age': 30}
-            json.dump(test_data, f)
-            temp_path = f.name
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = Path(tmpdir) / 'output.json'
-            try:
-                monkeypatch.setattr(
-                    sys,
-                    'argv',
-                    [
-                        'etlplus',
-                        'extract',
-                        'file',
-                        temp_path,
-                        '-o',
-                        str(output_path),
-                    ],
-                )
-                result = main()
-                assert result == 0 and output_path.exists()
-                loaded = json.loads(output_path.read_text())
-                assert loaded == test_data
-            finally:
-                Path(temp_path).unlink()
+        """Test extract command with ``-o`` output persistence."""
+        test_data = {'name': 'John', 'age': 30}
+        source = json_file_factory(test_data, filename='input.json')
+        output_path = tmp_path / 'output.json'
+        code, _out, _err = cli_invoke(
+            (
+                'extract',
+                'file',
+                str(source),
+                '-o',
+                str(output_path),
+            ),
+        )
+        assert code == 0
+        assert output_path.exists()
+        assert json.loads(output_path.read_text()) == test_data
 
     def test_main_error_handling(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        cli_invoke: CliInvoke,
     ) -> None:
-        """
-        Test that running :func:`main` with an invalid command errors.
-        """
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            ['etlplus', 'extract', 'file', '/nonexistent/file.json'],
+        """Test that running :func:`main` with an invalid command errors."""
+        code, _out, err = cli_invoke(
+            ('extract', 'file', '/nonexistent/file.json'),
         )
-        result = main()
-        assert result == 1
-        captured = capsys.readouterr()
-        assert 'Error:' in captured.err
+        assert code == 1
+        assert 'Error:' in err
 
     def test_main_strict_format_error(
         self,
-        monkeypatch: MonkeyPatch,
-        capsys: CaptureFixture[str],
+        cli_invoke: CliInvoke,
     ) -> None:
         """
-        Test that running :func:`main` with the ``extract`` file command and
-        ``--strict-format`` option with an incorrect format errors.
+        Test ``extract`` with ``--strict-format`` rejects mismatched args.
         """
-        # Passing --format for a file with --strict-format should error
-        monkeypatch.setattr(
-            sys,
-            'argv',
-            [
-                'etlplus',
+        code, _out, err = cli_invoke(
+            (
                 'extract',
                 'file',
                 'data.csv',
                 '--format',
                 'csv',
                 '--strict-format',
-            ],
+            ),
         )
-        result = main()
-        assert result == 1
-        captured = capsys.readouterr()
-        assert 'Error:' in captured.err
+        assert code == 1
+        assert 'Error:' in err

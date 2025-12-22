@@ -161,12 +161,19 @@ def capture_sleeps(
 
 
 @pytest.fixture
-def client_factory() -> Callable[..., EndpointClient]:
+def client_factory(
+    base_url: str,
+) -> Callable[..., EndpointClient]:
     """
     Create a factory to build :class:`EndpointClient` instances.
 
     Parameters can be overridden per test. Endpoints default to an empty
     mapping for convenience.
+
+    Parameters
+    ----------
+    base_url : str
+        Common base URL used across tests.
 
     Returns
     -------
@@ -176,7 +183,7 @@ def client_factory() -> Callable[..., EndpointClient]:
 
     def _make(
         *,
-        base_url: str = 'https://api.example.com',
+        base_url: str = base_url,
         endpoints: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> EndpointClient:
@@ -495,7 +502,7 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
 
 @pytest.fixture(name='api_obj_factory')
 def api_obj_factory_fixture(
-    base_url_: str,
+    base_url: str,
     sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
     """
@@ -504,7 +511,7 @@ def api_obj_factory_fixture(
 
     Parameters
     ----------
-    base_url_ : str
+    base_url : str
         Common base URL used across config tests.
     sample_endpoints_ : dict[str, dict[str, Any]]
         Common endpoints mapping for config tests.
@@ -531,7 +538,7 @@ def api_obj_factory_fixture(
         eps = endpoints or sample_endpoints_
         if use_profiles:
             prof: dict[str, Any] = {
-                'default': {'base_url': base_url_},
+                'default': {'base_url': base_url},
             }
             if base_path is not None:
                 prof['default']['base_path'] = base_path
@@ -543,26 +550,13 @@ def api_obj_factory_fixture(
                 'headers': headers or {},
             }
         return {
-            'base_url': base_url_,
+            'base_url': base_url,
             **({'base_path': base_path} if base_path else {}),
             'endpoints': eps,
             **({'headers': headers} if headers else {}),
         }
 
     return _make
-
-
-@pytest.fixture(name='base_url_')
-def base_url_fixture() -> str:
-    """
-    Return a common base URL string for config tests.
-
-    Returns
-    -------
-    str
-        Base URL string.
-    """
-    return 'https://api.example.com'
 
 
 @pytest.fixture

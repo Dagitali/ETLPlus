@@ -36,6 +36,11 @@ from etlplus.api.rate_limiting import RateLimitConfigMap
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+# SECTION: HELPERS ========================================================== #
+
+
 def _dummy_fetch(
     url: str,
     request: RequestOptions,

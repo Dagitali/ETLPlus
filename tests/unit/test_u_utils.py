@@ -31,6 +31,12 @@ from etlplus.utils import to_number
 from etlplus.utils import to_positive_float
 from etlplus.utils import to_positive_int
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TESTS =========================================================== #
 
 

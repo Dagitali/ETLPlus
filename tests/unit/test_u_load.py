@@ -36,6 +36,9 @@ from etlplus.load import load_to_file
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
 @dataclass(slots=True)
 class _CallRecord:
     """Record of an HTTP method call in the stub session."""

@@ -24,6 +24,9 @@ from etlplus.file import File
 # SECTION: HELPERS ========================================================== #
 
 
+pytestmark = pytest.mark.unit
+
+
 class _StubYaml:
     """Minimal PyYAML substitute to avoid optional dependency in tests."""
 

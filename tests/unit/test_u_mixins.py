@@ -10,6 +10,13 @@ import pytest
 
 from etlplus.mixins import BoundsWarningsMixin
 
+# SECTION: HELPERS ========================================================== #
+
+pytestmark = pytest.mark.unit
+
+
+# SECTION: TESTS ============================================================ #
+
 
 @pytest.mark.unit
 class TestBoundsWarningsMixin:

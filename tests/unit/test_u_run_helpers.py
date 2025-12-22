@@ -20,12 +20,12 @@ from etlplus.api import PaginationType
 # SECTION: HELPERS ========================================================== #
 
 
-MOCK_BASE_URL = 'https://api.example.com'
+pytestmark = pytest.mark.unit
 
 
 class _ApiCfg:
-    def __init__(self) -> None:
-        self.base_url = MOCK_BASE_URL
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url
         self.headers = {'Accept': 'application/json'}
         self.endpoints = {'users': _Endpoint()}
         self.retry = {'max_attempts': 1}
@@ -160,9 +160,12 @@ class TestBuildSession:
 class TestComposeApiRequestEnv:
     """Unit test suite for :func:`compose_api_request_env`."""
 
-    def test_merges_endpoint_defaults_and_overrides(self) -> None:
+    def test_merges_endpoint_defaults_and_overrides(
+        self,
+        base_url: str,
+    ) -> None:
         """Test merging endpoint defaults with overrides."""
-        cfg = SimpleNamespace(apis={'core': _ApiCfg()})
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         source = SimpleNamespace(
             api='core',
             endpoint='users',
@@ -188,7 +191,7 @@ class TestComposeApiRequestEnv:
         env = rh.compose_api_request_env(cfg, source, overrides)
 
         assert env['use_endpoints'] is True
-        assert env['base_url'] == MOCK_BASE_URL
+        assert env['base_url'] == base_url
         assert env['endpoint_key'] == 'users'
         assert env['params'] == {
             'fields': 'id,name',
@@ -225,9 +228,12 @@ class TestComposeApiRequestEnv:
 class TestComposeApiTargetEnv:
     """Unit test suite for :func:`compose_api_target_env`."""
 
-    def test_inherits_api_defaults_when_url_missing(self) -> None:
+    def test_inherits_api_defaults_when_url_missing(
+        self,
+        base_url: str,
+    ) -> None:
         """Test that API defaults are inherited when URL is missing."""
-        cfg = SimpleNamespace(apis={'core': _ApiCfg()})
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         target = SimpleNamespace(
             api='core',
             endpoint='users',
@@ -242,7 +248,7 @@ class TestComposeApiTargetEnv:
 
         env = rh.compose_api_target_env(cfg, target, overrides)
 
-        assert env['url'] == f'{MOCK_BASE_URL}/v1/users'
+        assert env['url'] == f'{base_url}/v1/users'
         assert env['method'] == 'put'
         assert env['headers']['Accept'] == 'application/json'
         assert env['headers']['Target'] == '1'

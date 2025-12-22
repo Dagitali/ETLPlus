@@ -14,22 +14,18 @@ Notes
 from __future__ import annotations
 
 import importlib
-from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
+import pytest
 from pytest import MonkeyPatch
 
-from etlplus.api import ApiConfig
-from etlplus.api import ApiProfileConfig
-from etlplus.api import EndpointConfig
-from etlplus.config import ConnectorApi
-from etlplus.config import ConnectorFile
-from etlplus.config import ExtractRef
-from etlplus.config import JobConfig
-from etlplus.config import LoadRef
 from etlplus.config import PipelineConfig
 
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
 
 
 run_mod = importlib.import_module('etlplus.run')
@@ -38,96 +34,36 @@ run_mod = importlib.import_module('etlplus.run')
 # SECTION: TESTS ============================================================ #
 
 
+@pytest.mark.parametrize(
+    ('base_path', 'endpoint_path', 'expected_suffix'),
+    [
+        ('/v1', '/ingest', '/v1/ingest'),
+        (None, '/bulk', '/bulk'),
+    ],
+    ids=['with-base-path', 'without-base-path'],
+)
 def test_target_service_endpoint_uses_base_path(
     monkeypatch: MonkeyPatch,
-    tmp_path: Path,
     capture_load_to_api: dict[str, Any],
+    file_to_api_pipeline_factory: Callable[..., PipelineConfig],
+    base_url: str,
+    base_path: str | None,
+    endpoint_path: str,
+    expected_suffix: str,
 ):
-    """Test that API target URL composes profile base_path + endpoint path."""
-    # pylint: disable=unused-argument
+    """Test composed API URLs across optional base_path configurations."""
 
-    # Make a simple source file so extract step succeeds without mocks.
-    src_path = tmp_path / 'data.json'
-    src_path.write_text('{"ok": true}\n', encoding='utf-8')
-
-    # API config with base_path via profile.
-    api = ApiConfig(
-        base_url='https://api.example.com',
-        profiles={
-            'default': ApiProfileConfig(
-                base_url='https://api.example.com',
-                headers={},
-                base_path='/v1',
-            ),
-        },
-        endpoints={'ingest': EndpointConfig(path='/ingest')},
+    cfg = file_to_api_pipeline_factory(
+        base_path=base_path,
+        endpoint_path=endpoint_path,
+        headers={'Content-Type': 'application/json'},
     )
-
-    # Pipeline wiring: file source -> api target (service + endpoint).
-    cfg = PipelineConfig(
-        apis={'my_api': api},
-        sources=[
-            ConnectorFile(
-                name='local_json',
-                type='file',
-                format='json',
-                path=str(src_path),
-            ),
-        ],
-        targets=[
-            ConnectorApi(
-                name='ingest_out',
-                type='api',
-                api='my_api',
-                endpoint='ingest',
-                method='post',
-                headers={'Content-Type': 'application/json'},
-            ),
-        ],
-        jobs=[
-            JobConfig(
-                name='send',
-                extract=ExtractRef(source='local_json'),
-                load=LoadRef(target='ingest_out'),
-            ),
-        ],
-    )
-
-    # Patch the config loader to return our in-memory config.
     monkeypatch.setattr(run_mod, 'load_pipeline_config', lambda *_a, **_k: cfg)
-
-    # Stub network POST to avoid real DNS / HTTP.
-    import requests  # type: ignore[import]
-
-    def _fake_post(url, json=None, timeout=None, **_k):
-        """Return a fake HTTP response object for POST calls."""
-
-        class R:
-            """Lightweight fake response object used for testing."""
-
-            status_code = 200
-            text = 'ok'
-
-            def json(self):
-                """Return JSON data."""
-                return {'echo': json}
-
-            def raise_for_status(self):
-                """Raise nothing for HTTP 200 OK status."""
-                return None
-
-        return R()
-
-    monkeypatch.setattr(requests, 'post', _fake_post)
 
     result = run_mod.run('send')
 
     assert result.get('status') in {'ok', 'success'}
-    assert capture_load_to_api['url'] == 'https://api.example.com/v1/ingest'
+    assert capture_load_to_api['url'] == f'{base_url}{expected_suffix}'
 
-    # Ensure headers merged include Content-Type from target.
-    assert isinstance(capture_load_to_api['headers'], dict)
-    assert (
-        capture_load_to_api['headers'].get('Content-Type')
-        == 'application/json'
-    )
+    headers = capture_load_to_api.get('headers') or {}
+    assert headers.get('Content-Type') == 'application/json'

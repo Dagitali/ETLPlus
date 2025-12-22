@@ -24,6 +24,11 @@ import pytest
 from etlplus.api.rate_limiting import RateLimitConfigMap
 from etlplus.api.rate_limiting import RateLimiter
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 # SECTION: FIXTURES ======================================================== #
 
 

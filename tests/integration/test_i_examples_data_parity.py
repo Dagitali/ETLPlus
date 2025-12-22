@@ -13,9 +13,14 @@ Notes
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from etlplus.file import File
 
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
 
 
 def _norm_record(

@@ -18,6 +18,12 @@ from etlplus.enums import coerce_data_connector_type
 from etlplus.enums import coerce_file_format
 from etlplus.enums import coerce_http_method
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TESTS ============================================================ #
 
 

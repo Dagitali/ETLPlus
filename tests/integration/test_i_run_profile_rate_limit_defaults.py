@@ -25,6 +25,12 @@ from etlplus.api import RateLimitConfig
 from etlplus.config import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
+
+
 # SECTION: TESTS ============================================================ #
 
 
