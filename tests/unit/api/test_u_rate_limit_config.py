@@ -18,6 +18,11 @@ import pytest
 
 from etlplus.api import RateLimitConfig
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 # SECTION: TESTS ============================================================ #
 
 

@@ -13,9 +13,10 @@ import pytest
 
 from etlplus.api.request_manager import RequestManager
 
-pytestmark = pytest.mark.unit
-
 # SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
 
 
 class DummySession:

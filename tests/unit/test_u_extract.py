@@ -22,7 +22,66 @@ from typing import Any
 import pytest
 
 from etlplus.extract import extract
+from etlplus.extract import extract_from_api
+from etlplus.extract import extract_from_database
 from etlplus.extract import extract_from_file
+
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
+class _StubResponse:
+    """Simple stand-in for :meth:`requests.Response`."""
+
+    def __init__(
+        self,
+        *,
+        headers: dict[str, str],
+        payload: Any | None = None,
+        text: str = '',
+        json_error: bool = False,
+    ) -> None:
+        self.headers = headers
+        self.text = text
+        self._payload = payload
+        self._json_error = json_error
+
+    def raise_for_status(self) -> None:
+        """Match the ``requests`` API."""
+
+        return None
+
+    def json(self) -> Any:
+        """Return the pre-set payload or raise JSON error."""
+        if self._json_error:
+            raise ValueError('malformed payload')
+        return self._payload
+
+
+class _StubSession:
+    """Lightweight session that records outgoing calls."""
+
+    def __init__(
+        self,
+        response: _StubResponse,
+        *,
+        method_name: str = 'get',
+    ) -> None:
+        self._response = response
+        self.calls: list[dict[str, Any]] = []
+        setattr(self, method_name, self._make_call)
+
+    def _make_call(
+        self,
+        url: str,
+        **kwargs: Any,
+    ) -> _StubResponse:
+        """Record the call and return the pre-set response."""
+        self.calls.append({'url': url, 'kwargs': kwargs})
+        return self._response
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -154,6 +213,159 @@ class TestExtractErrors:
                 raise AssertionError(
                     f'Expected {exc_type.__name__} with message: {err_msg}',
                 ) from e.value
+
+
+@pytest.mark.unit
+class TestExtractFromApi:
+    """
+    Unit test suite for :func:`etlplus.extract.extract_from_api`.
+
+    Notes
+    -----
+    - Validates JSON parsing paths, fallback behavior, and HTTP method
+        coercion.
+    """
+
+    def test_custom_method_and_kwargs(
+        self,
+        base_url: str,
+    ) -> None:
+        """
+        Custom HTTP methods and kwargs should pass through to the session.
+        """
+
+        response = _StubResponse(
+            headers={'content-type': 'application/json'},
+            payload={'status': 'ok'},
+        )
+        session = _StubSession(response, method_name='post')
+        result = extract_from_api(
+            f'{base_url}/hooks',
+            method='POST',
+            session=session,
+            timeout=2.5,
+            headers={'X-Test': '1'},
+        )
+        assert result == {'status': 'ok'}
+        assert session.calls[0]['kwargs']['timeout'] == 2.5
+        assert session.calls[0]['kwargs']['headers'] == {'X-Test': '1'}
+
+    def test_invalid_json_fallback(
+        self,
+        base_url: str,
+    ) -> None:
+        """Malformed JSON should fall back to raw content payloads."""
+
+        response = _StubResponse(
+            headers={'content-type': 'application/json'},
+            text='{"bad": true}',
+            json_error=True,
+        )
+        session = _StubSession(response)
+        result = extract_from_api(f'{base_url}/bad', session=session)
+        assert result == {
+            'content': '{"bad": true}',
+            'content_type': 'application/json',
+        }
+
+    @pytest.mark.parametrize(
+        'payload,expected',
+        [
+            ({'name': 'Ada'}, {'name': 'Ada'}),
+            (
+                [{'name': 'Ada'}, {'name': 'Grace'}],
+                [{'name': 'Ada'}, {'name': 'Grace'}],
+            ),
+            (['raw', 42], [{'value': 'raw'}, {'value': 42}]),
+            ('scalar', {'value': 'scalar'}),
+        ],
+    )
+    def test_json_payload_variants(
+        self,
+        base_url: str,
+        payload: Any,
+        expected: Any,
+    ) -> None:
+        """Verify supported JSON payload shapes are normalized correctly."""
+
+        response = _StubResponse(
+            headers={'content-type': 'application/json'},
+            payload=payload,
+            text=(
+                json.dumps(payload)
+                if not isinstance(payload, str)
+                else payload
+            ),
+        )
+        session = _StubSession(response)
+        result = extract_from_api(f'{base_url}/data', session=session)
+        assert result == expected
+        assert session.calls[0]['kwargs']['timeout'] == 10.0
+
+    def test_missing_http_method_raises_type_error(
+        self,
+        base_url: str,
+    ) -> None:
+        """
+        Missing HTTP methods on the provided session should raise TypeError.
+        """
+
+        class NoGet:  # noqa: D401
+            """Session stub without a 'GET' method."""
+
+            pass  # pylint: disable=unnecessary-pass
+
+        with pytest.raises(TypeError, match='callable"get"'):
+            extract_from_api(f'{base_url}/data', session=NoGet())
+
+    def test_non_json_content_type(
+        self,
+        base_url: str,
+    ) -> None:
+        """Non-JSON content should be returned as raw text payloads."""
+
+        response = _StubResponse(
+            headers={'content-type': 'text/plain'},
+            text='plain text response',
+        )
+        session = _StubSession(response)
+        result = extract_from_api(f'{base_url}/text', session=session)
+        assert result == {
+            'content': 'plain text response',
+            'content_type': 'text/plain',
+        }
+
+
+@pytest.mark.unit
+class TestExtractFromDatabase:
+    """
+    Unit test suite for :func:`etlplus.extract.extract_from_database`.
+
+    Notes
+    -----
+    - Exercises placeholder payloads across multiple connection strings.
+    """
+
+    @pytest.mark.parametrize(
+        'connection_string',
+        [
+            'postgresql://user:pass@db.prod.example:5432/app?sslmode=require',
+            'sqlite:////tmp/db.sqlite3',
+        ],
+    )
+    def test_placeholder_payload(
+        self,
+        connection_string: str,
+    ) -> None:
+        """Ensure the placeholder payload echoes the connection string."""
+
+        result = extract_from_database(connection_string)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        payload = result[0]
+        assert payload['connection_string'] == connection_string
+        assert payload['message'] == 'Database extraction not yet implemented'
+        assert 'Install database-specific drivers' in payload['note']
 
 
 @pytest.mark.unit

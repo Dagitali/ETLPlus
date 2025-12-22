@@ -23,6 +23,12 @@ from etlplus.api import EndpointConfig
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -47,6 +53,7 @@ class TestApiConfig:
     )
     def test_api_profile_defaults_rate_limit_mapped(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict], ApiConfig],
         sleep: float,
         max_per: int,
@@ -56,6 +63,8 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict], ApiConfig]
             Factory for building ApiConfig from dicts.
         sleep : float
@@ -70,7 +79,7 @@ class TestApiConfig:
         obj = {
             'profiles': {
                 'default': {
-                    'base_url': 'https://api.example.com',
+                    'base_url': base_url,
                     'defaults': {
                         'rate_limit': {
                             'sleep_seconds': sleep,
@@ -90,6 +99,7 @@ class TestApiConfig:
 
     def test_effective_base_url_and_build_endpoint_url(
         self,
+        base_url: str,
         api_obj_factory: Callable[..., dict[str, Any]],
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
@@ -99,6 +109,8 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_obj_factory : Callable[..., dict[str, Any]]
             Factory for building API config objects.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
@@ -112,12 +124,14 @@ class TestApiConfig:
         cfg = api_config_factory(obj)
 
         # Effective base URL composes base_url + base_path.
-        assert cfg.effective_base_url() == 'https://api.example.com/v1'
+        expected_base = f'{base_url}/v1'
+        assert cfg.effective_base_url() == expected_base
         url = cfg.build_endpoint_url(cfg.endpoints['users'])
-        assert url == 'https://api.example.com/v1/users'
+        assert url == f'{expected_base}/users'
 
     def test_flat_shape_supported(
         self,
+        base_url: str,
         api_obj_factory: Callable[..., dict[str, Any]],
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
@@ -127,6 +141,8 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_obj_factory : Callable[..., dict[str, Any]]
             Factory for building API config objects.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
@@ -139,12 +155,13 @@ class TestApiConfig:
             endpoints={'ping': '/ping'},
         )
         cfg = api_config_factory(obj)
-        assert cfg.base_url == 'https://api.example.com'
+        assert cfg.base_url == base_url
         assert cfg.headers.get('X-Token') == 'abc'
         assert 'ping' in cfg.endpoints
 
     def test_parses_profiles_and_sets_defaults(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
@@ -152,17 +169,19 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
                 'default': {
-                    'base_url': 'https://api.example.com/v1',
+                    'base_url': f'{base_url}/v1',
                     'headers': {'Accept': 'application/json'},
                 },
                 'prod': {
-                    'base_url': 'https://api.example.com/v2',
+                    'base_url': f'{base_url}/v2',
                     'headers': {'Accept': 'application/json'},
                 },
             },
@@ -173,7 +192,7 @@ class TestApiConfig:
         # Default base_url/headers should be derived from the 'default'
         # profile.
 
-        assert cfg.base_url == 'https://api.example.com/v1'
+        assert cfg.base_url == f'{base_url}/v1'
         assert cfg.headers.get('Accept') == 'application/json'
 
         # Profiles should be preserved.
@@ -184,6 +203,7 @@ class TestApiConfig:
 
     def test_profile_attr_with_default(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
@@ -191,13 +211,15 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
                 'default': {
-                    'base_url': 'https://api.example.com',
+                    'base_url': base_url,
                     'base_path': '/v1',
                     'defaults': {
                         'pagination': {'type': 'page'},
@@ -216,6 +238,7 @@ class TestApiConfig:
 
     def test_profile_attr_without_profiles_returns_none(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
@@ -224,15 +247,18 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
         """
-        obj = {'base_url': 'https://api.example.com', 'endpoints': {}}
+        obj = {'base_url': base_url, 'endpoints': {}}
         cfg = api_config_factory(obj)
         assert cfg.effective_base_path() is None
 
     def test_profile_defaults_headers_and_fields(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
@@ -240,13 +266,15 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
                 'default': {
-                    'base_url': 'https://api.example.com/v1',
+                    'base_url': f'{base_url}/v1',
                     'defaults': {
                         'headers': {
                             'Accept': 'application/json',
@@ -283,6 +311,7 @@ class TestApiConfig:
 
     def test_profile_defaults_pagination_mapped(
         self,
+        base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
@@ -290,13 +319,15 @@ class TestApiConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         api_config_factory : Callable[[dict[str, Any]], ApiConfig]
             Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
                 'default': {
-                    'base_url': 'https://api.example.com',
+                    'base_url': base_url,
                     'defaults': {
                         'pagination': {
                             'type': 'page',
@@ -361,6 +392,7 @@ class TestApiProfileConfig:
     )
     def test_invalid_defaults_blocks(
         self,
+        base_url: str,
         defaults: dict[str, object],
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
@@ -369,13 +401,15 @@ class TestApiProfileConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         defaults : dict[str, object]
             Defaults block to test.
         profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
             Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
-            'base_url': 'https://api.example.com',
+            'base_url': base_url,
             'defaults': defaults,
         }
         prof = profile_config_factory(obj)
@@ -395,6 +429,7 @@ class TestApiProfileConfig:
 
     def test_merges_headers_defaults_low_precedence(
         self,
+        base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
         """
@@ -402,20 +437,23 @@ class TestApiProfileConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
             Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
-            'base_url': 'https://api.example.com',
+            'base_url': base_url,
             'headers': {'B': '2', 'A': '9'},
             'defaults': {'headers': {'A': '1'}},
         }
         prof = profile_config_factory(obj)
-        assert prof.base_url == 'https://api.example.com'
+        assert prof.base_url == base_url
         assert prof.headers == {'A': '9', 'B': '2'}
 
     def test_parses_defaults_blocks(
         self,
+        base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
         api_profile_defaults_factory: Callable[..., dict[str, Any]],
     ) -> None:
@@ -424,13 +462,15 @@ class TestApiProfileConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
             Factory for building ApiProfileConfig from dicts.
         api_profile_defaults_factory : Callable[..., dict[str, Any]]
             Factory for building defaults blocks.
         """
         obj = {
-            'base_url': 'https://api.example.com',
+            'base_url': base_url,
             'defaults': api_profile_defaults_factory(
                 pagination={
                     'type': 'page',
@@ -463,6 +503,7 @@ class TestApiProfileConfig:
 
     def test_passthrough_fields(
         self,
+        base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
     ) -> None:
         """
@@ -470,15 +511,18 @@ class TestApiProfileConfig:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
             Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
-            'base_url': 'https://api.example.com',
+            'base_url': base_url,
             'base_path': '/v1',
             'auth': {'token': 'abc'},
         }
         prof = profile_config_factory(obj)
+        assert prof.base_url == base_url
         assert prof.base_path == '/v1'
         assert prof.auth == {'token': 'abc'}
 

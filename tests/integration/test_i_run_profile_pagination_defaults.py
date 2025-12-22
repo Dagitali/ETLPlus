@@ -17,10 +17,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+import pytest
+
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from etlplus.config import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
+
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.integration
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -44,19 +52,15 @@ class TestRunProfilePaginationDefaults:
                 start_page=5,
                 page_size=50,
             ),
-        )
-        job = cfg.jobs[0]
-        if job.extract is not None:
-            job.extract.options = {
+            extract_options={
                 'pagination': {
                     'type': 'cursor',
                     'cursor_param': 'cursor',
                     'cursor_path': 'next',
                     'page_size': 25,
                 },
-            }
-        else:
-            raise ValueError('job.extract is None; cannot set options')
+            },
+        )
 
         fake_client, created = fake_endpoint_client
         result = run_patched(cfg, fake_client)

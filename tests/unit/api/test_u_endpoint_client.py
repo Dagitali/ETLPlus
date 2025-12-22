@@ -15,14 +15,16 @@ from __future__ import annotations
 import types
 import urllib.parse as urlparse
 from collections.abc import Callable
+from collections.abc import Sequence
+from functools import partial
 from typing import Any
 from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.endpoint_client as cmod
-import etlplus.api.request_manager as rmod
+import etlplus.api.endpoint_client as ec_module
+import etlplus.api.request_manager as rm_module
 from etlplus.api import CursorPaginationConfigMap
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigMap
@@ -35,7 +37,9 @@ from tests.unit.api.test_u_mocks import MockSession
 # SECTION: HELPERS ========================================================== #
 
 
-MOCK_BASE_URL = 'https://api.example.com/v1'
+pytestmark = pytest.mark.unit
+
+EXAMPLE_BASE_URL = 'https://example.test'
 
 # Optional Hypothesis import with safe stubs when missing.
 try:  # pragma: no try
@@ -90,6 +94,97 @@ def _ascii_no_amp_eq() -> Any:
     return st.text(alphabet=alpha, min_size=0, max_size=12)
 
 
+def _page_responder(
+    pages: Sequence[Sequence[dict[str, Any]]],
+) -> Callable[..., list[dict[str, Any]]]:
+    """
+    Build a deterministic RequestManager stub for page pagination tests.
+
+    Parameters
+    ----------
+    pages : Sequence[Sequence[dict[str, Any]]]
+        1-indexed payloads returned for page requests.
+
+    Returns
+    -------
+    Callable[..., list[dict[str, Any]]]
+        Handler compatible with ``patch_request_once``.
+    """
+
+    def _handler(
+        self: EndpointClient,
+        method: str,
+        _url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        **kwargs: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        assert method == 'GET'
+        params = kwargs.get('params') or {}
+        page = int(params.get('page', 1))
+        if 1 <= page <= len(pages):
+            return list(pages[page - 1])
+        return []
+
+    return _handler
+
+
+def _stub_request_manager(
+    monkeypatch: pytest.MonkeyPatch,
+    responses: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Patch ``RequestManager.request_once`` with deterministic responses.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest fixture for attribute patching.
+    responses : Sequence[dict[str, Any]]
+        Ordered responses returned per invocation. The last payload is reused
+        if the stub is called more times than there are entries.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Mutable call log containing ``url`` and ``kwargs`` for each request.
+
+    Raises
+    ------
+    ValueError
+        If ``responses`` is empty.
+    """
+
+    if not responses:
+        msg = 'responses must contain at least one payload'
+        raise ValueError(msg)
+
+    calls: list[dict[str, Any]] = []
+
+    def _fake_request(
+        self: rm_module.RequestManager,  # noqa: D401
+        method: str,
+        url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        request_callable: Callable[..., Any] | None = None,
+        **kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
+        idx = min(len(calls), len(responses) - 1)
+        calls.append({'method': method, 'url': url, 'kwargs': kwargs})
+        return responses[idx]
+
+    monkeypatch.setattr(
+        rm_module.RequestManager,
+        'request_once',
+        _fake_request,
+    )
+
+    return calls
+
+
 def make_http_error(status: int) -> requests.HTTPError:
     """
     Create a requests.HTTPError with attached response object.
@@ -112,6 +207,48 @@ def make_http_error(status: int) -> requests.HTTPError:
     return err
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='stub_request_manager')
+def stub_request_manager_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Sequence[dict[str, Any]]], list[dict[str, Any]]]:
+    """
+    Provide a callable that stubs ``RequestManager.request_once``.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Fixture used to patch request helpers.
+
+    Returns
+    -------
+    Callable[[Sequence[dict[str, Any]]], list[dict[str, Any]]]
+        Factory that applies :func:`_stub_request_manager` with captured
+        responses.
+    """
+
+    return partial(_stub_request_manager, monkeypatch)
+
+
+@pytest.fixture(name='patch_request_once')
+def patch_request_once_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Provide a helper to patch ``RequestManager.request_once``."""
+
+    def _apply(handler: Callable[..., Any]) -> Callable[..., Any]:
+        monkeypatch.setattr(
+            rm_module.RequestManager,
+            'request_once',
+            handler,
+        )
+        return handler
+
+    return _apply
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -121,7 +258,9 @@ class TestContextManager:
 
     def test_closes_factory_session(
         self,
+        base_url: str,
         mock_session: MockSession,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -130,26 +269,31 @@ class TestContextManager:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         mock_session : MockSession
             Mocked session object.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
         sess = mock_session
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
             endpoints={},
             session_factory=lambda: sess,
         )
         with client:
-            out = client.paginate_url('https://api.example.com/items', None)
+            out = client.paginate_url(f'{base_url}/items', None)
             assert out == {'ok': True}
         assert sess.closed is True
-        assert request_once_stub['urls'] == ['https://api.example.com/items']
+        assert request_once_stub['urls'] == [f'{base_url}/items']
 
     def test_creates_and_closes_default_session(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -157,8 +301,12 @@ class TestContextManager:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
@@ -172,23 +320,22 @@ class TestContextManager:
             return s
 
         # Patch extract to avoid network and capture params.
-        monkeypatch.setattr(cmod.requests, 'Session', ctor)
+        monkeypatch.setattr(ec_module.requests, 'Session', ctor)
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
-            endpoints={},
-        )
+        client = client_factory(endpoints={})
         with client:
-            out = client.paginate_url('https://api.example.com/items', None)
+            out = client.paginate_url(f'{base_url}/items', None)
             assert out == {'ok': True}
 
         # After context exit, the created session should be closed.
         assert created['s'].closed is True
-        assert request_once_stub['urls'] == ['https://api.example.com/items']
+        assert request_once_stub['urls'] == [f'{base_url}/items']
 
     def test_does_not_close_external_session(
         self,
+        base_url: str,
         mock_session: MockSession,
+        client_factory: Callable[..., EndpointClient],
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -197,22 +344,25 @@ class TestContextManager:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         mock_session : MockSession
             Mocked session object.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         request_once_stub : dict[str, Any]
             Captures calls to the patched HTTP helper.
         """
         sess = mock_session
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
             endpoints={},
             session=sess,
         )
         with client:
-            out = client.paginate_url('https://api.example.com/items', None)
+            out = client.paginate_url(f'{base_url}/items', None)
             assert out == {'ok': True}
         assert sess.closed is False
-        assert request_once_stub['urls'] == ['https://api.example.com/items']
+        assert request_once_stub['urls'] == [f'{base_url}/items']
 
 
 @pytest.mark.unit
@@ -225,8 +375,12 @@ class TestCursorPagination:
     )
     def test_page_size_normalizes(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
+        stub_request_manager: Callable[
+            [Sequence[dict[str, Any]]],
+            list[dict[str, Any]],
+        ],
         raw_page_size: Any,
         expected_limit: int,
     ) -> None:
@@ -235,51 +389,37 @@ class TestCursorPagination:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
+        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
+                                       list[dict[str, Any]]]
+            Fixture that patches the underlying :class:`RequestManager`.
         raw_page_size : Any
             Raw page size input.
         expected_limit : int
             Expected normalized limit.
         """
-        # pylint: disable=unused-argument
+        calls = stub_request_manager(
+            [{'items': [{'i': 1}], 'next': None}],
+        )
 
-        calls: list[dict[str, Any]] = []
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:
-            assert method == 'GET'
-            calls.append(kwargs)
-
-            # End after first page to keep test minimal.
-            return {'items': [{'i': 1}], 'next': None}
-
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
             page_size=raw_page_size,
             records_path='items',
         )
-        out = client.paginate_url('https://example.test/x', cfg)
+        out = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(out, list)
 
         # mypy treats list element as Any due to external library response
         # type.
         items = [cast(dict, r)['i'] for r in out]  # type: ignore[index]
         assert items == [1]
-        params = calls[0].get('params', {})
+        params = calls[0]['kwargs'].get('params', {})
         assert params.get('limit') == expected_limit
 
 
@@ -289,20 +429,18 @@ class TestRequestOptionIntegration:
 
     def test_paginate_url_uses_request_snapshot(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Non-paginated calls honor explicitly supplied RequestOptions."""
-        # pylint: disable=unused-argument
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
-            endpoints={},
-        )
+        client = client_factory(endpoints={})
 
         captured: dict[str, Any] = {}
 
         def fake_get(
-            self: EndpointClient,
+            _client: EndpointClient,
             url: str,
             **kwargs: Any,
         ) -> dict[str, bool]:
@@ -318,13 +456,13 @@ class TestRequestOptionIntegration:
             timeout=4.5,
         )
         out = client.paginate_url(
-            'https://api.example.com/items',
+            f'{base_url}/items',
             None,
             request=seed,
         )
 
         assert out == {'ok': True}
-        assert captured['url'] == 'https://api.example.com/items'
+        assert captured['url'] == f'{base_url}/items'
         assert captured['kwargs']['params'] == {'seed': '1'}
         assert captured['kwargs']['headers'] == {'X-Seed': 'yes'}
         assert captured['kwargs']['timeout'] == 4.5
@@ -332,16 +470,16 @@ class TestRequestOptionIntegration:
     def test_paginate_url_iter_overrides_request_params(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
-        # pylint: disable=unused-argument
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
 
         def fake_fetch(
             self: EndpointClient,
-            url: str,
+            _url: str,
             request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
@@ -352,7 +490,7 @@ class TestRequestOptionIntegration:
 
         list(
             client.paginate_url_iter(
-                'https://example.test/items',
+                f'{EXAMPLE_BASE_URL}/items',
                 {
                     'type': PaginationType.PAGE,
                     'records_path': 'items',
@@ -374,54 +512,46 @@ class TestRequestOptionIntegration:
 
     def test_adds_limit_and_advances_cursor(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
+        stub_request_manager: Callable[
+            [Sequence[dict[str, Any]]],
+            list[dict[str, Any]],
+        ],
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
+        stub_request_manager : Callable[[Sequence[dict[str, Any]]],
+                                       list[dict[str, Any]]]
+            Fixture that patches :class:`RequestManager` responses.
         """
-        # pylint: disable=unused-argument
-
-        calls: list[dict[str, Any]] = []
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:
-            assert method == 'GET'
-            calls.append(kwargs)
-            params = kwargs.get('params') or {}
-            if 'cursor' not in params:
-                return {'items': [{'i': 1}], 'next': 'abc'}
-            return {'items': [{'i': 2}], 'next': None}
-
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        calls = stub_request_manager(
+            [
+                {'items': [{'i': 1}], 'next': 'abc'},
+                {'items': [{'i': 2}], 'next': None},
+            ],
+        )
+        client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         cfg = cursor_cfg(
             cursor_param='cursor',
             cursor_path='next',
             page_size=10,
             records_path='items',
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(data, list)
         assert len(calls) >= 2
         values = [cast(dict, r)['i'] for r in data]  # type: ignore[index]
         assert values == [1, 2]
-        first = calls[0]
-        second = calls[1]
+        first = calls[0]['kwargs']
+        second = calls[1]['kwargs']
         assert first.get('params', {}).get('limit') == 10
         assert 'cursor' not in (first.get('params') or {})
         assert second.get('params', {}).get('cursor') == 'abc'
@@ -429,8 +559,10 @@ class TestRequestOptionIntegration:
 
     def test_error_includes_page_number(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on
@@ -441,13 +573,17 @@ class TestRequestOptionIntegration:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for deterministic failures.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+        client = client_factory(
+            base_url=f'{base_url}/v1',
             endpoints={'list': '/items'},
         )
         # pylint: disable=unused-argument
@@ -473,7 +609,7 @@ class TestRequestOptionIntegration:
                 }
             raise make_http_error(500)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', extractor)
+        patch_request_once(extractor)
 
         cfg = cursor_cfg(
             cursor_param='cursor',
@@ -490,6 +626,7 @@ class TestRequestOptionIntegration:
 
     def test_rate_limit_overrides_adjust_sleep(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
@@ -500,6 +637,8 @@ class TestRequestOptionIntegration:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
@@ -531,13 +670,13 @@ class TestRequestOptionIntegration:
             return _StubPaginator()
 
         monkeypatch.setattr(
-            cmod.Paginator,
+            ec_module.Paginator,
             'from_config',
             classmethod(fake_from_config),
         )
 
         client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+            base_url=base_url,
             endpoints={'items': '/items'},
             rate_limit={'max_per_sec': 2},
         )
@@ -547,7 +686,7 @@ class TestRequestOptionIntegration:
 
         out = list(
             client.paginate_url_iter(
-                f'{MOCK_BASE_URL}/items',
+                f'{base_url}/items',
                 pagination=pg,
                 rate_limit_overrides={'max_per_sec': 4},
             ),
@@ -561,26 +700,29 @@ class TestRequestOptionIntegration:
 
     def test_retry_backoff_sleeps(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         cursor_cfg: Callable[..., CursorPaginationConfigMap],
         capture_sleeps: list[float],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that cursor pagination applies retry backoff sleep on failure.
 
-        Cursor pagination applies retry backoff sleep on failure
+        Cursor pagination applies retry backoff sleep on failure.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         cursor_cfg : Callable[..., CursorPaginationConfigMap]
             Factory for cursor pagination config.
         capture_sleeps : list[float]
             List to capture sleep durations.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for deterministic retries.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -605,9 +747,9 @@ class TestRequestOptionIntegration:
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-        client = EndpointClient(
-            base_url='https://example.test',
+        patch_request_once(fake_request)
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
             endpoints={},
             retry={'max_attempts': 2, 'backoff': 0.5, 'retry_on': [503]},
         )
@@ -618,7 +760,7 @@ class TestRequestOptionIntegration:
             records_path='items',
         )
 
-        out = client.paginate_url('https://example.test/x', cfg)
+        out = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert out == [{'i': 1}]
 
         # One sleep from the single retry attempt.
@@ -633,7 +775,9 @@ class TestErrors:
 
     def test_auth_error_wrapping_on_single_attempt(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`ApiAuthError` is raised and wrapped on a single
@@ -641,15 +785,19 @@ class TestErrors:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-
+        base_url : str
+            Common base URL used across tests.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+        # pylint: disable=unused-argument
+
+        client = client_factory(
+            base_url=base_url,
             endpoints={'x': '/x'},
         )
-        # pylint: disable=unused-argument
 
         def boom(
             self: EndpointClient,
@@ -658,14 +806,14 @@ class TestErrors:
             *,
             session: Any,
             timeout: Any,
-            **kwargs: dict[str, Any],  # noqa: ARG001
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             raise make_http_error(401)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
+        patch_request_once(boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
-            client.paginate_url(f'{MOCK_BASE_URL}/x', None)
+            client.paginate_url(f'{base_url}/x', None)
         err = ei.value
         assert err.status == 401
         assert err.attempts == 1
@@ -684,15 +832,18 @@ class TestOffsetPagination:
 
     def test_offset_pagination_behaves_like_offset(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that offset pagination behaves as expected.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution for deterministic pages.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -717,9 +868,12 @@ class TestOffsetPagination:
                 return []
             return [{'i': i} for i in range(off, off + limit)]
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        patch_request_once(fake_request)
 
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={},
+        )
         cfg = cast(
             PagePaginationConfigMap,
             {
@@ -732,7 +886,7 @@ class TestOffsetPagination:
             },
         )
 
-        data = client.paginate_url('https://example.test/api', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/api', cfg)
 
         # Expected behavior: collects up to max_records using offset stepping.
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
@@ -749,86 +903,76 @@ class TestPagePagination:
 
     def test_stops_on_short_final_batch(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that pagination stops on a short final batch.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            page = int((kwargs.get('params') or {}).get('page', 1))
-            if page == 1:
-                return [{'id': 1}, {'id': 2}]
-            if page == 2:
-                return [{'id': 3}]
-            return []
-
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        patch_request_once(
+            _page_responder(
+                (
+                    ({'id': 1}, {'id': 2}),
+                    ({'id': 3},),
+                ),
+            ),
+        )
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={},
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
             start_page=1,
             page_size=2,
         )
-        data = client.paginate_url('https://example.test/api', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/api', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
 
     def test_max_records_cap(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that max_records parameter truncates results as expected.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper for fixed responses.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
+        patch_request_once(
+            _page_responder(
+                tuple(
+                    tuple({'p': page, 'i': i} for i in range(3))
+                    for page in range(1, 5)
+                ),
+            ),
+        )
 
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            page = int((kwargs.get('params') or {}).get('page', 1))
-
-            # Each page returns 3 records to force truncation.
-            return [{'p': page, 'i': i} for i in range(3)]
-
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={},
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -836,47 +980,42 @@ class TestPagePagination:
             page_size=3,
             max_records=5,  # Should truncate 2nd page (total would be 6).
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert len(data) == 5
         assert all('p' in r for r in data)
 
     def test_page_size_normalization(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that page_size is normalized to 1 if set to 0.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
+        patch_request_once(
+            _page_responder(
+                (
+                    ({'id': 1},),
+                    ({'id': 2},),
+                    ({'id': 3},),
+                ),
+            ),
+        )
 
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kw: Any,
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            params = kw.get('params') or {}
-
-            page = int(params.get('page', 1))
-
-            # Return single record; page_size gets normalized to 1.
-            return [{'id': page}]
-
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
-
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={},
+        )
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -884,28 +1023,34 @@ class TestPagePagination:
             page_size=0,
             max_pages=3,
         )
-        data = client.paginate_url('https://example.test/x', cfg)
+        data = client.paginate_url(f'{EXAMPLE_BASE_URL}/x', cfg)
         assert isinstance(data, list)
         ids = [cast(dict, r)['id'] for r in data]  # type: ignore[index]
         assert ids == [1, 2, 3]
 
     def test_error_includes_page_number(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
         page_cfg: Callable[..., PagePaginationConfigMap],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on failure.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
         page_cfg : Callable[..., PagePaginationConfigMap]
             Factory for page pagination config.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+        client = client_factory(
+            base_url=base_url,
             endpoints={'list': '/items'},
         )
         # pylint: disable=unused-argument
@@ -930,7 +1075,7 @@ class TestPagePagination:
             return {'items': [{'i': i} for i in range(size)]}
 
         # Return exactly `size` records to force continue until failure.
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', extractor)
+        patch_request_once(extractor)
         cfg = page_cfg(
             page_param='page',
             size_param='per_page',
@@ -941,20 +1086,24 @@ class TestPagePagination:
 
         with pytest.raises(api_errors.PaginationError) as ei:
             client.paginate('list', pagination=cfg)
-        # assert ei.value.page == 4 and ei.value.status == 500
+        # The paginator reports the iteration count (2) rather than literal
+        # page 4.
         assert ei.value.page == 2 and ei.value.status == 500
 
     def test_unknown_type_returns_raw(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that unknown pagination type returns raw output.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches request execution.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -969,11 +1118,14 @@ class TestPagePagination:
         ) -> dict[str, str] | None:  # noqa: ARG005
             return {'foo': 'bar'} if method == 'GET' else None
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _raw_response)
-        client = EndpointClient(base_url='https://example.test', endpoints={})
+        patch_request_once(_raw_response)
+        client = client_factory(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={},
+        )
 
         out = client.paginate_url(
-            'https://example.test/x',
+            f'{EXAMPLE_BASE_URL}/x',
             cast(Any, {'type': 'weird'}),
         )
         assert out == {'foo': 'bar'}
@@ -990,22 +1142,28 @@ class TestRateLimitPrecedence:
 
     def test_overrides_sleep_seconds_wins(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
         capture_sleeps: list[float],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that explicit sleep_seconds overrides rate_limit config.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
         capture_sleeps : list[float]
             List to capture sleep durations.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper that patches the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # :func:`capture_sleeps` fixture already records rate-limiter pacing.
-        client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+        client = client_factory(
+            base_url=base_url,
             endpoints={'list': '/items'},
             rate_limit={'max_per_sec': 2},  # would imply 0.5s if used
         )
@@ -1031,7 +1189,7 @@ class TestRateLimitPrecedence:
                 return [{'i': calls['n']}, {'i': calls['n'] + 10}]
             return []
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', fake_request)
+        patch_request_once(fake_request)
 
         list(
             client.paginate_iter(
@@ -1072,8 +1230,10 @@ class TestRetryLogic:
 
     def test_request_error_after_retries_exhausted(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
         retry_cfg: Callable[..., dict[str, Any]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that :class:`ApiRequestError` is raised after retries are
@@ -1081,13 +1241,19 @@ class TestRetryLogic:
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
-        client = EndpointClient(
-            base_url=MOCK_BASE_URL,
+        # pylint: disable=unused-argument
+
+        client = client_factory(
+            base_url=base_url,
             endpoints={'x': '/x'},
             retry=cast(
                 RetryPolicy,
@@ -1103,18 +1269,16 @@ class TestRetryLogic:
             *,
             session: Any,
             timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:  # noqa: ARG001
-            # pylint: disable=unused-argument
-
+            **_kwargs: dict[str, Any],
+        ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
             raise make_http_error(503)
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', boom)
+        patch_request_once(boom)
 
         with pytest.raises(api_errors.ApiRequestError) as ei:
-            client.paginate_url(f'{MOCK_BASE_URL}/x', None)
+            client.paginate_url(f'{base_url}/x', None)
         err = ei.value
         assert isinstance(err, api_errors.ApiRequestError)
         assert err.status == 503
@@ -1123,24 +1287,30 @@ class TestRetryLogic:
 
     def test_full_jitter_backoff(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
         capture_sleeps: list[float],
         retry_cfg: Callable[..., dict[str, Any]],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that full jitter backoff is applied on retries.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
         capture_sleeps : list[float]
             List to capture sleep durations.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -1156,7 +1326,7 @@ class TestRetryLogic:
             *,
             session: Any,
             timeout: Any,
-            **kwargs: dict[str, Any],
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
@@ -1166,17 +1336,17 @@ class TestRetryLogic:
                 raise err
             return {'ok': True}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
+        patch_request_once(_fake_request)
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
+            base_url=base_url,
             endpoints={},
             retry=cast(
                 RetryPolicy,
                 retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
             ),
         )
-        out = client.paginate_url('https://api.example.com/items', None)
+        out = client.paginate_url(f'{base_url}/items', None)
         assert out == {'ok': True}
 
         # Should have slept twice (between the 3 attempts).
@@ -1187,24 +1357,30 @@ class TestRetryLogic:
 
     def test_retry_on_network_errors(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        base_url: str,
         capture_sleeps: list[float],
         retry_cfg: Callable[..., dict[str, Any]],
         jitter: Callable[[list[float]], list[float]],
+        patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
+        client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
         Test that network errors are retried and sleep durations are captured.
 
         Parameters
         ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
+        base_url : str
+            Common base URL used across tests.
         capture_sleeps : list[float]
             List to capture sleep durations.
         retry_cfg : Callable[..., dict[str, Any]]
             Factory for retry configuration.
         jitter : Callable[[list[float]], list[float]]
             Jitter function for sleep values.
+        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
+            Helper used to patch the request helper.
+        client_factory : Callable[..., EndpointClient]
+            Factory fixture used to construct :class:`EndpointClient`.
         """
         # pylint: disable=unused-argument
 
@@ -1218,7 +1394,7 @@ class TestRetryLogic:
             *,
             session: Any,
             timeout: Any,
-            **kwargs: dict[str, Any],
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
@@ -1228,15 +1404,15 @@ class TestRetryLogic:
                 raise requests.ConnectionError('reset')
             return {'ok': True}
 
-        monkeypatch.setattr(rmod.RequestManager, 'request_once', _fake_request)
+        patch_request_once(_fake_request)
 
-        client = EndpointClient(
-            base_url='https://api.example.com',
+        client = client_factory(
+            base_url=base_url,
             endpoints={},
             retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
             retry_network_errors=True,
         )
-        out = client.paginate_url('https://api.example.com/items', None)
+        out = client.paginate_url(f'{base_url}/items', None)
         assert out == {'ok': True}
 
         # Should have slept twice (after 2 failures).
@@ -1264,26 +1440,11 @@ class TestUrlComposition:
     """
 
     @pytest.mark.parametrize(
-        'base_url, base_path, endpoint, expected_url',
+        ('base_url_suffix', 'base_path', 'endpoint', 'expected_suffix'),
         [
-            (
-                'https://api.example.com',
-                'v2',
-                'items',
-                'https://api.example.com/v2/items',
-            ),
-            (
-                'https://api.example.com',
-                '/v2',
-                '/items',
-                'https://api.example.com/v2/items',
-            ),
-            (
-                'https://api.example.com/api',
-                'v1',
-                '/items',
-                'https://api.example.com/api/v1/items',
-            ),
+            ('', 'v2', 'items', '/v2/items'),
+            ('', '/v2', '/items', '/v2/items'),
+            ('/api', 'v1', '/items', '/api/v1/items'),
             # Note: trailing slashes on base_url/base_path not normalized by
             # client.
         ],
@@ -1292,9 +1453,10 @@ class TestUrlComposition:
         self,
         request_once_stub: dict[str, Any],
         base_url: str,
+        base_url_suffix: str,
         base_path: str,
         endpoint: str,
-        expected_url: str,
+        expected_suffix: str,
     ) -> None:
         """
         Test that base_path variants are composed correctly in URLs.
@@ -1305,24 +1467,27 @@ class TestUrlComposition:
             Stub for capturing extracted URLs.
         base_url : str
             Base URL for the API.
+        base_url_suffix : str
+            Suffix to append to the base URL.
         base_path : str
             Base path for the API.
         endpoint : str
             Endpoint path.
-        expected_url : str
-            Expected composed URL.
+        expected_suffix : str
+            Expected suffix in the composed URL.
         """
         client = EndpointClient(
-            base_url=base_url,
+            base_url=f'{base_url}{base_url_suffix}',
             endpoints={'list': endpoint},
             base_path=base_path,
         )
         out = client.paginate('list', pagination=None)
         assert out == {'ok': True}
-        assert request_once_stub['urls'] == [expected_url]
+        assert request_once_stub['urls'] == [f'{base_url}{expected_suffix}']
 
     def test_query_merging_and_path_encoding(
         self,
+        base_url: str,
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -1330,11 +1495,13 @@ class TestUrlComposition:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         request_once_stub : dict[str, Any]
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url=f'{MOCK_BASE_URL}?existing=a&dup=1',
+            base_url=f'{base_url}?existing=a&dup=1',
             endpoints={'item': '/users/{id}'},
         )
 
@@ -1346,11 +1513,12 @@ class TestUrlComposition:
         )
         assert out == {'ok': True}
         assert request_once_stub['urls'][0] == (
-            f'{MOCK_BASE_URL}/users/A%2FB%20C?existing=a&dup=1&q=x+y&dup=2'
+            f'{base_url}/users/A%2FB%20C?existing=a&dup=1&q=x+y&dup=2'
         )
 
     def test_query_merging_duplicate_base_params(
         self,
+        base_url: str,
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -1358,11 +1526,13 @@ class TestUrlComposition:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         request_once_stub : dict[str, Any]
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url=f'{MOCK_BASE_URL}?dup=1&dup=2&z=9',
+            base_url=f'{base_url}?dup=1&dup=2&z=9',
             endpoints={'e': '/ep'},
         )
         client.paginate(
@@ -1371,11 +1541,12 @@ class TestUrlComposition:
             pagination=None,
         )
         assert request_once_stub['urls'][0] == (
-            f'{MOCK_BASE_URL}/ep?dup=1&dup=2&z=9&dup=3&a=1'
+            f'{base_url}/ep?dup=1&dup=2&z=9&dup=3&a=1'
         )
 
     def test_query_param_ordering(
         self,
+        base_url: str,
         request_once_stub: dict[str, Any],
     ) -> None:
         """
@@ -1383,11 +1554,13 @@ class TestUrlComposition:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         request_once_stub : dict[str, Any]
             Stub for capturing extracted URLs.
         """
         client = EndpointClient(
-            base_url=f'{MOCK_BASE_URL}?z=9&dup=1',
+            base_url=f'{base_url}?z=9&dup=1',
             endpoints={'e': '/ep'},
         )
         client.paginate(
@@ -1396,7 +1569,7 @@ class TestUrlComposition:
             pagination=None,
         )
         assert request_once_stub['urls'][0] == (
-            f'{MOCK_BASE_URL}/ep?z=9&dup=1&a=1&dup=2'
+            f'{base_url}/ep?z=9&dup=1&a=1&dup=2'
         )
 
 
@@ -1423,6 +1596,7 @@ class TestUrlCompositionProperty:
     )
     def test_path_parameter_encoding_property(
         self,
+        base_url: str,
         id_value: str,
         extract_stub_factory: Callable[..., Any],
     ) -> None:
@@ -1431,6 +1605,8 @@ class TestUrlCompositionProperty:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         id_value : str
             Path parameter value to encode.
         extract_stub_factory : Callable[..., Any]
@@ -1438,7 +1614,7 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url=MOCK_BASE_URL,
+                base_url=base_url,
                 endpoints={'item': '/users/{id}'},
             )
             client.paginate(
@@ -1462,6 +1638,7 @@ class TestUrlCompositionProperty:
     )
     def test_query_encoding_property(
         self,
+        base_url: str,
         params: dict[str, str],
         extract_stub_factory: Callable[..., Any],
     ) -> None:
@@ -1470,6 +1647,8 @@ class TestUrlCompositionProperty:
 
         Parameters
         ----------
+        base_url : str
+            Common base URL used across tests.
         params : dict[str, str]
             Query parameters to encode.
         extract_stub_factory : Callable[..., Any]
@@ -1477,7 +1656,7 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url=MOCK_BASE_URL,
+                base_url=base_url,
                 endpoints={'e': '/ep'},
             )
             client.paginate('e', query_parameters=params, pagination=None)

@@ -20,6 +20,11 @@ from etlplus.api.pagination import PaginationClient
 from etlplus.api.pagination import PaginationType
 from etlplus.api.types import RequestOptions
 
+# SECTION: HELPERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
 # SECTION: TESTS ============================================================ #
 
 
