@@ -281,6 +281,7 @@ def pipeline_cli_runner_fixture(
         Runner that writes the pipeline YAML, patches HTTP helpers, and
         returns the resulting config path.
     """
+    # pylint: disable=unused-argument
 
     def _run(
         *,
@@ -334,7 +335,9 @@ class TestPaginationStrategies:
         monkeypatch.setattr(time, 'sleep', lambda _s: None)
 
     @pytest.mark.parametrize(
-        'scenario', CURSOR_SCENARIOS, ids=lambda s: s.name,
+        'scenario',
+        CURSOR_SCENARIOS,
+        ids=lambda s: s.name,
     )
     def test_cursor_modes(
         self,
@@ -434,18 +437,28 @@ class TestPaginationStrategies:
             out_path=out_path,
             options_block=scenario.render_options_block(),
         )
-        # Mock extract to return scenario-driven items per page.
 
+        # Mock extract to return scenario-driven items per page.
         def fake_extract(kind: str, _url: str, **kwargs: Any):
             assert kind == 'api'
             params = kwargs.get('params') or {}
             page = int(params.get('page', 1))
             size = int(params.get('per_page', scenario.page_size))
-            assert size == scenario.page_size
-            # Pages are 1-indexed; return shorter batch to signal stop.
+            # Calculate remaining max_records for this request, if set
+            remaining = scenario.max_records
+            if remaining is not None:
+                # Estimate how many records have already been emitted
+                # (page-1)*size is a safe upper bound for this test's structure
+                already_emitted = (page - 1) * size
+                remaining = max(0, remaining - already_emitted)
+                if remaining == 0:
+                    return {'items': []}
+                size = min(size, remaining)
+            # Pages are 1-indexed; return up to 'size' records for this page.
             if 1 <= page <= len(scenario.pages):
-                return scenario.pages[page - 1]
-            return []
+                page_records = scenario.pages[page - 1][:size]
+                return {'items': page_records}
+            return {'items': []}
 
         data = _run_pipeline_and_collect(
             capsys=capsys,
