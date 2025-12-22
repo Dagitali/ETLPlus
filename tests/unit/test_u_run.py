@@ -10,6 +10,7 @@ import importlib
 from types import SimpleNamespace
 from typing import Any
 from typing import ClassVar
+from typing import Self
 
 import pytest
 
@@ -19,8 +20,6 @@ run_mod = importlib.import_module('etlplus.run')
 
 
 pytestmark = pytest.mark.unit
-
-MOCK_BASE_URL = 'https://api.example.com'
 
 
 def _make_job(
@@ -61,6 +60,7 @@ class TestRun:
 
     def test_api_source_and_target_pipeline(
         self,
+        base_url: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test an API-to-API ETL pipeline execution."""
@@ -79,7 +79,7 @@ class TestRun:
 
         req_env = {
             'use_endpoints': True,
-            'base_url': MOCK_BASE_URL,
+            'base_url': base_url,
             'base_path': '/v1',
             'endpoints_map': {'users': '/users'},
             'endpoint_key': 'users',
@@ -101,7 +101,7 @@ class TestRun:
         class DummyClient:
             """Dummy EndpointClient for testing purposes."""
 
-            instances: ClassVar[list[DummyClient]] = []
+            instances: ClassVar[list[Self]] = []
 
             def __init__(self, **kwargs: Any) -> None:
                 self.kwargs = kwargs
