@@ -188,7 +188,9 @@ class TestPipelineBuildConnectors:
     """
 
     @pytest.mark.parametrize(
-        'case', CONNECTOR_CASES, ids=lambda c: c.collection,
+        'case',
+        CONNECTOR_CASES,
+        ids=lambda c: c.collection,
     )
     def test_build_connectors_filters_invalid_entries(
         self,
