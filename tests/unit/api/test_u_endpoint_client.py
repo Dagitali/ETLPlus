@@ -94,6 +94,42 @@ def _ascii_no_amp_eq() -> Any:
     return st.text(alphabet=alpha, min_size=0, max_size=12)
 
 
+def _page_responder(
+    pages: Sequence[Sequence[dict[str, Any]]],
+) -> Callable[..., list[dict[str, Any]]]:
+    """
+    Build a deterministic RequestManager stub for page pagination tests.
+
+    Parameters
+    ----------
+    pages : Sequence[Sequence[dict[str, Any]]]
+        1-indexed payloads returned for page requests.
+
+    Returns
+    -------
+    Callable[..., list[dict[str, Any]]]
+        Handler compatible with ``patch_request_once``.
+    """
+
+    def _handler(
+        self: EndpointClient,
+        method: str,
+        _url: str,
+        *,
+        session: Any,
+        timeout: Any,
+        **kwargs: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        assert method == 'GET'
+        params = kwargs.get('params') or {}
+        page = int(params.get('page', 1))
+        if 1 <= page <= len(pages):
+            return list(pages[page - 1])
+        return []
+
+    return _handler
+
+
 def _stub_request_manager(
     monkeypatch: pytest.MonkeyPatch,
     responses: Sequence[dict[str, Any]],
@@ -398,14 +434,13 @@ class TestRequestOptionIntegration:
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Non-paginated calls honor explicitly supplied RequestOptions."""
-        # pylint: disable=unused-argument
 
         client = client_factory(endpoints={})
 
         captured: dict[str, Any] = {}
 
         def fake_get(
-            self: EndpointClient,
+            _client: EndpointClient,
             url: str,
             **kwargs: Any,
         ) -> dict[str, bool]:
@@ -438,14 +473,13 @@ class TestRequestOptionIntegration:
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
-        # pylint: disable=unused-argument
 
         client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
 
         def fake_fetch(
             self: EndpointClient,
-            url: str,
+            _url: str,
             request: RequestOptions,
             page: int | None,
         ) -> dict[str, Any]:
@@ -763,16 +797,15 @@ class TestErrors:
             base_url=base_url,
             endpoints={'x': '/x'},
         )
-        # pylint: disable=unused-argument
 
         def boom(
             self: EndpointClient,
             method: str,
             url: str,
             *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],  # noqa: ARG001
+            _session: Any,
+            _timeout: Any,
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             raise make_http_error(401)
@@ -885,26 +918,14 @@ class TestPagePagination:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            page = int((kwargs.get('params') or {}).get('page', 1))
-            if page == 1:
-                return [{'id': 1}, {'id': 2}]
-            if page == 2:
-                return [{'id': 3}]
-            return []
-
-        patch_request_once(fake_request)
+        patch_request_once(
+            _page_responder(
+                (
+                    ({'id': 1}, {'id': 2}),
+                    ({'id': 3},),
+                ),
+            ),
+        )
         client = client_factory(
             base_url=EXAMPLE_BASE_URL,
             endpoints={},
@@ -938,24 +959,14 @@ class TestPagePagination:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            page = int((kwargs.get('params') or {}).get('page', 1))
-
-            # Each page returns 3 records to force truncation.
-            return [{'p': page, 'i': i} for i in range(3)]
-
-        patch_request_once(fake_request)
+        patch_request_once(
+            _page_responder(
+                tuple(
+                    tuple({'p': page, 'i': i} for i in range(3))
+                    for page in range(1, 5)
+                ),
+            ),
+        )
 
         client = client_factory(
             base_url=EXAMPLE_BASE_URL,
@@ -990,26 +1001,15 @@ class TestPagePagination:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
-        def fake_request(
-            self: EndpointClient,
-            method: str,
-            _url: str,
-            *,
-            session: Any,
-            timeout: Any,
-            **kw: Any,
-        ) -> list[dict[str, int]]:
-            assert method == 'GET'
-            params = kw.get('params') or {}
-
-            page = int(params.get('page', 1))
-
-            # Return single record; page_size gets normalized to 1.
-            return [{'id': page}]
-
-        patch_request_once(fake_request)
+        patch_request_once(
+            _page_responder(
+                (
+                    ({'id': 1},),
+                    ({'id': 2},),
+                    ({'id': 3},),
+                ),
+            ),
+        )
 
         client = client_factory(
             base_url=EXAMPLE_BASE_URL,
@@ -1264,12 +1264,10 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
-        ) -> dict[str, Any]:  # noqa: ARG001
-            # pylint: disable=unused-argument
-
+            _session: Any,
+            _timeout: Any,
+            **_kwargs: dict[str, Any],
+        ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
             raise make_http_error(503)
@@ -1311,8 +1309,6 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         jitter([0.1, 0.2])
 
         # Patch HTTP helper to fail with 503 twice, then succeed.
@@ -1323,9 +1319,9 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
+            _session: Any,
+            _timeout: Any,
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
@@ -1381,8 +1377,6 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         jitter([0.12, 0.18])
         attempts = {'n': 0}
 
@@ -1391,9 +1385,9 @@ class TestRetryLogic:
             method: str,
             _url: str,
             *,
-            session: Any,
-            timeout: Any,
-            **kwargs: dict[str, Any],
+            _session: Any,
+            _timeout: Any,
+            **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
