@@ -1,19 +1,21 @@
 """
 :mod:`tests.unit.test_u_cli` module.
 
-Unit tests for ``etlplus.cli``.
+Unit tests for :mod:`etlplus.cli`.
 
 Notes
 -----
-- Hermetic: no file or network I/O.
-- Uses fixtures from `tests/unit/conftest.py` when needed.
+- These tests are hermetic; they perform no real file or network I/O.
 """
 
 from __future__ import annotations
 
 import argparse
 from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Final
 
 import pytest
 
@@ -24,20 +26,32 @@ import etlplus.cli as cli
 
 pytestmark = pytest.mark.unit
 
-type ParseCli = Callable[[list[str]], argparse.Namespace]
+
+type ParseCli = Callable[[Sequence[str]], argparse.Namespace]
 
 
 @dataclass(frozen=True, slots=True)
 class ParserCase:
-    """Declarative CLI parser test case."""
+    """
+    Declarative CLI parser test case.
+
+    Attributes
+    ----------
+    identifier : str
+        Stable ID for pytest parametrization.
+    args : tuple[str, ...]
+        Argument vector passed to :meth:`argparse.ArgumentParser.parse_args`.
+    expected : Mapping[str, object]
+        Mapping of expected attribute values on the returned namespace.
+    """
 
     identifier: str
     args: tuple[str, ...]
-    expected: dict[str, object]
+    expected: Mapping[str, object]
 
 
-# Shared parser cases to keep param definitions DRY and self-documenting.
-CLI_CASES: tuple[ParserCase, ...] = (
+# Shared parser cases to keep parametrization DRY and self-documenting.
+CLI_CASES: Final[tuple[ParserCase, ...]] = (
     ParserCase(
         identifier='extract-default-format',
         args=('extract', 'file', '/path/to/file.json'),
@@ -105,13 +119,37 @@ CLI_CASES: tuple[ParserCase, ...] = (
     ),
 )
 
+
+@dataclass(slots=True)
+class ParserStub:
+    """Minimal stand-in for :class:`argparse.ArgumentParser`.
+
+    The production :func:`etlplus.cli.main` only needs a ``parse_args`` method
+    returning a namespace.
+
+    Attributes
+    ----------
+    namespace : argparse.Namespace
+        Namespace returned by :meth:`parse_args`.
+    """
+
+    namespace: argparse.Namespace
+
+    def parse_args(
+        self,
+        _args: Sequence[str] | None = None,
+    ) -> argparse.Namespace:
+        """Return the pre-configured namespace."""
+        return self.namespace
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='cli_parser')
 def cli_parser_fixture() -> argparse.ArgumentParser:
     """
-    Provide a fresh CLI parser per test case.
+    Provide a fresh CLI parser per test.
 
     Returns
     -------
@@ -125,10 +163,22 @@ def cli_parser_fixture() -> argparse.ArgumentParser:
 def parse_cli_fixture(
     cli_parser: argparse.ArgumentParser,
 ) -> ParseCli:
-    """Provide a callable that parses CLI args into a namespace."""
+    """
+    Provide a callable that parses argv into a namespace.
 
-    def _parse(args: list[str]) -> argparse.Namespace:
-        return cli_parser.parse_args(args)
+    Parameters
+    ----------
+    cli_parser : argparse.ArgumentParser
+        Parser instance created per test.
+
+    Returns
+    -------
+    ParseCli
+        Callable that parses CLI args into an :class:`argparse.Namespace`.
+    """
+
+    def _parse(args: Sequence[str]) -> argparse.Namespace:
+        return cli_parser.parse_args(list(args))
 
     return _parse
 
@@ -136,7 +186,6 @@ def parse_cli_fixture(
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestCreateParser:
     """
     Unit test suite for :func:`etlplus.cli.create_parser`.
@@ -151,9 +200,9 @@ class TestCreateParser:
         cli_parser: argparse.ArgumentParser,
     ) -> None:
         """
-        Test that the CLI parser is created and configured correctly.
+        Test that the CLI parser is constructed and reports the CLI tool's
+        expected program name.
         """
-        assert cli_parser is not None
         assert isinstance(cli_parser, argparse.ArgumentParser)
         assert cli_parser.prog == 'etlplus'
 
@@ -173,9 +222,9 @@ class TestCreateParser:
         case : ParserCase
             Declarative parser scenario definition.
         """
-        args = parse_cli(list(case.args))
-        for key, val in case.expected.items():
-            assert getattr(args, key, None) == val
+        ns = parse_cli(case.args)
+        for key, expected in case.expected.items():
+            assert getattr(ns, key, None) == expected
 
     def test_parser_version(
         self,
@@ -187,7 +236,6 @@ class TestCreateParser:
         assert exc_info.value.code == 0
 
 
-@pytest.mark.unit
 class TestMain:
     """Unit test suite for :func:`etlplus.cli.main`."""
 
@@ -195,121 +243,57 @@ class TestMain:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that :func:`main` returns 130 for :class:`KeyboardInterrupt`.
-        """
-        # pylint: disable=unused-argument
+        """Test that :func:`main` maps keyboard interrupts to exit code 130."""
 
-        def fake_parser():
-            class Dummy:
-                """
-                Dummy parser that raises :class:`KeyboardInterrupt` from cmd.
-                """
+        def _cmd(*_args: object, **_kwargs: object) -> int:
+            raise KeyboardInterrupt
 
-                def parse_args(self, args=None):  # noqa: ANN001
-                    """
-                    Parse args method that raises :class:`KeyboardInterrupt`.
-                    """
+        ns = argparse.Namespace(command='dummy', func=_cmd)
+        monkeypatch.setattr(cli, 'create_parser', lambda: ParserStub(ns))
 
-                    class NS:
-                        """
-                        Dummy namespace that raises :class:`KeyboardInterrupt`.
-                        """
-
-                        command = 'dummy'
-
-                        @staticmethod
-                        def func(*_args: object) -> None:
-                            """Function that simulates a keyboard interrupt."""
-                            raise KeyboardInterrupt
-
-                    return NS()
-
-            return Dummy()
-
-        monkeypatch.setattr(cli, 'create_parser', fake_parser)
         assert cli.main([]) == 130
 
-    def test_handles_system_exit(
+    def test_handles_system_exit_from_command(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that :func:`main` does not swallow :class:`SystemExit`."""
-        # pylint: disable=unused-argument
+        """
+        Test that :func:`main` does not swallow :class:`SystemExit` from the
+        dispatched command.
+        """
 
-        def fake_parser():
-            class Dummy:
-                """
-                Dummy parser that raises :class:`SystemExit` from command.
-                """
+        def _cmd(*_args: object, **_kwargs: object) -> int:
+            raise SystemExit(5)
 
-                def parse_args(self, args=None):  # noqa: ANN001
-                    """
-                    Parse args method that raises :class:`SystemExit`.
-                    """
+        ns = argparse.Namespace(command='dummy', func=_cmd)
+        monkeypatch.setattr(cli, 'create_parser', lambda: ParserStub(ns))
 
-                    class NS:
-                        """
-                        Dummy namespace that raises :class:`SystemExit`.
-                        """
-
-                        command = 'dummy'
-
-                        @staticmethod
-                        def func(*_args: object) -> None:
-                            """Function that simulates a system exit."""
-                            raise SystemExit(5)
-
-                    return NS()
-
-            return Dummy()
-
-        monkeypatch.setattr(cli, 'create_parser', fake_parser)
-        with pytest.raises(SystemExit) as exc:
+        with pytest.raises(SystemExit) as exc_info:
             cli.main([])
-        assert exc.value.code == 5
+        assert exc_info.value.code == 5
 
     def test_invokes_parser(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :func:`main` invokes :func:`create_parser` and dispatches.
+        Test that :func:`main` calls :func:`create_parser` and dispatches to
+        the command.
         """
-        # pylint: disable=unused-argument
+        calls: dict[str, int] = {'parser': 0, 'cmd': 0}
 
-        called: dict[str, bool] = {}
+        def _cmd(*_args: object, **_kwargs: object) -> int:
+            calls['cmd'] += 1
+            return 0
 
-        def fake_parser():
-            """Fake parser that records invocation."""
-            called['parser'] = True
+        ns = argparse.Namespace(command='dummy', func=_cmd)
 
-            class Dummy:
-                """
-                Dummy parser that returns a namespace with a no-op command.
-                """
+        def _fake_create_parser() -> ParserStub:
+            calls['parser'] += 1
+            return ParserStub(ns)
 
-                def parse_args(self, args=None):  # noqa: ANN001
-                    """
-                    Parse args method that returns a dummy namespace.
-                    """
+        monkeypatch.setattr(cli, 'create_parser', _fake_create_parser)
 
-                    class NS:
-                        """
-                        Dummy namespace for no-op command.
-                        """
-
-                        command = 'dummy'
-
-                        @staticmethod
-                        def func(*_args: object) -> int:
-                            """No-op function that returns 0."""
-                            return 0
-
-                    return NS()
-
-            return Dummy()
-
-        monkeypatch.setattr(cli, 'create_parser', fake_parser)
         assert cli.main([]) == 0
-        assert called['parser'] is True
+        assert calls['parser'] == 1
+        assert calls['cmd'] == 1
