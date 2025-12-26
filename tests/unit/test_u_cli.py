@@ -17,12 +17,14 @@ from dataclasses import dataclass
 
 import pytest
 
-from etlplus.cli import create_parser
+import etlplus.cli as cli
 
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+type ParseCli = Callable[[list[str]], argparse.Namespace]
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,14 +118,13 @@ def cli_parser_fixture() -> argparse.ArgumentParser:
     argparse.ArgumentParser
         Newly constructed parser instance.
     """
-
-    return create_parser()
+    return cli.create_parser()
 
 
 @pytest.fixture(name='parse_cli')
 def parse_cli_fixture(
     cli_parser: argparse.ArgumentParser,
-) -> Callable[[list[str]], argparse.Namespace]:
+) -> ParseCli:
     """Provide a callable that parses CLI args into a namespace."""
 
     def _parse(args: list[str]) -> argparse.Namespace:
@@ -153,12 +154,13 @@ class TestCreateParser:
         Test that the CLI parser is created and configured correctly.
         """
         assert cli_parser is not None
+        assert isinstance(cli_parser, argparse.ArgumentParser)
         assert cli_parser.prog == 'etlplus'
 
     @pytest.mark.parametrize('case', CLI_CASES, ids=lambda c: c.identifier)
     def test_parser_commands(
         self,
-        parse_cli: Callable[[list[str]], argparse.Namespace],
+        parse_cli: ParseCli,
         case: ParserCase,
     ) -> None:
         """
@@ -166,7 +168,7 @@ class TestCreateParser:
 
         Parameters
         ----------
-        parse_cli : Callable[[list[str]], argparse.Namespace]
+        parse_cli : ParseCli
             Fixture that parses CLI arguments.
         case : ParserCase
             Declarative parser scenario definition.
@@ -183,3 +185,100 @@ class TestCreateParser:
         with pytest.raises(SystemExit) as exc_info:
             cli_parser.parse_args(['--version'])
         assert exc_info.value.code == 0
+
+
+@pytest.mark.unit
+class TestMain:
+    """Unit test suite for :func:`etlplus.cli.main`."""
+
+    def test_handles_keyboard_interrupt(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that :func:`main` returns 130 for :class:`KeyboardInterrupt`.
+        """
+
+        def fake_parser():
+            class Dummy:
+                """
+                Dummy parser that raises :class:`KeyboardInterrupt` from cmd.
+                """
+
+                def parse_args(self, args=None):  # noqa: ANN001
+                    class NS:
+                        command = 'dummy'
+
+                        @staticmethod
+                        def func(*_args: object) -> None:
+                            raise KeyboardInterrupt
+
+                    return NS()
+
+            return Dummy()
+
+        monkeypatch.setattr(cli, 'create_parser', fake_parser)
+        assert cli.main([]) == 130
+
+    def test_handles_system_exit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that :func:`main` does not swallow :class:`SystemExit`."""
+
+        def fake_parser():
+            class Dummy:
+                """
+                Dummy parser that raises :class:`SystemExit` from command.
+                """
+
+                def parse_args(self, args=None):  # noqa: ANN001
+                    class NS:
+                        command = 'dummy'
+
+                        @staticmethod
+                        def func(*_args: object) -> None:
+                            raise SystemExit(5)
+
+                    return NS()
+
+            return Dummy()
+
+        monkeypatch.setattr(cli, 'create_parser', fake_parser)
+        with pytest.raises(SystemExit) as exc:
+            cli.main([])
+        assert exc.value.code == 5
+
+    def test_invokes_parser(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that :func:`main` invokes :func:`create_parser` and dispatches.
+        """
+        called: dict[str, bool] = {}
+
+        def fake_parser():
+            """Fake parser that records invocation."""
+            called['parser'] = True
+
+            class Dummy:
+                """
+                Dummy parser that returns a namespace with a no-op command.
+                """
+
+                def parse_args(self, args=None):  # noqa: ANN001
+                    class NS:
+                        command = 'dummy'
+
+                        @staticmethod
+                        def func(*_args: object) -> int:
+                            return 0
+
+                    return NS()
+
+            return Dummy()
+
+        monkeypatch.setattr(cli, 'create_parser', fake_parser)
+        assert cli.main([]) == 0
+        assert called['parser'] is True
