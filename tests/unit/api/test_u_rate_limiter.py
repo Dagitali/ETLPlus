@@ -48,7 +48,7 @@ def fixed_limiter_fixture() -> RateLimiter:
     return RateLimiter.fixed(0.25)
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
