@@ -198,6 +198,7 @@ class TestMain:
         """
         Test that :func:`main` returns 130 for :class:`KeyboardInterrupt`.
         """
+        # pylint: disable=unused-argument
 
         def fake_parser():
             class Dummy:
@@ -206,11 +207,20 @@ class TestMain:
                 """
 
                 def parse_args(self, args=None):  # noqa: ANN001
+                    """
+                    Parse args method that raises :class:`KeyboardInterrupt`.
+                    """
+
                     class NS:
+                        """
+                        Dummy namespace that raises :class:`KeyboardInterrupt`.
+                        """
+
                         command = 'dummy'
 
                         @staticmethod
                         def func(*_args: object) -> None:
+                            """Function that simulates a keyboard interrupt."""
                             raise KeyboardInterrupt
 
                     return NS()
@@ -225,6 +235,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :func:`main` does not swallow :class:`SystemExit`."""
+        # pylint: disable=unused-argument
 
         def fake_parser():
             class Dummy:
@@ -233,11 +244,20 @@ class TestMain:
                 """
 
                 def parse_args(self, args=None):  # noqa: ANN001
+                    """
+                    Parse args method that raises :class:`SystemExit`.
+                    """
+
                     class NS:
+                        """
+                        Dummy namespace that raises :class:`SystemExit`.
+                        """
+
                         command = 'dummy'
 
                         @staticmethod
                         def func(*_args: object) -> None:
+                            """Function that simulates a system exit."""
                             raise SystemExit(5)
 
                     return NS()
@@ -256,6 +276,8 @@ class TestMain:
         """
         Test that :func:`main` invokes :func:`create_parser` and dispatches.
         """
+        # pylint: disable=unused-argument
+
         called: dict[str, bool] = {}
 
         def fake_parser():
@@ -268,11 +290,20 @@ class TestMain:
                 """
 
                 def parse_args(self, args=None):  # noqa: ANN001
+                    """
+                    Parse args method that returns a dummy namespace.
+                    """
+
                     class NS:
+                        """
+                        Dummy namespace for no-op command.
+                        """
+
                         command = 'dummy'
 
                         @staticmethod
                         def func(*_args: object) -> int:
+                            """No-op function that returns 0."""
                             return 0
 
                     return NS()
