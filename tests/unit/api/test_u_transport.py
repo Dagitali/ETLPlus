@@ -101,6 +101,7 @@ class TestBuildHttpAdapter:
         """
         Test that invalid adapter configs are skipped but session is usable.
         """
+        # pylint: disable=broad-exception-caught
         adapters_cfg = [
             {'prefix': 'https://', 'pool_connections': 'bad'},
             {'prefix': 'http://', 'max_retries': {'total': 'bad'}},
