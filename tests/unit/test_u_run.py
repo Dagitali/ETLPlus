@@ -259,26 +259,40 @@ class TestRun:
         assert load_calls[0][2] == '/tmp/output.json'
         assert result == {'status': 'ok'}
 
-    def test_missing_job_raises(
+    @pytest.mark.parametrize(
+        'cfg',
+        [
+            SimpleNamespace(
+                jobs=[],
+                sources=[],
+                targets=[],
+                transforms={},
+                validations={},
+            ),
+            _base_config(
+                _make_job(name='other', source='src', target='tgt'),
+                SimpleNamespace(
+                    name='src',
+                    type='file',
+                    path='/tmp/in.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='tgt',
+                    type='file',
+                    path='/tmp/out.json',
+                    format='json',
+                ),
+            ),
+        ],
+        ids=['no-jobs', 'different-job'],
+    )
+    def test_job_not_found_raises(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        cfg: Any,
     ) -> None:
-        """Test that requesting a missing job raises ValueError."""
-        cfg = _base_config(
-            _make_job(name='other', source='src', target='tgt'),
-            SimpleNamespace(
-                name='src',
-                type='file',
-                path='/tmp/in.json',
-                format='json',
-            ),
-            SimpleNamespace(
-                name='tgt',
-                type='file',
-                path='/tmp/out.json',
-                format='json',
-            ),
-        )
+        """Test that requesting a missing job raises :class:`ValueError`."""
         monkeypatch.setattr(
             run_mod,
             'load_pipeline_config',
