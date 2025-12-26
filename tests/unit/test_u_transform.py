@@ -32,7 +32,7 @@ from etlplus.transform import transform
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
