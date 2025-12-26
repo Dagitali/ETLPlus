@@ -67,7 +67,7 @@ def yaml_stub() -> Generator[_StubYaml]:
     file_module._YAML_CACHE.clear()
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
