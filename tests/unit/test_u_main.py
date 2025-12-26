@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.__main__`.
 Covers CLI entrypoint and _run().
 """
 
-
 import pytest
 
 from etlplus import __main__
@@ -45,6 +44,7 @@ def test_main_guard_executes_run(
     Test that the main guard executes :func:`_run` and raises
     :class:`SystemExit`.
     """
+
     def _run() -> int:
         return 123
 
