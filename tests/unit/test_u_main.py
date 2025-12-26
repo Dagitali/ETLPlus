@@ -52,6 +52,7 @@ def test_main_guard_executes_run(
     allowed_globals = {'__name__': '__main__', '_run': _run}
 
     with pytest.raises(SystemExit) as exc:
+        # pylint: disable-next=exec-used
         exec(code, allowed_globals)
 
     assert exc.value.code == 123
