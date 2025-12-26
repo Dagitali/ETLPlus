@@ -37,7 +37,7 @@ from etlplus.utils import to_positive_int
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
