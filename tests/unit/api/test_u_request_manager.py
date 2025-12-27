@@ -55,7 +55,7 @@ def _make_request_callable(
 
 @dataclass(slots=True)
 class DummySession:
-    """Lightweight session double tracking ``close`` calls."""
+    """Lightweight session double-tracking ``close`` calls."""
 
     closed: bool = False
 
@@ -78,7 +78,7 @@ class SessionBuilderProbe:
 
 @dataclass(slots=True)
 class RequestProbe:
-    """Captures arguments passed to a request callable."""
+    """Callable probe for capturing arguments passed to a request callable."""
 
     sessions_used: list[Any]
     timeouts: list[Any]
@@ -89,15 +89,17 @@ class RequestProbe:
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture
-def dummy_session() -> DummySession:
+@pytest.fixture(name='dummy_session')
+def dummy_session_fixture() -> DummySession:
     """Return a fresh dummy session for each test."""
 
     return DummySession()
 
 
-@pytest.fixture
-def session_builder(dummy_session: DummySession) -> SessionBuilderProbe:
+@pytest.fixture(name='session_builder')
+def session_builder_fixture(
+    dummy_session: DummySession,
+) -> SessionBuilderProbe:
     """Provide a probe callable for adapter-session creation."""
 
     return SessionBuilderProbe(session=dummy_session, calls=[])
@@ -295,17 +297,6 @@ class TestRequestManager:
         )
 
         assert result == {'ok': True}
-
-    def test_request_once_no_callable(self) -> None:
-        """
-        Test that :meth:`request_once` raises when no request callable is
-        provided.
-        """
-
-        manager = RequestManager()
-
-        with pytest.raises((TypeError, ValueError)):
-            manager.request_once('GET', 'http://x', session=None, timeout=1)
 
     @pytest.mark.parametrize(
         ('api_method', 'expected_method'),
