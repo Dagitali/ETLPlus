@@ -468,27 +468,38 @@ class TestCreateParser:
             cli_parser.parse_args(['--version'])
         assert exc_info.value.code == 0
 
-    # def test_parser_includes_expected_subcommands(
-    #     self,
-    #     cli_parser: argparse.ArgumentParser,
-    # ) -> None:
-    #     """Test that expected subcommands are registered on the parser."""
-    #     # pylint: disable=protected-access
+    def test_parser_includes_expected_subcommands(
+        self,
+        cli_parser: argparse.ArgumentParser,
+    ) -> None:
+        """Test that expected subcommands are registered on the parser."""
+        # pylint: disable=protected-access
 
-    #     # NOTE: This intentionally inspects argparse internals; it is a
-    #     # small, focused smoke test to ensure all expected subcommands are
-    #     # present.
-    #     # type: ignore[union-attr]
-    #     subparsers = cli_parser._subparsers._group_actions[0]
-    #     # type: ignore[union-attr]
-    #     subcmds = [a.dest for a in subparsers._choices_actions]
-    #     assert 'extract' in subcmds
-    #     assert 'validate' in subcmds
-    #     assert 'transform' in subcmds
-    #     assert 'load' in subcmds
-    #     assert 'pipeline' in subcmds
-    #     assert 'list' in subcmds
-    #     assert 'run' in subcmds
+        # NOTE: This intentionally inspects argparse internals; it is a
+        # small, focused smoke test to ensure all expected subcommands are
+        # present.
+        # Defensive: check if _subparsers is not None before accessing
+        # internals.
+        subcmds = []
+        if getattr(cli_parser, '_subparsers', None) is not None:
+            group_actions = getattr(
+                cli_parser._subparsers,
+                '_group_actions',
+                [],
+            )
+            if group_actions:
+                subparsers_action = group_actions[0]
+                subcmds = [
+                    a.dest
+                    for a in getattr(subparsers_action, '_choices_actions', [])
+                ]
+        assert 'extract' in subcmds
+        assert 'validate' in subcmds
+        assert 'transform' in subcmds
+        assert 'load' in subcmds
+        assert 'pipeline' in subcmds
+        assert 'list' in subcmds
+        assert 'run' in subcmds
 
 
 class TestMain:
