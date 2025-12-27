@@ -1,5 +1,8 @@
 """
-Unit tests for etlplus.config.jobs module.
+:mod:`tests.unit.config.test_u_jobs` module.
+
+Unit tests for :mod:`etlplus.config.jobs`.
+
 Covers dataclass parsing, from_obj methods, and edge cases.
 """
 

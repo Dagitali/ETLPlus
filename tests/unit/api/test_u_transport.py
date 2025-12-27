@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_transport` module.
 
-Unit tests for ``etlplus.api.transport``.
+Unit tests for :mod:`etlplus.api.transport`.
 
 Notes
 -----

@@ -1,8 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_types` module.
 
-Unit tests for custom type aliases and data structures in
-:mod:`etlplus.api.types`.
+Unit tests for :mod:`etlplus.api.types`.
 """
 
 import pytest

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_extract` module.
 
-Unit tests for ``etlplus.extract``.
+Unit tests for :mod:`etlplus.extract`.
 
 Notes
 -----

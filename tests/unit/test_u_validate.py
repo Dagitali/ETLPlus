@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_validate` module.
 
-Unit tests for ``etlplus.validate``.
+Unit tests for :mod:`etlplus.validate`.
 
 Notes
 -----

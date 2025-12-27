@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_run` module.
 
-Unit tests for ``etlplus.run.run`` orchestration entry point.
+Unit tests for :mod:`etlplus.run`.
 """
 
 from __future__ import annotations
