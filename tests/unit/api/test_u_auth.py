@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_auth` module.
 
-Unit tests for ``etlplus.api.auth``.
+Unit tests for :mod:`etlplus.api.auth`.
 
 Notes
 -----

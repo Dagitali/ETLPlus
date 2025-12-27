@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_validate` module.
 
-Unit tests for ``etlplus.validate``.
+Unit tests for :mod:`etlplus.validate`.
 
 Notes
 -----
@@ -26,7 +26,7 @@ from etlplus.validate import validate_field
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit

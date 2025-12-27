@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_mixins` module.
 
-Unit tests for ``etlplus.mixins`` helpers.
+Unit tests for :mod:`etlplus.mixins` helpers.
 """
 
 from __future__ import annotations

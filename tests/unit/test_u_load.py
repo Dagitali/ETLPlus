@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_load` module.
 
-Unit tests for ``etlplus.load``.
+Unit tests for :mod:`etlplus.load`.
 
 Notes
 -----
@@ -78,7 +78,7 @@ class _StubSession:
         self,
         url: str,
         *,
-        json: object,
+        json_obj: object,
         timeout: float,
         **kwargs: Any,
     ) -> _StubResponse:  # noqa: ANN001
@@ -86,7 +86,7 @@ class _StubSession:
         record = _CallRecord(
             method='post',
             url=url,
-            json=json,
+            json=json_obj,
             timeout=timeout,
             kwargs=dict(kwargs),
         )
@@ -97,7 +97,7 @@ class _StubSession:
         self,
         url: str,
         *,
-        json: object,
+        json_obj: object,
         timeout: float,
         **kwargs: Any,
     ) -> _StubResponse:  # noqa: ANN001
@@ -105,7 +105,7 @@ class _StubSession:
         record = _CallRecord(
             method='put',
             url=url,
-            json=json,
+            json=json_obj,
             timeout=timeout,
             kwargs=dict(kwargs),
         )

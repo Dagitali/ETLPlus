@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_file` module.
 
-Unit tests for ``etlplus.file``.
+Unit tests for :mod:`etlplus.file`.
 
 Notes
 -----
@@ -55,8 +55,8 @@ class _StubYaml:
             handle.write('yaml')  # type: ignore[call-arg]
 
 
-@pytest.fixture
-def yaml_stub() -> Generator[_StubYaml]:
+@pytest.fixture(name='yaml_stub')
+def yaml_stub_fixture() -> Generator[_StubYaml]:
     """Install a stub PyYAML module for YAML tests."""
     # pylint: disable=protected-access
 
@@ -67,7 +67,7 @@ def yaml_stub() -> Generator[_StubYaml]:
     file_module._YAML_CACHE.clear()
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit

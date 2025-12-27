@@ -1,17 +1,20 @@
 """
 :mod:`tests.unit.test_u_transform` module.
 
-Unit tests for ``etlplus.transform``.
+Unit tests for :mod:`etlplus.transform`.
 
 Notes
 -----
 - Uses small in-memory datasets to validate each operation.
+- Covers public API, edge cases, and basic error-handling behavior.
 - Ensures stable behavior for edge cases (empty inputs, missing fields).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
+from typing import Literal
 
 import pytest
 
@@ -32,7 +35,10 @@ from etlplus.transform import transform
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']
+
+
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
@@ -99,6 +105,26 @@ class TestApplyAggregate:
 class TestApplyFilter:
     """Unit test suite for :func:`etlplus.transform.apply_filter`."""
 
+    def test_filter_basic_gte(self) -> None:
+        """Filter should keep only records matching the predicate."""
+
+        data = [
+            {'age': 10},
+            {'age': 20},
+            {'age': 30},
+        ]
+
+        result = apply_filter(
+            data,
+            {
+                'field': 'age',
+                'op': 'gte',
+                'value': 20,
+            },
+        )
+
+        assert result == [{'age': 20}, {'age': 30}]
+
     @pytest.mark.parametrize(
         'data, op, value, expected_names',
         [
@@ -144,6 +170,59 @@ class TestApplyFilter:
             },
         )
         assert [item['name'] for item in result] == expected_names
+
+    def test_filter_empty_input(self) -> None:
+        """Test that filtering an empty list returns an empty list."""
+
+        result = apply_filter(
+            [],
+            {
+                'field': 'age',
+                'op': 'gte',
+                'value': 10,
+            },
+        )
+
+        assert not result
+
+    def test_filter_in(self) -> None:
+        """
+        Test filtering with the ``in`` operator.
+
+        Notes
+        -----
+        Keeps records whose ``status`` is in the provided list.
+        """
+        data = [
+            {'name': 'John', 'status': 'active'},
+            {'name': 'Jane', 'status': 'inactive'},
+            {'name': 'Bob', 'status': 'active'},
+        ]
+        result = apply_filter(
+            data,
+            {
+                'field': 'status',
+                'op': 'in',
+                'value': ['active', 'pending'],
+            },
+        )
+        assert len(result) == 2
+
+    def test_filter_missing_field_returns_empty(self) -> None:
+        """Test filtering on a missing field should return an empty list."""
+
+        data = [{'foo': 1}, {'foo': 2}]
+
+        result = apply_filter(
+            data,
+            {
+                'field': 'age',
+                'op': 'gte',
+                'value': 10,
+            },
+        )
+
+        assert not result
 
     @pytest.mark.parametrize(
         'data, op, value, expected_count',
@@ -203,31 +282,8 @@ class TestApplyFilter:
         result = apply_filter(data, {'field': 'age', 'op': op, 'value': value})
         assert len(result) == expected_count
 
-    def test_apply_filter_in(self) -> None:
-        """
-        Test filtering with the ``in`` operator.
-
-        Notes
-        -----
-        Keeps records whose ``status`` is in the provided list.
-        """
-        data = [
-            {'name': 'John', 'status': 'active'},
-            {'name': 'Jane', 'status': 'inactive'},
-            {'name': 'Bob', 'status': 'active'},
-        ]
-        result = apply_filter(
-            data,
-            {
-                'field': 'status',
-                'op': 'in',
-                'value': ['active', 'pending'],
-            },
-        )
-        assert len(result) == 2
-
     def test_filter_with_invalid_operator_returns_input(self) -> None:
-        """Unknown operators should result in the original data."""
+        """Test that unknown operators results in the original data."""
 
         data = [{'age': 30}]
         result = apply_filter(
@@ -258,6 +314,17 @@ class TestApplyMap:
         assert result[0]['new_name'] == 'John'
         assert result[0]['age'] == 30
 
+    def test_map_missing_source_key_is_noop(self) -> None:
+        """
+        Test that mapping does not add a destination key when the source is
+        missing.
+        """
+
+        data = [{'foo': 1}]
+        result = apply_map(data, {'bar': 'baz'})
+
+        assert result == [{'foo': 1}]
+
 
 @pytest.mark.unit
 class TestApplySelect:
@@ -277,6 +344,16 @@ class TestApplySelect:
         ]
         result = apply_select(data, ['name', 'age'])
         assert all(set(item.keys()) == {'name', 'age'} for item in result)
+
+    def test_select_missing_fields_sets_none(self) -> None:
+        """
+        Selecting missing fields should include them with a ``None`` value.
+        """
+
+        data = [{'foo': 1}]
+        result = apply_select(data, ['bar'])
+
+        assert result == [{'bar': None}]
 
 
 @pytest.mark.unit
@@ -316,6 +393,33 @@ class TestApplySort:
         ]
         result = apply_sort(data, 'age', reverse=reverse)
         assert [item['age'] for item in result] == expected_sorted_ages
+
+    def test_sort_by_string_field(self) -> None:
+        """
+        Test that sorting works for string fields as well as numeric fields.
+        """
+
+        data = [
+            {'name': 'Bob', 'age': 20},
+            {'name': 'Ada', 'age': 10},
+        ]
+
+        result = apply_sort(data, 'name')
+
+        assert result == [
+            {'name': 'Ada', 'age': 10},
+            {'name': 'Bob', 'age': 20},
+        ]
+
+    def test_sort_missing_field_is_noop(self) -> None:
+        """
+        Test that sorting by a missing field returns the original ordering.
+        """
+
+        data = [{'foo': 2}, {'foo': 1}]
+        result = apply_sort(data, 'bar')
+
+        assert result == [{'foo': 2}, {'foo': 1}]
 
     def test_sort_without_field_is_noop(self) -> None:
         """Test sorting without a field should return the original data."""
@@ -522,10 +626,47 @@ class TestTransform:
         assert len(result) == 2
         assert result[0]['age'] == 25
 
+    def test_transform_pipeline(self) -> None:
+        """Transform should apply operations in sequence."""
+
+        data = [
+            {'name': 'Ada', 'age': 10},
+            {'name': 'Bob', 'age': 20},
+        ]
+
+        ops: dict[StepType, Any] = {
+            'filter': {
+                'field': 'age',
+                'op': 'gte',
+                'value': 15,
+            },
+            'map': {'name': 'person'},
+            'select': ['person', 'age'],
+            'sort': {'field': 'age'},
+        }
+
+        result = transform(data, ops)
+
+        assert result == [{'person': 'Bob', 'age': 20}]
+
 
 @pytest.mark.unit
 class TestNormalizationHelpers:
     """Unit tests for private normalization helpers."""
+
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            (['name', 'age'], True),
+            (('city',), True),
+            (['name', {'nested': 'no'}], False),
+            ('name', False),
+        ],
+    )
+    def test_is_plain_fields_list(self, value: object, expected: bool) -> None:
+        """Test only plain sequences of non-mappings return ``True``."""
+
+        assert _is_plain_fields_list(value) is expected
 
     def test_normalize_operation_keys_accepts_enums(self) -> None:
         """Test :class:`PipelineStep` keys normalizing to lowercase strings."""
@@ -547,17 +688,3 @@ class TestNormalizationHelpers:
         assert _normalize_specs(None) == []
         assert _normalize_specs(single) == [single]
         assert _normalize_specs([single, single]) == [single, single]
-
-    @pytest.mark.parametrize(
-        'value,expected',
-        [
-            (['name', 'age'], True),
-            (('city',), True),
-            (['name', {'nested': 'no'}], False),
-            ('name', False),
-        ],
-    )
-    def test_is_plain_fields_list(self, value: object, expected: bool) -> None:
-        """Test only plain sequences of non-mappings return ``True``."""
-
-        assert _is_plain_fields_list(value) is expected

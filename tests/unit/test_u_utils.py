@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_utils` module.
 
-Unit tests for ``etlplus.utils``.
+Unit tests for :mod:`etlplus.utils`.
 
 Notes
 -----
@@ -37,7 +37,7 @@ from etlplus.utils import to_positive_int
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit
@@ -65,7 +65,7 @@ class TestUtils:
         assert cast_str_dict(None) == {}
         assert cast_str_dict({'a': 1}) == {'a': '1'}
         assert coerce_dict({'k': 'v'}) == {'k': 'v'}
-        assert coerce_dict('not-mapping') == {}
+        assert not coerce_dict('not-mapping')
 
     def test_count_records(self) -> None:
         """Test record counts differ for dicts vs. lists."""
