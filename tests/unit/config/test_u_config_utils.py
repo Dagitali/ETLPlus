@@ -23,6 +23,7 @@ pytestmark = pytest.mark.unit
 
 # SECTION: FIXTURES ========================================================= #
 
+
 @pytest.fixture(name='vars_map_basic')
 def vars_map_basic_fixture() -> dict[str, str]:
     """Provide a basic variables mapping for token substitution."""
