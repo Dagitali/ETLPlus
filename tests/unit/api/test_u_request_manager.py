@@ -329,7 +329,8 @@ class TestRequestManager:
         assert request_once.call_args.args[:2] == (expected_method, 'http://x')
 
     def test_request_accepts_unknown_methods(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Test that unknown HTTP method strings are passed through unchanged.
