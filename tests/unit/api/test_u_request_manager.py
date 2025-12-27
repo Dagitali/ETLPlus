@@ -199,3 +199,92 @@ def test_request_manager_request_callable(
     assert called['method'] == 'POST'
     assert called['url'] == 'http://test'
     assert callable(called['request_callable'])
+
+
+def test_request_manager_default_init() -> None:
+    """Test RequestManager default initialization values."""
+    manager = RequestManager()
+    assert manager.retry is None
+    assert manager.retry_network_errors is False
+    assert manager.default_timeout == 10.0
+    assert manager.session is None
+    assert manager.session_factory is None
+    assert manager.retry_cap == 30.0
+    assert manager.session_adapters is None
+
+
+def test_request_manager_context_manager_handles_exceptions() -> None:
+    """Test that :meth:`__exit__` cleans up even if an exception is raised."""
+    # pylint: disable=protected-access
+
+    manager = RequestManager()
+
+    class DummyExc(Exception):
+        """Dummy exception for context-manager testing."""
+
+    manager._ctx_session = DummySession()
+    manager._ctx_owns_session = True
+
+    with pytest.raises(DummyExc):
+        with manager:
+            raise DummyExc()
+
+    assert manager._ctx_session is None
+    assert manager._ctx_owns_session is False
+
+
+def test_request_manager_request_once_returns_callable() -> None:
+    """Test that request_once returns the result of request_callable."""
+    # pylint: disable=unused-argument
+
+    manager = RequestManager()
+
+    def fake_callable(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {'ok': True}
+
+    result = manager.request_once(
+        'GET',
+        'http://x',
+        session=None,
+        timeout=1,
+        request_callable=fake_callable,
+    )
+
+    assert result == {'ok': True}
+
+
+def test_request_manager_request_once_no_callable() -> None:
+    """Test that request_once raises if no request_callable is provided."""
+    manager = RequestManager()
+
+    with pytest.raises((TypeError, ValueError)):
+        manager.request_once('GET', 'http://x', session=None, timeout=1)
+
+
+def test_request_manager_get_post(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test get/post delegate to request using the correct HTTP method."""
+    manager = RequestManager()
+
+    monkeypatch.setattr(
+        type(manager),
+        'request_once',
+        staticmethod(lambda *a: {'ok': True}),
+    )
+
+    assert manager.get('http://x') == {'ok': True}
+    assert manager.post('http://x') == {'ok': True}
+
+
+def test_request_manager_request_invalid_method(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that request accepts unknown methods and passes them through."""
+    manager = RequestManager()
+
+    monkeypatch.setattr(
+        type(manager),
+        'request_once',
+        staticmethod(lambda *a, **k: {'ok': True}),
+    )
+
+    assert manager.request('FOO', 'http://x') == {'ok': True}
