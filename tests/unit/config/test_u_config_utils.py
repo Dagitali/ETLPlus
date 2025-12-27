@@ -1,10 +1,15 @@
 """
 :mod:`tests.unit.config.test_u_config_utils` module.
 
-Unit tests for :class:`etlplus.config.utils`.
+Unit tests for :mod:`etlplus.config.utils`.
 
-Covers deep_substitute and edge cases.
+Notes
+-----
+- These tests are intentionally focused on functional behavior (input → output)
+    and avoid asserting implementation details.
 """
+
+from __future__ import annotations
 
 import pytest
 
@@ -15,63 +20,109 @@ from etlplus.config import utils as config_utils
 
 pytestmark = pytest.mark.unit
 
+
+# SECTION: FIXTURES ========================================================= #
+
+@pytest.fixture(name='vars_map_basic')
+def vars_map_basic_fixture() -> dict[str, str]:
+    """Provide a basic variables mapping for token substitution."""
+
+    return {'FOO': 'foo', 'BAR': 'bar'}
+
+
+@pytest.fixture(name='vars_map_nested')
+def vars_map_nested_fixture() -> dict[str, int]:
+    """Provide an integer variables mapping used in nested substitutions."""
+
+    return {'X': 1, 'Y': 2, 'Z': 3}
+
+
 # SECTION: TESTS ============================================================ #
 
 
-def test_deep_substitute_basic():
-    """Test basic deep substitution functionality."""
-    value = {'a': '${FOO}', 'b': 2, 'c': ['${BAR}', 3]}
-    vars_map = {'FOO': 'foo', 'BAR': 'bar'}
-    result = config_utils.deep_substitute(value, vars_map, None)
-    assert result == {'a': 'foo', 'b': 2, 'c': ['bar', 3]}
+class TestDeepSubstitute:
+    """Unit test suite for :func:`etlplus.config.utils.deep_substitute`."""
 
+    def test_basic_substitution(self, vars_map_basic: dict[str, str]) -> None:
+        """Test substituting tokens across nested mappings and sequences."""
 
-def test_deep_substitute_empty():
-    """Test deep substitution with empty structures."""
-    assert config_utils.deep_substitute('', None, None) == ''
-    assert config_utils.deep_substitute({}, None, None) == {}
-    assert config_utils.deep_substitute([], None, None) == []
-    assert config_utils.deep_substitute(None, None, None) is None
+        value = {'a': '${FOO}', 'b': 2, 'c': ['${BAR}', 3]}
+        result = config_utils.deep_substitute(value, vars_map_basic, None)
 
+        assert result == {'a': 'foo', 'b': 2, 'c': ['bar', 3]}
 
-def test_deep_substitute_env_override():
-    """Test that environment variables override vars_map in substitution."""
-    value = {'a': '${FOO}', 'b': '${BAR}'}
-    vars_map = {'FOO': 'foo', 'BAR': 'bar'}
-    env_map = {'FOO': 'envfoo'}
-    result = config_utils.deep_substitute(value, vars_map, env_map)
-    assert result['a'] == 'envfoo'
-    assert result['b'] == 'bar'
+    @pytest.mark.parametrize(
+        'value, expected',
+        [
+            pytest.param('', '', id='empty-string'),
+            pytest.param({}, {}, id='empty-dict'),
+            pytest.param([], [], id='empty-list'),
+            pytest.param(None, None, id='none'),
+        ],
+    )
+    def test_empty_inputs_passthrough(
+        self,
+        value: object,
+        expected: object,
+    ) -> None:
+        """Test that empty inputs are returned unchanged."""
 
+        result = config_utils.deep_substitute(value, None, None)
+        if expected is None:
+            assert result is None
+        else:
+            assert result == expected
 
-def test_deep_substitute_nested_structures():
-    """Test deep substitution in nested structures."""
-    value = {'a': ['${X}', {'b': '${Y}'}], 'c': ({'d': '${Z}'},)}
-    vars_map = {'X': 1, 'Y': 2, 'Z': 3}
-    result = config_utils.deep_substitute(value, vars_map, None)
-    assert result == {'a': ['1', {'b': '2'}], 'c': ({'d': '3'},)}
+    def test_env_overrides_vars_map(
+        self,
+        vars_map_basic: dict[str, str],
+    ) -> None:
+        """
+        Test that ``env_map`` values are preferred over ``vars_map`` values.
+        """
 
+        value = {'a': '${FOO}', 'b': '${BAR}'}
+        env_map = {'FOO': 'envfoo'}
 
-def test_deep_substitute_no_subs():
-    """Test deep substitution when no substitutions are needed."""
-    value = {'a': 1, 'b': [2, 3], 'c': {'d': 4}}
-    result = config_utils.deep_substitute(value, None, None)
-    assert result == value
+        result = config_utils.deep_substitute(value, vars_map_basic, env_map)
 
+        assert result == {'a': 'envfoo', 'b': 'bar'}
 
-def test_deep_substitute_sets():
-    """Test deep substitution within set and frozenset structures."""
-    value = {'a': {'${FOO}', 'bar'}, 'b': frozenset(['${FOO}', 'baz'])}
-    vars_map = {'FOO': 'f'}
-    result = config_utils.deep_substitute(value, vars_map, None)
-    assert 'f' in result['a'] and 'bar' in result['a']
-    assert 'f' in result['b'] and 'baz' in result['b']
+    def test_nested_structures(self, vars_map_nested: dict[str, int]) -> None:
+        """Test substituting tokens in nested structures, including tuples."""
 
+        value = {'a': ['${X}', {'b': '${Y}'}], 'c': ({'d': '${Z}'},)}
+        result = config_utils.deep_substitute(value, vars_map_nested, None)
 
-def test_deep_substitute_token_not_found():
-    """
-    Test behavior when a token is not found in ``vars_map`` or ``env_map.``
-    """
-    value = 'Hello ${MISSING}'
-    result = config_utils.deep_substitute(value, {'FOO': 'foo'}, None)
-    assert result == 'Hello ${MISSING}'
+        # deep_substitute coerces substituted values to strings.
+        assert result == {'a': ['1', {'b': '2'}], 'c': ({'d': '3'},)}
+
+    def test_no_substitutions_needed(self) -> None:
+        """
+        Test returning the original value when no substitutions are required.
+        """
+
+        value = {'a': 1, 'b': [2, 3], 'c': {'d': 4}}
+        result = config_utils.deep_substitute(value, None, None)
+
+        assert result == value
+
+    def test_sets_and_frozensets(self) -> None:
+        """Test substituting tokens within set-like container structures."""
+
+        value = {'a': {'${FOO}', 'bar'}, 'b': frozenset(['${FOO}', 'baz'])}
+        result = config_utils.deep_substitute(value, {'FOO': 'f'}, None)
+
+        assert result['a'] == {'f', 'bar'}
+        assert result['b'] == frozenset({'f', 'baz'})
+
+    def test_token_not_found_returns_original(self) -> None:
+        """
+        Test that unknown tokens are left unchanged when no mapping provides a
+        value.
+        """
+
+        value = 'Hello ${MISSING}'
+        result = config_utils.deep_substitute(value, {'FOO': 'foo'}, None)
+
+        assert result == 'Hello ${MISSING}'
