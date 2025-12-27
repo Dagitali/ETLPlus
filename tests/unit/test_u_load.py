@@ -15,7 +15,7 @@ Notes
 from __future__ import annotations
 
 import csv
-import json
+import json as js
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,7 +78,7 @@ class _StubSession:
         self,
         url: str,
         *,
-        json_obj: object,
+        json: object,
         timeout: float,
         **kwargs: Any,
     ) -> _StubResponse:  # noqa: ANN001
@@ -86,7 +86,7 @@ class _StubSession:
         record = _CallRecord(
             method='post',
             url=url,
-            json=json_obj,
+            json=json,
             timeout=timeout,
             kwargs=dict(kwargs),
         )
@@ -97,7 +97,7 @@ class _StubSession:
         self,
         url: str,
         *,
-        json_obj: object,
+        json: object,
         timeout: float,
         **kwargs: Any,
     ) -> _StubResponse:  # noqa: ANN001
@@ -105,7 +105,7 @@ class _StubSession:
         record = _CallRecord(
             method='put',
             url=url,
-            json=json_obj,
+            json=json,
             timeout=timeout,
             kwargs=dict(kwargs),
         )
@@ -175,7 +175,7 @@ class TestLoad:
         [
             (
                 'json',
-                lambda p, d: json.dump(
+                lambda p, d: js.dump(
                     d,
                     open(p, 'w', encoding='utf-8'),
                 ),
@@ -566,7 +566,7 @@ class TestLoadToFile:
         assert result['status'] == 'success'
         assert output_path.exists()
         with open(output_path, encoding='utf-8') as f:
-            loaded_data = json.load(f)
+            loaded_data = js.load(f)
         assert loaded_data == mock_data
 
 
