@@ -55,8 +55,8 @@ class _StubYaml:
             handle.write('yaml')  # type: ignore[call-arg]
 
 
-@pytest.fixture
-def yaml_stub() -> Generator[_StubYaml]:
+@pytest.fixture(name='yaml_stub')
+def yaml_stub_fixture() -> Generator[_StubYaml]:
     """Install a stub PyYAML module for YAML tests."""
     # pylint: disable=protected-access
 
