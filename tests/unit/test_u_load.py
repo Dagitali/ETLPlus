@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_load` module.
 
-Unit tests for ``etlplus.load``.
+Unit tests for :mod:`etlplus.load`.
 
 Notes
 -----

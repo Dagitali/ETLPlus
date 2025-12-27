@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_file` module.
 
-Unit tests for ``etlplus.file``.
+Unit tests for :mod:`etlplus.file`.
 
 Notes
 -----
@@ -67,7 +67,7 @@ def yaml_stub() -> Generator[_StubYaml]:
     file_module._YAML_CACHE.clear()
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit

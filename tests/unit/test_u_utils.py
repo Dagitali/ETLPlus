@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_utils` module.
 
-Unit tests for ``etlplus.utils``.
+Unit tests for :mod:`etlplus.utils`.
 
 Notes
 -----
@@ -37,7 +37,7 @@ from etlplus.utils import to_positive_int
 pytestmark = pytest.mark.unit
 
 
-# SECTION: TESTS =========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.unit

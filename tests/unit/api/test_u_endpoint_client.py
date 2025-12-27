@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_endpoint_client` module.
 
-Unit tests for ``etlplus.api.endpoint_client``.
+Unit tests for :mod:`etlplus.api.endpoint_client`.
 
 Notes
 -----
