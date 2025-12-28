@@ -18,10 +18,30 @@ from typing import Literal
 
 import pytest
 
+from etlplus.enums import AggregateName
+from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
+from etlplus.transform import _agg_avg
+from etlplus.transform import _agg_count
+from etlplus.transform import _agg_max
+from etlplus.transform import _agg_min
+from etlplus.transform import _agg_sum
+from etlplus.transform import _apply_aggregate_step
+from etlplus.transform import _apply_filter_step
+from etlplus.transform import _apply_map_step
+from etlplus.transform import _apply_select_step
+from etlplus.transform import _apply_sort_step
+from etlplus.transform import _collect_numeric_and_presence
+from etlplus.transform import _contains
+from etlplus.transform import _derive_agg_key
+from etlplus.transform import _eval_condition
+from etlplus.transform import _has
 from etlplus.transform import _is_plain_fields_list
 from etlplus.transform import _normalize_operation_keys
 from etlplus.transform import _normalize_specs
+from etlplus.transform import _resolve_aggregator
+from etlplus.transform import _resolve_operator
+from etlplus.transform import _sort_key
 from etlplus.transform import apply_aggregate
 from etlplus.transform import apply_filter
 from etlplus.transform import apply_map
@@ -41,7 +61,6 @@ type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestApplyAggregate:
     """Unit test suite for :func:`etlplus.transform.apply_aggregate`."""
 
@@ -101,7 +120,6 @@ class TestApplyAggregate:
         assert result == {'score': 48}
 
 
-@pytest.mark.unit
 class TestApplyFilter:
     """Unit test suite for :func:`etlplus.transform.apply_filter`."""
 
@@ -279,7 +297,10 @@ class TestApplyFilter:
         expected_count : int
             Expected number of filtered records.
         """
-        result = apply_filter(data, {'field': 'age', 'op': op, 'value': value})
+        result = apply_filter(
+            data,
+            {'field': 'age', 'op': op, 'value': value},
+        )
         assert len(result) == expected_count
 
     def test_filter_with_invalid_operator_returns_input(self) -> None:
@@ -298,7 +319,6 @@ class TestApplyFilter:
         assert result == data
 
 
-@pytest.mark.unit
 class TestApplyMap:
     """Unit test suite for :func:`etlplus.transform.apply_map`."""
 
@@ -326,7 +346,6 @@ class TestApplyMap:
         assert result == [{'foo': 1}]
 
 
-@pytest.mark.unit
 class TestApplySelect:
     """Unit test suite for :func:`etlplus.transform.apply_select`."""
 
@@ -356,7 +375,6 @@ class TestApplySelect:
         assert result == [{'bar': None}]
 
 
-@pytest.mark.unit
 class TestApplySort:
     """Unit test suite for :func:`etlplus.transform.apply_sort`."""
 
@@ -428,7 +446,6 @@ class TestApplySort:
         assert apply_sort(data, None) == data
 
 
-@pytest.mark.unit
 class TestTransform:
     """Unit test suite for :func:`etlplus.transform.transform`."""
 
@@ -650,9 +667,272 @@ class TestTransform:
         assert result == [{'person': 'Bob', 'age': 20}]
 
 
-@pytest.mark.unit
-class TestNormalizationHelpers:
-    """Unit tests for private normalization helpers."""
+class TestTransformInternalHelpers:
+    """Unit tests for internal helpers in :mod:`etlplus.transform`."""
+
+    def test_agg_avg(self):
+        """
+        Test that :func:`etlplus.transform._agg_avg` returns correct average.
+        """
+        assert _agg_avg([], 0) == 0.0
+        assert _agg_avg([1, 2, 3], 3) == 2.0
+
+    def test_agg_count(self):
+        """
+        Test that :func:`etlplus.transform._agg_count` returns correct count.
+        """
+        assert _agg_count([], 0) == 0
+        assert _agg_count([1, 2, 3], 5) == 5
+
+    def test_agg_max(self):
+        """
+        Test that :func:`etlplus.transform._agg_max` returns correct maximum.
+        """
+        assert _agg_max([], 0) is None
+        assert _agg_max([1, 2, 3], 0) == 3
+
+    def test_agg_min(self):
+        """
+        Test that :func:`etlplus.transform._agg_min` returns correct minimum.
+        """
+        assert _agg_min([], 0) is None
+        assert _agg_min([1, 2, 3], 0) == 1
+
+    def test_agg_sum(self):
+        """
+        Test that :func:`etlplus.transform._agg_sum` returns correct sum.
+        """
+        assert _agg_sum([], 0) == 0
+        assert _agg_sum([1, 2, 3], 0) == 6
+
+    def test_apply_aggregate_step(self):
+        """
+        Test that :func:`etlplus.transform._apply_aggregate_step` returns
+        correct aggregation.
+        """
+        rows = [{'a': 1}, {'a': 2}]
+        spec = {'field': 'a', 'func': 'sum', 'alias': 'total'}
+        result = _apply_aggregate_step(rows, spec)
+        assert result == [{'total': 3}]
+
+    def test_apply_filter_step(self):
+        """
+        Test that :func:`etlplus.transform._apply_filter_step` returns correct
+        filtered records.
+        """
+        rows = [{'a': 1}, {'a': 2}]
+        spec = {'field': 'a', 'op': 'gt', 'value': 1}
+        result = _apply_filter_step(rows, spec)
+        assert result == [{'a': 2}]
+
+    def test_apply_map_step(self):
+        """
+        Test that :func:`etlplus.transform._apply_map_step` returns correct
+        mapped records.
+        """
+        rows = [{'a': 1, 'b': 2}]
+        spec = {'a': 'x', 'b': 'y'}
+        result = _apply_map_step(rows, spec)
+        assert result == [{'x': 1, 'y': 2}]
+
+    def test_apply_select_step_mapping(self):
+        """
+        Test that :func:`etlplus.transform._apply_select_step` returns correct
+        selected fields when spec is a mapping.
+        """
+        rows = [{'a': 1, 'b': 2}]
+        spec = {'fields': ['a']}
+        result = _apply_select_step(rows, spec)
+        assert result == [{'a': 1}]
+
+    def test_apply_select_step_list(self):
+        """
+        Test that :func:`etlplus.transform._apply_select_step` returns correct
+        selected fields when spec is a list.
+        """
+        rows = [{'a': 1, 'b': 2}]
+        spec = ['a']
+        result = _apply_select_step(rows, spec)
+        assert result == [{'a': 1}]
+
+    def test_apply_select_step_other(self):
+        """
+        Test that :func:`etlplus.transform._apply_select_step` returns original
+        rows when spec is neither a mapping nor a list.
+        """
+        rows = [{'a': 1, 'b': 2}]
+        spec = 123
+        result = _apply_select_step(rows, spec)
+        assert result == rows
+
+    def test_apply_sort_step_mapping(self):
+        """
+        Test that :func:`etlplus.transform._apply_sort_step` returns correct
+        sorted records when spec is a mapping.
+        """
+        rows = [{'a': 2}, {'a': 1}]
+        spec = {'field': 'a'}
+        result = _apply_sort_step(rows, spec)
+        assert result == [{'a': 1}, {'a': 2}]
+
+    def test_apply_sort_step_none(self):
+        """
+        Test that :func:`etlplus.transform._apply_sort_step` returns original
+        rows when spec is None.
+        """
+        rows = [{'a': 2}, {'a': 1}]
+        result = _apply_sort_step(rows, None)
+        assert result == rows
+
+    def test_apply_sort_step_other(self):
+        """
+        Test that :func:`etlplus.transform._apply_sort_step` returns correct
+        sorted records when spec is neither a mapping nor None.
+        """
+        rows = [{'a': 2}, {'a': 1}]
+        result = _apply_sort_step(rows, 'a')
+        assert result == [{'a': 1}, {'a': 2}]
+
+    def test_collect_numeric_and_presence_none(self):
+        """
+        Test that :func:`etlplus.transform._collect_numeric_and_presence`
+        returns correct results when field is None.
+        """
+        rows = [{'a': 1}, {'a': 2}]
+        nums, present = _collect_numeric_and_presence(rows, None)
+        assert not nums
+        assert present == 2
+
+    def test_collect_numeric_and_presence_field(self):
+        """
+        Test that :func:`etlplus.transform._collect_numeric_and_presence`
+        returns correct numeric values and presence count.
+        """
+        rows = [{'a': 1}, {'a': 2}, {'b': 3}]
+        nums, present = _collect_numeric_and_presence(rows, 'a')
+        assert nums == [1, 2]
+        assert present == 2
+
+    def test_contains(self):
+        """
+        Test that :func:`etlplus.transform._contains` returns correct truthy
+        value.
+        """
+        assert _contains([1, 2, 3], 2)
+        assert not _contains([1, 2, 3], 5)
+
+    def test_contains_typeerror(self):
+        """
+        Test that :func:`etlplus.transform._contains` handles
+        :class:`TypeError` gracefully.
+        """
+
+        class NoContains:
+            """Class that raises TypeError when checked for containment."""
+
+        assert not _contains(NoContains(), 1)
+
+    def test_derive_agg_key_alias(self):
+        """
+        Test that :func:`etlplus.transform._derive_agg_key` uses alias if
+        provided.
+        """
+        assert _derive_agg_key('sum', 'foo', 'total') == 'total'
+
+    def test_derive_agg_key_enum(self):
+        """
+        Test that :func:`etlplus.transform._derive_agg_key` handles enum
+        inputs.
+        """
+        assert _derive_agg_key(AggregateName.SUM, 'foo', None) == 'sum_foo'
+
+    def test_derive_agg_key_str(self):
+        """
+        Test that :func:`etlplus.transform._derive_agg_key` handles string
+        inputs.
+        """
+        assert _derive_agg_key('sum', 'foo', None) == 'sum_foo'
+
+    def test_derive_agg_key_callable(self):
+        """
+        Test that :func:`etlplus.transform._derive_agg_key` handles callable
+        inputs.
+        """
+
+        def agg(xs, n):
+            return 0
+
+        assert _derive_agg_key(agg, 'foo', None).startswith('agg_')
+
+    def test_derive_agg_key_other(self):
+        """
+        Test that :func:`etlplus.transform._derive_agg_key` handles unknown
+        object inputs.
+        """
+
+        class Dummy:
+            """Dummy class for testing."""
+
+        val = _derive_agg_key(Dummy(), 'foo', None)
+        # Should end with '_foo' for unknown object
+        assert val.endswith('_foo')
+
+    def test_eval_condition_true(self):
+        """
+        Test that :func:`etlplus.transform._eval_condition` returns correct
+        truthy value.
+        """
+        rec = {'a': 2}
+
+        def op(a, b):
+            return a == b
+
+        assert _eval_condition(rec, 'a', op, 2, True)
+
+    def test_eval_condition_false(self):
+        """
+        Test that :func:`etlplus.transform._eval_condition` returns correct
+        falsy value.
+        """
+        rec = {'a': 2}
+
+        def op(a, b):
+            return a == b
+
+        assert not _eval_condition(rec, 'a', op, 3, True)
+
+    def test_eval_condition_missing_key(self):
+        """
+        Test that :func:`etlplus.transform._eval_condition` handles missing
+        keys correctly.
+        """
+        rec = {'b': 2}
+
+        def op(a, b):
+            return a == b
+
+        assert not _eval_condition(rec, 'a', op, 2, True)
+
+    def test_eval_condition_exception(self):
+        """
+        Test that :func:`etlplus.transform._eval_condition` handles exceptions
+        correctly.
+        """
+        rec = {'a': 2}
+
+        def op(a, b):
+            raise RuntimeError('fail')
+
+        assert not _eval_condition(rec, 'a', op, 2, True)
+        with pytest.raises(RuntimeError):
+            _eval_condition(rec, 'a', op, 2, False)
+
+    def test_has(self):
+        """
+        Test that :func:`etlplus.transform._has` returns correct truthy value.
+        """
+        assert _has(2, [1, 2, 3])
+        assert not _has(5, [1, 2, 3])
 
     @pytest.mark.parametrize(
         'value,expected',
@@ -663,7 +943,11 @@ class TestNormalizationHelpers:
             ('name', False),
         ],
     )
-    def test_is_plain_fields_list(self, value: object, expected: bool) -> None:
+    def test_is_plain_fields_list(
+        self,
+        value: object,
+        expected: bool,
+    ) -> None:
         """Test only plain sequences of non-mappings return ``True``."""
 
         assert _is_plain_fields_list(value) is expected
@@ -685,6 +969,65 @@ class TestNormalizationHelpers:
         """Test helper coercing scalars to list and keep sequences."""
 
         single = {'field': 'age'}
-        assert _normalize_specs(None) == []
+        assert not _normalize_specs(None)
         assert _normalize_specs(single) == [single]
         assert _normalize_specs([single, single]) == [single, single]
+
+    def test_resolve_aggregator_enum(self):
+        """Test that :func:`_resolve_aggregator` handles enum inputs."""
+        fn = _resolve_aggregator(AggregateName.SUM)
+        assert callable(fn)
+        assert fn([1, 2], 2) == 3
+
+    def test_resolve_aggregator_str(self):
+        """Test that :func:`_resolve_aggregator` handles string inputs."""
+        fn = _resolve_aggregator('avg')
+        assert callable(fn)
+        assert fn([2, 4], 2) == 3
+
+    def test_resolve_aggregator_callable(self):
+        """Test that :func:`_resolve_aggregator` returns callables as-is."""
+
+        # pylint: disable=unused-argument
+        def agg(xs, n):
+            return 42
+
+        assert _resolve_aggregator(agg) is agg
+
+    def test_resolve_aggregator_invalid(self):
+        """Test that :func:`_resolve_aggregator` raises on invalid inputs."""
+        with pytest.raises(TypeError):
+            _resolve_aggregator(object())
+
+    def test_resolve_operator_enum(self):
+        """Test that :func:`_resolve_operator` handles enum inputs."""
+        fn = _resolve_operator(OperatorName.EQ)
+        assert fn(1, 1)
+        assert not fn(1, 2)
+
+    def test_resolve_operator_str(self):
+        """Test that :func:`_resolve_operator` handles string inputs."""
+        fn = _resolve_operator('gt')
+        assert fn(2, 1)
+        assert not fn(1, 2)
+
+    def test_resolve_operator_callable(self):
+        """Test that :func:`_resolve_operator` returns callables as-is."""
+
+        def op(a, b):
+            return a == b
+
+        assert _resolve_operator(op) is op
+
+    def test_resolve_operator_invalid(self):
+        """Test that :func:`_resolve_operator` raises on invalid inputs."""
+        with pytest.raises(TypeError):
+            _resolve_operator(object())
+
+    def test_sort_key(self):
+        """
+        Test that :func:`_sort_key` handles different sort key types correctly.
+        """
+        assert _sort_key(None)[0] == 2
+        assert _sort_key(5)[0] == 0
+        assert _sort_key('abc')[0] == 1
