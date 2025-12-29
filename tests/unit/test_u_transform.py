@@ -5,9 +5,12 @@ Unit tests for :mod:`etlplus.transform`.
 
 Notes
 -----
-- Uses small in-memory datasets to validate each operation.
+- Intentionally lightweight and pure (no network/filesystem beyond temporary
+    JSON fixtures).
+- Uses small in-memory datasets to validate each public operation and
+    selected internal helpers.
 - Covers public API, edge cases, and basic error-handling behavior.
-- Ensures stable behavior for edge cases (empty inputs, missing fields).
+- Validates stable behavior for edge cases (empty inputs, missing fields).
 """
 
 from __future__ import annotations
@@ -15,9 +18,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 from typing import Literal
+from typing import cast
 
 import pytest
 
+# from etlplus import transform as tx
 from etlplus.enums import AggregateName
 from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
@@ -58,6 +63,31 @@ pytestmark = pytest.mark.unit
 type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='rows_people')
+def rows_people_fixture() -> list[dict[str, Any]]:
+    """Return a small dataset of people-like records."""
+
+    return [
+        {'name': 'John', 'age': 30, 'city': 'New York', 'status': 'active'},
+        {'name': 'Jane', 'age': 25, 'city': 'Newark', 'status': 'inactive'},
+        {'name': 'Bob', 'age': 35, 'city': 'Boston', 'status': 'active'},
+    ]
+
+
+@pytest.fixture(name='rows_values')
+def rows_values_fixture() -> list[dict[str, Any]]:
+    """Return a small dataset with a numeric ``value`` field."""
+
+    return [
+        {'name': 'John', 'value': 10},
+        {'name': 'Jane', 'value': 20},
+        {'name': 'Bob', 'value': 15},
+    ]
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -65,52 +95,40 @@ class TestApplyAggregate:
     """Unit test suite for :func:`etlplus.transform.apply_aggregate`."""
 
     @pytest.mark.parametrize(
-        'func, expected_result',
+        ('func', 'expected_key', 'expected_value'),
         [
-            ('avg', 15),
-            ('count', 3),
-            ('min', 10),
-            ('max', 20),
-            ('sum', 45),
+            ('avg', 'avg_value', 15),
+            ('count', 'count_value', 3),
+            ('min', 'min_value', 10),
+            ('max', 'max_value', 20),
+            ('sum', 'sum_value', 45),
         ],
+        ids=['avg', 'count', 'min', 'max', 'sum'],
     )
-    def test_aggregate(
+    def test_aggregate_builtin(
         self,
+        rows_values: list[dict[str, Any]],
         func: str,
-        expected_result: int,
+        expected_key: str,
+        expected_value: int,
     ) -> None:
         """
-        Test aggregating the ``value`` field with built-in functions.
-
-        Parameters
-        ----------
-        func : str
-            Aggregation function to apply.
-        expected_result : int
-            Expected result of the aggregation.
+        Test aggregating ``value`` with built-in aggregator names.
         """
-        data = [
-            {'name': 'John', 'value': 10},
-            {'name': 'Jane', 'value': 20},
-            {'name': 'Bob', 'value': 15},
-        ]
-        result = apply_aggregate(data, {'field': 'value', 'func': func})
-        key = f'{func}_value' if func != 'count' else 'count_value'
-        assert result[key] == expected_result
+        result = apply_aggregate(rows_values, {'field': 'value', 'func': func})
+        assert result[expected_key] == expected_value
 
-    def test_aggregate_callable_with_alias(self) -> None:
+    def test_aggregate_callable_with_alias(
+        self,
+        rows_values: list[dict[str, Any]],
+    ) -> None:
         """Test aggregating with a callable and custom alias."""
 
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
 
-        data = [
-            {'value': 10},
-            {'value': 20},
-            {'value': 15},
-        ]
         result = apply_aggregate(
-            data,
+            rows_values,
             {
                 'field': 'value',
                 'func': score,
@@ -124,14 +142,12 @@ class TestApplyFilter:
     """Unit test suite for :func:`etlplus.transform.apply_filter`."""
 
     def test_filter_basic_gte(self) -> None:
-        """Filter should keep only records matching the predicate."""
-
+        """Test that filter keeps only records matching the predicate."""
         data = [
             {'age': 10},
             {'age': 20},
             {'age': 30},
         ]
-
         result = apply_filter(
             data,
             {
@@ -140,7 +156,6 @@ class TestApplyFilter:
                 'value': 20,
             },
         )
-
         assert result == [{'age': 20}, {'age': 30}]
 
     @pytest.mark.parametrize(
@@ -165,20 +180,7 @@ class TestApplyFilter:
         value: str,
         expected_names: list[str],
     ) -> None:
-        """
-        Test filtering with a custom callable operator.
-
-        Parameters
-        ----------
-        data : list[dict[str, str]]
-            Input records.
-        op : Callable[[str, str], bool]
-            Operator function.
-        value : str
-            Value to filter by.
-        expected_names : list[str]
-            Expected names after filter.
-        """
+        """Test that filtering supports custom callable operators."""
         result = apply_filter(
             data,
             {
@@ -191,7 +193,6 @@ class TestApplyFilter:
 
     def test_filter_empty_input(self) -> None:
         """Test that filtering an empty list returns an empty list."""
-
         result = apply_filter(
             [],
             {
@@ -200,37 +201,29 @@ class TestApplyFilter:
                 'value': 10,
             },
         )
-
         assert not result
 
-    def test_filter_in(self) -> None:
-        """
-        Test filtering with the ``in`` operator.
+    def test_filter_in_operator(
+        self,
+        rows_people: list[dict[str, Any]],
+    ) -> None:
+        """Test filtering with the ``in`` operator."""
 
-        Notes
-        -----
-        Keeps records whose ``status`` is in the provided list.
-        """
-        data = [
-            {'name': 'John', 'status': 'active'},
-            {'name': 'Jane', 'status': 'inactive'},
-            {'name': 'Bob', 'status': 'active'},
-        ]
         result = apply_filter(
-            data,
+            rows_people,
             {
                 'field': 'status',
                 'op': 'in',
                 'value': ['active', 'pending'],
             },
         )
-        assert len(result) == 2
+        assert [r['name'] for r in result] == ['John', 'Bob']
 
     def test_filter_missing_field_returns_empty(self) -> None:
-        """Test filtering on a missing field should return an empty list."""
-
+        """
+        Test that filtering on a missing field returns an empty list.
+        """
         data = [{'foo': 1}, {'foo': 2}]
-
         result = apply_filter(
             data,
             {
@@ -239,12 +232,17 @@ class TestApplyFilter:
                 'value': 10,
             },
         )
-
         assert not result
 
     @pytest.mark.parametrize(
-        'data, op, value, expected_count',
+        ('data', 'op', 'value', 'expected_count'),
         [
+            (
+                [{'name': 'John', 'age': 30}, {'name': 'Jane', 'age': 25}],
+                'gt',
+                26,
+                1,
+            ),
             (
                 [
                     {'name': 'John', 'age': 30},
@@ -257,16 +255,6 @@ class TestApplyFilter:
             ),
             (
                 [
-                    {'name': 'John', 'age': 30},
-                    {'name': 'Jane', 'age': 25},
-                    {'name': 'Bob', 'age': 35},
-                ],
-                'gt',
-                28,
-                2,
-            ),
-            (
-                [
                     {'name': 'John', 'age': '30'},
                     {'name': 'Jane', 'age': '25'},
                 ],
@@ -275,27 +263,17 @@ class TestApplyFilter:
                 1,
             ),
         ],
+        ids=['gt-int', 'eq-int', 'gt-str'],
     )
     def test_filter_numeric_ops(
         self,
-        data: list[dict],
+        data: list[dict[str, Any]],
         op: str,
-        value: int | str,
+        value: int,
         expected_count: int,
     ) -> None:
         """
-        Test filtering with numeric operators.
-
-        Parameters
-        ----------
-        data : list[dict]
-            Input records.
-        op : str
-            Operator name.
-        value : int | str
-            Value to filter by.
-        expected_count : int
-            Expected number of filtered records.
+        Test filtering with standard numeric comparisons.
         """
         result = apply_filter(
             data,
@@ -303,8 +281,8 @@ class TestApplyFilter:
         )
         assert len(result) == expected_count
 
-    def test_filter_with_invalid_operator_returns_input(self) -> None:
-        """Test that unknown operators results in the original data."""
+    def test_filter_invalid_operator_returns_input(self) -> None:
+        """Test that unknown operators result in the original data."""
 
         data = [{'age': 30}]
         result = apply_filter(
@@ -315,14 +293,13 @@ class TestApplyFilter:
                 'value': 40,
             },
         )
-
         assert result == data
 
 
 class TestApplyMap:
     """Unit test suite for :func:`etlplus.transform.apply_map`."""
 
-    def test_map(self) -> None:
+    def test_map_renames_fields(self) -> None:
         """Test mapping/renaming fields in each record."""
         data = [
             {'old_name': 'John', 'age': 30},
@@ -342,36 +319,29 @@ class TestApplyMap:
 
         data = [{'foo': 1}]
         result = apply_map(data, {'bar': 'baz'})
-
         assert result == [{'foo': 1}]
 
 
 class TestApplySelect:
     """Unit test suite for :func:`etlplus.transform.apply_select`."""
 
-    def test_select(self) -> None:
+    def test_select_subset_of_fields(self) -> None:
         """
         Test selecting a subset of fields from each record.
-
-        Notes
-        -----
-        Retains only ``name`` and ``age``.
         """
         data = [
             {'name': 'John', 'age': 30, 'city': 'NYC'},
             {'name': 'Jane', 'age': 25, 'city': 'LA'},
         ]
         result = apply_select(data, ['name', 'age'])
-        assert all(set(item.keys()) == {'name', 'age'} for item in result)
+        assert all(set(item) == {'name', 'age'} for item in result)
 
     def test_select_missing_fields_sets_none(self) -> None:
         """
-        Selecting missing fields should include them with a ``None`` value.
+        Test that selecting missing fields includes them with a ``None`` value.
         """
-
         data = [{'foo': 1}]
         result = apply_select(data, ['bar'])
-
         assert result == [{'bar': None}]
 
 
@@ -379,31 +349,20 @@ class TestApplySort:
     """Unit test suite for :func:`etlplus.transform.apply_sort`."""
 
     @pytest.mark.parametrize(
-        'reverse, expected_sorted_ages',
+        ('reverse', 'expected_sorted_ages'),
         [
             (False, [25, 30, 35]),
             (True, [35, 30, 25]),
         ],
+        ids=['asc', 'desc'],
     )
-    def test_sort(
+    def test_sort_by_field(
         self,
         reverse: bool,
         expected_sorted_ages: list[int],
     ) -> None:
-        """
-        Test sorting records by a field.
+        """Test that sorting supports ascending and descending order."""
 
-        Parameters
-        ----------
-        reverse : bool
-            Whether to sort in descending order.
-        expected_sorted_ages : list[int]
-            Expected sorted ages.
-
-        Notes
-        -----
-        Checks ascending and descending sort by ``age``.
-        """
         data = [
             {'name': 'John', 'age': 30},
             {'name': 'Jane', 'age': 25},
@@ -421,9 +380,7 @@ class TestApplySort:
             {'name': 'Bob', 'age': 20},
             {'name': 'Ada', 'age': 10},
         ]
-
         result = apply_sort(data, 'name')
-
         assert result == [
             {'name': 'Ada', 'age': 10},
             {'name': 'Bob', 'age': 20},
@@ -431,16 +388,16 @@ class TestApplySort:
 
     def test_sort_missing_field_is_noop(self) -> None:
         """
-        Test that sorting by a missing field returns the original ordering.
+        Test that sorting by a missing field preserves the original order.
         """
 
         data = [{'foo': 2}, {'foo': 1}]
-        result = apply_sort(data, 'bar')
-
-        assert result == [{'foo': 2}, {'foo': 1}]
+        assert apply_sort(data, 'bar') == data
 
     def test_sort_without_field_is_noop(self) -> None:
-        """Test sorting without a field should return the original data."""
+        """
+        Test that sorting without a field returns the original data.
+        """
 
         data = [{'name': 'John'}]
         assert apply_sort(data, None) == data
@@ -450,7 +407,9 @@ class TestTransform:
     """Unit test suite for :func:`etlplus.transform.transform`."""
 
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
-        """Test aggregate step should be skipped when spec is not a mapping."""
+        """
+        Test that aggregate step is skipped when spec is not a mapping.
+        """
 
         data = [{'value': 1}, {'value': 2}]
         result = transform(data, {'aggregate': ['not-a-mapping']})
@@ -460,15 +419,12 @@ class TestTransform:
     def test_from_json_string(self) -> None:
         """
         Test transforming from a JSON string.
-
-        Notes
-        -----
-        Selects only ``name`` from the provided JSON array string.
         """
         json_str = '[{"name": "John", "age": 30}]'
         result = transform(json_str, {'select': ['name']})
+        assert isinstance(result, list)
         assert len(result) == 1
-        assert 'age' not in result
+        assert 'age' not in result[0]
 
     def test_from_file(
         self,
@@ -476,35 +432,23 @@ class TestTransform:
     ) -> None:
         """
         Test transforming from a JSON file.
-
-        Parameters
-        ----------
-        temp_json_file : Callable[[list[dict]], str]
-            Fixture to create a temp JSON file.
-
-        Notes
-        -----
-        Writes a temporary JSON file and selects only ``name``.
         """
         temp_path = temp_json_file([{'name': 'John', 'age': 30}])
         result = transform(temp_path, {'select': ['name']})
+        assert isinstance(result, list)
         assert len(result) == 1
-        assert 'age' not in result
+        assert 'age' not in result[0]
 
     def test_no_operations(self) -> None:
-        """Test transforming without operations returns input unchanged."""
+        """
+        Test that transforming without operations returns input unchanged.
+        """
         data = [{'name': 'John'}]
         result = transform(data)
         assert result == data
 
     def test_with_aggregate(self) -> None:
-        """
-        Test transforming using an aggregate operation.
-
-        Notes
-        -----
-        Sums the ``value`` field across records.
-        """
+        """Test transforming using an aggregate operation."""
         data = [
             {'name': 'John', 'value': 10},
             {'name': 'Jane', 'value': 20},
@@ -518,13 +462,7 @@ class TestTransform:
         assert result['sum_value'] == 30
 
     def test_with_filter(self) -> None:
-        """
-        Test transforming using a filter operation.
-
-        Notes
-        -----
-        Filters for ``age > 26``.
-        """
+        """Test transforming using a filter operation."""
         data = [
             {'name': 'John', 'age': 30},
             {'name': 'Jane', 'age': 25},
@@ -539,31 +477,19 @@ class TestTransform:
                 },
             },
         )
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]['name'] == 'John'
+        assert result == [{'name': 'John', 'age': 30}]
 
     def test_with_map(self) -> None:
-        """
-        Test transforming using a map operation.
-
-        Notes
-        -----
-        Renames ``old_field`` to ``new_field``.
-        """
+        """Test transforming with a map operation."""
         data = [{'old_field': 'value'}]
         result = transform(data, {'map': {'old_field': 'new_field'}})
         assert isinstance(result, list)
         assert len(result) == 1
-        assert 'new_field' in result[0]
+        assert result == [{'new_field': 'value'}]
 
     def test_with_multiple_aggregates(self) -> None:
         """
-        Transform with multiple aggregations.
-
-        Notes
-        -----
-        Produces both sum and count results.
+        Test transforming with multiple aggregation specs.
         """
         data = [
             {'value': 1},
@@ -581,31 +507,21 @@ class TestTransform:
         )
         assert result == {'sum_value': 6, 'count': 3}
 
-    def test_with_multiple_filters_and_select(self) -> None:
-        """
-        Test transforming using multiple filters and a select sequence.
+    def test_with_multiple_filters_and_select(
+        self,
+        rows_people: list[dict[str, Any]],
+    ) -> None:
+        """Test transforming with multiple filters and a select sequence"""
 
-        Notes
-        -----
-        Filters twice before selecting fields.
-        """
-        data = [
-            {'name': 'John', 'age': 30, 'city': 'New York'},
-            {'name': 'Jane', 'age': 25, 'city': 'Newark'},
-            {'name': 'Bob', 'age': 35, 'city': 'Boston'},
-        ]
+        def starts_with(value: object, prefix: str) -> bool:
+            return str(value).startswith(prefix)
+
         result = transform(
-            data,
+            rows_people,
             {
                 'filter': [
                     {'field': 'age', 'op': 'gte', 'value': 26},
-                    {
-                        'field': 'city',
-                        'op': (
-                            lambda value, prefix: str(value).startswith(prefix)
-                        ),
-                        'value': 'New',
-                    },
+                    {'field': 'city', 'op': starts_with, 'value': 'New'},
                 ],
                 'select': [{'fields': ['name']}],
             },
@@ -613,27 +529,16 @@ class TestTransform:
         assert result == [{'name': 'John'}]
 
     def test_with_select(self) -> None:
-        """
-        Test transforming using a select operation.
-
-        Notes
-        -----
-        Keeps only ``name`` and ``age`` fields.
-        """
+        """Test transforming with a select operation."""
         data = [{'name': 'John', 'age': 30, 'city': 'NYC'}]
         result = transform(data, {'select': ['name', 'age']})
         assert isinstance(result, list)
         assert len(result) == 1
-        assert set(result[0].keys()) == {'name', 'age'}
+        assert result == [{'name': 'John', 'age': 30}]
 
     def test_with_sort(self) -> None:
-        """
-        Test transforming using a sort operation.
+        """Transforming with a sort operation."""
 
-        Notes
-        -----
-        Sorts by ``age`` ascending.
-        """
         data = [
             {'name': 'John', 'age': 30},
             {'name': 'Jane', 'age': 25},
@@ -641,73 +546,76 @@ class TestTransform:
         result = transform(data, {'sort': {'field': 'age'}})
         assert isinstance(result, list)
         assert len(result) == 2
-        assert result[0]['age'] == 25
+        assert result == [
+            {'name': 'Jane', 'age': 25},
+            {'name': 'John', 'age': 30},
+        ]
 
     def test_transform_pipeline(self) -> None:
-        """Transform should apply operations in sequence."""
-
+        """Test that transform applies operations in sequence."""
         data = [
             {'name': 'Ada', 'age': 10},
             {'name': 'Bob', 'age': 20},
         ]
 
         ops: dict[StepType, Any] = {
-            'filter': {
-                'field': 'age',
-                'op': 'gte',
-                'value': 15,
-            },
+            'filter': {'field': 'age', 'op': 'gte', 'value': 15},
             'map': {'name': 'person'},
             'select': ['person', 'age'],
             'sort': {'field': 'age'},
         }
 
         result = transform(data, ops)
-
         assert result == [{'person': 'Bob', 'age': 20}]
 
 
 class TestTransformInternalHelpers:
     """Unit tests for internal helpers in :mod:`etlplus.transform`."""
 
-    def test_agg_avg(self):
-        """
-        Test that :func:`etlplus.transform._agg_avg` returns correct average.
-        """
-        assert _agg_avg([], 0) == 0.0
-        assert _agg_avg([1, 2, 3], 3) == 2.0
+    @pytest.mark.parametrize(
+        ('fn', 'nums', 'present', 'expected'),
+        [
+            (_agg_avg, [], 0, 0.0),
+            (_agg_avg, [1, 2, 3], 3, 2.0),
+            (_agg_count, [], 0, 0),
+            (_agg_count, [1, 2, 3], 5, 5),
+            (_agg_max, [], 0, None),
+            (_agg_max, [1, 2, 3], 0, 3),
+            (_agg_min, [], 0, None),
+            (_agg_min, [1, 2, 3], 0, 1),
+            (_agg_sum, [], 0, 0),
+            (_agg_sum, [1, 2, 3], 0, 6),
+        ],
+        ids=[
+            'avg-empty',
+            'avg',
+            'count-empty',
+            'count',
+            'max-empty',
+            'max',
+            'min-empty',
+            'min',
+            'sum-empty',
+            'sum',
+        ],
+    )
+    def test_agg_helpers(
+        self,
+        fn: Callable[[list[float], int], Any],
+        nums: list[float],
+        present: int,
+        expected: Any,
+    ) -> None:
+        """Test that aggregator helpers return expected results."""
+        result = fn(nums, present)
+        if isinstance(expected, float):
+            assert result == pytest.approx(expected)
+        else:
+            assert result == expected
 
-    def test_agg_count(self):
+    def test_apply_aggregate_step(self) -> None:
         """
-        Test that :func:`etlplus.transform._agg_count` returns correct count.
-        """
-        assert _agg_count([], 0) == 0
-        assert _agg_count([1, 2, 3], 5) == 5
-
-    def test_agg_max(self):
-        """
-        Test that :func:`etlplus.transform._agg_max` returns correct maximum.
-        """
-        assert _agg_max([], 0) is None
-        assert _agg_max([1, 2, 3], 0) == 3
-
-    def test_agg_min(self):
-        """
-        Test that :func:`etlplus.transform._agg_min` returns correct minimum.
-        """
-        assert _agg_min([], 0) is None
-        assert _agg_min([1, 2, 3], 0) == 1
-
-    def test_agg_sum(self):
-        """
-        Test that :func:`etlplus.transform._agg_sum` returns correct sum.
-        """
-        assert _agg_sum([], 0) == 0
-        assert _agg_sum([1, 2, 3], 0) == 6
-
-    def test_apply_aggregate_step(self):
-        """
-        Test that :func:`etlplus.transform._apply_aggregate_step` returns
+        Test that :func:`etlplus.transform._apply_aggregate_step` returns a
         correct aggregation.
         """
         rows = [{'a': 1}, {'a': 2}]
@@ -715,17 +623,17 @@ class TestTransformInternalHelpers:
         result = _apply_aggregate_step(rows, spec)
         assert result == [{'total': 3}]
 
-    def test_apply_filter_step(self):
+    def test_apply_filter_step(self) -> None:
         """
         Test that :func:`etlplus.transform._apply_filter_step` returns correct
-        filtered records.
+        filtered rows.
         """
         rows = [{'a': 1}, {'a': 2}]
         spec = {'field': 'a', 'op': 'gt', 'value': 1}
         result = _apply_filter_step(rows, spec)
         assert result == [{'a': 2}]
 
-    def test_apply_map_step(self):
+    def test_apply_map_step(self) -> None:
         """
         Test that :func:`etlplus.transform._apply_map_step` returns correct
         mapped records.
@@ -735,199 +643,169 @@ class TestTransformInternalHelpers:
         result = _apply_map_step(rows, spec)
         assert result == [{'x': 1, 'y': 2}]
 
-    def test_apply_select_step_mapping(self):
+    @pytest.mark.parametrize(
+        ('spec', 'expected'),
+        [
+            ({'fields': ['a']}, [{'a': 1}]),
+            (['a'], [{'a': 1}]),
+            (123, [{'a': 1, 'b': 2}]),
+        ],
+        ids=['mapping', 'list', 'other'],
+    )
+    def test_apply_select_step(
+        self,
+        spec: object,
+        expected: list[dict[str, int]],
+    ) -> None:
         """
         Test that :func:`etlplus.transform._apply_select_step` returns correct
-        selected fields when spec is a mapping.
+        selected fields for a given spec.
         """
         rows = [{'a': 1, 'b': 2}]
-        spec = {'fields': ['a']}
         result = _apply_select_step(rows, spec)
-        assert result == [{'a': 1}]
+        assert result == expected
 
-    def test_apply_select_step_list(self):
-        """
-        Test that :func:`etlplus.transform._apply_select_step` returns correct
-        selected fields when spec is a list.
-        """
-        rows = [{'a': 1, 'b': 2}]
-        spec = ['a']
-        result = _apply_select_step(rows, spec)
-        assert result == [{'a': 1}]
-
-    def test_apply_select_step_other(self):
-        """
-        Test that :func:`etlplus.transform._apply_select_step` returns original
-        rows when spec is neither a mapping nor a list.
-        """
-        rows = [{'a': 1, 'b': 2}]
-        spec = 123
-        result = _apply_select_step(rows, spec)
-        assert result == rows
-
-    def test_apply_sort_step_mapping(self):
+    @pytest.mark.parametrize(
+        ('spec', 'expected'),
+        [
+            ({'field': 'a'}, [{'a': 1}, {'a': 2}]),
+            (None, [{'a': 2}, {'a': 1}]),
+            ('a', [{'a': 1}, {'a': 2}]),
+        ],
+        ids=['mapping', 'none', 'other'],
+    )
+    def test_apply_sort_step(
+        self,
+        spec: object | None,
+        expected: list[dict[str, int]],
+    ) -> None:
         """
         Test that :func:`etlplus.transform._apply_sort_step` returns correct
-        sorted records when spec is a mapping.
+        sorted records for a given spec.
         """
         rows = [{'a': 2}, {'a': 1}]
-        spec = {'field': 'a'}
         result = _apply_sort_step(rows, spec)
-        assert result == [{'a': 1}, {'a': 2}]
+        assert result == expected
 
-    def test_apply_sort_step_none(self):
-        """
-        Test that :func:`etlplus.transform._apply_sort_step` returns original
-        rows when spec is None.
-        """
-        rows = [{'a': 2}, {'a': 1}]
-        result = _apply_sort_step(rows, None)
-        assert result == rows
-
-    def test_apply_sort_step_other(self):
-        """
-        Test that :func:`etlplus.transform._apply_sort_step` returns correct
-        sorted records when spec is neither a mapping nor None.
-        """
-        rows = [{'a': 2}, {'a': 1}]
-        result = _apply_sort_step(rows, 'a')
-        assert result == [{'a': 1}, {'a': 2}]
-
-    def test_collect_numeric_and_presence_none(self):
+    def test_collect_numeric_and_presence(self) -> None:
         """
         Test that :func:`etlplus.transform._collect_numeric_and_presence`
-        returns correct results when field is None.
-        """
-        rows = [{'a': 1}, {'a': 2}]
-        nums, present = _collect_numeric_and_presence(rows, None)
-        assert not nums
-        assert present == 2
-
-    def test_collect_numeric_and_presence_field(self):
-        """
-        Test that :func:`etlplus.transform._collect_numeric_and_presence`
-        returns correct numeric values and presence count.
+        returns correct numeric values and their count.
         """
         rows = [{'a': 1}, {'a': 2}, {'b': 3}]
+        nums, present = _collect_numeric_and_presence(rows, None)
+        assert not nums
+        assert present == 3
+
         nums, present = _collect_numeric_and_presence(rows, 'a')
         assert nums == [1, 2]
         assert present == 2
 
-    def test_contains(self):
+    def test_contains(self) -> None:
         """
         Test that :func:`etlplus.transform._contains` returns correct truthy
-        value.
+        values.
         """
         assert _contains([1, 2, 3], 2)
         assert not _contains([1, 2, 3], 5)
 
-    def test_contains_typeerror(self):
+    def test_contains_typeerror(self) -> None:
         """
         Test that :func:`etlplus.transform._contains` handles
         :class:`TypeError` gracefully.
         """
 
         class NoContains:
-            """Class that raises TypeError when checked for containment."""
+            """Type that is not iterable and does not implement containment."""
 
         assert not _contains(NoContains(), 1)
 
-    def test_derive_agg_key_alias(self):
+    @pytest.mark.parametrize(
+        ('func', 'field', 'alias', 'expected'),
+        [
+            ('sum', 'foo', 'total', 'total'),
+            (AggregateName.SUM, 'foo', None, 'sum_foo'),
+            ('sum', 'foo', None, 'sum_foo'),
+        ],
+        ids=['alias', 'enum', 'string'],
+    )
+    def test_derive_agg_key_common(
+        self,
+        func: AggregateName | str,
+        field: str,
+        alias: str | None,
+        expected: str,
+    ) -> None:
         """
-        Test that :func:`etlplus.transform._derive_agg_key` uses alias if
-        provided.
+        Test that :func:`etlplus.transform._derive_agg_key` derives stable keys
+        for common cases.
         """
-        assert _derive_agg_key('sum', 'foo', 'total') == 'total'
+        assert _derive_agg_key(func, field, alias) == expected
 
-    def test_derive_agg_key_enum(self):
-        """
-        Test that :func:`etlplus.transform._derive_agg_key` handles enum
-        inputs.
-        """
-        assert _derive_agg_key(AggregateName.SUM, 'foo', None) == 'sum_foo'
-
-    def test_derive_agg_key_str(self):
-        """
-        Test that :func:`etlplus.transform._derive_agg_key` handles string
-        inputs.
-        """
-        assert _derive_agg_key('sum', 'foo', None) == 'sum_foo'
-
-    def test_derive_agg_key_callable(self):
+    def test_derive_agg_key_callable(self) -> None:
         """
         Test that :func:`etlplus.transform._derive_agg_key` handles callable
-        inputs.
+        aggregators.
         """
 
-        def agg(xs, n):
-            return 0
+        def agg(
+            xs: list[float],
+            n: int,
+        ) -> float:  # pylint: disable=unused-argument
+            return 0.0
 
         assert _derive_agg_key(agg, 'foo', None).startswith('agg_')
 
-    def test_derive_agg_key_other(self):
-        """
+    def test_derive_agg_key_other(self) -> None:
+        """`
         Test that :func:`etlplus.transform._derive_agg_key` handles unknown
-        object inputs.
+        object inputs consistently.
         """
 
         class Dummy:
             """Dummy class for testing."""
 
-        val = _derive_agg_key(Dummy(), 'foo', None)
-        # Should end with '_foo' for unknown object
+        val = _derive_agg_key(cast(Any, Dummy()), 'foo', None)
         assert val.endswith('_foo')
 
-    def test_eval_condition_true(self):
+    @pytest.mark.parametrize(
+        ('strict', 'should_raise'),
+        [(True, False), (False, True)],
+        ids=['strict', 'non-strict'],
+    )
+    def test_eval_condition_exception_behavior(
+        self, strict: bool, should_raise: bool,
+    ) -> None:
         """
-        Test that :func:`etlplus.transform._eval_condition` returns correct
-        truthy value.
-        """
-        rec = {'a': 2}
-
-        def op(a, b):
-            return a == b
-
-        assert _eval_condition(rec, 'a', op, 2, True)
-
-    def test_eval_condition_false(self):
-        """
-        Test that :func:`etlplus.transform._eval_condition` returns correct
-        falsy value.
+        Test that :func:`etlplus.transform._eval_condition` optionally re-
+        raises operator errors.
         """
         rec = {'a': 2}
 
-        def op(a, b):
-            return a == b
-
-        assert not _eval_condition(rec, 'a', op, 3, True)
-
-    def test_eval_condition_missing_key(self):
-        """
-        Test that :func:`etlplus.transform._eval_condition` handles missing
-        keys correctly.
-        """
-        rec = {'b': 2}
-
-        def op(a, b):
-            return a == b
-
-        assert not _eval_condition(rec, 'a', op, 2, True)
-
-    def test_eval_condition_exception(self):
-        """
-        Test that :func:`etlplus.transform._eval_condition` handles exceptions
-        correctly.
-        """
-        rec = {'a': 2}
-
-        def op(a, b):
+        def op(_: object, __: object) -> bool:
             raise RuntimeError('fail')
 
-        assert not _eval_condition(rec, 'a', op, 2, True)
-        with pytest.raises(RuntimeError):
-            _eval_condition(rec, 'a', op, 2, False)
+        if should_raise:
+            with pytest.raises(RuntimeError):
+                _eval_condition(rec, 'a', op, 2, strict)
+        else:
+            assert not _eval_condition(rec, 'a', op, 2, strict)
 
-    def test_has(self):
+    def test_eval_condition_truth_table(self) -> None:
+        """
+        Test that :func:`etlplus.transform._eval_condition` evaluates
+        comparisons correctly.
+        """
+        rec = {'a': 2}
+
+        def eq(a: object, b: object) -> bool:
+            return a == b
+
+        assert _eval_condition(rec, 'a', eq, 2, True)
+        assert not _eval_condition(rec, 'a', eq, 3, True)
+        assert not _eval_condition({'b': 2}, 'a', eq, 2, True)
+
+    def test_has(self) -> None:
         """
         Test that :func:`etlplus.transform._has` returns correct truthy value.
         """
@@ -935,7 +813,7 @@ class TestTransformInternalHelpers:
         assert not _has(5, [1, 2, 3])
 
     @pytest.mark.parametrize(
-        'value,expected',
+        ('value', 'expected'),
         [
             (['name', 'age'], True),
             (('city',), True),
@@ -948,12 +826,14 @@ class TestTransformInternalHelpers:
         value: object,
         expected: bool,
     ) -> None:
-        """Test only plain sequences of non-mappings return ``True``."""
+        """Test that only plain sequences of non-mappings return ``True``."""
 
         assert _is_plain_fields_list(value) is expected
 
     def test_normalize_operation_keys_accepts_enums(self) -> None:
-        """Test :class:`PipelineStep` keys normalizing to lowercase strings."""
+        """
+        Test that :class:`PipelineStep` keys normalize to lowercase strings.
+        """
 
         operations = {
             PipelineStep.FILTER: {'field': 'age', 'op': 'gt', 'value': 20},
@@ -961,72 +841,69 @@ class TestTransformInternalHelpers:
         }
 
         normalized = _normalize_operation_keys(operations)
-
         assert set(normalized) == {'filter', 'map'}
         assert normalized['filter']['field'] == 'age'
 
     def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
-        """Test helper coercing scalars to list and keep sequences."""
+        """
+        Test that :func:`etlplus.transform._normalize_specs` coerces scalars to
+        list and keeps sequences.
+        """
 
         single = {'field': 'age'}
         assert not _normalize_specs(None)
         assert _normalize_specs(single) == [single]
         assert _normalize_specs([single, single]) == [single, single]
 
-    def test_resolve_aggregator_enum(self):
-        """Test that :func:`_resolve_aggregator` handles enum inputs."""
+    def test_resolve_aggregator(self) -> None:
+        """
+        Test that :func:`etlplus.transform._resolve_aggregator` accepts enums,
+        strings, and callables.
+        """
         fn = _resolve_aggregator(AggregateName.SUM)
         assert callable(fn)
         assert fn([1, 2], 2) == 3
 
-    def test_resolve_aggregator_str(self):
-        """Test that :func:`_resolve_aggregator` handles string inputs."""
         fn = _resolve_aggregator('avg')
         assert callable(fn)
         assert fn([2, 4], 2) == 3
 
-    def test_resolve_aggregator_callable(self):
-        """Test that :func:`_resolve_aggregator` returns callables as-is."""
-
-        # pylint: disable=unused-argument
-        def agg(xs, n):
-            return 42
+        def agg(
+            xs: list[float],
+            n: int,
+        ) -> float:  # pylint: disable=unused-argument
+            return 42.0
 
         assert _resolve_aggregator(agg) is agg
 
-    def test_resolve_aggregator_invalid(self):
-        """Test that :func:`_resolve_aggregator` raises on invalid inputs."""
         with pytest.raises(TypeError):
-            _resolve_aggregator(object())
+            _resolve_aggregator(cast(Any, object()))
 
-    def test_resolve_operator_enum(self):
-        """Test that :func:`_resolve_operator` handles enum inputs."""
+    def test_resolve_operator(self) -> None:
+        """
+        Test that :func:`etlplus.transform._resolve_operator` accepts enums,
+        strings, and callables.
+        """
         fn = _resolve_operator(OperatorName.EQ)
         assert fn(1, 1)
         assert not fn(1, 2)
 
-    def test_resolve_operator_str(self):
-        """Test that :func:`_resolve_operator` handles string inputs."""
         fn = _resolve_operator('gt')
         assert fn(2, 1)
         assert not fn(1, 2)
 
-    def test_resolve_operator_callable(self):
-        """Test that :func:`_resolve_operator` returns callables as-is."""
-
-        def op(a, b):
+        def op(a: object, b: object) -> bool:
             return a == b
 
         assert _resolve_operator(op) is op
 
-    def test_resolve_operator_invalid(self):
-        """Test that :func:`_resolve_operator` raises on invalid inputs."""
         with pytest.raises(TypeError):
-            _resolve_operator(object())
+            _resolve_operator(cast(Any, object()))
 
-    def test_sort_key(self):
+    def test_sort_key(self) -> None:
         """
-        Test that :func:`_sort_key` handles different sort key types correctly.
+        Test that :func:`etlplus.transform._sort_key` places numbers before
+        strings, then Nones last.
         """
         assert _sort_key(None)[0] == 2
         assert _sort_key(5)[0] == 0
