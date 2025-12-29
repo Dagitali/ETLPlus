@@ -774,7 +774,9 @@ class TestTransformInternalHelpers:
         ids=['strict', 'non-strict'],
     )
     def test_eval_condition_exception_behavior(
-        self, strict: bool, should_raise: bool,
+        self,
+        strict: bool,
+        should_raise: bool,
     ) -> None:
         """
         Test that :func:`etlplus.transform._eval_condition` optionally re-
