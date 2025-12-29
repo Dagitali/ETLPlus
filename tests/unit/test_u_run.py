@@ -456,8 +456,7 @@ class TestRun:
         monkeypatch.setattr(
             run_mod,
             'load_pipeline_config',
-            lambda path,
-            substitute=True: cfg,
+            lambda path, substitute=True: cfg,
         )
 
         monkeypatch.setattr(run_mod, 'extract', lambda *a, **k: [{'id': 1}])
