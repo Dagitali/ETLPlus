@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.run`.
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from typing import ClassVar
@@ -203,14 +204,17 @@ class TestRun:
 
     def test_file_target_missing_path_raises(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that file target missing path raises :class:`ValueError`."""
         job = _make_job(name='job', source='src', target='tgt')
+        src_path = tmp_path / 'in.json'
+        src_path.write_text('[]', encoding='utf-8')
         src = SimpleNamespace(
             name='src',
             type='file',
-            path='/tmp/in.json',
+            path=str(src_path),
             format='json',
         )
         tgt = SimpleNamespace(
@@ -224,7 +228,10 @@ class TestRun:
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r'(?i)(file target).*path|missing\s+"?path"?',
+        ):
             run_mod.run('job')
 
     def test_file_to_file_pipeline(
@@ -352,21 +359,27 @@ class TestRun:
 
     def test_load_missing_section_raises(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that missing load section raises :class:`ValueError`."""
         job = _make_job(name='job', source='src', target='tgt')
         job.load = None
+        src_path = tmp_path / 'in.json'
+        src_path.write_text('[]', encoding='utf-8')
+        tgt_path = tmp_path / 'out.json'
+        tgt_path.write_text('[]', encoding='utf-8')
+
         src = SimpleNamespace(
             name='src',
             type='file',
-            path='/tmp/in.json',
+            path=str(src_path),
             format='json',
         )
         tgt = SimpleNamespace(
             name='tgt',
             type='file',
-            path='/tmp/out.json',
+            path=str(tgt_path),
             format='json',
         )
         cfg = _base_config(job, src, tgt)
@@ -375,7 +388,7 @@ class TestRun:
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'(?i)load'):
             run_mod.run('job')
 
     def test_missing_extract_section_raises(
@@ -407,9 +420,12 @@ class TestRun:
 
     def test_transform_and_validation_branches(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test transform and validation branches are called."""
+        # pylint: disable=unused-argument
+
         job = _make_job(name='job', source='src', target='tgt')
         job.transform = SimpleNamespace(pipeline='noop')
         job.validate = SimpleNamespace(
@@ -417,45 +433,72 @@ class TestRun:
             phase='phase',
             severity='severity',
         )
+        src_path = tmp_path / 'in.json'
+        src_path.write_text('[]', encoding='utf-8')
+        tgt_path = tmp_path / 'out.json'
+        tgt_path.write_text('[]', encoding='utf-8')
+
         src = SimpleNamespace(
             name='src',
             type='file',
-            path='/tmp/in.json',
+            path=str(src_path),
             format='json',
         )
         tgt = SimpleNamespace(
             name='tgt',
             type='file',
-            path='/tmp/out.json',
+            path=str(tgt_path),
             format='json',
         )
         cfg = _base_config(job, src, tgt)
+        cfg.validations = {'rules': {}}
+
         monkeypatch.setattr(
             run_mod,
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
+
         monkeypatch.setattr(
             run_mod,
             'extract',
             lambda *a, **k: [{'id': 1}],
         )
-        monkeypatch.setattr(
-            run_mod,
-            'maybe_validate',
-            lambda data, stage, **kwargs: data,
-        )
-        monkeypatch.setattr(
-            run_mod,
-            'transform',
-            lambda data, ops: data,
-        )
-        monkeypatch.setattr(
-            run_mod,
-            'load',
-            lambda data, connector, path, **kwargs: {'status': 'ok'},
-        )
+
+        validate_stages: list[str] = []
+
+        def _capture_validate(data: Any, stage: str, **kwargs: Any) -> Any:
+            validate_stages.append(stage)
+            return data
+
+        monkeypatch.setattr(run_mod, 'maybe_validate', _capture_validate)
+
+        transform_calls: list[tuple[Any, Any]] = []
+
+        def _capture_transform(data: Any, ops: Any) -> Any:
+            transform_calls.append((data, ops))
+            return data
+
+        monkeypatch.setattr(run_mod, 'transform', _capture_transform)
+
+        load_calls: list[tuple[Any, str, str]] = []
+
+        def _capture_load(
+            data: Any,
+            connector: str,
+            path: str,
+            **kwargs: Any,
+        ) -> dict[str, str]:
+            load_calls.append((data, connector, path))
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(run_mod, 'load', _capture_load)
+
         result = run_mod.run('job')
+
+        assert validate_stages == ['before_transform', 'after_transform']
+        assert transform_calls
+        assert load_calls == [([{'id': 1}], 'file', str(tgt_path))]
         assert result == {'status': 'ok'}
 
     def test_unknown_source_raises(
@@ -481,14 +524,17 @@ class TestRun:
 
     def test_unknown_target_raises(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that unknown target raises :class:`ValueError`."""
         job = _make_job(name='job', source='src', target='tgt')
+        src_path = tmp_path / 'in.json'
+        src_path.write_text('[]', encoding='utf-8')
         src = SimpleNamespace(
             name='src',
             type='file',
-            path='/tmp/in.json',
+            path=str(src_path),
             format='json',
         )
         cfg = SimpleNamespace(
@@ -503,7 +549,7 @@ class TestRun:
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'(?i)target'):
             run_mod.run('job')
 
     def test_unsupported_source_type_raises(
@@ -528,24 +574,31 @@ class TestRun:
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
-        with pytest.raises(ValueError, match='Unsupported source type'):
+        with pytest.raises(ValueError, match=r'(?i)unsupported'):
             run_mod.run('job')
 
     def test_unsupported_target_type_raises(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that unsupported target type raises :class:`ValueError`."""
         job = _make_job(name='job', source='src', target='tgt')
+        src_path = tmp_path / 'in.json'
+        src_path.write_text('[]', encoding='utf-8')
         src = SimpleNamespace(
             name='src',
             type='file',
-            path='/tmp/in.json',
+            path=str(src_path),
             format='json',
         )
+        tgt_path = tmp_path / 'out.json'
+        tgt_path.write_text('[]', encoding='utf-8')
         tgt = SimpleNamespace(
             name='tgt',
             type='unsupported',
+            path=str(tgt_path),
+            format='json',
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
@@ -553,5 +606,5 @@ class TestRun:
             'load_pipeline_config',
             lambda path, substitute=True: cfg,
         )
-        with pytest.raises(ValueError, match='Unsupported target type'):
+        with pytest.raises(ValueError, match=r'(?i)unsupported'):
             run_mod.run('job')
