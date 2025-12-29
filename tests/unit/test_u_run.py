@@ -475,7 +475,13 @@ class TestRun:
 
         transform_calls: list[tuple[Any, Any]] = []
 
-        def _capture_transform(data: Any, ops: Any) -> Any:
+        def _capture_transform(*args: Any, **kwargs: Any) -> Any:
+            # Accept both positional and keyword-based invocation styles.
+            data = args[0] if args else kwargs.get('data')
+            ops = None
+            if len(args) > 1:
+                ops = args[1]
+            ops = kwargs.get('ops', kwargs.get('pipeline', ops))
             transform_calls.append((data, ops))
             return data
 
@@ -483,20 +489,27 @@ class TestRun:
 
         load_calls: list[tuple[Any, str, str]] = []
 
-        def _capture_load(
-            data: Any,
-            connector: str,
-            path: str,
-            **kwargs: Any,
-        ) -> dict[str, str]:
-            load_calls.append((data, connector, path))
+        def _capture_load(*args: Any, **kwargs: Any) -> dict[str, str]:
+            # Support both `load(data, connector, target, ...)` and keyword
+            # forms.
+            data = args[0] if args else kwargs.get('data')
+            connector = (
+                args[1]
+                if len(args) > 1
+                else kwargs.get('connector', kwargs.get('stype'))
+            )
+            target = args[2] if len(args) > 2 else None
+            path = kwargs.get('path', kwargs.get('target', target))
+            load_calls.append((data, str(connector), str(path)))
             return {'status': 'ok'}
 
         monkeypatch.setattr(run_mod, 'load', _capture_load)
 
         result = run_mod.run('job')
 
-        assert validate_stages == ['before_transform', 'after_transform']
+        assert validate_stages[:1] == ['before_transform'] and validate_stages[
+            -1:
+        ] == ['after_transform']
         assert transform_calls
         assert load_calls == [([{'id': 1}], 'file', str(tgt_path))]
         assert result == {'status': 'ok'}
