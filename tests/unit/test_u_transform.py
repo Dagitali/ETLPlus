@@ -747,11 +747,12 @@ class TestTransformInternalHelpers:
         Test that :func:`etlplus.transform._derive_agg_key` handles callable
         aggregators.
         """
+        # pylint: disable=unused-argument
 
         def agg(
             xs: list[float],
             n: int,
-        ) -> float:  # pylint: disable=unused-argument
+        ) -> float:
             return 0.0
 
         assert _derive_agg_key(agg, 'foo', None).startswith('agg_')
@@ -862,6 +863,8 @@ class TestTransformInternalHelpers:
         Test that :func:`etlplus.transform._resolve_aggregator` accepts enums,
         strings, and callables.
         """
+        # pylint: disable=unused-argument
+
         fn = _resolve_aggregator(AggregateName.SUM)
         assert callable(fn)
         assert fn([1, 2], 2) == 3
@@ -873,7 +876,7 @@ class TestTransformInternalHelpers:
         def agg(
             xs: list[float],
             n: int,
-        ) -> float:  # pylint: disable=unused-argument
+        ) -> float:
             return 42.0
 
         assert _resolve_aggregator(agg) is agg
