@@ -67,6 +67,18 @@ from .types import StepSpec
 from .types import StrPath
 from .utils import to_number
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'apply_aggregate',
+    'apply_filter',
+    'apply_map',
+    'apply_select',
+    'apply_sort',
+    'transform',
+]
+
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
