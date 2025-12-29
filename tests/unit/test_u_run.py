@@ -429,7 +429,7 @@ class TestRun:
         job = _make_job(name='job', source='src', target='tgt')
         job.transform = SimpleNamespace(pipeline='noop')
         job.validate = SimpleNamespace(
-            rules='rules',
+            ruleset='rules',
             phase='phase',
             severity='severity',
         )
