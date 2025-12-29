@@ -107,22 +107,23 @@ class TestApplyAggregate:
     )
     def test_aggregate_builtin(
         self,
-        rows_values: list[dict[str, Any]],
+        rows_values: list[dict[str, int]],
         func: str,
         expected_key: str,
         expected_value: int,
     ) -> None:
-        """
-        Test aggregating ``value`` with built-in aggregator names.
-        """
-        result = apply_aggregate(rows_values, {'field': 'value', 'func': func})
+        """Test aggregating ``value`` with built-in aggregator names."""
+        result = apply_aggregate(
+            rows_values,
+            {'field': 'value', 'func': func},
+        )
         assert result[expected_key] == expected_value
 
     def test_aggregate_callable_with_alias(
         self,
-        rows_values: list[dict[str, Any]],
+        rows_values: list[dict[str, int]],
     ) -> None:
-        """Test aggregating with a callable and custom alias."""
+        """Test aggregating with a callable and a custom alias."""
 
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
@@ -143,18 +144,10 @@ class TestApplyFilter:
 
     def test_filter_basic_gte(self) -> None:
         """Test that filter keeps only records matching the predicate."""
-        data = [
-            {'age': 10},
-            {'age': 20},
-            {'age': 30},
-        ]
+        data = [{'age': 10}, {'age': 20}, {'age': 30}]
         result = apply_filter(
             data,
-            {
-                'field': 'age',
-                'op': 'gte',
-                'value': 20,
-            },
+            {'field': 'age', 'op': 'gte', 'value': 20},
         )
         assert result == [{'age': 20}, {'age': 30}]
 
@@ -193,13 +186,10 @@ class TestApplyFilter:
 
     def test_filter_empty_input(self) -> None:
         """Test that filtering an empty list returns an empty list."""
+
         result = apply_filter(
             [],
-            {
-                'field': 'age',
-                'op': 'gte',
-                'value': 10,
-            },
+            {'field': 'age', 'op': 'gte', 'value': 10},
         )
         assert not result
 
@@ -226,11 +216,7 @@ class TestApplyFilter:
         data = [{'foo': 1}, {'foo': 2}]
         result = apply_filter(
             data,
-            {
-                'field': 'age',
-                'op': 'gte',
-                'value': 10,
-            },
+            {'field': 'age', 'op': 'gte', 'value': 10},
         )
         assert not result
 
@@ -283,13 +269,12 @@ class TestApplyFilter:
 
     def test_filter_invalid_operator_returns_input(self) -> None:
         """Test that unknown operators result in the original data."""
-
         data = [{'age': 30}]
         result = apply_filter(
             data,
             {
                 'field': 'age',
-                'op': object(),
+                'op': cast(Any, object()),
                 'value': 40,
             },
         )
@@ -316,7 +301,6 @@ class TestApplyMap:
         Test that mapping does not add a destination key when the source is
         missing.
         """
-
         data = [{'foo': 1}]
         result = apply_map(data, {'bar': 'baz'})
         assert result == [{'foo': 1}]
@@ -350,10 +334,7 @@ class TestApplySort:
 
     @pytest.mark.parametrize(
         ('reverse', 'expected_sorted_ages'),
-        [
-            (False, [25, 30, 35]),
-            (True, [35, 30, 25]),
-        ],
+        [(False, [25, 30, 35]), (True, [35, 30, 25])],
         ids=['asc', 'desc'],
     )
     def test_sort_by_field(
@@ -361,7 +342,7 @@ class TestApplySort:
         reverse: bool,
         expected_sorted_ages: list[int],
     ) -> None:
-        """Test that sorting supports ascending and descending order."""
+        """Sorting should support ascending and descending order."""
 
         data = [
             {'name': 'John', 'age': 30},
@@ -375,11 +356,7 @@ class TestApplySort:
         """
         Test that sorting works for string fields as well as numeric fields.
         """
-
-        data = [
-            {'name': 'Bob', 'age': 20},
-            {'name': 'Ada', 'age': 10},
-        ]
+        data = [{'name': 'Bob', 'age': 20}, {'name': 'Ada', 'age': 10}]
         result = apply_sort(data, 'name')
         assert result == [
             {'name': 'Ada', 'age': 10},
@@ -390,7 +367,6 @@ class TestApplySort:
         """
         Test that sorting by a missing field preserves the original order.
         """
-
         data = [{'foo': 2}, {'foo': 1}]
         assert apply_sort(data, 'bar') == data
 
@@ -398,7 +374,6 @@ class TestApplySort:
         """
         Test that sorting without a field returns the original data.
         """
-
         data = [{'name': 'John'}]
         assert apply_sort(data, None) == data
 
@@ -407,9 +382,7 @@ class TestTransform:
     """Unit test suite for :func:`etlplus.transform.transform`."""
 
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
-        """
-        Test that aggregate step is skipped when spec is not a mapping.
-        """
+        """Aggregate step should be skipped when spec is not a mapping."""
 
         data = [{'value': 1}, {'value': 2}]
         result = transform(data, {'aggregate': ['not-a-mapping']})
@@ -418,7 +391,7 @@ class TestTransform:
 
     def test_from_json_string(self) -> None:
         """
-        Test transforming from a JSON string.
+        Test that aggregate step is skipped when spec is not a mapping.
         """
         json_str = '[{"name": "John", "age": 30}]'
         result = transform(json_str, {'select': ['name']})
@@ -430,9 +403,7 @@ class TestTransform:
         self,
         temp_json_file: Callable[[list[dict]], str],
     ) -> None:
-        """
-        Test transforming from a JSON file.
-        """
+        """Test transforming from a JSON file."""
         temp_path = temp_json_file([{'name': 'John', 'age': 30}])
         result = transform(temp_path, {'select': ['name']})
         assert isinstance(result, list)
@@ -459,23 +430,14 @@ class TestTransform:
         )
         assert isinstance(result, dict)
         assert len(result) == 1
-        assert result['sum_value'] == 30
+        assert result == {'sum_value': 30}
 
     def test_with_filter(self) -> None:
         """Test transforming using a filter operation."""
-        data = [
-            {'name': 'John', 'age': 30},
-            {'name': 'Jane', 'age': 25},
-        ]
+        data = [{'name': 'John', 'age': 30}, {'name': 'Jane', 'age': 25}]
         result = transform(
             data,
-            {
-                'filter': {
-                    'field': 'age',
-                    'op': 'gt',
-                    'value': 26,
-                },
-            },
+            {'filter': {'field': 'age', 'op': 'gt', 'value': 26}},
         )
         assert result == [{'name': 'John', 'age': 30}]
 
@@ -491,11 +453,7 @@ class TestTransform:
         """
         Test transforming with multiple aggregation specs.
         """
-        data = [
-            {'value': 1},
-            {'value': 2},
-            {'value': 3},
-        ]
+        data = [{'value': 1}, {'value': 2}, {'value': 3}]
         result = transform(
             data,
             {
@@ -537,12 +495,9 @@ class TestTransform:
         assert result == [{'name': 'John', 'age': 30}]
 
     def test_with_sort(self) -> None:
-        """Transforming with a sort operation."""
+        """Transforming with a sort operation should sort records."""
 
-        data = [
-            {'name': 'John', 'age': 30},
-            {'name': 'Jane', 'age': 25},
-        ]
+        data = [{'name': 'John', 'age': 30}, {'name': 'Jane', 'age': 25}]
         result = transform(data, {'sort': {'field': 'age'}})
         assert isinstance(result, list)
         assert len(result) == 2
@@ -553,10 +508,7 @@ class TestTransform:
 
     def test_transform_pipeline(self) -> None:
         """Test that transform applies operations in sequence."""
-        data = [
-            {'name': 'Ada', 'age': 10},
-            {'name': 'Bob', 'age': 20},
-        ]
+        data = [{'name': 'Ada', 'age': 10}, {'name': 'Bob', 'age': 20}]
 
         ops: dict[StepType, Any] = {
             'filter': {'field': 'age', 'op': 'gte', 'value': 15},
@@ -570,7 +522,7 @@ class TestTransform:
 
 
 class TestTransformInternalHelpers:
-    """Unit tests for internal helpers in :mod:`etlplus.transform`."""
+    """Unit test suite for internal helpers in :mod:`etlplus.transform`."""
 
     @pytest.mark.parametrize(
         ('fn', 'nums', 'present', 'expected'),
@@ -749,10 +701,7 @@ class TestTransformInternalHelpers:
         """
         # pylint: disable=unused-argument
 
-        def agg(
-            xs: list[float],
-            n: int,
-        ) -> float:
+        def agg(xs: list[float], n: int) -> float:
             return 0.0
 
         assert _derive_agg_key(agg, 'foo', None).startswith('agg_')
@@ -837,7 +786,6 @@ class TestTransformInternalHelpers:
         """
         Test that :class:`PipelineStep` keys normalize to lowercase strings.
         """
-
         operations = {
             PipelineStep.FILTER: {'field': 'age', 'op': 'gt', 'value': 20},
             'map': {'old': 'new'},
@@ -873,10 +821,7 @@ class TestTransformInternalHelpers:
         assert callable(fn)
         assert fn([2, 4], 2) == 3
 
-        def agg(
-            xs: list[float],
-            n: int,
-        ) -> float:
+        def agg(xs: list[float], n: int) -> float:
             return 42.0
 
         assert _resolve_aggregator(agg) is agg
