@@ -253,7 +253,7 @@ venv: ## Create the virtual environment (at $(VENV_DIR))
 	else \
 		$(call ECHO_INFO, "Using existing venv: $(VENV_DIR)"); \
 	fi
-	@$(PYTHON) -m pip install --upgrade pip setuptool wheel >/dev/null
+	@$(PYTHON) -m pip install --upgrade pip setuptools wheel >/dev/null
 	@$(call ECHO_OK,"venv ready")
 
 ##@ CI

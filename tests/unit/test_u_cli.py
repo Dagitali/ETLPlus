@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import argparse
 import types
-from collections.abc import Callable
 from collections.abc import Mapping
-from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Final
 from unittest.mock import Mock
 
 import pytest
+from typer.testing import CliRunner
 
 import etlplus.cli as cli
 
@@ -29,291 +29,299 @@ import etlplus.cli as cli
 
 pytestmark = pytest.mark.unit
 
-type ParseCli = Callable[[Sequence[str]], argparse.Namespace]
-
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
 
 
 @dataclass(frozen=True, slots=True)
-class ParserCase:
-    """
-    Declarative CLI parser test case.
-
-    Attributes
-    ----------
-    identifier : str
-        Stable ID for pytest parametrization.
-    args : tuple[str, ...]
-        Argument vector passed to :meth:`argparse.ArgumentParser.parse_args`.
-    expected : Mapping[str, object]
-        Mapping of expected attribute values on the returned namespace.
-    """
-
-    identifier: str
-    args: tuple[str, ...]
-    expected: Mapping[str, object]
-
-
-# Shared parser cases to keep parametrization DRY and self-documenting.
-PARSER_CASES: Final[tuple[ParserCase, ...]] = (
-    ParserCase(
-        identifier='extract-default-format',
-        args=('extract', 'file', '/path/to/file.json'),
-        expected={
-            'command': 'extract',
-            'source_type': 'file',
-            'source': '/path/to/file.json',
-            'format': 'json',
-        },
-    ),
-    ParserCase(
-        identifier='extract-explicit-format',
-        args=('extract', 'file', '/path/to/file.csv', '--format', 'csv'),
-        expected={
-            'command': 'extract',
-            'source_type': 'file',
-            'source': '/path/to/file.csv',
-            'format': 'csv',
-            '_format_explicit': True,
-        },
-    ),
-    ParserCase(
-        identifier='load-default-format',
-        args=('load', '/path/to/file.json', 'file', '/path/to/output.json'),
-        expected={
-            'command': 'load',
-            'source': '/path/to/file.json',
-            'target_type': 'file',
-            'target': '/path/to/output.json',
-        },
-    ),
-    ParserCase(
-        identifier='load-explicit-format',
-        args=(
-            'load',
-            '/path/to/file.json',
-            'file',
-            '/path/to/output.csv',
-            '--format',
-            'csv',
-        ),
-        expected={
-            'command': 'load',
-            'source': '/path/to/file.json',
-            'target_type': 'file',
-            'target': '/path/to/output.csv',
-            'format': 'csv',
-            '_format_explicit': True,
-        },
-    ),
-    # ParserCase(
-    #     identifier='no-subcommand',
-    #     args=(),
-    #     expected={'command': None},
-    # ),
-    ParserCase(
-        identifier='transform',
-        args=('transform', '/path/to/file.json'),
-        expected={'command': 'transform', 'source': '/path/to/file.json'},
-    ),
-    ParserCase(
-        identifier='validate',
-        args=('validate', '/path/to/file.json'),
-        expected={'command': 'validate', 'source': '/path/to/file.json'},
-    ),
-)
-
-
-def _subcommand_dests(parser: argparse.ArgumentParser) -> set[str]:
-    """Extract registered subcommand dests from an argparse parser.
-
-    Notes
-    -----
-    This inspects argparse internals to keep the test small and explicit.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to introspect.
-
-    Returns
-    -------
-    set[str]
-        Set of subcommand dest names.
-    """
-    # pylint: disable=protected-access
-
-    subparsers = getattr(parser, '_subparsers', None)
-    if subparsers is None:
-        return set()
-
-    group_actions = getattr(subparsers, '_group_actions', [])
-    if not group_actions:
-        return set()
-
-    action = group_actions[0]
-    choices = getattr(action, '_choices_actions', [])
-    return {a.dest for a in choices}
-
-
-@dataclass(slots=True)
-class ParserStub:
-    """
-    Minimal stand-in for :class:`argparse.ArgumentParser`.
-
-    Notes
-    -----
-    The production :func:`etlplus.cli.main` only needs a ``parse_args`` method
-    returning a namespace.
-
-    Attributes
-    ----------
-    namespace : argparse.Namespace
-        Namespace returned by :meth:`parse_args`.
-    """
-
-    namespace: argparse.Namespace
-
-    def parse_args(
-        self,
-        _args: Sequence[str] | None = None,
-    ) -> argparse.Namespace:
-        """Return the pre-configured namespace."""
-        return self.namespace
-
-
 class DummyCfg:
     """Minimal stand-in pipeline config for CLI helper tests."""
 
-    name = 'p1'
-    version = 'v1'
-    sources = [types.SimpleNamespace(name='s1')]
-    targets = [types.SimpleNamespace(name='t1')]
-    transforms = [types.SimpleNamespace(name='tr1')]
-    jobs = [types.SimpleNamespace(name='j1')]
+    name: str = 'p1'
+    version: str = 'v1'
+    sources: list[object] = field(
+        default_factory=lambda: [types.SimpleNamespace(name='s1')],
+    )
+    targets: list[object] = field(
+        default_factory=lambda: [types.SimpleNamespace(name='t1')],
+    )
+    transforms: list[object] = field(
+        default_factory=lambda: [types.SimpleNamespace(name='tr1')],
+    )
+    jobs: list[object] = field(
+        default_factory=lambda: [types.SimpleNamespace(name='j1')],
+    )
 
 
-# SECTION: FIXTURES ========================================================= #
+@pytest.fixture(name='runner')
+def runner_fixture() -> CliRunner:
+    """Provide a Typer test runner."""
+
+    return CliRunner()
 
 
-@pytest.fixture(name='cli_parser')
-def cli_parser_fixture() -> argparse.ArgumentParser:
-    """
-    Provide a fresh CLI parser per test.
+def _capture_cmd(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+) -> tuple[dict[str, object], Mock]:
+    """Patch a `cmd_*` handler and capture the received namespace."""
 
-    Returns
-    -------
-    argparse.ArgumentParser
-        Newly constructed parser instance.
-    """
-    return cli.create_parser()
+    captured: dict[str, object] = {}
 
+    def _fake(ns: argparse.Namespace) -> int:
+        captured['ns'] = ns
+        return 0
 
-@pytest.fixture(name='parse_cli')
-def parse_cli_fixture(
-    cli_parser: argparse.ArgumentParser,
-) -> ParseCli:
-    """
-    Provide a callable that parses argv into a namespace.
-
-    Parameters
-    ----------
-    cli_parser : argparse.ArgumentParser
-        Parser instance created per test.
-
-    Returns
-    -------
-    ParseCli
-        Callable that parses CLI args into an :class:`argparse.Namespace`.
-    """
-
-    def _parse(args: Sequence[str]) -> argparse.Namespace:
-        return cli_parser.parse_args(list(args))
-
-    return _parse
+    m = Mock(side_effect=_fake)
+    monkeypatch.setattr(cli, name, m)
+    return captured, m
 
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestCreateParser:
-    """Tests for :func:`etlplus.cli.create_parser`."""
+class TestTyperCliWiring:
+    """Tests for Typer parsing + Namespace adaptation."""
 
-    def test_create_parser_smoke(
-        self,
-        cli_parser: argparse.ArgumentParser,
-    ) -> None:
-        """Parser is constructed and uses the expected program name."""
-        assert isinstance(cli_parser, argparse.ArgumentParser)
-        assert cli_parser.prog == 'etlplus'
+    def test_no_args_prints_help(self, runner: CliRunner) -> None:
+        """Invoking with no args prints help and exits 0."""
 
-    @pytest.mark.parametrize('case', PARSER_CASES, ids=lambda c: c.identifier)
-    def test_parser_commands(
-        self,
-        parse_cli: ParseCli,
-        case: ParserCase,
-    ) -> None:
-        """Known argv patterns map to the expected argparse namespace."""
-        ns = parse_cli(case.args)
-        for key, expected in case.expected.items():
-            assert getattr(ns, key, None) == expected
+        result = runner.invoke(cli.app, [])
+        assert result.exit_code == 0
+        assert 'ETLPlus' in result.stdout
 
-    def test_parser_version_flag_exits_zero(
-        self,
-        cli_parser: argparse.ArgumentParser,
-    ) -> None:
+    def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """``--version`` exits successfully."""
-        with pytest.raises(SystemExit) as exc_info:
-            cli_parser.parse_args(['--version'])
-        assert exc_info.value.code == 0
 
-    def test_parser_includes_expected_subcommands(
+        result = runner.invoke(cli.app, ['--version'])
+        assert result.exit_code == 0
+        assert cli.__version__ in result.stdout
+
+    def test_extract_default_format_maps_namespace(
         self,
-        cli_parser: argparse.ArgumentParser,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Expected subcommands are registered on the parser."""
-        dests = _subcommand_dests(cli_parser)
-        for cmd in (
-            'extract',
-            'validate',
-            'transform',
-            'load',
-            'pipeline',
-            'list',
-            'run',
-        ):
-            assert cmd in dests
+        """Extract defaults to json and marks format as implicit."""
+        # pylint: disable=protected-access
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        result = runner.invoke(
+            cli.app,
+            ['extract', 'file', '/path/to/file.json'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'extract'
+        assert ns.source_type == 'file'
+        assert ns.source == '/path/to/file.json'
+        assert ns.format == 'json'
+        assert ns._format_explicit is False
+
+    def test_extract_explicit_format_maps_namespace(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Extract marks format as explicit when provided."""
+        # pylint: disable=protected-access
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        result = runner.invoke(
+            cli.app,
+            ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.format == 'csv'
+        assert ns._format_explicit is True
+
+    def test_load_default_format_maps_namespace(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Load defaults to json and marks format as implicit."""
+        # pylint: disable=protected-access
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        result = runner.invoke(
+            cli.app,
+            ['load', '/path/to/file.json', 'file', '/path/to/out.json'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'load'
+        assert ns.source == '/path/to/file.json'
+        assert ns.target_type == 'file'
+        assert ns.target == '/path/to/out.json'
+        assert ns.format == 'json'
+        assert ns._format_explicit is False
+
+    def test_load_explicit_format_maps_namespace(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Load marks format as explicit when provided."""
+        # pylint: disable=protected-access
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        result = runner.invoke(
+            cli.app,
+            [
+                'load',
+                '/path/to/file.json',
+                'file',
+                '/path/to/out.csv',
+                '--format',
+                'csv',
+            ],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.format == 'csv'
+        assert ns._format_explicit is True
+
+    def test_validate_parses_rules_json(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Validate parses `--rules` via `json_type`."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
+        result = runner.invoke(
+            cli.app,
+            [
+                'validate',
+                '/path/to/file.json',
+                '--rules',
+                '{"required": ["id"]}',
+            ],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'validate'
+        assert ns.source == '/path/to/file.json'
+        assert isinstance(ns.rules, dict)
+        assert ns.rules.get('required') == ['id']
+
+    def test_transform_parses_operations_json(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Transform parses `--operations` via `json_type`."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_transform')
+        result = runner.invoke(
+            cli.app,
+            [
+                'transform',
+                '/path/to/file.json',
+                '--operations',
+                '{"select": ["id"]}',
+            ],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'transform'
+        assert ns.source == '/path/to/file.json'
+        assert isinstance(ns.operations, dict)
+        assert ns.operations.get('select') == ['id']
+
+    def test_pipeline_maps_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Pipeline maps `--list` and `--run` into the expected namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
+        result = runner.invoke(
+            cli.app,
+            ['pipeline', '--config', 'p.yml', '--list'],
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'pipeline'
+        assert ns.config == 'p.yml'
+        assert ns.list is True
+        assert ns.run is None
+
+    def test_list_maps_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """List maps section flags into the expected namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_list')
+        result = runner.invoke(
+            cli.app,
+            ['list', '--config', 'p.yml', '--pipelines', '--sources'],
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'list'
+        assert ns.config == 'p.yml'
+        assert ns.pipelines is True
+        assert ns.sources is True
+
+    def test_run_maps_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run maps `--job`/`--pipeline` into the expected namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_run')
+        result = runner.invoke(
+            cli.app,
+            ['run', '--config', 'p.yml', '--job', 'j1'],
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'run'
+        assert ns.config == 'p.yml'
+        assert ns.job == 'j1'
 
 
 class TestCliInternalHelpers:
     """Unit tests for internal CLI helpers in :mod:`etlplus.cli`."""
-
-    def test_format_action_sets_flag(self) -> None:
-        """``_FormatAction`` sets ``_format_explicit`` when used."""
-        # pylint: disable=protected-access
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--format', action=cli._FormatAction)
-        ns = parser.parse_args(['--format', 'json'])
-        assert ns.format == 'json'
-        assert ns._format_explicit is True
-
-    def test_add_format_options_sets_defaults(self) -> None:
-        """``_add_format_options`` establishes default values."""
-        # pylint: disable=protected-access
-
-        parser = argparse.ArgumentParser()
-        cli._add_format_options(parser, context='source')
-
-        ns = parser.parse_args([])
-        assert ns._format_explicit is False
-
-        ns_strict = parser.parse_args(['--strict-format'])
-        assert ns_strict.strict_format is True
-
-        ns_format = parser.parse_args(['--format', 'json'])
-        assert ns_format.format == 'json'
-        assert ns_format._format_explicit is True
 
     @pytest.mark.parametrize(
         ('behavior', 'expected_err', 'should_raise'),
@@ -331,10 +339,7 @@ class TestCliInternalHelpers:
         should_raise: bool,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """
-        Test that :func:`_emit_behavioral_notice` raises or emits stderr per
-        behavior.
-        """
+        """Behavioral notice raises or emits stderr per configured behavior."""
         # pylint: disable=protected-access
 
         if should_raise:
@@ -356,7 +361,7 @@ class TestCliInternalHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that environment overrides behavior when not strict."""
+        """Environment overrides behavior when not strict."""
         # pylint: disable=protected-access
 
         monkeypatch.setenv(cli.FORMAT_ENV_KEY, 'fail')
@@ -380,15 +385,13 @@ class TestCliInternalHelpers:
         format_explicit: bool,
         should_raise: bool,
     ) -> None:
-        """
-        Test that guard raises only for explicit formats on file resources.
-        """
+        """Guard raises only for explicit formats on file resources."""
         # pylint: disable=protected-access
 
         monkeypatch.setattr(cli, '_format_behavior', lambda _strict: 'error')
 
-        def call():
-            return cli._handle_format_guard(
+        def call() -> None:
+            cli._handle_format_guard(
                 io_context='source',
                 resource_type=resource_type,
                 format_explicit=format_explicit,
@@ -402,7 +405,7 @@ class TestCliInternalHelpers:
             call()
 
     def test_list_sections_all(self) -> None:
-        """Test that :func:`_list_sections` includes all requested sections."""
+        """`_list_sections` includes all requested sections."""
         # pylint: disable=protected-access
 
         args = argparse.Namespace(
@@ -415,10 +418,7 @@ class TestCliInternalHelpers:
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
     def test_list_sections_default(self) -> None:
-        """
-        Test that :func:`_list_sections` defaults to jobs when no flags are
-        set.
-        """
+        """`_list_sections` defaults to jobs when no flags are set."""
         # pylint: disable=protected-access
 
         args = argparse.Namespace(
@@ -431,7 +431,7 @@ class TestCliInternalHelpers:
         assert 'jobs' in result
 
     def test_materialize_csv_payload_non_str(self) -> None:
-        """Test that non-string payloads return unchanged."""
+        """Non-string payloads return unchanged."""
         # pylint: disable=protected-access
 
         payload: object = {'foo': 1}
@@ -457,19 +457,17 @@ class TestCliInternalHelpers:
         assert rows[0] == {'a': '1', 'b': '2'}
 
     def test_pipeline_summary(self) -> None:
-        """``_pipeline_summary`` returns a mapping for a pipeline config."""
+        """`_pipeline_summary` returns a mapping for a pipeline config."""
         # pylint: disable=protected-access
 
-        result = cli._pipeline_summary(DummyCfg())  # type: ignore[arg-type]
+        summary = cli._pipeline_summary(DummyCfg())  # type: ignore[arg-type]
+        result: Mapping[str, object] = summary
         assert result['name'] == 'p1'
         assert result['version'] == 'v1'
         assert set(result) >= {'sources', 'targets', 'jobs'}
 
     def test_read_csv_rows(self, tmp_path: Path) -> None:
-        """
-        Test that :func:`_read_csv_rows` reads a CSV into a list of row
-        dictionaries.
-        """
+        """`_read_csv_rows` reads a CSV into row dictionaries."""
         # pylint: disable=protected-access
 
         f = tmp_path / 'data.csv'
@@ -479,30 +477,11 @@ class TestCliInternalHelpers:
             {'a': '3', 'b': '4'},
         ]
 
-    def test_write_json_output_stdout_is_quiet(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """
-        Test that, when writing to stdout, the helper does not print JSON to
-        stdout.
-        """
-        # pylint: disable=protected-access
-
-        data = {'x': 1}
-        assert (
-            cli._write_json_output(data, None, success_message='msg') is False
-        )
-        assert capsys.readouterr().out == ''
-
     def test_write_json_output_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that, when a file path is provided, the helper writes JSON via
-        :class:`File`.
-        """
+        """When a file path is provided, JSON is written via :class:`File`."""
         # pylint: disable=protected-access
 
         data = {'x': 1}
@@ -517,71 +496,37 @@ class TestCliInternalHelpers:
 class TestMain:
     """Unit test suite for :func:`etlplus.cli.main`."""
 
-    @pytest.mark.parametrize(
-        'argv',
-        [
-            pytest.param(['extract', 'file', 'foo'], id='extract'),
-            pytest.param(['validate', 'foo'], id='validate'),
-            pytest.param(['transform', 'foo'], id='transform'),
-            pytest.param(['load', 'foo', 'file', 'bar'], id='load'),
-            pytest.param(['pipeline', '--config', 'foo.yml'], id='pipeline'),
-            pytest.param(['list', '--config', 'foo.yml'], id='list'),
-            pytest.param(['run', '--config', 'foo.yml'], id='run'),
-        ],
-    )
-    def test_dispatches_all_subcommands(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        argv: list[str],
-    ) -> None:
-        """
-        Test that :func:`main` dispatches all subcommands to ``args.func``.
-        """
-        parser = cli.create_parser()
-        args = parser.parse_args(argv)
+    def test_no_args_exits_zero(self) -> None:
+        """No args prints help and exits 0."""
 
-        args.func = Mock(return_value=0)
-
-        monkeypatch.setattr(cli, 'create_parser', lambda: parser)
-        monkeypatch.setattr(parser, 'parse_args', lambda _argv: args)
-
-        assert cli.main(argv) == 0
-        args.func.assert_called_once_with(args)
-
-    def test_no_command_is_usage_error(self) -> None:
-        """Test that no subcommand is a usage error (argparse exit code 2)."""
-        try:
-            result = cli.main([])
-        except SystemExit as exc:
-            assert exc.code == 2
-        else:
-            assert result == 0
+        assert cli.main([]) == 0
 
     def test_handles_keyboard_interrupt(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """KeyboardInterrupt maps to the conventional exit code 130."""
-        cmd = Mock(side_effect=KeyboardInterrupt)
-        ns = argparse.Namespace(command='dummy', func=cmd)
-        monkeypatch.setattr(cli, 'create_parser', lambda: ParserStub(ns))
 
-        assert cli.main([]) == 130
+        monkeypatch.setattr(
+            cli,
+            'cmd_extract',
+            Mock(side_effect=KeyboardInterrupt),
+        )
+        assert cli.main(['extract', 'file', 'foo']) == 130
 
     def test_handles_system_exit_from_command(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that :func:`main` does not swallow :class:`SystemExit` from the
-        dispatched command.
-        """
-        cmd = Mock(side_effect=SystemExit(5))
-        ns = argparse.Namespace(command='dummy', func=cmd)
-        monkeypatch.setattr(cli, 'create_parser', lambda: ParserStub(ns))
+        """`main` does not swallow `SystemExit` from the dispatched command."""
 
+        monkeypatch.setattr(
+            cli,
+            'cmd_extract',
+            Mock(side_effect=SystemExit(5)),
+        )
         with pytest.raises(SystemExit) as exc_info:
-            cli.main([])
+            cli.main(['extract', 'file', 'foo'])
         assert exc_info.value.code == 5
 
     def test_value_error_returns_exit_code_1(
@@ -589,10 +534,12 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that :class:`ValueError` from a command maps to exit code 1."""
-        cmd = Mock(side_effect=ValueError('fail'))
-        ns = argparse.Namespace(command='dummy', func=cmd)
-        monkeypatch.setattr(cli, 'create_parser', lambda: ParserStub(ns))
+        """ValueError from a command maps to exit code 1."""
 
-        assert cli.main([]) == 1
+        monkeypatch.setattr(
+            cli,
+            'cmd_extract',
+            Mock(side_effect=ValueError('fail')),
+        )
+        assert cli.main(['extract', 'file', 'foo']) == 1
         assert 'Error:' in capsys.readouterr().err

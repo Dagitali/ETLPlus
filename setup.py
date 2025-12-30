@@ -43,10 +43,11 @@ setup(
     python_requires='>=3.13,<3.15',
     install_requires=[
         'jinja2>=3.1.6',
+        'pandas>=2.3.3',
         'pyodbc>=5.3.0',
         'python-dotenv>=1.2.1',
-        'pandas>=2.3.3',
         'requests>=2.32.5',
+        'typer>=0.21.0',
     ],
     extras_require={
         'dev': [
