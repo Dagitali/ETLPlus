@@ -45,7 +45,7 @@ from .utils import json_type
 from .utils import print_json
 from .validate import validate
 
-# SECTION: CONSTANTS ======================================================= #
+# SECTION: CONSTANTS ======================================================== #
 
 
 CLI_DESCRIPTION = '\n'.join(
@@ -122,9 +122,7 @@ _SOURCE_CHOICES = set(DataConnectorType.choices())
 _FORMAT_CHOICES = set(FileFormat.choices())
 
 # Runtime flags (set by Typer callback)
-_QUIET = False
-_VERBOSE = False
-_PRETTY = True
+_FLAGS = {'PRETTY': True, 'QUIET': False, 'VERBOSE': False}
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -213,7 +211,7 @@ def _emit_behavioral_notice(
         raise ValueError(message)
     if behavior in _FORMAT_SILENT_STATES:
         return
-    if _QUIET:
+    if _FLAGS['QUIET']:
         return
     print(f'Warning: {message}', file=sys.stderr)
 
@@ -1098,10 +1096,9 @@ def _root(
 ) -> None:
     """Root command callback to show help or version."""
 
-    global _QUIET, _VERBOSE, _PRETTY
-    _QUIET = quiet
-    _VERBOSE = verbose
-    _PRETTY = pretty
+    _FLAGS['QUIET'] = quiet
+    _FLAGS['VERBOSE'] = verbose
+    _FLAGS['PRETTY'] = pretty
 
     if version:
         typer.echo(f'etlplus {__version__}')
@@ -1230,7 +1227,7 @@ def extract_cmd(
             label='source_type',
         )
 
-    if _VERBOSE:
+    if _FLAGS['VERBOSE']:
         print(
             f'Inferred source_type={source_type} for source={source}',
             file=sys.stderr,
@@ -1244,7 +1241,7 @@ def extract_cmd(
         strict_format=strict_format,
         format=(source_format or 'json'),
         _format_explicit=(source_format is not None),
-        pretty=_PRETTY,
+        pretty=_FLAGS['PRETTY'],
     )
     return int(cmd_extract(ns))
 
@@ -1290,7 +1287,7 @@ def validate_cmd(
         rules=json_type(rules),
         output=output,
         input_format=input_format,
-        pretty=_PRETTY,
+        pretty=_FLAGS['PRETTY'],
     )
     return int(cmd_validate(ns))
 
@@ -1337,7 +1334,7 @@ def transform_cmd(
         operations=json_type(operations),
         output=output,
         input_format=input_format,
-        pretty=_PRETTY,
+        pretty=_FLAGS['PRETTY'],
     )
     return int(cmd_transform(ns))
 
@@ -1473,7 +1470,7 @@ def load_cmd(
             label='target_type',
         )
 
-    if _VERBOSE:
+    if _FLAGS['VERBOSE']:
         print(
             f'Inferred target_type={target_type} for target={target}',
             file=sys.stderr,
@@ -1488,7 +1485,7 @@ def load_cmd(
         format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
         input_format=input_format,
-        pretty=_PRETTY,
+        pretty=_FLAGS['PRETTY'],
     )
     return int(cmd_load(ns))
 
