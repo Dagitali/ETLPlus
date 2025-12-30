@@ -961,7 +961,7 @@ def extract_cmd(
             '(overrides environment behavior)'
         ),
     ),
-    format: str | None = typer.Option(
+    source_format: str | None = typer.Option(
         None,
         '--format',
         help=(
@@ -978,8 +978,12 @@ def extract_cmd(
         _SOURCE_CHOICES,
         label='source_type',
     )
-    if format is not None:
-        format = _validate_choice(format, _FORMAT_CHOICES, label='format')
+    if source_format is not None:
+        source_format = _validate_choice(
+            source_format,
+            _FORMAT_CHOICES,
+            label='format',
+        )
 
     ns = _ns(
         command='extract',
@@ -987,8 +991,8 @@ def extract_cmd(
         source=source,
         output=output,
         strict_format=strict_format,
-        format=(format or 'json'),
-        _format_explicit=(format is not None),
+        format=(source_format or 'json'),
+        _format_explicit=(source_format is not None),
     )
     return int(cmd_extract(ns))
 
@@ -1062,7 +1066,7 @@ def load_cmd(
             '(overrides environment behavior)'
         ),
     ),
-    format: str | None = typer.Option(
+    target_format: str | None = typer.Option(
         None,
         '--format',
         help=(
@@ -1079,8 +1083,12 @@ def load_cmd(
         _SOURCE_CHOICES,
         label='target_type',
     )
-    if format is not None:
-        format = _validate_choice(format, _FORMAT_CHOICES, label='format')
+    if target_format is not None:
+        target_format = _validate_choice(
+            target_format,
+            _FORMAT_CHOICES,
+            label='format',
+        )
 
     ns = _ns(
         command='load',
@@ -1088,8 +1096,8 @@ def load_cmd(
         target_type=target_type,
         target=target,
         strict_format=strict_format,
-        format=(format or 'json'),
-        _format_explicit=(format is not None),
+        format=(target_format or 'json'),
+        _format_explicit=(target_format is not None),
     )
     return int(cmd_load(ns))
 
@@ -1106,7 +1114,7 @@ def pipeline_cmd(
         '--list',
         help='List available job names and exit',
     ),
-    run: str | None = typer.Option(
+    run_job: str | None = typer.Option(
         None,
         '--run',
         metavar='JOB',
@@ -1115,7 +1123,7 @@ def pipeline_cmd(
 ) -> int:
     """Typer front-end for :func:`cmd_pipeline`."""
 
-    ns = _ns(command='pipeline', config=config, list=list_, run=run)
+    ns = _ns(command='pipeline', config=config, list=list_, run=run_job)
     return int(cmd_pipeline(ns))
 
 
