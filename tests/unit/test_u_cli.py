@@ -460,9 +460,8 @@ class TestCliInternalHelpers:
         """`_pipeline_summary` returns a mapping for a pipeline config."""
         # pylint: disable=protected-access
 
-        result: Mapping[str, object] = (
-            cli._pipeline_summary(DummyCfg())  # type: ignore[arg-type]
-        )
+        summary = cli._pipeline_summary(DummyCfg())  # type: ignore[arg-type]
+        result: Mapping[str, object] = summary
         assert result['name'] == 'p1'
         assert result['version'] == 'v1'
         assert set(result) >= {'sources', 'targets', 'jobs'}
