@@ -143,7 +143,8 @@ def _root(
 @app.command('extract')
 def extract_cmd(
     source_type: str = typer.Argument(
-        ..., help='Type of source to extract from',
+        ...,
+        help='Type of source to extract from',
     ),
     source: str = typer.Argument(
         ...,
@@ -179,7 +180,9 @@ def extract_cmd(
     """Typer front-end for :func:`cmd_extract`."""
 
     source_type = _validate_choice(
-        source_type, _SOURCE_CHOICES, label='source_type',
+        source_type,
+        _SOURCE_CHOICES,
+        label='source_type',
     )
     if format is not None:
         format = _validate_choice(format, _FORMAT_CHOICES, label='format')
@@ -199,7 +202,8 @@ def extract_cmd(
 @app.command('validate')
 def validate_cmd(
     source: str = typer.Argument(
-        ..., help='Data source to validate (file path or JSON string)',
+        ...,
+        help='Data source to validate (file path or JSON string)',
     ),
     rules: str = typer.Option(
         '{}',
@@ -216,7 +220,8 @@ def validate_cmd(
 @app.command('transform')
 def transform_cmd(
     source: str = typer.Argument(
-        ..., help='Data source to transform (file path or JSON string)',
+        ...,
+        help='Data source to transform (file path or JSON string)',
     ),
     operations: str = typer.Option(
         '{}',
@@ -244,7 +249,8 @@ def transform_cmd(
 @app.command('load')
 def load_cmd(
     source: str = typer.Argument(
-        ..., help='Data source to load (file path or JSON string)',
+        ...,
+        help='Data source to load (file path or JSON string)',
     ),
     target_type: str = typer.Argument(..., help='Type of target to load to'),
     target: str = typer.Argument(
@@ -275,7 +281,9 @@ def load_cmd(
     """Typer front-end for :func:`cmd_load`."""
 
     target_type = _validate_choice(
-        target_type, _SOURCE_CHOICES, label='target_type',
+        target_type,
+        _SOURCE_CHOICES,
+        label='target_type',
     )
     if format is not None:
         format = _validate_choice(format, _FORMAT_CHOICES, label='format')
@@ -295,13 +303,20 @@ def load_cmd(
 @app.command('pipeline')
 def pipeline_cmd(
     config: str = typer.Option(
-        ..., '--config', help='Path to pipeline YAML configuration file',
+        ...,
+        '--config',
+        help='Path to pipeline YAML configuration file',
     ),
     list_: bool = typer.Option(
-        False, '--list', help='List available job names and exit',
+        False,
+        '--list',
+        help='List available job names and exit',
     ),
     run: str | None = typer.Option(
-        None, '--run', metavar='JOB', help='Run a specific job by name',
+        None,
+        '--run',
+        metavar='JOB',
+        help='Run a specific job by name',
     ),
 ) -> int:
     """Typer front-end for :func:`cmd_pipeline`."""
@@ -313,15 +328,21 @@ def pipeline_cmd(
 @app.command('list')
 def list_cmd(
     config: str = typer.Option(
-        ..., '--config', help='Path to pipeline YAML configuration file',
+        ...,
+        '--config',
+        help='Path to pipeline YAML configuration file',
     ),
     pipelines: bool = typer.Option(
-        False, '--pipelines', help='List ETL pipelines',
+        False,
+        '--pipelines',
+        help='List ETL pipelines',
     ),
     sources: bool = typer.Option(False, '--sources', help='List data sources'),
     targets: bool = typer.Option(False, '--targets', help='List data targets'),
     transforms: bool = typer.Option(
-        False, '--transforms', help='List data transforms',
+        False,
+        '--transforms',
+        help='List data transforms',
     ),
 ) -> int:
     """Typer front-end for :func:`cmd_list`."""
@@ -340,13 +361,21 @@ def list_cmd(
 @app.command('run')
 def run_cmd(
     config: str = typer.Option(
-        ..., '--config', help='Path to pipeline YAML configuration file',
+        ...,
+        '--config',
+        help='Path to pipeline YAML configuration file',
     ),
     job: str | None = typer.Option(
-        None, '-j', '--job', help='Name of the job to run',
+        None,
+        '-j',
+        '--job',
+        help='Name of the job to run',
     ),
     pipeline: str | None = typer.Option(
-        None, '-p', '--pipeline', help='Name of the pipeline to run',
+        None,
+        '-p',
+        '--pipeline',
+        help='Name of the pipeline to run',
     ),
 ) -> int:
     """Typer front-end for :func:`cmd_run`."""
