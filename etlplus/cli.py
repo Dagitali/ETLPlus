@@ -1,10 +1,23 @@
-"""
+"""  # noqa: D400
 :mod:`etlplus.cli` module.
 
-Entry point for the ``etlplus`` command-line Interface (CLI).
+Entry point for the ``etlplus`` command-line interface (CLI).
 
-This module wires subcommands via ``argparse`` using
-``set_defaults(func=...)`` so dispatch is clean and extensible.
+Typer-First Interface
+---------------------
+The CLI is implemented using `Typer` (Click) for parsing, help text, and
+subcommand dispatch. The Typer layer focuses on ergonomics (git-style
+subcommands, optional inference of resource types, stdin/stdout piping, and
+quality-of-life flags), while delegating business logic to the existing
+``cmd_*`` handlers.
+
+Compatibility Layer
+-------------------
+The legacy ``argparse`` parser is still present as an internal/compat layer
+(via :func:`create_parser`) for backwards compatibility and for tests that
+expect an ``argparse.Namespace`` contract. The Typer commands adapt parsed
+arguments into an ``argparse.Namespace`` and then call the corresponding
+``cmd_*`` handler.
 
 Subcommands
 -----------
@@ -12,6 +25,13 @@ Subcommands
 - ``validate``: validate data against rules
 - ``transform``: transform records
 - ``load``: load data to files, databases, or REST APIs
+
+Notes
+-----
+- Use ``-`` to read from stdin and ``--output -`` (or ``load ... file -``) to
+    write to stdout.
+- ``extract`` supports ``--from`` and ``load`` supports ``--to`` to override
+    inferred resource types.
 """
 
 from __future__ import annotations
