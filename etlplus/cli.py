@@ -805,6 +805,7 @@ def main(
 # SECTION: TYPER APP ======================================================== #
 
 
+# Typer application instance (subcommands are registered below).
 app = typer.Typer(
     name='etlplus',
     # help='ETLPlus - A Swiss Army knife for simple ETL operations.',
@@ -819,8 +820,8 @@ def _root(
     ctx: typer.Context,
     version: bool = typer.Option(
         False,
-        '-V',
         '--version',
+        '-V',
         is_eager=True,
         help='Show the version and exit.',
     ),
@@ -843,7 +844,6 @@ def _root(
     ),
 ) -> None:
     """Root command callback to show help or version."""
-
     _FLAGS['QUIET'] = quiet
     _FLAGS['VERBOSE'] = verbose
     _FLAGS['PRETTY'] = pretty
@@ -934,7 +934,6 @@ def extract_cmd(
         etlplus extract in.csv \
         | etlplus transform --operations '{"select":["a"]}'
     """
-
     if len(args) > 2:
         raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
 
@@ -1020,8 +1019,25 @@ def validate_cmd(
         help='Input payload format for stdin (json or csv).',
     ),
 ) -> int:
-    """Validate data against rules."""
+    """
+    Validate data against JSON-described rules.
 
+    Parameters
+    ----------
+    source : str
+        Data source (file path or ``-`` for stdin).
+    rules : str
+        Validation rules as a JSON string.
+    output : str | None
+        Optional output path. Use ``-`` for stdout.
+    input_format : str | None
+        Optional stdin format hint (json or csv).
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
     if input_format is not None:
         input_format = _validate_choice(
             input_format,
@@ -1067,8 +1083,25 @@ def transform_cmd(
         help='Input payload format for stdin (json or csv).',
     ),
 ) -> int:
-    """Transform records with JSON-described operations."""
+    """
+    Transform records using JSON-described operations.
 
+    Parameters
+    ----------
+    source : str
+        Data source (file path or ``-`` for stdin).
+    operations : str
+        Transformation operations as a JSON string.
+    output : str | None
+        Optional output path. Use ``-`` for stdout.
+    input_format : str | None
+        Optional stdin format hint (json or csv).
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
     if input_format is not None:
         input_format = _validate_choice(
             input_format,
@@ -1257,7 +1290,23 @@ def pipeline_cmd(
         help='Run a specific job by name',
     ),
 ) -> int:
-    """Typer front-end for :func:`cmd_pipeline`."""
+    """
+    Inspect or run a pipeline YAML configuration.
+
+    Parameters
+    ----------
+    config : str
+        Path to pipeline YAML configuration file.
+    list_ : bool
+        If True, list available job names and exit.
+    run_job : str | None
+        Name of a specific job to run.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
 
     ns = _ns(command='pipeline', config=config, list=list_, run=run_job)
     return int(cmd_pipeline(ns))
@@ -1283,8 +1332,27 @@ def list_cmd(
         help='List data transforms',
     ),
 ) -> int:
-    """Typer front-end for :func:`cmd_list`."""
+    """
+    Print ETL entities from a pipeline YAML configuration.
 
+    Parameters
+    ----------
+    config : str
+        Path to pipeline YAML configuration file.
+    pipelines : bool
+        If True, list ETL pipelines.
+    sources : bool
+        If True, list data sources.
+    targets : bool
+        If True, list data targets.
+    transforms : bool
+        If True, list data transforms.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
     ns = _ns(
         command='list',
         config=config,
@@ -1316,7 +1384,23 @@ def run_cmd(
         help='Name of the pipeline to run',
     ),
 ) -> int:
-    """Typer front-end for :func:`cmd_run`."""
+    """
+    Execute an ETL job or pipeline from a YAML configuration.
+
+    Parameters
+    ----------
+    config : str
+        Path to pipeline YAML configuration file.
+    job : str | None
+        Name of the job to run.
+    pipeline : str | None
+        Name of the pipeline to run.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
 
     ns = _ns(command='run', config=config, job=job, pipeline=pipeline)
     return int(cmd_run(ns))
