@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
+import json
 import os
 import sys
 from collections.abc import Sequence
@@ -85,15 +87,44 @@ FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 
 PROJECT_URL = 'https://github.com/Dagitali/ETLPlus'
 
+EXTRACT_ARGS = typer.Argument(
+    ...,
+    metavar='[SOURCE_TYPE] SOURCE',
+    help=(
+        'Extract from a SOURCE. You may provide SOURCE_TYPE explicitly as '
+        'the first positional argument, or omit it and use --from or let '
+        'etlplus infer it from the SOURCE.'
+    ),
+)
+LOAD_ARGS = typer.Argument(
+    ...,
+    metavar='[SOURCE] [TARGET_TYPE] TARGET',
+    help=(
+        'Load SOURCE into a target. SOURCE defaults to - (stdin). You may '
+        'provide legacy positional form: SOURCE TARGET_TYPE TARGET.'
+    ),
+)
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
+
+_DB_SCHEMES = (
+    'postgres://',
+    'postgresql://',
+    'mysql://',
+)
 
 _FORMAT_ERROR_STATES = {'error', 'fail', 'strict'}
 _FORMAT_SILENT_STATES = {'ignore', 'silent'}
 
 _SOURCE_CHOICES = set(DataConnectorType.choices())
 _FORMAT_CHOICES = set(FileFormat.choices())
+
+# Runtime flags (set by Typer callback)
+_QUIET = False
+_VERBOSE = False
+_PRETTY = True
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -181,6 +212,8 @@ def _emit_behavioral_notice(
     if behavior in _FORMAT_ERROR_STATES:
         raise ValueError(message)
     if behavior in _FORMAT_SILENT_STATES:
+        return
+    if _QUIET:
         return
     print(f'Warning: {message}', file=sys.stderr)
 
@@ -297,6 +330,73 @@ def _materialize_csv_payload(
     return _read_csv_rows(path)
 
 
+def _read_stdin_text() -> str:
+    """Read all text from stdin."""
+
+    return sys.stdin.read()
+
+
+def _infer_resource_type(value: str) -> str:
+    """Infer the resource type from a value (path/URL/DSN)."""
+
+    val = (value or '').strip()
+    low = val.lower()
+
+    if val == '-':
+        return 'file'
+    if low.startswith(('http://', 'https://')):
+        return 'api'
+    if low.startswith(_DB_SCHEMES):
+        return 'database'
+
+    path = Path(val)
+    if path.exists() or path.suffix:
+        return 'file'
+
+    raise ValueError(
+        'Could not infer resource type. Use --from/--to to specify it.',
+    )
+
+
+def _infer_payload_format(text: str) -> str:
+    """Infer JSON vs CSV from payload text."""
+
+    stripped = text.lstrip()
+    if stripped.startswith('{') or stripped.startswith('['):
+        return 'json'
+    return 'csv'
+
+
+def _parse_text_payload(
+    text: str,
+    fmt: str | None,
+) -> JSONData | str:
+    """Parse JSON/CSV text into a Python payload."""
+
+    effective = (fmt or '').strip().lower() or _infer_payload_format(text)
+    if effective == 'json':
+        return cast(JSONData, json_type(text))
+    if effective == 'csv':
+        reader = csv.DictReader(io.StringIO(text))
+        return [dict(row) for row in reader]
+    return text
+
+
+def _emit_json(data: Any, *, pretty: bool) -> None:
+    """Emit JSON to stdout honoring the pretty/compact preference."""
+
+    if pretty:
+        print_json(data)
+        return
+
+    dumped = json.dumps(
+        data,
+        ensure_ascii=False,
+        separators=(',', ':'),
+    )
+    print(dumped)
+
+
 def _ns(**kwargs: object) -> argparse.Namespace:
     """Create an :class:`argparse.Namespace` for legacy command handlers."""
 
@@ -387,7 +487,7 @@ def _write_json_output(
     bool
         True if output was written to a file, False if printed to stdout.
     """
-    if not output_path:
+    if not output_path or output_path == '-':
         return False
     File(Path(output_path), FileFormat.JSON).write_json(data)
     print(f'{success_message} {output_path}')
@@ -423,6 +523,19 @@ def cmd_extract(
         strict=getattr(args, 'strict_format', False),
     )
 
+    pretty = getattr(args, 'pretty', True)
+
+    if args.source == '-':
+        text = _read_stdin_text()
+        payload = _parse_text_payload(text, getattr(args, 'format', None))
+        if not _write_json_output(
+            payload,
+            getattr(args, 'output', None),
+            success_message='Data extracted and saved to',
+        ):
+            _emit_json(payload, pretty=pretty)
+        return 0
+
     if args.source_type == 'file':
         result = extract(args.source_type, args.source)
     else:
@@ -437,7 +550,7 @@ def cmd_extract(
         getattr(args, 'output', None),
         success_message='Data extracted and saved to',
     ):
-        print_json(result)
+        _emit_json(result, pretty=pretty)
 
     return 0
 
@@ -458,7 +571,16 @@ def cmd_validate(
     int
         Zero on success.
     """
-    payload = _materialize_csv_payload(args.source)
+    pretty = getattr(args, 'pretty', True)
+
+    if args.source == '-':
+        text = _read_stdin_text()
+        payload = _parse_text_payload(
+            text,
+            getattr(args, 'input_format', None),
+        )
+    else:
+        payload = _materialize_csv_payload(args.source)
     result = validate(payload, args.rules)
 
     output_path = getattr(args, 'output', None)
@@ -476,7 +598,7 @@ def cmd_validate(
                 file=sys.stderr,
             )
     else:
-        print_json(result)
+        _emit_json(result, pretty=pretty)
 
     return 0
 
@@ -497,7 +619,17 @@ def cmd_transform(
     int
         Zero on success.
     """
-    payload = _materialize_csv_payload(args.source)
+    pretty = getattr(args, 'pretty', True)
+
+    if args.source == '-':
+        text = _read_stdin_text()
+        payload = _parse_text_payload(
+            text,
+            getattr(args, 'input_format', None),
+        )
+    else:
+        payload = _materialize_csv_payload(args.source)
+
     data = transform(payload, args.operations)
 
     if not _write_json_output(
@@ -505,7 +637,7 @@ def cmd_transform(
         getattr(args, 'output', None),
         success_message='Data transformed and saved to',
     ):
-        print_json(data)
+        _emit_json(data, pretty=pretty)
 
     return 0
 
@@ -533,11 +665,35 @@ def cmd_load(
         strict=getattr(args, 'strict_format', False),
     )
 
+    pretty = getattr(args, 'pretty', True)
+
+    # Allow piping into load.
+    source_value: (
+        str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]]
+    )
+    if args.source == '-':
+        text = _read_stdin_text()
+        source_value = cast(
+            str | dict[str, Any] | list[dict[str, Any]],
+            _parse_text_payload(
+                text,
+                getattr(args, 'input_format', None),
+            ),
+        )
+    else:
+        source_value = args.source
+
+    # Allow piping out of load for file targets.
+    if args.target_type == 'file' and args.target == '-':
+        payload = _materialize_csv_payload(source_value)
+        _emit_json(payload, pretty=pretty)
+        return 0
+
     if args.target_type == 'file':
-        result = load(args.source, args.target_type, args.target)
+        result = load(source_value, args.target_type, args.target)
     else:
         result = load(
-            args.source,
+            source_value,
             args.target_type,
             args.target,
             file_format=getattr(args, 'format', None),
@@ -548,7 +704,7 @@ def cmd_load(
         getattr(args, 'output', None),
         success_message='Data loaded and saved to',
     ):
-        print_json(result)
+        _emit_json(result, pretty=pretty)
 
     return 0
 
@@ -922,8 +1078,30 @@ def _root(
         is_eager=True,
         help='Show the version and exit.',
     ),
+    pretty: bool = typer.Option(
+        True,
+        '--pretty/--no-pretty',
+        help='Pretty-print JSON output (default: pretty).',
+    ),
+    quiet: bool = typer.Option(
+        False,
+        '--quiet',
+        '-q',
+        help='Suppress warnings and non-essential output.',
+    ),
+    verbose: bool = typer.Option(
+        False,
+        '--verbose',
+        '-v',
+        help='Emit extra diagnostics to stderr.',
+    ),
 ) -> None:
     """Root command callback to show help or version."""
+
+    global _QUIET, _VERBOSE, _PRETTY
+    _QUIET = quiet
+    _VERBOSE = verbose
+    _PRETTY = pretty
 
     if version:
         typer.echo(f'etlplus {__version__}')
@@ -936,22 +1114,17 @@ def _root(
 
 @app.command('extract')
 def extract_cmd(
-    source_type: str = typer.Argument(
-        ...,
-        help='Type of source to extract from',
-    ),
-    source: str = typer.Argument(
-        ...,
-        help=(
-            'Source location '
-            '(file path, database connection string, or API URL)'
-        ),
+    args: list[str] = EXTRACT_ARGS,
+    from_: str | None = typer.Option(
+        None,
+        '--from',
+        help='Override the inferred source type (file, database, api).',
     ),
     output: str | None = typer.Option(
         None,
         '-o',
         '--output',
-        help='Output file to save extracted data (JSON format)',
+        help='Output file to save extracted data (JSON). Use - for stdout.',
     ),
     strict_format: bool = typer.Option(
         False,
@@ -965,24 +1138,102 @@ def extract_cmd(
         None,
         '--format',
         help=(
-            'Format of the source when not a file. For file sources this '
-            'option is ignored and the format is inferred from the filename '
-            'extension.'
+            'Payload format when not a file (or when SOURCE is -). '
+            'For normal file paths, format is inferred from extension.'
         ),
     ),
 ) -> int:
-    """Typer front-end for :func:`cmd_extract`."""
+    """
+    Extract data from files, databases, or REST APIs.
 
-    source_type = _validate_choice(
-        source_type,
-        _SOURCE_CHOICES,
-        label='source_type',
-    )
+    Parameters
+    ----------
+    args : list[str]
+        Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE.
+    from_ : str | None
+        Override the inferred source type.
+    output : str | None
+        Output file to save extracted data.
+    strict_format : bool
+        Whether to enforce strict format behavior.
+    source_format : str | None
+        Payload format when not a file.
+
+    Returns
+    -------
+    int
+        Zero on success.
+
+    Raises
+    ------
+    typer.BadParameter
+        If invalid parameters are provided.
+
+    Examples
+    --------
+    - Extract from a file (type inferred):
+        etlplus extract in.csv
+
+    - Extract from a file (explicit):
+        etlplus extract file in.csv
+        etlplus extract --from file in.csv
+
+    - Extract from an API:
+        etlplus extract https://example.com/data.json
+        etlplus extract --from api https://example.com/data.json
+
+    - Extract from a database DSN:
+        etlplus extract --from database postgresql://user:pass@host/db
+
+    - Pipe into transform/load:
+        etlplus extract in.csv \
+        | etlplus transform --operations '{"select":["a"]}'
+    """
+
+    if len(args) > 2:
+        raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
+
+    if from_ is not None:
+        from_ = _validate_choice(from_, _SOURCE_CHOICES, label='from')
+
     if source_format is not None:
         source_format = _validate_choice(
             source_format,
             _FORMAT_CHOICES,
             label='format',
+        )
+
+    if len(args) == 2:
+        if from_ is not None:
+            raise typer.BadParameter(
+                'Do not combine --from with an explicit SOURCE_TYPE.',
+            )
+        source_type = _validate_choice(
+            args[0],
+            _SOURCE_CHOICES,
+            label='source_type',
+        )
+        source = args[1]
+    else:
+        source = args[0]
+        if from_ is not None:
+            source_type = from_
+        else:
+            try:
+                source_type = _infer_resource_type(source)
+            except ValueError as e:
+                raise typer.BadParameter(str(e)) from e
+
+        source_type = _validate_choice(
+            source_type,
+            _SOURCE_CHOICES,
+            label='source_type',
+        )
+
+    if _VERBOSE:
+        print(
+            f'Inferred source_type={source_type} for source={source}',
+            file=sys.stderr,
         )
 
     ns = _ns(
@@ -993,6 +1244,7 @@ def extract_cmd(
         strict_format=strict_format,
         format=(source_format or 'json'),
         _format_explicit=(source_format is not None),
+        pretty=_PRETTY,
     )
     return int(cmd_extract(ns))
 
@@ -1000,26 +1252,58 @@ def extract_cmd(
 @app.command('validate')
 def validate_cmd(
     source: str = typer.Argument(
-        ...,
-        help='Data source to validate (file path or JSON string)',
+        '-',
+        metavar='SOURCE',
+        help=(
+            'Data source to validate (file path, JSON string, or - for stdin).'
+        ),
     ),
     rules: str = typer.Option(
         '{}',
         '--rules',
         help='Validation rules as JSON string',
     ),
+    output: str | None = typer.Option(
+        None,
+        '-o',
+        '--output',
+        help='Output file to save validated data (JSON). Use - for stdout.',
+    ),
+    input_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        help='Input payload format for stdin (json or csv).',
+    ),
 ) -> int:
-    """Typer front-end for :func:`cmd_validate`."""
+    """Validate data against rules."""
 
-    ns = _ns(command='validate', source=source, rules=json_type(rules))
+    if input_format is not None:
+        input_format = _validate_choice(
+            input_format,
+            _FORMAT_CHOICES,
+            label='input_format',
+        )
+
+    ns = _ns(
+        command='validate',
+        source=source,
+        rules=json_type(rules),
+        output=output,
+        input_format=input_format,
+        pretty=_PRETTY,
+    )
     return int(cmd_validate(ns))
 
 
 @app.command('transform')
 def transform_cmd(
     source: str = typer.Argument(
-        ...,
-        help='Data source to transform (file path or JSON string)',
+        '-',
+        metavar='SOURCE',
+        help=(
+            'Data source to transform '
+            '(file path, JSON string, or - for stdin).'
+        ),
     ),
     operations: str = typer.Option(
         '{}',
@@ -1030,33 +1314,41 @@ def transform_cmd(
         None,
         '-o',
         '--output',
-        help='Output file to save transformed data',
+        help='Output file to save transformed data (JSON). Use - for stdout.',
+    ),
+    input_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        help='Input payload format for stdin (json or csv).',
     ),
 ) -> int:
-    """Typer front-end for :func:`cmd_transform`."""
+    """Transform records with JSON-described operations."""
+
+    if input_format is not None:
+        input_format = _validate_choice(
+            input_format,
+            _FORMAT_CHOICES,
+            label='input_format',
+        )
 
     ns = _ns(
         command='transform',
         source=source,
         operations=json_type(operations),
         output=output,
+        input_format=input_format,
+        pretty=_PRETTY,
     )
     return int(cmd_transform(ns))
 
 
 @app.command('load')
 def load_cmd(
-    source: str = typer.Argument(
-        ...,
-        help='Data source to load (file path or JSON string)',
-    ),
-    target_type: str = typer.Argument(..., help='Type of target to load to'),
-    target: str = typer.Argument(
-        ...,
-        help=(
-            'Target location '
-            '(file path, database connection string, or API URL)'
-        ),
+    args: list[str] = LOAD_ARGS,
+    to: str | None = typer.Option(
+        None,
+        '--to',
+        help='Override the inferred target type (file, database, api).',
     ),
     strict_format: bool = typer.Option(
         False,
@@ -1070,24 +1362,121 @@ def load_cmd(
         None,
         '--format',
         help=(
-            'Format of the target when not a file. For file targets this '
-            'option is ignored and the format is inferred from the filename '
-            'extension.'
+            'Payload format when not a file (or when TARGET is -). '
+            'For normal file targets, format is inferred from extension.'
         ),
     ),
+    input_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        help='Input payload format for stdin (json or csv).',
+    ),
 ) -> int:
-    """Typer front-end for :func:`cmd_load`."""
+    """
+    Load data into a file, database, or REST API.
 
-    target_type = _validate_choice(
-        target_type,
-        _SOURCE_CHOICES,
-        label='target_type',
-    )
+    Parameters
+    ----------
+    args : list[str]
+        Positional arguments: TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE
+        TARGET.
+    to : str | None
+        Override the inferred target type.
+    strict_format : bool
+        Whether to enforce strict format behavior.
+    target_format : str | None
+        Payload format when not a file.
+    input_format : str | None
+        Input payload format for stdin.
+
+    Returns
+    -------
+    int
+        Zero on success.
+
+    Raises
+    ------
+    typer.BadParameter
+        If the arguments are invalid
+
+    Examples
+    --------
+    - Pipe into a file:
+        etlplus extract in.csv \
+        | etlplus transform --operations '{"select":["a"]}' \
+        | etlplus load --to file out.json
+
+    - Legacy form:
+        etlplus load in.json file out.json
+
+    - Write to stdout:
+        etlplus load in.json file -
+    """
+
+    if len(args) > 3:
+        raise typer.BadParameter(
+            'Provide TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE TARGET.',
+        )
+
+    if to is not None:
+        to = _validate_choice(to, _SOURCE_CHOICES, label='to')
+
     if target_format is not None:
         target_format = _validate_choice(
             target_format,
             _FORMAT_CHOICES,
             label='format',
+        )
+
+    if input_format is not None:
+        input_format = _validate_choice(
+            input_format,
+            _FORMAT_CHOICES,
+            label='input_format',
+        )
+
+    # Parse positional args.
+    if to is None and len(args) == 3:
+        # Legacy: SOURCE TARGET_TYPE TARGET
+        source = args[0]
+        target_type = _validate_choice(
+            args[1],
+            _SOURCE_CHOICES,
+            label='target_type',
+        )
+        target = args[2]
+    else:
+        # Modern: [SOURCE] TARGET (SOURCE defaults to -)
+        if len(args) == 1:
+            source = '-'
+            target = args[0]
+        elif len(args) == 2:
+            source = args[0]
+            target = args[1]
+        else:
+            raise typer.BadParameter(
+                'Missing TARGET. '
+                'Provide TARGET, SOURCE TARGET, or legacy form.',
+            )
+
+        if to is not None:
+            target_type = to
+        else:
+            try:
+                target_type = _infer_resource_type(target)
+            except ValueError as e:
+                raise typer.BadParameter(str(e)) from e
+
+        target_type = _validate_choice(
+            target_type,
+            _SOURCE_CHOICES,
+            label='target_type',
+        )
+
+    if _VERBOSE:
+        print(
+            f'Inferred target_type={target_type} for target={target}',
+            file=sys.stderr,
         )
 
     ns = _ns(
@@ -1098,6 +1487,8 @@ def load_cmd(
         strict_format=strict_format,
         format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
+        input_format=input_format,
+        pretty=_PRETTY,
     )
     return int(cmd_load(ns))
 
