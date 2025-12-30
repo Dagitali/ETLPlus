@@ -26,6 +26,8 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
+import typer
+
 from . import __version__
 from .config import PipelineConfig
 from .config import load_pipeline_config
@@ -82,6 +84,275 @@ CLI_EPILOG = '\n'.join(
 FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 
 PROJECT_URL = 'https://github.com/Dagitali/ETLPlus'
+
+
+# SECTION: TYPER APP ======================================================= #
+
+
+app = typer.Typer(
+    name='etlplus',
+    help='ETLPlus - A Swiss Army knife for simple ETL operations.',
+    add_completion=True,
+)
+
+
+_SOURCE_CHOICES = set(DataConnectorType.choices())
+_FORMAT_CHOICES = set(FileFormat.choices())
+
+
+def _ns(**kwargs: object) -> argparse.Namespace:
+    """Create an :class:`argparse.Namespace` for legacy command handlers."""
+
+    return argparse.Namespace(**kwargs)
+
+
+def _validate_choice(value: str, choices: set[str], *, label: str) -> str:
+    """Validate a string against allowed choices for nice CLI errors."""
+
+    v = (value or '').strip()
+    if v in choices:
+        return v
+    allowed = ', '.join(sorted(choices))
+    raise typer.BadParameter(
+        f"Invalid {label} '{value}'. Choose from: {allowed}",
+    )
+
+
+@app.callback(invoke_without_command=True)
+def _root(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False,
+        '-V',
+        '--version',
+        is_eager=True,
+        help='Show the version and exit.',
+    ),
+) -> None:
+    """Root command callback to show help or version."""
+
+    if version:
+        typer.echo(f'etlplus {__version__}')
+        raise typer.Exit(0)
+
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(0)
+
+
+@app.command('extract')
+def extract_cmd(
+    source_type: str = typer.Argument(
+        ..., help='Type of source to extract from',
+    ),
+    source: str = typer.Argument(
+        ...,
+        help=(
+            'Source location '
+            '(file path, database connection string, or API URL)'
+        ),
+    ),
+    output: str | None = typer.Option(
+        None,
+        '-o',
+        '--output',
+        help='Output file to save extracted data (JSON format)',
+    ),
+    strict_format: bool = typer.Option(
+        False,
+        '--strict-format',
+        help=(
+            'Treat providing --format for file sources as an error '
+            '(overrides environment behavior)'
+        ),
+    ),
+    format: str | None = typer.Option(
+        None,
+        '--format',
+        help=(
+            'Format of the source when not a file. For file sources this '
+            'option is ignored and the format is inferred from the filename '
+            'extension.'
+        ),
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_extract`."""
+
+    source_type = _validate_choice(
+        source_type, _SOURCE_CHOICES, label='source_type',
+    )
+    if format is not None:
+        format = _validate_choice(format, _FORMAT_CHOICES, label='format')
+
+    ns = _ns(
+        command='extract',
+        source_type=source_type,
+        source=source,
+        output=output,
+        strict_format=strict_format,
+        format=(format or 'json'),
+        _format_explicit=(format is not None),
+    )
+    return int(cmd_extract(ns))
+
+
+@app.command('validate')
+def validate_cmd(
+    source: str = typer.Argument(
+        ..., help='Data source to validate (file path or JSON string)',
+    ),
+    rules: str = typer.Option(
+        '{}',
+        '--rules',
+        help='Validation rules as JSON string',
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_validate`."""
+
+    ns = _ns(command='validate', source=source, rules=json_type(rules))
+    return int(cmd_validate(ns))
+
+
+@app.command('transform')
+def transform_cmd(
+    source: str = typer.Argument(
+        ..., help='Data source to transform (file path or JSON string)',
+    ),
+    operations: str = typer.Option(
+        '{}',
+        '--operations',
+        help='Transformation operations as JSON string',
+    ),
+    output: str | None = typer.Option(
+        None,
+        '-o',
+        '--output',
+        help='Output file to save transformed data',
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_transform`."""
+
+    ns = _ns(
+        command='transform',
+        source=source,
+        operations=json_type(operations),
+        output=output,
+    )
+    return int(cmd_transform(ns))
+
+
+@app.command('load')
+def load_cmd(
+    source: str = typer.Argument(
+        ..., help='Data source to load (file path or JSON string)',
+    ),
+    target_type: str = typer.Argument(..., help='Type of target to load to'),
+    target: str = typer.Argument(
+        ...,
+        help=(
+            'Target location '
+            '(file path, database connection string, or API URL)'
+        ),
+    ),
+    strict_format: bool = typer.Option(
+        False,
+        '--strict-format',
+        help=(
+            'Treat providing --format for file targets as an error '
+            '(overrides environment behavior)'
+        ),
+    ),
+    format: str | None = typer.Option(
+        None,
+        '--format',
+        help=(
+            'Format of the target when not a file. For file targets this '
+            'option is ignored and the format is inferred from the filename '
+            'extension.'
+        ),
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_load`."""
+
+    target_type = _validate_choice(
+        target_type, _SOURCE_CHOICES, label='target_type',
+    )
+    if format is not None:
+        format = _validate_choice(format, _FORMAT_CHOICES, label='format')
+
+    ns = _ns(
+        command='load',
+        source=source,
+        target_type=target_type,
+        target=target,
+        strict_format=strict_format,
+        format=(format or 'json'),
+        _format_explicit=(format is not None),
+    )
+    return int(cmd_load(ns))
+
+
+@app.command('pipeline')
+def pipeline_cmd(
+    config: str = typer.Option(
+        ..., '--config', help='Path to pipeline YAML configuration file',
+    ),
+    list_: bool = typer.Option(
+        False, '--list', help='List available job names and exit',
+    ),
+    run: str | None = typer.Option(
+        None, '--run', metavar='JOB', help='Run a specific job by name',
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_pipeline`."""
+
+    ns = _ns(command='pipeline', config=config, list=list_, run=run)
+    return int(cmd_pipeline(ns))
+
+
+@app.command('list')
+def list_cmd(
+    config: str = typer.Option(
+        ..., '--config', help='Path to pipeline YAML configuration file',
+    ),
+    pipelines: bool = typer.Option(
+        False, '--pipelines', help='List ETL pipelines',
+    ),
+    sources: bool = typer.Option(False, '--sources', help='List data sources'),
+    targets: bool = typer.Option(False, '--targets', help='List data targets'),
+    transforms: bool = typer.Option(
+        False, '--transforms', help='List data transforms',
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_list`."""
+
+    ns = _ns(
+        command='list',
+        config=config,
+        pipelines=pipelines,
+        sources=sources,
+        targets=targets,
+        transforms=transforms,
+    )
+    return int(cmd_list(ns))
+
+
+@app.command('run')
+def run_cmd(
+    config: str = typer.Option(
+        ..., '--config', help='Path to pipeline YAML configuration file',
+    ),
+    job: str | None = typer.Option(
+        None, '-j', '--job', help='Name of the job to run',
+    ),
+    pipeline: str | None = typer.Option(
+        None, '-p', '--pipeline', help='Name of the pipeline to run',
+    ),
+) -> int:
+    """Typer front-end for :func:`cmd_run`."""
+
+    ns = _ns(command='run', config=config, job=job, pipeline=pipeline)
+    return int(cmd_run(ns))
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -838,30 +1109,41 @@ def main(
     int
         Zero on success, non-zero on error.
 
+    Raises
+    ------
+    SystemExit
+        Re-raises SystemExit exceptions to preserve exit codes.
+
     Notes
     -----
-    This function prints results to stdout and errors to stderr.
+    This function uses Typer (Click) for parsing/dispatch, but preserves the
+    existing `cmd_*` handlers by adapting parsed arguments into an
+    :class:`argparse.Namespace`.
     """
-    parser = create_parser()
-    args = parser.parse_args(argv)
-
-    if not args.command:
-        parser.print_help()
-        return 0
+    argv = sys.argv[1:] if argv is None else argv
+    command = typer.main.get_command(app)
 
     try:
-        # Prefer argparse's dispatch to avoid duplicating logic.
-        func = getattr(args, 'func', None)
-        if callable(func):
-            return int(func(args))
+        result = command.main(
+            args=list(argv),
+            prog_name='etlplus',
+            standalone_mode=False,
+        )
+        return int(result or 0)
 
-        # Fallback: no subcommand function bound.
-        parser.print_help()
-        return 0
+    except typer.Exit as exc:
+        return int(exc.exit_code)
+
+    except typer.Abort:
+        return 1
 
     except KeyboardInterrupt:
         # Conventional exit code for SIGINT
         return 130
+
+    except SystemExit as e:
+        print(f'Error: {e}', file=sys.stderr)
+        raise e
 
     except (OSError, TypeError, ValueError) as e:
         print(f'Error: {e}', file=sys.stderr)
