@@ -1,5 +1,5 @@
 """# noqa: D400
-:mod:`etlplus.cli.cli` module.
+:mod:`etlplus.cli.main` module.
 
 Entry point for the ``etlplus`` command-line interface (CLI).
 
