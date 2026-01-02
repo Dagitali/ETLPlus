@@ -16,6 +16,7 @@ Notes
 
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import time
@@ -31,8 +32,7 @@ import pytest
 
 import etlplus.api.request_manager as rm_module
 import etlplus.cli.handlers as cli_handlers
-import etlplus.extract as extract_module
-from etlplus.cli.main import main
+from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
@@ -40,6 +40,8 @@ from tests.integration.conftest import FakeEndpointClientProtocol
 
 
 pytestmark = pytest.mark.integration
+
+extract_module = importlib.import_module('etlplus.extract')
 
 
 def _build_api_pipeline_yaml(
