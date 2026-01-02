@@ -258,6 +258,34 @@ def _ns(
     return argparse.Namespace(**kwargs)
 
 
+def _optional_choice(
+    value: str | None,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str | None:
+    """
+    Validate optional CLI choice inputs while preserving ``None``.
+
+    Parameters
+    ----------
+    value : str | None
+        Candidate value provided by the CLI option.
+    choices : Collection[str]
+        Allowed options for the parameter.
+    label : str
+        Friendly label rendered in error messages.
+
+    Returns
+    -------
+    str | None
+        Sanitized choice or ``None`` when the option is omitted.
+    """
+    if value is None:
+        return None
+    return _validate_choice(value, choices, label=label)
+
+
 def _stateful_namespace(
     state: CliState,
     *,
@@ -486,15 +514,12 @@ def extract_cmd(
     if len(args) > 2:
         raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
 
-    if from_ is not None:
-        from_ = _validate_choice(from_, _SOURCE_CHOICES, label='from')
-
-    if source_format is not None:
-        source_format = _validate_choice(
-            source_format,
-            _FORMAT_CHOICES,
-            label='format',
-        )
+    from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
+    source_format = _optional_choice(
+        source_format,
+        _FORMAT_CHOICES,
+        label='format',
+    )
 
     if len(args) == 2:
         if from_ is not None:
@@ -587,12 +612,11 @@ def validate_cmd(
     int
         Zero on success.
     """
-    if input_format is not None:
-        input_format = _validate_choice(
-            input_format,
-            _FORMAT_CHOICES,
-            label='input_format',
-        )
+    input_format = _optional_choice(
+        input_format,
+        _FORMAT_CHOICES,
+        label='input_format',
+    )
 
     state = _ensure_state(ctx)
 
@@ -656,12 +680,11 @@ def transform_cmd(
     int
         Zero on success.
     """
-    if input_format is not None:
-        input_format = _validate_choice(
-            input_format,
-            _FORMAT_CHOICES,
-            label='input_format',
-        )
+    input_format = _optional_choice(
+        input_format,
+        _FORMAT_CHOICES,
+        label='input_format',
+    )
 
     state = _ensure_state(ctx)
 
@@ -756,22 +779,17 @@ def load_cmd(
             'Provide TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE TARGET.',
         )
 
-    if to is not None:
-        to = _validate_choice(to, _SOURCE_CHOICES, label='to')
-
-    if target_format is not None:
-        target_format = _validate_choice(
-            target_format,
-            _FORMAT_CHOICES,
-            label='format',
-        )
-
-    if input_format is not None:
-        input_format = _validate_choice(
-            input_format,
-            _FORMAT_CHOICES,
-            label='input_format',
-        )
+    to = _optional_choice(to, _SOURCE_CHOICES, label='to')
+    target_format = _optional_choice(
+        target_format,
+        _FORMAT_CHOICES,
+        label='format',
+    )
+    input_format = _optional_choice(
+        input_format,
+        _FORMAT_CHOICES,
+        label='input_format',
+    )
 
     # Parse positional args.
     match args:
