@@ -350,12 +350,23 @@ class TestCliInternalHelpers:
 
         if should_raise:
             with pytest.raises(ValueError):
-                handlers._emit_behavioral_notice('msg', behavior)
+                handlers._emit_behavioral_notice('msg', behavior, quiet=False)
             return
 
-        handlers._emit_behavioral_notice('msg', behavior)
+        handlers._emit_behavioral_notice('msg', behavior, quiet=False)
         captured = capsys.readouterr()
         assert expected_err in captured.err
+
+    def test_emit_behavioral_notice_quiet_suppresses(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Quiet mode suppresses warning emission."""
+        # pylint: disable=protected-access
+
+        handlers._emit_behavioral_notice('msg', 'warn', quiet=True)
+        captured = capsys.readouterr()
+        assert captured.err == ''
 
     def test_format_behavior_strict(self) -> None:
         """Strict mode maps to error behavior."""
@@ -406,6 +417,7 @@ class TestCliInternalHelpers:
                 resource_type=resource_type,
                 format_explicit=format_explicit,
                 strict=False,
+                quiet=False,
             )
 
         if should_raise:
