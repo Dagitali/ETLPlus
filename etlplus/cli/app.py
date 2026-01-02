@@ -38,7 +38,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Collection
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 from typing import Literal
 
 import typer
@@ -47,7 +50,6 @@ from .. import __version__
 from ..enums import DataConnectorType
 from ..enums import FileFormat
 from ..utils import json_type
-from .handlers import FLAGS
 from .handlers import cmd_extract
 from .handlers import cmd_list
 from .handlers import cmd_load
@@ -68,7 +70,7 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-CLI_DESCRIPTION = '\n'.join(
+CLI_DESCRIPTION: Final[str] = '\n'.join(
     [
         'ETLPlus - A Swiss Army knife for simple ETL operations.',
         '',
@@ -86,7 +88,7 @@ CLI_DESCRIPTION = '\n'.join(
     ],
 )
 
-CLI_EPILOG = '\n'.join(
+CLI_EPILOG: Final[str] = '\n'.join(
     [
         'Environment:',
         (
@@ -103,7 +105,7 @@ CLI_EPILOG = '\n'.join(
     ],
 )
 
-PROJECT_URL = 'https://github.com/Dagitali/ETLPlus'
+PROJECT_URL: Final[str] = 'https://github.com/Dagitali/ETLPlus'
 
 EXTRACT_ARGS = typer.Argument(
     ...,
@@ -133,8 +135,8 @@ _DB_SCHEMES = (
     'mysql://',
 )
 
-_SOURCE_CHOICES = set(DataConnectorType.choices())
-_FORMAT_CHOICES = set(FileFormat.choices())
+_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
+_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
 
 
 # SECTION: TYPE ALIASES ===================================================== #
@@ -146,8 +148,49 @@ type FormatContext = Literal['source', 'target']
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _infer_resource_type(value: str) -> str:
-    """Infer the resource type from a value (path/URL/DSN)."""
+def _ensure_state(
+    ctx: typer.Context,
+) -> CliState:
+    """
+    Return the :class:`CliState` stored on the :mod:`typer` context.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+
+    Returns
+    -------
+    CliState
+        Mutable CLI flag container stored on ``ctx``.
+    """
+
+    if not isinstance(getattr(ctx, 'obj', None), CliState):
+        ctx.obj = CliState()
+    return ctx.obj
+
+
+def _infer_resource_type(
+    value: str,
+) -> str:
+    """
+    Infer the resource type from a path, URL, or DSN string.
+
+    Parameters
+    ----------
+    value : str
+        Raw CLI argument that represents a source or target.
+
+    Returns
+    -------
+    str
+        One of ``file``, ``database``, or ``api`` based on heuristics.
+
+    Raises
+    ------
+    ValueError
+        If the resource type could not be inferred.
+    """
 
     val = (value or '').strip()
     low = val.lower()
@@ -168,14 +211,53 @@ def _infer_resource_type(value: str) -> str:
     )
 
 
-def _ns(**kwargs: object) -> argparse.Namespace:
-    """Create an :class:`argparse.Namespace` for legacy command handlers."""
+def _ns(
+    **kwargs: object,
+) -> argparse.Namespace:
+    """Build an :class:`argparse.Namespace` for the legacy handlers.
+
+    Parameters
+    ----------
+    **kwargs : object
+        Attributes applied to the resulting namespace.
+
+    Returns
+    -------
+    argparse.Namespace
+        Namespace compatible with the existing ``cmd_*`` handlers.
+    """
 
     return argparse.Namespace(**kwargs)
 
 
-def _validate_choice(value: str, choices: set[str], *, label: str) -> str:
-    """Validate a string against allowed choices for nice CLI errors."""
+def _validate_choice(
+    value: str,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str:
+    """
+    Validate CLI input against a whitelist of choices.
+
+    Parameters
+    ----------
+    value : str
+        Candidate value from the CLI option or argument.
+    choices: Collection[str]
+        Allowed values for the option.
+    label: str
+        Friendly label rendered in the validation error message.
+
+    Returns
+    -------
+    str
+        Sanitized and validated value.
+
+    Raises
+    ------
+    typer.BadParameter
+        If ``value`` is not present in ``choices``.
+    """
 
     v = (value or '').strip()
     if v in choices:
@@ -184,6 +266,18 @@ def _validate_choice(value: str, choices: set[str], *, label: str) -> str:
     raise typer.BadParameter(
         f"Invalid {label} '{value}'. Choose from: {allowed}",
     )
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True)
+class CliState:
+    """Mutable container for runtime CLI toggles."""
+
+    pretty: bool = True
+    quiet: bool = False
+    verbose: bool = False
 
 
 # SECTION: TYPER APP ======================================================== #
@@ -227,10 +321,29 @@ def _root(
         help='Emit extra diagnostics to stderr.',
     ),
 ) -> None:
-    """Root command callback to show help or version."""
-    FLAGS['QUIET'] = quiet
-    FLAGS['VERBOSE'] = verbose
-    FLAGS['PRETTY'] = pretty
+    """
+    Seed the Typer context with runtime flags and handle root-only options.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+    version : bool
+        If True, print the etlplus version and exit.
+    pretty : bool
+        Whether to pretty-print JSON output.
+    quiet : bool
+        Whether to suppress warnings and non-essential output.
+    verbose : bool
+        Whether to emit extra diagnostics to stderr.
+
+    Raises
+    ------
+    typer.Exit
+        If ``--version`` is provided or no subcommand is invoked.
+    """
+
+    ctx.obj = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
 
     if version:
         typer.echo(f'etlplus {__version__}')
@@ -243,6 +356,7 @@ def _root(
 
 @app.command('extract')
 def extract_cmd(
+    ctx: typer.Context,
     args: list[str] = EXTRACT_ARGS,
     from_: str | None = typer.Option(
         None,
@@ -277,6 +391,8 @@ def extract_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     args : list[str]
         Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE.
     from_ : str | None
@@ -318,6 +434,8 @@ def extract_cmd(
         etlplus extract in.csv \
         | etlplus transform --operations '{"select":["a"]}'
     """
+    state = _ensure_state(ctx)
+
     if len(args) > 2:
         raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
 
@@ -358,7 +476,7 @@ def extract_cmd(
             label='source_type',
         )
 
-    if FLAGS['VERBOSE']:
+    if state.verbose:
         print(
             f'Inferred source_type={source_type} for source={source}',
             file=sys.stderr,
@@ -372,13 +490,16 @@ def extract_cmd(
         strict_format=strict_format,
         format=(source_format or 'json'),
         _format_explicit=(source_format is not None),
-        pretty=FLAGS['PRETTY'],
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
     )
     return int(cmd_extract(ns))
 
 
 @app.command('validate')
 def validate_cmd(
+    ctx: typer.Context,
     source: str = typer.Argument(
         '-',
         metavar='SOURCE',
@@ -408,6 +529,8 @@ def validate_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     source : str
         Data source (file path or ``-`` for stdin).
     rules : str
@@ -429,19 +552,24 @@ def validate_cmd(
             label='input_format',
         )
 
+    state = _ensure_state(ctx)
+
     ns = _ns(
         command='validate',
         source=source,
         rules=json_type(rules),
         output=output,
         input_format=input_format,
-        pretty=FLAGS['PRETTY'],
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
     )
     return int(cmd_validate(ns))
 
 
 @app.command('transform')
 def transform_cmd(
+    ctx: typer.Context,
     source: str = typer.Argument(
         '-',
         metavar='SOURCE',
@@ -472,6 +600,8 @@ def transform_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     source : str
         Data source (file path or ``-`` for stdin).
     operations : str
@@ -493,19 +623,24 @@ def transform_cmd(
             label='input_format',
         )
 
+    state = _ensure_state(ctx)
+
     ns = _ns(
         command='transform',
         source=source,
         operations=json_type(operations),
         output=output,
         input_format=input_format,
-        pretty=FLAGS['PRETTY'],
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
     )
     return int(cmd_transform(ns))
 
 
 @app.command('load')
 def load_cmd(
+    ctx: typer.Context,
     args: list[str] = LOAD_ARGS,
     to: str | None = typer.Option(
         None,
@@ -539,6 +674,8 @@ def load_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     args : list[str]
         Positional arguments: TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE
         TARGET.
@@ -574,6 +711,8 @@ def load_cmd(
     - Write to stdout:
         etlplus load in.json file -
     """
+
+    state = _ensure_state(ctx)
 
     if len(args) > 3:
         raise typer.BadParameter(
@@ -635,7 +774,7 @@ def load_cmd(
             label='target_type',
         )
 
-    if FLAGS['VERBOSE']:
+    if state.verbose:
         print(
             f'Inferred target_type={target_type} for target={target}',
             file=sys.stderr,
@@ -650,13 +789,16 @@ def load_cmd(
         format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
         input_format=input_format,
-        pretty=FLAGS['PRETTY'],
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
     )
     return int(cmd_load(ns))
 
 
 @app.command('pipeline')
 def pipeline_cmd(
+    ctx: typer.Context,
     config: str = typer.Option(
         ...,
         '--config',
@@ -679,6 +821,8 @@ def pipeline_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     config : str
         Path to pipeline YAML configuration file.
     list_ : bool
@@ -691,13 +835,22 @@ def pipeline_cmd(
     int
         Zero on success.
     """
-
-    ns = _ns(command='pipeline', config=config, list=list_, run=run_job)
+    state = _ensure_state(ctx)
+    ns = _ns(
+        command='pipeline',
+        config=config,
+        list=list_,
+        run=run_job,
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
+    )
     return int(cmd_pipeline(ns))
 
 
 @app.command('list')
 def list_cmd(
+    ctx: typer.Context,
     config: str = typer.Option(
         ...,
         '--config',
@@ -721,6 +874,8 @@ def list_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     config : str
         Path to pipeline YAML configuration file.
     pipelines : bool
@@ -737,6 +892,7 @@ def list_cmd(
     int
         Zero on success.
     """
+    state = _ensure_state(ctx)
     ns = _ns(
         command='list',
         config=config,
@@ -744,12 +900,16 @@ def list_cmd(
         sources=sources,
         targets=targets,
         transforms=transforms,
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
     )
     return int(cmd_list(ns))
 
 
 @app.command('run')
 def run_cmd(
+    ctx: typer.Context,
     config: str = typer.Option(
         ...,
         '--config',
@@ -773,6 +933,8 @@ def run_cmd(
 
     Parameters
     ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
     config : str
         Path to pipeline YAML configuration file.
     job : str | None
@@ -785,6 +947,14 @@ def run_cmd(
     int
         Zero on success.
     """
-
-    ns = _ns(command='run', config=config, job=job, pipeline=pipeline)
+    state = _ensure_state(ctx)
+    ns = _ns(
+        command='run',
+        config=config,
+        job=job,
+        pipeline=pipeline,
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
+    )
     return int(cmd_run(ns))

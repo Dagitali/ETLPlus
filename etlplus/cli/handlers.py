@@ -32,8 +32,6 @@ from ..validate import validate
 
 
 __all__ = [
-    # Constants
-    'FLAGS',
     # Functions
     'cmd_extract',
     'cmd_list',
@@ -56,9 +54,6 @@ _FORMAT_SILENT_STATES = {'ignore', 'silent'}
 # SECTION: CONSTANTS ======================================================== #
 
 
-# Runtime flags (set by Typer callback)
-FLAGS = {'PRETTY': True, 'QUIET': False, 'VERBOSE': False}
-
 FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 
 
@@ -68,27 +63,28 @@ FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
 def _emit_behavioral_notice(
     message: str,
     behavior: str,
+    *,
+    quiet: bool,
 ) -> None:
-    """
-    Print or raise based on the configured behavior.
+    """Emit or raise format-behavior notices.
 
     Parameters
     ----------
     message : str
-        The message to emit.
+        Warning message describing the ignored ``--format`` flag.
     behavior : str
-        The effective format-behavior mode.
+        Effective format-behavior mode derived from CLI options and env.
+    quiet : bool
+        Whether non-essential warnings should be suppressed.
 
     Raises
     ------
     ValueError
-        If the behavior is in the error states.
+        If ``behavior`` maps to an error state.
     """
     if behavior in _FORMAT_ERROR_STATES:
         raise ValueError(message)
-    if behavior in _FORMAT_SILENT_STATES:
-        return
-    if FLAGS['QUIET']:
+    if behavior in _FORMAT_SILENT_STATES or quiet:
         return
     print(f'Warning: {message}', file=sys.stderr)
 
@@ -136,6 +132,7 @@ def _handle_format_guard(
     resource_type: str,
     format_explicit: bool,
     strict: bool,
+    quiet: bool,
 ) -> None:
     """
     Warn or raise when --format is used alongside file resources.
@@ -150,6 +147,8 @@ def _handle_format_guard(
         Whether the --format option was explicitly provided.
     strict : bool
         Whether to enforce strict format behavior.
+    quiet : bool
+        Whether to suppress warnings.
     """
     if resource_type != 'file' or not format_explicit:
         return
@@ -158,7 +157,7 @@ def _handle_format_guard(
         'inferred from filename extension.'
     )
     behavior = _format_behavior(strict)
-    _emit_behavioral_notice(message, behavior)
+    _emit_behavioral_notice(message, behavior, quiet=quiet)
 
 
 def _infer_payload_format(text: str) -> str:
@@ -233,7 +232,21 @@ def _parse_text_payload(
     text: str,
     fmt: str | None,
 ) -> JSONData | str:
-    """Parse JSON/CSV text into a Python payload."""
+    """
+    Parse JSON/CSV text into a Python payload.
+
+    Parameters
+    ----------
+    text : str
+        The input text payload.
+    fmt : str | None
+        Explicit format hint: 'json', 'csv', or None to infer.
+
+    Returns
+    -------
+    JSONData | str
+        The parsed payload as JSON data or raw text.
+    """
 
     effective = (fmt or '').strip().lower() or _infer_payload_format(text)
     if effective == 'json':
@@ -353,6 +366,7 @@ def cmd_extract(
         resource_type=args.source_type,
         format_explicit=getattr(args, '_format_explicit', False),
         strict=getattr(args, 'strict_format', False),
+        quiet=getattr(args, 'quiet', False),
     )
 
     pretty = getattr(args, 'pretty', True)
@@ -495,6 +509,7 @@ def cmd_load(
         resource_type=args.target_type,
         format_explicit=getattr(args, '_format_explicit', False),
         strict=getattr(args, 'strict_format', False),
+        quiet=getattr(args, 'quiet', False),
     )
 
     pretty = getattr(args, 'pretty', True)
