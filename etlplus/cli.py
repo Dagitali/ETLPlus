@@ -41,6 +41,7 @@ import io
 import json
 import os
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -62,6 +63,15 @@ from .types import JSONData
 from .utils import json_type
 from .utils import print_json
 from .validate import validate
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'main',
+]
+
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -143,7 +153,67 @@ _FORMAT_CHOICES = set(FileFormat.choices())
 _FLAGS = {'PRETTY': True, 'QUIET': False, 'VERBOSE': False}
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FormatContext = Literal['source', 'target']
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _FormatAction(argparse.Action):
+    """Argparse action that records when ``--format`` is provided."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:  # pragma: no cover - argparse wiring
+        setattr(namespace, self.dest, values)
+        namespace._format_explicit = True
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _add_format_options(
+    parser: argparse.ArgumentParser,
+    *,
+    context: FormatContext,
+) -> None:
+    """
+    Attach shared ``--format`` options to extract/load parsers.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser to add options to.
+    context : FormatContext
+        Whether this is a source or target resource.
+    """
+    parser.set_defaults(_format_explicit=False)
+    parser.add_argument(
+        '--strict-format',
+        action='store_true',
+        help=(
+            'Treat providing --format for file '
+            f'{context}s as an error (overrides environment behavior)'
+        ),
+    )
+    parser.add_argument(
+        '--format',
+        choices=list(FileFormat.choices()),
+        default='json',
+        action=_FormatAction,
+        help=(
+            f'Format of the {context} when not a file. For file {context}s '
+            'this option is ignored and the format is inferred from the '
+            'filename extension.'
+        ),
+    )
 
 
 def _emit_behavioral_notice(
@@ -172,6 +242,21 @@ def _emit_behavioral_notice(
     if _FLAGS['QUIET']:
         return
     print(f'Warning: {message}', file=sys.stderr)
+
+
+def _emit_json(data: Any, *, pretty: bool) -> None:
+    """Emit JSON to stdout honoring the pretty/compact preference."""
+
+    if pretty:
+        print_json(data)
+        return
+
+    dumped = json.dumps(
+        data,
+        ensure_ascii=False,
+        separators=(',', ':'),
+    )
+    print(dumped)
 
 
 def _format_behavior(
@@ -225,6 +310,37 @@ def _handle_format_guard(
     )
     behavior = _format_behavior(strict)
     _emit_behavioral_notice(message, behavior)
+
+
+def _infer_payload_format(text: str) -> str:
+    """Infer JSON vs CSV from payload text."""
+
+    stripped = text.lstrip()
+    if stripped.startswith('{') or stripped.startswith('['):
+        return 'json'
+    return 'csv'
+
+
+def _infer_resource_type(value: str) -> str:
+    """Infer the resource type from a value (path/URL/DSN)."""
+
+    val = (value or '').strip()
+    low = val.lower()
+
+    if val == '-':
+        return 'file'
+    if low.startswith(('http://', 'https://')):
+        return 'api'
+    if low.startswith(_DB_SCHEMES):
+        return 'database'
+
+    path = Path(val)
+    if path.exists() or path.suffix:
+        return 'file'
+
+    raise ValueError(
+        'Could not infer resource type. Use --from/--to to specify it.',
+    )
 
 
 def _list_sections(
@@ -286,41 +402,10 @@ def _materialize_csv_payload(
     return _read_csv_rows(path)
 
 
-def _read_stdin_text() -> str:
-    """Read all text from stdin."""
+def _ns(**kwargs: object) -> argparse.Namespace:
+    """Create an :class:`argparse.Namespace` for legacy command handlers."""
 
-    return sys.stdin.read()
-
-
-def _infer_resource_type(value: str) -> str:
-    """Infer the resource type from a value (path/URL/DSN)."""
-
-    val = (value or '').strip()
-    low = val.lower()
-
-    if val == '-':
-        return 'file'
-    if low.startswith(('http://', 'https://')):
-        return 'api'
-    if low.startswith(_DB_SCHEMES):
-        return 'database'
-
-    path = Path(val)
-    if path.exists() or path.suffix:
-        return 'file'
-
-    raise ValueError(
-        'Could not infer resource type. Use --from/--to to specify it.',
-    )
-
-
-def _infer_payload_format(text: str) -> str:
-    """Infer JSON vs CSV from payload text."""
-
-    stripped = text.lstrip()
-    if stripped.startswith('{') or stripped.startswith('['):
-        return 'json'
-    return 'csv'
+    return argparse.Namespace(**kwargs)
 
 
 def _parse_text_payload(
@@ -336,27 +421,6 @@ def _parse_text_payload(
         reader = csv.DictReader(io.StringIO(text))
         return [dict(row) for row in reader]
     return text
-
-
-def _emit_json(data: Any, *, pretty: bool) -> None:
-    """Emit JSON to stdout honoring the pretty/compact preference."""
-
-    if pretty:
-        print_json(data)
-        return
-
-    dumped = json.dumps(
-        data,
-        ensure_ascii=False,
-        separators=(',', ':'),
-    )
-    print(dumped)
-
-
-def _ns(**kwargs: object) -> argparse.Namespace:
-    """Create an :class:`argparse.Namespace` for legacy command handlers."""
-
-    return argparse.Namespace(**kwargs)
 
 
 def _pipeline_summary(
@@ -406,6 +470,12 @@ def _read_csv_rows(
     with path.open(newline='', encoding='utf-8') as handle:
         reader = csv.DictReader(handle)
         return [dict(row) for row in reader]
+
+
+def _read_stdin_text() -> str:
+    """Read all text from stdin."""
+
+    return sys.stdin.read()
 
 
 def _validate_choice(value: str, choices: set[str], *, label: str) -> str:
@@ -740,6 +810,219 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     print_json(_pipeline_summary(cfg))
     return 0
+
+
+# -- Parser -- #
+
+
+# TODO: Sunset this function.
+def create_parser() -> argparse.ArgumentParser:
+    """
+    Create the argument parser for the CLI.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Configured parser with subcommands for the CLI.
+    """
+    parser = argparse.ArgumentParser(
+        prog='etlplus',
+        description=CLI_DESCRIPTION,
+        epilog=CLI_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        '-V',
+        '--version',
+        action='version',
+        version=f'%(prog)s {__version__}',
+    )
+
+    subparsers = parser.add_subparsers(
+        dest='command',
+        help='Available commands',
+    )
+
+    # Define "extract" command.
+    extract_parser = subparsers.add_parser(
+        'extract',
+        help=('Extract data from sources (files, databases, REST APIs)'),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    extract_parser.add_argument(
+        'source_type',
+        choices=list(DataConnectorType.choices()),
+        help='Type of source to extract from',
+    )
+    extract_parser.add_argument(
+        'source',
+        help=(
+            'Source location '
+            '(file path, database connection string, or API URL)'
+        ),
+    )
+    extract_parser.add_argument(
+        '-o',
+        '--output',
+        help='Output file to save extracted data (JSON format)',
+    )
+    _add_format_options(extract_parser, context='source')
+    extract_parser.set_defaults(func=cmd_extract)
+
+    # Define "validate" command.
+    validate_parser = subparsers.add_parser(
+        'validate',
+        help='Validate data from sources',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    validate_parser.add_argument(
+        'source',
+        help='Data source to validate (file path or JSON string)',
+    )
+    validate_parser.add_argument(
+        '--rules',
+        type=json_type,
+        default={},
+        help='Validation rules as JSON string',
+    )
+    validate_parser.set_defaults(func=cmd_validate)
+
+    # Define "transform" command.
+    transform_parser = subparsers.add_parser(
+        'transform',
+        help='Transform data',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    transform_parser.add_argument(
+        'source',
+        help='Data source to transform (file path or JSON string)',
+    )
+    transform_parser.add_argument(
+        '--operations',
+        type=json_type,
+        default={},
+        help='Transformation operations as JSON string',
+    )
+    transform_parser.add_argument(
+        '-o',
+        '--output',
+        help='Output file to save transformed data',
+    )
+    transform_parser.set_defaults(func=cmd_transform)
+
+    # Define "load" command.
+    load_parser = subparsers.add_parser(
+        'load',
+        help='Load data to targets (files, databases, REST APIs)',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    load_parser.add_argument(
+        'source',
+        help='Data source to load (file path or JSON string)',
+    )
+    load_parser.add_argument(
+        'target_type',
+        choices=list(DataConnectorType.choices()),
+        help='Type of target to load to',
+    )
+    load_parser.add_argument(
+        'target',
+        help=(
+            'Target location '
+            '(file path, database connection string, or API URL)'
+        ),
+    )
+    _add_format_options(load_parser, context='target')
+    load_parser.set_defaults(func=cmd_load)
+
+    # Define "pipeline" command (reads YAML config).
+    pipe_parser = subparsers.add_parser(
+        'pipeline',
+        help=(
+            'Inspect or run pipeline YAML (see '
+            f'{PROJECT_URL}/blob/main/docs/pipeline-guide.md)'
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    pipe_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    pipe_parser.add_argument(
+        '--list',
+        action='store_true',
+        help='List available job names and exit',
+    )
+    pipe_parser.add_argument(
+        '--run',
+        metavar='JOB',
+        help='Run a specific job by name',
+    )
+    pipe_parser.set_defaults(func=cmd_pipeline)
+
+    # Define "list" command.
+    list_parser = subparsers.add_parser(
+        'list',
+        help='List ETL pipeline metadata',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    list_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    list_parser.add_argument(
+        '--pipelines',
+        action='store_true',
+        help='List ETL pipelines',
+    )
+    list_parser.add_argument(
+        '--sources',
+        action='store_true',
+        help='List data sources',
+    )
+    list_parser.add_argument(
+        '--targets',
+        action='store_true',
+        help='List data targets',
+    )
+    list_parser.add_argument(
+        '--transforms',
+        action='store_true',
+        help='List data transforms',
+    )
+    list_parser.set_defaults(func=cmd_list)
+
+    # Define "run" command.
+    run_parser = subparsers.add_parser(
+        'run',
+        help=(
+            'Run an ETL pipeline '
+            f'(see {PROJECT_URL}/blob/main/docs/run-module.md)'
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    run_parser.add_argument(
+        '--config',
+        required=True,
+        help='Path to pipeline YAML configuration file',
+    )
+    run_parser.add_argument(
+        '-j',
+        '--job',
+        help='Name of the job to run',
+    )
+    run_parser.add_argument(
+        '-p',
+        '--pipeline',
+        help='Name of the pipeline to run',
+    )
+    run_parser.set_defaults(func=cmd_run)
+
+    return parser
 
 
 # -- Main -- #
