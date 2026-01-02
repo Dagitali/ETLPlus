@@ -34,7 +34,6 @@ from ..validate import validate
 __all__ = [
     # Constants
     'FLAGS',
-
     # Functions
     'cmd_extract',
     'cmd_list',
