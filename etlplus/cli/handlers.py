@@ -1,4 +1,6 @@
 """
+:mod:`etlplus.cli.handlers` module.
+
 Command handler functions for the ``etlplus`` command-line interface (CLI).
 """
 
@@ -66,7 +68,8 @@ def _emit_behavioral_notice(
     *,
     quiet: bool,
 ) -> None:
-    """Emit or raise format-behavior notices.
+    """
+    Emit or raise format-behavior notices.
 
     Parameters
     ----------
@@ -89,9 +92,22 @@ def _emit_behavioral_notice(
     print(f'Warning: {message}', file=sys.stderr)
 
 
-def _emit_json(data: Any, *, pretty: bool) -> None:
-    """Emit JSON to stdout honoring the pretty/compact preference."""
+def _emit_json(
+    data: Any,
+    *,
+    pretty: bool,
+) -> None:
+    """
+    Emit JSON to stdout honoring the pretty/compact preference.
 
+    Parameters
+    ----------
+    data : Any
+        Arbitrary JSON-serializable payload.
+    pretty : bool
+        When ``True`` pretty-print via :func:`print_json`; otherwise emit a
+        compact JSON string.
+    """
     if pretty:
         print_json(data)
         return
@@ -160,9 +176,22 @@ def _handle_format_guard(
     _emit_behavioral_notice(message, behavior, quiet=quiet)
 
 
-def _infer_payload_format(text: str) -> str:
-    """Infer JSON vs CSV from payload text."""
+def _infer_payload_format(
+    text: str,
+) -> str:
+    """
+    Infer JSON vs CSV from payload text.
 
+    Parameters
+    ----------
+    text : str
+        Incoming payload as plain text.
+
+    Returns
+    -------
+    str
+        ``'json'`` when the text starts with ``{``/``[``, else ``'csv'``.
+    """
     stripped = text.lstrip()
     if stripped.startswith('{') or stripped.startswith('['):
         return 'json'
@@ -285,6 +314,24 @@ def _pipeline_summary(
     }
 
 
+def _presentation_flags(
+    args: argparse.Namespace,
+) -> tuple[bool, bool]:
+    """Return presentation toggles from the parsed namespace.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Namespace produced by the CLI parser.
+
+    Returns
+    -------
+    tuple[bool, bool]
+        Pair of ``(pretty, quiet)`` flags with safe defaults.
+    """
+    return getattr(args, 'pretty', True), getattr(args, 'quiet', False)
+
+
 def _read_csv_rows(
     path: Path,
 ) -> list[dict[str, str]]:
@@ -307,8 +354,14 @@ def _read_csv_rows(
 
 
 def _read_stdin_text() -> str:
-    """Read all text from stdin."""
+    """
+    Return every character from ``stdin`` as a single string.
 
+    Returns
+    -------
+    str
+        Entire ``stdin`` contents.
+    """
     return sys.stdin.read()
 
 
@@ -361,15 +414,15 @@ def cmd_extract(
     int
         Zero on success.
     """
+    pretty, quiet = _presentation_flags(args)
+
     _handle_format_guard(
         io_context='source',
         resource_type=args.source_type,
         format_explicit=getattr(args, '_format_explicit', False),
         strict=getattr(args, 'strict_format', False),
-        quiet=getattr(args, 'quiet', False),
+        quiet=quiet,
     )
-
-    pretty = getattr(args, 'pretty', True)
 
     if args.source == '-':
         text = _read_stdin_text()
@@ -417,7 +470,7 @@ def cmd_validate(
     int
         Zero on success.
     """
-    pretty = getattr(args, 'pretty', True)
+    pretty, _ = _presentation_flags(args)
 
     if args.source == '-':
         text = _read_stdin_text()
@@ -465,7 +518,7 @@ def cmd_transform(
     int
         Zero on success.
     """
-    pretty = getattr(args, 'pretty', True)
+    pretty, _ = _presentation_flags(args)
 
     if args.source == '-':
         text = _read_stdin_text()
@@ -504,15 +557,15 @@ def cmd_load(
     int
         Zero on success.
     """
+    pretty, quiet = _presentation_flags(args)
+
     _handle_format_guard(
         io_context='target',
         resource_type=args.target_type,
         format_explicit=getattr(args, '_format_explicit', False),
         strict=getattr(args, 'strict_format', False),
-        quiet=getattr(args, 'quiet', False),
+        quiet=quiet,
     )
-
-    pretty = getattr(args, 'pretty', True)
 
     # Allow piping into load.
     source_value: (
@@ -556,11 +609,11 @@ def cmd_load(
     return 0
 
 
-def cmd_pipeline(args: argparse.Namespace) -> int:
+def cmd_pipeline(
+    args: argparse.Namespace,
+) -> int:
     """
     Inspect or run a pipeline YAML configuration.
-
-    --list prints job names; --run JOB executes a job end-to-end.
 
     Parameters
     ----------
@@ -590,7 +643,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
 def cmd_list(args: argparse.Namespace) -> int:
     """
-    Print ETL job names from a pipeline YAML configuration.
+    Print requested pipeline sections from a YAML configuration.
 
     Parameters
     ----------
