@@ -15,9 +15,9 @@ import sys
 import typer
 
 from .. import __version__
-from .. import cli_compat_argparse
 from .app import PROJECT_URL
 from .app import app
+from .compat_argparse import create_parser as _create_parser
 from .handlers import FORMAT_ENV_KEY
 from .handlers import cmd_extract
 from .handlers import cmd_list
@@ -54,7 +54,7 @@ def create_parser() -> argparse.ArgumentParser:
         Parser compatible with historical ``etlplus`` entry points.
     """
 
-    return cli_compat_argparse.create_parser(
+    return _create_parser(
         project_url=PROJECT_URL,
         format_env_key=FORMAT_ENV_KEY,
         version=__version__,
