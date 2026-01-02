@@ -42,7 +42,6 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
-from typing import Literal
 
 import typer
 
@@ -139,10 +138,16 @@ _SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
 _FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
 
 
-# SECTION: TYPE ALIASES ===================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
-type FormatContext = Literal['source', 'target']
+@dataclass(slots=True)
+class CliState:
+    """Mutable container for runtime CLI toggles."""
+
+    pretty: bool = True
+    quiet: bool = False
+    verbose: bool = False
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -164,7 +169,6 @@ def _ensure_state(
     CliState
         Mutable CLI flag container stored on ``ctx``.
     """
-
     if not isinstance(getattr(ctx, 'obj', None), CliState):
         ctx.obj = CliState()
     return ctx.obj
@@ -191,7 +195,6 @@ def _infer_resource_type(
     ValueError
         If the resource type could not be inferred.
     """
-
     val = (value or '').strip()
     low = val.lower()
 
@@ -211,6 +214,32 @@ def _infer_resource_type(
     )
 
 
+def _infer_resource_type_or_exit(
+    value: str,
+) -> str:
+    """Infer a resource type and map ``ValueError`` to ``BadParameter``.
+
+    Parameters
+    ----------
+    value : str
+        CLI value describing a source/target.
+
+    Returns
+    -------
+    str
+        Inferred resource type.
+
+    Raises
+    ------
+    typer.BadParameter
+        If heuristics fail to infer a resource type.
+    """
+    try:
+        return _infer_resource_type(value)
+    except ValueError as exc:  # pragma: no cover - exercised indirectly
+        raise typer.BadParameter(str(exc)) from exc
+
+
 def _ns(
     **kwargs: object,
 ) -> argparse.Namespace:
@@ -224,10 +253,40 @@ def _ns(
     Returns
     -------
     argparse.Namespace
-        Namespace compatible with the existing ``cmd_*`` handlers.
+        Namespace compatible with the ``cmd_*`` handler signatures.
     """
-
     return argparse.Namespace(**kwargs)
+
+
+def _stateful_namespace(
+    state: CliState,
+    *,
+    command: str,
+    **kwargs: object,
+) -> argparse.Namespace:
+    """Attach CLI state toggles to a handler namespace.
+
+    Parameters
+    ----------
+    state : CliState
+        Current CLI state stored on the Typer context.
+    command : str
+        Logical command name (e.g., ``extract``).
+    **kwargs : object
+        Additional attributes required by the handler.
+
+    Returns
+    -------
+    argparse.Namespace
+        Namespace compatible with the ``cmd_*`` handler signatures.
+    """
+    return _ns(
+        command=command,
+        pretty=state.pretty,
+        quiet=state.quiet,
+        verbose=state.verbose,
+        **kwargs,
+    )
 
 
 def _validate_choice(
@@ -245,7 +304,7 @@ def _validate_choice(
         Candidate value from the CLI option or argument.
     choices: Collection[str]
         Allowed values for the option.
-    label: str
+    label : str
         Friendly label rendered in the validation error message.
 
     Returns
@@ -258,7 +317,6 @@ def _validate_choice(
     typer.BadParameter
         If ``value`` is not present in ``choices``.
     """
-
     v = (value or '').strip()
     if v in choices:
         return v
@@ -266,18 +324,6 @@ def _validate_choice(
     raise typer.BadParameter(
         f"Invalid {label} '{value}'. Choose from: {allowed}",
     )
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(slots=True)
-class CliState:
-    """Mutable container for runtime CLI toggles."""
-
-    pretty: bool = True
-    quiet: bool = False
-    verbose: bool = False
 
 
 # SECTION: TYPER APP ======================================================== #
@@ -290,6 +336,8 @@ app = typer.Typer(
     help=CLI_DESCRIPTION,
     epilog=CLI_EPILOG,
     add_completion=True,
+    no_args_is_help=False,
+    rich_markup_mode='markdown',
 )
 
 
@@ -342,15 +390,14 @@ def _root(
     typer.Exit
         If ``--version`` is provided or no subcommand is invoked.
     """
-
     ctx.obj = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
 
     if version:
         typer.echo(f'etlplus {__version__}')
         raise typer.Exit(0)
 
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
+    if ctx.invoked_subcommand is None and not ctx.resilient_parsing:
+        typer.echo(ctx.command.get_help(ctx))
         raise typer.Exit(0)
 
 
@@ -465,10 +512,7 @@ def extract_cmd(
         if from_ is not None:
             source_type = from_
         else:
-            try:
-                source_type = _infer_resource_type(source)
-            except ValueError as e:
-                raise typer.BadParameter(str(e)) from e
+            source_type = _infer_resource_type_or_exit(source)
 
         source_type = _validate_choice(
             source_type,
@@ -482,7 +526,8 @@ def extract_cmd(
             file=sys.stderr,
         )
 
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='extract',
         source_type=source_type,
         source=source,
@@ -490,9 +535,6 @@ def extract_cmd(
         strict_format=strict_format,
         format=(source_format or 'json'),
         _format_explicit=(source_format is not None),
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_extract(ns))
 
@@ -554,15 +596,13 @@ def validate_cmd(
 
     state = _ensure_state(ctx)
 
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='validate',
         source=source,
         rules=json_type(rules),
         output=output,
         input_format=input_format,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_validate(ns))
 
@@ -625,15 +665,13 @@ def transform_cmd(
 
     state = _ensure_state(ctx)
 
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='transform',
         source=source,
         operations=json_type(operations),
         output=output,
         input_format=input_format,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_transform(ns))
 
@@ -711,7 +749,6 @@ def load_cmd(
     - Write to stdout:
         etlplus load in.json file -
     """
-
     state = _ensure_state(ctx)
 
     if len(args) > 3:
@@ -737,42 +774,35 @@ def load_cmd(
         )
 
     # Parse positional args.
-    if to is None and len(args) == 3:
-        # Legacy: SOURCE TARGET_TYPE TARGET
-        source = args[0]
-        target_type = _validate_choice(
-            args[1],
-            _SOURCE_CHOICES,
-            label='target_type',
-        )
-        target = args[2]
-    else:
-        # Modern: [SOURCE] TARGET (SOURCE defaults to -)
-        if len(args) == 1:
-            source = '-'
-            target = args[0]
-        elif len(args) == 2:
-            source = args[0]
-            target = args[1]
-        else:
+    match args:
+        case [source, target_type_raw, target] if to is None:
+            target_type = _validate_choice(
+                target_type_raw,
+                _SOURCE_CHOICES,
+                label='target_type',
+            )
+        case [_, _, _]:
             raise typer.BadParameter(
-                'Missing TARGET. '
-                'Provide TARGET, SOURCE TARGET, or legacy form.',
+                'Do not combine --to with the legacy SOURCE TARGET_TYPE '
+                'TARGET form.',
+            )
+        case [source, target]:
+            target_type = to or _infer_resource_type_or_exit(target)
+        case [solo_target]:
+            source = '-'
+            target = solo_target
+            target_type = to or _infer_resource_type_or_exit(target)
+        case []:
+            raise typer.BadParameter(
+                'Provide TARGET, SOURCE TARGET, or legacy SOURCE '
+                'TARGET_TYPE TARGET.',
             )
 
-        if to is not None:
-            target_type = to
-        else:
-            try:
-                target_type = _infer_resource_type(target)
-            except ValueError as e:
-                raise typer.BadParameter(str(e)) from e
-
-        target_type = _validate_choice(
-            target_type,
-            _SOURCE_CHOICES,
-            label='target_type',
-        )
+    target_type = _validate_choice(
+        target_type,
+        _SOURCE_CHOICES,
+        label='target_type',
+    )
 
     if state.verbose:
         print(
@@ -780,7 +810,8 @@ def load_cmd(
             file=sys.stderr,
         )
 
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='load',
         source=source,
         target_type=target_type,
@@ -789,9 +820,6 @@ def load_cmd(
         format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
         input_format=input_format,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_load(ns))
 
@@ -836,14 +864,12 @@ def pipeline_cmd(
         Zero on success.
     """
     state = _ensure_state(ctx)
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='pipeline',
         config=config,
         list=list_,
         run=run_job,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_pipeline(ns))
 
@@ -893,16 +919,14 @@ def list_cmd(
         Zero on success.
     """
     state = _ensure_state(ctx)
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='list',
         config=config,
         pipelines=pipelines,
         sources=sources,
         targets=targets,
         transforms=transforms,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_list(ns))
 
@@ -948,13 +972,11 @@ def run_cmd(
         Zero on success.
     """
     state = _ensure_state(ctx)
-    ns = _ns(
+    ns = _stateful_namespace(
+        state,
         command='run',
         config=config,
         job=job,
         pipeline=pipeline,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
     )
     return int(cmd_run(ns))
