@@ -104,10 +104,10 @@ def _cli_description() -> str:
             '    Provide a subcommand and options. Examples:',
             '',
             '    etlplus extract file in.csv -o out.json',
-            "    etlplus validate in.json --rules '{\"required\": [\"id\"]}'",
+            '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
             (
                 '    etlplus transform in.json --operations '
-                "'{\"select\": [\"id\"]}'"
+                '\'{"select": ["id"]}\''
             ),
             '    etlplus load in.json file out.json',
             '',
