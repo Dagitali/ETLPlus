@@ -1,5 +1,5 @@
 """# noqa: D400
-:mod:`etlplus.cli` module.
+:mod:`etlplus.cli.cli` module.
 
 Entry point for the ``etlplus`` command-line interface (CLI).
 
@@ -49,20 +49,20 @@ from typing import cast
 
 import typer
 
-from . import __version__
-from .config import PipelineConfig
-from .config import load_pipeline_config
-from .enums import DataConnectorType
-from .enums import FileFormat
-from .extract import extract
-from .file import File
-from .load import load
-from .run import run
-from .transform import transform
-from .types import JSONData
-from .utils import json_type
-from .utils import print_json
-from .validate import validate
+from .. import __version__
+from ..config import PipelineConfig
+from ..config import load_pipeline_config
+from ..enums import DataConnectorType
+from ..enums import FileFormat
+from ..extract import extract
+from ..file import File
+from ..load import load
+from ..run import run
+from ..transform import transform
+from ..types import JSONData
+from ..utils import json_type
+from ..utils import print_json
+from ..validate import validate
 
 # SECTION: EXPORTS ========================================================== #
 
