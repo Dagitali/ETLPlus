@@ -11,8 +11,7 @@ from .cli import main
 
 
 def _run() -> int:
-    """Return the exit status from :func:`etlplus.cli.main`."""
-
+    """Return the exit status."""
     return main()
 
 
