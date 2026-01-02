@@ -18,12 +18,18 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Final
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 from typer.testing import CliRunner
 
-import etlplus.cli as cli
+import etlplus
+import etlplus.cli.app as cli_app_module
+import etlplus.cli.handlers as handlers
+from etlplus.cli.app import app as cli_app
+from etlplus.cli.main import main as cli_main
+from etlplus.config import PipelineConfig
 
 # SECTION: HELPERS ========================================================== #
 
@@ -72,7 +78,7 @@ def _capture_cmd(
         return 0
 
     m = Mock(side_effect=_fake)
-    monkeypatch.setattr(cli, name, m)
+    monkeypatch.setattr(cli_app_module, name, m)
     return captured, m
 
 
@@ -85,16 +91,16 @@ class TestTyperCliWiring:
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Invoking with no args prints help and exits 0."""
 
-        result = runner.invoke(cli.app, [])
+        result = runner.invoke(cli_app, [])
         assert result.exit_code == 0
         assert 'ETLPlus' in result.stdout
 
     def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """``--version`` exits successfully."""
 
-        result = runner.invoke(cli.app, ['--version'])
+        result = runner.invoke(cli_app, ['--version'])
         assert result.exit_code == 0
-        assert cli.__version__ in result.stdout
+        assert etlplus.__version__ in result.stdout
 
     def test_extract_default_format_maps_namespace(
         self,
@@ -106,7 +112,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['extract', 'file', '/path/to/file.json'],
         )
 
@@ -131,7 +137,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
         )
 
@@ -153,7 +159,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['load', '/path/to/file.json', 'file', '/path/to/out.json'],
         )
 
@@ -179,7 +185,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             [
                 'load',
                 '/path/to/file.json',
@@ -207,7 +213,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             [
                 'validate',
                 '/path/to/file.json',
@@ -235,7 +241,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_transform')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             [
                 'transform',
                 '/path/to/file.json',
@@ -263,7 +269,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['pipeline', '--config', 'p.yml', '--list'],
         )
         assert result.exit_code == 0
@@ -285,7 +291,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_list')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['list', '--config', 'p.yml', '--pipelines', '--sources'],
         )
         assert result.exit_code == 0
@@ -307,7 +313,7 @@ class TestTyperCliWiring:
 
         captured, cmd = _capture_cmd(monkeypatch, 'cmd_run')
         result = runner.invoke(
-            cli.app,
+            cli_app,
             ['run', '--config', 'p.yml', '--job', 'j1'],
         )
         assert result.exit_code == 0
@@ -344,18 +350,29 @@ class TestCliInternalHelpers:
 
         if should_raise:
             with pytest.raises(ValueError):
-                cli._emit_behavioral_notice('msg', behavior)
+                handlers._emit_behavioral_notice('msg', behavior, quiet=False)
             return
 
-        cli._emit_behavioral_notice('msg', behavior)
+        handlers._emit_behavioral_notice('msg', behavior, quiet=False)
         captured = capsys.readouterr()
         assert expected_err in captured.err
+
+    def test_emit_behavioral_notice_quiet_suppresses(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Quiet mode suppresses warning emission."""
+        # pylint: disable=protected-access
+
+        handlers._emit_behavioral_notice('msg', 'warn', quiet=True)
+        captured = capsys.readouterr()
+        assert captured.err == ''
 
     def test_format_behavior_strict(self) -> None:
         """Strict mode maps to error behavior."""
         # pylint: disable=protected-access
 
-        assert cli._format_behavior(True) == 'error'
+        assert handlers._format_behavior(True) == 'error'
 
     def test_format_behavior_env(
         self,
@@ -364,11 +381,11 @@ class TestCliInternalHelpers:
         """Environment overrides behavior when not strict."""
         # pylint: disable=protected-access
 
-        monkeypatch.setenv(cli.FORMAT_ENV_KEY, 'fail')
-        assert cli._format_behavior(False) == 'fail'
+        monkeypatch.setenv(handlers.FORMAT_ENV_KEY, 'fail')
+        assert handlers._format_behavior(False) == 'fail'
 
-        monkeypatch.delenv(cli.FORMAT_ENV_KEY, raising=False)
-        assert cli._format_behavior(False) == 'warn'
+        monkeypatch.delenv(handlers.FORMAT_ENV_KEY, raising=False)
+        assert handlers._format_behavior(False) == 'warn'
 
     @pytest.mark.parametrize(
         ('resource_type', 'format_explicit', 'should_raise'),
@@ -388,14 +405,19 @@ class TestCliInternalHelpers:
         """Guard raises only for explicit formats on file resources."""
         # pylint: disable=protected-access
 
-        monkeypatch.setattr(cli, '_format_behavior', lambda _strict: 'error')
+        monkeypatch.setattr(
+            handlers,
+            '_format_behavior',
+            lambda _strict: 'error',
+        )
 
         def call() -> None:
-            cli._handle_format_guard(
+            handlers._handle_format_guard(
                 io_context='source',
                 resource_type=resource_type,
                 format_explicit=format_explicit,
                 strict=False,
+                quiet=False,
             )
 
         if should_raise:
@@ -414,7 +436,11 @@ class TestCliInternalHelpers:
             targets=True,
             transforms=True,
         )
-        result = cli._list_sections(DummyCfg(), args)  # type: ignore[arg-type]
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._list_sections(
+            cfg,
+            args,
+        )
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
     def test_list_sections_default(self) -> None:
@@ -427,7 +453,11 @@ class TestCliInternalHelpers:
             targets=False,
             transforms=False,
         )
-        result = cli._list_sections(DummyCfg(), args)  # type: ignore[arg-type]
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._list_sections(
+            cfg,
+            args,
+        )
         assert 'jobs' in result
 
     def test_materialize_csv_payload_non_str(self) -> None:
@@ -435,7 +465,7 @@ class TestCliInternalHelpers:
         # pylint: disable=protected-access
 
         payload: object = {'foo': 1}
-        assert cli._materialize_csv_payload(payload) is payload
+        assert handlers._materialize_csv_payload(payload) is payload
 
     def test_materialize_csv_payload_non_csv(self, tmp_path: Path) -> None:
         """Non-CSV file paths are returned unchanged."""
@@ -443,7 +473,7 @@ class TestCliInternalHelpers:
 
         f = tmp_path / 'file.txt'
         f.write_text('abc')
-        assert cli._materialize_csv_payload(str(f)) == str(f)
+        assert handlers._materialize_csv_payload(str(f)) == str(f)
 
     def test_materialize_csv_payload_csv(self, tmp_path: Path) -> None:
         """CSV file paths are loaded into row dictionaries."""
@@ -451,7 +481,7 @@ class TestCliInternalHelpers:
 
         f = tmp_path / 'file.csv'
         f.write_text(CSV_TEXT)
-        rows = cli._materialize_csv_payload(str(f))
+        rows = handlers._materialize_csv_payload(str(f))
 
         assert isinstance(rows, list)
         assert rows[0] == {'a': '1', 'b': '2'}
@@ -460,7 +490,8 @@ class TestCliInternalHelpers:
         """`_pipeline_summary` returns a mapping for a pipeline config."""
         # pylint: disable=protected-access
 
-        summary = cli._pipeline_summary(DummyCfg())  # type: ignore[arg-type]
+        cfg = cast(PipelineConfig, DummyCfg())
+        summary = handlers._pipeline_summary(cfg)
         result: Mapping[str, object] = summary
         assert result['name'] == 'p1'
         assert result['version'] == 'v1'
@@ -472,7 +503,7 @@ class TestCliInternalHelpers:
 
         f = tmp_path / 'data.csv'
         f.write_text(CSV_TEXT)
-        assert cli._read_csv_rows(f) == [
+        assert handlers._read_csv_rows(f) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
@@ -487,9 +518,9 @@ class TestCliInternalHelpers:
         data = {'x': 1}
 
         dummy_file = Mock()
-        monkeypatch.setattr(cli, 'File', lambda _p, _f: dummy_file)
+        monkeypatch.setattr(handlers, 'File', lambda _p, _f: dummy_file)
 
-        cli._write_json_output(data, 'out.json', success_message='msg')
+        handlers._write_json_output(data, 'out.json', success_message='msg')
         dummy_file.write_json.assert_called_once_with(data)
 
 
@@ -499,7 +530,7 @@ class TestMain:
     def test_no_args_exits_zero(self) -> None:
         """No args prints help and exits 0."""
 
-        assert cli.main([]) == 0
+        assert cli_main([]) == 0
 
     def test_handles_keyboard_interrupt(
         self,
@@ -508,11 +539,11 @@ class TestMain:
         """KeyboardInterrupt maps to the conventional exit code 130."""
 
         monkeypatch.setattr(
-            cli,
+            cli_app_module,
             'cmd_extract',
             Mock(side_effect=KeyboardInterrupt),
         )
-        assert cli.main(['extract', 'file', 'foo']) == 130
+        assert cli_main(['extract', 'file', 'foo']) == 130
 
     def test_handles_system_exit_from_command(
         self,
@@ -521,12 +552,12 @@ class TestMain:
         """`main` does not swallow `SystemExit` from the dispatched command."""
 
         monkeypatch.setattr(
-            cli,
+            cli_app_module,
             'cmd_extract',
             Mock(side_effect=SystemExit(5)),
         )
         with pytest.raises(SystemExit) as exc_info:
-            cli.main(['extract', 'file', 'foo'])
+            cli_main(['extract', 'file', 'foo'])
         assert exc_info.value.code == 5
 
     def test_value_error_returns_exit_code_1(
@@ -537,9 +568,9 @@ class TestMain:
         """ValueError from a command maps to exit code 1."""
 
         monkeypatch.setattr(
-            cli,
+            cli_app_module,
             'cmd_extract',
             Mock(side_effect=ValueError('fail')),
         )
-        assert cli.main(['extract', 'file', 'foo']) == 1
+        assert cli_main(['extract', 'file', 'foo']) == 1
         assert 'Error:' in capsys.readouterr().err

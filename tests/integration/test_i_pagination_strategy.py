@@ -9,12 +9,14 @@ Notes
 -----
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
     RequestManager ``request_once`` helper suffices to intercept page fetches.
-- Some legacy paths still use ``cli_mod.extract``; we patch both for safety.
+- Some legacy paths still use module-level extractors; we patch both the
+    Typer handlers and :mod:`etlplus.extract` for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
 
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import time
@@ -29,7 +31,7 @@ from typing import Any
 import pytest
 
 import etlplus.api.request_manager as rm_module
-import etlplus.cli as cli_module
+import etlplus.cli.handlers as cli_handlers
 from etlplus.cli import main
 from etlplus.config.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
@@ -38,6 +40,8 @@ from tests.integration.conftest import FakeEndpointClientProtocol
 
 
 pytestmark = pytest.mark.integration
+
+extract_module = importlib.import_module('etlplus.extract')
 
 
 def _build_api_pipeline_yaml(
@@ -291,7 +295,8 @@ def pipeline_cli_runner_fixture(
         request_func: Callable[..., Any] | None = None,
     ) -> str:
         cfg_path = _write_pipeline(tmp_path, yaml_text)
-        monkeypatch.setattr(cli_module, 'extract', extract_func)
+        monkeypatch.setattr(cli_handlers, 'extract', extract_func)
+        monkeypatch.setattr(extract_module, 'extract', extract_func)
 
         def _default_request(
             self: rm_module.RequestManager,
