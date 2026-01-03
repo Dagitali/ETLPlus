@@ -7,9 +7,11 @@ Unit tests for :mod:`etlplus.cli.app`.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 import etlplus
@@ -48,6 +50,80 @@ def runner_fixture() -> CliRunner:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestCliAppInternalHelpers:
+    """Unit tests for private helper utilities."""
+
+    def test_infer_resource_type_variants(self, tmp_path: Path) -> None:
+        """`_infer_resource_type` recognizes URLs, DBs, files, and stdin."""
+        # pylint: disable=protected-access
+
+        assert cli_app_module._infer_resource_type('-') == 'file'
+        assert (
+            cli_app_module._infer_resource_type(
+                'https://example.com/data.json',
+            )
+            == 'api'
+        )
+        assert (
+            cli_app_module._infer_resource_type('postgres://user@host/db')
+            == 'database'
+        )
+
+        path = tmp_path / 'payload.csv'
+        path.write_text('a,b\n1,2\n', encoding='utf-8')
+        assert cli_app_module._infer_resource_type(str(path)) == 'file'
+
+    def test_infer_resource_type_invalid_raises(self) -> None:
+        """
+        Unknown resources raise ``ValueError`` to surface helpful guidance.
+        """
+        # pylint: disable=protected-access
+
+        with pytest.raises(ValueError):
+            cli_app_module._infer_resource_type('unknown-resource')
+
+    def test_optional_choice_passthrough_and_validation(self) -> None:
+        """`_optional_choice` preserves None and validates provided values."""
+        # pylint: disable=protected-access
+
+        assert (
+            cli_app_module._optional_choice(
+                None,
+                {'json', 'csv'},
+                label='format',
+            )
+            is None
+        )
+
+        assert (
+            cli_app_module._optional_choice(
+                'json',
+                {'json', 'csv'},
+                label='format',
+            )
+            == 'json'
+        )
+
+        with pytest.raises(typer.BadParameter):
+            cli_app_module._optional_choice('yaml', {'json'}, label='format')
+
+    def test_stateful_namespace_includes_cli_flags(self) -> None:
+        """State flags propagate into handler namespaces."""
+        # pylint: disable=protected-access
+
+        state = cli_app_module.CliState(pretty=False, quiet=True, verbose=True)
+        ns = cli_app_module._stateful_namespace(
+            state,
+            command='extract',
+            foo='bar',
+        )
+        assert ns.command == 'extract'
+        assert ns.pretty is False
+        assert ns.quiet is True
+        assert ns.verbose is True
+        assert ns.foo == 'bar'
 
 
 class TestTyperCliAppWiring:
@@ -105,6 +181,54 @@ class TestTyperCliAppWiring:
         assert isinstance(ns, argparse.Namespace)
         assert ns.format == 'csv'
         assert ns._format_explicit is True
+
+    def test_extract_from_option_sets_source_type_and_state_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that providing the ``--from`` command-line option and root flags
+        influence the handler namespace.
+        """
+        # pylint: disable=protected-access
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        result = runner.invoke(
+            cli_app,
+            [
+                '--no-pretty',
+                '--quiet',
+                'extract',
+                '--from',
+                'api',
+                'https://example.com/data.json',
+            ],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.source_type == 'api'
+        assert ns.source == 'https://example.com/data.json'
+        assert ns.pretty is False
+        assert ns.quiet is True
+        assert ns._format_explicit is False
+
+    def test_extract_rejects_from_with_explicit_type(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """Mixing --from with positional SOURCE_TYPE should fail fast."""
+
+        result = runner.invoke(
+            cli_app,
+            ['extract', 'file', 'input.csv', '--from', 'api'],
+        )
+        assert result.exit_code != 0
+        assert 'Do not combine --from' in result.stderr
 
     def test_list_maps_flags(
         self,
@@ -191,6 +315,31 @@ class TestTyperCliAppWiring:
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
+    def test_load_to_option_defaults_source_to_stdin(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that ``source`` defaults to '-' and ``--to`` wins when only TARGET
+        is provided wins.
+        """
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        result = runner.invoke(
+            cli_app,
+            ['load', '--to', 'database', 'postgres://db.example.org/app'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.source == '-'
+        assert ns.target == 'postgres://db.example.org/app'
+        assert ns.target_type == 'database'
+
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
         result = runner.invoke(cli_app, [])
@@ -221,6 +370,26 @@ class TestTyperCliAppWiring:
         assert ns.config == 'p.yml'
         assert ns.list is True
         assert ns.run is None
+
+    def test_pipeline_run_sets_run_option(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """`pipeline --run` wires run metadata into the namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
+        result = runner.invoke(
+            cli_app,
+            ['pipeline', '--config', 'p.yml', '--run', 'job-2'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.run == 'job-2'
+        assert ns.list is False
 
     def test_run_maps_flags(
         self,
@@ -275,6 +444,25 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.operations, dict)
         assert ns.operations.get('select') == ['id']
 
+    def test_transform_respects_input_format(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """`transform --input-format csv` propagates to the namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_transform')
+        result = runner.invoke(
+            cli_app,
+            ['transform', '--input-format', 'csv'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.input_format == 'csv'
+
     def test_validate_parses_rules_json(
         self,
         runner: CliRunner,
@@ -304,6 +492,26 @@ class TestTyperCliAppWiring:
         assert ns.source == '/path/to/file.json'
         assert isinstance(ns.rules, dict)
         assert ns.rules.get('required') == ['id']
+
+    def test_validate_respects_input_format(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """`validate --input-format csv` sanitizes into a handler namespace."""
+
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
+        result = runner.invoke(
+            cli_app,
+            ['validate', '--input-format', 'csv'],
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.input_format == 'csv'
 
     def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """Test that command option ``--version`` exits successfully."""
