@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.cli.app`.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -18,35 +19,47 @@ import etlplus
 import etlplus.cli.app as cli_app_module
 from etlplus.cli.app import app as cli_app
 
+CaptureHelper = Callable[[str], tuple[dict[str, object], Mock]]
+
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
 
 
-def _capture_cmd(
-    monkeypatch: pytest.MonkeyPatch,
-    name: str,
-) -> tuple[dict[str, object], Mock]:
-    """Patch a `cmd_*` handler and capture the received namespace."""
-    captured: dict[str, object] = {}
-
-    def _fake(ns: argparse.Namespace) -> int:
-        captured['ns'] = ns
-        return 0
-
-    mock = Mock(side_effect=_fake)
-    monkeypatch.setattr(cli_app_module, name, mock)
-    return captured, mock
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(name='runner')
-def runner_fixture() -> CliRunner:
-    """Provide a Typer test runner."""
-    return CliRunner()
+@pytest.fixture(name='capture_cmd')
+def capture_cmd_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> CaptureHelper:
+    """Return a helper to patch a handler and capture its namespace.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Built-in pytest fixture used to alter handler bindings.
+
+    Returns
+    -------
+    CaptureHelper
+        Helper that patches ``cli_app_module.<name>`` and records the namespace
+        passed to the handler.
+    """
+
+    def _capture(name: str) -> tuple[dict[str, object], Mock]:
+        captured: dict[str, object] = {}
+
+        def _fake(ns: argparse.Namespace) -> int:
+            captured['ns'] = ns
+            return 0
+
+        mock = Mock(side_effect=_fake)
+        monkeypatch.setattr(cli_app_module, name, mock)
+        return captured, mock
+
+    return _capture
 
 
 # SECTION: TESTS ============================================================ #
@@ -123,7 +136,7 @@ class TestCliAppInternalHelpers:
         assert ns.pretty is False
         assert ns.quiet is True
         assert ns.verbose is True
-        assert ns.foo == 'bar'
+        assert ns.foo == 'bar'  # pylint: disable=no-member
 
 
 class TestTyperCliAppWiring:
@@ -132,7 +145,7 @@ class TestTyperCliAppWiring:
     def test_extract_default_format_maps_namespace(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``extract`` command defaults to JSON and marks the data
@@ -140,7 +153,7 @@ class TestTyperCliAppWiring:
         """
         # pylint: disable=protected-access
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
             ['extract', 'file', '/path/to/file.json'],
@@ -160,7 +173,7 @@ class TestTyperCliAppWiring:
     def test_extract_explicit_format_maps_namespace(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``extract`` command marks the data format as explicit
@@ -168,7 +181,7 @@ class TestTyperCliAppWiring:
         """
         # pylint: disable=protected-access
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
             ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
@@ -185,7 +198,7 @@ class TestTyperCliAppWiring:
     def test_extract_from_option_sets_source_type_and_state_flags(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that providing the ``--from`` command-line option and root flags
@@ -193,7 +206,7 @@ class TestTyperCliAppWiring:
         """
         # pylint: disable=protected-access
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_extract')
+        captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
             [
@@ -233,13 +246,13 @@ class TestTyperCliAppWiring:
     def test_list_maps_flags(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``list`` command maps section flags into the expected
         namespace.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_list')
+        captured, cmd = capture_cmd('cmd_list')
         result = runner.invoke(
             cli_app,
             ['list', '--config', 'p.yml', '--pipelines', '--sources'],
@@ -257,7 +270,7 @@ class TestTyperCliAppWiring:
     def test_load_default_format_maps_namespace(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the `load` command defaults to JSON and marks the data format
@@ -265,7 +278,7 @@ class TestTyperCliAppWiring:
         """
         # pylint: disable=protected-access
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
             ['load', '/path/to/file.json', 'file', '/path/to/out.json'],
@@ -286,7 +299,7 @@ class TestTyperCliAppWiring:
     def test_load_explicit_format_maps_namespace(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``load`` command marks the data format as explicit when
@@ -294,7 +307,7 @@ class TestTyperCliAppWiring:
         """
         # pylint: disable=protected-access
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
             [
@@ -318,14 +331,14 @@ class TestTyperCliAppWiring:
     def test_load_to_option_defaults_source_to_stdin(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that ``source`` defaults to '-' and ``--to`` wins when only TARGET
         is provided wins.
         """
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_load')
+        captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
             ['load', '--to', 'database', 'postgres://db.example.org/app'],
@@ -349,14 +362,14 @@ class TestTyperCliAppWiring:
     def test_pipeline_maps_flags(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the `pipeline` command maps the ``--list`` command-line
         argument and the ``--run`` command-line argument into the expected
         namespace.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
+        captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
             ['pipeline', '--config', 'p.yml', '--list'],
@@ -374,11 +387,11 @@ class TestTyperCliAppWiring:
     def test_pipeline_run_sets_run_option(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """`pipeline --run` wires run metadata into the namespace."""
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
+        captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
             ['pipeline', '--config', 'p.yml', '--run', 'job-2'],
@@ -394,13 +407,13 @@ class TestTyperCliAppWiring:
     def test_run_maps_flags(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``run`` command maps the ``--job``/``--pipeline``
         command-line argument into the expected namespace.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_run')
+        captured, cmd = capture_cmd('cmd_run')
         result = runner.invoke(
             cli_app,
             ['run', '--config', 'p.yml', '--job', 'j1'],
@@ -417,13 +430,13 @@ class TestTyperCliAppWiring:
     def test_transform_parses_operations_json(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the ``transform`` command parses ``--operations``
         command-line argument via ``json_type``.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_transform')
+        captured, cmd = capture_cmd('cmd_transform')
         result = runner.invoke(
             cli_app,
             [
@@ -447,11 +460,11 @@ class TestTyperCliAppWiring:
     def test_transform_respects_input_format(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """`transform --input-format csv` propagates to the namespace."""
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_transform')
+        captured, cmd = capture_cmd('cmd_transform')
         result = runner.invoke(
             cli_app,
             ['transform', '--input-format', 'csv'],
@@ -466,13 +479,13 @@ class TestTyperCliAppWiring:
     def test_validate_parses_rules_json(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """
         Test that the command ``validate`` parses the ``--rules`` command-line
         argument via ``json_type``.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
+        captured, cmd = capture_cmd('cmd_validate')
         result = runner.invoke(
             cli_app,
             [
@@ -496,11 +509,11 @@ class TestTyperCliAppWiring:
     def test_validate_respects_input_format(
         self,
         runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_cmd: CaptureHelper,
     ) -> None:
         """`validate --input-format csv` sanitizes into a handler namespace."""
 
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
+        captured, cmd = capture_cmd('cmd_validate')
         result = runner.invoke(
             cli_app,
             ['validate', '--input-format', 'csv'],
