@@ -193,7 +193,9 @@ class TestCliHandlersInternalHelpers:
         # pylint: disable=protected-access
 
         monkeypatch.setattr(
-            handlers, '_format_behavior', lambda _strict: 'warn',
+            handlers,
+            '_format_behavior',
+            lambda _strict: 'warn',
         )
 
         handlers._handle_format_guard(
@@ -379,7 +381,9 @@ class TestCliHandlersInternalHelpers:
 
         buffer = io.StringIO('stream-data')
         monkeypatch.setattr(
-            handlers, 'sys', types.SimpleNamespace(stdin=buffer),
+            handlers,
+            'sys',
+            types.SimpleNamespace(stdin=buffer),
         )
         assert handlers._read_stdin_text() == 'stream-data'
 
@@ -525,8 +529,7 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(
             handlers,
             '_emit_json',
-            lambda data,
-            pretty: setattr(args, 'emitted', (data, pretty)),
+            lambda data, pretty: setattr(args, 'emitted', (data, pretty)),
         )
 
         def fail_load(*_args: object, **_kwargs: object) -> None:
