@@ -25,10 +25,6 @@ pytestmark = pytest.mark.unit
 class TestMain:
     """Unit test suite for :func:`etlplus.cli.main`."""
 
-    def test_no_args_exits_zero(self) -> None:
-        """Test that no args prints help and exits with exit code 0."""
-        assert cli_main([]) == 0
-
     def test_handles_keyboard_interrupt(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -60,6 +56,10 @@ class TestMain:
         with pytest.raises(SystemExit) as exc_info:
             cli_main(['extract', 'file', 'foo'])
         assert exc_info.value.code == 5
+
+    def test_no_args_exits_zero(self) -> None:
+        """Test that no args prints help and exits with exit code 0."""
+        assert cli_main([]) == 0
 
     def test_value_error_returns_exit_code_1(
         self,

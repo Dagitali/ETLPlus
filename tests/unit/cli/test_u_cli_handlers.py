@@ -193,13 +193,6 @@ class TestCliHandlersInternalHelpers:
         )
         assert 'jobs' in result
 
-    def test_materialize_csv_payload_non_str(self) -> None:
-        """Test that non-string payloads return unchanged."""
-        # pylint: disable=protected-access
-
-        payload: object = {'foo': 1}
-        assert handlers._materialize_csv_payload(payload) is payload
-
     def test_materialize_csv_payload_non_csv(self, tmp_path: Path) -> None:
         """Test that non-CSV file paths are returned unchanged."""
         # pylint: disable=protected-access
@@ -209,6 +202,13 @@ class TestCliHandlersInternalHelpers:
         assert handlers._materialize_csv_payload(str(file_path)) == str(
             file_path,
         )
+
+    def test_materialize_csv_payload_non_str(self) -> None:
+        """Test that non-string payloads return unchanged."""
+        # pylint: disable=protected-access
+
+        payload: object = {'foo': 1}
+        assert handlers._materialize_csv_payload(payload) is payload
 
     def test_materialize_csv_payload_csv(self, tmp_path: Path) -> None:
         """Test that CSV file paths are loaded into row dictionaries."""

@@ -53,18 +53,6 @@ def runner_fixture() -> CliRunner:
 class TestTyperCliAppWiring:
     """Unit test suite for Typer parsing + Namespace adaptation."""
 
-    def test_no_args_prints_help(self, runner: CliRunner) -> None:
-        """Test invoking with no args prints help and exits 0."""
-        result = runner.invoke(cli_app, [])
-        assert result.exit_code == 0
-        assert 'ETLPlus' in result.stdout
-
-    def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
-        """Test that command option ``--version`` exits successfully."""
-        result = runner.invoke(cli_app, ['--version'])
-        assert result.exit_code == 0
-        assert etlplus.__version__ in result.stdout
-
     def test_extract_default_format_maps_namespace(
         self,
         runner: CliRunner,
@@ -117,6 +105,30 @@ class TestTyperCliAppWiring:
         assert isinstance(ns, argparse.Namespace)
         assert ns.format == 'csv'
         assert ns._format_explicit is True
+
+    def test_list_maps_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that the ``list`` command maps section flags into the expected
+        namespace.
+        """
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_list')
+        result = runner.invoke(
+            cli_app,
+            ['list', '--config', 'p.yml', '--pipelines', '--sources'],
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'list'
+        assert ns.config == 'p.yml'
+        assert ns.pipelines is True
+        assert ns.sources is True
 
     def test_load_default_format_maps_namespace(
         self,
@@ -179,35 +191,59 @@ class TestTyperCliAppWiring:
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
-    def test_validate_parses_rules_json(
+    def test_no_args_prints_help(self, runner: CliRunner) -> None:
+        """Test invoking with no args prints help and exits 0."""
+        result = runner.invoke(cli_app, [])
+        assert result.exit_code == 0
+        assert 'ETLPlus' in result.stdout
+
+    def test_pipeline_maps_flags(
         self,
         runner: CliRunner,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that the command ``validate`` parses the ``--rules`` command-line
-        argument via ``json_type``.
+        Test that the `pipeline` command maps the ``--list`` command-line
+        argument and the ``--run`` command-line argument into the expected
+        namespace.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            [
-                'validate',
-                '/path/to/file.json',
-                '--rules',
-                '{"required": ["id"]}',
-            ],
+            ['pipeline', '--config', 'p.yml', '--list'],
         )
-
         assert result.exit_code == 0
         cmd.assert_called_once()
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'validate'
-        assert ns.source == '/path/to/file.json'
-        assert isinstance(ns.rules, dict)
-        assert ns.rules.get('required') == ['id']
+        assert ns.command == 'pipeline'
+        assert ns.config == 'p.yml'
+        assert ns.list is True
+        assert ns.run is None
+
+    def test_run_maps_flags(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that the ``run`` command maps the ``--job``/``--pipeline``
+        command-line argument into the expected namespace.
+        """
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_run')
+        result = runner.invoke(
+            cli_app,
+            ['run', '--config', 'p.yml', '--job', 'j1'],
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        ns = captured['ns']
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'run'
+        assert ns.config == 'p.yml'
+        assert ns.job == 'j1'
 
     def test_transform_parses_operations_json(
         self,
@@ -239,74 +275,38 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.operations, dict)
         assert ns.operations.get('select') == ['id']
 
-    def test_pipeline_maps_flags(
+    def test_validate_parses_rules_json(
         self,
         runner: CliRunner,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that the `pipeline` command maps the ``--list`` command-line
-        argument and the ``--run`` command-line argument into the expected
-        namespace.
+        Test that the command ``validate`` parses the ``--rules`` command-line
+        argument via ``json_type``.
         """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_pipeline')
+        captured, cmd = _capture_cmd(monkeypatch, 'cmd_validate')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--list'],
+            [
+                'validate',
+                '/path/to/file.json',
+                '--rules',
+                '{"required": ["id"]}',
+            ],
         )
+
         assert result.exit_code == 0
         cmd.assert_called_once()
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'pipeline'
-        assert ns.config == 'p.yml'
-        assert ns.list is True
-        assert ns.run is None
+        assert ns.command == 'validate'
+        assert ns.source == '/path/to/file.json'
+        assert isinstance(ns.rules, dict)
+        assert ns.rules.get('required') == ['id']
 
-    def test_list_maps_flags(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that the ``list`` command maps section flags into the expected
-        namespace.
-        """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_list')
-        result = runner.invoke(
-            cli_app,
-            ['list', '--config', 'p.yml', '--pipelines', '--sources'],
-        )
+    def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
+        """Test that command option ``--version`` exits successfully."""
+        result = runner.invoke(cli_app, ['--version'])
         assert result.exit_code == 0
-        cmd.assert_called_once()
-
-        ns = captured['ns']
-        assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'list'
-        assert ns.config == 'p.yml'
-        assert ns.pipelines is True
-        assert ns.sources is True
-
-    def test_run_maps_flags(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that the ``run`` command maps the ``--job``/``--pipeline``
-        command-line argument into the expected namespace.
-        """
-        captured, cmd = _capture_cmd(monkeypatch, 'cmd_run')
-        result = runner.invoke(
-            cli_app,
-            ['run', '--config', 'p.yml', '--job', 'j1'],
-        )
-        assert result.exit_code == 0
-        cmd.assert_called_once()
-
-        ns = captured['ns']
-        assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'run'
-        assert ns.config == 'p.yml'
-        assert ns.job == 'j1'
+        assert etlplus.__version__ in result.stdout
