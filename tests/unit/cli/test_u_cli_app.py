@@ -19,12 +19,12 @@ import etlplus
 import etlplus.cli.app as cli_app_module
 from etlplus.cli.app import app as cli_app
 
-CaptureHelper = Callable[[str], tuple[dict[str, object], Mock]]
-
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+CaptureHelper = Callable[[str], tuple[dict[str, object], Mock]]
 
 
 # SECTION: FIXTURES ========================================================= #
