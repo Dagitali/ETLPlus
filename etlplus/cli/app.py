@@ -28,7 +28,7 @@ Subcommands
 
 Notes
 -----
-- Use ``-`` to read from stdin and ``--output -`` (or ``load ... file -``) to
+- Use ``-`` to read from stdin and ``--output -`` (or ``load --to file -``) to
     write to stdout.
 - ``extract`` supports ``--from`` and ``load`` supports ``--to`` to override
     inferred resource types.
@@ -78,12 +78,13 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    etlplus extract in.csv > out.json',
         '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
         '    etlplus transform in.json --operations \'{"select": ["id"]}\'',
-        '    etlplus load in.json file out.json',
+        '    etlplus load out.json',
+        '    etlplus load --to file out.json',
         '',
         '    Enforce error if --format is provided for files. Examples:',
         '',
         '    etlplus extract in.csv --format csv --strict-format',
-        '    etlplus load in.json file out.csv --format csv --strict-format',
+        '    etlplus load out.csv --format csv --strict-format',
     ],
 )
 
@@ -117,10 +118,10 @@ EXTRACT_ARGS = typer.Argument(
 )
 LOAD_ARGS = typer.Argument(
     ...,
-    metavar='[SOURCE] [TARGET_TYPE] TARGET',
+    metavar='[TARGET_TYPE] TARGET',
     help=(
-        'Load SOURCE into a target. SOURCE defaults to - (stdin). You may '
-        'provide legacy positional form: SOURCE TARGET_TYPE TARGET.'
+        'Load stdin into a target. TARGET defaults to - (stdin). Provide '
+        'TARGET or SOURCE TARGET.'
     ),
 )
 
@@ -741,8 +742,7 @@ def load_cmd(
     ctx : typer.Context
         Typer execution context provided to the command.
     args : list[str]
-        Positional arguments: TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE
-        TARGET.
+        Positional arguments: TARGET or TARGET_TYPE TARGET.
     to : str | None
         Override the inferred target type.
     strict_format : bool
@@ -769,17 +769,18 @@ def load_cmd(
         | etlplus transform --operations '{"select":["a"]}' \
         | etlplus load --to file out.json
 
-    - Legacy form:
-        etlplus load in.json file out.json
+    - Read from stdin and write to a file:
+        etlplus load out.json
 
     - Write to stdout:
-        etlplus load in.json file -
+        etlplus load --to file -
     """
     state = _ensure_state(ctx)
 
-    if len(args) > 3:
+    if len(args) > 2:
         raise typer.BadParameter(
-            'Provide TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE TARGET.',
+            'Provide TARGET or SOURCE TARGET. The legacy '
+            'SOURCE TARGET_TYPE TARGET form is no longer supported.',
         )
 
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
@@ -796,17 +797,6 @@ def load_cmd(
 
     # Parse positional args.
     match args:
-        case [source, target_type_raw, target] if to is None:
-            target_type = _validate_choice(
-                target_type_raw,
-                _SOURCE_CHOICES,
-                label='target_type',
-            )
-        case [_, _, _]:
-            raise typer.BadParameter(
-                'Do not combine --to with the legacy SOURCE TARGET_TYPE '
-                'TARGET form.',
-            )
         case [source, target]:
             target_type = to or _infer_resource_type_or_exit(target)
         case [solo_target]:
@@ -815,8 +805,7 @@ def load_cmd(
             target_type = to or _infer_resource_type_or_exit(target)
         case []:
             raise typer.BadParameter(
-                'Provide TARGET, SOURCE TARGET, or legacy SOURCE '
-                'TARGET_TYPE TARGET.',
+                'Provide TARGET or TARGET_TYPE TARGET.',
             )
 
     target_type = _validate_choice(
@@ -824,6 +813,14 @@ def load_cmd(
         _SOURCE_CHOICES,
         label='target_type',
     )
+
+    if target_type == 'file' and source != '-':
+        source_type = _infer_resource_type_or_exit(source)
+        if source_type == 'file':
+            raise typer.BadParameter(
+                'File-to-file load is not supported. Provide data via stdin '
+                'or specify a non-file target.',
+            )
 
     if state.verbose:
         print(
