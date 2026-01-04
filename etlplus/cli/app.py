@@ -75,14 +75,14 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '',
         '    Provide a subcommand and options. Examples:',
         '',
-        '    etlplus extract file in.csv -o out.json',
+        '    etlplus extract in.csv > out.json',
         '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
         '    etlplus transform in.json --operations \'{"select": ["id"]}\'',
         '    etlplus load in.json file out.json',
         '',
         '    Enforce error if --format is provided for files. Examples:',
         '',
-        '    etlplus extract file in.csv --format csv --strict-format',
+        '    etlplus extract in.csv --format csv --strict-format',
         '    etlplus load in.json file out.csv --format csv --strict-format',
     ],
 )
@@ -438,12 +438,6 @@ def extract_cmd(
         '--from',
         help='Override the inferred source type (file, database, api).',
     ),
-    output: str | None = typer.Option(
-        None,
-        '-o',
-        '--output',
-        help='Output file to save extracted data (JSON). Use - for stdout.',
-    ),
     strict_format: bool = typer.Option(
         False,
         '--strict-format',
@@ -469,11 +463,11 @@ def extract_cmd(
     ctx : typer.Context
         Typer execution context provided to the command.
     args : list[str]
-        Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE.
+        Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE. The
+        legacy ``SOURCE_TYPE=file`` form is rejected; use ``--from file``
+        instead.
     from_ : str | None
         Override the inferred source type.
-    output : str | None
-        Output file to save extracted data.
     strict_format : bool
         Whether to enforce strict format behavior.
     source_format : str | None
@@ -494,8 +488,7 @@ def extract_cmd(
     - Extract from a file (type inferred):
         etlplus extract in.csv
 
-    - Extract from a file (explicit):
-        etlplus extract file in.csv
+    - Extract from a file (explicit via flag):
         etlplus extract --from file in.csv
 
     - Extract from an API:
@@ -508,6 +501,11 @@ def extract_cmd(
     - Pipe into transform/load:
         etlplus extract in.csv \
         | etlplus transform --operations '{"select":["a"]}'
+
+    Notes
+    -----
+    The ``extract`` command always writes JSON to stdout. Use shell
+    redirection (``>``) or pipelines to persist the output.
     """
     state = _ensure_state(ctx)
 
@@ -526,8 +524,14 @@ def extract_cmd(
             raise typer.BadParameter(
                 'Do not combine --from with an explicit SOURCE_TYPE.',
             )
+        source_type_raw = args[0]
+        if source_type_raw.strip().lower() == 'file':
+            raise typer.BadParameter(
+                "Legacy form 'etlplus extract file SOURCE' is no longer "
+                'supported. Omit SOURCE_TYPE or pass --from file instead.',
+            )
         source_type = _validate_choice(
-            args[0],
+            source_type_raw,
             _SOURCE_CHOICES,
             label='source_type',
         )
@@ -556,7 +560,6 @@ def extract_cmd(
         command='extract',
         source_type=source_type,
         source=source,
-        output=output,
         strict_format=strict_format,
         format=(source_format or 'json'),
         _format_explicit=(source_format is not None),
