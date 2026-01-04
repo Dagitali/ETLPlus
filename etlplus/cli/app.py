@@ -28,7 +28,7 @@ Subcommands
 
 Notes
 -----
-- Use ``-`` to read from stdin and ``--output -`` (or ``load ... file -``) to
+- Use ``-`` to read from stdin and ``--output -`` (or ``load --to file -``) to
     write to stdout.
 - ``extract`` supports ``--from`` and ``load`` supports ``--to`` to override
     inferred resource types.
@@ -78,12 +78,13 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    etlplus extract in.csv > out.json',
         '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
         '    etlplus transform in.json --operations \'{"select": ["id"]}\'',
-        '    etlplus load in.json file out.json',
+        '    etlplus load out.json',
+        '    etlplus load --to file out.json',
         '',
         '    Enforce error if --format is provided for files. Examples:',
         '',
         '    etlplus extract in.csv --format csv --strict-format',
-        '    etlplus load in.json file out.csv --format csv --strict-format',
+        '    etlplus load out.csv --format csv --strict-format',
     ],
 )
 
@@ -117,10 +118,10 @@ EXTRACT_ARGS = typer.Argument(
 )
 LOAD_ARGS = typer.Argument(
     ...,
-    metavar='[SOURCE] [TARGET_TYPE] TARGET',
+    metavar='TARGET',
     help=(
-        'Load SOURCE into a target. SOURCE defaults to - (stdin). You may '
-        'provide legacy positional form: SOURCE TARGET_TYPE TARGET.'
+        'Load data from stdin into a target. Provide TARGET only; pipe source '
+        'data into the command via stdin.'
     ),
 )
 
@@ -567,139 +568,61 @@ def extract_cmd(
     return int(cmd_extract(ns))
 
 
-@app.command('validate')
-def validate_cmd(
+@app.command('list')
+def list_cmd(
     ctx: typer.Context,
-    source: str = typer.Argument(
-        '-',
-        metavar='SOURCE',
-        help=(
-            'Data source to validate (file path, JSON string, or - for stdin).'
-        ),
+    config: str = typer.Option(
+        ...,
+        '--config',
+        help='Path to pipeline YAML configuration file',
     ),
-    rules: str = typer.Option(
-        '{}',
-        '--rules',
-        help='Validation rules as JSON string',
+    pipelines: bool = typer.Option(
+        False,
+        '--pipelines',
+        help='List ETL pipelines',
     ),
-    output: str | None = typer.Option(
-        None,
-        '-o',
-        '--output',
-        help='Output file to save validated data (JSON). Use - for stdout.',
-    ),
-    input_format: str | None = typer.Option(
-        None,
-        '--input-format',
-        help='Input payload format for stdin (json or csv).',
+    sources: bool = typer.Option(False, '--sources', help='List data sources'),
+    targets: bool = typer.Option(False, '--targets', help='List data targets'),
+    transforms: bool = typer.Option(
+        False,
+        '--transforms',
+        help='List data transforms',
     ),
 ) -> int:
     """
-    Validate data against JSON-described rules.
+    Print ETL entities from a pipeline YAML configuration.
 
     Parameters
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    source : str
-        Data source (file path or ``-`` for stdin).
-    rules : str
-        Validation rules as a JSON string.
-    output : str | None
-        Optional output path. Use ``-`` for stdout.
-    input_format : str | None
-        Optional stdin format hint (json or csv).
+    config : str
+        Path to pipeline YAML configuration file.
+    pipelines : bool
+        If True, list ETL pipelines.
+    sources : bool
+        If True, list data sources.
+    targets : bool
+        If True, list data targets.
+    transforms : bool
+        If True, list data transforms.
 
     Returns
     -------
     int
         Zero on success.
     """
-    input_format = _optional_choice(
-        input_format,
-        _FORMAT_CHOICES,
-        label='input_format',
-    )
-
     state = _ensure_state(ctx)
-
     ns = _stateful_namespace(
         state,
-        command='validate',
-        source=source,
-        rules=json_type(rules),
-        output=output,
-        input_format=input_format,
+        command='list',
+        config=config,
+        pipelines=pipelines,
+        sources=sources,
+        targets=targets,
+        transforms=transforms,
     )
-    return int(cmd_validate(ns))
-
-
-@app.command('transform')
-def transform_cmd(
-    ctx: typer.Context,
-    source: str = typer.Argument(
-        '-',
-        metavar='SOURCE',
-        help=(
-            'Data source to transform '
-            '(file path, JSON string, or - for stdin).'
-        ),
-    ),
-    operations: str = typer.Option(
-        '{}',
-        '--operations',
-        help='Transformation operations as JSON string',
-    ),
-    output: str | None = typer.Option(
-        None,
-        '-o',
-        '--output',
-        help='Output file to save transformed data (JSON). Use - for stdout.',
-    ),
-    input_format: str | None = typer.Option(
-        None,
-        '--input-format',
-        help='Input payload format for stdin (json or csv).',
-    ),
-) -> int:
-    """
-    Transform records using JSON-described operations.
-
-    Parameters
-    ----------
-    ctx : typer.Context
-        Typer execution context provided to the command.
-    source : str
-        Data source (file path or ``-`` for stdin).
-    operations : str
-        Transformation operations as a JSON string.
-    output : str | None
-        Optional output path. Use ``-`` for stdout.
-    input_format : str | None
-        Optional stdin format hint (json or csv).
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    input_format = _optional_choice(
-        input_format,
-        _FORMAT_CHOICES,
-        label='input_format',
-    )
-
-    state = _ensure_state(ctx)
-
-    ns = _stateful_namespace(
-        state,
-        command='transform',
-        source=source,
-        operations=json_type(operations),
-        output=output,
-        input_format=input_format,
-    )
-    return int(cmd_transform(ns))
+    return int(cmd_list(ns))
 
 
 @app.command('load')
@@ -741,8 +664,7 @@ def load_cmd(
     ctx : typer.Context
         Typer execution context provided to the command.
     args : list[str]
-        Positional arguments: TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE
-        TARGET.
+        Positional arguments: TARGET only (source must come from stdin).
     to : str | None
         Override the inferred target type.
     strict_format : bool
@@ -769,17 +691,18 @@ def load_cmd(
         | etlplus transform --operations '{"select":["a"]}' \
         | etlplus load --to file out.json
 
-    - Legacy form:
-        etlplus load in.json file out.json
+    - Read from stdin and write to a file:
+        etlplus load out.json
 
     - Write to stdout:
-        etlplus load in.json file -
+        etlplus load --to file -
     """
     state = _ensure_state(ctx)
 
-    if len(args) > 3:
+    if len(args) != 1:
         raise typer.BadParameter(
-            'Provide TARGET, SOURCE TARGET, or SOURCE TARGET_TYPE TARGET.',
+            'Provide TARGET only. Pipe source data into stdin '
+            '(e.g., "cat input.json | etlplus load out.json").',
         )
 
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
@@ -796,34 +719,26 @@ def load_cmd(
 
     # Parse positional args.
     match args:
-        case [source, target_type_raw, target] if to is None:
-            target_type = _validate_choice(
-                target_type_raw,
-                _SOURCE_CHOICES,
-                label='target_type',
-            )
-        case [_, _, _]:
-            raise typer.BadParameter(
-                'Do not combine --to with the legacy SOURCE TARGET_TYPE '
-                'TARGET form.',
-            )
-        case [source, target]:
-            target_type = to or _infer_resource_type_or_exit(target)
         case [solo_target]:
             source = '-'
             target = solo_target
             target_type = to or _infer_resource_type_or_exit(target)
-        case []:
-            raise typer.BadParameter(
-                'Provide TARGET, SOURCE TARGET, or legacy SOURCE '
-                'TARGET_TYPE TARGET.',
-            )
+        case []:  # pragma: no cover - guarded by len(args) check
+            raise typer.BadParameter('Provide TARGET only.')
 
     target_type = _validate_choice(
         target_type,
         _SOURCE_CHOICES,
         label='target_type',
     )
+
+    if target_type == 'file' and source != '-':
+        source_type = _infer_resource_type_or_exit(source)
+        if source_type == 'file':
+            raise typer.BadParameter(
+                'File-to-file load is not supported. Provide data via stdin '
+                'or specify a non-file target.',
+            )
 
     if state.verbose:
         print(
@@ -895,63 +810,6 @@ def pipeline_cmd(
     return int(cmd_pipeline(ns))
 
 
-@app.command('list')
-def list_cmd(
-    ctx: typer.Context,
-    config: str = typer.Option(
-        ...,
-        '--config',
-        help='Path to pipeline YAML configuration file',
-    ),
-    pipelines: bool = typer.Option(
-        False,
-        '--pipelines',
-        help='List ETL pipelines',
-    ),
-    sources: bool = typer.Option(False, '--sources', help='List data sources'),
-    targets: bool = typer.Option(False, '--targets', help='List data targets'),
-    transforms: bool = typer.Option(
-        False,
-        '--transforms',
-        help='List data transforms',
-    ),
-) -> int:
-    """
-    Print ETL entities from a pipeline YAML configuration.
-
-    Parameters
-    ----------
-    ctx : typer.Context
-        Typer execution context provided to the command.
-    config : str
-        Path to pipeline YAML configuration file.
-    pipelines : bool
-        If True, list ETL pipelines.
-    sources : bool
-        If True, list data sources.
-    targets : bool
-        If True, list data targets.
-    transforms : bool
-        If True, list data transforms.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    state = _ensure_state(ctx)
-    ns = _stateful_namespace(
-        state,
-        command='list',
-        config=config,
-        pipelines=pipelines,
-        sources=sources,
-        targets=targets,
-        transforms=transforms,
-    )
-    return int(cmd_list(ns))
-
-
 @app.command('run')
 def run_cmd(
     ctx: typer.Context,
@@ -1001,3 +859,138 @@ def run_cmd(
         pipeline=pipeline,
     )
     return int(cmd_run(ns))
+
+
+@app.command('transform')
+def transform_cmd(
+    ctx: typer.Context,
+    source: str = typer.Argument(
+        '-',
+        metavar='SOURCE',
+        help=(
+            'Data source to transform '
+            '(file path, JSON string, or - for stdin).'
+        ),
+    ),
+    operations: str = typer.Option(
+        '{}',
+        '--operations',
+        help='Transformation operations as JSON string',
+    ),
+    output: str | None = typer.Option(
+        None,
+        '-o',
+        '--output',
+        help='Output file to save transformed data (JSON). Use - for stdout.',
+    ),
+    input_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        help='Input payload format for stdin (json or csv).',
+    ),
+) -> int:
+    """
+    Transform records using JSON-described operations.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+    source : str
+        Data source (file path or ``-`` for stdin).
+    operations : str
+        Transformation operations as a JSON string.
+    output : str | None
+        Optional output path. Use ``-`` for stdout.
+    input_format : str | None
+        Optional stdin format hint (json or csv).
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    input_format = _optional_choice(
+        input_format,
+        _FORMAT_CHOICES,
+        label='input_format',
+    )
+
+    state = _ensure_state(ctx)
+
+    ns = _stateful_namespace(
+        state,
+        command='transform',
+        source=source,
+        operations=json_type(operations),
+        output=output,
+        input_format=input_format,
+    )
+    return int(cmd_transform(ns))
+
+
+@app.command('validate')
+def validate_cmd(
+    ctx: typer.Context,
+    source: str = typer.Argument(
+        '-',
+        metavar='SOURCE',
+        help=(
+            'Data source to validate (file path, JSON string, or - for stdin).'
+        ),
+    ),
+    rules: str = typer.Option(
+        '{}',
+        '--rules',
+        help='Validation rules as JSON string',
+    ),
+    output: str | None = typer.Option(
+        None,
+        '-o',
+        '--output',
+        help='Output file to save validated data (JSON). Use - for stdout.',
+    ),
+    input_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        help='Input payload format for stdin (json or csv).',
+    ),
+) -> int:
+    """
+    Validate data against JSON-described rules.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+    source : str
+        Data source (file path or ``-`` for stdin).
+    rules : str
+        Validation rules as a JSON string.
+    output : str | None
+        Optional output path. Use ``-`` for stdout.
+    input_format : str | None
+        Optional stdin format hint (json or csv).
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    input_format = _optional_choice(
+        input_format,
+        _FORMAT_CHOICES,
+        label='input_format',
+    )
+
+    state = _ensure_state(ctx)
+
+    ns = _stateful_namespace(
+        state,
+        command='validate',
+        source=source,
+        rules=json_type(rules),
+        output=output,
+        input_format=input_format,
+    )
+    return int(cmd_validate(ns))
