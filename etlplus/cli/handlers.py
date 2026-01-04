@@ -427,12 +427,7 @@ def cmd_extract(
     if args.source == '-':
         text = _read_stdin_text()
         payload = _parse_text_payload(text, getattr(args, 'format', None))
-        if not _write_json_output(
-            payload,
-            getattr(args, 'output', None),
-            success_message='Data extracted and saved to',
-        ):
-            _emit_json(payload, pretty=pretty)
+        _emit_json(payload, pretty=pretty)
         return 0
 
     if args.source_type == 'file':
@@ -444,13 +439,7 @@ def cmd_extract(
             file_format=getattr(args, 'format', None),
         )
 
-    if not _write_json_output(
-        result,
-        getattr(args, 'output', None),
-        success_message='Data extracted and saved to',
-    ):
-        _emit_json(result, pretty=pretty)
-
+    _emit_json(result, pretty=pretty)
     return 0
 
 
