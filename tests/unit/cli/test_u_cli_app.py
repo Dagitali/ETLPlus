@@ -310,7 +310,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '/path/to/file.json', 'file', '/path/to/out.json'],
+            ['load', '--to', 'file', '/path/to/out.json'],
         )
 
         assert result.exit_code == 0
@@ -319,7 +319,7 @@ class TestTyperCliAppWiring:
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'load'
-        assert ns.source == '/path/to/file.json'
+        assert ns.source == '-'
         assert ns.target_type == 'file'
         assert ns.target == '/path/to/out.json'
         assert ns.format == 'json'
@@ -342,7 +342,6 @@ class TestTyperCliAppWiring:
             [
                 'load',
                 '/path/to/file.json',
-                'file',
                 '/path/to/out.csv',
                 '--format',
                 'csv',
@@ -354,8 +353,22 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
+        assert ns.target_type == 'file'
         assert ns.format == 'csv'
         assert ns._format_explicit is True
+
+    def test_load_legacy_form_is_rejected(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """Legacy `load SOURCE TARGET_TYPE TARGET` form should error."""
+        result = runner.invoke(
+            cli_app,
+            ['load', 'in.json', 'file', 'out.json'],
+        )
+
+        assert result.exit_code != 0
+        assert 'legacy' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -381,6 +394,19 @@ class TestTyperCliAppWiring:
         assert ns.source == '-'
         assert ns.target == 'postgres://db.example.org/app'
         assert ns.target_type == 'database'
+
+    def test_load_file_to_file_is_rejected(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """Loading from a file directly to a file should fail."""
+        result = runner.invoke(
+            cli_app,
+            ['load', 'in.json', 'out.json'],
+        )
+
+        assert result.exit_code != 0
+        assert 'file-to-file' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
