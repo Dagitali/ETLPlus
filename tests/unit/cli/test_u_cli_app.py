@@ -341,10 +341,9 @@ class TestTyperCliAppWiring:
             cli_app,
             [
                 'load',
-                '/path/to/file.json',
-                '/path/to/out.csv',
                 '--format',
                 'csv',
+                '/path/to/out.csv',
             ],
         )
 
@@ -353,22 +352,23 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
+        assert ns.source == '-'
         assert ns.target_type == 'file'
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
-    def test_load_legacy_form_is_rejected(
+    def test_load_with_source_argument_is_rejected(
         self,
         runner: CliRunner,
     ) -> None:
-        """Legacy `load SOURCE TARGET_TYPE TARGET` form should error."""
+        """Providing a source positional should error."""
         result = runner.invoke(
             cli_app,
-            ['load', 'in.json', 'file', 'out.json'],
+            ['load', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'legacy' in result.stderr.lower()
+        assert 'stdin' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -406,7 +406,7 @@ class TestTyperCliAppWiring:
         )
 
         assert result.exit_code != 0
-        assert 'file-to-file' in result.stderr.lower()
+        assert 'target only' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
