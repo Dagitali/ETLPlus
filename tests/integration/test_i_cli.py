@@ -14,7 +14,9 @@ Notes
 
 from __future__ import annotations
 
+import io
 import json
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -66,7 +68,6 @@ class TestCliEndToEnd:
         source = json_file_factory({'x': 1}, filename='payload.json')
         args: list[str] = [
             'extract',
-            'file',
             str(source),
             '--format',
             'json',
@@ -104,6 +105,7 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
+        monkeypatch: pytest.MonkeyPatch,
         extra_flags: list[str],
         expected_code: int,
         expected_message: str,
@@ -113,10 +115,13 @@ class TestCliEndToEnd:
         Validate ``load`` warnings/errors and resulting output file state.
         """
         output_path = tmp_path / 'output.csv'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "John"}'),
+        )
         args: list[str] = [
             'load',
-            '{"name": "John"}',
-            'file',
             str(output_path),
             '--format',
             'csv',
@@ -141,7 +146,7 @@ class TestCliEndToEnd:
         """Test that ``extract file`` prints the serialized payload."""
         payload = {'name': 'John', 'age': 30}
         source = json_file_factory(payload, filename='input.json')
-        code, out, _err = cli_invoke(('extract', 'file', str(source)))
+        code, out, _err = cli_invoke(('extract', str(source)))
         assert code == 0
         assert json.loads(out) == payload
 
@@ -177,40 +182,22 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Test that running :func:`main` with the ``load`` file command works.
         """
         output_path = tmp_path / 'output.json'
-        json_data = '{"name": "John", "age": 30}'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "John", "age": 30}'),
+        )
         code, _out, _err = cli_invoke(
-            ('load', json_data, 'file', str(output_path)),
+            ('load', str(output_path)),
         )
         assert code == 0
         assert output_path.exists()
-
-    def test_main_extract_with_output(
-        self,
-        tmp_path: Path,
-        json_file_factory: JsonFactory,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """Test extract command with ``-o`` output persistence."""
-        test_data = {'name': 'John', 'age': 30}
-        source = json_file_factory(test_data, filename='input.json')
-        output_path = tmp_path / 'output.json'
-        code, _out, _err = cli_invoke(
-            (
-                'extract',
-                'file',
-                str(source),
-                '-o',
-                str(output_path),
-            ),
-        )
-        assert code == 0
-        assert output_path.exists()
-        assert json.loads(output_path.read_text()) == test_data
 
     def test_main_error_handling(
         self,
@@ -218,7 +205,7 @@ class TestCliEndToEnd:
     ) -> None:
         """Test that running :func:`main` with an invalid command errors."""
         code, _out, err = cli_invoke(
-            ('extract', 'file', '/nonexistent/file.json'),
+            ('extract', '/nonexistent/file.json'),
         )
         assert code == 1
         assert 'Error:' in err
@@ -233,7 +220,6 @@ class TestCliEndToEnd:
         code, _out, err = cli_invoke(
             (
                 'extract',
-                'file',
                 'data.csv',
                 '--format',
                 'csv',
