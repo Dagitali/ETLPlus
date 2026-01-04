@@ -156,7 +156,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', 'file', '/path/to/file.json'],
+            ['extract', '/path/to/file.json'],
         )
 
         assert result.exit_code == 0
@@ -184,7 +184,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
+            ['extract', '/path/to/file.csv', '--format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -230,12 +230,41 @@ class TestTyperCliAppWiring:
         assert ns.quiet is True
         assert ns._format_explicit is False
 
+    def test_extract_legacy_file_source_type_is_rejected(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """Test that legacy `etlplus extract file SOURCE` form should error."""
+        result = runner.invoke(
+            cli_app,
+            ['extract', 'file', 'input.csv'],
+        )
+        assert result.exit_code != 0
+        assert 'legacy form' in result.stderr.lower()
+
+    def test_extract_output_option_is_no_longer_supported(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """
+        Test that the ``--output`` command-line option is not a recognized
+        option anymore.
+        """
+        result = runner.invoke(
+            cli_app,
+            ['extract', 'input.csv', '--output', 'out.json'],
+        )
+        assert result.exit_code != 0
+        assert 'no such option' in result.stderr.lower()
+
     def test_extract_rejects_from_with_explicit_type(
         self,
         runner: CliRunner,
     ) -> None:
-        """Mixing --from with positional SOURCE_TYPE should fail fast."""
-
+        """
+        Test that mixing the ``--from`` command-line option with positional
+        ``SOURCE_TYPE`` should fail fast.
+        """
         result = runner.invoke(
             cli_app,
             ['extract', 'file', 'input.csv', '--from', 'api'],
