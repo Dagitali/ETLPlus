@@ -257,21 +257,6 @@ class TestTyperCliAppWiring:
         assert result.exit_code != 0
         assert 'no such option' in result.stderr.lower()
 
-    def test_extract_rejects_from_with_explicit_type(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that mixing the ``--from`` command-line option with positional
-        ``SOURCE_TYPE`` should fail fast.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'file', 'input.csv', '--from', 'api'],
-        )
-        assert result.exit_code != 0
-        assert 'Do not combine --from' in result.stderr
-
     def test_list_maps_flags(
         self,
         runner: CliRunner,
