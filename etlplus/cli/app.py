@@ -118,10 +118,10 @@ EXTRACT_ARGS = typer.Argument(
 )
 LOAD_ARGS = typer.Argument(
     ...,
-    metavar='[TARGET_TYPE] TARGET',
+    metavar='TARGET',
     help=(
-        'Load stdin into a target. TARGET defaults to - (stdin). Provide '
-        'TARGET or SOURCE TARGET.'
+        'Load data from stdin into a target. Provide TARGET only; pipe source '
+        'data into the command via stdin.'
     ),
 )
 
@@ -664,7 +664,7 @@ def load_cmd(
     ctx : typer.Context
         Typer execution context provided to the command.
     args : list[str]
-        Positional arguments: TARGET or TARGET_TYPE TARGET.
+        Positional arguments: TARGET only (source must come from stdin).
     to : str | None
         Override the inferred target type.
     strict_format : bool
@@ -699,10 +699,10 @@ def load_cmd(
     """
     state = _ensure_state(ctx)
 
-    if len(args) > 2:
+    if len(args) != 1:
         raise typer.BadParameter(
-            'Provide TARGET or SOURCE TARGET. The legacy '
-            'SOURCE TARGET_TYPE TARGET form is no longer supported.',
+            'Provide TARGET only. Pipe source data into stdin '
+            '(e.g., "cat input.json | etlplus load out.json").',
         )
 
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
@@ -719,16 +719,12 @@ def load_cmd(
 
     # Parse positional args.
     match args:
-        case [source, target]:
-            target_type = to or _infer_resource_type_or_exit(target)
         case [solo_target]:
             source = '-'
             target = solo_target
             target_type = to or _infer_resource_type_or_exit(target)
-        case []:
-            raise typer.BadParameter(
-                'Provide TARGET or TARGET_TYPE TARGET.',
-            )
+        case []:  # pragma: no cover - guarded by len(args) check
+            raise typer.BadParameter('Provide TARGET only.')
 
     target_type = _validate_choice(
         target_type,
