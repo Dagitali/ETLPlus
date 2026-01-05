@@ -37,6 +37,8 @@ package and command-line interface for data extraction, validation, transformati
       - [Test Layers](#test-layers)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
+    - [Updating Demo Snippets](#updating-demo-snippets)
+    - [Releasing to PyPI](#releasing-to-pypi)
   - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
@@ -193,19 +195,24 @@ etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_
 
 #### Load Data
 
+`etlplus load` consumes JSON from stdin; provide only the target argument plus optional flags.
+
 Load to JSON file:
 ```bash
-etlplus load '{"name": "John", "age": 30}' file temp/sample_output.json
+etlplus extract file examples/data/sample.json \
+  | etlplus load --to file temp/sample_output.json
 ```
 
 Load to CSV file:
 ```bash
-etlplus load '[{"name": "John", "age": 30}]' file temp/sample_output.csv
+etlplus extract file examples/data/sample.csv \
+  | etlplus load --to file temp/sample_output.csv --format csv
 ```
 
 Load to REST API:
 ```bash
-etlplus load examples/data/sample.json api https://api.example.com/endpoint
+cat examples/data/sample.json \
+  | etlplus load --to api https://api.example.com/endpoint
 ```
 
 ### Python API
@@ -259,7 +266,8 @@ etlplus validate temp/sample_transformed.json \
   --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
 
 # 4. Load to CSV
-etlplus load temp/sample_transformed.json file temp/sample_output.csv
+cat temp/sample_transformed.json \
+  | etlplus load --to file temp/sample_output.csv --format csv
 ```
 
 ### Environment Variables
