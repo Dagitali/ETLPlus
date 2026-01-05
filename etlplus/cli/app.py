@@ -30,8 +30,10 @@ Notes
 -----
 - Use ``-`` to read from stdin and ``--output -`` (or ``load --to file -``) to
     write to stdout.
-- ``extract`` supports ``--from`` and ``load`` supports ``--to`` to override
-    inferred resource types.
+- Commands ``extract`` and ``transform`` support the command-line option
+    ``--from`` to override inferred resource types.
+- Commands ``transform`` and ``load`` support the command-line option ``--to``
+    to override inferred resource types.
 """
 
 from __future__ import annotations
@@ -77,9 +79,12 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '',
         '    etlplus extract in.csv > out.json',
         '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
-        '    etlplus transform in.json --operations \'{"select": ["id"]}\'',
-        '    etlplus load out.json',
-        '    etlplus load --to file out.json',
+        (
+            '    etlplus transform --from file in.json '
+            '--operations \'{"select": ["id"]}\' --to file -o out.json'
+        ),
+        '    etlplus extract in.csv | etlplus load --to file out.json',
+        '    cat data.json | etlplus load --to api https://example.com/data',
         '',
         '    Enforce error if --format is provided for files. Examples:',
         '',
@@ -239,6 +244,18 @@ def _infer_resource_type_or_exit(
         return _infer_resource_type(value)
     except ValueError as exc:  # pragma: no cover - exercised indirectly
         raise typer.BadParameter(str(exc)) from exc
+
+
+def _infer_resource_type_soft(
+    value: str | None,
+) -> str | None:
+    """Best-effort inference that tolerates inline payloads."""
+    if value is None:
+        return None
+    try:
+        return _infer_resource_type(value)
+    except ValueError:
+        return None
 
 
 def _ns(
@@ -877,6 +894,16 @@ def transform_cmd(
         '--output',
         help='Output file to save transformed data (JSON). Use - for stdout.',
     ),
+    from_: str | None = typer.Option(
+        None,
+        '--from',
+        help='Override the inferred source type (file, database, api).',
+    ),
+    to: str | None = typer.Option(
+        None,
+        '--to',
+        help='Override the inferred target type (file, database, api).',
+    ),
     source_format: str | None = typer.Option(
         None,
         '--input-format',
@@ -910,6 +937,10 @@ def transform_cmd(
         Transformation operations as a JSON string.
     output : str | None
         Optional output path. Use ``-`` for stdout.
+    from_ : str | None
+        Override the inferred source type.
+    to : str | None
+        Override the inferred target type.
     source_format : str | None
         Input payload format when not a file (or when SOURCE is -).
     target_format : str | None
@@ -933,6 +964,23 @@ def transform_cmd(
 
     state = _ensure_state(ctx)
 
+    source_type = from_ or _infer_resource_type_soft(source)
+    output_locator = output if output is not None else '-'
+    target_type = to or _infer_resource_type_soft(output_locator)
+
+    if state.verbose:
+        if source_type:
+            print(
+                f'Inferred source_type={source_type} for source={source}',
+                file=sys.stderr,
+            )
+        if target_type:
+            print(
+                f'Inferred target_type={target_type}'
+                f'for output={output_locator}',
+                file=sys.stderr,
+            )
+
     ns = _stateful_namespace(
         state,
         command='transform',
@@ -941,6 +989,8 @@ def transform_cmd(
         output=output,
         input_format=source_format,
         target_format=target_format,
+        source_type=source_type,
+        target_type=target_type,
     )
     return int(cmd_transform(ns))
 
