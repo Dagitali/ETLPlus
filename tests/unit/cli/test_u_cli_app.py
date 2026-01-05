@@ -503,20 +503,20 @@ class TestTyperCliAppWiring:
         capture_cmd: CaptureHelper,
     ) -> None:
         """
-        Test that the command ``etlplus transform --input-format csv``
+        Test that the command ``etlplus transform --source-format csv``
         propagates to the namespace.
         """
         captured, cmd = capture_cmd('cmd_transform')
         result = runner.invoke(
             cli_app,
-            ['transform', '--input-format', 'csv'],
+            ['transform', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.input_format == 'csv'
+        assert ns.source_format == 'csv'
 
     def test_validate_parses_rules_json(
         self,
