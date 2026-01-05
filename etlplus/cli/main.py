@@ -103,20 +103,20 @@ def _cli_description() -> str:
             '',
             '    Provide a subcommand and options. Examples:',
             '',
-            '    etlplus extract file in.csv -o out.json',
+            '    etlplus extract file in.csv > out.json',
             '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
             (
                 '    etlplus transform in.json --operations '
                 '\'{"select": ["id"]}\''
             ),
-            '    etlplus load in.json file out.json',
+            '    etlplus extract in.csv | etlplus load --to file out.json',
             '',
             '    Enforce error if --format is provided for files. Examples:',
             '',
             '    etlplus extract file in.csv --format csv --strict-format',
             (
-                '    etlplus load in.json file out.csv --format csv '
-                '--strict-format'
+                '    etlplus load --to file out.csv --format csv '
+                '--strict-format < data.json'
             ),
         ],
     )
