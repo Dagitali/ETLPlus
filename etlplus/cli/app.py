@@ -590,36 +590,37 @@ def extract_cmd(
         label='format',
     )
 
-    explicit_source_type: str | None
+    positional_source_type: str | None
+    resolved_source: str
 
     # Parse positional args.
     match args:
         case [source_type_raw, source_value]:
-            explicit_source_type = source_type_raw
-            source = source_value
+            positional_source_type = source_type_raw
+            resolved_source = source_value
         case [source_value]:
-            explicit_source_type = None
-            source = source_value
+            positional_source_type = None
+            resolved_source = source_value
         case _:
             raise typer.BadParameter('Provide SOURCE or SOURCE_TYPE SOURCE.')
 
     source_type = _resolve_resource_type(
-        explicit_type=explicit_source_type,
+        explicit_type=positional_source_type,
         override_type=from_,
-        value=source,
+        value=resolved_source,
         label='source_type',
         conflict_error='Do not combine --from with an explicit SOURCE_TYPE.',
         legacy_file_error=(
             "Legacy form 'etlplus extract file SOURCE' is no longer "
             'supported. Omit SOURCE_TYPE or pass --from file instead.'
-            if explicit_source_type is not None
+            if positional_source_type is not None
             else None
         ),
     )
 
     if state.verbose:
         print(
-            f'Inferred source_type={source_type} for source={source}',
+            f'Inferred source_type={source_type} for source={resolved_source}',
             file=sys.stderr,
         )
 
@@ -632,7 +633,7 @@ def extract_cmd(
         state,
         command='extract',
         source_type=source_type,
-        source=source,
+        source=resolved_source,
         **format_kwargs,
     )
     return int(cmd_extract(ns))
@@ -784,15 +785,15 @@ def load_cmd(
 
     stdin_marker = '-'
     inferred_source_type: str | None
-    explicit_target_type: str | None
+    positional_target_type: str | None
 
     # Parse positional args.
     match args:
         case [target_type_raw, target_value]:
-            explicit_target_type = target_type_raw
+            positional_target_type = target_type_raw
             target = target_value
         case [target_value]:
-            explicit_target_type = None
+            positional_target_type = None
             target = target_value
         case _:
             raise typer.BadParameter(
@@ -801,7 +802,7 @@ def load_cmd(
             )
 
     target_type = _resolve_resource_type(
-        explicit_type=explicit_target_type,
+        explicit_type=positional_target_type,
         override_type=to,
         value=target,
         label='target_type',
@@ -809,7 +810,7 @@ def load_cmd(
         legacy_file_error=(
             "Legacy form 'etlplus load file TARGET' is no longer "
             'supported. Omit TARGET_TYPE or pass --to file instead.'
-            if explicit_target_type is not None
+            if positional_target_type is not None
             else None
         ),
     )
@@ -819,8 +820,8 @@ def load_cmd(
     if state.verbose:
         if inferred_source_type is not None:
             print(
-                f'Inferred source_type={inferred_source_type} '
-                f'for source={stdin_marker}',
+                f'Inferred stdin_type={inferred_source_type} '
+                f'for stdin={stdin_marker}',
                 file=sys.stderr,
             )
         print(
@@ -1070,37 +1071,39 @@ def transform_cmd(
     from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
-    source_type = from_ or _infer_resource_type_soft(source)
-    target_locator = target if target is not None else '-'
-    target_type = to or _infer_resource_type_soft(target_locator)
+    resolved_source_type = from_ or _infer_resource_type_soft(source)
+    resolved_target = target if target is not None else '-'
 
-    if source_type is not None:
-        source_type = _validate_choice(
-            source_type,
+    if resolved_source_type is not None:
+        resolved_source_type = _validate_choice(
+            resolved_source_type,
             _SOURCE_CHOICES,
             label='source_type',
         )
-    if target_type is not None:
-        target_type = _validate_choice(
-            target_type,
-            _SOURCE_CHOICES,
+
+    try:
+        resolved_target_type = _resolve_resource_type(
+            explicit_type=None,
+            override_type=to,
+            value=resolved_target,
             label='target_type',
         )
-    else:
+    except typer.BadParameter as exc:
         raise typer.BadParameter(
             'Could not infer target type. Use --to to specify it.',
-        )
+        ) from exc
 
     if state.verbose:
-        if source_type:
+        if resolved_source_type:
             print(
-                f'Inferred source_type={source_type} for source={source}',
+                f'Inferred source_type={resolved_source_type} '
+                f'for source={source}',
                 file=sys.stderr,
             )
-        if target_type:
+        if resolved_target_type:
             print(
-                f'Inferred target_type={target_type} '
-                f'for target={target_locator}',
+                f'Inferred target_type={resolved_target_type} '
+                f'for target={resolved_target}',
                 file=sys.stderr,
             )
 
@@ -1108,11 +1111,11 @@ def transform_cmd(
         state,
         command='transform',
         source=source,
-        source_type=source_type,
+        source_type=resolved_source_type,
         operations=json_type(operations),
         target=target,
         source_format=source_format,
-        target_type=target_type,
+        target_type=resolved_target_type,
         target_format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
     )
