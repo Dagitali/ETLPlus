@@ -123,10 +123,11 @@ EXTRACT_ARGS = typer.Argument(
 )
 LOAD_ARGS = typer.Argument(
     ...,
-    metavar='TARGET',
+    metavar='[TARGET_TYPE] TARGET',
     help=(
-        'Load JSON data from stdin into a target. Provide TARGET only; pipe '
-        'source data into the command via stdin.'
+        'Load JSON data from stdin into a target. Provide TARGET only, or '
+        'prefix it with TARGET_TYPE to avoid --to. Source data must be piped '
+        'into stdin.'
     ),
 )
 
@@ -600,7 +601,7 @@ def extract_cmd(
             explicit_source_type = None
             source = source_value
         case _:
-            raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
+            raise typer.BadParameter('Provide SOURCE or SOURCE_TYPE SOURCE.')
 
     source_type = _resolve_resource_type(
         explicit_type=explicit_source_type,
@@ -728,7 +729,8 @@ def load_cmd(
     ctx : typer.Context
         Typer execution context provided to the command.
     args : list[str]
-        Positional arguments: TARGET only (source must come from stdin).
+        Positional arguments: either TARGET, or TARGET_TYPE TARGET. Source
+        data must be piped into stdin.
     to : str | None
         Override the inferred target type.
     strict_format : bool
@@ -759,6 +761,9 @@ def load_cmd(
     - Write to stdout:
         etlplus load --to file -
 
+    - Avoid --to by specifying the target type positionally:
+        etlplus load file out.json
+
     Notes
     -----
     - The ``load`` command reads JSON from stdin.
@@ -774,24 +779,30 @@ def load_cmd(
         label='format',
     )
 
+    source = '-'
     source_type_for_verbose: str | None
+    explicit_target_type: str | None
 
     # Parse positional args.
     match args:
-        case [solo_target]:
-            source = '-'
-            target = solo_target
+        case [target_type_raw, target_value]:
+            explicit_target_type = target_type_raw
+            target = target_value
+        case [target_value]:
+            explicit_target_type = None
+            target = target_value
         case _:
             raise typer.BadParameter(
-                'Provide TARGET only. Pipe source data into stdin '
-                '(e.g., "cat input.json | etlplus load out.json").',
+                'Provide TARGET or TARGET_TYPE TARGET. Pipe source data into '
+                'stdin (e.g., "cat input.json | etlplus load out.json").',
             )
 
     target_type = _resolve_resource_type(
-        explicit_type=None,
+        explicit_type=explicit_target_type,
         override_type=to,
         value=target,
         label='target_type',
+        conflict_error='Do not combine --to with an explicit TARGET_TYPE.',
     )
 
     if target_type == 'file' and source != '-':
@@ -829,7 +840,6 @@ def load_cmd(
         target_type=target_type,
         target=target,
         **format_kwargs,
-        target_format='json',
     )
     return int(cmd_load(ns))
 
