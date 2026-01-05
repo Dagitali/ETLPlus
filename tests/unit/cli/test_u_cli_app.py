@@ -502,8 +502,10 @@ class TestTyperCliAppWiring:
         runner: CliRunner,
         capture_cmd: CaptureHelper,
     ) -> None:
-        """`transform --input-format csv` propagates to the namespace."""
-
+        """
+        Test that the command ``etlplus transform --input-format csv``
+        propagates to the namespace.
+        """
         captured, cmd = capture_cmd('cmd_transform')
         result = runner.invoke(
             cli_app,
