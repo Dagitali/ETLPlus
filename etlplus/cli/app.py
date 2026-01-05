@@ -180,6 +180,36 @@ def _ensure_state(
     return ctx.obj
 
 
+def _format_namespace_kwargs(
+    *,
+    strict: bool,
+    format_value: str | None,
+    default: str,
+) -> dict[str, object]:
+    """
+    Return common namespace kwargs for format handling.
+
+    Parameters
+    ----------
+    strict : bool
+        Whether to enforce strict format behavior.
+    format_value : str | None
+        User-provided format value from the CLI option.
+    default : str
+        Default format to use when none is provided.
+
+    Returns
+    -------
+    dict[str, object]
+        Keyword arguments for format-related namespace attributes.
+    """
+    return {
+        'strict_format': strict,
+        'format': (format_value or default),
+        '_format_explicit': (format_value is not None),
+    }
+
+
 def _infer_resource_type(
     value: str,
 ) -> str:
@@ -523,11 +553,12 @@ def extract_cmd(
     Notes
     -----
     - The ``extract`` command always writes JSON to stdout.
+    - CSV output is unsupported for this command.
     - Use shell redirection (``>``) or pipelines to persist the output.
     """
     state = _ensure_state(ctx)
 
-    if len(args) > 2:
+    if len(args) not in (1, 2):
         raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
 
     from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
@@ -537,35 +568,34 @@ def extract_cmd(
         label='format',
     )
 
-    if len(args) == 2:
-        if from_ is not None:
-            raise typer.BadParameter(
-                'Do not combine --from with an explicit SOURCE_TYPE.',
+    # Parse positional args.
+    match args:
+        case [source_type_raw, source_value]:
+            if from_ is not None:
+                raise typer.BadParameter(
+                    'Do not combine --from with an explicit SOURCE_TYPE.',
+                )
+            if source_type_raw.strip().lower() == 'file':
+                raise typer.BadParameter(
+                    "Legacy form 'etlplus extract file SOURCE' is no longer "
+                    'supported. Omit SOURCE_TYPE or pass --from file instead.',
+                )
+            source_type = _validate_choice(
+                source_type_raw,
+                _SOURCE_CHOICES,
+                label='source_type',
             )
-        source_type_raw = args[0]
-        if source_type_raw.strip().lower() == 'file':
-            raise typer.BadParameter(
-                "Legacy form 'etlplus extract file SOURCE' is no longer "
-                'supported. Omit SOURCE_TYPE or pass --from file instead.',
+            source = source_value
+        case [source_value]:
+            source = source_value
+            tentative_type = from_ or _infer_resource_type_or_exit(source)
+            source_type = _validate_choice(
+                tentative_type,
+                _SOURCE_CHOICES,
+                label='source_type',
             )
-        source_type = _validate_choice(
-            source_type_raw,
-            _SOURCE_CHOICES,
-            label='source_type',
-        )
-        source = args[1]
-    else:
-        source = args[0]
-        if from_ is not None:
-            source_type = from_
-        else:
-            source_type = _infer_resource_type_or_exit(source)
-
-        source_type = _validate_choice(
-            source_type,
-            _SOURCE_CHOICES,
-            label='source_type',
-        )
+        case _:
+            raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
 
     if state.verbose:
         print(
@@ -573,14 +603,17 @@ def extract_cmd(
             file=sys.stderr,
         )
 
+    format_kwargs = _format_namespace_kwargs(
+        strict=strict_format,
+        format_value=source_format,
+        default='json',
+    )
     ns = _stateful_namespace(
         state,
         command='extract',
         source_type=source_type,
         source=source,
-        strict_format=strict_format,
-        format=(source_format or 'json'),
-        _format_explicit=(source_format is not None),
+        **format_kwargs,
     )
     return int(cmd_extract(ns))
 
@@ -757,15 +790,18 @@ def load_cmd(
             file=sys.stderr,
         )
 
+    format_kwargs = _format_namespace_kwargs(
+        strict=strict_format,
+        format_value=target_format,
+        default='json',
+    )
     ns = _stateful_namespace(
         state,
         command='load',
         source=source,
         target_type=target_type,
         target=target,
-        strict_format=strict_format,
-        format=(target_format or 'json'),
-        _format_explicit=(target_format is not None),
+        **format_kwargs,
         input_format='json',
     )
     return int(cmd_load(ns))
