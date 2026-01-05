@@ -120,8 +120,8 @@ LOAD_ARGS = typer.Argument(
     ...,
     metavar='TARGET',
     help=(
-        'Load data from stdin into a target. Provide TARGET only; pipe source '
-        'data into the command via stdin.'
+        'Load JSON data from stdin into a target. Provide TARGET only; pipe '
+        'source data into the command via stdin.'
     ),
 )
 
@@ -505,8 +505,8 @@ def extract_cmd(
 
     Notes
     -----
-    The ``extract`` command always writes JSON to stdout. Use shell
-    redirection (``>``) or pipelines to persist the output.
+    - The ``extract`` command always writes JSON to stdout.
+    - Use shell redirection (``>``) or pipelines to persist the output.
     """
     state = _ensure_state(ctx)
 
@@ -650,11 +650,6 @@ def load_cmd(
             'For normal file targets, format is inferred from extension.'
         ),
     ),
-    input_format: str | None = typer.Option(
-        None,
-        '--input-format',
-        help='Input payload format for stdin (json or csv).',
-    ),
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -671,8 +666,6 @@ def load_cmd(
         Whether to enforce strict format behavior.
     target_format : str | None
         Payload format when not a file.
-    input_format : str | None
-        Input payload format for stdin.
 
     Returns
     -------
@@ -696,6 +689,12 @@ def load_cmd(
 
     - Write to stdout:
         etlplus load --to file -
+
+    Notes
+    -----
+    - The ``load`` command reads JSON from stdin.
+    - CSV input is unsupported for this command.
+    - Convert upstream before piping into ``load``.
     """
     state = _ensure_state(ctx)
 
@@ -710,11 +709,6 @@ def load_cmd(
         target_format,
         _FORMAT_CHOICES,
         label='format',
-    )
-    input_format = _optional_choice(
-        input_format,
-        _FORMAT_CHOICES,
-        label='input_format',
     )
 
     # Parse positional args.
@@ -755,7 +749,7 @@ def load_cmd(
         strict_format=strict_format,
         format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
-        input_format=input_format,
+        input_format='json',
     )
     return int(cmd_load(ns))
 
