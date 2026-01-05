@@ -59,7 +59,7 @@ class TestMain:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Ensure the command return value is normalized into an ``int``."""
+        """Test that the command return value is normalized into an ``int``."""
 
         captured: dict[str, object] = {}
 
