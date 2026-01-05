@@ -956,12 +956,12 @@ def transform_cmd(
     source_format = _optional_choice(
         source_format,
         _FORMAT_CHOICES,
-        label='input_format',
+        label='source_format',
     )
     target_format = _optional_choice(
         target_format,
         _FORMAT_CHOICES,
-        label='format',
+        label='target_format',
     )
     from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
@@ -1003,9 +1003,9 @@ def transform_cmd(
         source_type=source_type,
         operations=json_type(operations),
         output=output,
-        input_format=source_format,
+        source_format=source_format,
         target_type=target_type,
-        format=(target_format or 'json'),
+        target_format=(target_format or 'json'),
         _format_explicit=(target_format is not None),
     )
     return int(cmd_transform(ns))
