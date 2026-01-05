@@ -235,6 +235,26 @@ def create_parser() -> argparse.ArgumentParser:
         '--output',
         help='Output file to save transformed data',
     )
+    transform_parser.add_argument(
+        '--input-format',
+        choices=list(FileFormat.choices()),
+        dest='input_format',
+        help=(
+            'Input payload format when SOURCE is - or a literal payload. '
+            'File sources infer format from the extension.'
+        ),
+    )
+    transform_parser.add_argument(
+        '--output-format',
+        '--format',
+        dest='target_format',
+        choices=list(FileFormat.choices()),
+        help=(
+            'Output payload format '
+            'when writing to stdout or non-file targets. '
+            'File targets infer format from the extension.'
+        ),
+    )
     transform_parser.set_defaults(func=cmd_transform)
 
     load_parser = subparsers.add_parser(
