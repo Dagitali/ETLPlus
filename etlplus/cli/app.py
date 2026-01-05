@@ -902,10 +902,11 @@ def transform_cmd(
         '--operations',
         help='Transformation operations as JSON string',
     ),
-    output: str | None = typer.Option(
+    target: str | None = typer.Option(
         None,
         '-o',
         '--output',
+        '--target',
         help='Output file to save transformed data (JSON). Use - for stdout.',
     ),
     to: str | None = typer.Option(
@@ -939,7 +940,7 @@ def transform_cmd(
         Input payload format when not a file (or when SOURCE is -).
     operations : str
         Transformation operations as a JSON string.
-    output : str | None
+    target : str | None
         Optional output path. Use ``-`` for stdout.
     to : str | None
         Override the inferred target type.
@@ -950,6 +951,36 @@ def transform_cmd(
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    typer.BadParameter
+        If invalid parameters are provided.
+
+    Examples
+    --------
+    - Transform data from a file and write to another file:
+        etlplus transform --from file in.json \
+        --operations '{"select": ["id", "name"]}' \
+        --to file out.json
+    - Transform data from stdin and write to stdout:
+        cat in.json \
+        | etlplus transform \
+        --operations '{"filter": {"field": "age", "gt": 30}}'
+    - Transform data from a file and write to stdout:
+        etlplus transform --from file in.csv \
+        --input-format csv \
+        --operations '{"select": ["id", "email"]}'
+    - Transform data from stdin and write to a file:
+        cat in.json \
+        | etlplus transform --operations '{"sort": ["-created_at"]}' \
+        --to file out.json
+
+    Notes
+    -----
+    - The ``transform`` command reads JSON from stdin when SOURCE is ``-``.
+    - CSV input is unsupported for this command.
+    - Convert upstream before piping into ``transform``.
     """
     state = _ensure_state(ctx)
 
@@ -967,8 +998,8 @@ def transform_cmd(
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
     source_type = from_ or _infer_resource_type_soft(source)
-    output_locator = output if output is not None else '-'
-    target_type = to or _infer_resource_type_soft(output_locator)
+    target_locator = target if target is not None else '-'
+    target_type = to or _infer_resource_type_soft(target_locator)
 
     if source_type is not None:
         source_type = _validate_choice(
@@ -982,6 +1013,10 @@ def transform_cmd(
             _SOURCE_CHOICES,
             label='target_type',
         )
+    else:
+        raise typer.BadParameter(
+            'Could not infer target type. Use --to to specify it.',
+        )
 
     if state.verbose:
         if source_type:
@@ -992,7 +1027,7 @@ def transform_cmd(
         if target_type:
             print(
                 f'Inferred target_type={target_type} '
-                f'for output={output_locator}',
+                f'for target={target_locator}',
                 file=sys.stderr,
             )
 
@@ -1002,7 +1037,7 @@ def transform_cmd(
         source=source,
         source_type=source_type,
         operations=json_type(operations),
-        output=output,
+        target=target,
         source_format=source_format,
         target_type=target_type,
         target_format=(target_format or 'json'),
