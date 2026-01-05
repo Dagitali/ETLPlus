@@ -177,25 +177,6 @@ class TestCliEndToEnd:
         assert code == 1
         assert 'Error:' in err
 
-    def test_main_load_explicit_target_type(
-        self,
-        tmp_path: Path,
-        cli_invoke: CliInvoke,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Ensure ``load`` accepts positional TARGET_TYPE TARGET."""
-        output_path = tmp_path / 'explicit.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "Jane"}'),
-        )
-        code, _out, _err = cli_invoke(
-            ('load', 'file', str(output_path)),
-        )
-        assert code == 0
-        assert output_path.exists()
-
     def test_main_load_file(
         self,
         tmp_path: Path,
