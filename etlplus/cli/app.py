@@ -883,6 +883,20 @@ def transform_cmd(
             '(file path, JSON string, or - for stdin).'
         ),
     ),
+    from_: str | None = typer.Option(
+        None,
+        '--from',
+        help='Override the inferred source type (file, database, api).',
+    ),
+    source_format: str | None = typer.Option(
+        None,
+        '--input-format',
+        '--source-format',
+        help=(
+            'Input payload format when SOURCE is - or a literal payload. '
+            'For files, the format is inferred from the extension.'
+        ),
+    ),
     operations: str = typer.Option(
         '{}',
         '--operations',
@@ -894,24 +908,10 @@ def transform_cmd(
         '--output',
         help='Output file to save transformed data (JSON). Use - for stdout.',
     ),
-    from_: str | None = typer.Option(
-        None,
-        '--from',
-        help='Override the inferred source type (file, database, api).',
-    ),
     to: str | None = typer.Option(
         None,
         '--to',
         help='Override the inferred target type (file, database, api).',
-    ),
-    source_format: str | None = typer.Option(
-        None,
-        '--input-format',
-        '--source-format',
-        help=(
-            'Input payload format when SOURCE is - or a literal payload. '
-            'For files, the format is inferred from the extension.'
-        ),
     ),
     target_format: str | None = typer.Option(
         None,
@@ -933,16 +933,16 @@ def transform_cmd(
         Typer execution context provided to the command.
     source : str
         Data source (file path or ``-`` for stdin).
+    from_ : str | None
+        Override the inferred source type.
+    source_format : str | None
+        Input payload format when not a file (or when SOURCE is -).
     operations : str
         Transformation operations as a JSON string.
     output : str | None
         Optional output path. Use ``-`` for stdout.
-    from_ : str | None
-        Override the inferred source type.
     to : str | None
         Override the inferred target type.
-    source_format : str | None
-        Input payload format when not a file (or when SOURCE is -).
     target_format : str | None
         Output payload format when not a file target (or when OUTPUT is -).
 
@@ -951,6 +951,8 @@ def transform_cmd(
     int
         Zero on success.
     """
+    state = _ensure_state(ctx)
+
     source_format = _optional_choice(
         source_format,
         _FORMAT_CHOICES,
@@ -961,12 +963,25 @@ def transform_cmd(
         _FORMAT_CHOICES,
         label='format',
     )
-
-    state = _ensure_state(ctx)
+    from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
+    to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
     source_type = from_ or _infer_resource_type_soft(source)
     output_locator = output if output is not None else '-'
     target_type = to or _infer_resource_type_soft(output_locator)
+
+    if source_type is not None:
+        source_type = _validate_choice(
+            source_type,
+            _SOURCE_CHOICES,
+            label='source_type',
+        )
+    if target_type is not None:
+        target_type = _validate_choice(
+            target_type,
+            _SOURCE_CHOICES,
+            label='target_type',
+        )
 
     if state.verbose:
         if source_type:
@@ -976,7 +991,7 @@ def transform_cmd(
             )
         if target_type:
             print(
-                f'Inferred target_type={target_type}'
+                f'Inferred target_type={target_type} '
                 f'for output={output_locator}',
                 file=sys.stderr,
             )
@@ -985,12 +1000,13 @@ def transform_cmd(
         state,
         command='transform',
         source=source,
+        source_type=source_type,
         operations=json_type(operations),
         output=output,
         input_format=source_format,
-        target_format=target_format,
-        source_type=source_type,
         target_type=target_type,
+        format=(target_format or 'json'),
+        _format_explicit=(target_format is not None),
     )
     return int(cmd_transform(ns))
 
