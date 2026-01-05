@@ -172,6 +172,11 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 #### Transform Data
 
+When piping data through `etlplus transform`, use `--input-format` (alias `--source-format`)
+whenever the SOURCE argument is `-` or a literal payload, mirroring the `etlplus extract` semantics.
+Use `--format` (alias `--output-format`) to control the emitted format for stdout or other non-file
+outputs, just like `etlplus load`. File paths continue to infer formats from their extensions.
+
 Filter and select fields:
 ```bash
 etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
