@@ -575,7 +575,7 @@ class TestLoadToApi:
     """Unit tests for :func:`etlplus.load.load_to_api`."""
 
     def test_load_to_api_success(self) -> None:
-        """Ensure payload and metadata are returned through stub session."""
+        """Test that payload and metadata are returned through stub session."""
 
         session = _StubSession({'ok': True})
         data = [{'name': 'Ada'}]
