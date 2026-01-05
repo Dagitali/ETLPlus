@@ -783,7 +783,6 @@ def load_cmd(
     )
 
     stdin_marker = '-'
-    source = stdin_marker
     inferred_source_type: str | None
     explicit_target_type: str | None
 
@@ -815,13 +814,13 @@ def load_cmd(
         ),
     )
 
-    inferred_source_type = _infer_resource_type_soft(source)
+    inferred_source_type = _infer_resource_type_soft(stdin_marker)
 
     if state.verbose:
         if inferred_source_type is not None:
             print(
                 f'Inferred source_type={inferred_source_type} '
-                f'for source={source}',
+                f'for source={stdin_marker}',
                 file=sys.stderr,
             )
         print(
@@ -837,7 +836,7 @@ def load_cmd(
     ns = _stateful_namespace(
         state,
         command='load',
-        source=source,
+        source=stdin_marker,
         target_type=target_type,
         target=target,
         **format_kwargs,
