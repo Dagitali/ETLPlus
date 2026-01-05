@@ -877,10 +877,24 @@ def transform_cmd(
         '--output',
         help='Output file to save transformed data (JSON). Use - for stdout.',
     ),
-    input_format: str | None = typer.Option(
+    source_format: str | None = typer.Option(
         None,
         '--input-format',
-        help='Input payload format for stdin (json or csv).',
+        '--source-format',
+        help=(
+            'Input payload format when SOURCE is - or a literal payload. '
+            'For files, the format is inferred from the extension.'
+        ),
+    ),
+    target_format: str | None = typer.Option(
+        None,
+        '--format',
+        '--output-format',
+        help=(
+            'Output payload format '
+            'when writing to stdout or non-file targets. '
+            'File outputs infer format from the extension.'
+        ),
     ),
 ) -> int:
     """
@@ -896,18 +910,25 @@ def transform_cmd(
         Transformation operations as a JSON string.
     output : str | None
         Optional output path. Use ``-`` for stdout.
-    input_format : str | None
-        Optional stdin format hint (json or csv).
+    source_format : str | None
+        Input payload format when not a file (or when SOURCE is -).
+    target_format : str | None
+        Output payload format when not a file target (or when OUTPUT is -).
 
     Returns
     -------
     int
         Zero on success.
     """
-    input_format = _optional_choice(
-        input_format,
+    source_format = _optional_choice(
+        source_format,
         _FORMAT_CHOICES,
         label='input_format',
+    )
+    target_format = _optional_choice(
+        target_format,
+        _FORMAT_CHOICES,
+        label='format',
     )
 
     state = _ensure_state(ctx)
@@ -918,7 +939,8 @@ def transform_cmd(
         source=source,
         operations=json_type(operations),
         output=output,
-        input_format=input_format,
+        input_format=source_format,
+        target_format=target_format,
     )
     return int(cmd_transform(ns))
 
