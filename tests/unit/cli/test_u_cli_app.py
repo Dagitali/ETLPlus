@@ -342,20 +342,20 @@ class TestTyperCliAppWiring:
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
-    def test_load_with_source_argument_is_rejected(
+    def test_load_file_to_file_is_rejected(
         self,
         runner: CliRunner,
     ) -> None:
         """
-        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
+        Test that supplying SOURCE TARGET after an explicit type still errors.
         """
         result = runner.invoke(
             cli_app,
-            ['load', 'in.json', 'out.json'],
+            ['load', 'file', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'invalid target_type' in result.stderr.lower()
+        assert 'usage: etlplus load' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -382,20 +382,20 @@ class TestTyperCliAppWiring:
         assert ns.target == 'postgres://db.example.org/app'
         assert ns.target_type == 'database'
 
-    def test_load_file_to_file_is_rejected(
+    def test_load_with_source_argument_is_rejected(
         self,
         runner: CliRunner,
     ) -> None:
         """
-        Test that supplying SOURCE TARGET after an explicit type still errors.
+        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
         """
         result = runner.invoke(
             cli_app,
-            ['load', 'file', 'in.json', 'out.json'],
+            ['load', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'usage: etlplus load' in result.stderr.lower()
+        assert 'invalid target_type' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
