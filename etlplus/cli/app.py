@@ -334,6 +334,27 @@ def _optional_choice(
     return _validate_choice(value, choices, label=label)
 
 
+def _resolve_resource_type(
+    *,
+    explicit_type: str | None,
+    override_type: str | None,
+    value: str,
+    label: str,
+    conflict_error: str | None = None,
+    legacy_file_error: str | None = None,
+) -> str:
+    """Resolve resource type preference order and validate it."""
+    if explicit_type is not None:
+        if override_type is not None and conflict_error:
+            raise typer.BadParameter(conflict_error)
+        if legacy_file_error and explicit_type.strip().lower() == 'file':
+            raise typer.BadParameter(legacy_file_error)
+        candidate = explicit_type
+    else:
+        candidate = override_type or _infer_resource_type_or_exit(value)
+    return _validate_choice(candidate, _SOURCE_CHOICES, label=label)
+
+
 def _stateful_namespace(
     state: CliState,
     *,
@@ -556,10 +577,10 @@ def extract_cmd(
     - CSV output is unsupported for this command.
     - Use shell redirection (``>``) or pipelines to persist the output.
     """
-    state = _ensure_state(ctx)
-
     if len(args) not in (1, 2):
         raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
+
+    state = _ensure_state(ctx)
 
     from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
     source_format = _optional_choice(
@@ -568,34 +589,32 @@ def extract_cmd(
         label='format',
     )
 
+    explicit_source_type: str | None
+
     # Parse positional args.
     match args:
         case [source_type_raw, source_value]:
-            if from_ is not None:
-                raise typer.BadParameter(
-                    'Do not combine --from with an explicit SOURCE_TYPE.',
-                )
-            if source_type_raw.strip().lower() == 'file':
-                raise typer.BadParameter(
-                    "Legacy form 'etlplus extract file SOURCE' is no longer "
-                    'supported. Omit SOURCE_TYPE or pass --from file instead.',
-                )
-            source_type = _validate_choice(
-                source_type_raw,
-                _SOURCE_CHOICES,
-                label='source_type',
-            )
+            explicit_source_type = source_type_raw
             source = source_value
         case [source_value]:
+            explicit_source_type = None
             source = source_value
-            tentative_type = from_ or _infer_resource_type_or_exit(source)
-            source_type = _validate_choice(
-                tentative_type,
-                _SOURCE_CHOICES,
-                label='source_type',
-            )
         case _:
             raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
+
+    source_type = _resolve_resource_type(
+        explicit_type=explicit_source_type,
+        override_type=from_,
+        value=source,
+        label='source_type',
+        conflict_error='Do not combine --from with an explicit SOURCE_TYPE.',
+        legacy_file_error=(
+            "Legacy form 'etlplus extract file SOURCE' is no longer "
+            'supported. Omit SOURCE_TYPE or pass --from file instead.'
+            if explicit_source_type is not None
+            else None
+        ),
+    )
 
     if state.verbose:
         print(
@@ -748,12 +767,6 @@ def load_cmd(
     """
     state = _ensure_state(ctx)
 
-    if len(args) != 1:
-        raise typer.BadParameter(
-            'Provide TARGET only. Pipe source data into stdin '
-            '(e.g., "cat input.json | etlplus load out.json").',
-        )
-
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
     target_format = _optional_choice(
         target_format,
@@ -761,18 +774,23 @@ def load_cmd(
         label='format',
     )
 
+    source_type_for_verbose: str | None
+
     # Parse positional args.
     match args:
         case [solo_target]:
             source = '-'
             target = solo_target
-            target_type = to or _infer_resource_type_or_exit(target)
-        case []:  # pragma: no cover - guarded by len(args) check
-            raise typer.BadParameter('Provide TARGET only.')
+        case _:
+            raise typer.BadParameter(
+                'Provide TARGET only. Pipe source data into stdin '
+                '(e.g., "cat input.json | etlplus load out.json").',
+            )
 
-    target_type = _validate_choice(
-        target_type,
-        _SOURCE_CHOICES,
+    target_type = _resolve_resource_type(
+        explicit_type=None,
+        override_type=to,
+        value=target,
         label='target_type',
     )
 
@@ -783,8 +801,17 @@ def load_cmd(
                 'File-to-file load is not supported. Provide data via stdin '
                 'or specify a non-file target.',
             )
+        source_type_for_verbose = source_type
+    else:
+        source_type_for_verbose = _infer_resource_type_soft(source)
 
     if state.verbose:
+        if source_type_for_verbose is not None:
+            print(
+                f'Inferred source_type={source_type_for_verbose} '
+                f'for source={source}',
+                file=sys.stderr,
+            )
         print(
             f'Inferred target_type={target_type} for target={target}',
             file=sys.stderr,
@@ -802,7 +829,7 @@ def load_cmd(
         target_type=target_type,
         target=target,
         **format_kwargs,
-        input_format='json',
+        target_format='json',
     )
     return int(cmd_load(ns))
 
