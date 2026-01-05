@@ -106,8 +106,8 @@ def _cli_description() -> str:
             '    etlplus extract file in.csv > out.json',
             '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
             (
-                '    etlplus transform in.json --operations '
-                '\'{"select": ["id"]}\''
+                '    etlplus transform --from file in.csv --operations '
+                '\'{"select": ["id"]}\' --to file -o out.json'
             ),
             '    etlplus extract in.csv | etlplus load --to file out.json',
             '',
@@ -234,6 +234,38 @@ def create_parser() -> argparse.ArgumentParser:
         '-o',
         '--output',
         help='Output file to save transformed data',
+    )
+    transform_parser.add_argument(
+        '--from',
+        dest='from_',
+        choices=list(DataConnectorType.choices()),
+        help='Override the inferred source type (file, database, api).',
+    )
+    transform_parser.add_argument(
+        '--to',
+        dest='to',
+        choices=list(DataConnectorType.choices()),
+        help='Override the inferred target type (file, database, api).',
+    )
+    transform_parser.add_argument(
+        '--input-format',
+        choices=list(FileFormat.choices()),
+        dest='input_format',
+        help=(
+            'Input payload format when SOURCE is - or a literal payload. '
+            'File sources infer format from the extension.'
+        ),
+    )
+    transform_parser.add_argument(
+        '--output-format',
+        '--format',
+        dest='target_format',
+        choices=list(FileFormat.choices()),
+        help=(
+            'Output payload format '
+            'when writing to stdout or non-file targets. '
+            'File targets infer format from the extension.'
+        ),
     )
     transform_parser.set_defaults(func=cmd_transform)
 

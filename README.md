@@ -172,6 +172,20 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 #### Transform Data
 
+When piping data through `etlplus transform`, use `--input-format` (alias `--source-format`)
+whenever the SOURCE argument is `-` or a literal payload, mirroring the `etlplus extract` semantics.
+Use `--format` (alias `--output-format`) to control the emitted format for stdout or other non-file
+outputs, just like `etlplus load`. File paths continue to infer formats from their extensions.
+Use `--from` to override the inferred source connector type and `--to` to override the inferred
+target connector type, matching the `etlplus extract`/`etlplus load` behavior.
+
+Transform file inputs while overriding connector types:
+```bash
+etlplus transform --from file examples/data/sample.json \
+  --operations '{"select": ["name", "email"]}' \
+  --to file -o temp/selected_output.json
+```
+
 Filter and select fields:
 ```bash
 etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
@@ -287,21 +301,21 @@ Examples (zsh):
 ```zsh
 # Warn (default)
 etlplus extract file data.csv --format csv
-etlplus load data.json file out.csv --format csv
+etlplus load --to file out.csv --format csv < data.json
 
 # Enforce error via environment
 ETLPLUS_FORMAT_BEHAVIOR=error \
-  etlplus extract file data.csv --format csv
+  etlplus extract --from file data.csv --format csv
 ETLPLUS_FORMAT_BEHAVIOR=error \
-  etlplus load data.json file out.csv --format csv
+  etlplus load --to file out.csv --format csv < data.json
 
 # Equivalent strict behavior via flag (overrides environment)
-etlplus extract file data.csv --format csv --strict-format
-etlplus load data.json file out.csv --format csv --strict-format
+etlplus extract --from file data.csv --format csv --strict-format
+etlplus load --to file out.csv --format csv --strict-format < data.json
 
 # Recommended: rely on extension, no --format needed for files
-etlplus extract file data.csv
-etlplus load data.json file out.csv
+etlplus extract --from file data.csv
+etlplus load --to file out.csv < data.json
 ```
 
 ## Transformation Operations
