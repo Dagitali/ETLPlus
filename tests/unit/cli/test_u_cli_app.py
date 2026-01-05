@@ -346,14 +346,16 @@ class TestTyperCliAppWiring:
         self,
         runner: CliRunner,
     ) -> None:
-        """Providing a source positional should error."""
+        """
+        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
+        """
         result = runner.invoke(
             cli_app,
             ['load', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'stdin' in result.stderr.lower()
+        assert 'invalid target_type' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -384,14 +386,16 @@ class TestTyperCliAppWiring:
         self,
         runner: CliRunner,
     ) -> None:
-        """Loading from a file directly to a file should fail."""
+        """
+        Test that supplying SOURCE TARGET after an explicit type still errors.
+        """
         result = runner.invoke(
             cli_app,
-            ['load', 'in.json', 'out.json'],
+            ['load', 'file', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'target only' in result.stderr.lower()
+        assert 'usage: etlplus load' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
