@@ -770,6 +770,9 @@ def load_cmd(
     - CSV input is unsupported for this command.
     - Convert upstream before piping into ``load``.
     """
+    if len(args) not in (1, 2):
+        raise typer.BadParameter('Provide TARGET, or TARGET_TYPE TARGET.')
+
     state = _ensure_state(ctx)
 
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
@@ -779,8 +782,9 @@ def load_cmd(
         label='format',
     )
 
-    source = '-'
-    source_type_for_verbose: str | None
+    stdin_marker = '-'
+    source = stdin_marker
+    inferred_source_type: str | None
     explicit_target_type: str | None
 
     # Parse positional args.
@@ -803,23 +807,20 @@ def load_cmd(
         value=target,
         label='target_type',
         conflict_error='Do not combine --to with an explicit TARGET_TYPE.',
+        legacy_file_error=(
+            "Legacy form 'etlplus load file TARGET' is no longer "
+            'supported. Omit TARGET_TYPE or pass --to file instead.'
+            if explicit_target_type is not None
+            else None
+        ),
     )
 
-    if target_type == 'file' and source != '-':
-        source_type = _infer_resource_type_or_exit(source)
-        if source_type == 'file':
-            raise typer.BadParameter(
-                'File-to-file load is not supported. Provide data via stdin '
-                'or specify a non-file target.',
-            )
-        source_type_for_verbose = source_type
-    else:
-        source_type_for_verbose = _infer_resource_type_soft(source)
+    inferred_source_type = _infer_resource_type_soft(source)
 
     if state.verbose:
-        if source_type_for_verbose is not None:
+        if inferred_source_type is not None:
             print(
-                f'Inferred source_type={source_type_for_verbose} '
+                f'Inferred source_type={inferred_source_type} '
                 f'for source={source}',
                 file=sys.stderr,
             )
