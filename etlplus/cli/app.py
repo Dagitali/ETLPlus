@@ -756,6 +756,11 @@ def list_cmd(
         '--pipelines',
         help='List ETL pipelines',
     ),
+    jobs: bool = typer.Option(
+        False,
+        '--jobs',
+        help='List available job names and exit',
+    ),
     sources: bool = typer.Option(False, '--sources', help='List data sources'),
     targets: bool = typer.Option(False, '--targets', help='List data targets'),
     transforms: bool = typer.Option(
@@ -775,6 +780,8 @@ def list_cmd(
         Path to pipeline YAML configuration file.
     pipelines : bool
         If True, list ETL pipelines.
+    jobs : bool
+        If True, list available job names and exit.
     sources : bool
         If True, list data sources.
     targets : bool
@@ -793,6 +800,7 @@ def list_cmd(
         command='list',
         config=config,
         pipelines=pipelines,
+        jobs=jobs,
         sources=sources,
         targets=targets,
         transforms=transforms,
@@ -1272,7 +1280,6 @@ def validate_cmd(
     source_format: str | None = typer.Option(
         None,
         '--source-format',
-        '--format',
         help=(
             'Input payload format when SOURCE is - (JSON or CSV). '
             'Files infer format from extensions.'
@@ -1315,7 +1322,11 @@ def validate_cmd(
         _FORMAT_CHOICES,
         label='source_format',
     )
-    format_explicit = source_format is not None
+    source_format_kwargs = _format_namespace_kwargs(
+        strict=strict_format,
+        format_value=source_format,
+        default='json',
+    )
 
     state = _ensure_state(ctx)
     inferred_source_type = _infer_resource_type_soft(source)
@@ -1335,7 +1346,6 @@ def validate_cmd(
         rules=json_type(rules),
         output=output,
         source_format=source_format,
-        strict_format=strict_format,
-        _format_explicit=format_explicit,
+        **source_format_kwargs,
     )
     return int(cmd_validate(ns))
