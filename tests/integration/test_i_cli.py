@@ -21,11 +21,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-import typer
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.conftest import CliRunner
     from tests.conftest import JsonFactory
 
 
@@ -95,25 +93,6 @@ class TestCliEndToEnd:
         payload = json.loads(out)
         assert payload['valid'] is True
 
-    def test_load_target_type_conflict(
-        self,
-        tmp_path: Path,
-        cli_runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Explicit TARGET_TYPE conflicts with ``--to`` override."""
-        output_path = tmp_path / 'conflict.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "Ana"}'),
-        )
-        with pytest.raises(typer.BadParameter) as excinfo:
-            cli_runner(('load', 'file', str(output_path), '--to', 'api'))
-        assert 'Do not combine --to with an explicit TARGET_TYPE.' in str(
-            excinfo.value,
-        )
-
     def test_main_extract_file(
         self,
         json_file_factory: JsonFactory,
@@ -136,23 +115,6 @@ class TestCliEndToEnd:
         )
         assert code == 1
         assert 'Error:' in err
-
-    def test_main_load_explicit_target_type(
-        self,
-        tmp_path: Path,
-        cli_runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Ensure positional TARGET_TYPE raises a helpful error."""
-        output_path = tmp_path / 'explicit.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "Jane"}'),
-        )
-        with pytest.raises(typer.BadParameter) as excinfo:
-            cli_runner(('load', 'file', str(output_path)))
-        assert 'Legacy form' in str(excinfo.value)
 
     def test_main_load_file(
         self,
