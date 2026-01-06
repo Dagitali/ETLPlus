@@ -245,13 +245,13 @@ job. Those values are merged into the client configuration and forwarded to
 `EndpointClient.paginate(..., rate_limit_overrides=...)`, ensuring only that job’s paginator is sped
 up or slowed down.
 
-Environment / format inference note:
+Format override note:
 
-When extracting from file sources, ETLPlus infers the format from the filename extension (e.g.
-`.csv`, `.json`, `.xml`, `.yaml`). Passing an explicit CLI `--format` for files is ignored unless
-strict mode is enabled. To enforce an error if contributors still specify a redundant `--format`
-flag in scripts or CI runners, set the environment variable `ETLPLUS_FORMAT_BEHAVIOR=error` or use
-the CLI flag `--strict-format`. This keeps pipelines cleaner by relying on naming conventions.
+When extracting from file sources, ETLPlus still infers the format from the filename extension
+(`.csv`, `.json`, `.xml`, `.yaml`). However, `--source-format` and `--target-format` now override
+that inference for both Typer- and argparse-based CLIs. This means you can safely point at files
+without/extensions or with misleading suffixes and force the desired parser or writer without having
+to rename the file first.
 
 Note: When using a service + endpoint in a source, URL composition (including `base_path`) is
 handled automatically. See “Runner behavior with base_path (sources and targets)” in the APIs
