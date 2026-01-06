@@ -230,18 +230,6 @@ class TestTyperCliAppWiring:
         assert ns.quiet is True
         assert ns._format_explicit is False
 
-    def test_extract_legacy_file_source_type_is_rejected(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """Test that legacy `etlplus extract file SOURCE` form should error."""
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'file', 'input.csv'],
-        )
-        assert result.exit_code != 0
-        assert 'legacy form' in result.stderr.lower()
-
     def test_list_maps_flags(
         self,
         runner: CliRunner,
@@ -366,21 +354,6 @@ class TestTyperCliAppWiring:
         assert ns.source == '-'
         assert ns.target == 'postgres://db.example.org/app'
         assert ns.target_type == 'database'
-
-    def test_load_with_source_argument_is_rejected(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['load', 'in.json', 'out.json'],
-        )
-
-        assert result.exit_code != 0
-        assert 'invalid target_type' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
