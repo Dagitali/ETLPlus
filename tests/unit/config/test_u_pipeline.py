@@ -196,7 +196,7 @@ class TestPipelineBuildConnectors:
         self,
         case: ConnectorCase,
     ) -> None:
-        """Ensure :func:`_build_connectors` filters malformed entries."""
+        """Test that :func:`_build_connectors` filters malformed entries."""
         payload = {case.collection: case.entries}
         items = _build_connectors(payload, case.collection)
 

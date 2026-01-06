@@ -156,7 +156,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', 'file', '/path/to/file.json'],
+            ['extract', '/path/to/file.json'],
         )
 
         assert result.exit_code == 0
@@ -184,7 +184,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', 'file', '/path/to/file.csv', '--format', 'csv'],
+            ['extract', '/path/to/file.csv', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -213,7 +213,7 @@ class TestTyperCliAppWiring:
                 '--no-pretty',
                 '--quiet',
                 'extract',
-                '--from',
+                '--source-type',
                 'api',
                 'https://example.com/data.json',
             ],
@@ -229,19 +229,6 @@ class TestTyperCliAppWiring:
         assert ns.pretty is False
         assert ns.quiet is True
         assert ns._format_explicit is False
-
-    def test_extract_rejects_from_with_explicit_type(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """Mixing --from with positional SOURCE_TYPE should fail fast."""
-
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'file', 'input.csv', '--from', 'api'],
-        )
-        assert result.exit_code != 0
-        assert 'Do not combine --from' in result.stderr
 
     def test_list_maps_flags(
         self,
@@ -281,7 +268,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '/path/to/file.json', 'file', '/path/to/out.json'],
+            ['load', '--target-type', 'file', '/path/to/out.json'],
         )
 
         assert result.exit_code == 0
@@ -290,7 +277,7 @@ class TestTyperCliAppWiring:
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'load'
-        assert ns.source == '/path/to/file.json'
+        assert ns.source == '-'
         assert ns.target_type == 'file'
         assert ns.target == '/path/to/out.json'
         assert ns.format == 'json'
@@ -312,11 +299,9 @@ class TestTyperCliAppWiring:
             cli_app,
             [
                 'load',
-                '/path/to/file.json',
-                'file',
-                '/path/to/out.csv',
-                '--format',
+                '--target-format',
                 'csv',
+                '/path/to/out.csv',
             ],
         )
 
@@ -325,8 +310,25 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
+        assert ns.source == '-'
+        assert ns.target_type == 'file'
         assert ns.format == 'csv'
         assert ns._format_explicit is True
+
+    def test_load_file_to_file_is_rejected(
+        self,
+        runner: CliRunner,
+    ) -> None:
+        """
+        Test that supplying SOURCE TARGET after an explicit type still errors.
+        """
+        result = runner.invoke(
+            cli_app,
+            ['load', 'file', 'in.json', 'out.json'],
+        )
+
+        assert result.exit_code != 0
+        assert 'usage: etlplus load' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -341,7 +343,12 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '--to', 'database', 'postgres://db.example.org/app'],
+            [
+                'load',
+                '--target-type',
+                'database',
+                'postgres://db.example.org/app',
+            ],
         )
 
         assert result.exit_code == 0
@@ -372,7 +379,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--list'],
+            ['pipeline', '--config', 'p.yml', '--jobs'],
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
@@ -394,7 +401,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--run', 'job-2'],
+            ['pipeline', '--config', 'p.yml', '--job', 'job-2'],
         )
 
         assert result.exit_code == 0
@@ -457,24 +464,26 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.operations, dict)
         assert ns.operations.get('select') == ['id']
 
-    def test_transform_respects_input_format(
+    def test_transform_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
     ) -> None:
-        """`transform --input-format csv` propagates to the namespace."""
-
+        """
+        Test that the command ``etlplus transform --source-format csv``
+        propagates to the namespace.
+        """
         captured, cmd = capture_cmd('cmd_transform')
         result = runner.invoke(
             cli_app,
-            ['transform', '--input-format', 'csv'],
+            ['transform', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.input_format == 'csv'
+        assert ns.source_format == 'csv'
 
     def test_validate_parses_rules_json(
         self,
@@ -506,17 +515,20 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.rules, dict)
         assert ns.rules.get('required') == ['id']
 
-    def test_validate_respects_input_format(
+    def test_validate_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
     ) -> None:
-        """`validate --input-format csv` sanitizes into a handler namespace."""
+        """
+        Test that command ``validate --source-format csv`` sanitizes into a
+        handler namespace.
+        """
 
         captured, cmd = capture_cmd('cmd_validate')
         result = runner.invoke(
             cli_app,
-            ['validate', '--input-format', 'csv'],
+            ['validate', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -524,7 +536,7 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.input_format == 'csv'
+        assert ns.source_format == 'csv'
 
     def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """Test that command option ``--version`` exits successfully."""

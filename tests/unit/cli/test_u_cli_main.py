@@ -59,7 +59,7 @@ class TestMain:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Ensure the command return value is normalized into an ``int``."""
+        """Test that the command return value is normalized into an ``int``."""
 
         captured: dict[str, object] = {}
 
@@ -87,7 +87,7 @@ class TestMain:
             'cmd_extract',
             Mock(side_effect=KeyboardInterrupt),
         )
-        assert cli_main(['extract', 'file', 'foo']) == 130
+        assert cli_main(['extract', 'foo.csv']) == 130
 
     def test_handles_os_error(
         self,
@@ -118,7 +118,7 @@ class TestMain:
             Mock(side_effect=SystemExit(5)),
         )
         with pytest.raises(SystemExit) as exc_info:
-            cli_main(['extract', 'file', 'foo'])
+            cli_main(['extract', 'foo.csv'])
         assert exc_info.value.code == 5
 
     def test_handles_typer_abort(
@@ -166,5 +166,5 @@ class TestMain:
             'cmd_extract',
             Mock(side_effect=ValueError('fail')),
         )
-        assert cli_main(['extract', 'file', 'foo']) == 1
+        assert cli_main(['extract', 'foo.csv']) == 1
         assert 'Error:' in capsys.readouterr().err

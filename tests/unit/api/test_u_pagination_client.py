@@ -42,7 +42,7 @@ class TestPaginationClient:
         return {}
 
     def test_is_paginated_reflects_config_mutations(self) -> None:
-        """Ensure pagination type detection re-runs on config mutation."""
+        """Test that pagination type detection re-runs on config mutation."""
         cfg: dict[str, Any] = {}
         client = PaginationClient(pagination=cfg, fetch=self._noop_fetch)
 

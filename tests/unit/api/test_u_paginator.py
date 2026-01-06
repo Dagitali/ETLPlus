@@ -304,7 +304,7 @@ class TestPaginator:
     def test_rate_limiter_enforces_between_pages(
         self,
     ) -> None:
-        """Ensure the configured rate limiter enforces pacing."""
+        """Test that the configured rate limiter enforces pacing."""
 
         payloads = [
             {'items': [{'id': 1}]},

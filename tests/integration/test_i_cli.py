@@ -14,7 +14,9 @@ Notes
 
 from __future__ import annotations
 
+import io
 import json
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,101 +39,59 @@ pytestmark = pytest.mark.integration
 class TestCliEndToEnd:
     """Integration test suite for :mod:`etlplus.cli`."""
 
-    @pytest.mark.parametrize(
-        ('extra_flags', 'expected_code', 'expected_message'),
-        [
-            pytest.param(
-                ['--strict-format'],
-                1,
-                'Error:',
-                id='strict-errors',
-            ),
-            pytest.param(
-                [],
-                0,
-                'Warning:',
-                id='warns-default',
-            ),
-        ],
-    )
-    def test_extract_format_feedback(
-        self,
-        json_file_factory: JsonFactory,
-        cli_invoke: CliInvoke,
-        extra_flags: list[str],
-        expected_code: int,
-        expected_message: str,
-    ) -> None:
-        """Verify ``extract`` error/warning flow with optional strict flag."""
-        source = json_file_factory({'x': 1}, filename='payload.json')
-        args: list[str] = [
-            'extract',
-            'file',
-            str(source),
-            '--format',
-            'json',
-            *extra_flags,
-        ]
-        code, _out, err = cli_invoke(args)
-        assert code == expected_code
-        assert expected_message in err
-
-    @pytest.mark.parametrize(
-        (
-            'extra_flags',
-            'expected_code',
-            'expected_message',
-            'expect_output',
-        ),
-        [
-            pytest.param(
-                ['--strict-format'],
-                1,
-                'Error:',
-                False,
-                id='strict-errors',
-            ),
-            pytest.param(
-                [],
-                0,
-                'Warning:',
-                True,
-                id='warns-default',
-            ),
-        ],
-    )
-    def test_load_format_feedback(
+    def test_extract_source_format_override(
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
-        extra_flags: list[str],
-        expected_code: int,
-        expected_message: str,
-        expect_output: bool,
     ) -> None:
-        """
-        Validate ``load`` warnings/errors and resulting output file state.
-        """
-        output_path = tmp_path / 'output.csv'
-        args: list[str] = [
-            'load',
-            '{"name": "John"}',
-            'file',
-            str(output_path),
-            '--format',
-            'csv',
-            *extra_flags,
-        ]
-        code, _out, err = cli_invoke(args)
-        assert code == expected_code
-        assert expected_message in err
-        assert output_path.exists() is expect_output
-
-    def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
-        """Test that running :func:`main` with no command shows usage."""
-        code, out, _err = cli_invoke()
+        """Explicit ``--source-format`` overrides file extension inference."""
+        source = tmp_path / 'records.txt'
+        source.write_text('a,b\n1,2\n')
+        code, out, err = cli_invoke(
+            ('extract', str(source), '--source-format', 'csv'),
+        )
         assert code == 0
-        assert 'usage:' in out.lower()
+        assert err.strip() == ''
+        payload = json.loads(out)
+        assert payload[0] == {'a': '1', 'b': '2'}
+
+    def test_load_target_format_override(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``--target-format`` controls how file targets are written."""
+        output_path = tmp_path / 'output.bin'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('[{"name": "John"}]'),
+        )
+        code, _out, err = cli_invoke(
+            ('load', str(output_path), '--target-format', 'csv'),
+        )
+        assert code == 0
+        assert err.strip() == ''
+        contents = output_path.read_text().splitlines()
+        assert contents[0] == 'name'
+        assert contents[1] == 'John'
+
+    def test_validate_source_format_override(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+    ) -> None:
+        """``validate`` accepts CSV files lacking extensions via flag."""
+        source = tmp_path / 'dataset.data'
+        source.write_text('id,val\n1,2\n')
+        code, out, err = cli_invoke(
+            ('validate', str(source), '--source-format', 'csv'),
+        )
+        assert code == 0
+        assert err.strip() == ''
+        payload = json.loads(out)
+        assert payload['valid'] is True
 
     def test_main_extract_file(
         self,
@@ -141,21 +101,47 @@ class TestCliEndToEnd:
         """Test that ``extract file`` prints the serialized payload."""
         payload = {'name': 'John', 'age': 30}
         source = json_file_factory(payload, filename='input.json')
-        code, out, _err = cli_invoke(('extract', 'file', str(source)))
+        code, out, _err = cli_invoke(('extract', str(source)))
         assert code == 0
         assert json.loads(out) == payload
 
-    def test_main_validate_data(
+    def test_main_error_handling(
         self,
         cli_invoke: CliInvoke,
     ) -> None:
+        """Test that running :func:`main` with an invalid command errors."""
+        code, _out, err = cli_invoke(
+            ('extract', '/nonexistent/file.json'),
+        )
+        assert code == 1
+        assert 'Error:' in err
+
+    def test_main_load_file(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """
-        Test that running :func:`main` with the ``validate`` command works.
+        Test that running :func:`main` with the ``load`` file command works.
         """
-        json_data = '{"name": "John", "age": 30}'
-        code, out, _err = cli_invoke(('validate', json_data))
+        output_path = tmp_path / 'output.json'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "John", "age": 30}'),
+        )
+        code, _out, _err = cli_invoke(
+            ('load', str(output_path)),
+        )
         assert code == 0
-        assert json.loads(out)['valid'] is True
+        assert output_path.exists()
+
+    def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
+        """Test that running :func:`main` with no command shows usage."""
+        code, out, _err = cli_invoke()
+        assert code == 0
+        assert 'usage:' in out.lower()
 
     def test_main_transform_data(
         self,
@@ -173,72 +159,14 @@ class TestCliEndToEnd:
         output = json.loads(out)
         assert len(output) == 1 and 'age' not in output[0]
 
-    def test_main_load_file(
+    def test_main_validate_data(
         self,
-        tmp_path: Path,
         cli_invoke: CliInvoke,
     ) -> None:
         """
-        Test that running :func:`main` with the ``load`` file command works.
+        Test that running :func:`main` with the ``validate`` command works.
         """
-        output_path = tmp_path / 'output.json'
         json_data = '{"name": "John", "age": 30}'
-        code, _out, _err = cli_invoke(
-            ('load', json_data, 'file', str(output_path)),
-        )
+        code, out, _err = cli_invoke(('validate', json_data))
         assert code == 0
-        assert output_path.exists()
-
-    def test_main_extract_with_output(
-        self,
-        tmp_path: Path,
-        json_file_factory: JsonFactory,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """Test extract command with ``-o`` output persistence."""
-        test_data = {'name': 'John', 'age': 30}
-        source = json_file_factory(test_data, filename='input.json')
-        output_path = tmp_path / 'output.json'
-        code, _out, _err = cli_invoke(
-            (
-                'extract',
-                'file',
-                str(source),
-                '-o',
-                str(output_path),
-            ),
-        )
-        assert code == 0
-        assert output_path.exists()
-        assert json.loads(output_path.read_text()) == test_data
-
-    def test_main_error_handling(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """Test that running :func:`main` with an invalid command errors."""
-        code, _out, err = cli_invoke(
-            ('extract', 'file', '/nonexistent/file.json'),
-        )
-        assert code == 1
-        assert 'Error:' in err
-
-    def test_main_strict_format_error(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """
-        Test ``extract`` with ``--strict-format`` rejects mismatched args.
-        """
-        code, _out, err = cli_invoke(
-            (
-                'extract',
-                'file',
-                'data.csv',
-                '--format',
-                'csv',
-                '--strict-format',
-            ),
-        )
-        assert code == 1
-        assert 'Error:' in err
+        assert json.loads(out)['valid'] is True

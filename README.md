@@ -25,7 +25,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Load Data](#load-data)
     - [Python API](#python-api)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
-    - [Environment Variables](#environment-variables)
+    - [Format Overrides](#format-overrides)
   - [Transformation Operations](#transformation-operations)
     - [Filter Operations](#filter-operations)
     - [Aggregation Functions](#aggregation-functions)
@@ -37,6 +37,8 @@ package and command-line interface for data extraction, validation, transformati
       - [Test Layers](#test-layers)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
+    - [Updating Demo Snippets](#updating-demo-snippets)
+    - [Releasing to PyPI](#releasing-to-pypi)
   - [Links](#links)
   - [License](#license)
   - [Contributing](#contributing)
@@ -127,9 +129,9 @@ etlplus --version
 
 #### Extract Data
 
-Note: For file sources, the format is inferred from the filename extension; the `--format` option is
-ignored.  To treat passing `--format` as an error for file sources, either set
-`ETLPLUS_FORMAT_BEHAVIOR=error` or pass the CLI flag `--strict-format`.
+Note: For file sources, the format is normally inferred from the filename extension. Use
+`--source-format` to override inference when a file lacks an extension or when you want to force a
+specific parser.
 
 Extract from JSON file:
 ```bash
@@ -170,6 +172,20 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 #### Transform Data
 
+When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
+`-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
+control the emitted format for stdout or other non-file outputs, just like `etlplus load`. File
+paths continue to infer formats from their extensions. Use `--from` to override the inferred source
+connector type and `--to` to override the inferred target connector type, matching the `etlplus
+extract`/`etlplus load` behavior.
+
+Transform file inputs while overriding connector types:
+```bash
+etlplus transform --from file examples/data/sample.json \
+  --operations '{"select": ["name", "email"]}' \
+  --to file -o temp/selected_output.json
+```
+
 Filter and select fields:
 ```bash
 etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
@@ -193,19 +209,24 @@ etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_
 
 #### Load Data
 
+`etlplus load` consumes JSON from stdin; provide only the target argument plus optional flags.
+
 Load to JSON file:
 ```bash
-etlplus load '{"name": "John", "age": 30}' file temp/sample_output.json
+etlplus extract file examples/data/sample.json \
+  | etlplus load --to file temp/sample_output.json
 ```
 
 Load to CSV file:
 ```bash
-etlplus load '[{"name": "John", "age": 30}]' file temp/sample_output.csv
+etlplus extract file examples/data/sample.csv \
+  | etlplus load --to file temp/sample_output.csv
 ```
 
 Load to REST API:
 ```bash
-etlplus load examples/data/sample.json api https://api.example.com/endpoint
+cat examples/data/sample.json \
+  | etlplus load --to api https://api.example.com/endpoint
 ```
 
 ### Python API
@@ -259,41 +280,28 @@ etlplus validate temp/sample_transformed.json \
   --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
 
 # 4. Load to CSV
-etlplus load temp/sample_transformed.json file temp/sample_output.csv
+cat temp/sample_transformed.json \
+  | etlplus load --to temp/sample_output.csv
 ```
 
-### Environment Variables
+### Format Overrides
 
-ETLPlus honors a small number of environment toggles to refine CLI behavior:
-
-- `ETLPLUS_FORMAT_BEHAVIOR`: controls what happens when `--format` is provided for
-  file sources or targets (extract/load) where the format is inferred from the
-  filename extension.
-  - `error|fail|strict`: treat as error (non-zero exit)
-  - `warn` (default): print a warning to stderr
-  - `ignore|silent`: no message
-- Precedence: the CLI flag `--strict-format` overrides the environment.
+`--source-format` and `--target-format` override whichever format would normally be inferred from a
+file extension. This is useful when an input lacks an extension (for example, `records.txt` that
+actually contains CSV) or when you intentionally want to treat a file as another format.
 
 Examples (zsh):
 
 ```zsh
-# Warn (default)
-etlplus extract file data.csv --format csv
-etlplus load data.json file out.csv --format csv
+# Force CSV parsing for an extension-less file
+etlplus extract --from file data.txt --source-format csv
 
-# Enforce error via environment
-ETLPLUS_FORMAT_BEHAVIOR=error \
-  etlplus extract file data.csv --format csv
-ETLPLUS_FORMAT_BEHAVIOR=error \
-  etlplus load data.json file out.csv --format csv
+# Write CSV to a file without the .csv suffix
+etlplus load --to file output.bin --target-format csv < data.json
 
-# Equivalent strict behavior via flag (overrides environment)
-etlplus extract file data.csv --format csv --strict-format
-etlplus load data.json file out.csv --format csv --strict-format
-
-# Recommended: rely on extension, no --format needed for files
-etlplus extract file data.csv
-etlplus load data.json file out.csv
+# Leave the flags off when extensions already match the desired format
+etlplus extract --from file data.csv
+etlplus load --to file data.json < data.json
 ```
 
 ## Transformation Operations

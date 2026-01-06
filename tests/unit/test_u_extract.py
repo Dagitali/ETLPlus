@@ -357,7 +357,7 @@ class TestExtractFromDatabase:
         self,
         connection_string: str,
     ) -> None:
-        """Ensure the placeholder payload echoes the connection string."""
+        """Test that the placeholder payload echoes the connection string."""
 
         result = extract_from_database(connection_string)
         assert isinstance(result, list)

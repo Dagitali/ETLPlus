@@ -110,7 +110,7 @@ class TestParseConnector:
         expected_attrs: dict[str, object],
     ) -> None:
         """
-        Ensure ``parse_connector`` instantiates supported connector types.
+        Test that ``parse_connector`` instantiates supported connector types.
         """
 
         connector = parse_connector(payload)
