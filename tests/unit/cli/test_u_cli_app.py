@@ -184,7 +184,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', '/path/to/file.csv', '--format', 'csv'],
+            ['extract', '/path/to/file.csv', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
