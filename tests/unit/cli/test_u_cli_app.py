@@ -374,7 +374,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--list'],
+            ['pipeline', '--config', 'p.yml', '--jobs'],
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
@@ -396,7 +396,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--run', 'job-2'],
+            ['pipeline', '--config', 'p.yml', '--job', 'job-2'],
         )
 
         assert result.exit_code == 0
