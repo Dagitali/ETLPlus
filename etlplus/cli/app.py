@@ -280,13 +280,54 @@ def _infer_resource_type_or_exit(
 def _infer_resource_type_soft(
     value: str | None,
 ) -> str | None:
-    """Best-effort inference that tolerates inline payloads."""
+    """
+    Make a best-effort inference that tolerates inline payloads.
+
+    Parameters
+    ----------
+    value : str | None
+        CLI value describing a source/target.
+
+    Returns
+    -------
+    str | None
+        Inferred resource type, or ``None`` if inference failed.
+    """
     if value is None:
         return None
     try:
         return _infer_resource_type(value)
     except ValueError:
         return None
+
+
+def _log_inferred_resource(
+    state: CliState,
+    *,
+    role: str,
+    value: str,
+    resource_type: str | None,
+) -> None:
+    """
+    Emit a uniform verbose message for inferred resource types.
+
+    Parameters
+    ----------
+    state : CliState
+        Current CLI state stored on the Typer context.
+    role : str
+        Friendly label for the resource (e.g., ``source`` or ``target``).
+    value : str
+        Resource value provided on the CLI.
+    resource_type : str | None
+        Inferred resource type or ``None`` if not inferred.
+    """
+    if not state.verbose or resource_type is None:
+        return
+    print(
+        f'Inferred {role}_type={resource_type} for {role}={value}',
+        file=sys.stderr,
+    )
 
 
 def _ns(
@@ -335,6 +376,49 @@ def _optional_choice(
     return _validate_choice(value, choices, label=label)
 
 
+def _parse_positional_resource(
+    args: list[str],
+    *,
+    subject: str,
+    subject_type_label: str,
+    error_hint: str | None = None,
+) -> tuple[str | None, str]:
+    """
+    Return the explicit resource type (if any) and value.
+
+    Parameters
+    ----------
+    args : list[str]
+        Positional arguments provided to the command.
+    subject : str
+        Friendly label for the resource (e.g., ``SOURCE`` or ``TARGET``).
+    subject_type_label : str
+        Friendly label for the resource type (e.g., ``SOURCE_TYPE`` or
+        ``TARGET_TYPE``).
+    error_hint : str | None
+        Optional hint to include in the error message.
+
+    Returns
+    -------
+    tuple[str | None, str]
+        Explicit resource type (if any) and resource value.
+
+    Raises
+    ------
+    typer.BadParameter
+        If the arguments are invalid.
+    """
+    match args:
+        case [resource_type, resource_value]:
+            return resource_type, resource_value
+        case [resource_value]:
+            return None, resource_value
+    message = f'Provide {subject} or {subject_type_label} {subject}.'
+    if error_hint:
+        message = f'{message} {error_hint}'
+    raise typer.BadParameter(message)
+
+
 def _resolve_resource_type(
     *,
     explicit_type: str | None,
@@ -344,7 +428,37 @@ def _resolve_resource_type(
     conflict_error: str | None = None,
     legacy_file_error: str | None = None,
 ) -> str:
-    """Resolve resource type preference order and validate it."""
+    """
+    Resolve resource type preference order and validate it.
+
+    Parameters
+    ----------
+    explicit_type : str | None
+        Explicit resource type provided by the user.
+    override_type : str | None
+        Resource type provided by an overriding option.
+    value : str
+        Resource value to infer type from if no explicit or override type is
+        given.
+    label : str
+        Friendly label for error messages.
+    conflict_error : str | None
+        Error message to raise if there is a conflict between explicit and
+        override types.
+    legacy_file_error : str | None
+        Error message to raise if the explicit type is a legacy 'file' type.
+
+    Returns
+    -------
+    str
+        Resolved and validated resource type.
+
+    Raises
+    ------
+    typer.BadParameter
+        If there is a conflict between explicit and override types, or if the
+        explicit type is a legacy 'file' type.
+    """
     if explicit_type is not None:
         if override_type is not None and conflict_error:
             raise typer.BadParameter(conflict_error)
@@ -362,7 +476,8 @@ def _stateful_namespace(
     command: str,
     **kwargs: object,
 ) -> argparse.Namespace:
-    """Attach CLI state toggles to a handler namespace.
+    """
+    Attach CLI state toggles to a handler namespace.
 
     Parameters
     ----------
@@ -586,19 +701,11 @@ def extract_cmd(
         label='format',
     )
 
-    positional_source_type: str | None
-    resolved_source: str
-
-    # Parse positional args.
-    match args:
-        case [source_type_raw, source_value]:
-            positional_source_type = source_type_raw
-            resolved_source = source_value
-        case [source_value]:
-            positional_source_type = None
-            resolved_source = source_value
-        case _:
-            raise typer.BadParameter('Provide SOURCE or SOURCE_TYPE SOURCE.')
+    positional_source_type, resolved_source = _parse_positional_resource(
+        args,
+        subject='SOURCE',
+        subject_type_label='SOURCE_TYPE',
+    )
 
     source_type = _resolve_resource_type(
         explicit_type=positional_source_type,
@@ -614,11 +721,12 @@ def extract_cmd(
         ),
     )
 
-    if state.verbose:
-        print(
-            f'Inferred source_type={source_type} for source={resolved_source}',
-            file=sys.stderr,
-        )
+    _log_inferred_resource(
+        state,
+        role='source',
+        value=resolved_source,
+        resource_type=source_type,
+    )
 
     format_kwargs = _format_namespace_kwargs(
         strict=strict_format,
@@ -774,24 +882,15 @@ def load_cmd(
         label='format',
     )
 
-    positional_target_type: str | None
-    resolved_source = '-'
-    resolved_source_type: str | None
-    resolved_target: str
-
-    # Parse positional args.
-    match args:
-        case [target_type_raw, target_value]:
-            positional_target_type = target_type_raw
-            resolved_target = target_value
-        case [target_value]:
-            positional_target_type = None
-            resolved_target = target_value
-        case _:
-            raise typer.BadParameter(
-                'Provide TARGET or TARGET_TYPE TARGET. Pipe source data into '
-                'stdin (e.g., "cat input.json | etlplus load out.json").',
-            )
+    positional_target_type, resolved_target = _parse_positional_resource(
+        args,
+        subject='TARGET',
+        subject_type_label='TARGET_TYPE',
+        error_hint=(
+            'Pipe source data into stdin (for example, "cat input.json | '
+            'etlplus load out.json").'
+        ),
+    )
 
     target_type = _resolve_resource_type(
         explicit_type=positional_target_type,
@@ -807,19 +906,21 @@ def load_cmd(
         ),
     )
 
-    resolved_source_type = _infer_resource_type_soft(resolved_source)
+    stdin_source = '-'
+    stdin_source_type = _infer_resource_type_soft(stdin_source)
 
-    if state.verbose:
-        if resolved_source_type is not None:
-            print(
-                f'Inferred source_type={resolved_source_type} '
-                f'for source={resolved_source}',
-                file=sys.stderr,
-            )
-        print(
-            f'Inferred target_type={target_type} for target={resolved_target}',
-            file=sys.stderr,
-        )
+    _log_inferred_resource(
+        state,
+        role='source',
+        value=stdin_source,
+        resource_type=stdin_source_type,
+    )
+    _log_inferred_resource(
+        state,
+        role='target',
+        value=resolved_target,
+        resource_type=target_type,
+    )
 
     format_kwargs = _format_namespace_kwargs(
         strict=strict_format,
@@ -829,7 +930,7 @@ def load_cmd(
     ns = _stateful_namespace(
         state,
         command='load',
-        source=resolved_source,
+        source=stdin_source,
         target_type=target_type,
         target=resolved_target,
         **format_kwargs,
@@ -1083,19 +1184,18 @@ def transform_cmd(
             'Could not infer target type. Use --to to specify it.',
         ) from exc
 
-    if state.verbose:
-        if resolved_source_type:
-            print(
-                f'Inferred source_type={resolved_source_type} '
-                f'for source={source}',
-                file=sys.stderr,
-            )
-        if resolved_target_type:
-            print(
-                f'Inferred target_type={resolved_target_type} '
-                f'for target={resolved_target}',
-                file=sys.stderr,
-            )
+    _log_inferred_resource(
+        state,
+        role='source',
+        value=source,
+        resource_type=resolved_source_type,
+    )
+    _log_inferred_resource(
+        state,
+        role='target',
+        value=resolved_target,
+        resource_type=resolved_target_type,
+    )
 
     ns = _stateful_namespace(
         state,
@@ -1133,9 +1233,9 @@ def validate_cmd(
         '--output',
         help='Output file to save validated data (JSON). Use - for stdout.',
     ),
-    input_format: str | None = typer.Option(
+    source_format: str | None = typer.Option(
         None,
-        '--input-format',
+        '--source-format',
         help='Input payload format for stdin (json or csv).',
     ),
 ) -> int:
@@ -1152,7 +1252,7 @@ def validate_cmd(
         Validation rules as a JSON string.
     output : str | None
         Optional output path. Use ``-`` for stdout.
-    input_format : str | None
+    source_format : str | None
         Optional stdin format hint (json or csv).
 
     Returns
@@ -1160,10 +1260,10 @@ def validate_cmd(
     int
         Zero on success.
     """
-    input_format = _optional_choice(
-        input_format,
+    source_format = _optional_choice(
+        source_format,
         _FORMAT_CHOICES,
-        label='input_format',
+        label='source_format',
     )
 
     state = _ensure_state(ctx)
@@ -1174,6 +1274,6 @@ def validate_cmd(
         source=source,
         rules=json_type(rules),
         output=output,
-        input_format=input_format,
+        source_format=source_format,
     )
     return int(cmd_validate(ns))
