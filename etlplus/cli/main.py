@@ -248,17 +248,16 @@ def create_parser() -> argparse.ArgumentParser:
         help='Override the inferred target type (file, database, api).',
     )
     transform_parser.add_argument(
-        '--input-format',
+        '--source-format',
         choices=list(FileFormat.choices()),
-        dest='input_format',
+        dest='source_format',
         help=(
             'Input payload format when SOURCE is - or a literal payload. '
             'File sources infer format from the extension.'
         ),
     )
     transform_parser.add_argument(
-        '--output-format',
-        '--format',
+        '--target-format',
         dest='target_format',
         choices=list(FileFormat.choices()),
         help=(
