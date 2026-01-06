@@ -798,7 +798,7 @@ class TestCliHandlersCommands:
             source='data.csv',
             rules=['schema'],
             source_format=None,
-            output='result.json',
+            target='result.json',
             pretty=True,
         )
         monkeypatch.setattr(
