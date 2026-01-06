@@ -513,7 +513,7 @@ def cmd_transform(
         text = _read_stdin_text()
         payload = _parse_text_payload(
             text,
-            getattr(args, 'input_format', None),
+            getattr(args, 'source_format', None),
         )
     else:
         payload = _materialize_csv_payload(args.source)
@@ -566,7 +566,7 @@ def cmd_load(
             str | dict[str, Any] | list[dict[str, Any]],
             _parse_text_payload(
                 text,
-                getattr(args, 'input_format', None),
+                getattr(args, 'source_format', None),
             ),
         )
     else:
