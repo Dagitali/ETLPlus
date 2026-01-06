@@ -68,6 +68,28 @@ class _FormatAction(argparse.Action):
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _add_config_option(
+    parser: argparse.ArgumentParser,
+    *,
+    required: bool = True,
+) -> None:
+    """Attach the shared ``--config`` option used by legacy commands.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser receiving the option.
+    required : bool, optional
+        Whether the flag must be provided. Defaults to ``True``.
+    """
+
+    parser.add_argument(
+        '--config',
+        required=required,
+        help='Path to pipeline YAML configuration file',
+    )
+
+
 def _add_format_options(
     parser: argparse.ArgumentParser,
     *,
@@ -104,6 +126,32 @@ def _add_format_options(
             f'Format of the {context}. Overrides filename-based inference '
             'when provided.'
         ),
+    )
+
+
+def _add_boolean_flag(
+    parser: argparse.ArgumentParser,
+    *,
+    name: str,
+    help_text: str,
+) -> None:
+    """Add a toggle that also supports the ``--no-`` prefix via 3.13.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser receiving the flag.
+    name : str
+        Primary flag name without leading dashes.
+    help_text : str
+        Help text rendered in ``--help`` output.
+    """
+
+    parser.add_argument(
+        f'--{name}',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=help_text,
     )
 
 
@@ -171,6 +219,7 @@ def create_parser() -> argparse.ArgumentParser:
         dest='command',
         help='Available commands',
     )
+    subparsers.required = True
 
     extract_parser = subparsers.add_parser(
         'extract',
@@ -289,11 +338,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    pipe_parser.add_argument(
-        '--config',
-        required=True,
-        help='Path to pipeline YAML configuration file',
-    )
+    _add_config_option(pipe_parser)
     pipe_parser.add_argument(
         '--list',
         action='store_true',
@@ -311,30 +356,26 @@ def create_parser() -> argparse.ArgumentParser:
         help='List ETL pipeline metadata',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    list_parser.add_argument(
-        '--config',
-        required=True,
-        help='Path to pipeline YAML configuration file',
+    _add_config_option(list_parser)
+    _add_boolean_flag(
+        list_parser,
+        name='pipelines',
+        help_text='List ETL pipelines',
     )
-    list_parser.add_argument(
-        '--pipelines',
-        action='store_true',
-        help='List ETL pipelines',
+    _add_boolean_flag(
+        list_parser,
+        name='sources',
+        help_text='List data sources',
     )
-    list_parser.add_argument(
-        '--sources',
-        action='store_true',
-        help='List data sources',
+    _add_boolean_flag(
+        list_parser,
+        name='targets',
+        help_text='List data targets',
     )
-    list_parser.add_argument(
-        '--targets',
-        action='store_true',
-        help='List data targets',
-    )
-    list_parser.add_argument(
-        '--transforms',
-        action='store_true',
-        help='List data transforms',
+    _add_boolean_flag(
+        list_parser,
+        name='transforms',
+        help_text='List data transforms',
     )
     list_parser.set_defaults(func=cmd_list)
 
@@ -346,11 +387,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    run_parser.add_argument(
-        '--config',
-        required=True,
-        help='Path to pipeline YAML configuration file',
-    )
+    _add_config_option(run_parser)
     run_parser.add_argument(
         '-j',
         '--job',
