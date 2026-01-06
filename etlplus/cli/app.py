@@ -1036,12 +1036,12 @@ def run_cmd(
 def transform_cmd(
     ctx: typer.Context,
     source: StreamingSourceArg = '-',
-    operations: OperationsJSONOption = '{}',
     source_type: SourceOverrideOption | None = None,
     source_format: SourceFormatOption | None = None,
     target: TargetPathOption | None = None,
     target_type: TargetOverrideOption | None = None,
     target_format: TargetFormatOption | None = None,
+    operations: OperationsJSONOption = '{}',
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -1052,8 +1052,6 @@ def transform_cmd(
         Typer execution context provided to the command.
     source : StreamingSourceArg, optional
         Data source (file path or ``-`` for stdin).
-    operations : OperationsJSONOption, optional
-        Transformation operations as a JSON string.
     source_type : SourceOverrideOption | None, optional
         Override the inferred source type.
     source_format : SourceFormatOption | None, optional
@@ -1065,6 +1063,8 @@ def transform_cmd(
     target_format : TargetFormatOption | None, optional
         Output payload format when not a file target (or when OUTPUT is -).
         Accepts ``--target-format``.
+    operations : OperationsJSONOption, optional
+        Transformation operations as a JSON string.
 
     Returns
     -------
@@ -1173,10 +1173,10 @@ def transform_cmd(
 def validate_cmd(
     ctx: typer.Context,
     source: StreamingSourceArg = '-',
-    rules: RulesJSONOption = '{}',
     source_type: SourceOverrideOption | None = None,
     source_format: SourceFormatOption | None = None,
     target: TargetPathOption | None = None,
+    rules: RulesJSONOption = '{}',
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -1187,14 +1187,14 @@ def validate_cmd(
         Typer execution context provided to the command.
     source : StreamingSourceArg, optional
         Data source (file path or ``-`` for stdin).
-    rules : RulesJSONOption, optional
-        Validation rules as a JSON string.
     source_type : SourceOverrideOption | None, optional
         Override the inferred source type when heuristics fail.
     source_format : SourceFormatOption | None, optional
         Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
     target : TargetPathOption | None, optional
         Optional output path. Use ``-`` for stdout.
+    rules : RulesJSONOption, optional
+        Validation rules as a JSON string.
 
     Returns
     -------
