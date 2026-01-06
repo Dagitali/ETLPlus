@@ -552,17 +552,20 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.rules, dict)
         assert ns.rules.get('required') == ['id']
 
-    def test_validate_respects_input_format(
+    def test_validate_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
     ) -> None:
-        """`validate --input-format csv` sanitizes into a handler namespace."""
+        """
+        Test that command ``validate --source-format csv`` sanitizes into a
+        handler namespace.
+        """
 
         captured, cmd = capture_cmd('cmd_validate')
         result = runner.invoke(
             cli_app,
-            ['validate', '--input-format', 'csv'],
+            ['validate', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -570,7 +573,7 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.input_format == 'csv'
+        assert ns.source_format == 'csv'
 
     def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """Test that command option ``--version`` exits successfully."""
