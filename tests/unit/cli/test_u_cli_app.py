@@ -326,7 +326,7 @@ class TestTyperCliAppWiring:
             cli_app,
             [
                 'load',
-                '--format',
+                '--target-format',
                 'csv',
                 '/path/to/out.csv',
             ],
