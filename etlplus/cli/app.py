@@ -804,6 +804,14 @@ def list_cmd(
 def load_cmd(
     ctx: typer.Context,
     args: list[str] = LOAD_ARGS,
+    source_format: str | None = typer.Option(
+        None,
+        '--source-format',
+        help=(
+            'Input payload format when reading from stdin. '
+            'JSON is assumed when omitted.'
+        ),
+    ),
     to: str | None = typer.Option(
         None,
         '--to',
@@ -836,6 +844,8 @@ def load_cmd(
     args : list[str]
         Positional arguments: either TARGET, or TARGET_TYPE TARGET. Source
         data must be piped into stdin.
+    source_format : str | None
+        Hint for parsing stdin payloads (json or csv).
     to : str | None
         Override the inferred target type.
     strict_format : bool
@@ -867,14 +877,20 @@ def load_cmd(
     Notes
     -----
     - The ``load`` command reads JSON from stdin.
-    - CSV input is unsupported for this command.
-    - Convert upstream before piping into ``load``.
+    - CSV input is unsupported unless ``--source-format csv`` is provided.
+    - Convert upstream before piping into ``load`` when working with other
+        formats.
     """
     if len(args) not in (1, 2):
         raise typer.BadParameter('Provide TARGET, or TARGET_TYPE TARGET.')
 
     state = _ensure_state(ctx)
 
+    source_format = _optional_choice(
+        source_format,
+        _FORMAT_CHOICES,
+        label='source_format',
+    )
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
     target_format = _optional_choice(
         target_format,
@@ -906,14 +922,14 @@ def load_cmd(
         ),
     )
 
-    stdin_source = '-'
-    stdin_source_type = _infer_resource_type_soft(stdin_source)
+    resolved_source = '-'
+    resolved_source_type = _infer_resource_type_soft(resolved_source)
 
     _log_inferred_resource(
         state,
         role='source',
-        value=stdin_source,
-        resource_type=stdin_source_type,
+        value=resolved_source,
+        resource_type=resolved_source_type,
     )
     _log_inferred_resource(
         state,
@@ -930,7 +946,8 @@ def load_cmd(
     ns = _stateful_namespace(
         state,
         command='load',
-        source=stdin_source,
+        source=resolved_source,
+        source_format=source_format,
         target_type=target_type,
         target=resolved_target,
         **format_kwargs,
