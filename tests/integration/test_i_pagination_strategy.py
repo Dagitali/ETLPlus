@@ -194,6 +194,49 @@ class PaginationEdgeCase:
     expect: dict[str, Any]
 
 
+def _run_pipeline_and_collect(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    out_path: Path,
+    pipeline_cli_runner: Callable[..., str],
+    pipeline_yaml: str,
+    job_name: str,
+    extract_func: Callable[..., Any],
+) -> list[dict[str, Any]]:
+    """Run the CLI pipeline and return parsed output rows.
+
+    Parameters
+    ----------
+    capsys : pytest.CaptureFixture[str]
+        Pytest capture fixture for CLI stdout.
+    out_path : Path
+        File path where the pipeline writes JSON results.
+    pipeline_cli_runner : Callable[..., str]
+        Helper that writes the YAML to disk and invokes the CLI.
+    pipeline_yaml : str
+        YAML configuration to execute.
+    job_name : str
+        Job name passed to the CLI ``--job`` flag.
+    extract_func : Callable[..., Any]
+        Fake API extractor used to satisfy HTTP calls.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Parsed JSON rows written by the pipeline run.
+    """
+
+    pipeline_cli_runner(
+        yaml_text=pipeline_yaml,
+        run_name=job_name,
+        extract_func=extract_func,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload.get('status') == 'ok'
+    return json.loads(out_path.read_text(encoding='utf-8'))
+
+
 def _write_pipeline(
     tmp_path: Path,
     yaml_text: str,
@@ -216,49 +259,6 @@ def _write_pipeline(
     p = tmp_path / 'pipeline.yml'
     p.write_text(yaml_text, encoding='utf-8')
     return str(p)
-
-
-def _run_pipeline_and_collect(
-    *,
-    capsys: pytest.CaptureFixture[str],
-    out_path: Path,
-    pipeline_cli_runner: Callable[..., str],
-    pipeline_yaml: str,
-    run_name: str,
-    extract_func: Callable[..., Any],
-) -> list[dict[str, Any]]:
-    """Run the CLI pipeline and return parsed output rows.
-
-    Parameters
-    ----------
-    capsys : pytest.CaptureFixture[str]
-        Pytest capture fixture for CLI stdout.
-    out_path : Path
-        File path where the pipeline writes JSON results.
-    pipeline_cli_runner : Callable[..., str]
-        Helper that writes the YAML to disk and invokes the CLI.
-    pipeline_yaml : str
-        YAML configuration to execute.
-    run_name : str
-        Job name passed to the CLI ``--run`` flag.
-    extract_func : Callable[..., Any]
-        Fake API extractor used to satisfy HTTP calls.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Parsed JSON rows written by the pipeline run.
-    """
-
-    pipeline_cli_runner(
-        yaml_text=pipeline_yaml,
-        run_name=run_name,
-        extract_func=extract_func,
-    )
-
-    payload = json.loads(capsys.readouterr().out)
-    assert payload.get('status') == 'ok'
-    return json.loads(out_path.read_text(encoding='utf-8'))
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -317,7 +317,7 @@ def pipeline_cli_runner_fixture(
         monkeypatch.setattr(
             sys,
             'argv',
-            ['etlplus', 'pipeline', '--config', cfg_path, '--run', run_name],
+            ['etlplus', 'pipeline', '--config', cfg_path, '--job', run_name],
         )
         rc = main()
         assert rc == 0
@@ -401,7 +401,7 @@ class TestPaginationStrategies:
             out_path=out_path,
             pipeline_cli_runner=pipeline_cli_runner,
             pipeline_yaml=pipeline_yaml,
-            run_name=f'job_{scenario.name}',
+            job_name=f'job_{scenario.name}',
             extract_func=fake_extract,
         )
         assert [r['id'] for r in data] == scenario.expected_ids
@@ -470,7 +470,7 @@ class TestPaginationStrategies:
             out_path=out_path,
             pipeline_cli_runner=pipeline_cli_runner,
             pipeline_yaml=pipeline_yaml,
-            run_name=job_name,
+            job_name=job_name,
             extract_func=fake_extract,
         )
         assert [r['id'] for r in data] == scenario.expected_ids

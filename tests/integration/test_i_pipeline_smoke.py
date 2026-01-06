@@ -88,7 +88,7 @@ class TestPipelineSmoke:
                 'pipeline',
                 '--config',
                 str(cfg_path),
-                '--run',
+                '--job',
                 'file_to_file_smoke',
             ),
         )

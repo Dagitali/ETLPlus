@@ -21,11 +21,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-import typer
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.conftest import CliRunner
     from tests.conftest import JsonFactory
 
 
@@ -41,117 +39,59 @@ pytestmark = pytest.mark.integration
 class TestCliEndToEnd:
     """Integration test suite for :mod:`etlplus.cli`."""
 
-    @pytest.mark.parametrize(
-        ('extra_flags', 'expected_code', 'expected_message'),
-        [
-            pytest.param(
-                ['--strict-format'],
-                1,
-                'Error:',
-                id='strict-errors',
-            ),
-            pytest.param(
-                [],
-                0,
-                'Warning:',
-                id='warns-default',
-            ),
-        ],
-    )
-    def test_extract_format_feedback(
+    def test_extract_source_format_override(
         self,
-        json_file_factory: JsonFactory,
+        tmp_path: Path,
         cli_invoke: CliInvoke,
-        extra_flags: list[str],
-        expected_code: int,
-        expected_message: str,
     ) -> None:
-        """Verify ``extract`` error/warning flow with optional strict flag."""
-        source = json_file_factory({'x': 1}, filename='payload.json')
-        args: list[str] = [
-            'extract',
-            str(source),
-            '--source-format',
-            'json',
-            *extra_flags,
-        ]
-        code, _out, err = cli_invoke(args)
-        assert code == expected_code
-        assert expected_message in err
+        """Explicit ``--source-format`` overrides file extension inference."""
+        source = tmp_path / 'records.txt'
+        source.write_text('a,b\n1,2\n')
+        code, out, err = cli_invoke(
+            ('extract', str(source), '--source-format', 'csv'),
+        )
+        assert code == 0
+        assert err.strip() == ''
+        payload = json.loads(out)
+        assert payload[0] == {'a': '1', 'b': '2'}
 
-    @pytest.mark.parametrize(
-        (
-            'extra_flags',
-            'expected_code',
-            'expected_message',
-            'expect_output',
-        ),
-        [
-            pytest.param(
-                ['--strict-format'],
-                1,
-                'Error:',
-                False,
-                id='strict-errors',
-            ),
-            pytest.param(
-                [],
-                0,
-                'Warning:',
-                True,
-                id='warns-default',
-            ),
-        ],
-    )
-    def test_load_format_feedback(
+    def test_load_target_format_override(
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
         monkeypatch: pytest.MonkeyPatch,
-        extra_flags: list[str],
-        expected_code: int,
-        expected_message: str,
-        expect_output: bool,
     ) -> None:
-        """
-        Validate ``load`` warnings/errors and resulting output file state.
-        """
-        output_path = tmp_path / 'output.csv'
+        """``--target-format`` controls how file targets are written."""
+        output_path = tmp_path / 'output.bin'
         monkeypatch.setattr(
             sys,
             'stdin',
-            io.StringIO('{"name": "John"}'),
+            io.StringIO('[{"name": "John"}]'),
         )
-        args: list[str] = [
-            'load',
-            str(output_path),
-            '--target-format',
-            'csv',
-            *extra_flags,
-        ]
-        code, _out, err = cli_invoke(args)
-        assert code == expected_code
-        assert expected_message in err
-        assert output_path.exists() is expect_output
+        code, _out, err = cli_invoke(
+            ('load', str(output_path), '--target-format', 'csv'),
+        )
+        assert code == 0
+        assert err.strip() == ''
+        contents = output_path.read_text().splitlines()
+        assert contents[0] == 'name'
+        assert contents[1] == 'John'
 
-    def test_load_target_type_conflict(
+    def test_validate_source_format_override(
         self,
         tmp_path: Path,
-        cli_runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        cli_invoke: CliInvoke,
     ) -> None:
-        """Explicit TARGET_TYPE conflicts with ``--to`` override."""
-        output_path = tmp_path / 'conflict.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "Ana"}'),
+        """``validate`` accepts CSV files lacking extensions via flag."""
+        source = tmp_path / 'dataset.data'
+        source.write_text('id,val\n1,2\n')
+        code, out, err = cli_invoke(
+            ('validate', str(source), '--source-format', 'csv'),
         )
-        with pytest.raises(typer.BadParameter) as excinfo:
-            cli_runner(('load', 'file', str(output_path), '--to', 'api'))
-        assert 'Do not combine --to with an explicit TARGET_TYPE.' in str(
-            excinfo.value,
-        )
+        assert code == 0
+        assert err.strip() == ''
+        payload = json.loads(out)
+        assert payload['valid'] is True
 
     def test_main_extract_file(
         self,
@@ -175,23 +115,6 @@ class TestCliEndToEnd:
         )
         assert code == 1
         assert 'Error:' in err
-
-    def test_main_load_explicit_target_type(
-        self,
-        tmp_path: Path,
-        cli_runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Ensure positional TARGET_TYPE raises a helpful error."""
-        output_path = tmp_path / 'explicit.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "Jane"}'),
-        )
-        with pytest.raises(typer.BadParameter) as excinfo:
-            cli_runner(('load', 'file', str(output_path)))
-        assert 'Legacy form' in str(excinfo.value)
 
     def test_main_load_file(
         self,
@@ -219,25 +142,6 @@ class TestCliEndToEnd:
         code, out, _err = cli_invoke()
         assert code == 0
         assert 'usage:' in out.lower()
-
-    def test_main_strict_format_error(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """
-        Test ``extract`` with ``--strict-format`` rejects mismatched args.
-        """
-        code, _out, err = cli_invoke(
-            (
-                'extract',
-                'data.csv',
-                '--source-format',
-                'csv',
-                '--strict-format',
-            ),
-        )
-        assert code == 1
-        assert 'Error:' in err
 
     def test_main_transform_data(
         self,

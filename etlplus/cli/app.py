@@ -28,13 +28,17 @@ Subcommands
 
 Notes
 -----
-- Use ``-`` to read from stdin and ``--output -`` (or ``load --to file -``) to
-    write to stdout.
+- Use ``-`` to read from stdin or to write to stdout.
 - Commands ``extract`` and ``transform`` support the command-line option
     ``--from`` to override inferred resource types.
 - Commands ``transform`` and ``load`` support the command-line option ``--to``
     to override inferred resource types.
 """
+
+# Pylint struggles with large CLI surfaces that legitimately require
+# numerous arguments in a single module.
+# pylint: disable=too-many-lines
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 
 from __future__ import annotations
 
@@ -43,6 +47,7 @@ import sys
 from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
 from typing import Final
 
 import typer
@@ -68,6 +73,19 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_DB_SCHEMES = (
+    'postgres://',
+    'postgresql://',
+    'mysql://',
+)
+
+_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
+_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -86,63 +104,159 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    etlplus extract in.csv | etlplus load --to file out.json',
         '    cat data.json | etlplus load --to api https://example.com/data',
         '',
-        '    Enforce error if --format is provided for files. Examples:',
+        '    Override format inference when extensions are misleading:',
         '',
-        '    etlplus extract in.csv --format csv --strict-format',
-        '    etlplus load out.csv --format csv --strict-format',
+        '    etlplus extract data.txt --source-format csv',
+        '    etlplus load payload.bin --target-format json',
     ],
 )
 
 CLI_EPILOG: Final[str] = '\n'.join(
     [
-        'Environment:',
-        (
-            '    ETLPLUS_FORMAT_BEHAVIOR controls behavior when '
-            '--format is provided for files.'
-        ),
-        '    Values:',
-        '        - error|fail|strict: treat as error',
-        '        - warn (default): print a warning',
-        '        - ignore|silent: no message',
-        '',
-        'Note:',
-        '    --strict-format overrides the environment behavior.',
+        'Tip:',
+        '    --source-format and --target-format override format inference '
+        'based on filename extensions when needed.',
     ],
 )
 
 PROJECT_URL: Final[str] = 'https://github.com/Dagitali/ETLPlus'
 
-EXTRACT_ARGS = typer.Argument(
-    ...,
-    metavar='[SOURCE_TYPE] SOURCE',
-    help=(
-        'Extract from a SOURCE. You may provide SOURCE_TYPE explicitly as '
-        'the first positional argument, or omit it and use --from or let '
-        'etlplus infer it from the SOURCE.'
+
+# SECTION: TYPE ALIASES ==================================================== #
+
+
+SourceInputArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='SOURCE',
+        help=(
+            'Extract from SOURCE. Use --from/--source-type to override the '
+            'inferred connector when needed.'
+        ),
     ),
-)
-LOAD_ARGS = typer.Argument(
-    ...,
-    metavar='[TARGET_TYPE] TARGET',
-    help=(
-        'Load JSON data from stdin into a target. Provide TARGET only, or '
-        'prefix it with TARGET_TYPE to avoid --to. Source data must be piped '
-        'into stdin.'
+]
+
+StreamingSourceArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='SOURCE',
+        help=(
+            'Data source to transform or validate (path, JSON payload, or '
+            '- for stdin).'
+        ),
     ),
-)
+]
 
+TargetInputArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='TARGET',
+        help=(
+            'Load JSON data from stdin into TARGET. Use --to/--target-type '
+            'to override connector inference when needed. Source data must '
+            'be piped into stdin.'
+        ),
+    ),
+]
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+SourceOverrideOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-type',
+        metavar='CONNECTOR',
+        show_default=False,
+        rich_help_panel='I/O overrides',
+        help='Override the inferred source type (file, database, api).',
+    ),
+]
 
+TargetOverrideOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target-type',
+        metavar='CONNECTOR',
+        show_default=False,
+        rich_help_panel='I/O overrides',
+        help='Override the inferred target type (file, database, api).',
+    ),
+]
 
-_DB_SCHEMES = (
-    'postgres://',
-    'postgresql://',
-    'mysql://',
-)
+SourceFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help=(
+            'Input payload format when SOURCE is - or an inline payload. '
+            'File sources infer format from the extension.'
+        ),
+    ),
+]
 
-_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
-_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
+StdinFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help='Input payload format when reading from stdin (default: json).',
+    ),
+]
+
+TargetFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help=(
+            'Payload format when TARGET is - or a non-file connector. File '
+            'targets infer format from the extension.'
+        ),
+    ),
+]
+
+OperationsJSONOption = Annotated[
+    str,
+    typer.Option(
+        '--operations',
+        help='Transformation operations as JSON string.',
+    ),
+]
+
+RulesJSONOption = Annotated[
+    str,
+    typer.Option(
+        '--rules',
+        help='Validation rules as JSON string.',
+    ),
+]
+
+TargetPathOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target',
+        metavar='PATH',
+        help='Target file for transformed or validated output (- for stdout).',
+    ),
+]
+
+PipelineConfigOption = Annotated[
+    str,
+    typer.Option(
+        ...,
+        '--config',
+        metavar='PATH',
+        help='Path to pipeline YAML configuration file.',
+    ),
+]
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -183,7 +297,6 @@ def _ensure_state(
 
 def _format_namespace_kwargs(
     *,
-    strict: bool,
     format_value: str | None,
     default: str,
 ) -> dict[str, object]:
@@ -192,8 +305,6 @@ def _format_namespace_kwargs(
 
     Parameters
     ----------
-    strict : bool
-        Whether to enforce strict format behavior.
     format_value : str | None
         User-provided format value from the CLI option.
     default : str
@@ -205,7 +316,6 @@ def _format_namespace_kwargs(
         Keyword arguments for format-related namespace attributes.
     """
     return {
-        'strict_format': strict,
         'format': (format_value or default),
         '_format_explicit': (format_value is not None),
     }
@@ -235,12 +345,13 @@ def _infer_resource_type(
     val = (value or '').strip()
     low = val.lower()
 
-    if val == '-':
-        return 'file'
-    if low.startswith(('http://', 'https://')):
-        return 'api'
-    if low.startswith(_DB_SCHEMES):
-        return 'database'
+    match (val, low):
+        case ('-', _):
+            return 'file'
+        case (_, inferred) if inferred.startswith(('http://', 'https://')):
+            return 'api'
+        case (_, inferred) if inferred.startswith(_DB_SCHEMES):
+            return 'database'
 
     path = Path(val)
     if path.exists() or path.suffix:
@@ -374,49 +485,6 @@ def _optional_choice(
     if value is None:
         return None
     return _validate_choice(value, choices, label=label)
-
-
-def _parse_positional_resource(
-    args: list[str],
-    *,
-    subject: str,
-    subject_type_label: str,
-    error_hint: str | None = None,
-) -> tuple[str | None, str]:
-    """
-    Return the explicit resource type (if any) and value.
-
-    Parameters
-    ----------
-    args : list[str]
-        Positional arguments provided to the command.
-    subject : str
-        Friendly label for the resource (e.g., ``SOURCE`` or ``TARGET``).
-    subject_type_label : str
-        Friendly label for the resource type (e.g., ``SOURCE_TYPE`` or
-        ``TARGET_TYPE``).
-    error_hint : str | None
-        Optional hint to include in the error message.
-
-    Returns
-    -------
-    tuple[str | None, str]
-        Explicit resource type (if any) and resource value.
-
-    Raises
-    ------
-    typer.BadParameter
-        If the arguments are invalid.
-    """
-    match args:
-        case [resource_type, resource_value]:
-            return resource_type, resource_value
-        case [resource_value]:
-            return None, resource_value
-    message = f'Provide {subject} or {subject_type_label} {subject}.'
-    if error_hint:
-        message = f'{message} {error_hint}'
-    raise typer.BadParameter(message)
 
 
 def _resolve_resource_type(
@@ -617,28 +685,9 @@ def _root(
 @app.command('extract')
 def extract_cmd(
     ctx: typer.Context,
-    args: list[str] = EXTRACT_ARGS,
-    from_: str | None = typer.Option(
-        None,
-        '--from',
-        help='Override the inferred source type (file, database, api).',
-    ),
-    source_format: str | None = typer.Option(
-        None,
-        '--source-format',
-        help=(
-            'Payload format when not a file (or when SOURCE is -). '
-            'For normal file paths, format is inferred from extension.'
-        ),
-    ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --source-format for file sources as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
+    source: SourceInputArg,
+    source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -647,26 +696,17 @@ def extract_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    args : list[str]
-        Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE. The
-        legacy ``SOURCE_TYPE=file`` form is rejected; use ``--from file``
-        instead.
-    from_ : str | None
-        Override the inferred source type.
-    source_format : str | None
+    source : SourceInputArg
+        Data source (file path, URL, DSN, or ``-`` for stdin).
+    source_format : SourceFormatOption | None, optional
         Payload format when not a file.
-    strict_format : bool
-        Whether to enforce strict format behavior.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type.
 
     Returns
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    typer.BadParameter
-        If invalid parameters are provided.
 
     Examples
     --------
@@ -689,54 +729,39 @@ def extract_cmd(
     - CSV output is unsupported for this command.
     - Use shell redirection (``>``) or pipelines to persist the output.
     """
-    if len(args) not in (1, 2):
-        raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
-
     state = _ensure_state(ctx)
 
-    from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
+    source_type = _optional_choice(
+        source_type,
+        _SOURCE_CHOICES,
+        label='source_type',
+    )
     source_format = _optional_choice(
         source_format,
         _FORMAT_CHOICES,
         label='source_format',
     )
 
-    explicit_source_type, resolved_source = _parse_positional_resource(
-        args,
-        subject='SOURCE',
-        subject_type_label='SOURCE_TYPE',
-    )
-
-    source_type = _resolve_resource_type(
-        explicit_type=explicit_source_type,
-        override_type=from_,
-        value=resolved_source,
-        label='source_type',
-        conflict_error='Do not combine --from with an explicit SOURCE_TYPE.',
-        legacy_file_error=(
-            "Legacy form 'etlplus extract file SOURCE' is no longer "
-            'supported. Omit SOURCE_TYPE or pass --from file instead.'
-            if explicit_source_type is not None
-            else None
-        ),
+    resolved_source = source
+    resolved_source_type = source_type or _infer_resource_type_or_exit(
+        resolved_source,
     )
 
     _log_inferred_resource(
         state,
         role='source',
         value=resolved_source,
-        resource_type=source_type,
+        resource_type=resolved_source_type,
     )
 
     format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=source_format,
         default='json',
     )
     ns = _stateful_namespace(
         state,
         command='extract',
-        source_type=source_type,
+        source_type=resolved_source_type,
         source=resolved_source,
         **format_kwargs,
     )
@@ -746,20 +771,16 @@ def extract_cmd(
 @app.command('list')
 def list_cmd(
     ctx: typer.Context,
-    config: str = typer.Option(
-        ...,
-        '--config',
-        help='Path to pipeline YAML configuration file',
+    config: PipelineConfigOption,
+    jobs: bool = typer.Option(
+        False,
+        '--jobs',
+        help='List available job names and exit',
     ),
     pipelines: bool = typer.Option(
         False,
         '--pipelines',
         help='List ETL pipelines',
-    ),
-    jobs: bool = typer.Option(
-        False,
-        '--jobs',
-        help='List available job names and exit',
     ),
     sources: bool = typer.Option(False, '--sources', help='List data sources'),
     targets: bool = typer.Option(False, '--targets', help='List data targets'),
@@ -776,17 +797,17 @@ def list_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    config : str
+    config : PipelineConfigOption
         Path to pipeline YAML configuration file.
-    pipelines : bool
-        If True, list ETL pipelines.
-    jobs : bool
+    jobs : bool, optional
         If True, list available job names and exit.
-    sources : bool
+    pipelines : bool, optional
+        If True, list ETL pipelines.
+    sources : bool, optional
         If True, list data sources.
-    targets : bool
+    targets : bool, optional
         If True, list data targets.
-    transforms : bool
+    transforms : bool, optional
         If True, list data transforms.
 
     Returns
@@ -811,36 +832,10 @@ def list_cmd(
 @app.command('load')
 def load_cmd(
     ctx: typer.Context,
-    args: list[str] = LOAD_ARGS,
-    source_format: str | None = typer.Option(
-        None,
-        '--source-format',
-        help=(
-            'Input payload format when reading from stdin. '
-            'JSON is assumed when omitted.'
-        ),
-    ),
-    to: str | None = typer.Option(
-        None,
-        '--to',
-        help='Override the inferred target type (file, database, api).',
-    ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --format for file targets as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
-    target_format: str | None = typer.Option(
-        None,
-        '--target-format',
-        help=(
-            'Payload format when not a file (or when TARGET is -). '
-            'For normal file targets, format is inferred from extension.'
-        ),
-    ),
+    target: TargetInputArg,
+    source_format: StdinFormatOption | None = None,
+    target_format: TargetFormatOption | None = None,
+    target_type: TargetOverrideOption | None = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -849,27 +844,19 @@ def load_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    args : list[str]
-        Positional arguments: either TARGET, or TARGET_TYPE TARGET. Source
-        data must be piped into stdin.
-    source_format : str | None
+    target : TargetInputArg
+        Load destination (file path, URL/DSN, or ``-`` for stdout).
+    source_format : StdinFormatOption | None, optional
         Hint for parsing stdin payloads (json or csv).
-    to : str | None
+    target_format : TargetFormatOption | None, optional
+        Payload format when not a file target (or when TARGET is ``-``).
+    target_type : TargetOverrideOption | None, optional
         Override the inferred target type.
-    strict_format : bool
-        Whether to enforce strict format behavior.
-    target_format : str | None
-        Payload format when not a file.
 
     Returns
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    typer.BadParameter
-        If the arguments are invalid
 
     Examples
     --------
@@ -889,9 +876,6 @@ def load_cmd(
     - Convert upstream before piping into ``load`` when working with other
         formats.
     """
-    if len(args) not in (1, 2):
-        raise typer.BadParameter('Provide TARGET, or TARGET_TYPE TARGET.')
-
     state = _ensure_state(ctx)
 
     source_format = _optional_choice(
@@ -899,35 +883,20 @@ def load_cmd(
         _FORMAT_CHOICES,
         label='source_format',
     )
-    to = _optional_choice(to, _SOURCE_CHOICES, label='to')
+    target_type = _optional_choice(
+        target_type,
+        _SOURCE_CHOICES,
+        label='target_type',
+    )
     target_format = _optional_choice(
         target_format,
         _FORMAT_CHOICES,
-        label='format',
+        label='target_format',
     )
 
-    explicit_target_type, resolved_target = _parse_positional_resource(
-        args,
-        subject='TARGET',
-        subject_type_label='TARGET_TYPE',
-        error_hint=(
-            'Pipe source data into stdin (for example, "cat input.json | '
-            'etlplus load out.json").'
-        ),
-    )
-
-    resolved_target_type = _resolve_resource_type(
-        explicit_type=explicit_target_type,
-        override_type=to,
-        value=resolved_target,
-        label='target_type',
-        conflict_error='Do not combine --to with an explicit TARGET_TYPE.',
-        legacy_file_error=(
-            "Legacy form 'etlplus load file TARGET' is no longer "
-            'supported. Omit TARGET_TYPE or pass --to file instead.'
-            if explicit_target_type is not None
-            else None
-        ),
+    resolved_target = target
+    resolved_target_type = target_type or _infer_resource_type_or_exit(
+        resolved_target,
     )
 
     resolved_source_value = '-'
@@ -947,7 +916,6 @@ def load_cmd(
     )
 
     format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=target_format,
         default='json',
     )
@@ -966,21 +934,22 @@ def load_cmd(
 @app.command('pipeline')
 def pipeline_cmd(
     ctx: typer.Context,
-    config: str = typer.Option(
-        ...,
-        '--config',
-        help='Path to pipeline YAML configuration file',
-    ),
-    list_jobs: bool = typer.Option(
-        False,
-        '--list',
-        help='List available job names and exit',
-    ),
-    run_job: str | None = typer.Option(
+    config: PipelineConfigOption,
+    job: str | None = typer.Option(
         None,
-        '--run',
+        '--job',
         metavar='JOB',
         help='Run a specific job by name',
+    ),
+    jobs: bool = typer.Option(
+        False,
+        '--jobs',
+        help='List available job names and exit',
+    ),
+    pipeline: str | None = typer.Option(
+        None,
+        '--pipeline',
+        help='Run a specific pipeline by name',
     ),
 ) -> int:
     """
@@ -990,12 +959,14 @@ def pipeline_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    config : str
+    config : PipelineConfigOption
         Path to pipeline YAML configuration file.
-    list_jobs : bool
-        If True, list available job names and exit.
-    run_job : str | None
+    job : str | None, optional
         Name of a specific job to run.
+    jobs : bool, optional
+        If True, list available job names and exit.
+    pipeline : str | None, optional
+        Name of a specific pipeline to run.
 
     Returns
     -------
@@ -1003,12 +974,13 @@ def pipeline_cmd(
         Zero on success.
     """
     state = _ensure_state(ctx)
+    run_target = job or pipeline
     ns = _stateful_namespace(
         state,
         command='pipeline',
         config=config,
-        list=list_jobs,
-        run=run_job,
+        list=jobs,
+        run=run_target,
     )
     return int(cmd_pipeline(ns))
 
@@ -1016,11 +988,7 @@ def pipeline_cmd(
 @app.command('run')
 def run_cmd(
     ctx: typer.Context,
-    config: str = typer.Option(
-        ...,
-        '--config',
-        help='Path to pipeline YAML configuration file',
-    ),
+    config: PipelineConfigOption,
     job: str | None = typer.Option(
         None,
         '-j',
@@ -1041,11 +1009,11 @@ def run_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    config : str
+    config : PipelineConfigOption
         Path to pipeline YAML configuration file.
-    job : str | None
+    job : str | None, optional
         Name of the job to run.
-    pipeline : str | None
+    pipeline : str | None, optional
         Name of the pipeline to run.
 
     Returns
@@ -1067,62 +1035,13 @@ def run_cmd(
 @app.command('transform')
 def transform_cmd(
     ctx: typer.Context,
-    source: str = typer.Argument(
-        '-',
-        metavar='SOURCE',
-        help=(
-            'Data source to transform '
-            '(file path, JSON string, or - for stdin).'
-        ),
-    ),
-    from_: str | None = typer.Option(
-        None,
-        '--from',
-        help='Override the inferred source type (file, database, api).',
-    ),
-    source_format: str | None = typer.Option(
-        None,
-        '--source-format',
-        help=(
-            'Input payload format when SOURCE is - or a literal payload. '
-            'For files, the format is inferred from the extension.'
-        ),
-    ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --format for file targets as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
-    operations: str = typer.Option(
-        '{}',
-        '--operations',
-        help='Transformation operations as JSON string',
-    ),
-    target: str | None = typer.Option(
-        None,
-        '-o',
-        '--output',
-        '--target',
-        help='Output file to save transformed data (JSON). Use - for stdout.',
-    ),
-    to: str | None = typer.Option(
-        None,
-        '--to',
-        help='Override the inferred target type (file, database, api).',
-    ),
-    target_format: str | None = typer.Option(
-        None,
-        '--format',
-        '--target-format',
-        help=(
-            'Output payload format '
-            'when writing to stdout or non-file targets. '
-            'File outputs infer format from the extension.'
-        ),
-    ),
+    operations: OperationsJSONOption = '{}',
+    source: StreamingSourceArg = '-',
+    source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
+    target: TargetPathOption | None = None,
+    target_format: TargetFormatOption | None = None,
+    target_type: TargetOverrideOption | None = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -1131,24 +1050,21 @@ def transform_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    source : str
-        Data source (file path or ``-`` for stdin).
-    from_ : str | None
-        Override the inferred source type.
-    source_format : str | None
-        Input payload format when not a file (or when SOURCE is -).
-    strict_format : bool
-        Whether to enforce strict format behavior when ``--format`` is used
-        alongside file targets.
-    operations : str
+    operations : OperationsJSONOption, optional
         Transformation operations as a JSON string.
-    target : str | None
+    source : StreamingSourceArg, optional
+        Data source (file path or ``-`` for stdin).
+    source_format : SourceFormatOption | None, optional
+        Input payload format when not a file (or when SOURCE is -).
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type.
+    target : TargetPathOption | None, optional
         Optional output path. Use ``-`` for stdout.
-    to : str | None
-        Override the inferred target type.
-    target_format : str | None
+    target_format : TargetFormatOption | None, optional
         Output payload format when not a file target (or when OUTPUT is -).
-        Accepts ``--format`` (preferred) or the legacy ``--target-format``.
+        Accepts ``--target-format``.
+    target_type : TargetOverrideOption | None, optional
+        Override the inferred target type.
 
     Returns
     -------
@@ -1187,20 +1103,27 @@ def transform_cmd(
         _FORMAT_CHOICES,
         label='source_format',
     )
+    source_type = _optional_choice(
+        source_type,
+        _SOURCE_CHOICES,
+        label='source_type',
+    )
     target_format = _optional_choice(
         target_format,
         _FORMAT_CHOICES,
-        label='format',
+        label='target_format',
     )
     target_format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=target_format,
         default='json',
     )
-    from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
-    to = _optional_choice(to, _SOURCE_CHOICES, label='to')
+    target_type = _optional_choice(
+        target_type,
+        _SOURCE_CHOICES,
+        label='target_type',
+    )
 
-    resolved_source_type = from_ or _infer_resource_type_soft(source)
+    resolved_source_type = source_type or _infer_resource_type_soft(source)
     resolved_source_value = source if source is not None else '-'
     resolved_target_value = target if target is not None else '-'
 
@@ -1213,7 +1136,7 @@ def transform_cmd(
 
     resolved_target_type = _resolve_resource_type(
         explicit_type=None,
-        override_type=to,
+        override_type=target_type,
         value=resolved_target_value,
         label='target_type',
     )
@@ -1249,40 +1172,11 @@ def transform_cmd(
 @app.command('validate')
 def validate_cmd(
     ctx: typer.Context,
-    source: str = typer.Argument(
-        '-',
-        metavar='SOURCE',
-        help=(
-            'Data source to validate (file path, JSON string, or - for stdin).'
-        ),
-    ),
-    rules: str = typer.Option(
-        '{}',
-        '--rules',
-        help='Validation rules as JSON string',
-    ),
-    output: str | None = typer.Option(
-        None,
-        '-o',
-        '--output',
-        help='Output file to save validated data (JSON). Use - for stdout.',
-    ),
-    source_format: str | None = typer.Option(
-        None,
-        '--source-format',
-        help=(
-            'Input payload format when SOURCE is - (JSON or CSV). '
-            'Files infer format from extensions.'
-        ),
-    ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --source-format for file sources as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
+    rules: RulesJSONOption = '{}',
+    source: StreamingSourceArg = '-',
+    source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
+    target: TargetPathOption | None = None,
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -1291,16 +1185,16 @@ def validate_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    source : str
-        Data source (file path or ``-`` for stdin).
-    rules : str
+    rules : RulesJSONOption, optional
         Validation rules as a JSON string.
-    output : str | None
-        Optional output path. Use ``-`` for stdout.
-    source_format : str | None
+    source : StreamingSourceArg, optional
+        Data source (file path or ``-`` for stdin).
+    source_format : SourceFormatOption | None, optional
         Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
-    strict_format : bool
-        Whether to enforce strict format behavior for file sources.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type when heuristics fail.
+    target : TargetPathOption | None, optional
+        Optional output path. Use ``-`` for stdout.
 
     Returns
     -------
@@ -1312,29 +1206,33 @@ def validate_cmd(
         _FORMAT_CHOICES,
         label='source_format',
     )
+    source_type = _optional_choice(
+        source_type,
+        _SOURCE_CHOICES,
+        label='source_type',
+    )
     source_format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=source_format,
         default='json',
     )
 
     state = _ensure_state(ctx)
-    inferred_source_type = _infer_resource_type_soft(source)
+    resolved_source_type = source_type or _infer_resource_type_soft(source)
 
     _log_inferred_resource(
         state,
         role='source',
         value=source,
-        resource_type=inferred_source_type,
+        resource_type=resolved_source_type,
     )
 
     ns = _stateful_namespace(
         state,
         command='validate',
         source=source,
-        source_type=inferred_source_type,
-        rules=json_type(rules),
-        output=output,
+        source_type=resolved_source_type,
+        rules=json_type(rules),  # convert CLI string to dict
+        target=target,
         source_format=source_format,
         **source_format_kwargs,
     )

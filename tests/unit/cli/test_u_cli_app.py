@@ -213,7 +213,7 @@ class TestTyperCliAppWiring:
                 '--no-pretty',
                 '--quiet',
                 'extract',
-                '--from',
+                '--source-type',
                 'api',
                 'https://example.com/data.json',
             ],
@@ -229,33 +229,6 @@ class TestTyperCliAppWiring:
         assert ns.pretty is False
         assert ns.quiet is True
         assert ns._format_explicit is False
-
-    def test_extract_legacy_file_source_type_is_rejected(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """Test that legacy `etlplus extract file SOURCE` form should error."""
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'file', 'input.csv'],
-        )
-        assert result.exit_code != 0
-        assert 'legacy form' in result.stderr.lower()
-
-    def test_extract_output_option_is_no_longer_supported(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that the ``--output`` command-line option is not a recognized
-        option anymore.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'input.csv', '--output', 'out.json'],
-        )
-        assert result.exit_code != 0
-        assert 'no such option' in result.stderr.lower()
 
     def test_list_maps_flags(
         self,
@@ -295,7 +268,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '--to', 'file', '/path/to/out.json'],
+            ['load', '--target-type', 'file', '/path/to/out.json'],
         )
 
         assert result.exit_code == 0
@@ -370,7 +343,12 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '--to', 'database', 'postgres://db.example.org/app'],
+            [
+                'load',
+                '--target-type',
+                'database',
+                'postgres://db.example.org/app',
+            ],
         )
 
         assert result.exit_code == 0
@@ -381,21 +359,6 @@ class TestTyperCliAppWiring:
         assert ns.source == '-'
         assert ns.target == 'postgres://db.example.org/app'
         assert ns.target_type == 'database'
-
-    def test_load_with_source_argument_is_rejected(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['load', 'in.json', 'out.json'],
-        )
-
-        assert result.exit_code != 0
-        assert 'invalid target_type' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
@@ -416,7 +379,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--list'],
+            ['pipeline', '--config', 'p.yml', '--jobs'],
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
@@ -438,7 +401,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_pipeline')
         result = runner.invoke(
             cli_app,
-            ['pipeline', '--config', 'p.yml', '--run', 'job-2'],
+            ['pipeline', '--config', 'p.yml', '--job', 'job-2'],
         )
 
         assert result.exit_code == 0
