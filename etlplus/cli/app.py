@@ -827,7 +827,7 @@ def load_cmd(
     ),
     target_format: str | None = typer.Option(
         None,
-        '--format',
+        '--target-format',
         help=(
             'Payload format when not a file (or when TARGET is -). '
             'For normal file targets, format is inferred from extension.'
@@ -922,13 +922,13 @@ def load_cmd(
         ),
     )
 
-    resolved_source = '-'
-    resolved_source_type = _infer_resource_type_soft(resolved_source)
+    resolved_source_value = '-'
+    resolved_source_type = _infer_resource_type_soft(resolved_source_value)
 
     _log_inferred_resource(
         state,
         role='source',
-        value=resolved_source,
+        value=resolved_source_value,
         resource_type=resolved_source_type,
     )
     _log_inferred_resource(
@@ -946,7 +946,7 @@ def load_cmd(
     ns = _stateful_namespace(
         state,
         command='load',
-        source=resolved_source,
+        source=resolved_source_value,
         source_format=source_format,
         target_type=target_type,
         target=resolved_target,
