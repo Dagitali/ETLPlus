@@ -85,28 +85,18 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    etlplus extract in.csv | etlplus load --to file out.json',
         '    cat data.json | etlplus load --to api https://example.com/data',
         '',
-        '    Enforce error if --source-format or --target-format is provided'
-        '    for files. Examples:',
+        '    Override format inference when extensions are misleading:',
         '',
-        '    etlplus extract in.csv --source-format csv --strict-format',
-        '    etlplus load out.csv --target-format csv --strict-format',
+        '    etlplus extract data.txt --source-format csv',
+        '    etlplus load payload.bin --target-format json',
     ],
 )
 
 CLI_EPILOG: Final[str] = '\n'.join(
     [
-        'Environment:',
-        (
-            '    ETLPLUS_FORMAT_BEHAVIOR controls behavior when '
-            '--source-format or --target-format is provided for files.'
-        ),
-        '    Values:',
-        '        - error|fail|strict: treat as error',
-        '        - warn (default): print a warning',
-        '        - ignore|silent: no message',
-        '',
-        'Note:',
-        '    --strict-format overrides the environment behavior.',
+        'Tip:',
+        '    --source-format and --target-format override format inference '
+        'based on filename extensions when needed.',
     ],
 )
 
@@ -183,7 +173,6 @@ def _ensure_state(
 
 def _format_namespace_kwargs(
     *,
-    strict: bool,
     format_value: str | None,
     default: str,
 ) -> dict[str, object]:
@@ -192,8 +181,6 @@ def _format_namespace_kwargs(
 
     Parameters
     ----------
-    strict : bool
-        Whether to enforce strict format behavior.
     format_value : str | None
         User-provided format value from the CLI option.
     default : str
@@ -205,7 +192,6 @@ def _format_namespace_kwargs(
         Keyword arguments for format-related namespace attributes.
     """
     return {
-        'strict_format': strict,
         'format': (format_value or default),
         '_format_explicit': (format_value is not None),
     }
@@ -631,14 +617,6 @@ def extract_cmd(
             'For normal file paths, format is inferred from extension.'
         ),
     ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --source-format for file sources as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -655,8 +633,6 @@ def extract_cmd(
         Override the inferred source type.
     source_format : str | None
         Payload format when not a file.
-    strict_format : bool
-        Whether to enforce strict format behavior.
 
     Returns
     -------
@@ -729,7 +705,6 @@ def extract_cmd(
     )
 
     format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=source_format,
         default='json',
     )
@@ -825,14 +800,6 @@ def load_cmd(
         '--to',
         help='Override the inferred target type (file, database, api).',
     ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --target-format for file targets as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
     target_format: str | None = typer.Option(
         None,
         '--target-format',
@@ -856,10 +823,8 @@ def load_cmd(
         Hint for parsing stdin payloads (json or csv).
     to : str | None
         Override the inferred target type.
-    strict_format : bool
-        Whether to enforce strict format behavior.
     target_format : str | None
-        Payload format when not a file.
+        Payload format when not a file target (or when TARGET is ``-``).
 
     Returns
     -------
@@ -947,7 +912,6 @@ def load_cmd(
     )
 
     format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=target_format,
         default='json',
     )
@@ -1088,14 +1052,6 @@ def transform_cmd(
             'For files, the format is inferred from the extension.'
         ),
     ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --source-format / --target-format for a file '
-            'source/target as an error (overrides environment behavior)'
-        ),
-    ),
     operations: str = typer.Option(
         '{}',
         '--operations',
@@ -1134,9 +1090,6 @@ def transform_cmd(
         Override the inferred source type.
     source_format : str | None
         Input payload format when not a file (or when SOURCE is -).
-    strict_format : bool
-        Whether to enforce strict format behavior when ``--target-format`` is
-        used longside file targets.
     operations : str
         Transformation operations as a JSON string.
     target : str | None
@@ -1190,7 +1143,6 @@ def transform_cmd(
         label='format',
     )
     target_format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=target_format,
         default='json',
     )
@@ -1271,14 +1223,6 @@ def validate_cmd(
             'Files infer format from extensions.'
         ),
     ),
-    strict_format: bool = typer.Option(
-        False,
-        '--strict-format',
-        help=(
-            'Treat providing --source-format for file sources as an error '
-            '(overrides environment behavior)'
-        ),
-    ),
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -1295,8 +1239,6 @@ def validate_cmd(
         Optional output path. Use ``-`` for stdout.
     source_format : str | None
         Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
-    strict_format : bool
-        Whether to enforce strict format behavior for file sources.
 
     Returns
     -------
@@ -1309,7 +1251,6 @@ def validate_cmd(
         label='source_format',
     )
     source_format_kwargs = _format_namespace_kwargs(
-        strict=strict_format,
         format_value=source_format,
         default='json',
     )
