@@ -916,7 +916,7 @@ def load_cmd(
         ),
     )
 
-    target_type = _resolve_resource_type(
+    resolved_target_type = _resolve_resource_type(
         explicit_type=explicit_target_type,
         override_type=to,
         value=resolved_target,
@@ -943,7 +943,7 @@ def load_cmd(
         state,
         role='target',
         value=resolved_target,
-        resource_type=target_type,
+        resource_type=resolved_target_type,
     )
 
     format_kwargs = _format_namespace_kwargs(
@@ -956,7 +956,7 @@ def load_cmd(
         command='load',
         source=resolved_source_value,
         source_format=source_format,
-        target_type=target_type,
+        target_type=resolved_target_type,
         target=resolved_target,
         **format_kwargs,
     )
@@ -971,7 +971,7 @@ def pipeline_cmd(
         '--config',
         help='Path to pipeline YAML configuration file',
     ),
-    list_: bool = typer.Option(
+    list_jobs: bool = typer.Option(
         False,
         '--list',
         help='List available job names and exit',
@@ -992,7 +992,7 @@ def pipeline_cmd(
         Typer execution context provided to the command.
     config : str
         Path to pipeline YAML configuration file.
-    list_ : bool
+    list_jobs : bool
         If True, list available job names and exit.
     run_job : str | None
         Name of a specific job to run.
@@ -1007,7 +1007,7 @@ def pipeline_cmd(
         state,
         command='pipeline',
         config=config,
-        list=list_,
+        list=list_jobs,
         run=run_job,
     )
     return int(cmd_pipeline(ns))
@@ -1155,11 +1155,6 @@ def transform_cmd(
     int
         Zero on success.
 
-    Raises
-    ------
-    typer.BadParameter
-        If invalid parameters are provided.
-
     Examples
     --------
     - Transform data from a file and write to another file:
@@ -1206,6 +1201,7 @@ def transform_cmd(
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
     resolved_source_type = from_ or _infer_resource_type_soft(source)
+    resolved_source_value = source if source is not None else '-'
     resolved_target_value = target if target is not None else '-'
 
     if resolved_source_type is not None:
@@ -1215,22 +1211,17 @@ def transform_cmd(
             label='source_type',
         )
 
-    try:
-        resolved_target_type = _resolve_resource_type(
-            explicit_type=None,
-            override_type=to,
-            value=resolved_target_value,
-            label='target_type',
-        )
-    except typer.BadParameter as exc:
-        raise typer.BadParameter(
-            'Could not infer target type. Use --to to specify it.',
-        ) from exc
+    resolved_target_type = _resolve_resource_type(
+        explicit_type=None,
+        override_type=to,
+        value=resolved_target_value,
+        label='target_type',
+    )
 
     _log_inferred_resource(
         state,
         role='source',
-        value=source,
+        value=resolved_source_value,
         resource_type=resolved_source_type,
     )
     _log_inferred_resource(
@@ -1243,11 +1234,10 @@ def transform_cmd(
     ns = _stateful_namespace(
         state,
         command='transform',
-        source=source,
+        source=resolved_source_value,
         source_type=resolved_source_type,
         operations=json_type(operations),
         target=resolved_target_value,
-        output=target,
         source_format=source_format,
         target_type=resolved_target_type,
         target_format=target_format_kwargs['format'],
