@@ -748,7 +748,7 @@ class TestCliHandlersCommands:
         args = argparse.Namespace(
             source='data.csv',
             rules=['schema'],
-            input_format=None,
+            source_format=None,
             output='result.json',
             pretty=True,
         )
