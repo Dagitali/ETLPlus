@@ -582,13 +582,19 @@ def cmd_pipeline(
     """
     cfg = load_pipeline_config(args.config, substitute=True)
 
-    if getattr(args, 'list', False) and not getattr(args, 'run', None):
+    list_flag = getattr(args, 'list', False) or getattr(args, 'jobs', False)
+    run_target = (
+        getattr(args, 'run', None)
+        or getattr(args, 'job', None)
+        or getattr(args, 'pipeline', None)
+    )
+
+    if list_flag and not run_target:
         print_json({'jobs': _pipeline_summary(cfg)['jobs']})
         return 0
 
-    run_job = getattr(args, 'run', None)
-    if run_job:
-        result = run(job=run_job, config_path=args.config)
+    if run_target:
+        result = run(job=run_target, config_path=args.config)
         print_json({'status': 'ok', 'result': result})
         return 0
 
