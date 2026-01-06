@@ -67,6 +67,19 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_DB_SCHEMES = (
+    'postgres://',
+    'postgresql://',
+    'mysql://',
+)
+
+_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
+_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -119,19 +132,6 @@ TARGET_ARG = typer.Argument(
         'piped into stdin.'
     ),
 )
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_DB_SCHEMES = (
-    'postgres://',
-    'postgresql://',
-    'mysql://',
-)
-
-_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
-_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
 
 
 # SECTION: DATA CLASSES ===================================================== #
