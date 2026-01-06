@@ -213,7 +213,7 @@ class TestTyperCliAppWiring:
                 '--no-pretty',
                 '--quiet',
                 'extract',
-                '--from',
+                '--source-type',
                 'api',
                 'https://example.com/data.json',
             ],
@@ -268,7 +268,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '--to', 'file', '/path/to/out.json'],
+            ['load', '--target-type', 'file', '/path/to/out.json'],
         )
 
         assert result.exit_code == 0
@@ -343,7 +343,12 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_load')
         result = runner.invoke(
             cli_app,
-            ['load', '--to', 'database', 'postgres://db.example.org/app'],
+            [
+                'load',
+                '--target-type',
+                'database',
+                'postgres://db.example.org/app',
+            ],
         )
 
         assert result.exit_code == 0
