@@ -557,17 +557,13 @@ def extract_cmd(
     --------
     - Extract from a file (type inferred):
         etlplus extract in.csv
-
     - Extract from a file (explicit via flag):
         etlplus extract --from file in.csv
-
     - Extract from an API:
         etlplus extract https://example.com/data.json
         etlplus extract --from api https://example.com/data.json
-
     - Extract from a database DSN:
         etlplus extract --from database postgresql://user:pass@host/db
-
     - Pipe into transform/load:
         etlplus extract in.csv \
         | etlplus transform --operations '{"select":["a"]}'
@@ -755,15 +751,10 @@ def load_cmd(
         etlplus extract in.csv \
         | etlplus transform --operations '{"select":["a"]}' \
         | etlplus load --to file out.json
-
     - Read from stdin and write to a file:
         etlplus load out.json
-
     - Write to stdout:
         etlplus load --to file -
-
-    - Avoid --to by specifying the target type positionally:
-        etlplus load file out.json
 
     Notes
     -----
@@ -783,18 +774,19 @@ def load_cmd(
         label='format',
     )
 
-    stdin_marker = '-'
-    inferred_source_type: str | None
     positional_target_type: str | None
+    resolved_source = '-'
+    resolved_source_type: str | None
+    resolved_target: str
 
     # Parse positional args.
     match args:
         case [target_type_raw, target_value]:
             positional_target_type = target_type_raw
-            target = target_value
+            resolved_target = target_value
         case [target_value]:
             positional_target_type = None
-            target = target_value
+            resolved_target = target_value
         case _:
             raise typer.BadParameter(
                 'Provide TARGET or TARGET_TYPE TARGET. Pipe source data into '
@@ -804,7 +796,7 @@ def load_cmd(
     target_type = _resolve_resource_type(
         explicit_type=positional_target_type,
         override_type=to,
-        value=target,
+        value=resolved_target,
         label='target_type',
         conflict_error='Do not combine --to with an explicit TARGET_TYPE.',
         legacy_file_error=(
@@ -815,17 +807,17 @@ def load_cmd(
         ),
     )
 
-    inferred_source_type = _infer_resource_type_soft(stdin_marker)
+    resolved_source_type = _infer_resource_type_soft(resolved_source)
 
     if state.verbose:
-        if inferred_source_type is not None:
+        if resolved_source_type is not None:
             print(
-                f'Inferred stdin_type={inferred_source_type} '
-                f'for stdin={stdin_marker}',
+                f'Inferred source_type={resolved_source_type} '
+                f'for source={resolved_source}',
                 file=sys.stderr,
             )
         print(
-            f'Inferred target_type={target_type} for target={target}',
+            f'Inferred target_type={target_type} for target={resolved_target}',
             file=sys.stderr,
         )
 
@@ -837,9 +829,9 @@ def load_cmd(
     ns = _stateful_namespace(
         state,
         command='load',
-        source=stdin_marker,
+        source=resolved_source,
         target_type=target_type,
-        target=target,
+        target=resolved_target,
         **format_kwargs,
     )
     return int(cmd_load(ns))
