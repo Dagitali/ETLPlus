@@ -332,7 +332,7 @@ class TestCliHandlersInternalHelpers:
         )
 
     def test_infer_payload_format(self) -> None:
-        """Test infering JSON vs CSV using the first significant byte."""
+        """Test inferring JSON vs CSV using the first significant byte."""
         # pylint: disable=protected-access
 
         assert handlers._infer_payload_format(' {"a":1}') == 'json'
@@ -512,13 +512,14 @@ class TestCliHandlersCommands:
             source_type='file',
             target_type='file',
             target='-',
-            input_format=None,
+            source_format=None,
             format=None,
             output=None,
             _format_explicit=False,
             strict_format=False,
             pretty=True,
             quiet=False,
+            emitted=None,
         )
         monkeypatch.setattr(handlers, '_handle_format_guard', lambda **_: None)
         monkeypatch.setattr(
@@ -550,7 +551,7 @@ class TestCliHandlersCommands:
             source_type='api',
             target_type='database',
             target='dest',
-            input_format='json',
+            source_format='json',
             format='csv',
             output=None,
             _format_explicit=True,
@@ -710,7 +711,7 @@ class TestCliHandlersCommands:
         args = argparse.Namespace(
             source='data.csv',
             operations=['clean'],
-            input_format=None,
+            source_format=None,
             output=None,
             pretty=False,
         )
