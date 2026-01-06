@@ -956,7 +956,6 @@ def transform_cmd(
     ),
     source_format: str | None = typer.Option(
         None,
-        '--input-format',
         '--source-format',
         help=(
             'Input payload format when SOURCE is - or a literal payload. '
@@ -982,8 +981,7 @@ def transform_cmd(
     ),
     target_format: str | None = typer.Option(
         None,
-        '--format',
-        '--output-format',
+        '--target-format',
         help=(
             'Output payload format '
             'when writing to stdout or non-file targets. '
@@ -1035,7 +1033,7 @@ def transform_cmd(
         --operations '{"filter": {"field": "age", "gt": 30}}'
     - Transform data from a file and write to stdout:
         etlplus transform --from file in.csv \
-        --input-format csv \
+        --source-format csv \
         --operations '{"select": ["id", "email"]}'
     - Transform data from stdin and write to a file:
         cat in.json \
