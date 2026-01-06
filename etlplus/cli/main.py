@@ -22,7 +22,6 @@ from ..enums import FileFormat
 from ..utils import json_type
 from .app import PROJECT_URL
 from .app import app
-from .handlers import FORMAT_ENV_KEY
 from .handlers import cmd_extract
 from .handlers import cmd_list
 from .handlers import cmd_load
@@ -87,22 +86,13 @@ def _add_format_options(
     """
     parser.set_defaults(_format_explicit=False)
     parser.add_argument(
-        '--strict-format',
-        action='store_true',
-        help=(
-            f'Treat providing --source-format or --target-format for file '
-            f'{context}s as an error (overrides environment behavior)'
-        ),
-    )
-    parser.add_argument(
         '--source-format',
         choices=list(FileFormat.choices()),
         default='json',
         action=_FormatAction,
         help=(
-            f'Format of the {context} when not a file. For file {context}s '
-            'this option is ignored and the format is inferred from the '
-            'filename extension.'
+            f'Format of the {context}. Overrides filename-based inference '
+            'when provided.'
         ),
     )
     parser.add_argument(
@@ -111,9 +101,8 @@ def _add_format_options(
         default='json',
         action=_FormatAction,
         help=(
-            f'Format of the {context} when not a file. For file {context}s '
-            'this option is ignored and the format is inferred from the '
-            'filename extension.'
+            f'Format of the {context}. Overrides filename-based inference '
+            'when provided.'
         ),
     )
 
@@ -133,33 +122,20 @@ def _cli_description() -> str:
             ),
             '    etlplus extract in.csv | etlplus load --to file out.json',
             '',
-            '    Enforce error if --source-format or --target-format is '
-            '    provided for files. Examples:',
+            '    Override format inference when extensions are misleading:',
             '',
-            '    etlplus extract in.csv --source-format csv --strict-format',
-            (
-                '    etlplus load file out.csv --target-format csv '
-                '--strict-format < data.json'
-            ),
+            '    etlplus extract data.txt --source-format csv',
+            '    etlplus load payload.bin --target-format json',
         ],
     )
 
 
-def _cli_epilog(format_env_key: str) -> str:
+def _cli_epilog() -> str:
     return '\n'.join(
         [
-            'Environment:',
-            (
-                f'    {format_env_key} controls behavior when '
-                '--source-format or --target-format is provided for files.'
-            ),
-            '    Values:',
-            '        - error|fail|strict: treat as error',
-            '        - warn (default): print a warning',
-            '        - ignore|silent: no message',
-            '',
-            'Note:',
-            '    --strict-format overrides the environment behavior.',
+            'Tip:',
+            '    --source-format and --target-format override format '
+            'inference based on filename extensions when needed.',
         ],
     )
 
@@ -180,7 +156,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='etlplus',
         description=_cli_description(),
-        epilog=_cli_epilog(FORMAT_ENV_KEY),
+        epilog=_cli_epilog(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

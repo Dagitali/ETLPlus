@@ -14,7 +14,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
-from typing import Literal
 from typing import cast
 
 from ..config import PipelineConfig
@@ -45,52 +44,7 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-# Standard output/error format behavior states
-_FORMAT_ERROR_STATES = {'error', 'fail', 'strict'}
-_FORMAT_SILENT_STATES = {'ignore', 'silent'}
-
-
-# SECTION: CONSTANTS ======================================================== #
-
-
-FORMAT_ENV_KEY = 'ETLPLUS_FORMAT_BEHAVIOR'
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _emit_behavioral_notice(
-    message: str,
-    behavior: str,
-    *,
-    quiet: bool,
-) -> None:
-    """
-    Emit or raise format-behavior notices.
-
-    Parameters
-    ----------
-    message : str
-        Warning message describing the ignored ``--source-format`` or
-        ``--target-format`` flag.
-    behavior : str
-        Effective format-behavior mode derived from CLI options and env.
-    quiet : bool
-        Whether non-essential warnings should be suppressed.
-
-    Raises
-    ------
-    ValueError
-        If ``behavior`` maps to an error state.
-    """
-    if behavior in _FORMAT_ERROR_STATES:
-        raise ValueError(message)
-    if behavior in _FORMAT_SILENT_STATES or quiet:
-        return
-    print(f'Warning: {message}', file=sys.stderr)
 
 
 def _emit_json(
@@ -119,65 +73,6 @@ def _emit_json(
         separators=(',', ':'),
     )
     print(dumped)
-
-
-def _format_behavior(
-    strict: bool,
-) -> str:
-    """
-    Return the effective format-behavior mode.
-
-    Parameters
-    ----------
-    strict : bool
-        Whether to enforce strict format behavior.
-
-    Returns
-    -------
-    str
-        The effective format-behavior mode.
-    """
-    if strict:
-        return 'error'
-    env_value = os.getenv(FORMAT_ENV_KEY, 'warn')
-    return (env_value or 'warn').strip().lower()
-
-
-def _handle_format_guard(
-    *,
-    io_context: Literal['source', 'target'],
-    resource_type: str,
-    format_explicit: bool,
-    strict: bool,
-    quiet: bool,
-) -> None:
-    """
-    Warn or raise when --source-format or --target-format` is used alongside
-    file resources.
-
-    Parameters
-    ----------
-    io_context : Literal['source', 'target']
-        Whether this is a source or target resource.
-    resource_type : str
-        The type of resource being processed.
-    format_explicit : bool
-        Whether the --source-format or --target-format option was explicitly
-        provided.
-    strict : bool
-        Whether to enforce strict format behavior.
-    quiet : bool
-        Whether to suppress warnings.
-    """
-    if resource_type != 'file' or not format_explicit:
-        return
-    message = (
-        '--source-format or --target-format is ignored '
-        f'for file {io_context}s; '
-        f'inferred from filename extension.'
-    )
-    behavior = _format_behavior(strict)
-    _emit_behavioral_notice(message, behavior, quiet=quiet)
 
 
 def _infer_payload_format(
@@ -237,28 +132,79 @@ def _list_sections(
     return sections
 
 
-def _materialize_csv_payload(
+def _explicit_cli_format(
+    args: argparse.Namespace,
+) -> str | None:
+    """Return the explicit CLI format hint when provided."""
+
+    if not getattr(args, '_format_explicit', False):
+        return None
+    for attr in ('format', 'target_format', 'source_format'):
+        value = getattr(args, attr, None)
+        if value is None:
+            continue
+        normalized = value.strip().lower()
+        if normalized:
+            return normalized
+    return None
+
+
+def _materialize_file_payload(
     source: object,
-) -> JSONData | str:
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+) -> JSONData | object:
     """
-    Return parsed CSV rows when ``source`` points at a CSV file.
+    Return structured payloads when ``source`` references a file.
 
     Parameters
     ----------
     source : object
-        The source of data.
+        Input source of data, possibly a file path.
+    format_hint : str | None
+        Explicit format hint: 'json', 'csv', or None to infer.
+    format_explicit : bool
+        Whether an explicit format hint was provided.
 
     Returns
     -------
-    JSONData | str
-        Parsed CSV rows or the original source if not a CSV file.
+    JSONData | object
+        Parsed JSON data when ``source`` is a file; otherwise the original
+        ``source`` object.
     """
-    if not isinstance(source, str):
+    if isinstance(source, (dict, list)):
         return cast(JSONData, source)
-    path = Path(source)
-    if path.suffix.lower() != '.csv' or not path.is_file():
+    if not isinstance(source, (str, os.PathLike)):
         return source
-    return _read_csv_rows(path)
+
+    path = Path(source)
+
+    normalized_hint = (format_hint or '').strip().lower()
+    if format_explicit and normalized_hint:
+        try:
+            fmt = FileFormat(normalized_hint)
+        except ValueError:
+            return source
+        return File(path, fmt).read()
+
+    if format_explicit:
+        # Explicit flag without a value should bypass inference.
+        return source
+
+    inferred_format: FileFormat | None = None
+    suffix = path.suffix.lower().lstrip('.')
+    if suffix:
+        try:
+            inferred_format = FileFormat(suffix)
+        except ValueError:
+            inferred_format = None
+
+    if inferred_format is None:
+        return source
+    if inferred_format == FileFormat.CSV:
+        return _read_csv_rows(path)
+    return File(path, inferred_format).read()
 
 
 def _parse_text_payload(
@@ -418,32 +364,32 @@ def cmd_extract(
     int
         Zero on success.
     """
-    pretty, quiet = _presentation_flags(args)
-
-    _handle_format_guard(
-        io_context='source',
-        resource_type=args.source_type,
-        format_explicit=getattr(args, '_format_explicit', False),
-        strict=getattr(args, 'strict_format', False),
-        quiet=quiet,
-    )
+    pretty, _ = _presentation_flags(args)
+    explicit_format = _explicit_cli_format(args)
 
     if args.source == '-':
         text = _read_stdin_text()
         payload = _parse_text_payload(text, getattr(args, 'format', None))
         _emit_json(payload, pretty=pretty)
+
         return 0
 
-    if args.source_type == 'file':
-        result = extract(args.source_type, args.source)
-    else:
-        result = extract(
-            args.source_type,
-            args.source,
-            file_format=getattr(args, 'format', None),
-        )
+    result = extract(
+        args.source_type,
+        args.source,
+        file_format=explicit_format,
+    )
+    output_path = getattr(args, 'target', None)
+    if output_path is None:
+        output_path = getattr(args, 'output', None)
 
-    _emit_json(result, pretty=pretty)
+    if not _write_json_output(
+        result,
+        output_path,
+        success_message='Data extracted and saved to',
+    ):
+        _emit_json(result, pretty=pretty)
+
     return 0
 
 
@@ -463,17 +409,9 @@ def cmd_validate(
     int
         Zero on success.
     """
-    pretty, quiet = _presentation_flags(args)
-
-    source_type = getattr(args, 'source_type', None)
-    if source_type is not None:
-        _handle_format_guard(
-            io_context='source',
-            resource_type=source_type,
-            format_explicit=getattr(args, '_format_explicit', False),
-            strict=getattr(args, 'strict_format', False),
-            quiet=quiet,
-        )
+    pretty, _quiet = _presentation_flags(args)
+    format_explicit: bool = getattr(args, '_format_explicit', False)
+    format_hint: str | None = getattr(args, 'source_format', None)
 
     if args.source == '-':
         text = _read_stdin_text()
@@ -482,7 +420,14 @@ def cmd_validate(
             getattr(args, 'source_format', None),
         )
     else:
-        payload = _materialize_csv_payload(args.source)
+        payload = cast(
+            JSONData | str,
+            _materialize_file_payload(
+                args.source,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
+            ),
+        )
     result = validate(payload, args.rules)
 
     target_path = getattr(args, 'target', None)
@@ -521,17 +466,9 @@ def cmd_transform(
     int
         Zero on success.
     """
-    pretty, quiet = _presentation_flags(args)
-
-    target_type = getattr(args, 'target_type', None)
-    if target_type is not None:
-        _handle_format_guard(
-            io_context='target',
-            resource_type=target_type,
-            format_explicit=getattr(args, '_format_explicit', False),
-            strict=getattr(args, 'strict_format', False),
-            quiet=quiet,
-        )
+    pretty, _quiet = _presentation_flags(args)
+    format_hint: str | None = getattr(args, 'source_format', None)
+    format_explicit: bool = format_hint is not None
 
     if args.source == '-':
         text = _read_stdin_text()
@@ -540,7 +477,14 @@ def cmd_transform(
             getattr(args, 'source_format', None),
         )
     else:
-        payload = _materialize_csv_payload(args.source)
+        payload = cast(
+            JSONData | str,
+            _materialize_file_payload(
+                args.source,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
+            ),
+        )
 
     data = transform(payload, args.operations)
 
@@ -570,15 +514,8 @@ def cmd_load(
     int
         Zero on success.
     """
-    pretty, quiet = _presentation_flags(args)
-
-    _handle_format_guard(
-        io_context='target',
-        resource_type=args.target_type,
-        format_explicit=getattr(args, '_format_explicit', False),
-        strict=getattr(args, 'strict_format', False),
-        quiet=quiet,
-    )
+    pretty, _ = _presentation_flags(args)
+    explicit_format = _explicit_cli_format(args)
 
     # Allow piping into load.
     source_value: (
@@ -601,24 +538,26 @@ def cmd_load(
 
     # Allow piping out of load for file targets.
     if args.target_type == 'file' and args.target == '-':
-        payload = _materialize_csv_payload(source_value)
+        payload = _materialize_file_payload(
+            source_value,
+            format_hint=getattr(args, 'source_format', None),
+            format_explicit=getattr(args, 'source_format', None) is not None,
+        )
         _emit_json(payload, pretty=pretty)
         return 0
 
-    if args.target_type == 'file':
-        result = load(source_value, args.target_type, args.target)
-    else:
-        result = load(
-            source_value,
-            args.target_type,
-            args.target,
-            file_format=getattr(args, 'format', None),
-        )
+    result = load(
+        source_value,
+        args.target_type,
+        args.target,
+        file_format=explicit_format,
+    )
 
+    output_path = getattr(args, 'output', None)
     if not _write_json_output(
         result,
-        getattr(args, 'target', None),
-        success_message='Data loaded and saved to',
+        output_path,
+        success_message='Load result saved to',
     ):
         _emit_json(result, pretty=pretty)
 
