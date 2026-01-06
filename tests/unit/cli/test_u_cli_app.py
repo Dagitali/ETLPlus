@@ -501,7 +501,7 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.operations, dict)
         assert ns.operations.get('select') == ['id']
 
-    def test_transform_respects_input_format(
+    def test_transform_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
