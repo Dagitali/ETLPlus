@@ -1080,6 +1080,14 @@ def transform_cmd(
             'For files, the format is inferred from the extension.'
         ),
     ),
+    strict_format: bool = typer.Option(
+        False,
+        '--strict-format',
+        help=(
+            'Treat providing --format for file targets as an error '
+            '(overrides environment behavior)'
+        ),
+    ),
     operations: str = typer.Option(
         '{}',
         '--operations',
@@ -1121,6 +1129,9 @@ def transform_cmd(
         Override the inferred source type.
     source_format : str | None
         Input payload format when not a file (or when SOURCE is -).
+    strict_format : bool
+        Whether to enforce strict format behavior when ``--format`` is used
+        alongside file targets.
     operations : str
         Transformation operations as a JSON string.
     target : str | None
@@ -1176,10 +1187,10 @@ def transform_cmd(
     target_format = _optional_choice(
         target_format,
         _FORMAT_CHOICES,
-        label='target_format',
+        label='format',
     )
     target_format_kwargs = _format_namespace_kwargs(
-        strict=False,
+        strict=strict_format,
         format_value=target_format,
         default='json',
     )
@@ -1187,7 +1198,7 @@ def transform_cmd(
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
     resolved_source_type = from_ or _infer_resource_type_soft(source)
-    resolved_target = target if target is not None else '-'
+    resolved_target_value = target if target is not None else '-'
 
     if resolved_source_type is not None:
         resolved_source_type = _validate_choice(
@@ -1200,7 +1211,7 @@ def transform_cmd(
         resolved_target_type = _resolve_resource_type(
             explicit_type=None,
             override_type=to,
-            value=resolved_target,
+            value=resolved_target_value,
             label='target_type',
         )
     except typer.BadParameter as exc:
@@ -1217,7 +1228,7 @@ def transform_cmd(
     _log_inferred_resource(
         state,
         role='target',
-        value=resolved_target,
+        value=resolved_target_value,
         resource_type=resolved_target_type,
     )
 
@@ -1227,7 +1238,8 @@ def transform_cmd(
         source=source,
         source_type=resolved_source_type,
         operations=json_type(operations),
-        target=resolved_target,
+        target=resolved_target_value,
+        output=target,
         source_format=source_format,
         target_type=resolved_target_type,
         target_format=target_format_kwargs['format'],
@@ -1260,9 +1272,18 @@ def validate_cmd(
     source_format: str | None = typer.Option(
         None,
         '--source-format',
+        '--format',
         help=(
             'Input payload format when SOURCE is - (JSON or CSV). '
             'Files infer format from extensions.'
+        ),
+    ),
+    strict_format: bool = typer.Option(
+        False,
+        '--strict-format',
+        help=(
+            'Treat providing --source-format for file sources as an error '
+            '(overrides environment behavior)'
         ),
     ),
 ) -> int:
@@ -1281,6 +1302,8 @@ def validate_cmd(
         Optional output path. Use ``-`` for stdout.
     source_format : str | None
         Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
+    strict_format : bool
+        Whether to enforce strict format behavior for file sources.
 
     Returns
     -------
@@ -1292,6 +1315,7 @@ def validate_cmd(
         _FORMAT_CHOICES,
         label='source_format',
     )
+    format_explicit = source_format is not None
 
     state = _ensure_state(ctx)
     inferred_source_type = _infer_resource_type_soft(source)
@@ -1311,5 +1335,7 @@ def validate_cmd(
         rules=json_type(rules),
         output=output,
         source_format=source_format,
+        strict_format=strict_format,
+        _format_explicit=format_explicit,
     )
     return int(cmd_validate(ns))
