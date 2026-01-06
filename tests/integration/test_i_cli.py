@@ -125,7 +125,7 @@ class TestCliEndToEnd:
         args: list[str] = [
             'load',
             str(output_path),
-            '--format',
+            '--target-format',
             'csv',
             *extra_flags,
         ]
