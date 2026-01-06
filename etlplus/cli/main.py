@@ -51,7 +51,9 @@ type FormatContext = Literal['source', 'target']
 
 
 class _FormatAction(argparse.Action):
-    """Argparse action that records when ``--format`` is provided."""
+    """
+    Argparse action that records when ``--source-format`` or
+    ``--target-format`` is provided."""
 
     def __call__(
         self,
@@ -72,19 +74,39 @@ def _add_format_options(
     *,
     context: FormatContext,
 ) -> None:
-    """Attach shared ``--format`` options to extract/load parsers."""
+    """
+    Attach shared ``--source-format`` or ``--target-format`` options to
+    extract/load parsers.
 
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser to augment.
+    context : FormatContext
+        Context for the format option: either ``'source'`` or ``'target'``
+    """
     parser.set_defaults(_format_explicit=False)
     parser.add_argument(
         '--strict-format',
         action='store_true',
         help=(
-            'Treat providing --format for file '
+            f'Treat providing --source-format or --target-format for file '
             f'{context}s as an error (overrides environment behavior)'
         ),
     )
     parser.add_argument(
-        '--format',
+        '--source-format',
+        choices=list(FileFormat.choices()),
+        default='json',
+        action=_FormatAction,
+        help=(
+            f'Format of the {context} when not a file. For file {context}s '
+            'this option is ignored and the format is inferred from the '
+            'filename extension.'
+        ),
+    )
+    parser.add_argument(
+        '--target-format',
         choices=list(FileFormat.choices()),
         default='json',
         action=_FormatAction,
@@ -111,11 +133,12 @@ def _cli_description() -> str:
             ),
             '    etlplus extract in.csv | etlplus load --to file out.json',
             '',
-            '    Enforce error if --format is provided for files. Examples:',
+            '    Enforce error if --source-format or --target-format is '
+            '    provided for files. Examples:',
             '',
-            '    etlplus extract file in.csv --format csv --strict-format',
+            '    etlplus extract in.csv --source-format csv --strict-format',
             (
-                '    etlplus load --to file out.csv --format csv '
+                '    etlplus load file out.csv --target-format csv '
                 '--strict-format < data.json'
             ),
         ],
@@ -128,7 +151,7 @@ def _cli_epilog(format_env_key: str) -> str:
             'Environment:',
             (
                 f'    {format_env_key} controls behavior when '
-                '--format is provided for files.'
+                '--source-format or --target-format is provided for files.'
             ),
             '    Values:',
             '        - error|fail|strict: treat as error',
@@ -190,11 +213,6 @@ def create_parser() -> argparse.ArgumentParser:
             'or API URL)'
         ),
     )
-    extract_parser.add_argument(
-        '-o',
-        '--output',
-        help='Output file to save extracted data (JSON format)',
-    )
     _add_format_options(extract_parser, context='source')
     extract_parser.set_defaults(func=cmd_extract)
 
@@ -229,11 +247,6 @@ def create_parser() -> argparse.ArgumentParser:
         type=json_type,
         default={},
         help='Transformation operations as JSON string',
-    )
-    transform_parser.add_argument(
-        '-o',
-        '--output',
-        help='Output file to save transformed data',
     )
     transform_parser.add_argument(
         '--from',
