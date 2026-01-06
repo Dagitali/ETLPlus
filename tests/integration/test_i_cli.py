@@ -177,6 +177,23 @@ class TestCliEndToEnd:
         assert code == 1
         assert 'Error:' in err
 
+    def test_main_load_explicit_target_type(
+        self,
+        tmp_path: Path,
+        cli_runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Ensure positional TARGET_TYPE raises a helpful error."""
+        output_path = tmp_path / 'explicit.json'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "Jane"}'),
+        )
+        with pytest.raises(typer.BadParameter) as excinfo:
+            cli_runner(('load', 'file', str(output_path)))
+        assert 'Legacy form' in str(excinfo.value)
+
     def test_main_load_file(
         self,
         tmp_path: Path,
