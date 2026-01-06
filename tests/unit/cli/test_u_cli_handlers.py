@@ -700,6 +700,55 @@ class TestCliHandlersCommands:
         assert handlers.cmd_run(args) == 0
         assert observed == [{'name': 'p1'}]
 
+    def test_cmd_transform_invokes_format_guard(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that transform honors strict/warn behavior for targets."""
+        args = argparse.Namespace(
+            source='data.csv',
+            operations=['clean'],
+            source_format=None,
+            target_type='file',
+            output=None,
+            _format_explicit=True,
+            strict_format=True,
+            pretty=True,
+            quiet=False,
+        )
+
+        recorded: dict[str, object] = {}
+        monkeypatch.setattr(
+            handlers,
+            '_handle_format_guard',
+            lambda **kwargs: recorded.update(kwargs),
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_materialize_csv_payload',
+            lambda src: ['rows'],
+        )
+        monkeypatch.setattr(
+            handlers,
+            'transform',
+            lambda payload, ops: {'ops': ops, 'payload': payload},
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_write_json_output',
+            lambda *_a, **_k: False,
+        )
+        monkeypatch.setattr(handlers, '_emit_json', lambda *_a, **_k: None)
+
+        assert handlers.cmd_transform(args) == 0
+        assert recorded == {
+            'io_context': 'target',
+            'resource_type': 'file',
+            'format_explicit': True,
+            'strict': True,
+            'quiet': False,
+        }
+
     def test_cmd_transform_processes_payload_and_prints(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -798,4 +847,53 @@ class TestCliHandlersCommands:
             'data': {'ok': True},
             'output_path': 'result.json',
             'success_message': 'Validation result saved to',
+        }
+
+    def test_cmd_validate_invokes_format_guard(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that validate enforces format rules for file sources."""
+        args = argparse.Namespace(
+            source='data.csv',
+            source_type='file',
+            rules=['schema'],
+            source_format=None,
+            output=None,
+            _format_explicit=True,
+            strict_format=False,
+            pretty=False,
+            quiet=True,
+        )
+
+        recorded: dict[str, object] = {}
+        monkeypatch.setattr(
+            handlers,
+            '_handle_format_guard',
+            lambda **kwargs: recorded.update(kwargs),
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_materialize_csv_payload',
+            lambda src: ['rows'],
+        )
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda payload, _rules: {'data': payload},
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_write_json_output',
+            lambda *_a, **_k: False,
+        )
+        monkeypatch.setattr(handlers, '_emit_json', lambda *_a, **_k: None)
+
+        assert handlers.cmd_validate(args) == 0
+        assert recorded == {
+            'io_context': 'source',
+            'resource_type': 'file',
+            'format_explicit': True,
+            'strict': False,
+            'quiet': True,
         }
