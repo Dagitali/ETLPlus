@@ -149,9 +149,8 @@ class TestCliEndToEnd:
         )
         with pytest.raises(typer.BadParameter) as excinfo:
             cli_runner(('load', 'file', str(output_path), '--to', 'api'))
-        assert (
-            'Do not combine --to with an explicit TARGET_TYPE.'
-            in str(excinfo.value)
+        assert 'Do not combine --to with an explicit TARGET_TYPE.' in str(
+            excinfo.value,
         )
 
     def test_main_extract_file(
