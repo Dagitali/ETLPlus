@@ -28,8 +28,7 @@ Subcommands
 
 Notes
 -----
-- Use ``-`` to read from stdin and ``--output -`` (or ``load --to file -``) to
-    write to stdout.
+- Use ``-`` to read from stdin or to write to stdout.
 - Commands ``extract`` and ``transform`` support the command-line option
     ``--from`` to override inferred resource types.
 - Commands ``transform`` and ``load`` support the command-line option ``--to``
@@ -86,10 +85,11 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    etlplus extract in.csv | etlplus load --to file out.json',
         '    cat data.json | etlplus load --to api https://example.com/data',
         '',
-        '    Enforce error if --format is provided for files. Examples:',
+        '    Enforce error if --source-format or --target-format is provided'
+        '    for files. Examples:',
         '',
-        '    etlplus extract in.csv --format csv --strict-format',
-        '    etlplus load out.csv --format csv --strict-format',
+        '    etlplus extract in.csv --source-format csv --strict-format',
+        '    etlplus load out.csv --target-format csv --strict-format',
     ],
 )
 
@@ -98,7 +98,7 @@ CLI_EPILOG: Final[str] = '\n'.join(
         'Environment:',
         (
             '    ETLPLUS_FORMAT_BEHAVIOR controls behavior when '
-            '--format is provided for files.'
+            '--source-format or --target-format is provided for files.'
         ),
         '    Values:',
         '        - error|fail|strict: treat as error',
@@ -829,7 +829,7 @@ def load_cmd(
         False,
         '--strict-format',
         help=(
-            'Treat providing --format for file targets as an error '
+            'Treat providing --target-format for file targets as an error '
             '(overrides environment behavior)'
         ),
     ),
@@ -1092,8 +1092,8 @@ def transform_cmd(
         False,
         '--strict-format',
         help=(
-            'Treat providing --format for file targets as an error '
-            '(overrides environment behavior)'
+            'Treat providing --source-format / --target-format for a file '
+            'source/target as an error (overrides environment behavior)'
         ),
     ),
     operations: str = typer.Option(
@@ -1103,8 +1103,6 @@ def transform_cmd(
     ),
     target: str | None = typer.Option(
         None,
-        '-o',
-        '--output',
         '--target',
         help='Output file to save transformed data (JSON). Use - for stdout.',
     ),
@@ -1115,7 +1113,6 @@ def transform_cmd(
     ),
     target_format: str | None = typer.Option(
         None,
-        '--format',
         '--target-format',
         help=(
             'Output payload format '
@@ -1138,8 +1135,8 @@ def transform_cmd(
     source_format : str | None
         Input payload format when not a file (or when SOURCE is -).
     strict_format : bool
-        Whether to enforce strict format behavior when ``--format`` is used
-        alongside file targets.
+        Whether to enforce strict format behavior when ``--target-format`` is
+        used longside file targets.
     operations : str
         Transformation operations as a JSON string.
     target : str | None
@@ -1148,7 +1145,7 @@ def transform_cmd(
         Override the inferred target type.
     target_format : str | None
         Output payload format when not a file target (or when OUTPUT is -).
-        Accepts ``--format`` (preferred) or the legacy ``--target-format``.
+        Accepts ``--target-format``.
 
     Returns
     -------
@@ -1261,11 +1258,10 @@ def validate_cmd(
         '--rules',
         help='Validation rules as JSON string',
     ),
-    output: str | None = typer.Option(
+    target: str | None = typer.Option(
         None,
-        '-o',
-        '--output',
-        help='Output file to save validated data (JSON). Use - for stdout.',
+        '--target',
+        help='Target file to save validated data (JSON). Use - for stdout.',
     ),
     source_format: str | None = typer.Option(
         None,
@@ -1295,7 +1291,7 @@ def validate_cmd(
         Data source (file path or ``-`` for stdin).
     rules : str
         Validation rules as a JSON string.
-    output : str | None
+    target : str | None
         Optional output path. Use ``-`` for stdout.
     source_format : str | None
         Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
@@ -1333,8 +1329,8 @@ def validate_cmd(
         command='validate',
         source=source,
         source_type=inferred_source_type,
-        rules=json_type(rules),
-        output=output,
+        rules=json_type(rules),  # convert CLI string to dict
+        output=target,
         source_format=source_format,
         **source_format_kwargs,
     )
