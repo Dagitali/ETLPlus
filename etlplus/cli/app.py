@@ -1271,7 +1271,7 @@ def validate_cmd(
         source=source,
         source_type=inferred_source_type,
         rules=json_type(rules),  # convert CLI string to dict
-        output=target,
+        target=target,
         source_format=source_format,
         **source_format_kwargs,
     )
