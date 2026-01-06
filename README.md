@@ -172,12 +172,12 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 #### Transform Data
 
-When piping data through `etlplus transform`, use `--input-format` (alias `--source-format`)
-whenever the SOURCE argument is `-` or a literal payload, mirroring the `etlplus extract` semantics.
-Use `--format` (alias `--output-format`) to control the emitted format for stdout or other non-file
-outputs, just like `etlplus load`. File paths continue to infer formats from their extensions.
-Use `--from` to override the inferred source connector type and `--to` to override the inferred
-target connector type, matching the `etlplus extract`/`etlplus load` behavior.
+When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
+`-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
+control the emitted format for stdout or other non-file outputs, just like `etlplus load`. File
+paths continue to infer formats from their extensions. Use `--from` to override the inferred source
+connector type and `--to` to override the inferred target connector type, matching the `etlplus
+extract`/`etlplus load` behavior.
 
 Transform file inputs while overriding connector types:
 ```bash

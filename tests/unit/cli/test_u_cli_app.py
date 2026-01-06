@@ -184,7 +184,7 @@ class TestTyperCliAppWiring:
         captured, cmd = capture_cmd('cmd_extract')
         result = runner.invoke(
             cli_app,
-            ['extract', '/path/to/file.csv', '--format', 'csv'],
+            ['extract', '/path/to/file.csv', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -326,7 +326,7 @@ class TestTyperCliAppWiring:
             cli_app,
             [
                 'load',
-                '--format',
+                '--target-format',
                 'csv',
                 '/path/to/out.csv',
             ],
@@ -342,18 +342,20 @@ class TestTyperCliAppWiring:
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
-    def test_load_with_source_argument_is_rejected(
+    def test_load_file_to_file_is_rejected(
         self,
         runner: CliRunner,
     ) -> None:
-        """Providing a source positional should error."""
+        """
+        Test that supplying SOURCE TARGET after an explicit type still errors.
+        """
         result = runner.invoke(
             cli_app,
-            ['load', 'in.json', 'out.json'],
+            ['load', 'file', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'stdin' in result.stderr.lower()
+        assert 'usage: etlplus load' in result.stderr.lower()
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
@@ -380,18 +382,20 @@ class TestTyperCliAppWiring:
         assert ns.target == 'postgres://db.example.org/app'
         assert ns.target_type == 'database'
 
-    def test_load_file_to_file_is_rejected(
+    def test_load_with_source_argument_is_rejected(
         self,
         runner: CliRunner,
     ) -> None:
-        """Loading from a file directly to a file should fail."""
+        """
+        Test that providing SOURCE TARGET without a valid TARGET_TYPE fails.
+        """
         result = runner.invoke(
             cli_app,
             ['load', 'in.json', 'out.json'],
         )
 
         assert result.exit_code != 0
-        assert 'target only' in result.stderr.lower()
+        assert 'invalid target_type' in result.stderr.lower()
 
     def test_no_args_prints_help(self, runner: CliRunner) -> None:
         """Test invoking with no args prints help and exits 0."""
@@ -497,7 +501,7 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.operations, dict)
         assert ns.operations.get('select') == ['id']
 
-    def test_transform_respects_input_format(
+    def test_transform_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
@@ -548,17 +552,20 @@ class TestTyperCliAppWiring:
         assert isinstance(ns.rules, dict)
         assert ns.rules.get('required') == ['id']
 
-    def test_validate_respects_input_format(
+    def test_validate_respects_source_format(
         self,
         runner: CliRunner,
         capture_cmd: CaptureHelper,
     ) -> None:
-        """`validate --input-format csv` sanitizes into a handler namespace."""
+        """
+        Test that command ``validate --source-format csv`` sanitizes into a
+        handler namespace.
+        """
 
         captured, cmd = capture_cmd('cmd_validate')
         result = runner.invoke(
             cli_app,
-            ['validate', '--input-format', 'csv'],
+            ['validate', '--source-format', 'csv'],
         )
 
         assert result.exit_code == 0
@@ -566,7 +573,7 @@ class TestTyperCliAppWiring:
 
         ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
-        assert ns.input_format == 'csv'
+        assert ns.source_format == 'csv'
 
     def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
         """Test that command option ``--version`` exits successfully."""

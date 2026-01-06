@@ -459,13 +459,23 @@ def cmd_validate(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
+    pretty, quiet = _presentation_flags(args)
+
+    source_type = getattr(args, 'source_type', None)
+    if source_type is not None:
+        _handle_format_guard(
+            io_context='source',
+            resource_type=source_type,
+            format_explicit=getattr(args, '_format_explicit', False),
+            strict=getattr(args, 'strict_format', False),
+            quiet=quiet,
+        )
 
     if args.source == '-':
         text = _read_stdin_text()
         payload = _parse_text_payload(
             text,
-            getattr(args, 'input_format', None),
+            getattr(args, 'source_format', None),
         )
     else:
         payload = _materialize_csv_payload(args.source)
@@ -507,13 +517,23 @@ def cmd_transform(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
+    pretty, quiet = _presentation_flags(args)
+
+    target_type = getattr(args, 'target_type', None)
+    if target_type is not None:
+        _handle_format_guard(
+            io_context='target',
+            resource_type=target_type,
+            format_explicit=getattr(args, '_format_explicit', False),
+            strict=getattr(args, 'strict_format', False),
+            quiet=quiet,
+        )
 
     if args.source == '-':
         text = _read_stdin_text()
         payload = _parse_text_payload(
             text,
-            getattr(args, 'input_format', None),
+            getattr(args, 'source_format', None),
         )
     else:
         payload = _materialize_csv_payload(args.source)
@@ -562,11 +582,14 @@ def cmd_load(
     )
     if args.source == '-':
         text = _read_stdin_text()
+        source_format = getattr(args, 'source_format', None)
+        if source_format is None:
+            source_format = getattr(args, 'source_format', None)
         source_value = cast(
             str | dict[str, Any] | list[dict[str, Any]],
             _parse_text_payload(
                 text,
-                getattr(args, 'input_format', None),
+                source_format,
             ),
         )
     else:

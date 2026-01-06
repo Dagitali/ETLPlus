@@ -21,9 +21,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import typer
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.conftest import CliRunner
     from tests.conftest import JsonFactory
 
 
@@ -69,7 +71,7 @@ class TestCliEndToEnd:
         args: list[str] = [
             'extract',
             str(source),
-            '--format',
+            '--source-format',
             'json',
             *extra_flags,
         ]
@@ -123,7 +125,7 @@ class TestCliEndToEnd:
         args: list[str] = [
             'load',
             str(output_path),
-            '--format',
+            '--target-format',
             'csv',
             *extra_flags,
         ]
@@ -132,11 +134,24 @@ class TestCliEndToEnd:
         assert expected_message in err
         assert output_path.exists() is expect_output
 
-    def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
-        """Test that running :func:`main` with no command shows usage."""
-        code, out, _err = cli_invoke()
-        assert code == 0
-        assert 'usage:' in out.lower()
+    def test_load_target_type_conflict(
+        self,
+        tmp_path: Path,
+        cli_runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Explicit TARGET_TYPE conflicts with ``--to`` override."""
+        output_path = tmp_path / 'conflict.json'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "Ana"}'),
+        )
+        with pytest.raises(typer.BadParameter) as excinfo:
+            cli_runner(('load', 'file', str(output_path), '--to', 'api'))
+        assert 'Do not combine --to with an explicit TARGET_TYPE.' in str(
+            excinfo.value,
+        )
 
     def test_main_extract_file(
         self,
@@ -150,33 +165,33 @@ class TestCliEndToEnd:
         assert code == 0
         assert json.loads(out) == payload
 
-    def test_main_validate_data(
+    def test_main_error_handling(
         self,
         cli_invoke: CliInvoke,
     ) -> None:
-        """
-        Test that running :func:`main` with the ``validate`` command works.
-        """
-        json_data = '{"name": "John", "age": 30}'
-        code, out, _err = cli_invoke(('validate', json_data))
-        assert code == 0
-        assert json.loads(out)['valid'] is True
-
-    def test_main_transform_data(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """
-        Test that running :func:`main` with the ``transform`` command works.
-        """
-        json_data = '[{"name": "John", "age": 30}]'
-        operations = '{"select": ["name"]}'
-        code, out, _err = cli_invoke(
-            ('transform', json_data, '--operations', operations),
+        """Test that running :func:`main` with an invalid command errors."""
+        code, _out, err = cli_invoke(
+            ('extract', '/nonexistent/file.json'),
         )
-        assert code == 0
-        output = json.loads(out)
-        assert len(output) == 1 and 'age' not in output[0]
+        assert code == 1
+        assert 'Error:' in err
+
+    def test_main_load_explicit_target_type(
+        self,
+        tmp_path: Path,
+        cli_runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Ensure positional TARGET_TYPE raises a helpful error."""
+        output_path = tmp_path / 'explicit.json'
+        monkeypatch.setattr(
+            sys,
+            'stdin',
+            io.StringIO('{"name": "Jane"}'),
+        )
+        with pytest.raises(typer.BadParameter) as excinfo:
+            cli_runner(('load', 'file', str(output_path)))
+        assert 'Legacy form' in str(excinfo.value)
 
     def test_main_load_file(
         self,
@@ -199,16 +214,11 @@ class TestCliEndToEnd:
         assert code == 0
         assert output_path.exists()
 
-    def test_main_error_handling(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """Test that running :func:`main` with an invalid command errors."""
-        code, _out, err = cli_invoke(
-            ('extract', '/nonexistent/file.json'),
-        )
-        assert code == 1
-        assert 'Error:' in err
+    def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
+        """Test that running :func:`main` with no command shows usage."""
+        code, out, _err = cli_invoke()
+        assert code == 0
+        assert 'usage:' in out.lower()
 
     def test_main_strict_format_error(
         self,
@@ -221,10 +231,38 @@ class TestCliEndToEnd:
             (
                 'extract',
                 'data.csv',
-                '--format',
+                '--source-format',
                 'csv',
                 '--strict-format',
             ),
         )
         assert code == 1
         assert 'Error:' in err
+
+    def test_main_transform_data(
+        self,
+        cli_invoke: CliInvoke,
+    ) -> None:
+        """
+        Test that running :func:`main` with the ``transform`` command works.
+        """
+        json_data = '[{"name": "John", "age": 30}]'
+        operations = '{"select": ["name"]}'
+        code, out, _err = cli_invoke(
+            ('transform', json_data, '--operations', operations),
+        )
+        assert code == 0
+        output = json.loads(out)
+        assert len(output) == 1 and 'age' not in output[0]
+
+    def test_main_validate_data(
+        self,
+        cli_invoke: CliInvoke,
+    ) -> None:
+        """
+        Test that running :func:`main` with the ``validate`` command works.
+        """
+        json_data = '{"name": "John", "age": 30}'
+        code, out, _err = cli_invoke(('validate', json_data))
+        assert code == 0
+        assert json.loads(out)['valid'] is True
