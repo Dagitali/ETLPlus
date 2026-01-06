@@ -623,20 +623,20 @@ def extract_cmd(
         '--from',
         help='Override the inferred source type (file, database, api).',
     ),
+    source_format: str | None = typer.Option(
+        None,
+        '--source-format',
+        help=(
+            'Payload format when not a file (or when SOURCE is -). '
+            'For normal file paths, format is inferred from extension.'
+        ),
+    ),
     strict_format: bool = typer.Option(
         False,
         '--strict-format',
         help=(
-            'Treat providing --format for file sources as an error '
+            'Treat providing --source-format for file sources as an error '
             '(overrides environment behavior)'
-        ),
-    ),
-    source_format: str | None = typer.Option(
-        None,
-        '--format',
-        help=(
-            'Payload format when not a file (or when SOURCE is -). '
-            'For normal file paths, format is inferred from extension.'
         ),
     ),
 ) -> int:
@@ -653,10 +653,10 @@ def extract_cmd(
         instead.
     from_ : str | None
         Override the inferred source type.
-    strict_format : bool
-        Whether to enforce strict format behavior.
     source_format : str | None
         Payload format when not a file.
+    strict_format : bool
+        Whether to enforce strict format behavior.
 
     Returns
     -------
@@ -698,17 +698,17 @@ def extract_cmd(
     source_format = _optional_choice(
         source_format,
         _FORMAT_CHOICES,
-        label='format',
+        label='source_format',
     )
 
-    positional_source_type, resolved_source = _parse_positional_resource(
+    explicit_source_type, resolved_source = _parse_positional_resource(
         args,
         subject='SOURCE',
         subject_type_label='SOURCE_TYPE',
     )
 
     source_type = _resolve_resource_type(
-        explicit_type=positional_source_type,
+        explicit_type=explicit_source_type,
         override_type=from_,
         value=resolved_source,
         label='source_type',
@@ -716,7 +716,7 @@ def extract_cmd(
         legacy_file_error=(
             "Legacy form 'etlplus extract file SOURCE' is no longer "
             'supported. Omit SOURCE_TYPE or pass --from file instead.'
-            if positional_source_type is not None
+            if explicit_source_type is not None
             else None
         ),
     )
@@ -898,7 +898,7 @@ def load_cmd(
         label='format',
     )
 
-    positional_target_type, resolved_target = _parse_positional_resource(
+    explicit_target_type, resolved_target = _parse_positional_resource(
         args,
         subject='TARGET',
         subject_type_label='TARGET_TYPE',
@@ -909,7 +909,7 @@ def load_cmd(
     )
 
     target_type = _resolve_resource_type(
-        explicit_type=positional_target_type,
+        explicit_type=explicit_target_type,
         override_type=to,
         value=resolved_target,
         label='target_type',
@@ -917,7 +917,7 @@ def load_cmd(
         legacy_file_error=(
             "Legacy form 'etlplus load file TARGET' is no longer "
             'supported. Omit TARGET_TYPE or pass --to file instead.'
-            if positional_target_type is not None
+            if explicit_target_type is not None
             else None
         ),
     )
