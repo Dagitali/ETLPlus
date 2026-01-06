@@ -74,7 +74,8 @@ def _emit_behavioral_notice(
     Parameters
     ----------
     message : str
-        Warning message describing the ignored ``--format`` flag.
+        Warning message describing the ignored ``--source-format`` or
+        ``--target-format`` flag.
     behavior : str
         Effective format-behavior mode derived from CLI options and env.
     quiet : bool
@@ -151,7 +152,8 @@ def _handle_format_guard(
     quiet: bool,
 ) -> None:
     """
-    Warn or raise when --format is used alongside file resources.
+    Warn or raise when --source-format or --target-format` is used alongside
+    file resources.
 
     Parameters
     ----------
@@ -160,7 +162,8 @@ def _handle_format_guard(
     resource_type : str
         The type of resource being processed.
     format_explicit : bool
-        Whether the --format option was explicitly provided.
+        Whether the --source-format or --target-format option was explicitly
+        provided.
     strict : bool
         Whether to enforce strict format behavior.
     quiet : bool
@@ -169,8 +172,9 @@ def _handle_format_guard(
     if resource_type != 'file' or not format_explicit:
         return
     message = (
-        f'--format is ignored for file {io_context}s; '
-        'inferred from filename extension.'
+        '--source-format or --target-format is ignored '
+        f'for file {io_context}s; '
+        f'inferred from filename extension.'
     )
     behavior = _format_behavior(strict)
     _emit_behavioral_notice(message, behavior, quiet=quiet)
@@ -481,18 +485,18 @@ def cmd_validate(
         payload = _materialize_csv_payload(args.source)
     result = validate(payload, args.rules)
 
-    output_path = getattr(args, 'output', None)
-    if output_path:
+    target_path = getattr(args, 'target', None)
+    if target_path:
         validated_data = result.get('data')
         if validated_data is not None:
             _write_json_output(
                 validated_data,
-                output_path,
+                target_path,
                 success_message='Validation result saved to',
             )
         else:
             print(
-                f'Validation failed, no data to save for {output_path}',
+                f'Validation failed, no data to save for {target_path}',
                 file=sys.stderr,
             )
     else:
@@ -542,7 +546,7 @@ def cmd_transform(
 
     if not _write_json_output(
         data,
-        getattr(args, 'output', None),
+        getattr(args, 'target', None),
         success_message='Data transformed and saved to',
     ):
         _emit_json(data, pretty=pretty)
@@ -613,7 +617,7 @@ def cmd_load(
 
     if not _write_json_output(
         result,
-        getattr(args, 'output', None),
+        getattr(args, 'target', None),
         success_message='Data loaded and saved to',
     ):
         _emit_json(result, pretty=pretty)
