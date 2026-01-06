@@ -58,7 +58,7 @@ John Doe,30,New York
 Jane Smith,25,Los Angeles
 CSVDATA
 
-$ etlplus extract file users.csv --format csv
+$ etlplus extract users.csv
 [
   {
     "name": "John Doe",
@@ -151,7 +151,7 @@ $ etlplus load '{"name": "John", "status": "active"}' file output.json
 $ etlplus load '[
     {"name": "John", "email": "john@example.com"},
     {"name": "Jane", "email": "jane@example.com"}
-  ]' file users.csv --format csv
+  ]' --to users.csv
 {
   "status": "success",
   "message": "Data loaded to users.csv",
@@ -170,14 +170,14 @@ This example shows a complete ETL workflow:
 
 ```bash
 # Step 1: Extract
-$ etlplus extract file raw_data.csv --format csv -o extracted.json
+$ etlplus extract raw_data.csv > extracted.json
 
 # Step 2: Transform
-$ etlplus transform extracted.json \
+$ etlplus transform --from extracted.json \
   --operations '{
     "filter": {"field": "age", "op": "gte", "value": 18},
     "select": ["name", "email", "age"]
-  }' -o transformed.json
+  }' --to transformed.json
 
 # Step 3: Validate
 $ etlplus validate transformed.json \
