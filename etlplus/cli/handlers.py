@@ -181,30 +181,26 @@ def _materialize_file_payload(
     path = Path(source)
 
     normalized_hint = (format_hint or '').strip().lower()
+    fmt: FileFormat | None = None
+
     if format_explicit and normalized_hint:
         try:
             fmt = FileFormat(normalized_hint)
         except ValueError:
-            return source
-        return File(path, fmt).read()
+            fmt = None
+    elif not format_explicit:
+        suffix = path.suffix.lower().lstrip('.')
+        if suffix:
+            try:
+                fmt = FileFormat(suffix)
+            except ValueError:
+                fmt = None
 
-    if format_explicit:
-        # Explicit flag without a value should bypass inference.
+    if fmt is None:
         return source
-
-    inferred_format: FileFormat | None = None
-    suffix = path.suffix.lower().lstrip('.')
-    if suffix:
-        try:
-            inferred_format = FileFormat(suffix)
-        except ValueError:
-            inferred_format = None
-
-    if inferred_format is None:
-        return source
-    if inferred_format == FileFormat.CSV:
+    if fmt == FileFormat.CSV:
         return _read_csv_rows(path)
-    return File(path, inferred_format).read()
+    return File(path, fmt).read()
 
 
 def _parse_text_payload(
@@ -315,6 +311,50 @@ def _read_stdin_text() -> str:
     return sys.stdin.read()
 
 
+def _resolve_cli_payload(
+    source: object,
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+    hydrate_files: bool = True,
+) -> JSONData | object:
+    """
+    Normalize CLI-provided payloads, honoring stdin and inline data.
+
+    Parameters
+    ----------
+    source : object
+        Raw CLI value (path, inline payload, or ``'-'`` for stdin).
+    format_hint : str | None
+        Explicit format hint supplied by the CLI option.
+    format_explicit : bool
+        Flag indicating whether the format hint was explicitly provided.
+    hydrate_files : bool, optional
+        When ``True`` (default) materialize file paths into structured data.
+        When ``False``, keep the original path so downstream code can stream
+        from disk directly.
+
+    Returns
+    -------
+    JSONData | object
+        Parsed payload or the original source value when hydration is
+        disabled.
+    """
+
+    if isinstance(source, (os.PathLike, str)) and str(source) == '-':
+        text = _read_stdin_text()
+        return _parse_text_payload(text, format_hint)
+
+    if not hydrate_files:
+        return source
+
+    return _materialize_file_payload(
+        source,
+        format_hint=format_hint,
+        format_explicit=format_explicit,
+    )
+
+
 def _write_json_output(
     data: Any,
     output_path: str | None,
@@ -412,22 +452,14 @@ def cmd_validate(
     pretty, _quiet = _presentation_flags(args)
     format_explicit: bool = getattr(args, '_format_explicit', False)
     format_hint: str | None = getattr(args, 'source_format', None)
-
-    if args.source == '-':
-        text = _read_stdin_text()
-        payload = _parse_text_payload(
-            text,
-            getattr(args, 'source_format', None),
-        )
-    else:
-        payload = cast(
-            JSONData | str,
-            _materialize_file_payload(
-                args.source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
-            ),
-        )
+    payload = cast(
+        JSONData | str,
+        _resolve_cli_payload(
+            args.source,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
+        ),
+    )
     result = validate(payload, args.rules)
 
     target_path = getattr(args, 'target', None)
@@ -470,21 +502,14 @@ def cmd_transform(
     format_hint: str | None = getattr(args, 'source_format', None)
     format_explicit: bool = format_hint is not None
 
-    if args.source == '-':
-        text = _read_stdin_text()
-        payload = _parse_text_payload(
-            text,
-            getattr(args, 'source_format', None),
-        )
-    else:
-        payload = cast(
-            JSONData | str,
-            _materialize_file_payload(
-                args.source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
-            ),
-        )
+    payload = cast(
+        JSONData | str,
+        _resolve_cli_payload(
+            args.source,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
+        ),
+    )
 
     data = transform(payload, args.operations)
 
@@ -518,30 +543,23 @@ def cmd_load(
     explicit_format = _explicit_cli_format(args)
 
     # Allow piping into load.
-    source_value: (
-        str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]]
+    source_format = getattr(args, 'source_format', None)
+    source_value = cast(
+        str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
+        _resolve_cli_payload(
+            args.source,
+            format_hint=source_format,
+            format_explicit=source_format is not None,
+            hydrate_files=False,
+        ),
     )
-    if args.source == '-':
-        text = _read_stdin_text()
-        source_format = getattr(args, 'source_format', None)
-        if source_format is None:
-            source_format = getattr(args, 'source_format', None)
-        source_value = cast(
-            str | dict[str, Any] | list[dict[str, Any]],
-            _parse_text_payload(
-                text,
-                source_format,
-            ),
-        )
-    else:
-        source_value = args.source
 
     # Allow piping out of load for file targets.
     if args.target_type == 'file' and args.target == '-':
         payload = _materialize_file_payload(
             source_value,
-            format_hint=getattr(args, 'source_format', None),
-            format_explicit=getattr(args, 'source_format', None) is not None,
+            format_hint=source_format,
+            format_explicit=source_format is not None,
         )
         _emit_json(payload, pretty=pretty)
         return 0
