@@ -71,7 +71,7 @@ class TestCliEndToEnd:
         args: list[str] = [
             'extract',
             str(source),
-            '--format',
+            '--source-format',
             'json',
             *extra_flags,
         ]
@@ -232,7 +232,7 @@ class TestCliEndToEnd:
             (
                 'extract',
                 'data.csv',
-                '--format',
+                '--source-format',
                 'csv',
                 '--strict-format',
             ),
