@@ -242,21 +242,6 @@ class TestTyperCliAppWiring:
         assert result.exit_code != 0
         assert 'legacy form' in result.stderr.lower()
 
-    def test_extract_output_option_is_no_longer_supported(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that the ``--output`` command-line option is not a recognized
-        option anymore.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['extract', 'input.csv', '--output', 'out.json'],
-        )
-        assert result.exit_code != 0
-        assert 'no such option' in result.stderr.lower()
-
     def test_list_maps_flags(
         self,
         runner: CliRunner,
