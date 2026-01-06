@@ -686,8 +686,8 @@ def _root(
 def extract_cmd(
     ctx: typer.Context,
     source: SourceInputArg,
-    source_type: SourceOverrideOption | None = None,
     source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -698,10 +698,10 @@ def extract_cmd(
         Typer execution context provided to the command.
     source : SourceInputArg
         Data source (file path, URL, DSN, or ``-`` for stdin).
-    source_type : SourceOverrideOption | None, optional
-        Override the inferred source type.
     source_format : SourceFormatOption | None, optional
         Payload format when not a file.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type.
 
     Returns
     -------
@@ -772,15 +772,15 @@ def extract_cmd(
 def list_cmd(
     ctx: typer.Context,
     config: PipelineConfigOption,
-    pipelines: bool = typer.Option(
-        False,
-        '--pipelines',
-        help='List ETL pipelines',
-    ),
     jobs: bool = typer.Option(
         False,
         '--jobs',
         help='List available job names and exit',
+    ),
+    pipelines: bool = typer.Option(
+        False,
+        '--pipelines',
+        help='List ETL pipelines',
     ),
     sources: bool = typer.Option(False, '--sources', help='List data sources'),
     targets: bool = typer.Option(False, '--targets', help='List data targets'),
@@ -799,10 +799,10 @@ def list_cmd(
         Typer execution context provided to the command.
     config : PipelineConfigOption
         Path to pipeline YAML configuration file.
-    pipelines : bool, optional
-        If True, list ETL pipelines.
     jobs : bool, optional
         If True, list available job names and exit.
+    pipelines : bool, optional
+        If True, list ETL pipelines.
     sources : bool, optional
         If True, list data sources.
     targets : bool, optional
@@ -834,8 +834,8 @@ def load_cmd(
     ctx: typer.Context,
     target: TargetInputArg,
     source_format: StdinFormatOption | None = None,
-    target_type: TargetOverrideOption | None = None,
     target_format: TargetFormatOption | None = None,
+    target_type: TargetOverrideOption | None = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -848,10 +848,10 @@ def load_cmd(
         Load destination (file path, URL/DSN, or ``-`` for stdout).
     source_format : StdinFormatOption | None, optional
         Hint for parsing stdin payloads (json or csv).
-    target_type : TargetOverrideOption | None, optional
-        Override the inferred target type.
     target_format : TargetFormatOption | None, optional
         Payload format when not a file target (or when TARGET is ``-``).
+    target_type : TargetOverrideOption | None, optional
+        Override the inferred target type.
 
     Returns
     -------
@@ -935,16 +935,16 @@ def load_cmd(
 def pipeline_cmd(
     ctx: typer.Context,
     config: PipelineConfigOption,
-    jobs: bool = typer.Option(
-        False,
-        '--jobs',
-        help='List available job names and exit',
-    ),
     job: str | None = typer.Option(
         None,
         '--job',
         metavar='JOB',
         help='Run a specific job by name',
+    ),
+    jobs: bool = typer.Option(
+        False,
+        '--jobs',
+        help='List available job names and exit',
     ),
     pipeline: str | None = typer.Option(
         None,
@@ -961,10 +961,10 @@ def pipeline_cmd(
         Typer execution context provided to the command.
     config : PipelineConfigOption
         Path to pipeline YAML configuration file.
-    jobs : bool, optional
-        If True, list available job names and exit.
     job : str | None, optional
         Name of a specific job to run.
+    jobs : bool, optional
+        If True, list available job names and exit.
     pipeline : str | None, optional
         Name of a specific pipeline to run.
 
@@ -1035,13 +1035,13 @@ def run_cmd(
 @app.command('transform')
 def transform_cmd(
     ctx: typer.Context,
-    source: StreamingSourceArg = '-',
-    source_type: SourceOverrideOption | None = None,
-    source_format: SourceFormatOption | None = None,
-    target: TargetPathOption | None = None,
-    target_type: TargetOverrideOption | None = None,
-    target_format: TargetFormatOption | None = None,
     operations: OperationsJSONOption = '{}',
+    source: StreamingSourceArg = '-',
+    source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
+    target: TargetPathOption | None = None,
+    target_format: TargetFormatOption | None = None,
+    target_type: TargetOverrideOption | None = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -1050,21 +1050,21 @@ def transform_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
+    operations : OperationsJSONOption, optional
+        Transformation operations as a JSON string.
     source : StreamingSourceArg, optional
         Data source (file path or ``-`` for stdin).
-    source_type : SourceOverrideOption | None, optional
-        Override the inferred source type.
     source_format : SourceFormatOption | None, optional
         Input payload format when not a file (or when SOURCE is -).
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type.
     target : TargetPathOption | None, optional
         Optional output path. Use ``-`` for stdout.
-    target_type : TargetOverrideOption | None, optional
-        Override the inferred target type.
     target_format : TargetFormatOption | None, optional
         Output payload format when not a file target (or when OUTPUT is -).
         Accepts ``--target-format``.
-    operations : OperationsJSONOption, optional
-        Transformation operations as a JSON string.
+    target_type : TargetOverrideOption | None, optional
+        Override the inferred target type.
 
     Returns
     -------
@@ -1172,11 +1172,11 @@ def transform_cmd(
 @app.command('validate')
 def validate_cmd(
     ctx: typer.Context,
-    source: StreamingSourceArg = '-',
-    source_type: SourceOverrideOption | None = None,
-    source_format: SourceFormatOption | None = None,
-    target: TargetPathOption | None = None,
     rules: RulesJSONOption = '{}',
+    source: StreamingSourceArg = '-',
+    source_format: SourceFormatOption | None = None,
+    source_type: SourceOverrideOption | None = None,
+    target: TargetPathOption | None = None,
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -1185,16 +1185,16 @@ def validate_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    source : StreamingSourceArg, optional
-        Data source (file path or ``-`` for stdin).
-    source_type : SourceOverrideOption | None, optional
-        Override the inferred source type when heuristics fail.
-    source_format : SourceFormatOption | None, optional
-        Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
-    target : TargetPathOption | None, optional
-        Optional output path. Use ``-`` for stdout.
     rules : RulesJSONOption, optional
         Validation rules as a JSON string.
+    source : StreamingSourceArg, optional
+        Data source (file path or ``-`` for stdin).
+    source_format : SourceFormatOption | None, optional
+        Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type when heuristics fail.
+    target : TargetPathOption | None, optional
+        Optional output path. Use ``-`` for stdout.
 
     Returns
     -------
