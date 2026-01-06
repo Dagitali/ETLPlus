@@ -1099,6 +1099,7 @@ def transform_cmd(
     ),
     target_format: str | None = typer.Option(
         None,
+        '--format',
         '--target-format',
         help=(
             'Output payload format '
@@ -1128,6 +1129,7 @@ def transform_cmd(
         Override the inferred target type.
     target_format : str | None
         Output payload format when not a file target (or when OUTPUT is -).
+        Accepts ``--format`` (preferred) or the legacy ``--target-format``.
 
     Returns
     -------
@@ -1176,6 +1178,11 @@ def transform_cmd(
         _FORMAT_CHOICES,
         label='target_format',
     )
+    target_format_kwargs = _format_namespace_kwargs(
+        strict=False,
+        format_value=target_format,
+        default='json',
+    )
     from_ = _optional_choice(from_, _SOURCE_CHOICES, label='from')
     to = _optional_choice(to, _SOURCE_CHOICES, label='to')
 
@@ -1220,11 +1227,11 @@ def transform_cmd(
         source=source,
         source_type=resolved_source_type,
         operations=json_type(operations),
-        target=target,
+        target=resolved_target,
         source_format=source_format,
         target_type=resolved_target_type,
-        target_format=(target_format or 'json'),
-        _format_explicit=(target_format is not None),
+        target_format=target_format_kwargs['format'],
+        **target_format_kwargs,
     )
     return int(cmd_transform(ns))
 
@@ -1253,7 +1260,10 @@ def validate_cmd(
     source_format: str | None = typer.Option(
         None,
         '--source-format',
-        help='Input payload format for stdin (json or csv).',
+        help=(
+            'Input payload format when SOURCE is - (JSON or CSV). '
+            'Files infer format from extensions.'
+        ),
     ),
 ) -> int:
     """
@@ -1270,7 +1280,7 @@ def validate_cmd(
     output : str | None
         Optional output path. Use ``-`` for stdout.
     source_format : str | None
-        Optional stdin format hint (json or csv).
+        Optional stdin format hint (JSON or CSV) when SOURCE is ``-``.
 
     Returns
     -------
@@ -1284,11 +1294,20 @@ def validate_cmd(
     )
 
     state = _ensure_state(ctx)
+    inferred_source_type = _infer_resource_type_soft(source)
+
+    _log_inferred_resource(
+        state,
+        role='source',
+        value=source,
+        resource_type=inferred_source_type,
+    )
 
     ns = _stateful_namespace(
         state,
         command='validate',
         source=source,
+        source_type=inferred_source_type,
         rules=json_type(rules),
         output=output,
         source_format=source_format,
