@@ -102,22 +102,21 @@ CLI_EPILOG: Final[str] = '\n'.join(
 
 PROJECT_URL: Final[str] = 'https://github.com/Dagitali/ETLPlus'
 
-EXTRACT_ARGS = typer.Argument(
+SOURCE_ARG = typer.Argument(
     ...,
-    metavar='[SOURCE_TYPE] SOURCE',
+    metavar='SOURCE',
     help=(
-        'Extract from a SOURCE. You may provide SOURCE_TYPE explicitly as the '
-        'first positional argument, or omit it and use --from/--source-type '
-        'or let etlplus infer it from the SOURCE.'
+        'Extract from SOURCE. Use --from/--source-type to override the '
+        'inferred connector when needed.'
     ),
 )
-LOAD_ARGS = typer.Argument(
+TARGET_ARG = typer.Argument(
     ...,
-    metavar='[TARGET_TYPE] TARGET',
+    metavar='TARGET',
     help=(
-        'Load JSON data from stdin into a target. Provide TARGET only, or '
-        'prefix it with TARGET_TYPE to avoid --to/--target-type. Source data '
-        'must be piped into stdin.'
+        'Load JSON data from stdin into TARGET. Use --to/--target-type to '
+        'override connector inference when needed. Source data must be '
+        'piped into stdin.'
     ),
 )
 
@@ -362,49 +361,6 @@ def _optional_choice(
     return _validate_choice(value, choices, label=label)
 
 
-def _parse_positional_resource(
-    args: list[str],
-    *,
-    subject: str,
-    subject_type_label: str,
-    error_hint: str | None = None,
-) -> tuple[str | None, str]:
-    """
-    Return the explicit resource type (if any) and value.
-
-    Parameters
-    ----------
-    args : list[str]
-        Positional arguments provided to the command.
-    subject : str
-        Friendly label for the resource (e.g., ``SOURCE`` or ``TARGET``).
-    subject_type_label : str
-        Friendly label for the resource type (e.g., ``SOURCE_TYPE`` or
-        ``TARGET_TYPE``).
-    error_hint : str | None
-        Optional hint to include in the error message.
-
-    Returns
-    -------
-    tuple[str | None, str]
-        Explicit resource type (if any) and resource value.
-
-    Raises
-    ------
-    typer.BadParameter
-        If the arguments are invalid.
-    """
-    match args:
-        case [resource_type, resource_value]:
-            return resource_type, resource_value
-        case [resource_value]:
-            return None, resource_value
-    message = f'Provide {subject} or {subject_type_label} {subject}.'
-    if error_hint:
-        message = f'{message} {error_hint}'
-    raise typer.BadParameter(message)
-
-
 def _resolve_resource_type(
     *,
     explicit_type: str | None,
@@ -603,7 +559,7 @@ def _root(
 @app.command('extract')
 def extract_cmd(
     ctx: typer.Context,
-    source_args: list[str] = EXTRACT_ARGS,
+    source: str = SOURCE_ARG,
     source_type: str | None = typer.Option(
         None,
         '--from',
@@ -626,10 +582,8 @@ def extract_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    source_args : list[str]
-        Positional arguments: either SOURCE, or SOURCE_TYPE SOURCE. The
-        legacy ``SOURCE_TYPE=file`` form is rejected; use ``--from file``
-        instead.
+    source : str
+        Data source (file path, URL, DSN, or ``-`` for stdin).
     source_type : str | None
         Override the inferred source type.
     source_format : str | None
@@ -639,11 +593,6 @@ def extract_cmd(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    typer.BadParameter
-        If invalid parameters are provided.
 
     Examples
     --------
@@ -666,9 +615,6 @@ def extract_cmd(
     - CSV output is unsupported for this command.
     - Use shell redirection (``>``) or pipelines to persist the output.
     """
-    if len(source_args) not in (1, 2):
-        raise typer.BadParameter('Provide SOURCE, or SOURCE_TYPE SOURCE.')
-
     state = _ensure_state(ctx)
 
     source_type = _optional_choice(
@@ -682,27 +628,9 @@ def extract_cmd(
         label='source_format',
     )
 
-    explicit_source_type, resolved_source = _parse_positional_resource(
-        source_args,
-        subject='SOURCE',
-        subject_type_label='SOURCE_TYPE',
-    )
-
-    resolved_source_type = _resolve_resource_type(
-        explicit_type=explicit_source_type,
-        override_type=source_type,
-        value=resolved_source,
-        label='source_type',
-        conflict_error=(
-            'Do not combine --from/--source-type with an explicit '
-            'SOURCE_TYPE.'
-        ),
-        legacy_file_error=(
-            "Legacy form 'etlplus extract file SOURCE' is no longer "
-            'supported. Omit SOURCE_TYPE or pass --from file instead.'
-            if explicit_source_type is not None
-            else None
-        ),
+    resolved_source = source
+    resolved_source_type = source_type or _infer_resource_type_or_exit(
+        resolved_source,
     )
 
     _log_inferred_resource(
@@ -794,7 +722,7 @@ def list_cmd(
 @app.command('load')
 def load_cmd(
     ctx: typer.Context,
-    target_args: list[str] = LOAD_ARGS,
+    target: str = TARGET_ARG,
     source_format: str | None = typer.Option(
         None,
         '--source-format',
@@ -825,9 +753,8 @@ def load_cmd(
     ----------
     ctx : typer.Context
         Typer execution context provided to the command.
-    target_args : list[str]
-        Positional arguments: either TARGET, or TARGET_TYPE TARGET. Source
-        data must be piped into stdin.
+    target : str
+        Load destination (file path, URL/DSN, or ``-`` for stdout).
     source_format : str | None
         Hint for parsing stdin payloads (json or csv).
     target_type : str | None
@@ -839,11 +766,6 @@ def load_cmd(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    typer.BadParameter
-        If the arguments are invalid
 
     Examples
     --------
@@ -863,9 +785,6 @@ def load_cmd(
     - Convert upstream before piping into ``load`` when working with other
         formats.
     """
-    if len(target_args) not in (1, 2):
-        raise typer.BadParameter('Provide TARGET, or TARGET_TYPE TARGET.')
-
     state = _ensure_state(ctx)
 
     source_format = _optional_choice(
@@ -884,31 +803,9 @@ def load_cmd(
         label='target_format',
     )
 
-    explicit_target_type, resolved_target = _parse_positional_resource(
-        target_args,
-        subject='TARGET',
-        subject_type_label='TARGET_TYPE',
-        error_hint=(
-            'Pipe source data into stdin (for example, "cat input.json | '
-            'etlplus load out.json").'
-        ),
-    )
-
-    resolved_target_type = _resolve_resource_type(
-        explicit_type=explicit_target_type,
-        override_type=target_type,
-        value=resolved_target,
-        label='target_type',
-        conflict_error=(
-            'Do not combine --to/--target-type with an explicit '
-            'TARGET_TYPE.'
-        ),
-        legacy_file_error=(
-            "Legacy form 'etlplus load file TARGET' is no longer "
-            'supported. Omit TARGET_TYPE or pass --to file instead.'
-            if explicit_target_type is not None
-            else None
-        ),
+    resolved_target = target
+    resolved_target_type = target_type or _infer_resource_type_or_exit(
+        resolved_target,
     )
 
     resolved_source_value = '-'
