@@ -117,6 +117,8 @@ def _list_sections(
         Metadata output for the list command.
     """
     sections: dict[str, Any] = {}
+    if getattr(args, 'jobs', False):
+        sections['jobs'] = _pipeline_summary(cfg)['jobs']
     if getattr(args, 'pipelines', False):
         sections['pipelines'] = [cfg.name]
     if getattr(args, 'sources', False):
@@ -598,6 +600,12 @@ def cmd_pipeline(
     int
         Zero on success.
     """
+    print(
+        'DEPRECATED: use "etlplus list --summary|--jobs" or '
+        '"etlplus run --job/--pipeline" instead of "etlplus pipeline".',
+        file=sys.stderr,
+    )
+
     cfg = load_pipeline_config(args.config, substitute=True)
 
     list_flag = getattr(args, 'list', False) or getattr(args, 'jobs', False)
@@ -635,6 +643,10 @@ def cmd_list(args: argparse.Namespace) -> int:
         Zero on success.
     """
     cfg = load_pipeline_config(args.config, substitute=True)
+    if getattr(args, 'summary', False):
+        print_json(_pipeline_summary(cfg))
+        return 0
+
     print_json(_list_sections(cfg, args))
     return 0
 
