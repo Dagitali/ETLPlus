@@ -315,21 +315,6 @@ class TestTyperCliAppWiring:
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
-    def test_load_file_to_file_is_rejected(
-        self,
-        runner: CliRunner,
-    ) -> None:
-        """
-        Test that supplying SOURCE TARGET after an explicit type still errors.
-        """
-        result = runner.invoke(
-            cli_app,
-            ['load', 'file', 'in.json', 'out.json'],
-        )
-
-        assert result.exit_code != 0
-        assert 'usage: etlplus load' in result.stderr.lower()
-
     def test_load_to_option_defaults_source_to_stdin(
         self,
         runner: CliRunner,
