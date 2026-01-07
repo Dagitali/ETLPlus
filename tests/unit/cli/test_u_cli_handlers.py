@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import types
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -410,6 +411,72 @@ class TestCliHandlersInternalHelpers:
             types.SimpleNamespace(stdin=buffer),
         )
         assert handlers._read_stdin_text() == 'stream-data'
+
+
+class TestCmdRender:
+    """Unit tests for the render command handler."""
+
+    def test_cmd_render_writes_sql_from_spec(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test rendering a standalone spec to a file."""
+
+        spec = {
+            'schema': 'dbo',
+            'table': 'Widget',
+            'columns': [
+                {'name': 'Id', 'type': 'int', 'nullable': False},
+                {'name': 'Name', 'type': 'nvarchar(50)', 'nullable': True},
+            ],
+            'primary_key': {'columns': ['Id']},
+        }
+
+        spec_path = tmp_path / 'spec.json'
+        spec_path.write_text(json.dumps(spec), encoding='utf-8')
+
+        output_path = tmp_path / 'out.sql'
+        args = argparse.Namespace(
+            command='render',
+            config=None,
+            spec=str(spec_path),
+            table=None,
+            template='ddl',
+            template_path=None,
+            output=str(output_path),
+            pretty=True,
+            quiet=False,
+        )
+
+        assert handlers.cmd_render(args) == 0
+
+        sql_text = output_path.read_text(encoding='utf-8')
+        assert 'CREATE TABLE [dbo].[Widget]' in sql_text
+
+        captured = capsys.readouterr()
+        assert f'Rendered 1 schema(s) to {output_path}' in captured.out
+
+    def test_cmd_render_errors_without_specs(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that missing configs/specs surfaces a helpful error."""
+
+        args = argparse.Namespace(
+            command='render',
+            config=None,
+            spec=None,
+            table=None,
+            template='ddl',
+            template_path=None,
+            output=None,
+            pretty=True,
+            quiet=False,
+        )
+
+        assert handlers.cmd_render(args) == 1
+        assert 'No table schemas found' in capsys.readouterr().err
 
 
 class TestCliHandlersCommands:
