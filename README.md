@@ -48,7 +48,7 @@ package and command-line interface for data extraction, validation, transformati
 
 ## Features
 
-- **Inspect** data pipeline definitions before running them:
+- **Check** data pipeline definitions before running them:
   - Summarize jobs, sources, targets, and transforms
   - Confirm configuration changes by printing focused sections on demand
 
@@ -137,21 +137,21 @@ etlplus --help
 etlplus --version
 ```
 
-#### Inspect Pipelines
+#### Check Pipelines
 
-Use `etlplus list` to explore pipeline YAML definitions without running them. The command can print
+Use `etlplus check` to explore pipeline YAML definitions without running them. The command can print
 job names, summarize configured sources and targets, or drill into specific sections.
 
 List jobs and show a pipeline summary:
 ```bash
-etlplus list --config examples/configs/pipeline.yml --jobs
-etlplus list --config examples/configs/pipeline.yml --summary
+etlplus check --config examples/configs/pipeline.yml --jobs
+etlplus check --config examples/configs/pipeline.yml --summary
 ```
 
 Show sources or transforms for troubleshooting:
 ```bash
-etlplus list --config examples/configs/pipeline.yml --sources
-etlplus list --config examples/configs/pipeline.yml --transforms
+etlplus check --config examples/configs/pipeline.yml --sources
+etlplus check --config examples/configs/pipeline.yml --transforms
 ```
 
 #### Render SQL DDL
@@ -316,8 +316,8 @@ CLI quick reference for pipelines:
 
 ```bash
 # List jobs or show a pipeline summary
-etlplus list --config examples/configs/pipeline.yml --jobs
-etlplus list --config examples/configs/pipeline.yml --summary
+etlplus check --config examples/configs/pipeline.yml --jobs
+etlplus check --config examples/configs/pipeline.yml --summary
 
 # Run a job
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
