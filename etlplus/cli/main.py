@@ -422,8 +422,9 @@ def create_parser() -> argparse.ArgumentParser:
     pipe_parser = subparsers.add_parser(
         'pipeline',
         help=(
-            'Inspect or run pipeline YAML (see '
-            f'{PROJECT_URL}/blob/main/docs/pipeline-guide.md)'
+            'DEPRECATED: use "list" (for summary/jobs) or "run" (to execute); '
+            'see '
+            f'{PROJECT_URL}/blob/main/docs/pipeline-guide.md'
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -448,6 +449,11 @@ def create_parser() -> argparse.ArgumentParser:
     _add_config_option(list_parser)
     _add_boolean_flag(
         list_parser,
+        name='jobs',
+        help_text='List ETL jobs',
+    )
+    _add_boolean_flag(
+        list_parser,
         name='pipelines',
         help_text='List ETL pipelines',
     )
@@ -455,6 +461,13 @@ def create_parser() -> argparse.ArgumentParser:
         list_parser,
         name='sources',
         help_text='List data sources',
+    )
+    _add_boolean_flag(
+        list_parser,
+        name='summary',
+        help_text=(
+            'Show pipeline summary (name, version, sources, targets, jobs)'
+        ),
     )
     _add_boolean_flag(
         list_parser,

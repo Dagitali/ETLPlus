@@ -264,6 +264,19 @@ For YAML-driven pipelines executed end-to-end (extract → validate → transfor
 - Authoring: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Runner API and internals: [`docs/run-module.md`](docs/run-module.md)
 
+CLI quick reference for pipelines:
+
+```bash
+# List jobs or show a pipeline summary
+etlplus list --config examples/configs/pipeline.yml --jobs
+etlplus list --config examples/configs/pipeline.yml --summary
+
+# Run a job
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+
+# Deprecated shim (will be removed): etlplus pipeline
+```
+
 ### Complete ETL Pipeline Example
 
 ```bash

@@ -782,8 +782,21 @@ def list_cmd(
         '--pipelines',
         help='List ETL pipelines',
     ),
-    sources: bool = typer.Option(False, '--sources', help='List data sources'),
-    targets: bool = typer.Option(False, '--targets', help='List data targets'),
+    sources: bool = typer.Option(
+        False,
+        '--sources',
+        help='List data sources',
+    ),
+    summary: bool = typer.Option(
+        False,
+        '--summary',
+        help='Show pipeline summary (name, version, sources, targets, jobs)',
+    ),
+    targets: bool = typer.Option(
+        False,
+        '--targets',
+        help='List data targets',
+    ),
     transforms: bool = typer.Option(
         False,
         '--transforms',
@@ -805,6 +818,8 @@ def list_cmd(
         If True, list ETL pipelines.
     sources : bool, optional
         If True, list data sources.
+    summary : bool, optional
+        If True, show pipeline summary (name, version, sources, targets, jobs).
     targets : bool, optional
         If True, list data targets.
     transforms : bool, optional
@@ -820,6 +835,7 @@ def list_cmd(
         state,
         command='list',
         config=config,
+        summary=summary,
         pipelines=pipelines,
         jobs=jobs,
         sources=sources,
@@ -953,7 +969,7 @@ def pipeline_cmd(
     ),
 ) -> int:
     """
-    Inspect or run a pipeline YAML configuration.
+    Deprecated wrapper to inspect or run a pipeline YAML configuration.
 
     Parameters
     ----------
