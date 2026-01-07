@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from importlib import import_module
+from typing import Final
 from unittest.mock import Mock
 
 import pytest
@@ -22,34 +23,50 @@ from etlplus.cli.main import main as cli_main
 pytestmark = pytest.mark.unit
 
 cli_main_module = import_module('etlplus.cli.main')
+PROG_NAME: Final[str] = 'etlplus'
 
 
-def _install_stub_command(
+@pytest.fixture(name='stub_command')
+def stub_command_fixture(
     monkeypatch: pytest.MonkeyPatch,
-    *,
-    action: Callable[..., object],
-) -> None:
-    """Replace the Typer command with a stub that triggers ``action``."""
+) -> Callable[[Callable[..., object]], None]:
+    """
+    Install a Typer command stub.
 
-    class _StubCommand:
-        def main(
-            self,
-            *,
-            args: list[str],
-            prog_name: str,
-            standalone_mode: bool,
-        ) -> object:
-            return action(
-                args=args,
-                prog_name=prog_name,
-                standalone_mode=standalone_mode,
-            )
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Built-in pytest fixture used to alter Typer bindings.
 
-    monkeypatch.setattr(
-        typer.main,
-        'get_command',
-        lambda _app: _StubCommand(),
-    )
+    Returns
+    -------
+    Callable[[Callable[..., object]], None]
+        Callable that patches :func:`typer.main.get_command` so that calls are
+        delegated to ``action`` while preserving the Typer interface.
+    """
+
+    def _install(action: Callable[..., object]) -> None:
+        class _StubCommand:
+            def main(
+                self,
+                *,
+                args: list[str],
+                prog_name: str,
+                standalone_mode: bool,
+            ) -> object:
+                return action(
+                    args=args,
+                    prog_name=prog_name,
+                    standalone_mode=standalone_mode,
+                )
+
+        monkeypatch.setattr(
+            typer.main,
+            'get_command',
+            lambda _app: _StubCommand(),
+        )
+
+    return _install
 
 
 # SECTION: TESTS ============================================================ #
@@ -59,7 +76,9 @@ class TestCreateParser:
     """Unit tests for :func:`etlplus.cli.main.create_parser`."""
 
     def test_extract_parser_sets_handler_and_format_flag(self) -> None:
-        """Extract parser should bind handlers and flag explicit formats."""
+        """
+        Test that the extract parser binds handlers and flag explicit formats.
+        """
         # pylint: disable=protected-access
 
         parser = cli_main_module.create_parser()
@@ -74,7 +93,7 @@ class TestCreateParser:
         assert namespace._format_explicit is True
 
     def test_list_parser_supports_boolean_flags(self) -> None:
-        """List parser should surface boolean flag wiring."""
+        """Test that the list parser surfaces boolean flag wiring."""
         parser = cli_main_module.create_parser()
         namespace = parser.parse_args(
             ['list', '--config', 'pipelines.yml', '--targets', '--transforms'],
@@ -92,20 +111,27 @@ class TestMain:
 
     def test_command_return_value_is_passthrough(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        stub_command: Callable[[Callable[..., object]], None],
     ) -> None:
-        """Test that the command return value is normalized into an ``int``."""
+        """
+        Test that the command return values flow through unchanged.
+
+        Parameters
+        ----------
+        stub_command : Callable[[Callable[..., object]], None]
+            Fixture that wires Typer's command execution to ``action``.
+        """
         captured: dict[str, object] = {}
 
         def _action(**kwargs: object) -> object:
             captured.update(kwargs)
             return 5
 
-        _install_stub_command(monkeypatch, action=_action)
+        stub_command(_action)
 
         assert cli_main(['extract']) == 5
         assert captured['args'] == ['extract']
-        assert captured['prog_name'] == 'etlplus'
+        assert captured['prog_name'] == PROG_NAME
         assert captured['standalone_mode'] is False
 
     def test_handles_keyboard_interrupt(
@@ -125,15 +151,15 @@ class TestMain:
 
     def test_handles_os_error(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        stub_command: Callable[[Callable[..., object]], None],
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Any :class:`OSError` should surface to stderr and return 1."""
+        """Test that any :class:`OSError` surfaces to stderr and return 1."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise OSError('disk full')
 
-        _install_stub_command(monkeypatch, action=_action)
+        stub_command(_action)
 
         assert cli_main(['anything']) == 1
         assert 'Error: disk full' in capsys.readouterr().err
@@ -157,7 +183,7 @@ class TestMain:
 
     def test_handles_typer_abort(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        stub_command: Callable[[Callable[..., object]], None],
     ) -> None:
         """
         Test that ``typer.Abort`` propagates as a generic failure (exit code
@@ -167,20 +193,20 @@ class TestMain:
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise typer.Abort()
 
-        _install_stub_command(monkeypatch, action=_action)
+        stub_command(_action)
 
         assert cli_main(['anything']) == 1
 
     def test_handles_typer_exit(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        stub_command: Callable[[Callable[..., object]], None],
     ) -> None:
         """Test that ``typer.Exit`` propagates its exit code."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise typer.Exit(17)
 
-        _install_stub_command(monkeypatch, action=_action)
+        stub_command(_action)
 
         assert cli_main(['anything']) == 17
 
@@ -188,42 +214,36 @@ class TestMain:
         """Test that no args prints help and exits with exit code 0."""
         assert cli_main([]) == 0
 
-    def test_unknown_subcommand_emits_usage(
+    @pytest.mark.parametrize(
+        ('cli_args', 'expected_message'),
+        (
+            (['definitely-not-real'], 'No such command'),
+            (['--definitely-not-real-option'], 'No such option'),
+            (['extract', '--definitely-not-real-option'], 'No such option'),
+        ),
+    )
+    def test_unknown_arguments_emit_usage(
         self,
+        cli_args: list[str],
+        expected_message: str,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that illegal subcommands show help and exit with code 2."""
-        exit_code = cli_main(['definitely-not-real'])
+        """Test that unknown CLI arguments echo usage help.
+
+        Parameters
+        ----------
+        cli_args : list[str]
+            Command-line invocation passed to :func:`cli_main`.
+        expected_message : str
+            Substring expected in stderr describing the error.
+        capsys : pytest.CaptureFixture[str]
+            Pytest capture fixture used to inspect stderr output.
+        """
+        exit_code = cli_main(cli_args)
         captured = capsys.readouterr()
 
         assert exit_code == 2
-        assert 'No such command' in captured.err
-        assert 'Usage:' in captured.err
-
-    def test_unknown_root_option_emits_usage(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that Unknown root options echo usage details to stderr."""
-
-        exit_code = cli_main(['--definitely-not-real-option'])
-        captured = capsys.readouterr()
-
-        assert exit_code == 2
-        assert 'No such option' in captured.err
-        assert 'Usage:' in captured.err
-
-    def test_unknown_subcommand_option_emits_usage(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that unknown subcommand options surface usage help."""
-
-        exit_code = cli_main(['extract', '--definitely-not-real-option'])
-        captured = capsys.readouterr()
-
-        assert exit_code == 2
-        assert 'No such option' in captured.err
+        assert expected_message in captured.err
         assert 'Usage:' in captured.err
 
     def test_value_error_returns_exit_code_1(
