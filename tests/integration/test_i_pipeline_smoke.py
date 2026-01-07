@@ -2,12 +2,13 @@
 :mod:`tests.integration.test_i_pipeline_smoke` module.
 
 Pipeline smoke integration test suite exercising a minimal file→file job via
-the CLI. Parametrized to verify both empty and non-empty inputs.
+the CLI (using the deprecated-free path). Parametrized to verify both empty
+and non-empty inputs.
 
 Notes
 -----
 - Builds a transient pipeline YAML string per test run.
-- Invokes ``etlplus pipeline --run <job>`` end-to-end.
+- Invokes ``etlplus run --job <job>`` end-to-end.
 - Validates output file contents against input data shape.
 """
 
@@ -85,7 +86,7 @@ class TestPipelineSmoke:
 
         code, out, err = cli_invoke(
             (
-                'pipeline',
+                'run',
                 '--config',
                 str(cfg_path),
                 '--job',

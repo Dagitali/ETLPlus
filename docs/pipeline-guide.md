@@ -378,30 +378,31 @@ jobs:
 Once you have a pipeline YAML, you can run jobs either from the
 command line or directly from Python.
 
-### CLI: `etlplus pipeline` and `etlplus run`
+### CLI: `etlplus list` (inspect) and `etlplus run` (execute)
 
-List jobs defined in a pipeline file:
+List jobs or show a summary from a pipeline file:
 
 ```bash
-etlplus pipeline --config examples/configs/pipeline.yml --list
+etlplus list --config examples/configs/pipeline.yml --jobs
+etlplus list --config examples/configs/pipeline.yml --summary
 ```
 
 Run a specific job end-to-end (extract → validate → transform → load):
 
 ```bash
-etlplus pipeline --config examples/configs/pipeline.yml --run file_to_file_customers
-
-# Equivalent, using the dedicated run command
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 ```
 
 Notes:
 
-- Both commands read the same YAML schema described in this guide.
+- These commands read the same YAML schema described in this guide.
 - Environment-variable substitution (e.g. `${GITHUB_TOKEN}`) is applied the same way as when loading
   configs via the Python API.
 - For more details on the orchestration implementation, see
   [Runner internals: etlplus.run](run-module.md).
+
+Deprecated: `etlplus pipeline` is still available as a shim but will be removed in a future release;
+prefer `list` and `run`.
 
 ### Python: `etlplus.run.run`
 
