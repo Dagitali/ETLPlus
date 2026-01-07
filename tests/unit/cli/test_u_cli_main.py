@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.cli.main`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import import_module
 from unittest.mock import Mock
 
 import pytest
@@ -19,6 +20,8 @@ from etlplus.cli.main import main as cli_main
 
 
 pytestmark = pytest.mark.unit
+
+cli_main_module = import_module('etlplus.cli.main')
 
 
 def _install_stub_command(
@@ -50,6 +53,38 @@ def _install_stub_command(
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestCreateParser:
+    """Unit tests for :func:`etlplus.cli.main.create_parser`."""
+
+    def test_extract_parser_sets_handler_and_format_flag(self) -> None:
+        """Extract parser should bind handlers and flag explicit formats."""
+
+        parser = cli_main_module.create_parser()
+        namespace = parser.parse_args(
+            ['extract', 'file', 'data.csv', '--source-format', 'json'],
+        )
+
+        assert namespace.func is cli_main_module.cmd_extract
+        assert namespace.source_type == 'file'
+        assert namespace.source == 'data.csv'
+        assert namespace.source_format == 'json'
+        assert namespace._format_explicit is True
+
+    def test_list_parser_supports_boolean_flags(self) -> None:
+        """List parser should surface boolean flag wiring."""
+
+        parser = cli_main_module.create_parser()
+        namespace = parser.parse_args(
+            ['list', '--config', 'pipelines.yml', '--targets', '--transforms'],
+        )
+
+        assert namespace.func is cli_main_module.cmd_list
+        assert namespace.command == 'list'
+        assert namespace.config == 'pipelines.yml'
+        assert namespace.targets is True
+        assert namespace.transforms is True
 
 
 class TestMain:
