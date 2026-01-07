@@ -200,6 +200,32 @@ class TestMain:
         assert 'No such command' in captured.err
         assert 'Usage:' in captured.err
 
+    def test_unknown_root_option_emits_usage(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that Unknown root options echo usage details to stderr."""
+
+        exit_code = cli_main(['--definitely-not-real-option'])
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert 'No such option' in captured.err
+        assert 'Usage:' in captured.err
+
+    def test_unknown_subcommand_option_emits_usage(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that unknown subcommand options surface usage help."""
+
+        exit_code = cli_main(['extract', '--definitely-not-real-option'])
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert 'No such option' in captured.err
+        assert 'Usage:' in captured.err
+
     def test_value_error_returns_exit_code_1(
         self,
         monkeypatch: pytest.MonkeyPatch,
