@@ -37,7 +37,7 @@ from ..validate import validate
 __all__ = [
     # Functions
     'cmd_extract',
-    'cmd_list',
+    'cmd_check',
     'cmd_load',
     'cmd_pipeline',
     'cmd_render',
@@ -148,12 +148,12 @@ def _infer_payload_format(
     return 'csv'
 
 
-def _list_sections(
+def _check_sections(
     cfg: PipelineConfig,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
     """
-    Build sectioned metadata output for the list command.
+    Build sectioned metadata output for the check command.
 
     Parameters
     ----------
@@ -165,7 +165,7 @@ def _list_sections(
     Returns
     -------
     dict[str, Any]
-        Metadata output for the list command.
+        Metadata output for the check command.
     """
     sections: dict[str, Any] = {}
     if getattr(args, 'jobs', False):
@@ -634,7 +634,7 @@ def cmd_pipeline(
         Zero on success.
     """
     print(
-        'DEPRECATED: use "etlplus list --summary|--jobs" or '
+        'DEPRECATED: use "etlplus check --summary|--jobs" or '
         '"etlplus run --job/--pipeline" instead of "etlplus pipeline".',
         file=sys.stderr,
     )
@@ -722,7 +722,7 @@ def cmd_render(
     return 0
 
 
-def cmd_list(args: argparse.Namespace) -> int:
+def cmd_check(args: argparse.Namespace) -> int:
     """
     Print requested pipeline sections from a YAML configuration.
 
@@ -741,7 +741,7 @@ def cmd_list(args: argparse.Namespace) -> int:
         print_json(_pipeline_summary(cfg))
         return 0
 
-    print_json(_list_sections(cfg, args))
+    print_json(_check_sections(cfg, args))
     return 0
 
 

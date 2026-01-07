@@ -24,8 +24,8 @@ from ..enums import FileFormat
 from ..utils import json_type
 from .app import PROJECT_URL
 from .app import app
+from .handlers import cmd_check
 from .handlers import cmd_extract
-from .handlers import cmd_list
 from .handlers import cmd_load
 from .handlers import cmd_pipeline
 from .handlers import cmd_render
@@ -478,45 +478,45 @@ def create_parser() -> argparse.ArgumentParser:
     )
     render_parser.set_defaults(func=cmd_render)
 
-    list_parser = subparsers.add_parser(
-        'list',
-        help='List ETL pipeline metadata',
+    check_parser = subparsers.add_parser(
+        'check',
+        help='Inspect ETL pipeline metadata',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    _add_config_option(list_parser)
+    _add_config_option(check_parser)
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='jobs',
         help_text='List ETL jobs',
     )
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='pipelines',
         help_text='List ETL pipelines',
     )
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='sources',
         help_text='List data sources',
     )
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='summary',
         help_text=(
             'Show pipeline summary (name, version, sources, targets, jobs)'
         ),
     )
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='targets',
         help_text='List data targets',
     )
     _add_boolean_flag(
-        list_parser,
+        check_parser,
         name='transforms',
         help_text='List data transforms',
     )
-    list_parser.set_defaults(func=cmd_list)
+    check_parser.set_defaults(func=cmd_check)
 
     run_parser = subparsers.add_parser(
         'run',

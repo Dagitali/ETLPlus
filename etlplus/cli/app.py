@@ -57,8 +57,8 @@ from .. import __version__
 from ..enums import DataConnectorType
 from ..enums import FileFormat
 from ..utils import json_type
+from .handlers import cmd_check
 from .handlers import cmd_extract
-from .handlers import cmd_list
 from .handlers import cmd_load
 from .handlers import cmd_pipeline
 from .handlers import cmd_render
@@ -831,8 +831,8 @@ def extract_cmd(
     return int(cmd_extract(ns))
 
 
-@app.command('list')
-def list_cmd(
+@app.command('check')
+def check_cmd(
     ctx: typer.Context,
     config: PipelineConfigOption,
     jobs: bool = typer.Option(
@@ -896,7 +896,7 @@ def list_cmd(
     state = _ensure_state(ctx)
     ns = _stateful_namespace(
         state,
-        command='list',
+        command='check',
         config=config,
         summary=summary,
         pipelines=pipelines,
@@ -905,7 +905,7 @@ def list_cmd(
         targets=targets,
         transforms=transforms,
     )
-    return int(cmd_list(ns))
+    return int(cmd_check(ns))
 
 
 @app.command('load')
