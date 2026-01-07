@@ -1,0 +1,12 @@
+# MANIFEST.in
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Contains commands that allow lists of files to be discovered and manipulated.
+#
+# See:
+# 1. https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html
+
+# Include Jinja template files in the etlplus package
+recursive-include etlplus/templates *.j2
