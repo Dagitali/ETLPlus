@@ -263,7 +263,6 @@ PipelineConfigOption = Annotated[
 RenderConfigOption = Annotated[
     str | None,
     typer.Option(
-        None,
         '--config',
         metavar='PATH',
         help='Pipeline YAML that includes table_schemas for rendering.',
@@ -274,7 +273,6 @@ RenderConfigOption = Annotated[
 RenderOutputOption = Annotated[
     str | None,
     typer.Option(
-        None,
         '--output',
         '-o',
         metavar='PATH',
@@ -285,7 +283,6 @@ RenderOutputOption = Annotated[
 RenderSpecOption = Annotated[
     str | None,
     typer.Option(
-        None,
         '--spec',
         metavar='PATH',
         help='Standalone table spec file (.yml/.yaml/.json).',
@@ -296,7 +293,6 @@ RenderSpecOption = Annotated[
 RenderTableOption = Annotated[
     str | None,
     typer.Option(
-        None,
         '--table',
         metavar='NAME',
         help='Filter to a single table name from table_schemas.',
@@ -306,7 +302,6 @@ RenderTableOption = Annotated[
 RenderTemplateOption = Annotated[
     str,
     typer.Option(
-        'ddl',
         '--template',
         '-t',
         metavar='KEY|PATH',
@@ -318,7 +313,6 @@ RenderTemplateOption = Annotated[
 RenderTemplatePathOption = Annotated[
     str | None,
     typer.Option(
-        None,
         '--template-path',
         metavar='PATH',
         help=(
