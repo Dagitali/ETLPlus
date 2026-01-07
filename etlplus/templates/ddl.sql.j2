@@ -1,0 +1,128 @@
+{# ---------- helpers ---------- #}
+{% macro qid(name) -%}[{{ name | replace(']', ']]') }}]{%- endmacro %}
+{% macro qname(schema, name) -%}{{ qid(schema) }}.{{ qid(name) }}{%- endmacro %}
+{% macro df_name(table, col) -%}DF_{{ table }}_{{ col }}{%- endmacro %}
+{% macro ck_name(table, col) -%}CK_{{ table }}_{{ col }}{%- endmacro %}
+
+{# ---------- create schema (optional) ---------- #}
+{% if spec.create_schema | default(true) %}
+IF
+    NOT EXISTS (
+        SELECT 1
+        FROM sys.schemas
+        WHERE name = N'{{ spec.schema }}'
+    )
+    EXEC ('CREATE SCHEMA {{ qid(spec.schema) }}');
+GO
+{% endif %}
+
+{# ---------- create table guarded ---------- #}
+{% set fqtn = qname(spec.schema, spec.table) %}
+IF OBJECT_ID(N'{{ spec.schema }}.{{ spec.table }}', N'U') IS NULL
+    BEGIN
+        CREATE TABLE {{ fqtn }} (
+        {% set ns = namespace(maxlen=0) %}
+        {% for c in spec.columns %}
+            {% set nlen = (c.name|string)|length %}
+            {% if nlen > ns.maxlen %}{% set ns.maxlen = nlen %}{% endif %}
+        {% endfor %}
+        {% set indent_cols = '            ' %}
+        {% for c in spec.columns %}
+            {# Map-safe lookups so StrictUndefined never bites on missing keys #}
+            {%- set ctype = c.get('type') -%}
+            {%- set ident = c.get('identity') -%}
+            {%- set computed = c.get('computed') -%}
+            {%- set nullable = c.get('nullable', true) -%}
+            {%- set defv = c.get('default') -%}
+            {%- set checkv = c.get('check') -%}
+            {{- indent_cols -}}{{ qid(c.name) }} {{ ctype }}
+            {%- if computed %} AS ({{ computed }}) PERSISTED{%- endif -%}
+            {%- if nullable %} NULL{%- else %} NOT NULL{%- endif -%}
+            {%- if ident %} IDENTITY({{ ident.get('seed', 1) }}, {{ ident.get('increment', 1) }}){%- endif -%}
+            {%- if defv %} CONSTRAINT {{ qid(df_name(spec.table, c.name)) }} DEFAULT ({{ defv }}){%- endif -%}
+            {%- if checkv %} CONSTRAINT {{ qid(ck_name(spec.table, c.name)) }} CHECK ({{ checkv }}){%- endif -%}
+            {{ "," if not loop.last }}
+        {% endfor %}
+
+        {%- if spec.primary_key is defined and spec.primary_key %}
+            , CONSTRAINT {{ qid(spec.primary_key.name
+                | default('PK_' ~ spec.table)) }}
+            PRIMARY KEY CLUSTERED (
+                {%- for col in spec.primary_key.columns -%}
+                    {{ qid(col) }}{{ ", " if not loop.last }}
+                {%- endfor -%}
+            )
+        {%- endif %}
+
+        {%- for uq in spec.unique_constraints | default([]) %}
+            , CONSTRAINT {{ qid(uq.name) }} UNIQUE (
+                {%- for col in uq.columns -%}
+                    {{ qid(col) }}{{ ", " if not loop.last }}
+                {%- endfor -%}
+            )
+        {%- endfor %}
+        );
+    END
+GO
+
+{# ---------- indexes ---------- #}
+{% for ix in spec.indexes | default([]) %}
+{%- set ix_unique = ix.get('unique', false) -%}
+{%- set ix_include = ix.get('include') -%}
+{%- set ix_where = ix.get('where') -%}
+IF
+    NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE name = N'{{ ix.name }}'
+        AND object_id = OBJECT_ID(N'{{ spec.schema }}.{{ spec.table }}')
+    )
+    BEGIN
+        CREATE{% if ix_unique %} UNIQUE{% endif %} INDEX {{ qid(ix.name) }}
+            ON {{ fqtn }} (
+                {%- for col in ix.columns -%}
+                    {{ qid(col) }}{{ ", " if not loop.last }}
+                {%- endfor -%}
+            )
+            {%- if ix_include %}
+            INCLUDE (
+                {%- for col in ix_include -%}
+                    {{ qid(col) }}{{ ", " if not loop.last }}
+                {%- endfor -%}
+            )
+            {%- endif -%}
+            {%- if ix_where %} WHERE {{ ix_where }}{% endif %};
+    END
+GO
+{% endfor %}
+
+{# ---------- foreign keys ---------- #}
+{% for fk in spec.foreign_keys | default([]) %}
+IF
+    NOT EXISTS (
+        SELECT 1
+        FROM sys.foreign_keys
+        WHERE
+            name = N'{{ fk.name }}'
+            AND parent_object_id = OBJECT_ID(N'{{ spec.schema }}.{{ spec.table }}'
+    )
+)
+BEGIN
+    ALTER TABLE {{ fqtn }} WITH CHECK
+    ADD CONSTRAINT {{ qid(fk.name) }} FOREIGN KEY (
+        {%- for col in fk.columns -%}
+            {{ qid(col) }}{{ ", " if not loop.last }}
+        {%- endfor -%}
+    ) REFERENCES
+    {{ qname(fk.ref_schema | default('dbo'), fk.ref_table) }} (
+        {%- for col in fk.ref_columns -%}
+            {{ qid(col) }}{{ ", " if not loop.last }}
+        {%- endfor -%}
+    )
+    {%- set on_upd = fk.get('on_update') -%}
+    {%- set on_del = fk.get('on_delete') -%}
+    {%- if on_upd %} ON UPDATE {{ on_upd }}{% endif -%}
+    {%- if on_del %} ON DELETE {{ on_del }}{% endif %};
+END
+GO
+{% endfor %}
