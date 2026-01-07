@@ -83,14 +83,14 @@ class TestCliHandlersInternalHelpers:
         assert called_with == [payload]
 
     def test_explicit_cli_format_requires_flag(self) -> None:
-        """Explicit format hint is ignored unless the flag is set."""
+        """Test that explicit format hint is ignored unless the flag is set."""
         # pylint: disable=protected-access
 
         args = argparse.Namespace(format='csv', _format_explicit=False)
         assert handlers._explicit_cli_format(args) is None
 
     def test_explicit_cli_format_normalizes_hint(self) -> None:
-        """Explicit format hints are normalized when returned."""
+        """Test that explicit format hints are normalized when returned."""
         # pylint: disable=protected-access
 
         args = argparse.Namespace(format='CSV', _format_explicit=True)
@@ -115,7 +115,10 @@ class TestCliHandlersInternalHelpers:
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
     def test_list_sections_default(self) -> None:
-        """`_list_sections` defaults to jobs when no flags are set."""
+        """
+        Test that :func:`_list_sections` defaults to jobs when no flags are
+        set.
+        """
         # pylint: disable=protected-access
 
         args = argparse.Namespace(
@@ -132,7 +135,7 @@ class TestCliHandlersInternalHelpers:
         assert 'jobs' in result
 
     def test_materialize_file_payload_non_file(self) -> None:
-        """Non-file payloads are returned unchanged."""
+        """Test that non-file payloads are returned unchanged."""
         # pylint: disable=protected-access
 
         payload: object = {'foo': 1}
@@ -146,7 +149,7 @@ class TestCliHandlersInternalHelpers:
         )
 
     def test_materialize_file_payload_infers_csv(self, tmp_path: Path) -> None:
-        """CSV files are parsed when no explicit hint is provided."""
+        """Test that CSV files are parsed when no explicit hint is provided."""
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'file.csv'
@@ -165,7 +168,7 @@ class TestCliHandlersInternalHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        """JSON files are parsed when no format hint is provided."""
+        """Test that JSON files are parsed when no format hint is provided."""
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'payload.json'
@@ -184,7 +187,9 @@ class TestCliHandlersInternalHelpers:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """XML files are materialized via :class:`File` when inferred."""
+        """
+        Test that XML files are materialized via :class:`File` when inferred.
+        """
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'payload.xml'
@@ -217,7 +222,9 @@ class TestCliHandlersInternalHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Format hints are ignored when the explicit flag is not set."""
+        """
+        Test that format hints are ignored when the explicit flag is not set.
+        """
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'payload.json'
@@ -235,7 +242,9 @@ class TestCliHandlersInternalHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Missing input files propagate :class:`FileNotFoundError`."""
+        """
+        Test that missing input files propagate :class:`FileNotFoundError`.
+        """
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'missing.json'
@@ -251,7 +260,7 @@ class TestCliHandlersInternalHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Explicit format hints override filename inference."""
+        """Test that explicit format hints override filename inference."""
         # pylint: disable=protected-access
 
         file_path = tmp_path / 'data.txt'
@@ -340,29 +349,32 @@ class TestCliHandlersInternalHelpers:
         assert handlers._infer_payload_format(' {"a":1}') == 'json'
         assert handlers._infer_payload_format('  col1,col2') == 'csv'
 
-    def test_parse_text_payload_json(self) -> None:
-        """Test that parsing JSON text yields structured data."""
+    @pytest.mark.parametrize(
+        ('payload', 'fmt', 'expected'),
+        (
+            ('{"a": 1}', None, {'a': 1}),
+            ('a,b\n1,2\n', 'csv', [{'a': '1', 'b': '2'}]),
+            ('payload', 'yaml', 'payload'),
+        ),
+    )
+    def test_parse_text_payload_variants(
+        self,
+        payload: str,
+        fmt: str | None,
+        expected: object,
+    ) -> None:
+        """
+        Test that :func:`_parse_text_payload` handles JSON, CSV, and
+        passthrough cases.
+        """
         # pylint: disable=protected-access
 
-        result = handlers._parse_text_payload('{"a": 1}', fmt=None)
-        assert result == {'a': 1}
-
-    def test_parse_text_payload_csv(self) -> None:
-        """Test that parsing CSV text returns row dictionaries."""
-        # pylint: disable=protected-access
-
-        result = handlers._parse_text_payload('a,b\n1,2\n', fmt='csv')
-        assert result == [{'a': '1', 'b': '2'}]
-
-    def test_parse_text_payload_passthrough(self) -> None:
-        """Test that unknown formats return the original text."""
-        # pylint: disable=protected-access
-
-        text = 'payload'
-        assert handlers._parse_text_payload(text, fmt='yaml') == text
+        assert handlers._parse_text_payload(payload, fmt=fmt) == expected
 
     def test_parse_text_payload_infers_csv_when_unspecified(self) -> None:
-        """CSV payloads are parsed when no format hint is provided."""
+        """
+        Test that CSV payloads are parsed when no format hint is provided.
+        """
         # pylint: disable=protected-access
 
         result = handlers._parse_text_payload(CSV_TEXT, fmt=None)
@@ -491,7 +503,9 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Explicit format hints are forwarded for file extractions."""
+        """
+        Test that explicit format hints are forwarded for file extractions.
+        """
         args = argparse.Namespace(
             source='table.dat',
             source_type='file',
@@ -526,7 +540,9 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Extract skips stdout emission when output file is provided."""
+        """
+        Test that Extract skips stdout emission when output file is provided.
+        """
         args = argparse.Namespace(
             source='endpoint',
             source_type='api',
@@ -584,7 +600,7 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that the ``list`` command prints requested sections."""
+        """Test that ``list`` prints requested sections."""
         cfg = cast(PipelineConfig, DummyCfg())
         monkeypatch.setattr(
             handlers,
@@ -607,7 +623,10 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """`cmd_list` forwards the substitute flag to config loader."""
+        """
+        Test that :func:`cmd_list` forwards the substitute flag to config
+        loader.
+        """
         cfg = cast(PipelineConfig, DummyCfg())
         recorded: dict[str, object] = {}
 
@@ -695,7 +714,9 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Stdin payloads are parsed and routed through :func:`load`."""
+        """
+        Test that stdin payloads are parsed and routed through :func:`load`.
+        """
         args = argparse.Namespace(
             source='-',
             source_type='stream',
@@ -790,7 +811,9 @@ class TestCliHandlersCommands:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Writing to a file skips stdout emission after :func:`load`."""
+        """
+        Test that writing to a file skips stdout emission after :func:`load`.
+        """
         args = argparse.Namespace(
             source='payload.json',
             source_type='file',

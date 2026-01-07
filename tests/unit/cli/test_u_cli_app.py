@@ -14,6 +14,7 @@ from unittest.mock import Mock
 import pytest
 import typer
 from typer.testing import CliRunner
+from typer.testing import Result
 
 import etlplus
 import etlplus.cli.app as cli_app_module
@@ -24,7 +25,8 @@ from etlplus.cli.app import app as cli_app
 
 pytestmark = pytest.mark.unit
 
-CaptureHelper = Callable[[str], tuple[dict[str, object], Mock]]
+CaptureHelper = Callable[[str], tuple[dict[str, argparse.Namespace], Mock]]
+InvokeCli = Callable[..., tuple[Result, argparse.Namespace, Mock]]
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -48,8 +50,8 @@ def capture_cmd_fixture(
         passed to the handler.
     """
 
-    def _capture(name: str) -> tuple[dict[str, object], Mock]:
-        captured: dict[str, object] = {}
+    def _capture(name: str) -> tuple[dict[str, argparse.Namespace], Mock]:
+        captured: dict[str, argparse.Namespace] = {}
 
         def _fake(ns: argparse.Namespace) -> int:
             captured['ns'] = ns
@@ -62,27 +64,71 @@ def capture_cmd_fixture(
     return _capture
 
 
+@pytest.fixture(name='invoke_cli')
+def invoke_cli_fixture(
+    runner: CliRunner,
+    capture_cmd: CaptureHelper,
+) -> InvokeCli:
+    """Invoke the Typer CLI and capture the patched handler call.
+
+    Parameters
+    ----------
+    runner : CliRunner
+        Typer CLI runner fixture.
+    capture_cmd : CaptureHelper
+        Helper that patches handler bindings and records the namespace.
+
+    Returns
+    -------
+    InvokeCli
+        Callable that invokes the CLI, returning the ``Result``, handler
+        namespace, and mock used for assertion.
+    """
+
+    def _invoke(
+        handler: str,
+        *args: str,
+    ) -> tuple[Result, argparse.Namespace, Mock]:
+        captured, cmd = capture_cmd(handler)
+        result = runner.invoke(cli_app, list(args))
+        return result, captured['ns'], cmd
+
+    return _invoke
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestCliAppInternalHelpers:
     """Unit tests for private helper utilities."""
 
-    def test_infer_resource_type_variants(self, tmp_path: Path) -> None:
-        """`_infer_resource_type` recognizes URLs, DBs, files, and stdin."""
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        (
+            ('-', 'file'),
+            ('https://example.com/data.json', 'api'),
+            ('postgres://user@host/db', 'database'),
+        ),
+    )
+    def test_infer_resource_type_variants(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """
+        Test that :func:`_infer_resource_type` classifies common resource
+        inputs.
+        """
         # pylint: disable=protected-access
 
-        assert cli_app_module._infer_resource_type('-') == 'file'
-        assert (
-            cli_app_module._infer_resource_type(
-                'https://example.com/data.json',
-            )
-            == 'api'
-        )
-        assert (
-            cli_app_module._infer_resource_type('postgres://user@host/db')
-            == 'database'
-        )
+        assert cli_app_module._infer_resource_type(raw) == expected
+
+    def test_infer_resource_type_file_path(self, tmp_path: Path) -> None:
+        """
+        Test that :func:`_infer_resource_type` detects local files via
+        extension parsing.
+        """
+        # pylint: disable=protected-access
 
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
@@ -97,33 +143,40 @@ class TestCliAppInternalHelpers:
         with pytest.raises(ValueError):
             cli_app_module._infer_resource_type('unknown-resource')
 
-    def test_optional_choice_passthrough_and_validation(self) -> None:
-        """`_optional_choice` preserves None and validates provided values."""
+    @pytest.mark.parametrize(
+        ('choice', 'expected'),
+        ((None, None), ('json', 'json')),
+    )
+    def test_optional_choice_passthrough_and_validation(
+        self,
+        choice: str | None,
+        expected: str | None,
+    ) -> None:
+        """
+        Test that :func:`_optional_choice` preserves ``None`` and normalizes
+        valid values.
+        """
         # pylint: disable=protected-access
 
         assert (
             cli_app_module._optional_choice(
-                None,
+                choice,
                 {'json', 'csv'},
                 label='format',
             )
-            is None
+            == expected
         )
 
-        assert (
-            cli_app_module._optional_choice(
-                'json',
-                {'json', 'csv'},
-                label='format',
-            )
-            == 'json'
-        )
+    @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
+    def test_optional_choice_rejects_invalid(self, invalid: str) -> None:
+        """Test that invalid choices raise :class:`typer.BadParameter`."""
+        # pylint: disable=protected-access
 
         with pytest.raises(typer.BadParameter):
-            cli_app_module._optional_choice('yaml', {'json'}, label='format')
+            cli_app_module._optional_choice(invalid, {'json'}, label='format')
 
     def test_stateful_namespace_includes_cli_flags(self) -> None:
-        """State flags propagate into handler namespaces."""
+        """Test that state flags propagate into handler namespaces."""
         # pylint: disable=protected-access
 
         state = cli_app_module.CliState(pretty=False, quiet=True, verbose=True)
@@ -144,25 +197,23 @@ class TestTyperCliAppWiring:
 
     def test_extract_default_format_maps_namespace(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``extract`` command defaults to JSON and marks the data
-        format as implicit.
+        Test that ``extract`` defaults to JSON and marks the data format as
+        implicit.
         """
         # pylint: disable=protected-access
 
-        captured, cmd = capture_cmd('cmd_extract')
-        result = runner.invoke(
-            cli_app,
-            ['extract', '/path/to/file.json'],
+        result, ns, cmd = invoke_cli(
+            'cmd_extract',
+            'extract',
+            '/path/to/file.json',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'extract'
         assert ns.source_type == 'file'
@@ -172,57 +223,51 @@ class TestTyperCliAppWiring:
 
     def test_extract_explicit_format_maps_namespace(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``extract`` command marks the data format as explicit
-        when provided.
+        Test that ``extract`` marks the data format as explicit when provided.
         """
         # pylint: disable=protected-access
 
-        captured, cmd = capture_cmd('cmd_extract')
-        result = runner.invoke(
-            cli_app,
-            ['extract', '/path/to/file.csv', '--source-format', 'csv'],
+        result, ns, cmd = invoke_cli(
+            'cmd_extract',
+            'extract',
+            '/path/to/file.csv',
+            '--source-format',
+            'csv',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.format == 'csv'
         assert ns._format_explicit is True
 
     def test_extract_from_option_sets_source_type_and_state_flags(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that providing the ``--from`` command-line option and root flags
-        influence the handler namespace.
+        Test that root flags propagate into the handler namespace for
+        ``extract``.
         """
         # pylint: disable=protected-access
 
-        captured, cmd = capture_cmd('cmd_extract')
-        result = runner.invoke(
-            cli_app,
-            [
-                '--no-pretty',
-                '--quiet',
-                'extract',
-                '--source-type',
-                'api',
-                'https://example.com/data.json',
-            ],
+        result, ns, cmd = invoke_cli(
+            'cmd_extract',
+            '--no-pretty',
+            '--quiet',
+            'extract',
+            '--source-type',
+            'api',
+            'https://example.com/data.json',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.source_type == 'api'
         assert ns.source == 'https://example.com/data.json'
@@ -232,22 +277,22 @@ class TestTyperCliAppWiring:
 
     def test_list_maps_flags(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``list`` command maps section flags into the expected
-        namespace.
+        Test that ``list`` maps section flags into the handler namespace.
         """
-        captured, cmd = capture_cmd('cmd_list')
-        result = runner.invoke(
-            cli_app,
-            ['list', '--config', 'p.yml', '--pipelines', '--sources'],
+        result, ns, cmd = invoke_cli(
+            'cmd_list',
+            'list',
+            '--config',
+            'p.yml',
+            '--pipelines',
+            '--sources',
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'list'
         assert ns.config == 'p.yml'
@@ -256,25 +301,25 @@ class TestTyperCliAppWiring:
 
     def test_load_default_format_maps_namespace(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the `load` command defaults to JSON and marks the data format
-        as implicit.
+        Test that ``load`` defaults to JSON and marks the data format as
+        implicit.
         """
         # pylint: disable=protected-access
 
-        captured, cmd = capture_cmd('cmd_load')
-        result = runner.invoke(
-            cli_app,
-            ['load', '--target-type', 'file', '/path/to/out.json'],
+        result, ns, cmd = invoke_cli(
+            'cmd_load',
+            'load',
+            '--target-type',
+            'file',
+            '/path/to/out.json',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'load'
         assert ns.source == '-'
@@ -285,30 +330,25 @@ class TestTyperCliAppWiring:
 
     def test_load_explicit_format_maps_namespace(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``load`` command marks the data format as explicit when
+        Test that ``load`` marks the target data format as explicit when
         provided.
         """
         # pylint: disable=protected-access
 
-        captured, cmd = capture_cmd('cmd_load')
-        result = runner.invoke(
-            cli_app,
-            [
-                'load',
-                '--target-format',
-                'csv',
-                '/path/to/out.csv',
-            ],
+        result, ns, cmd = invoke_cli(
+            'cmd_load',
+            'load',
+            '--target-format',
+            'csv',
+            '/path/to/out.csv',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.source == '-'
         assert ns.target_type == 'file'
@@ -317,29 +357,24 @@ class TestTyperCliAppWiring:
 
     def test_load_to_option_defaults_source_to_stdin(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that ``source`` defaults to '-' and ``--to`` wins when only TARGET
-        is provided wins.
+        Test that ``load`` defaults to stdin when only target options are
+        provided.
         """
 
-        captured, cmd = capture_cmd('cmd_load')
-        result = runner.invoke(
-            cli_app,
-            [
-                'load',
-                '--target-type',
-                'database',
-                'postgres://db.example.org/app',
-            ],
+        result, ns, cmd = invoke_cli(
+            'cmd_load',
+            'load',
+            '--target-type',
+            'database',
+            'postgres://db.example.org/app',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.source == '-'
         assert ns.target == 'postgres://db.example.org/app'
@@ -353,23 +388,21 @@ class TestTyperCliAppWiring:
 
     def test_pipeline_maps_flags(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the `pipeline` command maps the ``--list`` command-line
-        argument and the ``--run`` command-line argument into the expected
-        namespace.
+        Test that ``pipeline`` maps list flags into the handler namespace.
         """
-        captured, cmd = capture_cmd('cmd_pipeline')
-        result = runner.invoke(
-            cli_app,
-            ['pipeline', '--config', 'p.yml', '--jobs'],
+        result, ns, cmd = invoke_cli(
+            'cmd_pipeline',
+            'pipeline',
+            '--config',
+            'p.yml',
+            '--jobs',
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'pipeline'
         assert ns.config == 'p.yml'
@@ -378,42 +411,44 @@ class TestTyperCliAppWiring:
 
     def test_pipeline_run_sets_run_option(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
-        """`pipeline --run` wires run metadata into the namespace."""
-
-        captured, cmd = capture_cmd('cmd_pipeline')
-        result = runner.invoke(
-            cli_app,
-            ['pipeline', '--config', 'p.yml', '--job', 'job-2'],
+        """
+        Test that ``pipeline --job`` wires run metadata into the namespace.
+        """
+        result, ns, cmd = invoke_cli(
+            'cmd_pipeline',
+            'pipeline',
+            '--config',
+            'p.yml',
+            '--job',
+            'job-2',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.run == 'job-2'
         assert ns.list is False
 
     def test_run_maps_flags(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``run`` command maps the ``--job``/``--pipeline``
-        command-line argument into the expected namespace.
+        Test that ``run`` maps job flags into the handler namespace.
         """
-        captured, cmd = capture_cmd('cmd_run')
-        result = runner.invoke(
-            cli_app,
-            ['run', '--config', 'p.yml', '--job', 'j1'],
+        result, ns, cmd = invoke_cli(
+            'cmd_run',
+            'run',
+            '--config',
+            'p.yml',
+            '--job',
+            'j1',
         )
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'run'
         assert ns.config == 'p.yml'
@@ -421,28 +456,23 @@ class TestTyperCliAppWiring:
 
     def test_transform_parses_operations_json(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the ``transform`` command parses ``--operations``
-        command-line argument via ``json_type``.
+        Test that ``transform`` parses JSON operations passed via
+        ``--operations``.
         """
-        captured, cmd = capture_cmd('cmd_transform')
-        result = runner.invoke(
-            cli_app,
-            [
-                'transform',
-                '/path/to/file.json',
-                '--operations',
-                '{"select": ["id"]}',
-            ],
+        result, ns, cmd = invoke_cli(
+            'cmd_transform',
+            'transform',
+            '/path/to/file.json',
+            '--operations',
+            '{"select": ["id"]}',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'transform'
         assert ns.source == '/path/to/file.json'
@@ -451,49 +481,42 @@ class TestTyperCliAppWiring:
 
     def test_transform_respects_source_format(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the command ``etlplus transform --source-format csv``
-        propagates to the namespace.
+        Test that ``transform`` propagates ``--source-format`` into the
+        namespace.
         """
-        captured, cmd = capture_cmd('cmd_transform')
-        result = runner.invoke(
-            cli_app,
-            ['transform', '--source-format', 'csv'],
+        result, ns, cmd = invoke_cli(
+            'cmd_transform',
+            'transform',
+            '--source-format',
+            'csv',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.source_format == 'csv'
 
     def test_validate_parses_rules_json(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that the command ``validate`` parses the ``--rules`` command-line
-        argument via ``json_type``.
+        Test that ``validate`` parses JSON rules passed via ``--rules``.
         """
-        captured, cmd = capture_cmd('cmd_validate')
-        result = runner.invoke(
-            cli_app,
-            [
-                'validate',
-                '/path/to/file.json',
-                '--rules',
-                '{"required": ["id"]}',
-            ],
+        result, ns, cmd = invoke_cli(
+            'cmd_validate',
+            'validate',
+            '/path/to/file.json',
+            '--rules',
+            '{"required": ["id"]}',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.command == 'validate'
         assert ns.source == '/path/to/file.json'
@@ -502,24 +525,22 @@ class TestTyperCliAppWiring:
 
     def test_validate_respects_source_format(
         self,
-        runner: CliRunner,
-        capture_cmd: CaptureHelper,
+        invoke_cli: InvokeCli,
     ) -> None:
         """
-        Test that command ``validate --source-format csv`` sanitizes into a
-        handler namespace.
+        Test that ``validate`` propagates ``--source-format`` into the
+        namespace.
         """
-
-        captured, cmd = capture_cmd('cmd_validate')
-        result = runner.invoke(
-            cli_app,
-            ['validate', '--source-format', 'csv'],
+        result, ns, cmd = invoke_cli(
+            'cmd_validate',
+            'validate',
+            '--source-format',
+            'csv',
         )
 
         assert result.exit_code == 0
         cmd.assert_called_once()
 
-        ns = captured['ns']
         assert isinstance(ns, argparse.Namespace)
         assert ns.source_format == 'csv'
 
