@@ -473,8 +473,7 @@ def create_parser() -> argparse.ArgumentParser:
         '--template-path',
         dest='template_path',
         help=(
-            'Explicit path to a Jinja template file '
-            '(overrides template key).'
+            'Explicit path to a Jinja template file (overrides template key).'
         ),
     )
     render_parser.set_defaults(func=cmd_render)
