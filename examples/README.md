@@ -44,12 +44,12 @@ CLI examples:
 
 ```bash
 # List jobs defined in a pipeline file
-etlplus pipeline --config examples/configs/pipeline.yml --list
+etlplus list --config examples/configs/pipeline.yml --jobs
+
+# Show a pipeline summary (name, version, sources, targets, jobs)
+etlplus list --config examples/configs/pipeline.yml --summary
 
 # Run a specific job end-to-end
-etlplus pipeline --config examples/configs/pipeline.yml --run file_to_file_customers
-
-# Equivalent, using the dedicated run command
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 ```
 
