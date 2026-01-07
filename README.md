@@ -48,6 +48,14 @@ package and command-line interface for data extraction, validation, transformati
 
 ## Features
 
+- **Inspect** data pipeline definitions before running them:
+  - Summarize jobs, sources, targets, and transforms
+  - Confirm configuration changes by printing focused sections on demand
+
+- **Render** SQL DDL from shared table specs:
+  - Generate CREATE TABLE or view statements
+  - Swap templates or direct output to files for database migrations
+
 - **Extract** data from multiple sources:
   - Files (CSV, JSON, XML, YAML)
   - Databases (connection string support)
