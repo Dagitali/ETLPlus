@@ -60,6 +60,7 @@ class TestCreateParser:
 
     def test_extract_parser_sets_handler_and_format_flag(self) -> None:
         """Extract parser should bind handlers and flag explicit formats."""
+        # pylint: disable=protected-access
 
         parser = cli_main_module.create_parser()
         namespace = parser.parse_args(
@@ -74,7 +75,6 @@ class TestCreateParser:
 
     def test_list_parser_supports_boolean_flags(self) -> None:
         """List parser should surface boolean flag wiring."""
-
         parser = cli_main_module.create_parser()
         namespace = parser.parse_args(
             ['list', '--config', 'pipelines.yml', '--targets', '--transforms'],
@@ -95,7 +95,6 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that the command return value is normalized into an ``int``."""
-
         captured: dict[str, object] = {}
 
         def _action(**kwargs: object) -> object:
@@ -161,7 +160,8 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        ``typer.Abort`` should surface as a generic failure (exit code 1).
+        Test that ``typer.Abort`` propagates as a generic failure (exit code
+        1).
         """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
@@ -175,7 +175,7 @@ class TestMain:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """``typer.Exit`` should propagate its exit code."""
+        """Test that ``typer.Exit`` propagates its exit code."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise typer.Exit(17)
@@ -188,14 +188,52 @@ class TestMain:
         """Test that no args prints help and exits with exit code 0."""
         assert cli_main([]) == 0
 
+    def test_unknown_subcommand_emits_usage(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that illegal subcommands show help and exit with code 2."""
+        exit_code = cli_main(['definitely-not-real'])
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert 'No such command' in captured.err
+        assert 'Usage:' in captured.err
+
+    def test_unknown_root_option_emits_usage(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that Unknown root options echo usage details to stderr."""
+
+        exit_code = cli_main(['--definitely-not-real-option'])
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert 'No such option' in captured.err
+        assert 'Usage:' in captured.err
+
+    def test_unknown_subcommand_option_emits_usage(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that unknown subcommand options surface usage help."""
+
+        exit_code = cli_main(['extract', '--definitely-not-real-option'])
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert 'No such option' in captured.err
+        assert 'Usage:' in captured.err
+
     def test_value_error_returns_exit_code_1(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
-        Test that :class:`ValueError` from a command maps to exit code 1."""
-
+        Test that :class:`ValueError` from a command maps to exit code 1.
+        """
         monkeypatch.setattr(
             cli_app_module,
             'cmd_extract',
