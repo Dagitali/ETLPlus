@@ -1,0 +1,67 @@
+---
+
+schema: dbo
+table: Customers
+create_schema: true
+
+columns:
+  - name: CustomerId
+    type: int
+    identity: {seed: 1, increment: 1}
+    nullable: false
+
+  - name: CustomerGuid
+    type: uniqueidentifier
+    default: newsequentialid()
+    nullable: false
+
+  - name: FirstName
+    type: nvarchar(100)
+    nullable: false
+
+  - name: LastName
+    type: nvarchar(100)
+    nullable: false
+
+  - name: Email
+    type: nvarchar(320)
+    nullable: true
+
+  - name: Status
+    type: char(1)
+    nullable: false
+    check: "Status IN ('A','I')"
+
+  - name: CreatedAt
+    type: datetime2(3)
+    default: sysutcdatetime()
+    nullable: false
+
+  - name: UpdatedAt
+    type: datetime2(3)
+    default: sysutcdatetime()
+    nullable: false
+
+  - name: RowVer
+    type: rowversion
+    nullable: false
+
+primary_key:
+  name: PK_Customers
+  columns: [CustomerId]
+
+unique_constraints:
+  - name: UQ_Customers_Guid
+    columns: [CustomerGuid]
+
+indexes:
+  - name: UX_Customers_Email
+    unique: true
+    columns: [Email]
+    where: "Email IS NOT NULL"
+
+  - name: IX_Customers_Name
+    columns: [LastName, FirstName]
+    include: [Email]
+
+foreign_keys: []

@@ -1,0 +1,69 @@
+{# -- Helpers -- #}
+{% macro qid(name) -%}
+[{{ name | replace(']', ']]') }}]
+{%- endmacro %}
+
+{% macro qname(schema, name) -%}
+{{ qid(schema) }}.{{ qid(name) }}
+{%- endmacro %}
+
+{# Convert any expression to nvarchar(MAX) with N'' for NULLs #}
+{% macro to_str(expr) -%}
+ISNULL(CONVERT(NVARCHAR(MAX), {{ expr }}), N'')
+{%- endmacro %}
+
+{# Normalize truthy values to 'TRUE' / 'FALSE' #}
+{% macro truthy(expr) -%}
+IIF(CONVERT(VARCHAR(5), {{ expr }}) IN ('TRUE', '1', 'YES'), 'TRUE', 'FALSE')
+{%- endmacro %}
+
+{# -- Create schema (optional) -- #}
+{% if spec.create_schema | default(true) %}
+IF
+    NOT EXISTS (
+        SELECT 1
+        FROM sys.schemas
+        WHERE name = N'{{ spec.schema }}'
+    )
+    EXEC ('CREATE SCHEMA {{ qid(spec.schema) }}');
+GO
+{% endif %}
+
+{# -- SET options (match your source view) -- #}
+SET QUOTED_IDENTIFIER ON
+SET ANSI_NULLS ON
+GO
+
+{# -- Derive names with fallbacks so table-style specs also work -- #}
+{% set view_name = spec.view if spec.view is defined else ('vw_' ~ spec.table) %}
+{% set src_schema = (spec.from_schema if spec.from_schema is defined else (spec.schema if spec.schema is defined else 'dbo')) %}
+{% set src_table = (
+    spec.from_table if spec.from_table is defined else
+    (spec.source_table if spec.source_table is defined else spec.table)
+) %}
+{% set indent_cols = '    ' %}
+
+{# -- Create view -- #}
+CREATE VIEW {{ qname(spec.schema | default('dbo'), view_name) }} AS
+SELECT
+{% if spec.projections is defined and spec.projections %}
+    {% for p in spec.projections %}
+        {%- if p.type is defined and (p.type | lower)[:8] == 'nvarchar' -%}
+    {{- indent_cols -}}{{ to_str(p.expr) }} AS {{ qid(p.alias) }}
+        {%- else -%}
+    {{- indent_cols -}}{{ p.expr }}
+        {%- endif -%}
+    {{ "," if not loop.last }}
+    {% endfor %}
+{% else %}
+    {% for c in spec.columns | default([]) %}
+        {%- if c.type is defined and (c.type | lower)[:8] == 'nvarchar' -%}
+    {{- indent_cols -}}{{ to_str(qid(c.name)) }} AS {{ qid(c.name) }}
+        {%- else -%}
+    {{- indent_cols -}}{{ qid(c.name) }}
+        {%- endif -%}
+    {{ "," if not loop.last }}
+    {% endfor %}
+{%- endif %}
+FROM {{ qname(src_schema, src_table) }};
+GO
