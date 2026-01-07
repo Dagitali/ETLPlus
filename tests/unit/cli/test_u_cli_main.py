@@ -105,6 +105,30 @@ class TestCreateParser:
         assert namespace.targets is True
         assert namespace.transforms is True
 
+    def test_render_parser_sets_handler(self) -> None:
+        """Test that the render parser binds the render handler and options."""
+
+        parser = cli_main_module.create_parser()
+        namespace = parser.parse_args(
+            [
+                'render',
+                '--config',
+                'pipeline.yml',
+                '--table',
+                'Customers',
+                '--template',
+                'ddl',
+                '-o',
+                'out.sql',
+            ],
+        )
+
+        assert namespace.func is cli_main_module.cmd_render
+        assert namespace.config == 'pipeline.yml'
+        assert namespace.table == 'Customers'
+        assert namespace.template == 'ddl'
+        assert namespace.output == 'out.sql'
+
 
 class TestMain:
     """Unit test suite for :func:`etlplus.cli.main`."""
