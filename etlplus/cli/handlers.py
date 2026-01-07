@@ -18,6 +18,8 @@ from typing import cast
 
 from ..config import PipelineConfig
 from ..config import load_pipeline_config
+from ..ddl import load_table_spec
+from ..ddl import render_tables
 from ..enums import FileFormat
 from ..extract import extract
 from ..file import File
@@ -38,6 +40,7 @@ __all__ = [
     'cmd_list',
     'cmd_load',
     'cmd_pipeline',
+    'cmd_render',
     'cmd_run',
     'cmd_transform',
     'cmd_validate',
@@ -45,6 +48,37 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _collect_table_specs(
+    config_path: str | None,
+    spec_path: str | None,
+) -> list[dict[str, Any]]:
+    """
+    Load table schemas from a pipeline config and/or standalone spec.
+
+    Parameters
+    ----------
+    config_path : str | None
+        Path to a pipeline YAML config file.
+    spec_path : str | None
+        Path to a standalone table spec file.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Collected table specification mappings.
+    """
+    specs: list[dict[str, Any]] = []
+
+    if spec_path:
+        specs.append(load_table_spec(Path(spec_path)))
+
+    if config_path:
+        cfg = load_pipeline_config(config_path, substitute=True)
+        specs.extend(getattr(cfg, 'table_schemas', []))
+
+    return specs
 
 
 def _emit_json(
@@ -73,6 +107,23 @@ def _emit_json(
         separators=(',', ':'),
     )
     print(dumped)
+
+
+def _explicit_cli_format(
+    args: argparse.Namespace,
+) -> str | None:
+    """Return the explicit CLI format hint when provided."""
+
+    if not getattr(args, '_format_explicit', False):
+        return None
+    for attr in ('format', 'target_format', 'source_format'):
+        value = getattr(args, attr, None)
+        if value is None:
+            continue
+        normalized = value.strip().lower()
+        if normalized:
+            return normalized
+    return None
 
 
 def _infer_payload_format(
@@ -132,23 +183,6 @@ def _list_sections(
     if not sections:
         sections['jobs'] = _pipeline_summary(cfg)['jobs']
     return sections
-
-
-def _explicit_cli_format(
-    args: argparse.Namespace,
-) -> str | None:
-    """Return the explicit CLI format hint when provided."""
-
-    if not getattr(args, '_format_explicit', False):
-        return None
-    for attr in ('format', 'target_format', 'source_format'):
-        value = getattr(args, attr, None)
-        if value is None:
-            continue
-        normalized = value.strip().lower()
-        if normalized:
-            return normalized
-    return None
 
 
 def _materialize_file_payload(
@@ -224,7 +258,6 @@ def _parse_text_payload(
     JSONData | str
         The parsed payload as JSON data or raw text.
     """
-
     effective = (fmt or '').strip().lower() or _infer_payload_format(text)
     if effective == 'json':
         return cast(JSONData, json_type(text))
@@ -265,7 +298,8 @@ def _pipeline_summary(
 def _presentation_flags(
     args: argparse.Namespace,
 ) -> tuple[bool, bool]:
-    """Return presentation toggles from the parsed namespace.
+    """
+    Return presentation toggles from the parsed namespace.
 
     Parameters
     ----------
@@ -342,7 +376,6 @@ def _resolve_cli_payload(
         Parsed payload or the original source value when hydration is
         disabled.
     """
-
     if isinstance(source, (os.PathLike, str)) and str(source) == '-':
         text = _read_stdin_text()
         return _parse_text_payload(text, format_hint)
@@ -625,6 +658,67 @@ def cmd_pipeline(
         return 0
 
     print_json(_pipeline_summary(cfg))
+    return 0
+
+
+def cmd_render(
+    args: argparse.Namespace,
+) -> int:
+    """Render SQL DDL statements from table schema specs."""
+
+    _pretty, quiet = _presentation_flags(args)
+
+    template_value = getattr(args, 'template', 'ddl') or 'ddl'
+    template_path = getattr(args, 'template_path', None)
+    table_filter = getattr(args, 'table', None)
+    spec_path = getattr(args, 'spec', None)
+    config_path = getattr(args, 'config', None)
+
+    # If the provided template points to a file, treat it as a path override.
+    file_override = template_path
+    template_key = template_value
+    if template_path is None:
+        candidate_path = Path(template_value)
+        if candidate_path.exists():
+            file_override = str(candidate_path)
+            template_key = None
+
+    specs = _collect_table_specs(config_path, spec_path)
+    if table_filter:
+        specs = [
+            spec
+            for spec in specs
+            if str(spec.get('table')) == table_filter
+            or str(spec.get('name', '')) == table_filter
+        ]
+
+    if not specs:
+        target_desc = table_filter or 'table_schemas'
+        print(
+            'No table schemas found for '
+            f'{target_desc}. Provide --spec or a pipeline --config with '
+            'table_schemas.',
+            file=sys.stderr,
+        )
+        return 1
+
+    rendered_chunks = render_tables(
+        specs,
+        template=template_key,
+        template_path=file_override,
+    )
+    sql_text = (
+        '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
+    )
+
+    output_path = getattr(args, 'output', None)
+    if output_path and output_path != '-':
+        Path(output_path).write_text(sql_text, encoding='utf-8')
+        if not quiet:
+            print(f'Rendered {len(specs)} schema(s) to {output_path}')
+        return 0
+
+    print(sql_text)
     return 0
 
 
