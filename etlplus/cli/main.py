@@ -190,6 +190,30 @@ def _cli_epilog() -> str:
     )
 
 
+def _emit_context_help(
+    ctx: click.Context | None,
+) -> bool:
+    """
+    Mirror Click help output for the provided context onto stderr.
+
+    Parameters
+    ----------
+    ctx : click.Context | None
+        The Click context to emit help for.
+
+    Returns
+    -------
+    bool
+        ``True`` when help was emitted, ``False`` when ``ctx`` was ``None``.
+    """
+    if ctx is None:
+        return False
+
+    with contextlib.redirect_stdout(sys.stderr):
+        ctx.get_help()
+    return True
+
+
 def _emit_root_help(
     command: click.Command,
 ) -> None:
@@ -201,20 +225,54 @@ def _emit_root_help(
     command : click.Command
         The root Typer/Click command.
     """
-
     ctx = command.make_context('etlplus', [], resilient_parsing=True)
     try:
-        with contextlib.redirect_stdout(sys.stderr):
-            ctx.get_help()
+        _emit_context_help(ctx)
     finally:
         ctx.close()
+
+
+def _is_illegal_option_error(
+    exc: click.exceptions.UsageError,
+) -> bool:
+    """
+    Return ``True`` when usage errors stem from invalid options.
+
+    Parameters
+    ----------
+    exc : click.exceptions.UsageError
+        The usage error to inspect.
+
+    Returns
+    -------
+    bool
+        ``True`` when the error indicates illegal options.
+    """
+    return isinstance(
+        exc,
+        (
+            click.exceptions.BadOptionUsage,
+            click.exceptions.NoSuchOption,
+        ),
+    )
 
 
 def _is_unknown_command_error(
     exc: click.exceptions.UsageError,
 ) -> bool:
-    """Return ``True`` when a :class:`UsageError` indicates bad subcommand."""
+    """
+    Return ``True`` when a :class:`UsageError` indicates bad subcommand.
 
+    Parameters
+    ----------
+    exc : click.exceptions.UsageError
+        The usage error to inspect.
+
+    Returns
+    -------
+    bool
+        ``True`` when the error indicates an unknown command.
+    """
     message = getattr(exc, 'message', None) or str(exc)
     return message.startswith('No such command ')
 
@@ -481,6 +539,12 @@ def main(
             typer.echo(f'Error: {exc}', err=True)
             _emit_root_help(command)
             return int(getattr(exc, 'exit_code', 2))
+        if _is_illegal_option_error(exc):
+            typer.echo(f'Error: {exc}', err=True)
+            if not _emit_context_help(exc.ctx):
+                _emit_root_help(command)
+            return int(getattr(exc, 'exit_code', 2))
+
         raise
 
     except typer.Exit as exc:
