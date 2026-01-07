@@ -10,10 +10,12 @@ This module exposes :func:`main` for the console script as well as
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from collections.abc import Sequence
 from typing import Literal
 
+import click
 import typer
 
 from .. import __version__
@@ -66,6 +68,32 @@ class _FormatAction(argparse.Action):
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _add_boolean_flag(
+    parser: argparse.ArgumentParser,
+    *,
+    name: str,
+    help_text: str,
+) -> None:
+    """Add a toggle that also supports the ``--no-`` prefix via 3.13.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser receiving the flag.
+    name : str
+        Primary flag name without leading dashes.
+    help_text : str
+        Help text rendered in ``--help`` output.
+    """
+
+    parser.add_argument(
+        f'--{name}',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=help_text,
+    )
 
 
 def _add_config_option(
@@ -129,32 +157,6 @@ def _add_format_options(
     )
 
 
-def _add_boolean_flag(
-    parser: argparse.ArgumentParser,
-    *,
-    name: str,
-    help_text: str,
-) -> None:
-    """Add a toggle that also supports the ``--no-`` prefix via 3.13.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser receiving the flag.
-    name : str
-        Primary flag name without leading dashes.
-    help_text : str
-        Help text rendered in ``--help`` output.
-    """
-
-    parser.add_argument(
-        f'--{name}',
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help=help_text,
-    )
-
-
 def _cli_description() -> str:
     return '\n'.join(
         [
@@ -186,6 +188,35 @@ def _cli_epilog() -> str:
             'inference based on filename extensions when needed.',
         ],
     )
+
+
+def _emit_root_help(
+    command: click.Command,
+) -> None:
+    """
+    Print the root ``etlplus`` help text to stderr.
+
+    Parameters
+    ----------
+    command : click.Command
+        The root Typer/Click command.
+    """
+
+    ctx = command.make_context('etlplus', [], resilient_parsing=True)
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            ctx.get_help()
+    finally:
+        ctx.close()
+
+
+def _is_unknown_command_error(
+    exc: click.exceptions.UsageError,
+) -> bool:
+    """Return ``True`` when a :class:`UsageError` indicates bad subcommand."""
+
+    message = getattr(exc, 'message', None) or str(exc)
+    return message.startswith('No such command ')
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -422,6 +453,9 @@ def main(
 
     Raises
     ------
+    click.exceptions.UsageError
+        Re-raises Typer/Click usage errors after printing help for unknown
+        commands.
     SystemExit
         Re-raises SystemExit exceptions to preserve exit codes.
 
@@ -441,6 +475,13 @@ def main(
             standalone_mode=False,
         )
         return int(result or 0)
+
+    except click.exceptions.UsageError as exc:
+        if _is_unknown_command_error(exc):
+            typer.echo(f'Error: {exc}', err=True)
+            _emit_root_help(command)
+            return int(getattr(exc, 'exit_code', 2))
+        raise
 
     except typer.Exit as exc:
         return int(exc.exit_code)
