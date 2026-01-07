@@ -25,6 +25,7 @@ Subcommands
 - ``validate``: validate data against rules
 - ``transform``: transform records
 - ``load``: load data to files, databases, or REST APIs
+- ``render``: render SQL DDL from table schema specs
 
 Notes
 -----
@@ -60,6 +61,7 @@ from .handlers import cmd_extract
 from .handlers import cmd_list
 from .handlers import cmd_load
 from .handlers import cmd_pipeline
+from .handlers import cmd_render
 from .handlers import cmd_run
 from .handlers import cmd_transform
 from .handlers import cmd_validate
@@ -255,6 +257,67 @@ PipelineConfigOption = Annotated[
         '--config',
         metavar='PATH',
         help='Path to pipeline YAML configuration file.',
+    ),
+]
+
+RenderConfigOption = Annotated[
+    str | None,
+    typer.Option(
+        '--config',
+        metavar='PATH',
+        help='Pipeline YAML that includes table_schemas for rendering.',
+        show_default=False,
+    ),
+]
+
+RenderOutputOption = Annotated[
+    str | None,
+    typer.Option(
+        '--output',
+        '-o',
+        metavar='PATH',
+        help='Write rendered SQL to PATH (default: stdout).',
+    ),
+]
+
+RenderSpecOption = Annotated[
+    str | None,
+    typer.Option(
+        '--spec',
+        metavar='PATH',
+        help='Standalone table spec file (.yml/.yaml/.json).',
+        show_default=False,
+    ),
+]
+
+RenderTableOption = Annotated[
+    str | None,
+    typer.Option(
+        '--table',
+        metavar='NAME',
+        help='Filter to a single table name from table_schemas.',
+    ),
+]
+
+RenderTemplateOption = Annotated[
+    str,
+    typer.Option(
+        '--template',
+        '-t',
+        metavar='KEY|PATH',
+        help='Template key (ddl/view) or path to a Jinja template file.',
+        show_default=True,
+    ),
+]
+
+RenderTemplatePathOption = Annotated[
+    str | None,
+    typer.Option(
+        '--template-path',
+        metavar='PATH',
+        help=(
+            'Explicit path to a Jinja template file (overrides template key).'
+        ),
     ),
 ]
 
@@ -999,6 +1062,55 @@ def pipeline_cmd(
         run=run_target,
     )
     return int(cmd_pipeline(ns))
+
+
+@app.command('render')
+def render_cmd(
+    ctx: typer.Context,
+    config: RenderConfigOption = None,
+    spec: RenderSpecOption = None,
+    table: RenderTableOption = None,
+    template: RenderTemplateOption = 'ddl',
+    template_path: RenderTemplatePathOption = None,
+    output: RenderOutputOption = None,
+) -> int:
+    """
+    Render SQL DDL from table schemas defined in YAML/JSON configs.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+    config : RenderConfigOption, optional
+        Pipeline YAML containing ``table_schemas`` entries.
+    spec : RenderSpecOption, optional
+        Standalone table spec file (.yml/.yaml/.json).
+    table : RenderTableOption, optional
+        Filter to a single table name within the available specs.
+    template : RenderTemplateOption, optional
+        Built-in template key or template file path.
+    template_path : RenderTemplatePathOption, optional
+        Explicit template file path to render with.
+    output : RenderOutputOption, optional
+        Path to write SQL to (stdout when omitted).
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    state = _ensure_state(ctx)
+    ns = _stateful_namespace(
+        state,
+        command='render',
+        config=config,
+        spec=spec,
+        table=table,
+        template=template,
+        template_path=template_path,
+        output=output,
+    )
+    return int(cmd_render(ns))
 
 
 @app.command('run')

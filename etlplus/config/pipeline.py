@@ -190,6 +190,8 @@ class PipelineConfig:
         Target connectors, parsed tolerantly.
     jobs : list[JobConfig]
         Job orchestration definitions.
+    table_schemas : list[dict[str, Any]]
+        Optional DDL-style table specifications used by the render command.
     """
 
     # -- Attributes -- #
@@ -208,6 +210,7 @@ class PipelineConfig:
     transforms: dict[str, dict[str, Any]] = field(default_factory=dict)
     targets: list[Connector] = field(default_factory=list)
     jobs: list[JobConfig] = field(default_factory=list)
+    table_schemas: list[dict[str, Any]] = field(default_factory=list)
 
     # -- Class Methods -- #
 
@@ -312,6 +315,13 @@ class PipelineConfig:
         # Jobs
         jobs = _build_jobs(raw)
 
+        # Table schemas (optional, tolerant pass-through structures).
+        table_schemas: list[dict[str, Any]] = []
+        for entry in raw.get('table_schemas', []) or []:
+            spec = maybe_mapping(entry)
+            if spec is not None:
+                table_schemas.append(dict(spec))
+
         return cls(
             name=name,
             version=version,
@@ -325,4 +335,5 @@ class PipelineConfig:
             transforms=transforms,
             targets=targets,
             jobs=jobs,
+            table_schemas=table_schemas,
         )

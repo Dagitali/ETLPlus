@@ -431,6 +431,37 @@ class TestTyperCliAppWiring:
         assert ns.run == 'job-2'
         assert ns.list is False
 
+    def test_render_maps_namespace(
+        self,
+        invoke_cli: InvokeCli,
+    ) -> None:
+        """Test that ``render`` maps options into the handler namespace."""
+
+        result, ns, cmd = invoke_cli(
+            'cmd_render',
+            'render',
+            '--config',
+            'pipeline.yml',
+            '--table',
+            'Customers',
+            '--template',
+            'ddl',
+            '--output',
+            'out.sql',
+        )
+
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'render'
+        assert ns.config == 'pipeline.yml'
+        assert ns.spec is None
+        assert ns.table == 'Customers'
+        assert ns.template == 'ddl'
+        assert ns.template_path is None
+        assert ns.output == 'out.sql'
+
     def test_run_maps_flags(
         self,
         invoke_cli: InvokeCli,

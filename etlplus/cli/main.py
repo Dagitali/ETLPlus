@@ -28,6 +28,7 @@ from .handlers import cmd_extract
 from .handlers import cmd_list
 from .handlers import cmd_load
 from .handlers import cmd_pipeline
+from .handlers import cmd_render
 from .handlers import cmd_run
 from .handlers import cmd_transform
 from .handlers import cmd_validate
@@ -440,6 +441,43 @@ def create_parser() -> argparse.ArgumentParser:
         help='Run a specific job by name',
     )
     pipe_parser.set_defaults(func=cmd_pipeline)
+
+    render_parser = subparsers.add_parser(
+        'render',
+        help='Render SQL DDL from table schema specs',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    render_parser.add_argument(
+        '--config',
+        help='Pipeline YAML containing table_schemas',
+    )
+    render_parser.add_argument(
+        '-o',
+        '--output',
+        help='Write SQL to this path (stdout when omitted)',
+    )
+    render_parser.add_argument(
+        '--spec',
+        help='Standalone table spec file (.yml/.yaml/.json)',
+    )
+    render_parser.add_argument(
+        '--table',
+        help='Render only the table matching this name',
+    )
+    render_parser.add_argument(
+        '--template',
+        default='ddl',
+        help='Template key (ddl/view) or path to a Jinja template file',
+    )
+    render_parser.add_argument(
+        '--template-path',
+        dest='template_path',
+        help=(
+            'Explicit path to a Jinja template file '
+            '(overrides template key).'
+        ),
+    )
+    render_parser.set_defaults(func=cmd_render)
 
     list_parser = subparsers.add_parser(
         'list',

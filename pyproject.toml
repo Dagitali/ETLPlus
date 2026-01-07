@@ -96,7 +96,7 @@ ignore = [
 ]
 
 [tool.setuptools.package-data]
-etlplus = ["py.typed"]
+etlplus = ["py.typed", "templates/*.j2"]
 
 [tool.setuptools]
 license-files = ["LICENSE"]

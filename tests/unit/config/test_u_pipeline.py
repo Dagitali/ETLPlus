@@ -283,3 +283,33 @@ jobs: []
         """
         path = connector_path_lookup(collection, name)
         assert path == expected_path
+
+        def test_table_schemas_are_parsed(
+            self,
+            pipeline_builder: Callable[..., PipelineConfig],
+        ) -> None:
+            """
+            Test that table_schemas entries are preserved when loading YAML.
+            """
+            yml = (
+                """
+name: TablesOnly
+table_schemas:
+    - schema: dbo
+        table: Customers
+        columns:
+            - name: CustomerId
+                type: int
+                nullable: false
+sources: []
+targets: []
+jobs: []
+                """
+            ).strip()
+
+            cfg = pipeline_builder(yml)
+
+            assert len(cfg.table_schemas) == 1
+            spec = cfg.table_schemas[0]
+            assert spec['table'] == 'Customers'
+            assert spec['columns'][0]['name'] == 'CustomerId'

@@ -31,6 +31,10 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/Dagitali/ETLPlus',
     packages=find_packages(),
+    include_package_data=True,
+    package_data={
+        'etlplus': ['templates/*.j2'],
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
