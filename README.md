@@ -19,6 +19,8 @@ package and command-line interface for data extraction, validation, transformati
   - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
+      - [Inspect Pipelines](#inspect-pipelines)
+      - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
       - [Validate Data](#validate-data)
       - [Transform Data](#transform-data)
@@ -125,6 +127,44 @@ etlplus --help
 
 # Show version
 etlplus --version
+```
+
+#### Inspect Pipelines
+
+Use `etlplus list` to explore pipeline YAML definitions without running them. The command can print
+job names, summarize configured sources and targets, or drill into specific sections.
+
+List jobs and show a pipeline summary:
+```bash
+etlplus list --config examples/configs/pipeline.yml --jobs
+etlplus list --config examples/configs/pipeline.yml --summary
+```
+
+Show sources or transforms for troubleshooting:
+```bash
+etlplus list --config examples/configs/pipeline.yml --sources
+etlplus list --config examples/configs/pipeline.yml --transforms
+```
+
+#### Render SQL DDL
+
+Use `etlplus render` to turn table schema specs into ready-to-run SQL. Render from a pipeline config
+or from a standalone schema file, and choose the built-in `ddl` or `view` templates (or provide your
+own).
+
+Render all tables defined in a pipeline:
+```bash
+etlplus render --config examples/configs/pipeline.yml --template ddl
+```
+
+Render a single table in that pipeline:
+```bash
+etlplus render --config examples/configs/pipeline.yml --table customers --template view
+```
+
+Render from a standalone table spec to a file:
+```bash
+etlplus render --spec schemas/customer.yml --template view -o temp/customer_view.sql
 ```
 
 #### Extract Data
