@@ -38,7 +38,8 @@ class TestLoadDatabaseUrlFromConfig:
 
     @pytest.fixture()
     def patch_read_file(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[[Any], None]:
         """Return a helper that patches ``File.read_file`` with a payload.
 
@@ -120,7 +121,8 @@ class TestMakeEngine:
 
     @pytest.fixture()
     def capture_create_engine(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[..., dict[str, Any]]:
         """
         Patch ``create_engine`` to capture calls.
