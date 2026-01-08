@@ -58,6 +58,44 @@ class DummyCfg:
 class TestCliHandlersInternalHelpers:
     """Unit tests for internal CLI helpers in :mod:`etlplus.cli.handlers`."""
 
+    def test_check_sections_all(self) -> None:
+        """
+        Test that :func:`_check_sections` includes all requested sections."""
+        # pylint: disable=protected-access
+
+        args = argparse.Namespace(
+            pipelines=True,
+            sources=True,
+            targets=True,
+            transforms=True,
+        )
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._check_sections(
+            cfg,
+            args,
+        )
+        assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
+
+    def test_check_sections_default(self) -> None:
+        """
+        Test that :func:`_check_sections` defaults to jobs when no flags are
+        set.
+        """
+        # pylint: disable=protected-access
+
+        args = argparse.Namespace(
+            pipelines=False,
+            sources=False,
+            targets=False,
+            transforms=False,
+        )
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._check_sections(
+            cfg,
+            args,
+        )
+        assert 'jobs' in result
+
     def test_emit_json_compact_prints_minified(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -96,44 +134,6 @@ class TestCliHandlersInternalHelpers:
 
         args = argparse.Namespace(format='CSV', _format_explicit=True)
         assert handlers._explicit_cli_format(args) == 'csv'
-
-    def test_list_sections_all(self) -> None:
-        """
-        Test that :func:`_list_sections` includes all requested sections."""
-        # pylint: disable=protected-access
-
-        args = argparse.Namespace(
-            pipelines=True,
-            sources=True,
-            targets=True,
-            transforms=True,
-        )
-        cfg = cast(PipelineConfig, DummyCfg())
-        result = handlers._list_sections(
-            cfg,
-            args,
-        )
-        assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
-
-    def test_list_sections_default(self) -> None:
-        """
-        Test that :func:`_list_sections` defaults to jobs when no flags are
-        set.
-        """
-        # pylint: disable=protected-access
-
-        args = argparse.Namespace(
-            pipelines=False,
-            sources=False,
-            targets=False,
-            transforms=False,
-        )
-        cfg = cast(PipelineConfig, DummyCfg())
-        result = handlers._list_sections(
-            cfg,
-            args,
-        )
-        assert 'jobs' in result
 
     def test_materialize_file_payload_non_file(self) -> None:
         """Test that non-file payloads are returned unchanged."""
@@ -663,11 +663,11 @@ class TestCliHandlersCommands:
         assert recorded['output_path'] == 'export.json'
         assert isinstance(recorded['success_message'], str)
 
-    def test_cmd_list_prints_sections(
+    def test_cmd_check_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that ``list`` prints requested sections."""
+        """Test that ``check`` prints requested sections."""
         cfg = cast(PipelineConfig, DummyCfg())
         monkeypatch.setattr(
             handlers,
@@ -676,22 +676,22 @@ class TestCliHandlersCommands:
         )
         monkeypatch.setattr(
             handlers,
-            '_list_sections',
+            '_check_sections',
             lambda _cfg, args: {'targets': ['t1']},
         )
         observed: list[object] = []
         monkeypatch.setattr(handlers, 'print_json', observed.append)
 
         args = argparse.Namespace(config='cfg.yml')
-        assert handlers.cmd_list(args) == 0
+        assert handlers.cmd_check(args) == 0
         assert observed == [{'targets': ['t1']}]
 
-    def test_cmd_list_passes_substitute_flag(
+    def test_cmd_check_passes_substitute_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :func:`cmd_list` forwards the substitute flag to config
+        Test that :func:`cmd_check` forwards the substitute flag to config
         loader.
         """
         cfg = cast(PipelineConfig, DummyCfg())
@@ -711,14 +711,14 @@ class TestCliHandlersCommands:
         )
         monkeypatch.setattr(
             handlers,
-            '_list_sections',
+            '_check_sections',
             lambda _cfg, _args: {'pipelines': ['p1']},
         )
         captured: list[object] = []
         monkeypatch.setattr(handlers, 'print_json', captured.append)
 
         args = argparse.Namespace(config='cfg.yml', substitute=True)
-        assert handlers.cmd_list(args) == 0
+        assert handlers.cmd_check(args) == 0
         assert recorded['params'] == ('cfg.yml', True)
         assert captured == [{'pipelines': ['p1']}]
 

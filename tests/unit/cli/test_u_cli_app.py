@@ -195,6 +195,30 @@ class TestCliAppInternalHelpers:
 class TestTyperCliAppWiring:
     """Unit test suite for Typer parsing + Namespace adaptation."""
 
+    def test_check_maps_flags(
+        self,
+        invoke_cli: InvokeCli,
+    ) -> None:
+        """
+        Test that ``check`` maps section flags into the handler namespace.
+        """
+        result, ns, cmd = invoke_cli(
+            'cmd_check',
+            'check',
+            '--config',
+            'p.yml',
+            '--pipelines',
+            '--sources',
+        )
+        assert result.exit_code == 0
+        cmd.assert_called_once()
+
+        assert isinstance(ns, argparse.Namespace)
+        assert ns.command == 'check'
+        assert ns.config == 'p.yml'
+        assert ns.pipelines is True
+        assert ns.sources is True
+
     def test_extract_default_format_maps_namespace(
         self,
         invoke_cli: InvokeCli,
@@ -274,30 +298,6 @@ class TestTyperCliAppWiring:
         assert ns.pretty is False
         assert ns.quiet is True
         assert ns._format_explicit is False
-
-    def test_list_maps_flags(
-        self,
-        invoke_cli: InvokeCli,
-    ) -> None:
-        """
-        Test that ``list`` maps section flags into the handler namespace.
-        """
-        result, ns, cmd = invoke_cli(
-            'cmd_list',
-            'list',
-            '--config',
-            'p.yml',
-            '--pipelines',
-            '--sources',
-        )
-        assert result.exit_code == 0
-        cmd.assert_called_once()
-
-        assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'list'
-        assert ns.config == 'p.yml'
-        assert ns.pipelines is True
-        assert ns.sources is True
 
     def test_load_default_format_maps_namespace(
         self,
