@@ -81,7 +81,8 @@ class TestLoadTableSpecs:
 
     @pytest.fixture()
     def patch_read_file(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[[Any], None]:
         """Return helper that patches ``File.read_file`` to return payload.
 
