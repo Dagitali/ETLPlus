@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_u_cli_app` module.
+:mod:`tests.unit.cli.test_u_cli_app` module.
 
 Unit tests for :mod:`etlplus.cli.app`.
 """
