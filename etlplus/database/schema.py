@@ -17,6 +17,19 @@ from pydantic import Field
 
 from ..file import File
 
+__all__ = [
+    # Classes
+    'ColumnSpec',
+    'ForeignKeySpec',
+    'IdentitySpec',
+    'IndexSpec',
+    'PrimaryKeySpec',
+    'UniqueConstraintSpec',
+    'TableSpec',
+    # Functions
+    'load_table_specs',
+]
+
 # SECTION: CLASSES ========================================================== #
 
 
