@@ -93,7 +93,8 @@ class TestLoadTableSpec:
         """Test that loading a spec requires a mapping at the top level."""
         spec_path = tmp_path / 'array.json'
         spec_path.write_text(
-            json.dumps([{'not': 'mapping'}]), encoding='utf-8',
+            json.dumps([{'not': 'mapping'}]),
+            encoding='utf-8',
         )
 
         with pytest.raises(TypeError):
@@ -176,7 +177,8 @@ class TestRenderTableSql:
         """
         template_path = tmp_path / 'env_template.sql.j2'
         template_path.write_text(
-            '{{ spec.schema }}.{{ spec.table }}', encoding='utf-8',
+            '{{ spec.schema }}.{{ spec.table }}',
+            encoding='utf-8',
         )
         monkeypatch.setenv('TEMPLATE_NAME', str(template_path))
 
