@@ -222,7 +222,7 @@ class TestBuildModels:
         unique_constraints = self._get_constraint(table, UniqueConstraint)
         assert any(c.name == 'uq_order_no' for c in unique_constraints)
 
-        indexes = {idx.name: idx for idx in table.indexes}
+        indexes = {str(idx.name): idx for idx in table.indexes}
         assert 'ix_region' in indexes
         assert indexes['ix_region'].unique is False
         assert (
