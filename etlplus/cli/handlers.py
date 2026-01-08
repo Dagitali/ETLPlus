@@ -18,8 +18,8 @@ from typing import cast
 
 from ..config import PipelineConfig
 from ..config import load_pipeline_config
-from ..ddl import load_table_spec
-from ..ddl import render_tables
+from ..database import load_table_spec
+from ..database import render_tables
 from ..enums import FileFormat
 from ..extract import extract
 from ..file import File

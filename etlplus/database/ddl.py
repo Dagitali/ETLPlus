@@ -23,7 +23,7 @@ from jinja2 import Environment
 from jinja2 import FileSystemLoader
 from jinja2 import StrictUndefined
 
-from .file import File
+from ..file import File
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -37,16 +37,20 @@ __all__ = [
 ]
 
 
-# SECTION: CONSTANTS ======================================================== #
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
+_SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
         '.json',
         '.yml',
         '.yaml',
     },
 )
+
+
+# SECTION: CONSTANTS ======================================================== #
+
 
 TEMPLATES: Final[dict[str, str]] = {
     'ddl': 'ddl.sql.j2',
@@ -187,7 +191,7 @@ def load_table_spec(
     spec_path = Path(path)
     suffix = spec_path.suffix.lower()
 
-    if suffix not in SUPPORTED_SPEC_SUFFIXES:
+    if suffix not in _SUPPORTED_SPEC_SUFFIXES:
         raise ValueError('Spec must be .json, .yml, or .yaml')
 
     try:
