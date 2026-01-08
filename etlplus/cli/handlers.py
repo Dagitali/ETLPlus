@@ -423,6 +423,31 @@ def _write_json_output(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def cmd_check(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Print requested pipeline sections from a YAML configuration.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    cfg = load_pipeline_config(args.config, substitute=True)
+    if getattr(args, 'summary', False):
+        print_json(_pipeline_summary(cfg))
+        return 0
+
+    print_json(_check_sections(cfg, args))
+    return 0
+
+
 def cmd_extract(
     args: argparse.Namespace,
 ) -> int:
@@ -464,96 +489,6 @@ def cmd_extract(
         success_message='Data extracted and saved to',
     ):
         _emit_json(result, pretty=pretty)
-
-    return 0
-
-
-def cmd_validate(
-    args: argparse.Namespace,
-) -> int:
-    """
-    Validate data from a source.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command-line arguments.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    pretty, _quiet = _presentation_flags(args)
-    format_explicit: bool = getattr(args, '_format_explicit', False)
-    format_hint: str | None = getattr(args, 'source_format', None)
-    payload = cast(
-        JSONData | str,
-        _resolve_cli_payload(
-            args.source,
-            format_hint=format_hint,
-            format_explicit=format_explicit,
-        ),
-    )
-    result = validate(payload, args.rules)
-
-    target_path = getattr(args, 'target', None)
-    if target_path:
-        validated_data = result.get('data')
-        if validated_data is not None:
-            _write_json_output(
-                validated_data,
-                target_path,
-                success_message='Validation result saved to',
-            )
-        else:
-            print(
-                f'Validation failed, no data to save for {target_path}',
-                file=sys.stderr,
-            )
-    else:
-        _emit_json(result, pretty=pretty)
-
-    return 0
-
-
-def cmd_transform(
-    args: argparse.Namespace,
-) -> int:
-    """
-    Transform data from a source.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command-line arguments.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    pretty, _quiet = _presentation_flags(args)
-    format_hint: str | None = getattr(args, 'source_format', None)
-    format_explicit: bool = format_hint is not None
-
-    payload = cast(
-        JSONData | str,
-        _resolve_cli_payload(
-            args.source,
-            format_hint=format_hint,
-            format_explicit=format_explicit,
-        ),
-    )
-
-    data = transform(payload, args.operations)
-
-    if not _write_json_output(
-        data,
-        getattr(args, 'target', None),
-        success_message='Data transformed and saved to',
-    ):
-        _emit_json(data, pretty=pretty)
 
     return 0
 
@@ -722,30 +657,9 @@ def cmd_render(
     return 0
 
 
-def cmd_check(args: argparse.Namespace) -> int:
-    """
-    Print requested pipeline sections from a YAML configuration.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command-line arguments.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    cfg = load_pipeline_config(args.config, substitute=True)
-    if getattr(args, 'summary', False):
-        print_json(_pipeline_summary(cfg))
-        return 0
-
-    print_json(_check_sections(cfg, args))
-    return 0
-
-
-def cmd_run(args: argparse.Namespace) -> int:
+def cmd_run(
+    args: argparse.Namespace,
+) -> int:
     """
     Execute an ETL job end-to-end from a pipeline YAML configuration.
 
@@ -768,4 +682,94 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 0
 
     print_json(_pipeline_summary(cfg))
+    return 0
+
+
+def cmd_transform(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Transform data from a source.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    pretty, _quiet = _presentation_flags(args)
+    format_hint: str | None = getattr(args, 'source_format', None)
+    format_explicit: bool = format_hint is not None
+
+    payload = cast(
+        JSONData | str,
+        _resolve_cli_payload(
+            args.source,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
+        ),
+    )
+
+    data = transform(payload, args.operations)
+
+    if not _write_json_output(
+        data,
+        getattr(args, 'target', None),
+        success_message='Data transformed and saved to',
+    ):
+        _emit_json(data, pretty=pretty)
+
+    return 0
+
+
+def cmd_validate(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Validate data from a source.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    pretty, _quiet = _presentation_flags(args)
+    format_explicit: bool = getattr(args, '_format_explicit', False)
+    format_hint: str | None = getattr(args, 'source_format', None)
+    payload = cast(
+        JSONData | str,
+        _resolve_cli_payload(
+            args.source,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
+        ),
+    )
+    result = validate(payload, args.rules)
+
+    target_path = getattr(args, 'target', None)
+    if target_path:
+        validated_data = result.get('data')
+        if validated_data is not None:
+            _write_json_output(
+                validated_data,
+                target_path,
+                success_message='Validation result saved to',
+            )
+        else:
+            print(
+                f'Validation failed, no data to save for {target_path}',
+                file=sys.stderr,
+            )
+    else:
+        _emit_json(result, pretty=pretty)
+
     return 0
