@@ -48,9 +48,12 @@ setup(
     install_requires=[
         'jinja2>=3.1.6',
         'pandas>=2.3.3',
+        'pydantic>=2.12.5',
         'pyodbc>=5.3.0',
+        'PyYAML>=6.0.3',
         'python-dotenv>=1.2.1',
         'requests>=2.32.5',
+        'SQLAlchemy>=2.0.45',
         'typer>=0.21.0',
     ],
     extras_require={
