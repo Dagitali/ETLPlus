@@ -203,7 +203,7 @@ class TestTyperCliAppWiring:
         Test that ``check`` maps section flags into the handler namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_check',
+            'check_handler',
             'check',
             '--config',
             'p.yml',
@@ -230,7 +230,7 @@ class TestTyperCliAppWiring:
         # pylint: disable=protected-access
 
         result, ns, cmd = invoke_cli(
-            'cmd_extract',
+            'extract_handler',
             'extract',
             '/path/to/file.json',
         )
@@ -255,7 +255,7 @@ class TestTyperCliAppWiring:
         # pylint: disable=protected-access
 
         result, ns, cmd = invoke_cli(
-            'cmd_extract',
+            'extract_handler',
             'extract',
             '/path/to/file.csv',
             '--source-format',
@@ -280,7 +280,7 @@ class TestTyperCliAppWiring:
         # pylint: disable=protected-access
 
         result, ns, cmd = invoke_cli(
-            'cmd_extract',
+            'extract_handler',
             '--no-pretty',
             '--quiet',
             'extract',
@@ -310,7 +310,7 @@ class TestTyperCliAppWiring:
         # pylint: disable=protected-access
 
         result, ns, cmd = invoke_cli(
-            'cmd_load',
+            'load_handler',
             'load',
             '--target-type',
             'file',
@@ -339,7 +339,7 @@ class TestTyperCliAppWiring:
         # pylint: disable=protected-access
 
         result, ns, cmd = invoke_cli(
-            'cmd_load',
+            'load_handler',
             'load',
             '--target-format',
             'csv',
@@ -365,7 +365,7 @@ class TestTyperCliAppWiring:
         """
 
         result, ns, cmd = invoke_cli(
-            'cmd_load',
+            'load_handler',
             'load',
             '--target-type',
             'database',
@@ -394,7 +394,7 @@ class TestTyperCliAppWiring:
         Test that ``pipeline`` maps list flags into the handler namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_pipeline',
+            'pipeline_handler',
             'pipeline',
             '--config',
             'p.yml',
@@ -417,7 +417,7 @@ class TestTyperCliAppWiring:
         Test that ``pipeline --job`` wires run metadata into the namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_pipeline',
+            'pipeline_handler',
             'pipeline',
             '--config',
             'p.yml',
@@ -438,7 +438,7 @@ class TestTyperCliAppWiring:
         """Test that ``render`` maps options into the handler namespace."""
 
         result, ns, cmd = invoke_cli(
-            'cmd_render',
+            'render_handler',
             'render',
             '--config',
             'pipeline.yml',
@@ -470,7 +470,7 @@ class TestTyperCliAppWiring:
         Test that ``run`` maps job flags into the handler namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_run',
+            'run_handler',
             'run',
             '--config',
             'p.yml',
@@ -494,7 +494,7 @@ class TestTyperCliAppWiring:
         ``--operations``.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_transform',
+            'transform_handler',
             'transform',
             '/path/to/file.json',
             '--operations',
@@ -519,7 +519,7 @@ class TestTyperCliAppWiring:
         namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_transform',
+            'transform_handler',
             'transform',
             '--source-format',
             'csv',
@@ -538,7 +538,7 @@ class TestTyperCliAppWiring:
         Test that ``validate`` parses JSON rules passed via ``--rules``.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_validate',
+            'validate_handler',
             'validate',
             '/path/to/file.json',
             '--rules',
@@ -563,7 +563,7 @@ class TestTyperCliAppWiring:
         namespace.
         """
         result, ns, cmd = invoke_cli(
-            'cmd_validate',
+            'validate_handler',
             'validate',
             '--source-format',
             'csv',
