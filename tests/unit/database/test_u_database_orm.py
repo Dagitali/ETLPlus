@@ -9,6 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 from typing import TypeVar
+from typing import cast
 
 import pytest
 from sqlalchemy import CheckConstraint
@@ -199,7 +200,7 @@ class TestBuildModels:
 
         registry = build_models([rich_spec])
         model = registry['analytics.orders']
-        table = model.__table__
+        table = cast(Table, model.__table__)
 
         assert model.__name__ == 'Orders'
         assert table.schema == 'analytics'
