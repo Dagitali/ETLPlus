@@ -1,11 +1,11 @@
 """
 :mod:`etlplus.database` package.
 
-Database utilities including:
+Database utilities for:
 - DDL rendering and schema management.
-- Schema parsing from YAML/JSON definitions.
-- Dynamic ORM model generation via SQLAlchemy.
-- Engine and session management helpers.
+- Schema parsing from configuration files.
+- Dynamic ORM generation.
+- Database engine/session management.
 """
 
 from __future__ import annotations
