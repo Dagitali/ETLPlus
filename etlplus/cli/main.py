@@ -24,14 +24,14 @@ from ..enums import FileFormat
 from ..utils import json_type
 from .app import PROJECT_URL
 from .app import app
-from .handlers import cmd_check
-from .handlers import cmd_extract
-from .handlers import cmd_load
-from .handlers import cmd_pipeline
-from .handlers import cmd_render
-from .handlers import cmd_run
-from .handlers import cmd_transform
-from .handlers import cmd_validate
+from .handlers import check_handler
+from .handlers import extract_handler
+from .handlers import load_handler
+from .handlers import pipeline_handler
+from .handlers import render_handler
+from .handlers import run_handler
+from .handlers import transform_handler
+from .handlers import validate_handler
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -329,7 +329,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(extract_parser, context='source')
-    extract_parser.set_defaults(func=cmd_extract)
+    extract_parser.set_defaults(func=extract_handler)
 
     validate_parser = subparsers.add_parser(
         'validate',
@@ -346,7 +346,7 @@ def create_parser() -> argparse.ArgumentParser:
         default={},
         help='Validation rules as JSON string',
     )
-    validate_parser.set_defaults(func=cmd_validate)
+    validate_parser.set_defaults(func=validate_handler)
 
     transform_parser = subparsers.add_parser(
         'transform',
@@ -394,7 +394,7 @@ def create_parser() -> argparse.ArgumentParser:
             'File targets infer format from the extension.'
         ),
     )
-    transform_parser.set_defaults(func=cmd_transform)
+    transform_parser.set_defaults(func=transform_handler)
 
     load_parser = subparsers.add_parser(
         'load',
@@ -418,7 +418,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(load_parser, context='target')
-    load_parser.set_defaults(func=cmd_load)
+    load_parser.set_defaults(func=load_handler)
 
     pipe_parser = subparsers.add_parser(
         'pipeline',
@@ -440,7 +440,7 @@ def create_parser() -> argparse.ArgumentParser:
         metavar='JOB',
         help='Run a specific job by name',
     )
-    pipe_parser.set_defaults(func=cmd_pipeline)
+    pipe_parser.set_defaults(func=pipeline_handler)
 
     render_parser = subparsers.add_parser(
         'render',
@@ -476,7 +476,7 @@ def create_parser() -> argparse.ArgumentParser:
             'Explicit path to a Jinja template file (overrides template key).'
         ),
     )
-    render_parser.set_defaults(func=cmd_render)
+    render_parser.set_defaults(func=render_handler)
 
     check_parser = subparsers.add_parser(
         'check',
@@ -516,7 +516,7 @@ def create_parser() -> argparse.ArgumentParser:
         name='transforms',
         help_text='List data transforms',
     )
-    check_parser.set_defaults(func=cmd_check)
+    check_parser.set_defaults(func=check_handler)
 
     run_parser = subparsers.add_parser(
         'run',
@@ -537,7 +537,7 @@ def create_parser() -> argparse.ArgumentParser:
         '--pipeline',
         help='Name of the pipeline to run',
     )
-    run_parser.set_defaults(func=cmd_run)
+    run_parser.set_defaults(func=run_handler)
 
     return parser
 
