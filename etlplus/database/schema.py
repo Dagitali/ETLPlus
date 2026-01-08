@@ -16,6 +16,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from ..file import File
+from ..types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -244,7 +245,7 @@ class TableSpec(BaseModel):
 
 
 def load_table_specs(
-    path: str | Path,
+    path: StrPath,
 ) -> list[TableSpec]:
     """
     Load table specifications from a YAML file.
