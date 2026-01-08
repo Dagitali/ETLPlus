@@ -297,6 +297,7 @@ class TestLoadAndBuildModels:
 
         class CustomBase(Base):
             """Custom Declarative base for testing base override."""
+
             __abstract__ = True
 
         registry = load_and_build_models('events.yml', base=CustomBase)
