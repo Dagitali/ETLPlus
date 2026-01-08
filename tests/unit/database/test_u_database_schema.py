@@ -24,6 +24,8 @@ from etlplus.database.schema import TableSpec
 
 pytestmark = pytest.mark.unit
 
+PayloadFactory = Callable[[dict[str, object]], object]
+
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -69,19 +71,54 @@ def sample_spec_fixture() -> dict[str, object]:
 
 
 class TestLoadTableSpecs:
-    """Unit test suite for :func:`etlplus.database.schema.load_table_specs`."""
+    """
+    Unit test suite for :func:`etlplus.database.schema.load_table_specs`.
+
+    Notes
+    -----
+    Reuses a helper fixture to patch ``File.read_file`` and avoid disk IO.
+    """
+
+    @pytest.fixture()
+    def patch_read_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Callable[[Any], None]:
+        """Return helper that patches ``File.read_file`` to return payload.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+
+        Returns
+        -------
+        Callable[[Any], None]
+            Function that applies the patch when invoked with a payload.
+        """
+
+        def _apply(payload: Any) -> None:
+            if callable(payload):
+                monkeypatch.setattr(
+                    schema_mod.File,
+                    'read_file',
+                    staticmethod(payload),
+                )
+            else:
+                monkeypatch.setattr(
+                    schema_mod.File,
+                    'read_file',
+                    staticmethod(lambda path: payload),
+                )
+
+        return _apply
 
     def test_empty_payload(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_read_file: Callable[[Any], None],
     ) -> None:
         """Test that an empty list is returned when the file is empty."""
-        monkeypatch.setattr(
-            schema_mod.File,
-            'read_file',
-            staticmethod(lambda path: None),
-        )
-
+        patch_read_file(None)
         assert schema_mod.load_table_specs('missing.yml') == []
 
     @pytest.mark.parametrize(
@@ -101,13 +138,10 @@ class TestLoadTableSpecs:
     )
     def test_shapes(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-        payload_factory: Callable[..., dict[str, list]]
-        | Callable[..., list]
-        | Callable[..., Any]
-        | Callable[..., dict],
+        payload_factory: PayloadFactory,
         expected_names: list[str],
         sample_spec: dict[str, object],
+        patch_read_file: Callable[[Any], None],
     ) -> None:
         """
         Test that supported input shapes coerce to :class:`TableSpec` list.
@@ -118,11 +152,7 @@ class TestLoadTableSpecs:
             captured_paths.append(path)
             return payload_factory(deepcopy(sample_spec))
 
-        monkeypatch.setattr(
-            schema_mod.File,
-            'read_file',
-            staticmethod(_fake_read_file),
-        )
+        patch_read_file(_fake_read_file)  # type: ignore[arg-type]
 
         specs = schema_mod.load_table_specs('input.yml')
 

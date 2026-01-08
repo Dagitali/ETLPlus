@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.database.engine`.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from typing import Any
 from typing import cast
 
@@ -26,11 +27,45 @@ engine_mod = importlib.import_module('etlplus.database.engine')
 
 
 class TestLoadDatabaseUrlFromConfig:
-    """Unit tests for :func:`load_database_url_from_config`."""
+    """
+    Unit test suite for :func:`load_database_url_from_config`.
+
+    Notes
+    -----
+    Patches :class:`etlplus.file.File` to avoid disk IO and uses helper
+    fixtures to keep tests DRY.
+    """
+
+    @pytest.fixture()
+    def patch_read_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Callable[[Any], None]:
+        """Return a helper that patches ``File.read_file`` with a payload.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture for applying patches.
+
+        Returns
+        -------
+        Callable[[Any], None]
+            Function that patches ``File.read_file`` to return the payload.
+        """
+
+        def _apply(payload: Any) -> None:
+            monkeypatch.setattr(
+                engine_mod.File,
+                'read_file',
+                staticmethod(lambda path: payload),
+            )
+
+        return _apply
 
     def test_loads_default_and_named_entries(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_read_file: Callable[[Any], None],
     ) -> None:
         """
         Test extracting URLs from default and named entries including nested
@@ -47,11 +82,7 @@ class TestLoadDatabaseUrlFromConfig:
             },
         }
 
-        monkeypatch.setattr(
-            engine_mod.File,
-            'read_file',
-            staticmethod(lambda path: config),
-        )
+        patch_read_file(config)
 
         assert (
             load_database_url_from_config('cfg.yml') == 'sqlite:///default.db'
@@ -74,32 +105,37 @@ class TestLoadDatabaseUrlFromConfig:
     )
     def test_invalid_configs_raise(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        patch_read_file: Callable[[Any], None],
         payload: Any,
         expected_exc: type[Exception],
     ) -> None:
         """Test that invalid structures surface helpful errors."""
-
-        monkeypatch.setattr(
-            engine_mod.File,
-            'read_file',
-            staticmethod(lambda path: payload),
-        )
+        patch_read_file(payload)
 
         with pytest.raises(expected_exc):
             load_database_url_from_config('bad.yml')
 
 
 class TestMakeEngine:
-    """Unit tests for :func:`make_engine` and module defaults."""
+    """Unit test suite for :func:`make_engine` and module defaults."""
 
-    def test_make_engine_uses_explicit_url(
+    @pytest.fixture()
+    def capture_create_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    ) -> Callable[..., dict[str, Any]]:
         """
-        Test that explicit URL is forwarded to create_engine with pre-ping
-        enabled.
+        Patch ``create_engine`` to capture calls.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture for applying patches.
+
+        Returns
+        -------
+        Callable[..., dict[str, Any]]
+            Fake ``create_engine`` that records arguments.
         """
         captured: list[tuple[str, dict[str, Any]]] = []
 
@@ -109,10 +145,25 @@ class TestMakeEngine:
 
         monkeypatch.setattr(engine_mod, 'create_engine', _fake_create_engine)
 
+        def _factory(url: str, **kwargs: Any) -> dict[str, Any]:
+            return _fake_create_engine(url, **kwargs)
+
+        _factory.captured = captured  # type: ignore[attr-defined]
+        return _factory
+
+    def test_make_engine_uses_explicit_url(
+        self,
+        capture_create_engine: Callable[[str, Any], dict[str, Any]],
+    ) -> None:
+        """
+        Test that explicit URL is forwarded to create_engine with pre-ping
+        enabled.
+        """
         eng = engine_mod.make_engine('sqlite:///explicit.db', echo=True)
         eng_dict = cast(dict[str, Any], eng)
 
         assert eng_dict['url'] == 'sqlite:///explicit.db'
+        captured = capture_create_engine.captured  # type: ignore[attr-defined]
         assert captured[0][1]['pool_pre_ping'] is True
         assert captured[0][1]['echo'] is True
 
