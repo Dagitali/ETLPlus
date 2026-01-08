@@ -44,8 +44,19 @@ DATABASE_URL: str = (
 
 
 def _resolve_url_from_mapping(cfg: Mapping[str, Any]) -> str | None:
-    """Return a URL/DSN from a mapping if present."""
+    """
+    Return a URL/DSN from a mapping if present.
 
+    Parameters
+    ----------
+    cfg : Mapping[str, Any]
+        Configuration mapping potentially containing connection fields.
+
+    Returns
+    -------
+    str | None
+        Resolved URL/DSN string, if present.
+    """
     conn = cfg.get('connection_string') or cfg.get('url') or cfg.get('dsn')
     if isinstance(conn, str) and conn.strip():
         return conn.strip()
