@@ -12,10 +12,14 @@ from typing import cast
 
 import pytest
 
-import etlplus.database.engine as engine_mod
 from etlplus.database.engine import load_database_url_from_config
 
+# SECTIONS: HELPERS ========================================================= #
+
+
 pytestmark = pytest.mark.unit
+
+engine_mod = importlib.import_module('etlplus.database.engine')
 
 
 # SECTION: TESTS ============================================================ #
@@ -62,7 +66,8 @@ class TestLoadDatabaseUrlFromConfig:
         [
             ({}, KeyError),
             ({'databases': None}, KeyError),
-            ({'databases': {'default': None}}, TypeError),
+            ({'databases': {'default': None}}, KeyError),
+            ({'databases': {'default': 'dsn'}}, TypeError),
             ({'databases': {'default': {}}}, ValueError),
             ('not-a-mapping', TypeError),
         ],
