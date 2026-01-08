@@ -413,10 +413,33 @@ class TestCliHandlersInternalHelpers:
         assert handlers._read_stdin_text() == 'stream-data'
 
 
-class TestCmdRender:
-    """Unit tests for the render command handler."""
+# TODO: Alphabetize unit test suite classes.
+# TODO: Create simullar unit test suite classes for other command handlers.
+class TestRenderHandler:
+    """Unit tests for :func:`render_handler`."""
 
-    def test_cmd_render_writes_sql_from_spec(
+    def test_errors_without_specs(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that missing configs/specs surfaces a helpful error."""
+
+        args = argparse.Namespace(
+            command='render',
+            config=None,
+            spec=None,
+            table=None,
+            template='ddl',
+            template_path=None,
+            output=None,
+            pretty=True,
+            quiet=False,
+        )
+
+        assert handlers.render_handler(args) == 1
+        assert 'No table schemas found' in capsys.readouterr().err
+
+    def test_writes_sql_from_spec(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
@@ -449,7 +472,7 @@ class TestCmdRender:
             quiet=False,
         )
 
-        assert handlers.cmd_render(args) == 0
+        assert handlers.render_handler(args) == 0
 
         sql_text = output_path.read_text(encoding='utf-8')
         assert 'CREATE TABLE [dbo].[Widget]' in sql_text
@@ -457,32 +480,11 @@ class TestCmdRender:
         captured = capsys.readouterr()
         assert f'Rendered 1 schema(s) to {output_path}' in captured.out
 
-    def test_cmd_render_errors_without_specs(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that missing configs/specs surfaces a helpful error."""
-
-        args = argparse.Namespace(
-            command='render',
-            config=None,
-            spec=None,
-            table=None,
-            template='ddl',
-            template_path=None,
-            output=None,
-            pretty=True,
-            quiet=False,
-        )
-
-        assert handlers.cmd_render(args) == 1
-        assert 'No table schemas found' in capsys.readouterr().err
-
 
 class TestCliHandlersCommands:
     """Unit tests that exercise the public CLI handler functions."""
 
-    def test_cmd_extract_reads_stdin_and_emits_json(
+    def test_extract_handler_reads_stdin_and_emits_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -520,10 +522,10 @@ class TestCliHandlersCommands:
             lambda data, pretty: emitted.append((data, pretty)),
         )
 
-        assert handlers.cmd_extract(args) == 0
+        assert handlers.extract_handler(args) == 0
         assert emitted == [({'payload': 'raw-text', 'fmt': None}, False)]
 
-    def test_cmd_extract_calls_extract_for_non_file_sources(
+    def test_extract_handler_calls_extract_for_non_file_sources(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -562,11 +564,11 @@ class TestCliHandlersCommands:
             lambda data, pretty: emitted.append((data, pretty)),
         )
 
-        assert handlers.cmd_extract(args) == 0
+        assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert emitted == [({'status': 'ok'}, True)]
 
-    def test_cmd_extract_file_respects_explicit_format(
+    def test_extract_handler_file_respects_explicit_format(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -600,10 +602,10 @@ class TestCliHandlersCommands:
             lambda *_a, **_k: None,
         )
 
-        assert handlers.cmd_extract(args) == 0
+        assert handlers.extract_handler(args) == 0
         assert captured['params'] == ('file', 'table.dat', 'csv')
 
-    def test_cmd_extract_suppresses_emit_when_output_written(
+    def test_extract_handler_suppresses_emit_when_output_written(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -657,13 +659,13 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, '_emit_json', fail_emit_json)
 
-        assert handlers.cmd_extract(args) == 0
+        assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert recorded['data'] == {'status': 'ok'}
         assert recorded['output_path'] == 'export.json'
         assert isinstance(recorded['success_message'], str)
 
-    def test_cmd_check_prints_sections(
+    def test_check_handler_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -683,15 +685,15 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(handlers, 'print_json', observed.append)
 
         args = argparse.Namespace(config='cfg.yml')
-        assert handlers.cmd_check(args) == 0
+        assert handlers.check_handler(args) == 0
         assert observed == [{'targets': ['t1']}]
 
-    def test_cmd_check_passes_substitute_flag(
+    def test_check_handler_passes_substitute_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :func:`cmd_check` forwards the substitute flag to config
+        Test that :func:`check_handler` forwards the substitute flag to config
         loader.
         """
         cfg = cast(PipelineConfig, DummyCfg())
@@ -718,11 +720,11 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(handlers, 'print_json', captured.append)
 
         args = argparse.Namespace(config='cfg.yml', substitute=True)
-        assert handlers.cmd_check(args) == 0
+        assert handlers.check_handler(args) == 0
         assert recorded['params'] == ('cfg.yml', True)
         assert captured == [{'pipelines': ['p1']}]
 
-    def test_cmd_load_file_target_streams_payload(
+    def test_load_handler_file_target_streams_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -773,11 +775,11 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'load', fail_load)
 
-        assert handlers.cmd_load(args) == 0
+        assert handlers.load_handler(args) == 0
         assert recorded['call'] == ('data.csv', None, False)
         assert args.emitted == (['rows', 'data.csv'], True)
 
-    def test_cmd_load_reads_stdin_and_invokes_load(
+    def test_load_handler_reads_stdin_and_invokes_load(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -860,7 +862,7 @@ class TestCliHandlersCommands:
             lambda data, pretty: emissions.append((data, pretty)),
         )
 
-        assert handlers.cmd_load(args) == 0
+        assert handlers.load_handler(args) == 0
         assert read_calls['count'] == 1
         assert parse_calls['params'] == ('stdin-payload', None)
         assert load_record['params'] == (
@@ -874,7 +876,7 @@ class TestCliHandlersCommands:
         assert isinstance(writes[0][2], str)
         assert emissions == [({'loaded': True}, False)]
 
-    def test_cmd_load_writes_output_file_and_skips_emit(
+    def test_load_handler_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -933,7 +935,7 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, '_emit_json', fail_emit)
 
-        assert handlers.cmd_load(args) == 0
+        assert handlers.load_handler(args) == 0
         assert load_record['params'] == (
             'payload.json',
             'db',

@@ -36,14 +36,14 @@ from ..validate import validate
 
 __all__ = [
     # Functions
-    'cmd_extract',
-    'cmd_check',
-    'cmd_load',
-    'cmd_pipeline',
-    'cmd_render',
-    'cmd_run',
-    'cmd_transform',
-    'cmd_validate',
+    'extract_handler',
+    'check_handler',
+    'load_handler',
+    'pipeline_handler',
+    'render_handler',
+    'run_handler',
+    'transform_handler',
+    'validate_handler',
 ]
 
 
@@ -423,7 +423,7 @@ def _write_json_output(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def cmd_check(
+def check_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -448,7 +448,7 @@ def cmd_check(
     return 0
 
 
-def cmd_extract(
+def extract_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -493,7 +493,7 @@ def cmd_extract(
     return 0
 
 
-def cmd_load(
+def load_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -552,7 +552,7 @@ def cmd_load(
     return 0
 
 
-def cmd_pipeline(
+def pipeline_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -596,12 +596,11 @@ def cmd_pipeline(
     return 0
 
 
-def cmd_render(
+def render_handler(
     args: argparse.Namespace,
 ) -> int:
     """Render SQL DDL statements from table schema specs."""
-
-    _pretty, quiet = _presentation_flags(args)
+    _, quiet = _presentation_flags(args)
 
     template_value = getattr(args, 'template', 'ddl') or 'ddl'
     template_path = getattr(args, 'template_path', None)
@@ -657,7 +656,7 @@ def cmd_render(
     return 0
 
 
-def cmd_run(
+def run_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -685,7 +684,7 @@ def cmd_run(
     return 0
 
 
-def cmd_transform(
+def transform_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -701,7 +700,7 @@ def cmd_transform(
     int
         Zero on success.
     """
-    pretty, _quiet = _presentation_flags(args)
+    pretty, _ = _presentation_flags(args)
     format_hint: str | None = getattr(args, 'source_format', None)
     format_explicit: bool = format_hint is not None
 
@@ -726,7 +725,7 @@ def cmd_transform(
     return 0
 
 
-def cmd_validate(
+def validate_handler(
     args: argparse.Namespace,
 ) -> int:
     """
@@ -742,7 +741,7 @@ def cmd_validate(
     int
         Zero on success.
     """
-    pretty, _quiet = _presentation_flags(args)
+    pretty, _ = _presentation_flags(args)
     format_explicit: bool = getattr(args, '_format_explicit', False)
     format_hint: str | None = getattr(args, 'source_format', None)
     payload = cast(

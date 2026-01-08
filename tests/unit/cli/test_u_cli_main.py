@@ -86,7 +86,7 @@ class TestCreateParser:
             ['extract', 'file', 'data.csv', '--source-format', 'json'],
         )
 
-        assert namespace.func is cli_main_module.cmd_extract
+        assert namespace.func is cli_main_module.extract_handler
         assert namespace.source_type == 'file'
         assert namespace.source == 'data.csv'
         assert namespace.source_format == 'json'
@@ -105,7 +105,7 @@ class TestCreateParser:
             ],
         )
 
-        assert namespace.func is cli_main_module.cmd_check
+        assert namespace.func is cli_main_module.check_handler
         assert namespace.command == 'check'
         assert namespace.config == 'pipelines.yml'
         assert namespace.targets is True
@@ -129,7 +129,7 @@ class TestCreateParser:
             ],
         )
 
-        assert namespace.func is cli_main_module.cmd_render
+        assert namespace.func is cli_main_module.render_handler
         assert namespace.config == 'pipeline.yml'
         assert namespace.table == 'Customers'
         assert namespace.template == 'ddl'
@@ -174,7 +174,7 @@ class TestMain:
         """
         monkeypatch.setattr(
             cli_app_module,
-            'cmd_extract',
+            'extract_handler',
             Mock(side_effect=KeyboardInterrupt),
         )
         assert cli_main(['extract', 'foo.csv']) == 130
@@ -204,7 +204,7 @@ class TestMain:
         """
         monkeypatch.setattr(
             cli_app_module,
-            'cmd_extract',
+            'extract_handler',
             Mock(side_effect=SystemExit(5)),
         )
         with pytest.raises(SystemExit) as exc_info:
@@ -286,7 +286,7 @@ class TestMain:
         """
         monkeypatch.setattr(
             cli_app_module,
-            'cmd_extract',
+            'extract_handler',
             Mock(side_effect=ValueError('fail')),
         )
         assert cli_main(['extract', 'foo.csv']) == 1

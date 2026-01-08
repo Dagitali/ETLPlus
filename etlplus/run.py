@@ -142,10 +142,8 @@ def run(
     """
     Run a pipeline job defined in a YAML configuration.
 
-    This mirrors the run-mode logic from ``etlplus.cli.cmd_pipeline``
-    (without the list/summary modes). By default it reads the configuration
-    from ``in/pipeline.yml``, but callers can provide an explicit
-    ``config_path`` to override this.
+    By default it reads the configuration from ``in/pipeline.yml``, but callers
+    can provide an explicit ``config_path`` to override this.
 
     Parameters
     ----------
