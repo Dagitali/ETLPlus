@@ -378,13 +378,13 @@ jobs:
 Once you have a pipeline YAML, you can run jobs either from the
 command line or directly from Python.
 
-### CLI: `etlplus list` (inspect) and `etlplus run` (execute)
+### CLI: `etlplus check` (inspect) and `etlplus run` (execute)
 
 List jobs or show a summary from a pipeline file:
 
 ```bash
-etlplus list --config examples/configs/pipeline.yml --jobs
-etlplus list --config examples/configs/pipeline.yml --summary
+etlplus check --config examples/configs/pipeline.yml --jobs
+etlplus check --config examples/configs/pipeline.yml --summary
 ```
 
 Run a specific job end-to-end (extract → validate → transform → load):
@@ -402,7 +402,7 @@ Notes:
   [Runner internals: etlplus.run](run-module.md).
 
 Deprecated: `etlplus pipeline` is still available as a shim but will be removed in a future release;
-prefer `list` and `run`.
+prefer `check` and `run`.
 
 ### Python: `etlplus.run.run`
 

@@ -92,15 +92,21 @@ class TestCreateParser:
         assert namespace.source_format == 'json'
         assert namespace._format_explicit is True
 
-    def test_list_parser_supports_boolean_flags(self) -> None:
-        """Test that the list parser surfaces boolean flag wiring."""
+    def test_check_parser_supports_boolean_flags(self) -> None:
+        """Test that the check parser surfaces boolean flag wiring."""
         parser = cli_main_module.create_parser()
         namespace = parser.parse_args(
-            ['list', '--config', 'pipelines.yml', '--targets', '--transforms'],
+            [
+                'check',
+                '--config',
+                'pipelines.yml',
+                '--targets',
+                '--transforms',
+            ],
         )
 
-        assert namespace.func is cli_main_module.cmd_list
-        assert namespace.command == 'list'
+        assert namespace.func is cli_main_module.cmd_check
+        assert namespace.command == 'check'
         assert namespace.config == 'pipelines.yml'
         assert namespace.targets is True
         assert namespace.transforms is True

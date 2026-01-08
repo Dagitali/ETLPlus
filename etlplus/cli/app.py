@@ -57,8 +57,8 @@ from .. import __version__
 from ..enums import DataConnectorType
 from ..enums import FileFormat
 from ..utils import json_type
+from .handlers import cmd_check
 from .handlers import cmd_extract
-from .handlers import cmd_list
 from .handlers import cmd_load
 from .handlers import cmd_pipeline
 from .handlers import cmd_render
@@ -127,126 +127,11 @@ PROJECT_URL: Final[str] = 'https://github.com/Dagitali/ETLPlus'
 # SECTION: TYPE ALIASES ==================================================== #
 
 
-SourceInputArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='SOURCE',
-        help=(
-            'Extract from SOURCE. Use --from/--source-type to override the '
-            'inferred connector when needed.'
-        ),
-    ),
-]
-
-StreamingSourceArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='SOURCE',
-        help=(
-            'Data source to transform or validate (path, JSON payload, or '
-            '- for stdin).'
-        ),
-    ),
-]
-
-TargetInputArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='TARGET',
-        help=(
-            'Load JSON data from stdin into TARGET. Use --to/--target-type '
-            'to override connector inference when needed. Source data must '
-            'be piped into stdin.'
-        ),
-    ),
-]
-
-SourceOverrideOption = Annotated[
-    str | None,
-    typer.Option(
-        '--source-type',
-        metavar='CONNECTOR',
-        show_default=False,
-        rich_help_panel='I/O overrides',
-        help='Override the inferred source type (file, database, api).',
-    ),
-]
-
-TargetOverrideOption = Annotated[
-    str | None,
-    typer.Option(
-        '--target-type',
-        metavar='CONNECTOR',
-        show_default=False,
-        rich_help_panel='I/O overrides',
-        help='Override the inferred target type (file, database, api).',
-    ),
-]
-
-SourceFormatOption = Annotated[
-    str | None,
-    typer.Option(
-        '--source-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help=(
-            'Input payload format when SOURCE is - or an inline payload. '
-            'File sources infer format from the extension.'
-        ),
-    ),
-]
-
-StdinFormatOption = Annotated[
-    str | None,
-    typer.Option(
-        '--source-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help='Input payload format when reading from stdin (default: json).',
-    ),
-]
-
-TargetFormatOption = Annotated[
-    str | None,
-    typer.Option(
-        '--target-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help=(
-            'Payload format when TARGET is - or a non-file connector. File '
-            'targets infer format from the extension.'
-        ),
-    ),
-]
-
 OperationsJSONOption = Annotated[
     str,
     typer.Option(
         '--operations',
         help='Transformation operations as JSON string.',
-    ),
-]
-
-RulesJSONOption = Annotated[
-    str,
-    typer.Option(
-        '--rules',
-        help='Validation rules as JSON string.',
-    ),
-]
-
-TargetPathOption = Annotated[
-    str | None,
-    typer.Option(
-        '--target',
-        metavar='PATH',
-        help='Target file for transformed or validated output (- for stdout).',
     ),
 ]
 
@@ -318,6 +203,121 @@ RenderTemplatePathOption = Annotated[
         help=(
             'Explicit path to a Jinja template file (overrides template key).'
         ),
+    ),
+]
+
+RulesJSONOption = Annotated[
+    str,
+    typer.Option(
+        '--rules',
+        help='Validation rules as JSON string.',
+    ),
+]
+
+SourceFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help=(
+            'Input payload format when SOURCE is - or an inline payload. '
+            'File sources infer format from the extension.'
+        ),
+    ),
+]
+
+SourceInputArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='SOURCE',
+        help=(
+            'Extract from SOURCE. Use --from/--source-type to override the '
+            'inferred connector when needed.'
+        ),
+    ),
+]
+
+SourceOverrideOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-type',
+        metavar='CONNECTOR',
+        show_default=False,
+        rich_help_panel='I/O overrides',
+        help='Override the inferred source type (file, database, api).',
+    ),
+]
+
+StdinFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--source-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help='Input payload format when reading from stdin (default: json).',
+    ),
+]
+
+StreamingSourceArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='SOURCE',
+        help=(
+            'Data source to transform or validate (path, JSON payload, or '
+            '- for stdin).'
+        ),
+    ),
+]
+
+TargetFormatOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target-format',
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel='Format overrides',
+        help=(
+            'Payload format when TARGET is - or a non-file connector. File '
+            'targets infer format from the extension.'
+        ),
+    ),
+]
+
+TargetInputArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='TARGET',
+        help=(
+            'Load JSON data from stdin into TARGET. Use --to/--target-type '
+            'to override connector inference when needed. Source data must '
+            'be piped into stdin.'
+        ),
+    ),
+]
+
+TargetOverrideOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target-type',
+        metavar='CONNECTOR',
+        show_default=False,
+        rich_help_panel='I/O overrides',
+        help='Override the inferred target type (file, database, api).',
+    ),
+]
+
+TargetPathOption = Annotated[
+    str | None,
+    typer.Option(
+        '--target',
+        metavar='PATH',
+        help='Target file for transformed or validated output (- for stdout).',
     ),
 ]
 
@@ -745,6 +745,83 @@ def _root(
         raise typer.Exit(0)
 
 
+@app.command('check')
+def check_cmd(
+    ctx: typer.Context,
+    config: PipelineConfigOption,
+    jobs: bool = typer.Option(
+        False,
+        '--jobs',
+        help='List available job names and exit',
+    ),
+    pipelines: bool = typer.Option(
+        False,
+        '--pipelines',
+        help='List ETL pipelines',
+    ),
+    sources: bool = typer.Option(
+        False,
+        '--sources',
+        help='List data sources',
+    ),
+    summary: bool = typer.Option(
+        False,
+        '--summary',
+        help='Show pipeline summary (name, version, sources, targets, jobs)',
+    ),
+    targets: bool = typer.Option(
+        False,
+        '--targets',
+        help='List data targets',
+    ),
+    transforms: bool = typer.Option(
+        False,
+        '--transforms',
+        help='List data transforms',
+    ),
+) -> int:
+    """
+    Print ETL entities from a pipeline YAML configuration.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer execution context provided to the command.
+    config : PipelineConfigOption
+        Path to pipeline YAML configuration file.
+    jobs : bool, optional
+        If True, list available job names and exit.
+    pipelines : bool, optional
+        If True, list ETL pipelines.
+    sources : bool, optional
+        If True, list data sources.
+    summary : bool, optional
+        If True, show pipeline summary (name, version, sources, targets, jobs).
+    targets : bool, optional
+        If True, list data targets.
+    transforms : bool, optional
+        If True, list data transforms.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    state = _ensure_state(ctx)
+    ns = _stateful_namespace(
+        state,
+        command='check',
+        config=config,
+        summary=summary,
+        pipelines=pipelines,
+        jobs=jobs,
+        sources=sources,
+        targets=targets,
+        transforms=transforms,
+    )
+    return int(cmd_check(ns))
+
+
 @app.command('extract')
 def extract_cmd(
     ctx: typer.Context,
@@ -829,83 +906,6 @@ def extract_cmd(
         **format_kwargs,
     )
     return int(cmd_extract(ns))
-
-
-@app.command('list')
-def list_cmd(
-    ctx: typer.Context,
-    config: PipelineConfigOption,
-    jobs: bool = typer.Option(
-        False,
-        '--jobs',
-        help='List available job names and exit',
-    ),
-    pipelines: bool = typer.Option(
-        False,
-        '--pipelines',
-        help='List ETL pipelines',
-    ),
-    sources: bool = typer.Option(
-        False,
-        '--sources',
-        help='List data sources',
-    ),
-    summary: bool = typer.Option(
-        False,
-        '--summary',
-        help='Show pipeline summary (name, version, sources, targets, jobs)',
-    ),
-    targets: bool = typer.Option(
-        False,
-        '--targets',
-        help='List data targets',
-    ),
-    transforms: bool = typer.Option(
-        False,
-        '--transforms',
-        help='List data transforms',
-    ),
-) -> int:
-    """
-    Print ETL entities from a pipeline YAML configuration.
-
-    Parameters
-    ----------
-    ctx : typer.Context
-        Typer execution context provided to the command.
-    config : PipelineConfigOption
-        Path to pipeline YAML configuration file.
-    jobs : bool, optional
-        If True, list available job names and exit.
-    pipelines : bool, optional
-        If True, list ETL pipelines.
-    sources : bool, optional
-        If True, list data sources.
-    summary : bool, optional
-        If True, show pipeline summary (name, version, sources, targets, jobs).
-    targets : bool, optional
-        If True, list data targets.
-    transforms : bool, optional
-        If True, list data transforms.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    state = _ensure_state(ctx)
-    ns = _stateful_namespace(
-        state,
-        command='list',
-        config=config,
-        summary=summary,
-        pipelines=pipelines,
-        jobs=jobs,
-        sources=sources,
-        targets=targets,
-        transforms=transforms,
-    )
-    return int(cmd_list(ns))
 
 
 @app.command('load')
