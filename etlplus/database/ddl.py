@@ -24,6 +24,7 @@ from jinja2 import FileSystemLoader
 from jinja2 import StrictUndefined
 
 from ..file import File
+from ..types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -161,7 +162,7 @@ def _resolve_template(
 
 
 def load_table_spec(
-    path: Path | str,
+    path: StrPath,
 ) -> dict[str, Any]:
     """
     Load a table specification from disk.
@@ -271,7 +272,7 @@ def render_tables(
 
 
 def render_tables_to_string(
-    spec_paths: Iterable[Path | str],
+    spec_paths: Iterable[StrPath],
     *,
     template: str | None = 'ddl',
     template_path: Path | str | None = None,
