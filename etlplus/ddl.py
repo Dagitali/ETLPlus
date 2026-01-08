@@ -40,11 +40,6 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-TEMPLATES: Final[dict[str, str]] = {
-    'ddl': 'ddl.sql.j2',
-    'view': 'view.sql.j2',
-}
-
 SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
         '.json',
@@ -52,6 +47,11 @@ SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
         '.yaml',
     },
 )
+
+TEMPLATES: Final[dict[str, str]] = {
+    'ddl': 'ddl.sql.j2',
+    'view': 'view.sql.j2',
+}
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -159,7 +159,8 @@ def _resolve_template(
 def load_table_spec(
     path: Path | str,
 ) -> dict[str, Any]:
-    """Load a table specification from disk.
+    """
+    Load a table specification from disk.
 
     Parameters
     ----------
@@ -271,7 +272,8 @@ def render_tables_to_string(
     template: str | None = 'ddl',
     template_path: Path | str | None = None,
 ) -> str:
-    """Render one or more specs and concatenate the SQL payloads.
+    """
+    Render one or more specs and concatenate the SQL payloads.
 
     Parameters
     ----------
