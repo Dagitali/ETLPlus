@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.database` package.
 
-Database utilities, including those for:
+Database utilities including:
 - DDL rendering and schema management.
 - Schema parsing from YAML/JSON definitions.
 - Dynamic ORM model generation via SQLAlchemy.
@@ -26,7 +26,7 @@ from .schema import load_table_specs
 
 
 __all__ = [
-    # FUnctions
+    # Functions
     'build_models',
     'load_and_build_models',
     'load_database_url_from_config',
