@@ -47,6 +47,15 @@ from .schema import load_table_specs
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
+__all__ = [
+    # Classes
+    'Base',
+    # Functions
+    'build_models',
+    'load_and_build_models',
+    'resolve_type',
+]
+
 
 _TYPE_MAPPING: dict[str, Callable[[list[int]], TypeEngine]] = {
     'int': lambda _: Integer(),
@@ -170,8 +179,8 @@ def _table_kwargs(
         Dictionary of table keyword arguments.
     """
     kwargs: dict[str, str] = {}
-    if spec.schema:
-        kwargs['schema'] = spec.schema
+    if spec.schema_name:
+        kwargs['schema'] = spec.schema_name
     return kwargs
 
 
@@ -274,7 +283,8 @@ def build_models(
             if col.check:
                 table_args.append(
                     CheckConstraint(
-                        col.check, name=f'ck_{spec.table}_{col.name}',
+                        col.check,
+                        name=f'ck_{spec.table}_{col.name}',
                     ),
                 )
 
