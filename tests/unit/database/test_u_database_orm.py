@@ -290,13 +290,14 @@ class TestLoadAndBuildModels:
         )
 
         def _fake_loader(path: Path) -> list[TableSpec]:
-            captured_paths.append(path)
+            captured_paths.append(Path(path))
             return [deepcopy(sample_spec)]
 
         monkeypatch.setattr(orm_mod, 'load_table_specs', _fake_loader)
 
         class CustomBase(Base):
             """Custom Declarative base for testing base override."""
+            __abstract__ = True
 
         registry = load_and_build_models('events.yml', base=CustomBase)
         model = registry['events']
