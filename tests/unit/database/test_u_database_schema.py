@@ -6,8 +6,10 @@ Unit tests for :mod:`etlplus.database.schema`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -16,6 +18,9 @@ from etlplus.database import schema as schema_mod
 from etlplus.database.schema import ColumnSpec
 from etlplus.database.schema import IdentitySpec
 from etlplus.database.schema import TableSpec
+
+# SECTIONS: HELPERS ========================================================= #
+
 
 pytestmark = pytest.mark.unit
 
@@ -26,7 +31,6 @@ pytestmark = pytest.mark.unit
 @pytest.fixture(name='sample_spec')
 def sample_spec_fixture() -> dict[str, object]:
     """Return a representative table specification mapping."""
-
     return {
         'name': 'users',
         'schema': 'public',
@@ -65,14 +69,13 @@ def sample_spec_fixture() -> dict[str, object]:
 
 
 class TestLoadTableSpecs:
-    """Unit tests for :func:`etlplus.database.schema.load_table_specs`."""
+    """Unit test suite for :func:`etlplus.database.schema.load_table_specs`."""
 
     def test_empty_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Return an empty list when the file is empty."""
-
+        """Test that an empty list is returned when the file is empty."""
         monkeypatch.setattr(
             schema_mod.File,
             'read_file',
@@ -99,12 +102,16 @@ class TestLoadTableSpecs:
     def test_shapes(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        payload_factory,
+        payload_factory: Callable[..., dict[str, list]]
+        | Callable[..., list]
+        | Callable[..., Any]
+        | Callable[..., dict],
         expected_names: list[str],
         sample_spec: dict[str, object],
     ) -> None:
-        """Ensure supported input shapes coerce to TableSpec list."""
-
+        """
+        Test that supported input shapes coerce to :class:`TableSpec` list.
+        """
         captured_paths: list[Path] = []
 
         def _fake_read_file(path: Path) -> object:
@@ -124,30 +131,56 @@ class TestLoadTableSpecs:
 
 
 class TestModels:
-    """Unit tests for Pydantic models in :mod:`schema`."""
+    """Unit test suite for Pydantic models in :mod:`schema`."""
+
+    def test_column_spec_forbids_extra_fields(self) -> None:
+        """Test that extra fields are rejected due to ``extra='forbid'``."""
+        with pytest.raises(ValidationError):
+            ColumnSpec.model_validate(
+                {
+                    'name': 'id',
+                    'type': 'INT',
+                    'nullable': False,
+                    'unexpected': True,
+                },
+            )
 
     @pytest.mark.parametrize(
-        'schema_name, expected',
-        [('public', 'public.users'), (None, 'users')],
+        'field, value',
+        [('seed', 0), ('increment', 0)],
     )
-    def test_table_spec_fq_name(
+    def test_identity_spec_requires_positive_values(
         self,
-        schema_name: str | None,
-        expected: str,
+        field: str,
+        value: int,
+    ) -> None:
+        """Test that identity seed/increment must be positive integers."""
+        payload = {'seed': 1, 'increment': 1}
+        payload[field] = value
+
+        with pytest.raises(ValidationError):
+            IdentitySpec.model_validate(payload)
+
+    def test_table_spec_aliases_name_and_schema(
+        self,
         sample_spec: dict[str, object],
     ) -> None:
-        """fq_name includes schema when provided."""
+        """
+        Test that incoming aliases map to attributes with expected defaults.
+        """
+        spec = TableSpec.model_validate(deepcopy(sample_spec))
 
-        spec_data = deepcopy(sample_spec)
-        spec_data['schema'] = schema_name
-        spec = TableSpec.model_validate(spec_data)
-
-        assert spec.fq_name == expected
-        assert spec.create_schema is True
+        assert spec.table == 'users'
+        assert spec.schema_name == 'public'
+        assert spec.columns[0].identity is not None
+        assert spec.columns[1].unique is True
+        assert spec.primary_key is not None
 
     def test_table_spec_defaults_populate_lists(self) -> None:
-        """Optional collections default to empty lists and flags to False."""
-
+        """
+        Test that optional collections default to empty lists and flags to
+        ``False``.
+        """
         minimal = TableSpec.model_validate(
             {
                 'name': 'events',
@@ -162,44 +195,19 @@ class TestModels:
         assert minimal.primary_key is None
 
     @pytest.mark.parametrize(
-        'field, value',
-        [('seed', 0), ('increment', 0)],
+        'schema_name, expected',
+        [('public', 'public.users'), (None, 'users')],
     )
-    def test_identity_spec_requires_positive_values(
+    def test_table_spec_fq_name(
         self,
-        field: str,
-        value: int,
+        schema_name: str | None,
+        expected: str,
+        sample_spec: dict[str, object],
     ) -> None:
-        """Identity seed/increment must be positive integers."""
+        """Test that ``fq_name`` includes schema when provided."""
+        spec_data = deepcopy(sample_spec)
+        spec_data['schema'] = schema_name
+        spec = TableSpec.model_validate(spec_data)
 
-        payload = {'seed': 1, 'increment': 1}
-        payload[field] = value
-
-        with pytest.raises(ValidationError):
-            IdentitySpec.model_validate(payload)
-
-    def test_column_spec_forbids_extra_fields(self) -> None:
-        """Extra fields are rejected due to ``extra='forbid'``."""
-
-        with pytest.raises(ValidationError):
-            ColumnSpec.model_validate(
-                {
-                    'name': 'id',
-                    'type': 'INT',
-                    'nullable': False,
-                    'unexpected': True,
-                },
-            )
-
-    def test_table_spec_aliases_name_and_schema(
-        self, sample_spec: dict[str, object],
-    ) -> None:
-        """Incoming aliases map to attributes with expected defaults."""
-
-        spec = TableSpec.model_validate(deepcopy(sample_spec))
-
-        assert spec.table == 'users'
-        assert spec.schema_name == 'public'
-        assert spec.columns[0].identity is not None
-        assert spec.columns[1].unique is True
-        assert spec.primary_key is not None
+        assert spec.fq_name == expected
+        assert spec.create_schema is True
