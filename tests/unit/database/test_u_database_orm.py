@@ -262,7 +262,7 @@ class TestBuildModels:
 
         assert model.__name__ == 'Widgets'
         assert table.primary_key is not None
-        assert {col.name for col in table.primary_key.columns} == {'id'}
+        assert {col.name for col in table.primary_key} == {'id'}
         assert table.columns['id'].primary_key is True
         assert table.columns['name'].unique is False
 
