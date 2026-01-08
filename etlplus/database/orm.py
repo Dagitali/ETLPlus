@@ -328,7 +328,7 @@ def resolve_type(
     type_str: str,
 ) -> TypeEngine:
     """
-    Resolve a string type declaration to a SQLAlchemy TypeEngine instance.
+    Resolve a string type declaration to a SQLAlchemy :class:`TypeEngine`.
 
     Parameters
     ----------
