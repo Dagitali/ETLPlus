@@ -7,9 +7,6 @@ Command handler functions for the ``etlplus`` command-line interface (CLI).
 from __future__ import annotations
 
 import argparse
-import csv
-import io
-import json
 import os
 import sys
 from pathlib import Path
@@ -20,17 +17,14 @@ from ..config import PipelineConfig
 from ..config import load_pipeline_config
 from ..database import load_table_spec
 from ..database import render_tables
-from ..enums import FileFormat
 from ..extract import extract
-from ..file import File
 from ..load import load
 from ..run import run
 from ..transform import transform
 from ..types import JSONData
 from ..types import TemplateKey
-from ..utils import json_type
-from ..utils import print_json
 from ..validate import validate
+from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -81,73 +75,6 @@ def _collect_table_specs(
     return specs
 
 
-def _emit_json(
-    data: Any,
-    *,
-    pretty: bool,
-) -> None:
-    """
-    Emit JSON to stdout honoring the pretty/compact preference.
-
-    Parameters
-    ----------
-    data : Any
-        Arbitrary JSON-serializable payload.
-    pretty : bool
-        When ``True`` pretty-print via :func:`print_json`; otherwise emit a
-        compact JSON string.
-    """
-    if pretty:
-        print_json(data)
-        return
-
-    dumped = json.dumps(
-        data,
-        ensure_ascii=False,
-        separators=(',', ':'),
-    )
-    print(dumped)
-
-
-def _explicit_cli_format(
-    args: argparse.Namespace,
-) -> str | None:
-    """Return the explicit CLI format hint when provided."""
-
-    if not getattr(args, '_format_explicit', False):
-        return None
-    for attr in ('format', 'target_format', 'source_format'):
-        value = getattr(args, attr, None)
-        if value is None:
-            continue
-        normalized = value.strip().lower()
-        if normalized:
-            return normalized
-    return None
-
-
-def _infer_payload_format(
-    text: str,
-) -> str:
-    """
-    Infer JSON vs CSV from payload text.
-
-    Parameters
-    ----------
-    text : str
-        Incoming payload as plain text.
-
-    Returns
-    -------
-    str
-        ``'json'`` when the text starts with ``{``/``[``, else ``'csv'``.
-    """
-    stripped = text.lstrip()
-    if stripped.startswith('{') or stripped.startswith('['):
-        return 'json'
-    return 'csv'
-
-
 def _check_sections(
     cfg: PipelineConfig,
     args: argparse.Namespace,
@@ -185,88 +112,6 @@ def _check_sections(
     return sections
 
 
-def _materialize_file_payload(
-    source: object,
-    *,
-    format_hint: str | None,
-    format_explicit: bool,
-) -> JSONData | object:
-    """
-    Return structured payloads when ``source`` references a file.
-
-    Parameters
-    ----------
-    source : object
-        Input source of data, possibly a file path.
-    format_hint : str | None
-        Explicit format hint: 'json', 'csv', or None to infer.
-    format_explicit : bool
-        Whether an explicit format hint was provided.
-
-    Returns
-    -------
-    JSONData | object
-        Parsed JSON data when ``source`` is a file; otherwise the original
-        ``source`` object.
-    """
-    if isinstance(source, (dict, list)):
-        return cast(JSONData, source)
-    if not isinstance(source, (str, os.PathLike)):
-        return source
-
-    path = Path(source)
-
-    normalized_hint = (format_hint or '').strip().lower()
-    fmt: FileFormat | None = None
-
-    if format_explicit and normalized_hint:
-        try:
-            fmt = FileFormat(normalized_hint)
-        except ValueError:
-            fmt = None
-    elif not format_explicit:
-        suffix = path.suffix.lower().lstrip('.')
-        if suffix:
-            try:
-                fmt = FileFormat(suffix)
-            except ValueError:
-                fmt = None
-
-    if fmt is None:
-        return source
-    if fmt == FileFormat.CSV:
-        return _read_csv_rows(path)
-    return File(path, fmt).read()
-
-
-def _parse_text_payload(
-    text: str,
-    fmt: str | None,
-) -> JSONData | str:
-    """
-    Parse JSON/CSV text into a Python payload.
-
-    Parameters
-    ----------
-    text : str
-        The input text payload.
-    fmt : str | None
-        Explicit format hint: 'json', 'csv', or None to infer.
-
-    Returns
-    -------
-    JSONData | str
-        The parsed payload as JSON data or raw text.
-    """
-    effective = (fmt or '').strip().lower() or _infer_payload_format(text)
-    if effective == 'json':
-        return cast(JSONData, json_type(text))
-    if effective == 'csv':
-        reader = csv.DictReader(io.StringIO(text))
-        return [dict(row) for row in reader]
-    return text
-
-
 def _pipeline_summary(
     cfg: PipelineConfig,
 ) -> dict[str, Any]:
@@ -295,131 +140,6 @@ def _pipeline_summary(
     }
 
 
-def _presentation_flags(
-    args: argparse.Namespace,
-) -> tuple[bool, bool]:
-    """
-    Return presentation toggles from the parsed namespace.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Namespace produced by the CLI parser.
-
-    Returns
-    -------
-    tuple[bool, bool]
-        Pair of ``(pretty, quiet)`` flags with safe defaults.
-    """
-    return getattr(args, 'pretty', True), getattr(args, 'quiet', False)
-
-
-def _read_csv_rows(
-    path: Path,
-) -> list[dict[str, str]]:
-    """
-    Read CSV rows into dictionaries.
-
-    Parameters
-    ----------
-    path : Path
-        Path to a CSV file.
-
-    Returns
-    -------
-    list[dict[str, str]]
-        List of dictionaries, each representing a row in the CSV file.
-    """
-    with path.open(newline='', encoding='utf-8') as handle:
-        reader = csv.DictReader(handle)
-        return [dict(row) for row in reader]
-
-
-def _read_stdin_text() -> str:
-    """
-    Return every character from ``stdin`` as a single string.
-
-    Returns
-    -------
-    str
-        Entire ``stdin`` contents.
-    """
-    return sys.stdin.read()
-
-
-def _resolve_cli_payload(
-    source: object,
-    *,
-    format_hint: str | None,
-    format_explicit: bool,
-    hydrate_files: bool = True,
-) -> JSONData | object:
-    """
-    Normalize CLI-provided payloads, honoring stdin and inline data.
-
-    Parameters
-    ----------
-    source : object
-        Raw CLI value (path, inline payload, or ``'-'`` for stdin).
-    format_hint : str | None
-        Explicit format hint supplied by the CLI option.
-    format_explicit : bool
-        Flag indicating whether the format hint was explicitly provided.
-    hydrate_files : bool, optional
-        When ``True`` (default) materialize file paths into structured data.
-        When ``False``, keep the original path so downstream code can stream
-        from disk directly.
-
-    Returns
-    -------
-    JSONData | object
-        Parsed payload or the original source value when hydration is
-        disabled.
-    """
-    if isinstance(source, (os.PathLike, str)) and str(source) == '-':
-        text = _read_stdin_text()
-        return _parse_text_payload(text, format_hint)
-
-    if not hydrate_files:
-        return source
-
-    return _materialize_file_payload(
-        source,
-        format_hint=format_hint,
-        format_explicit=format_explicit,
-    )
-
-
-def _write_json_output(
-    data: Any,
-    output_path: str | None,
-    *,
-    success_message: str,
-) -> bool:
-    """
-    Optionally persist JSON data to disk.
-
-    Parameters
-    ----------
-    data : Any
-        Data to write.
-    output_path : str | None
-        Path to write the output to. None to print to stdout.
-    success_message : str
-        Message to print upon successful write.
-
-    Returns
-    -------
-    bool
-        True if output was written to a file, False if printed to stdout.
-    """
-    if not output_path or output_path == '-':
-        return False
-    File(Path(output_path), FileFormat.JSON).write_json(data)
-    print(f'{success_message} {output_path}')
-    return True
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -441,10 +161,10 @@ def check_handler(
     """
     cfg = load_pipeline_config(args.config, substitute=True)
     if getattr(args, 'summary', False):
-        print_json(_pipeline_summary(cfg))
+        cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
 
-    print_json(_check_sections(cfg, args))
+    cli_io.emit_json(_check_sections(cfg, args), pretty=True)
     return 0
 
 
@@ -464,13 +184,15 @@ def extract_handler(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
-    explicit_format = _explicit_cli_format(args)
+    pretty, _ = cli_io.presentation_flags(args)
+    explicit_format = cli_io.explicit_cli_format(args)
 
     if args.source == '-':
-        text = _read_stdin_text()
-        payload = _parse_text_payload(text, getattr(args, 'format', None))
-        _emit_json(payload, pretty=pretty)
+        text = cli_io.read_stdin_text()
+        payload = cli_io.parse_text_payload(
+            text, getattr(args, 'format', None),
+        )
+        cli_io.emit_json(payload, pretty=pretty)
 
         return 0
 
@@ -483,12 +205,12 @@ def extract_handler(
     if output_path is None:
         output_path = getattr(args, 'output', None)
 
-    if not _write_json_output(
+    cli_io.emit_or_write(
         result,
         output_path,
+        pretty=pretty,
         success_message='Data extracted and saved to',
-    ):
-        _emit_json(result, pretty=pretty)
+    )
 
     return 0
 
@@ -509,14 +231,14 @@ def load_handler(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
-    explicit_format = _explicit_cli_format(args)
+    pretty, _ = cli_io.presentation_flags(args)
+    explicit_format = cli_io.explicit_cli_format(args)
 
     # Allow piping into load.
     source_format = getattr(args, 'source_format', None)
     source_value = cast(
         str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-        _resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=source_format,
             format_explicit=source_format is not None,
@@ -526,12 +248,12 @@ def load_handler(
 
     # Allow piping out of load for file targets.
     if args.target_type == 'file' and args.target == '-':
-        payload = _materialize_file_payload(
+        payload = cli_io.materialize_file_payload(
             source_value,
             format_hint=source_format,
             format_explicit=source_format is not None,
         )
-        _emit_json(payload, pretty=pretty)
+        cli_io.emit_json(payload, pretty=pretty)
         return 0
 
     result = load(
@@ -542,12 +264,12 @@ def load_handler(
     )
 
     output_path = getattr(args, 'output', None)
-    if not _write_json_output(
+    cli_io.emit_or_write(
         result,
         output_path,
+        pretty=pretty,
         success_message='Load result saved to',
-    ):
-        _emit_json(result, pretty=pretty)
+    )
 
     return 0
 
@@ -556,7 +278,7 @@ def render_handler(
     args: argparse.Namespace,
 ) -> int:
     """Render SQL DDL statements from table schema specs."""
-    _, quiet = _presentation_flags(args)
+    _, quiet = cli_io.presentation_flags(args)
 
     template_value: TemplateKey = getattr(args, 'template', 'ddl') or 'ddl'
     template_path = getattr(args, 'template_path', None)
@@ -633,10 +355,10 @@ def run_handler(
     job_name = getattr(args, 'job', None) or getattr(args, 'pipeline', None)
     if job_name:
         result = run(job=job_name, config_path=args.config)
-        print_json({'status': 'ok', 'result': result})
+        cli_io.emit_json({'status': 'ok', 'result': result}, pretty=True)
         return 0
 
-    print_json(_pipeline_summary(cfg))
+    cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
     return 0
 
 
@@ -656,13 +378,13 @@ def transform_handler(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
+    pretty, _ = cli_io.presentation_flags(args)
     format_hint: str | None = getattr(args, 'source_format', None)
     format_explicit: bool = format_hint is not None
 
     payload = cast(
         JSONData | str,
-        _resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=format_hint,
             format_explicit=format_explicit,
@@ -671,12 +393,12 @@ def transform_handler(
 
     data = transform(payload, args.operations)
 
-    if not _write_json_output(
+    cli_io.emit_or_write(
         data,
         getattr(args, 'target', None),
+        pretty=pretty,
         success_message='Data transformed and saved to',
-    ):
-        _emit_json(data, pretty=pretty)
+    )
 
     return 0
 
@@ -697,12 +419,12 @@ def validate_handler(
     int
         Zero on success.
     """
-    pretty, _ = _presentation_flags(args)
+    pretty, _ = cli_io.presentation_flags(args)
     format_explicit: bool = getattr(args, '_format_explicit', False)
     format_hint: str | None = getattr(args, 'source_format', None)
     payload = cast(
         JSONData | str,
-        _resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=format_hint,
             format_explicit=format_explicit,
@@ -714,7 +436,7 @@ def validate_handler(
     if target_path:
         validated_data = result.get('data')
         if validated_data is not None:
-            _write_json_output(
+            cli_io.write_json_output(
                 validated_data,
                 target_path,
                 success_message='Validation result saved to',
@@ -725,6 +447,6 @@ def validate_handler(
                 file=sys.stderr,
             )
     else:
-        _emit_json(result, pretty=pretty)
+        cli_io.emit_json(result, pretty=pretty)
 
     return 0

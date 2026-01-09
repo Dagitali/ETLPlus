@@ -12,25 +12,21 @@ from __future__ import annotations
 import argparse
 import contextlib
 import sys
-from collections.abc import Sequence
-from typing import Literal
 
 import click
 import typer
 
 from .. import __version__
-from ..enums import DataConnectorType
-from ..enums import FileFormat
 from ..utils import json_type
-from .app import PROJECT_URL
-from .app import app
-from .handlers import check_handler
-from .handlers import extract_handler
-from .handlers import load_handler
-from .handlers import render_handler
-from .handlers import run_handler
-from .handlers import transform_handler
-from .handlers import validate_handler
+from . import handlers
+from .commands import app
+from .constants import CLI_DESCRIPTION
+from .constants import CLI_EPILOG
+from .constants import DATA_CONNECTORS
+from .constants import FILE_FORMATS
+from .constants import PROJECT_URL
+from .options import add_argparse_format_options
+from .types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,31 +36,6 @@ __all__ = [
     'create_parser',
     'main',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type FormatContext = Literal['source', 'target']
-
-
-# SECTION: INTERNAL CLASSES ================================================= #
-
-
-class _FormatAction(argparse.Action):
-    """
-    Argparse action that records when ``--source-format`` or
-    ``--target-format`` is provided."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[object] | None,
-        option_string: str | None = None,
-    ) -> None:  # pragma: no cover
-        setattr(namespace, self.dest, values)
-        namespace._format_explicit = True
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -121,7 +92,7 @@ def _add_config_option(
 def _add_format_options(
     parser: argparse.ArgumentParser,
     *,
-    context: FormatContext,
+    context: DataConnectorContext,
 ) -> None:
     """
     Attach shared ``--source-format`` or ``--target-format`` options to
@@ -131,63 +102,11 @@ def _add_format_options(
     ----------
     parser : argparse.ArgumentParser
         Parser to augment.
-    context : FormatContext
+    context : DataConnectorContext
         Context for the format option: either ``'source'`` or ``'target'``
     """
     parser.set_defaults(_format_explicit=False)
-    parser.add_argument(
-        '--source-format',
-        choices=list(FileFormat.choices()),
-        default='json',
-        action=_FormatAction,
-        help=(
-            f'Format of the {context}. Overrides filename-based inference '
-            'when provided.'
-        ),
-    )
-    parser.add_argument(
-        '--target-format',
-        choices=list(FileFormat.choices()),
-        default='json',
-        action=_FormatAction,
-        help=(
-            f'Format of the {context}. Overrides filename-based inference '
-            'when provided.'
-        ),
-    )
-
-
-def _cli_description() -> str:
-    return '\n'.join(
-        [
-            'ETLPlus - A Swiss Army knife for simple ETL operations.',
-            '',
-            '    Provide a subcommand and options. Examples:',
-            '',
-            '    etlplus extract file in.csv > out.json',
-            '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
-            (
-                '    etlplus transform --from file in.csv --operations '
-                '\'{"select": ["id"]}\' --to file -o out.json'
-            ),
-            '    etlplus extract in.csv | etlplus load --to file out.json',
-            '',
-            '    Override format inference when extensions are misleading:',
-            '',
-            '    etlplus extract data.txt --source-format csv',
-            '    etlplus load payload.bin --target-format json',
-        ],
-    )
-
-
-def _cli_epilog() -> str:
-    return '\n'.join(
-        [
-            'Tip:',
-            '    --source-format and --target-format override format '
-            'inference based on filename extensions when needed.',
-        ],
-    )
+    add_argparse_format_options(parser, context=context)
 
 
 def _emit_context_help(
@@ -292,8 +211,8 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog='etlplus',
-        description=_cli_description(),
-        epilog=_cli_epilog(),
+        description=CLI_DESCRIPTION,
+        epilog=CLI_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -302,6 +221,25 @@ def create_parser() -> argparse.ArgumentParser:
         '--version',
         action='version',
         version=f'%(prog)s {__version__}',
+    )
+
+    parser.add_argument(
+        '--pretty',
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help='Pretty-print JSON output (default: pretty).',
+    )
+    parser.add_argument(
+        '--quiet',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help='Suppress warnings and non-essential output.',
+    )
+    parser.add_argument(
+        '--verbose',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help='Emit extra diagnostics to stderr.',
     )
 
     subparsers = parser.add_subparsers(
@@ -317,7 +255,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     extract_parser.add_argument(
         'source_type',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Type of source to extract from',
     )
     extract_parser.add_argument(
@@ -328,7 +266,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(extract_parser, context='source')
-    extract_parser.set_defaults(func=extract_handler)
+    extract_parser.set_defaults(func=handlers.extract_handler)
 
     validate_parser = subparsers.add_parser(
         'validate',
@@ -345,7 +283,7 @@ def create_parser() -> argparse.ArgumentParser:
         default={},
         help='Validation rules as JSON string',
     )
-    validate_parser.set_defaults(func=validate_handler)
+    validate_parser.set_defaults(func=handlers.validate_handler)
 
     transform_parser = subparsers.add_parser(
         'transform',
@@ -365,18 +303,18 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser.add_argument(
         '--from',
         dest='from_',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Override the inferred source type (file, database, api).',
     )
     transform_parser.add_argument(
         '--to',
         dest='to',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Override the inferred target type (file, database, api).',
     )
     transform_parser.add_argument(
         '--source-format',
-        choices=list(FileFormat.choices()),
+        choices=sorted(FILE_FORMATS),
         dest='source_format',
         help=(
             'Input payload format when SOURCE is - or a literal payload. '
@@ -386,14 +324,14 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser.add_argument(
         '--target-format',
         dest='target_format',
-        choices=list(FileFormat.choices()),
+        choices=sorted(FILE_FORMATS),
         help=(
             'Output payload format '
             'when writing to stdout or non-file targets. '
             'File targets infer format from the extension.'
         ),
     )
-    transform_parser.set_defaults(func=transform_handler)
+    transform_parser.set_defaults(func=handlers.transform_handler)
 
     load_parser = subparsers.add_parser(
         'load',
@@ -406,7 +344,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     load_parser.add_argument(
         'target_type',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Type of target to load to',
     )
     load_parser.add_argument(
@@ -417,7 +355,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(load_parser, context='target')
-    load_parser.set_defaults(func=load_handler)
+    load_parser.set_defaults(func=handlers.load_handler)
 
     render_parser = subparsers.add_parser(
         'render',
@@ -453,7 +391,7 @@ def create_parser() -> argparse.ArgumentParser:
             'Explicit path to a Jinja template file (overrides template key).'
         ),
     )
-    render_parser.set_defaults(func=render_handler)
+    render_parser.set_defaults(func=handlers.render_handler)
 
     check_parser = subparsers.add_parser(
         'check',
@@ -493,7 +431,7 @@ def create_parser() -> argparse.ArgumentParser:
         name='transforms',
         help_text='List data transforms',
     )
-    check_parser.set_defaults(func=check_handler)
+    check_parser.set_defaults(func=handlers.check_handler)
 
     run_parser = subparsers.add_parser(
         'run',
@@ -514,7 +452,7 @@ def create_parser() -> argparse.ArgumentParser:
         '--pipeline',
         help='Name of the pipeline to run',
     )
-    run_parser.set_defaults(func=run_handler)
+    run_parser.set_defaults(func=handlers.run_handler)
 
     return parser
 
