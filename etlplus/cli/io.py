@@ -28,6 +28,7 @@ from ..utils import print_json
 __all__ = [
     # Functions
     'emit_json',
+    'emit_or_write',
     'explicit_cli_format',
     'infer_payload_format',
     'materialize_file_payload',
@@ -63,6 +64,36 @@ def emit_json(
         return
     dumped = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
     print(dumped)
+
+
+def emit_or_write(
+    data: Any,
+    output_path: str | None,
+    *,
+    pretty: bool,
+    success_message: str,
+) -> None:
+    """
+    Emit JSON or persist to disk based on ``output_path``.
+
+    Parameters
+    ----------
+    data : Any
+        The data to serialize.
+    output_path : str | None
+        Target file path; when falsy or ``'-'`` data is emitted to stdout.
+    pretty : bool
+        Whether to pretty-print JSON emission.
+    success_message : str
+        Message printed when writing to disk succeeds.
+    """
+    if write_json_output(
+        data,
+        output_path,
+        success_message=success_message,
+    ):
+        return
+    emit_json(data, pretty=pretty)
 
 
 def explicit_cli_format(
