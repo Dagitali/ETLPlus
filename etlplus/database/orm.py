@@ -13,7 +13,6 @@ Usage
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from typing import Any
 from typing import Final
 
@@ -45,6 +44,8 @@ from ..types import StrPath
 from .schema import ForeignKeySpec
 from .schema import TableSpec
 from .schema import load_table_specs
+from .types import ModelRegistry
+from .types import TypeFactory
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -57,14 +58,6 @@ __all__ = [
     'load_and_build_models',
     'resolve_type',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# pylint: disable=invalid-name
-type TypeFactory = Callable[[list[int]], TypeEngine]
-type Registry = dict[str, type[DeclarativeBase]]
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -113,6 +106,8 @@ _TYPE_MAPPING: Final[dict[str, TypeFactory]] = {
 
 class Base(DeclarativeBase):
     """Base class for all ORM models."""
+
+    __abstract__ = True
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -203,7 +198,7 @@ def build_models(
     specs: list[TableSpec],
     *,
     base: type[DeclarativeBase] = Base,
-) -> Registry:
+) -> ModelRegistry:
     """
     Build SQLAlchemy ORM models from table specifications.
     Parameters
@@ -214,10 +209,10 @@ def build_models(
         Base class for the ORM models (default: :class:`Base`).
     Returns
     -------
-    Registry
+    ModelRegistry
         Registry mapping fully qualified table names to ORM model classes.
     """
-    registry: Registry = {}
+    registry: ModelRegistry = {}
 
     for spec in specs:
         table_args: list[object] = []
@@ -317,7 +312,7 @@ def load_and_build_models(
     path: StrPath,
     *,
     base: type[DeclarativeBase] = Base,
-) -> Registry:
+) -> ModelRegistry:
     """
     Load table specifications from a file and build SQLAlchemy models.
 
@@ -330,7 +325,7 @@ def load_and_build_models(
 
     Returns
     -------
-    Registry
+    ModelRegistry
         Registry mapping fully qualified table names to ORM model classes.
     """
     return build_models(load_table_specs(path), base=base)
