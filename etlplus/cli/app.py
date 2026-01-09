@@ -60,7 +60,6 @@ from ..utils import json_type
 from .handlers import check_handler
 from .handlers import extract_handler
 from .handlers import load_handler
-from .handlers import pipeline_handler
 from .handlers import render_handler
 from .handlers import run_handler
 from .handlers import transform_handler
@@ -1008,60 +1007,6 @@ def load_cmd(
         **format_kwargs,
     )
     return int(load_handler(ns))
-
-
-@app.command('pipeline')
-def pipeline_cmd(
-    ctx: typer.Context,
-    config: PipelineConfigOption,
-    job: str | None = typer.Option(
-        None,
-        '--job',
-        metavar='JOB',
-        help='Run a specific job by name',
-    ),
-    jobs: bool = typer.Option(
-        False,
-        '--jobs',
-        help='List available job names and exit',
-    ),
-    pipeline: str | None = typer.Option(
-        None,
-        '--pipeline',
-        help='Run a specific pipeline by name',
-    ),
-) -> int:
-    """
-    Deprecated wrapper to inspect or run a pipeline YAML configuration.
-
-    Parameters
-    ----------
-    ctx : typer.Context
-        Typer execution context provided to the command.
-    config : PipelineConfigOption
-        Path to pipeline YAML configuration file.
-    job : str | None, optional
-        Name of a specific job to run.
-    jobs : bool, optional
-        If True, list available job names and exit.
-    pipeline : str | None, optional
-        Name of a specific pipeline to run.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    state = _ensure_state(ctx)
-    run_target = job or pipeline
-    ns = _stateful_namespace(
-        state,
-        command='pipeline',
-        config=config,
-        list=jobs,
-        run=run_target,
-    )
-    return int(pipeline_handler(ns))
 
 
 @app.command('render')
