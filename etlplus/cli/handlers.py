@@ -24,14 +24,7 @@ from ..transform import transform
 from ..types import JSONData
 from ..types import TemplateKey
 from ..validate import validate
-from .io import emit_json
-from .io import explicit_cli_format
-from .io import materialize_file_payload
-from .io import parse_text_payload
-from .io import presentation_flags
-from .io import read_stdin_text
-from .io import resolve_cli_payload
-from .io import write_json_output
+from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -168,10 +161,10 @@ def check_handler(
     """
     cfg = load_pipeline_config(args.config, substitute=True)
     if getattr(args, 'summary', False):
-        emit_json(_pipeline_summary(cfg), pretty=True)
+        cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
 
-    emit_json(_check_sections(cfg, args), pretty=True)
+    cli_io.emit_json(_check_sections(cfg, args), pretty=True)
     return 0
 
 
@@ -191,13 +184,15 @@ def extract_handler(
     int
         Zero on success.
     """
-    pretty, _ = presentation_flags(args)
-    explicit_format = explicit_cli_format(args)
+    pretty, _ = cli_io.presentation_flags(args)
+    explicit_format = cli_io.explicit_cli_format(args)
 
     if args.source == '-':
-        text = read_stdin_text()
-        payload = parse_text_payload(text, getattr(args, 'format', None))
-        emit_json(payload, pretty=pretty)
+        text = cli_io.read_stdin_text()
+        payload = cli_io.parse_text_payload(
+            text, getattr(args, 'format', None),
+        )
+        cli_io.emit_json(payload, pretty=pretty)
 
         return 0
 
@@ -210,12 +205,12 @@ def extract_handler(
     if output_path is None:
         output_path = getattr(args, 'output', None)
 
-    if not write_json_output(
+    cli_io.emit_or_write(
         result,
         output_path,
+        pretty=pretty,
         success_message='Data extracted and saved to',
-    ):
-        emit_json(result, pretty=pretty)
+    )
 
     return 0
 
@@ -236,14 +231,14 @@ def load_handler(
     int
         Zero on success.
     """
-    pretty, _ = presentation_flags(args)
-    explicit_format = explicit_cli_format(args)
+    pretty, _ = cli_io.presentation_flags(args)
+    explicit_format = cli_io.explicit_cli_format(args)
 
     # Allow piping into load.
     source_format = getattr(args, 'source_format', None)
     source_value = cast(
         str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-        resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=source_format,
             format_explicit=source_format is not None,
@@ -253,12 +248,12 @@ def load_handler(
 
     # Allow piping out of load for file targets.
     if args.target_type == 'file' and args.target == '-':
-        payload = materialize_file_payload(
+        payload = cli_io.materialize_file_payload(
             source_value,
             format_hint=source_format,
             format_explicit=source_format is not None,
         )
-        emit_json(payload, pretty=pretty)
+        cli_io.emit_json(payload, pretty=pretty)
         return 0
 
     result = load(
@@ -269,12 +264,12 @@ def load_handler(
     )
 
     output_path = getattr(args, 'output', None)
-    if not write_json_output(
+    cli_io.emit_or_write(
         result,
         output_path,
+        pretty=pretty,
         success_message='Load result saved to',
-    ):
-        emit_json(result, pretty=pretty)
+    )
 
     return 0
 
@@ -283,7 +278,7 @@ def render_handler(
     args: argparse.Namespace,
 ) -> int:
     """Render SQL DDL statements from table schema specs."""
-    _, quiet = presentation_flags(args)
+    _, quiet = cli_io.presentation_flags(args)
 
     template_value: TemplateKey = getattr(args, 'template', 'ddl') or 'ddl'
     template_path = getattr(args, 'template_path', None)
@@ -360,10 +355,10 @@ def run_handler(
     job_name = getattr(args, 'job', None) or getattr(args, 'pipeline', None)
     if job_name:
         result = run(job=job_name, config_path=args.config)
-        emit_json({'status': 'ok', 'result': result}, pretty=True)
+        cli_io.emit_json({'status': 'ok', 'result': result}, pretty=True)
         return 0
 
-    emit_json(_pipeline_summary(cfg), pretty=True)
+    cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
     return 0
 
 
@@ -383,13 +378,13 @@ def transform_handler(
     int
         Zero on success.
     """
-    pretty, _ = presentation_flags(args)
+    pretty, _ = cli_io.presentation_flags(args)
     format_hint: str | None = getattr(args, 'source_format', None)
     format_explicit: bool = format_hint is not None
 
     payload = cast(
         JSONData | str,
-        resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=format_hint,
             format_explicit=format_explicit,
@@ -398,12 +393,12 @@ def transform_handler(
 
     data = transform(payload, args.operations)
 
-    if not write_json_output(
+    cli_io.emit_or_write(
         data,
         getattr(args, 'target', None),
+        pretty=pretty,
         success_message='Data transformed and saved to',
-    ):
-        emit_json(data, pretty=pretty)
+    )
 
     return 0
 
@@ -424,12 +419,12 @@ def validate_handler(
     int
         Zero on success.
     """
-    pretty, _ = presentation_flags(args)
+    pretty, _ = cli_io.presentation_flags(args)
     format_explicit: bool = getattr(args, '_format_explicit', False)
     format_hint: str | None = getattr(args, 'source_format', None)
     payload = cast(
         JSONData | str,
-        resolve_cli_payload(
+        cli_io.resolve_cli_payload(
             args.source,
             format_hint=format_hint,
             format_explicit=format_explicit,
@@ -441,7 +436,7 @@ def validate_handler(
     if target_path:
         validated_data = result.get('data')
         if validated_data is not None:
-            write_json_output(
+            cli_io.write_json_output(
                 validated_data,
                 target_path,
                 success_message='Validation result saved to',
@@ -452,6 +447,6 @@ def validate_handler(
                 file=sys.stderr,
             )
     else:
-        emit_json(result, pretty=pretty)
+        cli_io.emit_json(result, pretty=pretty)
 
     return 0
