@@ -25,7 +25,7 @@ from jinja2 import StrictUndefined
 from ..file import File
 from ..types import StrAnyMap
 from ..types import StrPath
-from .types import TemplateKey
+from ..types import TemplateKey
 
 # SECTION: EXPORTS ========================================================== #
 
