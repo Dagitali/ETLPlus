@@ -19,13 +19,14 @@ import click
 import typer
 
 from .. import __version__
-from ..enums import DataConnectorType
-from ..enums import FileFormat
 from ..utils import json_type
-from .app import CLI_DESCRIPTION
-from .app import CLI_EPILOG
-from .app import PROJECT_URL
 from .app import app
+from .constants import CLI_DESCRIPTION
+from .constants import CLI_EPILOG
+from .constants import DATA_CONNECTORS
+from .constants import DEFAULT_FILE_FORMAT
+from .constants import FILE_FORMATS
+from .constants import PROJECT_URL
 from .handlers import check_handler
 from .handlers import extract_handler
 from .handlers import load_handler
@@ -139,8 +140,8 @@ def _add_format_options(
     parser.set_defaults(_format_explicit=False)
     parser.add_argument(
         '--source-format',
-        choices=list(FileFormat.choices()),
-        default='json',
+        choices=sorted(FILE_FORMATS),
+        default=DEFAULT_FILE_FORMAT,
         action=_FormatAction,
         help=(
             f'Format of the {context}. Overrides filename-based inference '
@@ -149,8 +150,8 @@ def _add_format_options(
     )
     parser.add_argument(
         '--target-format',
-        choices=list(FileFormat.choices()),
-        default='json',
+        choices=sorted(FILE_FORMATS),
+        default=DEFAULT_FILE_FORMAT,
         action=_FormatAction,
         help=(
             f'Format of the {context}. Overrides filename-based inference '
@@ -286,7 +287,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     extract_parser.add_argument(
         'source_type',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Type of source to extract from',
     )
     extract_parser.add_argument(
@@ -334,18 +335,18 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser.add_argument(
         '--from',
         dest='from_',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Override the inferred source type (file, database, api).',
     )
     transform_parser.add_argument(
         '--to',
         dest='to',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Override the inferred target type (file, database, api).',
     )
     transform_parser.add_argument(
         '--source-format',
-        choices=list(FileFormat.choices()),
+        choices=sorted(FILE_FORMATS),
         dest='source_format',
         help=(
             'Input payload format when SOURCE is - or a literal payload. '
@@ -355,7 +356,7 @@ def create_parser() -> argparse.ArgumentParser:
     transform_parser.add_argument(
         '--target-format',
         dest='target_format',
-        choices=list(FileFormat.choices()),
+        choices=sorted(FILE_FORMATS),
         help=(
             'Output payload format '
             'when writing to stdout or non-file targets. '
@@ -375,7 +376,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     load_parser.add_argument(
         'target_type',
-        choices=list(DataConnectorType.choices()),
+        choices=sorted(DATA_CONNECTORS),
         help='Type of target to load to',
     )
     load_parser.add_argument(
