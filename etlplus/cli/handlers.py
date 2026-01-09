@@ -190,7 +190,8 @@ def extract_handler(
     if args.source == '-':
         text = cli_io.read_stdin_text()
         payload = cli_io.parse_text_payload(
-            text, getattr(args, 'format', None),
+            text,
+            getattr(args, 'format', None),
         )
         cli_io.emit_json(payload, pretty=pretty)
 
