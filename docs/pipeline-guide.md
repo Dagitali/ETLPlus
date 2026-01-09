@@ -401,9 +401,6 @@ Notes:
 - For more details on the orchestration implementation, see
   [Runner internals: etlplus.run](run-module.md).
 
-Deprecated: `etlplus pipeline` is still available as a shim but will be removed in a future release;
-prefer `check` and `run`.
-
 ### Python: `etlplus.run.run`
 
 To trigger a job programmatically, use the high-level runner function exposed by the package:

@@ -27,6 +27,7 @@ from ..load import load
 from ..run import run
 from ..transform import transform
 from ..types import JSONData
+from ..types import TemplateKey
 from ..utils import json_type
 from ..utils import print_json
 from ..validate import validate
@@ -39,7 +40,6 @@ __all__ = [
     'extract_handler',
     'check_handler',
     'load_handler',
-    'pipeline_handler',
     'render_handler',
     'run_handler',
     'transform_handler',
@@ -72,7 +72,7 @@ def _collect_table_specs(
     specs: list[dict[str, Any]] = []
 
     if spec_path:
-        specs.append(load_table_spec(Path(spec_path)))
+        specs.append(dict(load_table_spec(Path(spec_path))))
 
     if config_path:
         cfg = load_pipeline_config(config_path, substitute=True)
@@ -552,57 +552,13 @@ def load_handler(
     return 0
 
 
-def pipeline_handler(
-    args: argparse.Namespace,
-) -> int:
-    """
-    Inspect or run a pipeline YAML configuration.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command-line arguments.
-
-    Returns
-    -------
-    int
-        Zero on success.
-    """
-    print(
-        'DEPRECATED: use "etlplus check --summary|--jobs" or '
-        '"etlplus run --job/--pipeline" instead of "etlplus pipeline".',
-        file=sys.stderr,
-    )
-
-    cfg = load_pipeline_config(args.config, substitute=True)
-
-    list_flag = getattr(args, 'list', False) or getattr(args, 'jobs', False)
-    run_target = (
-        getattr(args, 'run', None)
-        or getattr(args, 'job', None)
-        or getattr(args, 'pipeline', None)
-    )
-
-    if list_flag and not run_target:
-        print_json({'jobs': _pipeline_summary(cfg)['jobs']})
-        return 0
-
-    if run_target:
-        result = run(job=run_target, config_path=args.config)
-        print_json({'status': 'ok', 'result': result})
-        return 0
-
-    print_json(_pipeline_summary(cfg))
-    return 0
-
-
 def render_handler(
     args: argparse.Namespace,
 ) -> int:
     """Render SQL DDL statements from table schema specs."""
     _, quiet = _presentation_flags(args)
 
-    template_value = getattr(args, 'template', 'ddl') or 'ddl'
+    template_value: TemplateKey = getattr(args, 'template', 'ddl') or 'ddl'
     template_path = getattr(args, 'template_path', None)
     table_filter = getattr(args, 'table', None)
     spec_path = getattr(args, 'spec', None)
@@ -610,7 +566,7 @@ def render_handler(
 
     # If the provided template points to a file, treat it as a path override.
     file_override = template_path
-    template_key = template_value
+    template_key: TemplateKey | None = template_value
     if template_path is None:
         candidate_path = Path(template_value)
         if candidate_path.exists():

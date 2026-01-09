@@ -27,7 +27,6 @@ from .app import app
 from .handlers import check_handler
 from .handlers import extract_handler
 from .handlers import load_handler
-from .handlers import pipeline_handler
 from .handlers import render_handler
 from .handlers import run_handler
 from .handlers import transform_handler
@@ -419,28 +418,6 @@ def create_parser() -> argparse.ArgumentParser:
     )
     _add_format_options(load_parser, context='target')
     load_parser.set_defaults(func=load_handler)
-
-    pipe_parser = subparsers.add_parser(
-        'pipeline',
-        help=(
-            'DEPRECATED: use "list" (for summary/jobs) or "run" (to execute); '
-            'see '
-            f'{PROJECT_URL}/blob/main/docs/pipeline-guide.md'
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    _add_config_option(pipe_parser)
-    pipe_parser.add_argument(
-        '--list',
-        action='store_true',
-        help='List available job names and exit',
-    )
-    pipe_parser.add_argument(
-        '--run',
-        metavar='JOB',
-        help='Run a specific job by name',
-    )
-    pipe_parser.set_defaults(func=pipeline_handler)
 
     render_parser = subparsers.add_parser(
         'render',
