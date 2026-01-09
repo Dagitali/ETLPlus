@@ -12,28 +12,21 @@ from __future__ import annotations
 import argparse
 import contextlib
 import sys
-from collections.abc import Sequence
-from typing import Literal
 
 import click
 import typer
 
 from .. import __version__
 from ..utils import json_type
+from . import handlers
 from .commands import app
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
-from .constants import DEFAULT_FILE_FORMAT
 from .constants import FILE_FORMATS
 from .constants import PROJECT_URL
-from .handlers import check_handler
-from .handlers import extract_handler
-from .handlers import load_handler
-from .handlers import render_handler
-from .handlers import run_handler
-from .handlers import transform_handler
-from .handlers import validate_handler
+from .options import add_argparse_format_options
+from .types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -43,31 +36,6 @@ __all__ = [
     'create_parser',
     'main',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type FormatContext = Literal['source', 'target']
-
-
-# SECTION: INTERNAL CLASSES ================================================= #
-
-
-class _FormatAction(argparse.Action):
-    """
-    Argparse action that records when ``--source-format`` or
-    ``--target-format`` is provided."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[object] | None,
-        option_string: str | None = None,
-    ) -> None:  # pragma: no cover
-        setattr(namespace, self.dest, values)
-        namespace._format_explicit = True
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -124,7 +92,7 @@ def _add_config_option(
 def _add_format_options(
     parser: argparse.ArgumentParser,
     *,
-    context: FormatContext,
+    context: DataConnectorContext,
 ) -> None:
     """
     Attach shared ``--source-format`` or ``--target-format`` options to
@@ -134,30 +102,11 @@ def _add_format_options(
     ----------
     parser : argparse.ArgumentParser
         Parser to augment.
-    context : FormatContext
+    context : DataConnectorContext
         Context for the format option: either ``'source'`` or ``'target'``
     """
     parser.set_defaults(_format_explicit=False)
-    parser.add_argument(
-        '--source-format',
-        choices=sorted(FILE_FORMATS),
-        default=DEFAULT_FILE_FORMAT,
-        action=_FormatAction,
-        help=(
-            f'Format of the {context}. Overrides filename-based inference '
-            'when provided.'
-        ),
-    )
-    parser.add_argument(
-        '--target-format',
-        choices=sorted(FILE_FORMATS),
-        default=DEFAULT_FILE_FORMAT,
-        action=_FormatAction,
-        help=(
-            f'Format of the {context}. Overrides filename-based inference '
-            'when provided.'
-        ),
-    )
+    add_argparse_format_options(parser, context=context)
 
 
 def _emit_context_help(
@@ -274,6 +223,25 @@ def create_parser() -> argparse.ArgumentParser:
         version=f'%(prog)s {__version__}',
     )
 
+    parser.add_argument(
+        '--pretty',
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help='Pretty-print JSON output (default: pretty).',
+    )
+    parser.add_argument(
+        '--quiet',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help='Suppress warnings and non-essential output.',
+    )
+    parser.add_argument(
+        '--verbose',
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help='Emit extra diagnostics to stderr.',
+    )
+
     subparsers = parser.add_subparsers(
         dest='command',
         help='Available commands',
@@ -298,7 +266,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(extract_parser, context='source')
-    extract_parser.set_defaults(func=extract_handler)
+    extract_parser.set_defaults(func=handlers.extract_handler)
 
     validate_parser = subparsers.add_parser(
         'validate',
@@ -315,7 +283,7 @@ def create_parser() -> argparse.ArgumentParser:
         default={},
         help='Validation rules as JSON string',
     )
-    validate_parser.set_defaults(func=validate_handler)
+    validate_parser.set_defaults(func=handlers.validate_handler)
 
     transform_parser = subparsers.add_parser(
         'transform',
@@ -363,7 +331,7 @@ def create_parser() -> argparse.ArgumentParser:
             'File targets infer format from the extension.'
         ),
     )
-    transform_parser.set_defaults(func=transform_handler)
+    transform_parser.set_defaults(func=handlers.transform_handler)
 
     load_parser = subparsers.add_parser(
         'load',
@@ -387,7 +355,7 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_format_options(load_parser, context='target')
-    load_parser.set_defaults(func=load_handler)
+    load_parser.set_defaults(func=handlers.load_handler)
 
     render_parser = subparsers.add_parser(
         'render',
@@ -423,7 +391,7 @@ def create_parser() -> argparse.ArgumentParser:
             'Explicit path to a Jinja template file (overrides template key).'
         ),
     )
-    render_parser.set_defaults(func=render_handler)
+    render_parser.set_defaults(func=handlers.render_handler)
 
     check_parser = subparsers.add_parser(
         'check',
@@ -463,7 +431,7 @@ def create_parser() -> argparse.ArgumentParser:
         name='transforms',
         help_text='List data transforms',
     )
-    check_parser.set_defaults(func=check_handler)
+    check_parser.set_defaults(func=handlers.check_handler)
 
     run_parser = subparsers.add_parser(
         'run',
@@ -484,7 +452,7 @@ def create_parser() -> argparse.ArgumentParser:
         '--pipeline',
         help='Name of the pipeline to run',
     )
-    run_parser.set_defaults(func=run_handler)
+    run_parser.set_defaults(func=handlers.run_handler)
 
     return parser
 
