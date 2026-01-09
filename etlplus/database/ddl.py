@@ -169,7 +169,7 @@ def load_table_spec(
 
     Parameters
     ----------
-    path : Path | str
+    path : StrPath
         Path to the JSON or YAML specification file.
 
     Returns
@@ -275,18 +275,18 @@ def render_tables_to_string(
     spec_paths: Iterable[StrPath],
     *,
     template: str | None = 'ddl',
-    template_path: Path | str | None = None,
+    template_path: StrPath | None = None,
 ) -> str:
     """
     Render one or more specs and concatenate the SQL payloads.
 
     Parameters
     ----------
-    spec_paths : Iterable[Path | str]
+    spec_paths : Iterable[StrPath]
         Paths to table specification files.
     template : str | None, optional
         Template key bundled with ETLPlus. Defaults to ``'ddl'``.
-    template_path : Path | str | None, optional
+    template_path : StrPath | None, optional
         Custom Jinja template to override the bundled templates.
 
     Returns
