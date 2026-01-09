@@ -67,7 +67,8 @@ TEMPLATES: Final[dict[TemplateKey, str]] = {
 def _load_template_text(
     filename: str,
 ) -> str:
-    """Return the bundled template text.
+    """
+    Return the bundled template text.
 
     Parameters
     ----------
@@ -105,7 +106,8 @@ def _resolve_template(
     template_key: TemplateKey | None,
     template_path: str | None,
 ) -> tuple[Environment, str]:
-    """Return environment and template name for rendering.
+    """
+    Return environment and template name for rendering.
 
     Parameters
     ----------
