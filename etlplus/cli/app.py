@@ -71,6 +71,10 @@ from .handlers import validate_handler
 __all__ = [
     # Apps
     'app',
+    # Constants
+    'CLI_DESCRIPTION',
+    'CLI_EPILOG',
+    'PROJECT_URL',
 ]
 
 
@@ -83,8 +87,10 @@ _DB_SCHEMES = (
     'mysql://',
 )
 
-_SOURCE_CHOICES: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
-_FORMAT_CHOICES: Final[frozenset[str]] = frozenset(FileFormat.choices())
+_CONNECTORS: Final[frozenset[str]] = frozenset(DataConnectorType.choices())
+_FORMATS: Final[frozenset[str]] = frozenset(FileFormat.choices())
+
+_DEFAULT_FORMAT: Final[str] = 'json'
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -597,7 +603,7 @@ def _resolve_resource_type(
         candidate = explicit_type
     else:
         candidate = override_type or _infer_resource_type_or_exit(value)
-    return _validate_choice(candidate, _SOURCE_CHOICES, label=label)
+    return _validate_choice(candidate, _CONNECTORS, label=label)
 
 
 def _stateful_namespace(
@@ -872,12 +878,12 @@ def extract_cmd(
 
     source_type = _optional_choice(
         source_type,
-        _SOURCE_CHOICES,
+        _CONNECTORS,
         label='source_type',
     )
     source_format = _optional_choice(
         source_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='source_format',
     )
 
@@ -895,7 +901,7 @@ def extract_cmd(
 
     format_kwargs = _format_namespace_kwargs(
         format_value=source_format,
-        default='json',
+        default=_DEFAULT_FORMAT,
     )
     ns = _stateful_namespace(
         state,
@@ -958,17 +964,17 @@ def load_cmd(
 
     source_format = _optional_choice(
         source_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='source_format',
     )
     target_type = _optional_choice(
         target_type,
-        _SOURCE_CHOICES,
+        _CONNECTORS,
         label='target_type',
     )
     target_format = _optional_choice(
         target_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='target_format',
     )
 
@@ -995,7 +1001,7 @@ def load_cmd(
 
     format_kwargs = _format_namespace_kwargs(
         format_value=target_format,
-        default='json',
+        default=_DEFAULT_FORMAT,
     )
     ns = _stateful_namespace(
         state,
@@ -1173,26 +1179,26 @@ def transform_cmd(
 
     source_format = _optional_choice(
         source_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='source_format',
     )
     source_type = _optional_choice(
         source_type,
-        _SOURCE_CHOICES,
+        _CONNECTORS,
         label='source_type',
     )
     target_format = _optional_choice(
         target_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='target_format',
     )
     target_format_kwargs = _format_namespace_kwargs(
         format_value=target_format,
-        default='json',
+        default=_DEFAULT_FORMAT,
     )
     target_type = _optional_choice(
         target_type,
-        _SOURCE_CHOICES,
+        _CONNECTORS,
         label='target_type',
     )
 
@@ -1203,7 +1209,7 @@ def transform_cmd(
     if resolved_source_type is not None:
         resolved_source_type = _validate_choice(
             resolved_source_type,
-            _SOURCE_CHOICES,
+            _CONNECTORS,
             label='source_type',
         )
 
@@ -1276,17 +1282,17 @@ def validate_cmd(
     """
     source_format = _optional_choice(
         source_format,
-        _FORMAT_CHOICES,
+        _FORMATS,
         label='source_format',
     )
     source_type = _optional_choice(
         source_type,
-        _SOURCE_CHOICES,
+        _CONNECTORS,
         label='source_type',
     )
     source_format_kwargs = _format_namespace_kwargs(
         format_value=source_format,
-        default='json',
+        default=_DEFAULT_FORMAT,
     )
 
     state = _ensure_state(ctx)
