@@ -34,18 +34,12 @@ import typer
 
 from .. import __version__
 from ..utils import json_type
+from . import handlers
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
 from .constants import DEFAULT_FILE_FORMAT
 from .constants import FILE_FORMATS
-from .handlers import check_handler
-from .handlers import extract_handler
-from .handlers import load_handler
-from .handlers import render_handler
-from .handlers import run_handler
-from .handlers import transform_handler
-from .handlers import validate_handler
 from .state import CliState
 from .state import ensure_state
 from .state import format_namespace_kwargs
@@ -364,7 +358,7 @@ def check_cmd(
         targets=targets,
         transforms=transforms,
     )
-    return int(check_handler(ns))
+    return int(handlers.check_handler(ns))
 
 
 @app.command('extract')
@@ -411,7 +405,7 @@ def extract_cmd(
         source=resolved_source,
         **format_kwargs,
     )
-    return int(extract_handler(ns))
+    return int(handlers.extract_handler(ns))
 
 
 @app.command('load')
@@ -475,7 +469,7 @@ def load_cmd(
         target=resolved_target,
         **format_kwargs,
     )
-    return int(load_handler(ns))
+    return int(handlers.load_handler(ns))
 
 
 @app.command('render')
@@ -500,7 +494,7 @@ def render_cmd(
         template_path=template_path,
         output=output,
     )
-    return int(render_handler(ns))
+    return int(handlers.render_handler(ns))
 
 
 @app.command('run')
@@ -529,7 +523,7 @@ def run_cmd(
         job=job,
         pipeline=pipeline,
     )
-    return int(run_handler(ns))
+    return int(handlers.run_handler(ns))
 
 
 @app.command('transform')
@@ -614,7 +608,7 @@ def transform_cmd(
         target_format=target_format_kwargs['format'],
         **target_format_kwargs,
     )
-    return int(transform_handler(ns))
+    return int(handlers.transform_handler(ns))
 
 
 @app.command('validate')
@@ -662,4 +656,4 @@ def validate_cmd(
         source_format=source_format,
         **source_format_kwargs,
     )
-    return int(validate_handler(ns))
+    return int(handlers.validate_handler(ns))
