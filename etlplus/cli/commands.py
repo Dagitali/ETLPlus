@@ -40,6 +40,7 @@ from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
 from .constants import DEFAULT_FILE_FORMAT
 from .constants import FILE_FORMATS
+from .options import typer_format_option_kwargs
 from .state import CliState
 from .state import ensure_state
 from .state import format_namespace_kwargs
@@ -151,13 +152,7 @@ SourceFormatOption = Annotated[
     str | None,
     typer.Option(
         '--source-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help=(
-            'Input payload format when SOURCE is - or an inline payload. '
-            'File sources infer format from the extension.'
-        ),
+        **typer_format_option_kwargs(context='source'),
     ),
 ]
 
@@ -188,10 +183,7 @@ StdinFormatOption = Annotated[
     str | None,
     typer.Option(
         '--source-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help='Input payload format when reading from stdin (default: json).',
+        **typer_format_option_kwargs(context='source'),
     ),
 ]
 
@@ -211,13 +203,7 @@ TargetFormatOption = Annotated[
     str | None,
     typer.Option(
         '--target-format',
-        metavar='FORMAT',
-        show_default=False,
-        rich_help_panel='Format overrides',
-        help=(
-            'Payload format when TARGET is - or a non-file connector. File '
-            'targets infer format from the extension.'
-        ),
+        **typer_format_option_kwargs(context='target'),
     ),
 ]
 
