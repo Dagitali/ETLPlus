@@ -90,7 +90,7 @@ def load_database_url_from_config(
 
     Parameters
     ----------
-    path : str | Path
+    path : StrPath
         Location of the configuration file.
     name : str | None, optional
         Named database entry under the ``databases`` map (default:
