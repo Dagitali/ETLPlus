@@ -252,7 +252,7 @@ def load_table_specs(
 
     Parameters
     ----------
-    path : str | Path
+    path : StrPath
         Path to the YAML file containing table specifications.
 
     Returns
