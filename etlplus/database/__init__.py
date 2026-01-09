@@ -18,6 +18,7 @@ from .engine import engine
 from .engine import load_database_url_from_config
 from .engine import make_engine
 from .engine import session
+from .orm import Base
 from .orm import build_models
 from .orm import load_and_build_models
 from .schema import load_table_specs
@@ -36,6 +37,7 @@ __all__ = [
     'render_table_sql',
     'render_tables',
     'render_tables_to_string',
+    'Base',
     # Singletons
     'engine',
     'session',
