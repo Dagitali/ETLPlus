@@ -66,7 +66,7 @@ __all__ = ['app']
 # SECTION: TYPE ALIASES ==================================================== #
 
 
-type OperationsOption = Annotated[
+OperationsOption = Annotated[
     str,
     typer.Option(
         '--operations',
@@ -74,7 +74,7 @@ type OperationsOption = Annotated[
     ),
 ]
 
-type PipelineConfigOption = Annotated[
+PipelineConfigOption = Annotated[
     str,
     typer.Option(
         ...,
@@ -84,7 +84,7 @@ type PipelineConfigOption = Annotated[
     ),
 ]
 
-type RenderConfigOption = Annotated[
+RenderConfigOption = Annotated[
     str | None,
     typer.Option(
         '--config',
@@ -94,7 +94,7 @@ type RenderConfigOption = Annotated[
     ),
 ]
 
-type RenderOutputOption = Annotated[
+RenderOutputOption = Annotated[
     str | None,
     typer.Option(
         '--output',
@@ -104,7 +104,7 @@ type RenderOutputOption = Annotated[
     ),
 ]
 
-type RenderSpecOption = Annotated[
+RenderSpecOption = Annotated[
     str | None,
     typer.Option(
         '--spec',
@@ -114,7 +114,7 @@ type RenderSpecOption = Annotated[
     ),
 ]
 
-type RenderTableOption = Annotated[
+RenderTableOption = Annotated[
     str | None,
     typer.Option(
         '--table',
@@ -123,7 +123,7 @@ type RenderTableOption = Annotated[
     ),
 ]
 
-type RenderTemplateOption = Annotated[
+RenderTemplateOption = Annotated[
     str,
     typer.Option(
         '--template',
@@ -134,7 +134,7 @@ type RenderTemplateOption = Annotated[
     ),
 ]
 
-type RenderTemplatePathOption = Annotated[
+RenderTemplatePathOption = Annotated[
     str | None,
     typer.Option(
         '--template-path',
@@ -145,7 +145,7 @@ type RenderTemplatePathOption = Annotated[
     ),
 ]
 
-type RulesJSONOption = Annotated[
+RulesOption = Annotated[
     str,
     typer.Option(
         '--rules',
@@ -153,7 +153,7 @@ type RulesJSONOption = Annotated[
     ),
 ]
 
-type SourceFormatOption = Annotated[
+SourceFormatOption = Annotated[
     str | None,
     typer.Option(
         '--source-format',
@@ -167,7 +167,7 @@ type SourceFormatOption = Annotated[
     ),
 ]
 
-type SourceInputArg = Annotated[
+SourceInputArg = Annotated[
     str,
     typer.Argument(
         ...,
@@ -179,7 +179,7 @@ type SourceInputArg = Annotated[
     ),
 ]
 
-type SourceOverrideOption = Annotated[
+SourceOverrideOption = Annotated[
     str | None,
     typer.Option(
         '--source-type',
@@ -190,7 +190,7 @@ type SourceOverrideOption = Annotated[
     ),
 ]
 
-type StdinFormatOption = Annotated[
+StdinFormatOption = Annotated[
     str | None,
     typer.Option(
         '--source-format',
@@ -201,7 +201,7 @@ type StdinFormatOption = Annotated[
     ),
 ]
 
-type StreamingSourceArg = Annotated[
+StreamingSourceArg = Annotated[
     str,
     typer.Argument(
         ...,
@@ -213,7 +213,7 @@ type StreamingSourceArg = Annotated[
     ),
 ]
 
-type TargetFormatOption = Annotated[
+TargetFormatOption = Annotated[
     str | None,
     typer.Option(
         '--target-format',
@@ -227,7 +227,7 @@ type TargetFormatOption = Annotated[
     ),
 ]
 
-type TargetInputArg = Annotated[
+TargetInputArg = Annotated[
     str,
     typer.Argument(
         ...,
@@ -240,7 +240,7 @@ type TargetInputArg = Annotated[
     ),
 ]
 
-type TargetOverrideOption = Annotated[
+TargetOverrideOption = Annotated[
     str | None,
     typer.Option(
         '--target-type',
@@ -251,7 +251,7 @@ type TargetOverrideOption = Annotated[
     ),
 ]
 
-type TargetPathOption = Annotated[
+TargetPathOption = Annotated[
     str | None,
     typer.Option(
         '--target',
@@ -620,7 +620,7 @@ def transform_cmd(
 @app.command('validate')
 def validate_cmd(
     ctx: typer.Context,
-    rules: RulesJSONOption = '{}',
+    rules: RulesOption = '{}',
     source: StreamingSourceArg = '-',
     source_format: SourceFormatOption | None = None,
     source_type: SourceOverrideOption | None = None,
