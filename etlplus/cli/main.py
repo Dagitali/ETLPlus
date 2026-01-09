@@ -22,6 +22,8 @@ from .. import __version__
 from ..enums import DataConnectorType
 from ..enums import FileFormat
 from ..utils import json_type
+from .app import CLI_DESCRIPTION
+from .app import CLI_EPILOG
 from .app import PROJECT_URL
 from .app import app
 from .handlers import check_handler
@@ -157,39 +159,6 @@ def _add_format_options(
     )
 
 
-def _cli_description() -> str:
-    return '\n'.join(
-        [
-            'ETLPlus - A Swiss Army knife for simple ETL operations.',
-            '',
-            '    Provide a subcommand and options. Examples:',
-            '',
-            '    etlplus extract file in.csv > out.json',
-            '    etlplus validate in.json --rules \'{"required": ["id"]}\'',
-            (
-                '    etlplus transform --from file in.csv --operations '
-                '\'{"select": ["id"]}\' --to file -o out.json'
-            ),
-            '    etlplus extract in.csv | etlplus load --to file out.json',
-            '',
-            '    Override format inference when extensions are misleading:',
-            '',
-            '    etlplus extract data.txt --source-format csv',
-            '    etlplus load payload.bin --target-format json',
-        ],
-    )
-
-
-def _cli_epilog() -> str:
-    return '\n'.join(
-        [
-            'Tip:',
-            '    --source-format and --target-format override format '
-            'inference based on filename extensions when needed.',
-        ],
-    )
-
-
 def _emit_context_help(
     ctx: click.Context | None,
 ) -> bool:
@@ -292,8 +261,8 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog='etlplus',
-        description=_cli_description(),
-        epilog=_cli_epilog(),
+        description=CLI_DESCRIPTION,
+        epilog=CLI_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
