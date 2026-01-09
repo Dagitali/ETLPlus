@@ -112,8 +112,19 @@ def _emit_json(
 def _explicit_cli_format(
     args: argparse.Namespace,
 ) -> str | None:
-    """Return the explicit CLI format hint when provided."""
+    """
+    Return the explicit CLI format hint when provided.
 
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Namespace produced by the CLI parser.
+
+    Returns
+    -------
+    str | None
+        The explicit format string when provided; otherwise ``None``.
+    """
     if not getattr(args, '_format_explicit', False):
         return None
     for attr in ('format', 'target_format', 'source_format'):
