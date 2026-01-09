@@ -317,7 +317,7 @@ def pipeline_cli_runner_fixture(
         monkeypatch.setattr(
             sys,
             'argv',
-            ['etlplus', 'pipeline', '--config', cfg_path, '--job', run_name],
+            ['etlplus', 'run', '--config', cfg_path, '--job', run_name],
         )
         rc = main()
         assert rc == 0

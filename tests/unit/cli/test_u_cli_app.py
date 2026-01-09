@@ -386,51 +386,6 @@ class TestTyperCliAppWiring:
         assert result.exit_code == 0
         assert 'ETLPlus' in result.stdout
 
-    def test_pipeline_maps_flags(
-        self,
-        invoke_cli: InvokeCli,
-    ) -> None:
-        """
-        Test that ``pipeline`` maps list flags into the handler namespace.
-        """
-        result, ns, cmd = invoke_cli(
-            'pipeline_handler',
-            'pipeline',
-            '--config',
-            'p.yml',
-            '--jobs',
-        )
-        assert result.exit_code == 0
-        cmd.assert_called_once()
-
-        assert isinstance(ns, argparse.Namespace)
-        assert ns.command == 'pipeline'
-        assert ns.config == 'p.yml'
-        assert ns.list is True
-        assert ns.run is None
-
-    def test_pipeline_run_sets_run_option(
-        self,
-        invoke_cli: InvokeCli,
-    ) -> None:
-        """
-        Test that ``pipeline --job`` wires run metadata into the namespace.
-        """
-        result, ns, cmd = invoke_cli(
-            'pipeline_handler',
-            'pipeline',
-            '--config',
-            'p.yml',
-            '--job',
-            'job-2',
-        )
-
-        assert result.exit_code == 0
-        cmd.assert_called_once()
-        assert isinstance(ns, argparse.Namespace)
-        assert ns.run == 'job-2'
-        assert ns.list is False
-
     def test_render_maps_namespace(
         self,
         invoke_cli: InvokeCli,
