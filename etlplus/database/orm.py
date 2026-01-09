@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
+from typing import Final
 
 from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
@@ -41,11 +41,13 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import TypeEngine
 
+from ..types import StrPath
 from .schema import ForeignKeySpec
 from .schema import TableSpec
 from .schema import load_table_specs
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: EXPORTS ========================================================== #
+
 
 __all__ = [
     # Classes
@@ -57,7 +59,17 @@ __all__ = [
 ]
 
 
-_TYPE_MAPPING: dict[str, Callable[[list[int]], TypeEngine]] = {
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+# pylint: disable=invalid-name
+type TypeFactory = Callable[[list[int]], TypeEngine]
+type Registry = dict[str, type[DeclarativeBase]]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_TYPE_MAPPING: Final[dict[str, TypeFactory]] = {
     'int': lambda _: Integer(),
     'integer': lambda _: Integer(),
     'bigint': lambda _: Integer(),
@@ -191,7 +203,7 @@ def build_models(
     specs: list[TableSpec],
     *,
     base: type[DeclarativeBase] = Base,
-) -> dict[str, type[DeclarativeBase]]:
+) -> Registry:
     """
     Build SQLAlchemy ORM models from table specifications.
     Parameters
@@ -202,10 +214,10 @@ def build_models(
         Base class for the ORM models (default: :class:`Base`).
     Returns
     -------
-    dict[str, type[DeclarativeBase]]
+    Registry
         Registry mapping fully qualified table names to ORM model classes.
     """
-    registry: dict[str, type[DeclarativeBase]] = {}
+    registry: Registry = {}
 
     for spec in specs:
         table_args: list[object] = []
@@ -302,23 +314,23 @@ def build_models(
 
 
 def load_and_build_models(
-    path: str | Path,
+    path: StrPath,
     *,
     base: type[DeclarativeBase] = Base,
-) -> dict[str, type[DeclarativeBase]]:
+) -> Registry:
     """
     Load table specifications from a file and build SQLAlchemy models.
 
     Parameters
     ----------
-    path : str | Path
+    path : StrPath
         Path to the YAML file containing table specifications.
     base : type[DeclarativeBase], optional
         Base class for the ORM models (default: :class:`Base`).
 
     Returns
     -------
-    dict[str, type[DeclarativeBase]]
+    Registry
         Registry mapping fully qualified table names to ORM model classes.
     """
     return build_models(load_table_specs(path), base=base)
