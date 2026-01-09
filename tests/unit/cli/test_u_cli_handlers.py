@@ -65,16 +65,14 @@ class TestCliHandlersInternalHelpers:
         Test that :func:`_check_sections` includes all requested sections."""
         # pylint: disable=protected-access
 
-        args = argparse.Namespace(
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._check_sections(
+            cfg,
+            jobs=False,
             pipelines=True,
             sources=True,
             targets=True,
             transforms=True,
-        )
-        cfg = cast(PipelineConfig, DummyCfg())
-        result = handlers._check_sections(
-            cfg,
-            args,
         )
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
@@ -85,16 +83,14 @@ class TestCliHandlersInternalHelpers:
         """
         # pylint: disable=protected-access
 
-        args = argparse.Namespace(
+        cfg = cast(PipelineConfig, DummyCfg())
+        result = handlers._check_sections(
+            cfg,
+            jobs=False,
             pipelines=False,
             sources=False,
             targets=False,
             transforms=False,
-        )
-        cfg = cast(PipelineConfig, DummyCfg())
-        result = handlers._check_sections(
-            cfg,
-            args,
         )
         assert 'jobs' in result
 
@@ -118,16 +114,6 @@ class TestCliHandlersInternalHelpers:
         payload = {'a': 1}
         _io.emit_json(payload, pretty=True)
         assert called_with == [payload]
-
-    def test_explicit_cli_format_requires_flag(self) -> None:
-        """Test that explicit format hint is ignored unless the flag is set."""
-        args = argparse.Namespace(format='csv', _format_explicit=False)
-        assert _io.explicit_cli_format(args) is None
-
-    def test_explicit_cli_format_normalizes_hint(self) -> None:
-        """Test that explicit format hints are normalized when returned."""
-        args = argparse.Namespace(format='CSV', _format_explicit=True)
-        assert _io.explicit_cli_format(args) == 'csv'
 
     def test_materialize_file_payload_non_file(self) -> None:
         """Test that non-file payloads are returned unchanged."""
@@ -357,18 +343,6 @@ class TestCliHandlersInternalHelpers:
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
-
-    def test_presentation_flags_defaults(self) -> None:
-        """
-        Test that missing attributes fall back to pretty output and non-quiet.
-        """
-        pretty, quiet = _io.presentation_flags(argparse.Namespace())
-        assert (pretty, quiet) == (True, False)
-
-    def test_presentation_flags_custom(self) -> None:
-        """Test that explicit pretty/quiet flags are respected."""
-        args = argparse.Namespace(pretty=False, quiet=True)
-        assert _io.presentation_flags(args) == (False, True)
 
     def test_read_stdin_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that reading stdin returns the buffered stream contents."""
@@ -645,7 +619,7 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(
             handlers,
             '_check_sections',
-            lambda _cfg, args: {'targets': ['t1']},
+            lambda _cfg, **_kwargs: {'targets': ['t1']},
         )
         observed: list[object] = []
         monkeypatch.setattr(_io, 'print_json', observed.append)
@@ -680,7 +654,7 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(
             handlers,
             '_check_sections',
-            lambda _cfg, _args: {'pipelines': ['p1']},
+            lambda _cfg, **_kwargs: {'pipelines': ['p1']},
         )
         captured: list[object] = []
         monkeypatch.setattr(_io, 'print_json', captured.append)
