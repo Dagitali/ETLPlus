@@ -1,0 +1,312 @@
+"""
+:mod:`etlplus.cli.io` module.
+
+Shared I/O helpers for CLI handlers (stdin/stdout, payload hydration).
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import io as _io
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+from typing import cast
+
+from ..enums import FileFormat
+from ..file import File
+from ..types import JSONData
+from ..utils import json_type
+from ..utils import print_json
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'emit_json',
+    'explicit_cli_format',
+    'infer_payload_format',
+    'materialize_file_payload',
+    'parse_text_payload',
+    'presentation_flags',
+    'read_csv_rows',
+    'read_stdin_text',
+    'resolve_cli_payload',
+    'write_json_output',
+]
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def emit_json(
+    data: Any,
+    *,
+    pretty: bool,
+) -> None:
+    """
+    Emit JSON honoring pretty/compact preference.
+
+    Parameters
+    ----------
+    data : Any
+        Data to serialize as JSON.
+    pretty : bool
+        Whether to pretty-print JSON output.
+    """
+    if pretty:
+        print_json(data)
+        return
+    dumped = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+    print(dumped)
+
+
+def explicit_cli_format(
+    args: argparse.Namespace,
+) -> str | None:
+    """
+    Return explicit format hint when provided on CLI.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        The argparse namespace containing CLI arguments.
+
+    Returns
+    -------
+    str | None
+        The explicit format hint if provided, otherwise None.
+    """
+    if not getattr(args, '_format_explicit', False):
+        return None
+    for attr in ('format', 'target_format', 'source_format'):
+        value = getattr(args, attr, None)
+        if value is None:
+            continue
+        normalized = str(value).strip().lower()
+        if normalized:
+            return normalized
+    return None
+
+
+def infer_payload_format(
+    text: str,
+) -> str:
+    """
+    Infer JSON vs CSV from payload text.
+
+    Parameters
+    ----------
+    text : str
+        The payload text to analyze.
+
+    Returns
+    -------
+    str
+        The inferred format: either 'json' or 'csv'.
+    """
+    stripped = text.lstrip()
+    if stripped.startswith('{') or stripped.startswith('['):
+        return 'json'
+    return 'csv'
+
+
+def materialize_file_payload(
+    source: object,
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+) -> JSONData | object:
+    """
+    Return structured payloads when ``source`` references a file.
+
+    Parameters
+    ----------
+    source : object
+        The source payload, potentially a file path.
+    format_hint : str | None
+        An optional format hint (e.g., 'json', 'csv').
+    format_explicit : bool
+        Whether the format hint was explicitly provided.
+
+    Returns
+    -------
+    JSONData | object
+        The materialized payload if a file was read, otherwise the original
+        source.
+    """
+    if isinstance(source, (dict, list)):
+        return cast(JSONData, source)
+    if not isinstance(source, (str, os.PathLike)):
+        return source
+
+    path = Path(source)
+
+    normalized_hint = (format_hint or '').strip().lower()
+    fmt: FileFormat | None = None
+
+    if format_explicit and normalized_hint:
+        try:
+            fmt = FileFormat(normalized_hint)
+        except ValueError:
+            fmt = None
+    elif not format_explicit:
+        suffix = path.suffix.lower().lstrip('.')
+        if suffix:
+            try:
+                fmt = FileFormat(suffix)
+            except ValueError:
+                fmt = None
+
+    if fmt is None:
+        return source
+    if fmt == FileFormat.CSV:
+        return read_csv_rows(path)
+    return File(path, fmt).read()
+
+
+def parse_text_payload(
+    text: str,
+    fmt: str | None,
+) -> JSONData | str:
+    """
+    Parse JSON/CSV text into a Python payload.
+
+    Parameters
+    ----------
+    text : str
+        The text payload to parse.
+    fmt : str | None
+        An optional format hint (e.g., 'json', 'csv').
+
+    Returns
+    -------
+    JSONData | str
+        The parsed payload as JSON data or raw text.
+    """
+    effective = (fmt or '').strip().lower() or infer_payload_format(text)
+    if effective == 'json':
+        return cast(JSONData, json_type(text))
+    if effective == 'csv':
+        reader = csv.DictReader(_io.StringIO(text))
+        return [dict(row) for row in reader]
+    return text
+
+
+def presentation_flags(
+    args: argparse.Namespace,
+) -> tuple[bool, bool]:
+    """
+    Return (pretty, quiet) toggles with safe defaults.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        The argparse namespace containing CLI arguments.
+
+    Returns
+    -------
+    tuple[bool, bool]
+        A tuple containing the pretty and quiet flags.
+    """
+    return getattr(args, 'pretty', True), getattr(args, 'quiet', False)
+
+
+def read_csv_rows(
+    path: Path,
+) -> list[dict[str, str]]:
+    """
+    Read CSV rows into dictionaries.
+
+    Parameters
+    ----------
+    path : Path
+        The path to the CSV file.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        The list of CSV rows as dictionaries.
+    """
+    with path.open(newline='', encoding='utf-8') as handle:
+        reader = csv.DictReader(handle)
+        return [dict(row) for row in reader]
+
+
+def read_stdin_text() -> str:
+    """Return entire stdin payload."""
+    return sys.stdin.read()
+
+
+def resolve_cli_payload(
+    source: object,
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+    hydrate_files: bool = True,
+) -> JSONData | object:
+    """
+    Normalize CLI-provided payloads, honoring stdin and inline data.
+
+    Parameters
+    ----------
+    source : object
+        The source payload, potentially stdin or a file path.
+    format_hint : str | None
+        An optional format hint (e.g., 'json', 'csv').
+    format_explicit : bool
+        Whether the format hint was explicitly provided.
+    hydrate_files : bool, optional
+        Whether to materialize file-based payloads. Default is True.
+
+    Returns
+    -------
+    JSONData | object
+        The resolved payload.
+    """
+    if isinstance(source, (os.PathLike, str)) and str(source) == '-':
+        text = read_stdin_text()
+        return parse_text_payload(text, format_hint)
+
+    if not hydrate_files:
+        return source
+
+    return materialize_file_payload(
+        source,
+        format_hint=format_hint,
+        format_explicit=format_explicit,
+    )
+
+
+def write_json_output(
+    data: Any,
+    output_path: str | None,
+    *,
+    success_message: str,
+) -> bool:
+    """
+    Persist JSON data to disk when output path provided.
+
+    Parameters
+    ----------
+    data : Any
+        The data to serialize as JSON.
+    output_path : str | None
+        The output file path, or None/'-' to skip writing.
+    success_message : str
+        The message to print upon successful write.
+
+    Returns
+    -------
+    bool
+        True if data was written to disk; False if not.
+    """
+    if not output_path or output_path == '-':
+        return False
+    File(Path(output_path), FileFormat.JSON).write_json(data)
+    print(f'{success_message} {output_path}')
+    return True
