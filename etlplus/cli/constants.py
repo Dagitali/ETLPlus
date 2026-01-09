@@ -40,10 +40,10 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
         '    Provide a subcommand and options. Examples:',
         '',
         '    etlplus extract in.csv > out.json',
-        '    etlplus validate in.json --rules "{\"required\": [\"id\"]}"',
+        '    etlplus validate in.json --rules "{"required": ["id"]}"',
         (
             '    etlplus transform --from file in.json '
-            '--operations "{\"select\": [\"id\"]}" --to file -o out.json'
+            '--operations "{"select": ["id"]}" --to file -o out.json'
         ),
         '    etlplus extract in.csv | etlplus load --to file out.json',
         '    cat data.json | etlplus load --to api https://example.com/data',
@@ -57,7 +57,7 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
 CLI_EPILOG: Final[str] = '\n'.join(
     [
         'Tip:',
-        '    --source-format and --target-format override format inference '
+        '--source-format and --target-format override format inference '
         'based on filename extensions when needed.',
     ],
 )
