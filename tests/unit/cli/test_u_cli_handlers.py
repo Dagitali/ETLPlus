@@ -619,7 +619,9 @@ class TestCliHandlersCommands:
             recorded['pretty'] = pretty
 
         monkeypatch.setattr(
-            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
+            handlers.cli_io,
+            'emit_or_write',
+            fake_emit_or_write,
         )
 
         assert handlers.extract_handler(args) == 0
@@ -765,7 +767,9 @@ class TestCliHandlersCommands:
             return 'stdin-payload'
 
         monkeypatch.setattr(
-            handlers.cli_io, 'read_stdin_text', fake_read_stdin,
+            handlers.cli_io,
+            'read_stdin_text',
+            fake_read_stdin,
         )
 
         parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
@@ -817,7 +821,9 @@ class TestCliHandlersCommands:
             emissions.append((data, pretty))
 
         monkeypatch.setattr(
-            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
+            handlers.cli_io,
+            'emit_or_write',
+            fake_emit_or_write,
         )
 
         assert handlers.load_handler(args) == 0
@@ -885,7 +891,9 @@ class TestCliHandlersCommands:
             writes.append((data, output_path, success_message, pretty))
 
         monkeypatch.setattr(
-            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
+            handlers.cli_io,
+            'emit_or_write',
+            fake_emit_or_write,
         )
 
         assert handlers.load_handler(args) == 0
