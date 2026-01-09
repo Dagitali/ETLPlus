@@ -225,3 +225,8 @@ type Sleeper = Callable[[float], None]
 
 # Numeric timeout in seconds or ``None`` for no timeout.
 type Timeout = float | None
+
+# -- Templates -- #
+
+# Allowed template keys for bundled DDL rendering.
+type TemplateKey = Literal['ddl', 'view']
