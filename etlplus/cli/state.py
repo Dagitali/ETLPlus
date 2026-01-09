@@ -7,7 +7,6 @@ Shared state and helper utilities for the ``etlplus`` command-line interface
 
 from __future__ import annotations
 
-import argparse
 import sys
 from collections.abc import Collection
 from dataclasses import dataclass
@@ -25,15 +24,12 @@ __all__ = [
     'CliState',
     # Functions
     'ensure_state',
-    'format_namespace_kwargs',
     'infer_resource_type',
     'infer_resource_type_or_exit',
     'infer_resource_type_soft',
     'log_inferred_resource',
-    'ns',
     'optional_choice',
     'resolve_resource_type',
-    'stateful_namespace',
     'validate_choice',
 ]
 
@@ -95,32 +91,6 @@ def ensure_state(
     if not isinstance(getattr(ctx, 'obj', None), CliState):
         ctx.obj = CliState()
     return ctx.obj
-
-
-def format_namespace_kwargs(
-    *,
-    format_value: str | None,
-    default: str,
-) -> dict[str, object]:
-    """
-    Return common namespace kwargs for format handling.
-
-    Parameters
-    ----------
-    format_value : str | None
-        The explicit format value from the CLI, or ``None`` if not provided.
-    default : str
-        The default format to use if none is provided.
-
-    Returns
-    -------
-    dict[str, object]
-        The namespace keyword arguments for format handling.
-    """
-    return {
-        'format': (format_value or default),
-        '_format_explicit': (format_value is not None),
-    }
 
 
 def infer_resource_type(
@@ -244,25 +214,6 @@ def log_inferred_resource(
     )
 
 
-def ns(
-    **kwargs: object,
-) -> argparse.Namespace:
-    """
-    Build an :class:`argparse.Namespace` for the legacy handlers.
-
-    Parameters
-    ----------
-    **kwargs : object
-        Keyword arguments to include in the namespace.
-
-    Returns
-    -------
-    argparse.Namespace
-        The constructed namespace.
-    """
-    return argparse.Namespace(**kwargs)
-
-
 def optional_choice(
     value: str | None,
     choices: Collection[str],
@@ -340,38 +291,6 @@ def resolve_resource_type(
     else:
         candidate = override_type or infer_resource_type_or_exit(value)
     return validate_choice(candidate, DATA_CONNECTORS, label=label)
-
-
-def stateful_namespace(
-    state: CliState,
-    *,
-    command: str,
-    **kwargs: object,
-) -> argparse.Namespace:
-    """
-    Attach CLI state toggles to a handler namespace.
-
-    Parameters
-    ----------
-    state : CliState
-        The current CLI state.
-    command : str
-        The command name.
-    **kwargs : object
-        Additional keyword arguments for the namespace.
-
-    Returns
-    -------
-    argparse.Namespace
-        The constructed namespace with state toggles.
-    """
-    return ns(
-        command=command,
-        pretty=state.pretty,
-        quiet=state.quiet,
-        verbose=state.verbose,
-        **kwargs,
-    )
 
 
 def validate_choice(
