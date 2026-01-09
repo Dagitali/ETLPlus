@@ -9,104 +9,25 @@ This module exposes :func:`main` for the console script as well as
 
 from __future__ import annotations
 
-import argparse
 import contextlib
 import sys
+import warnings
 
 import click
 import typer
 
-from .. import __version__
-from ..utils import json_type
-from . import handlers
 from .commands import app
-from .constants import CLI_DESCRIPTION
-from .constants import CLI_EPILOG
-from .constants import DATA_CONNECTORS
-from .constants import FILE_FORMATS
-from .constants import PROJECT_URL
-from .options import add_argparse_format_options
-from .types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Functions
-    'create_parser',
     'main',
 ]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _add_boolean_flag(
-    parser: argparse.ArgumentParser,
-    *,
-    name: str,
-    help_text: str,
-) -> None:
-    """Add a toggle that also supports the ``--no-`` prefix via 3.13.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser receiving the flag.
-    name : str
-        Primary flag name without leading dashes.
-    help_text : str
-        Help text rendered in ``--help`` output.
-    """
-
-    parser.add_argument(
-        f'--{name}',
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help=help_text,
-    )
-
-
-def _add_config_option(
-    parser: argparse.ArgumentParser,
-    *,
-    required: bool = True,
-) -> None:
-    """Attach the shared ``--config`` option used by legacy commands.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser receiving the option.
-    required : bool, optional
-        Whether the flag must be provided. Defaults to ``True``.
-    """
-
-    parser.add_argument(
-        '--config',
-        required=required,
-        help='Path to pipeline YAML configuration file',
-    )
-
-
-def _add_format_options(
-    parser: argparse.ArgumentParser,
-    *,
-    context: DataConnectorContext,
-) -> None:
-    """
-    Attach shared ``--source-format`` or ``--target-format`` options to
-    extract/load parsers.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to augment.
-    context : DataConnectorContext
-        Context for the format option: either ``'source'`` or ``'target'``
-    """
-    parser.set_defaults(_format_explicit=False)
-    add_argparse_format_options(parser, context=context)
 
 
 def _emit_context_help(
@@ -199,262 +120,23 @@ def _is_unknown_command_error(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def create_parser() -> argparse.ArgumentParser:
+def create_parser() -> object:
     """
-    Return the legacy :mod:`argparse` parser wired to current handlers.
+    Deprecated legacy entrypoint.
 
-    Returns
-    -------
-    argparse.ArgumentParser
-        Parser compatible with historical ``etlplus`` entry points.
+    The argparse-based parser has been removed. Use the Typer-powered
+    ``etlplus`` CLI instead (``etlplus.cli.commands.app``).
     """
-
-    parser = argparse.ArgumentParser(
-        prog='etlplus',
-        description=CLI_DESCRIPTION,
-        epilog=CLI_EPILOG,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+    warnings.warn(
+        'create_parser is deprecated and no longer returns an argparse '
+        'parser. Use the Typer CLI entrypoint instead.',
+        DeprecationWarning,
+        stacklevel=2,
     )
-
-    parser.add_argument(
-        '-V',
-        '--version',
-        action='version',
-        version=f'%(prog)s {__version__}',
+    raise RuntimeError(
+        'The legacy argparse parser has been removed. Invoke the Typer-based '
+        'CLI via `etlplus` or import `etlplus.cli.commands.app`.',
     )
-
-    parser.add_argument(
-        '--pretty',
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help='Pretty-print JSON output (default: pretty).',
-    )
-    parser.add_argument(
-        '--quiet',
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help='Suppress warnings and non-essential output.',
-    )
-    parser.add_argument(
-        '--verbose',
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help='Emit extra diagnostics to stderr.',
-    )
-
-    subparsers = parser.add_subparsers(
-        dest='command',
-        help='Available commands',
-    )
-    subparsers.required = True
-
-    extract_parser = subparsers.add_parser(
-        'extract',
-        help='Extract data from sources (files, databases, REST APIs)',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    extract_parser.add_argument(
-        'source_type',
-        choices=sorted(DATA_CONNECTORS),
-        help='Type of source to extract from',
-    )
-    extract_parser.add_argument(
-        'source',
-        help=(
-            'Source location (file path, database connection string, '
-            'or API URL)'
-        ),
-    )
-    _add_format_options(extract_parser, context='source')
-    extract_parser.set_defaults(func=handlers.extract_handler)
-
-    validate_parser = subparsers.add_parser(
-        'validate',
-        help='Validate data from sources',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    validate_parser.add_argument(
-        'source',
-        help='Data source to validate (file path or JSON string)',
-    )
-    validate_parser.add_argument(
-        '--rules',
-        type=json_type,
-        default={},
-        help='Validation rules as JSON string',
-    )
-    validate_parser.set_defaults(func=handlers.validate_handler)
-
-    transform_parser = subparsers.add_parser(
-        'transform',
-        help='Transform data',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    transform_parser.add_argument(
-        'source',
-        help='Data source to transform (file path or JSON string)',
-    )
-    transform_parser.add_argument(
-        '--operations',
-        type=json_type,
-        default={},
-        help='Transformation operations as JSON string',
-    )
-    transform_parser.add_argument(
-        '--from',
-        dest='from_',
-        choices=sorted(DATA_CONNECTORS),
-        help='Override the inferred source type (file, database, api).',
-    )
-    transform_parser.add_argument(
-        '--to',
-        dest='to',
-        choices=sorted(DATA_CONNECTORS),
-        help='Override the inferred target type (file, database, api).',
-    )
-    transform_parser.add_argument(
-        '--source-format',
-        choices=sorted(FILE_FORMATS),
-        dest='source_format',
-        help=(
-            'Input payload format when SOURCE is - or a literal payload. '
-            'File sources infer format from the extension.'
-        ),
-    )
-    transform_parser.add_argument(
-        '--target-format',
-        dest='target_format',
-        choices=sorted(FILE_FORMATS),
-        help=(
-            'Output payload format '
-            'when writing to stdout or non-file targets. '
-            'File targets infer format from the extension.'
-        ),
-    )
-    transform_parser.set_defaults(func=handlers.transform_handler)
-
-    load_parser = subparsers.add_parser(
-        'load',
-        help='Load data to targets (files, databases, REST APIs)',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    load_parser.add_argument(
-        'source',
-        help='Data source to load (file path or JSON string)',
-    )
-    load_parser.add_argument(
-        'target_type',
-        choices=sorted(DATA_CONNECTORS),
-        help='Type of target to load to',
-    )
-    load_parser.add_argument(
-        'target',
-        help=(
-            'Target location (file path, database connection string, '
-            'or API URL)'
-        ),
-    )
-    _add_format_options(load_parser, context='target')
-    load_parser.set_defaults(func=handlers.load_handler)
-
-    render_parser = subparsers.add_parser(
-        'render',
-        help='Render SQL DDL from table schema specs',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    render_parser.add_argument(
-        '--config',
-        help='Pipeline YAML containing table_schemas',
-    )
-    render_parser.add_argument(
-        '-o',
-        '--output',
-        help='Write SQL to this path (stdout when omitted)',
-    )
-    render_parser.add_argument(
-        '--spec',
-        help='Standalone table spec file (.yml/.yaml/.json)',
-    )
-    render_parser.add_argument(
-        '--table',
-        help='Render only the table matching this name',
-    )
-    render_parser.add_argument(
-        '--template',
-        default='ddl',
-        help='Template key (ddl/view) or path to a Jinja template file',
-    )
-    render_parser.add_argument(
-        '--template-path',
-        dest='template_path',
-        help=(
-            'Explicit path to a Jinja template file (overrides template key).'
-        ),
-    )
-    render_parser.set_defaults(func=handlers.render_handler)
-
-    check_parser = subparsers.add_parser(
-        'check',
-        help='Inspect ETL pipeline metadata',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    _add_config_option(check_parser)
-    _add_boolean_flag(
-        check_parser,
-        name='jobs',
-        help_text='List ETL jobs',
-    )
-    _add_boolean_flag(
-        check_parser,
-        name='pipelines',
-        help_text='List ETL pipelines',
-    )
-    _add_boolean_flag(
-        check_parser,
-        name='sources',
-        help_text='List data sources',
-    )
-    _add_boolean_flag(
-        check_parser,
-        name='summary',
-        help_text=(
-            'Show pipeline summary (name, version, sources, targets, jobs)'
-        ),
-    )
-    _add_boolean_flag(
-        check_parser,
-        name='targets',
-        help_text='List data targets',
-    )
-    _add_boolean_flag(
-        check_parser,
-        name='transforms',
-        help_text='List data transforms',
-    )
-    check_parser.set_defaults(func=handlers.check_handler)
-
-    run_parser = subparsers.add_parser(
-        'run',
-        help=(
-            'Run an ETL pipeline '
-            f'(see {PROJECT_URL}/blob/main/docs/run-module.md)'
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    _add_config_option(run_parser)
-    run_parser.add_argument(
-        '-j',
-        '--job',
-        help='Name of the job to run',
-    )
-    run_parser.add_argument(
-        '-p',
-        '--pipeline',
-        help='Name of the pipeline to run',
-    )
-    run_parser.set_defaults(func=handlers.run_handler)
-
-    return parser
 
 
 def main(

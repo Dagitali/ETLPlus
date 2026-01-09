@@ -6,7 +6,6 @@ Shared I/O helpers for CLI handlers (stdin/stdout, payload hydration).
 
 from __future__ import annotations
 
-import argparse
 import csv
 import io as _io
 import json
@@ -29,11 +28,9 @@ __all__ = [
     # Functions
     'emit_json',
     'emit_or_write',
-    'explicit_cli_format',
     'infer_payload_format',
     'materialize_file_payload',
     'parse_text_payload',
-    'presentation_flags',
     'read_csv_rows',
     'read_stdin_text',
     'resolve_cli_payload',
@@ -94,34 +91,6 @@ def emit_or_write(
     ):
         return
     emit_json(data, pretty=pretty)
-
-
-def explicit_cli_format(
-    args: argparse.Namespace,
-) -> str | None:
-    """
-    Return explicit format hint when provided on CLI.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        The argparse namespace containing CLI arguments.
-
-    Returns
-    -------
-    str | None
-        The explicit format hint if provided, otherwise None.
-    """
-    if not getattr(args, '_format_explicit', False):
-        return None
-    for attr in ('format', 'target_format', 'source_format'):
-        value = getattr(args, attr, None)
-        if value is None:
-            continue
-        normalized = str(value).strip().lower()
-        if normalized:
-            return normalized
-    return None
 
 
 def infer_payload_format(
@@ -226,25 +195,6 @@ def parse_text_payload(
         reader = csv.DictReader(_io.StringIO(text))
         return [dict(row) for row in reader]
     return text
-
-
-def presentation_flags(
-    args: argparse.Namespace,
-) -> tuple[bool, bool]:
-    """
-    Return (pretty, quiet) toggles with safe defaults.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        The argparse namespace containing CLI arguments.
-
-    Returns
-    -------
-    tuple[bool, bool]
-        A tuple containing the pretty and quiet flags.
-    """
-    return getattr(args, 'pretty', True), getattr(args, 'quiet', False)
 
 
 def read_csv_rows(

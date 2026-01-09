@@ -29,6 +29,7 @@ Notes
 from __future__ import annotations
 
 from typing import Annotated
+from typing import Literal
 
 import typer
 
@@ -38,18 +39,15 @@ from . import handlers
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
-from .constants import DEFAULT_FILE_FORMAT
 from .constants import FILE_FORMATS
 from .options import typer_format_option_kwargs
 from .state import CliState
 from .state import ensure_state
-from .state import format_namespace_kwargs
 from .state import infer_resource_type_or_exit
 from .state import infer_resource_type_soft
 from .state import log_inferred_resource
 from .state import optional_choice
 from .state import resolve_resource_type
-from .state import stateful_namespace
 from .state import validate_choice
 
 # SECTION: EXPORTS ========================================================== #
@@ -119,12 +117,12 @@ RenderTableOption = Annotated[
 ]
 
 RenderTemplateOption = Annotated[
-    str,
+    Literal['ddl', 'view'] | None,
     typer.Option(
         '--template',
         '-t',
-        metavar='KEY|PATH',
-        help='Template key (ddl/view) or path to a Jinja template file.',
+        metavar='KEY',
+        help='Template key (ddl/view).',
         show_default=True,
     ),
 ]
@@ -284,6 +282,25 @@ def _root(
 ) -> None:
     """
     Seed the Typer context with runtime flags and handle root-only options.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer command context.
+    version : bool, optional
+        Show the version and exit. Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print JSON output. Default is ``True``.
+    quiet : bool, optional
+        Whether to suppress warnings and non-essential output. Default is
+        ``False``.
+    verbose : bool, optional
+        Whether to emit extra diagnostics to stderr. Default is ``False``.
+
+    Raises
+    ------
+    typer.Exit
+        When ``--version`` is provided or no subcommand is invoked.
     """
     ctx.obj = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
 
@@ -331,20 +348,47 @@ def check_cmd(
         help='List data transforms',
     ),
 ) -> int:
-    """Inspect a pipeline configuration."""
+    """
+    Inspect a pipeline configuration.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    config : PipelineConfigOption
+        Path to pipeline YAML configuration file.
+    jobs : bool, optional
+        List available job names and exit. Default is ``False``.
+    pipelines : bool, optional
+        List ETL pipelines. Default is ``False``.
+    sources : bool, optional
+        List data sources. Default is ``False``.
+    summary : bool, optional
+        Show pipeline summary (name, version, sources, targets, jobs). Default
+        is ``False``.
+    targets : bool, optional
+        List data targets. Default is ``False``.
+    transforms : bool, optional
+        List data transforms. Default is ``False``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
-    ns = stateful_namespace(
-        state,
-        command='check',
-        config=config,
-        jobs=jobs,
-        pipelines=pipelines,
-        sources=sources,
-        summary=summary,
-        targets=targets,
-        transforms=transforms,
+    return int(
+        handlers.check_handler(
+            config=config,
+            jobs=jobs,
+            pipelines=pipelines,
+            sources=sources,
+            summary=summary,
+            targets=targets,
+            transforms=transforms,
+            pretty=state.pretty,
+        ),
     )
-    return int(handlers.check_handler(ns))
 
 
 @app.command('extract')
@@ -354,7 +398,28 @@ def extract_cmd(
     source_format: SourceFormatOption | None = None,
     source_type: SourceOverrideOption | None = None,
 ) -> int:
-    """Extract data from files, databases, or REST APIs."""
+    """
+    Extract data from files, databases, or REST APIs.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    source : SourceInputArg
+        Extract from SOURCE. Use --from/--source-type to override the inferred
+        connector when needed.
+    source_format : SourceFormatOption | None, optional
+        Format of the source. Overrides filename-based inference when provided.
+        Default is ``None``.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type (file, database, api). Default is
+        ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
 
     source_type = optional_choice(
@@ -380,18 +445,15 @@ def extract_cmd(
         resource_type=resolved_source_type,
     )
 
-    format_kwargs = format_namespace_kwargs(
-        format_value=source_format,
-        default=DEFAULT_FILE_FORMAT,
+    return int(
+        handlers.extract_handler(
+            source_type=resolved_source_type,
+            source=resolved_source,
+            format_hint=source_format,
+            format_explicit=source_format is not None,
+            pretty=state.pretty,
+        ),
     )
-    ns = stateful_namespace(
-        state,
-        command='extract',
-        source_type=resolved_source_type,
-        source=resolved_source,
-        **format_kwargs,
-    )
-    return int(handlers.extract_handler(ns))
 
 
 @app.command('load')
@@ -402,7 +464,32 @@ def load_cmd(
     target_format: TargetFormatOption | None = None,
     target_type: TargetOverrideOption | None = None,
 ) -> int:
-    """Load data into a file, database, or REST API."""
+    """
+    Load data into a file, database, or REST API.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    target : TargetInputArg
+        Load JSON data from stdin into TARGET. Use --to/--target-type to
+        override connector inference when needed. Source data must be piped
+        into stdin.
+    source_format : StdinFormatOption | None, optional
+        Format of the source. Overrides filename-based inference when provided.
+        Default is ``None``.
+    target_format : TargetFormatOption | None, optional
+        Format of the target. Overrides filename-based inference when provided.
+        Default is ``None``.
+    target_type : TargetOverrideOption | None, optional
+        Override the inferred target type (file, database, api). Default is
+        ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
 
     source_format = optional_choice(
@@ -442,20 +529,18 @@ def load_cmd(
         resource_type=resolved_target_type,
     )
 
-    format_kwargs = format_namespace_kwargs(
-        format_value=target_format,
-        default=DEFAULT_FILE_FORMAT,
+    return int(
+        handlers.load_handler(
+            source=resolved_source_value,
+            target_type=resolved_target_type,
+            target=resolved_target,
+            source_format=source_format,
+            target_format=target_format,
+            format_explicit=target_format is not None,
+            output=None,
+            pretty=state.pretty,
+        ),
     )
-    ns = stateful_namespace(
-        state,
-        command='load',
-        source=resolved_source_value,
-        source_format=source_format,
-        target_type=resolved_target_type,
-        target=resolved_target,
-        **format_kwargs,
-    )
-    return int(handlers.load_handler(ns))
 
 
 @app.command('render')
@@ -468,19 +553,44 @@ def render_cmd(
     template_path: RenderTemplatePathOption = None,
     output: RenderOutputOption = None,
 ) -> int:
-    """Render SQL DDL from table schemas defined in YAML/JSON configs."""
+    """
+    Render SQL DDL from table schemas defined in YAML/JSON configs.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    config : RenderConfigOption
+        Pipeline YAML that includes table_schemas for rendering.
+    spec : RenderSpecOption, optional
+        Standalone table spec file (.yml/.yaml/.json).
+    table : RenderTableOption, optional
+        Filter to a single table name from table_schemas.
+    template : RenderTemplateOption
+        Template key (ddl/view) or path to a Jinja template file.
+    template_path : RenderTemplatePathOption, optional
+        Explicit path to a Jinja template file (overrides template key).
+    output : RenderOutputOption, optional
+        Write rendered SQL to PATH (default: stdout).
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
-    ns = stateful_namespace(
-        state,
-        command='render',
-        config=config,
-        spec=spec,
-        table=table,
-        template=template,
-        template_path=template_path,
-        output=output,
+    return int(
+        handlers.render_handler(
+            config=config,
+            spec=spec,
+            table=table,
+            template=template,
+            template_path=template_path,
+            output=output,
+            pretty=state.pretty,
+            quiet=state.quiet,
+        ),
     )
-    return int(handlers.render_handler(ns))
 
 
 @app.command('run')
@@ -500,16 +610,34 @@ def run_cmd(
         help='Name of the pipeline to run',
     ),
 ) -> int:
-    """Execute an ETL job or pipeline from a YAML configuration."""
+    """
+    Execute an ETL job or pipeline from a YAML configuration.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    config : PipelineConfigOption
+        Path to pipeline YAML configuration file.
+    job : str | None, optional
+        Name of the job to run. Default is ``None``.
+    pipeline : str | None, optional
+        Name of the pipeline to run. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
-    ns = stateful_namespace(
-        state,
-        command='run',
-        config=config,
-        job=job,
-        pipeline=pipeline,
+    return int(
+        handlers.run_handler(
+            config=config,
+            job=job,
+            pipeline=pipeline,
+            pretty=state.pretty,
+        ),
     )
-    return int(handlers.run_handler(ns))
 
 
 @app.command('transform')
@@ -523,7 +651,37 @@ def transform_cmd(
     target_format: TargetFormatOption | None = None,
     target_type: TargetOverrideOption | None = None,
 ) -> int:
-    """Transform records using JSON-described operations."""
+    """
+    Transform records using JSON-described operations.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    operations : OperationsOption
+        Transformation operations as JSON string.
+    source : StreamingSourceArg
+        Data source to transform (path, JSON payload, or - for stdin).
+    source_format : SourceFormatOption | None, optional
+        Format of the source. Overrides filename-based inference when provided.
+        Default is ``None``.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type (file, database, api). Default is
+        ``None``.
+    target : TargetPathOption | None, optional
+        Target file for transformed output (- for stdout). Default is ``None``.
+    target_format : TargetFormatOption | None, optional
+        Format of the target. Overrides filename-based inference when provided.
+        Default is ``None``.
+    target_type : TargetOverrideOption | None, optional
+        Override the inferred target type (file, database, api). Default is
+        ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     state = ensure_state(ctx)
 
     source_format = optional_choice(
@@ -540,10 +698,6 @@ def transform_cmd(
         target_format,
         FILE_FORMATS,
         label='target_format',
-    )
-    target_format_kwargs = format_namespace_kwargs(
-        format_value=target_format,
-        default=DEFAULT_FILE_FORMAT,
     )
     target_type = optional_choice(
         target_type,
@@ -582,19 +736,17 @@ def transform_cmd(
         resource_type=resolved_target_type,
     )
 
-    ns = stateful_namespace(
-        state,
-        command='transform',
-        source=resolved_source_value,
-        source_type=resolved_source_type,
-        operations=json_type(operations),
-        target=resolved_target_value,
-        source_format=source_format,
-        target_type=resolved_target_type,
-        target_format=target_format_kwargs['format'],
-        **target_format_kwargs,
+    return int(
+        handlers.transform_handler(
+            source=resolved_source_value,
+            operations=json_type(operations),
+            target=resolved_target_value,
+            source_format=source_format,
+            target_format=target_format,
+            format_explicit=target_format is not None,
+            pretty=state.pretty,
+        ),
     )
-    return int(handlers.transform_handler(ns))
 
 
 @app.command('validate')
@@ -606,7 +758,31 @@ def validate_cmd(
     source_type: SourceOverrideOption | None = None,
     target: TargetPathOption | None = None,
 ) -> int:
-    """Validate data against JSON-described rules."""
+    """
+    Validate data against JSON-described rules.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    rules : RulesOption
+        Validation rules as JSON string.
+    source : StreamingSourceArg
+        Data source to validate (path, JSON payload, or - for stdin).
+    source_format : SourceFormatOption | None, optional
+        Format of the source. Overrides filename-based inference when provided.
+        Default is ``None``.
+    source_type : SourceOverrideOption | None, optional
+        Override the inferred source type (file, database, api). Default is
+        ``None``.
+    target : TargetPathOption | None, optional
+        Target file for validated output (- for stdout). Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     source_format = optional_choice(
         source_format,
         FILE_FORMATS,
@@ -617,11 +793,6 @@ def validate_cmd(
         DATA_CONNECTORS,
         label='source_type',
     )
-    source_format_kwargs = format_namespace_kwargs(
-        format_value=source_format,
-        default=DEFAULT_FILE_FORMAT,
-    )
-
     state = ensure_state(ctx)
     resolved_source_type = source_type or infer_resource_type_soft(source)
 
@@ -632,14 +803,13 @@ def validate_cmd(
         resource_type=resolved_source_type,
     )
 
-    ns = stateful_namespace(
-        state,
-        command='validate',
-        source=source,
-        source_type=resolved_source_type,
-        rules=json_type(rules),  # convert CLI string to dict
-        target=target,
-        source_format=source_format,
-        **source_format_kwargs,
+    return int(
+        handlers.validate_handler(
+            source=source,
+            rules=json_type(rules),  # convert CLI string to dict
+            source_format=source_format,
+            target=target,
+            format_explicit=source_format is not None,
+            pretty=state.pretty,
+        ),
     )
-    return int(handlers.validate_handler(ns))
