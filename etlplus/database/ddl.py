@@ -16,7 +16,6 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Final
-from typing import cast
 
 from jinja2 import DictLoader
 from jinja2 import Environment
@@ -104,7 +103,7 @@ def _load_template_text(
 def _resolve_template(
     *,
     template_key: TemplateKey | None,
-    template_path: str | None,
+    template_path: StrPath | None,
 ) -> tuple[Environment, str]:
     """
     Return environment and template name for rendering.
@@ -113,7 +112,7 @@ def _resolve_template(
     ----------
     template_key : TemplateKey | None
         Named template key bundled with the package.
-    template_path : str | None
+    template_path : StrPath | None
         Explicit template file override.
 
     Returns
@@ -128,7 +127,11 @@ def _resolve_template(
     ValueError
         If the template key is unknown.
     """
-    file_override = template_path or os.environ.get('TEMPLATE_NAME')
+    file_override = (
+        str(template_path)
+        if template_path is not None
+        else os.environ.get('TEMPLATE_NAME')
+    )
     if file_override:
         path = Path(file_override)
         if not path.exists():
@@ -142,16 +145,15 @@ def _resolve_template(
         )
         return env, path.name
 
-    key = (template_key or 'ddl').strip()
+    key: TemplateKey = template_key or 'ddl'
     if key not in TEMPLATES:
         choices = ', '.join(sorted(TEMPLATES))
         raise ValueError(
             f'Unknown template key "{key}". Choose from: {choices}',
         )
-    typed_key = cast(TemplateKey, key)
 
     # Load template from package data.
-    template_filename = TEMPLATES[typed_key]
+    template_filename = TEMPLATES[key]
     template_source = _load_template_text(template_filename)
 
     env = Environment(
