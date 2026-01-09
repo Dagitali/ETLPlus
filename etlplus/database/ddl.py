@@ -15,8 +15,8 @@ import os
 from collections.abc import Iterable
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 from typing import Final
+from typing import cast
 
 from jinja2 import DictLoader
 from jinja2 import Environment
@@ -24,7 +24,9 @@ from jinja2 import FileSystemLoader
 from jinja2 import StrictUndefined
 
 from ..file import File
+from ..types import StrAnyMap
 from ..types import StrPath
+from .types import TemplateKey
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -53,7 +55,7 @@ _SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
 # SECTION: CONSTANTS ======================================================== #
 
 
-TEMPLATES: Final[dict[str, str]] = {
+TEMPLATES: Final[dict[TemplateKey, str]] = {
     'ddl': 'ddl.sql.j2',
     'view': 'view.sql.j2',
 }
@@ -100,14 +102,14 @@ def _load_template_text(
 
 def _resolve_template(
     *,
-    template_key: str | None,
+    template_key: TemplateKey | None,
     template_path: str | None,
 ) -> tuple[Environment, str]:
     """Return environment and template name for rendering.
 
     Parameters
     ----------
-    template_key : str | None
+    template_key : TemplateKey | None
         Named template key bundled with the package.
     template_path : str | None
         Explicit template file override.
@@ -144,9 +146,10 @@ def _resolve_template(
         raise ValueError(
             f'Unknown template key "{key}". Choose from: {choices}',
         )
+    typed_key = cast(TemplateKey, key)
 
-    # Load template from package data
-    template_filename = TEMPLATES[key]
+    # Load template from package data.
+    template_filename = TEMPLATES[typed_key]
     template_source = _load_template_text(template_filename)
 
     env = Environment(
@@ -163,7 +166,7 @@ def _resolve_template(
 
 def load_table_spec(
     path: StrPath,
-) -> dict[str, Any]:
+) -> StrAnyMap:
     """
     Load a table specification from disk.
 
@@ -174,7 +177,7 @@ def load_table_spec(
 
     Returns
     -------
-    dict[str, Any]
+    StrAnyMap
         Parsed table specification mapping.
 
     Raises
@@ -211,9 +214,9 @@ def load_table_spec(
 
 
 def render_table_sql(
-    spec: Mapping[str, Any],
+    spec: StrAnyMap,
     *,
-    template: str | None = 'ddl',
+    template: TemplateKey | None = 'ddl',
     template_path: str | None = None,
 ) -> str:
     """
@@ -221,9 +224,9 @@ def render_table_sql(
 
     Parameters
     ----------
-    spec : Mapping[str, Any]
+    spec : StrAnyMap
         Table specification mapping.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
         Path to a custom template file (overrides ``template``).
@@ -242,9 +245,9 @@ def render_table_sql(
 
 
 def render_tables(
-    specs: Iterable[Mapping[str, Any]],
+    specs: Iterable[StrAnyMap],
     *,
-    template: str | None = 'ddl',
+    template: TemplateKey | None = 'ddl',
     template_path: str | None = None,
 ) -> list[str]:
     """
@@ -252,9 +255,9 @@ def render_tables(
 
     Parameters
     ----------
-    specs : Iterable[Mapping[str, Any]]
+    specs : Iterable[StrAnyMap]
         Table specification mappings.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
         Path to a custom template file (overrides ``template``).
@@ -274,7 +277,7 @@ def render_tables(
 def render_tables_to_string(
     spec_paths: Iterable[StrPath],
     *,
-    template: str | None = 'ddl',
+    template: TemplateKey | None = 'ddl',
     template_path: StrPath | None = None,
 ) -> str:
     """
@@ -284,7 +287,7 @@ def render_tables_to_string(
     ----------
     spec_paths : Iterable[StrPath]
         Paths to table specification files.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key bundled with ETLPlus. Defaults to ``'ddl'``.
     template_path : StrPath | None, optional
         Custom Jinja template to override the bundled templates.
