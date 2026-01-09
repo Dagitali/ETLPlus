@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 from .constants import DEFAULT_FILE_FORMAT
 from .constants import FILE_FORMATS
-from .types import FormatContext
+from .types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -49,7 +49,7 @@ class FormatAction(argparse.Action):
 def add_argparse_format_options(
     parser: argparse.ArgumentParser,
     *,
-    context: FormatContext,
+    context: DataConnectorContext,
 ) -> None:
     """
     Attach ``--source-format`` and ``--target-format`` arguments.
@@ -58,7 +58,7 @@ def add_argparse_format_options(
     ----------
     parser : argparse.ArgumentParser
         Parser receiving the options.
-    context : FormatContext
+    context : DataConnectorContext
         Either ``'source'`` or ``'target'`` to tailor help text.
     """
     parser.set_defaults(_format_explicit=False)
@@ -86,10 +86,24 @@ def add_argparse_format_options(
 
 def typer_format_option_kwargs(
     *,
-    context: FormatContext,
+    context: DataConnectorContext,
     rich_help_panel: str = 'Format overrides',
 ) -> dict[str, object]:
-    """Return common Typer option kwargs for format overrides."""
+    """
+    Return common Typer option kwargs for format overrides.
+
+    Parameters
+    ----------
+    context : DataConnectorContext
+        Either ``'source'`` or ``'target'`` to tailor help text.
+    rich_help_panel : str, optional
+        The rich help panel name. Default is ``'Format overrides'``.
+
+    Returns
+    -------
+    dict[str, object]
+        The Typer option keyword arguments.
+    """
     return {
         'metavar': 'FORMAT',
         'show_default': False,
