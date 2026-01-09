@@ -2,7 +2,28 @@
 :mod:`etlplus.cli.commands` module.
 
 Typer application and subcommands for the ``etlplus`` command-line interface
-(CLI).
+(CLI). Typer (Click) is used for CLI parsing, help text, and subcommand
+dispatch. The Typer layer focuses on ergonomics (git-style subcommands,
+optional inference of resource types, stdin/stdout piping, and quality-of-life
+flags), while delegating business logic to the existing :func:`*_handler`
+handlers.
+
+Subcommands
+-----------
+- ``check``: inspect a pipeline configuration
+- ``extract``: extract data from files, databases, or REST APIs
+- ``load``: load data to files, databases, or REST APIs
+- ``render``: render SQL DDL from table schema specs
+- ``transform``: transform records
+- ``validate``: validate data against rules
+
+Notes
+-----
+- Use ``-`` to read from stdin or to write to stdout.
+- Commands ``extract`` and ``transform`` support the command-line option
+    ``--source-type`` to override inferred resource types.
+- Commands ``transform`` and ``load`` support the command-line option
+    ``--target-type`` to override inferred resource types.
 """
 
 from __future__ import annotations
