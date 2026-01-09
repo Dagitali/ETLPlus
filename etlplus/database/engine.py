@@ -10,12 +10,15 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from typing import Final
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from ..file import File
+from ..types import StrAnyMap
+from ..types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,7 +36,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-DATABASE_URL: str = (
+DATABASE_URL: Final[str] = (
     os.getenv('DATABASE_URL')
     or os.getenv('DATABASE_DSN')
     or 'sqlite+pysqlite:///:memory:'
@@ -43,13 +46,15 @@ DATABASE_URL: str = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _resolve_url_from_mapping(cfg: Mapping[str, Any]) -> str | None:
+def _resolve_url_from_mapping(
+    cfg: StrAnyMap,
+) -> str | None:
     """
     Return a URL/DSN from a mapping if present.
 
     Parameters
     ----------
-    cfg : Mapping[str, Any]
+    cfg : StrAnyMap
         Configuration mapping potentially containing connection fields.
 
     Returns
@@ -74,7 +79,7 @@ def _resolve_url_from_mapping(cfg: Mapping[str, Any]) -> str | None:
 
 
 def load_database_url_from_config(
-    path: str | Path,
+    path: StrPath,
     *,
     name: str | None = None,
 ) -> str:
@@ -88,7 +93,7 @@ def load_database_url_from_config(
 
     Parameters
     ----------
-    path : str | Path
+    path : StrPath
         Location of the configuration file.
     name : str | None, optional
         Named database entry under the ``databases`` map (default:

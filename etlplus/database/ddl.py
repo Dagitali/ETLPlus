@@ -15,7 +15,6 @@ import os
 from collections.abc import Iterable
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 from typing import Final
 
 from jinja2 import DictLoader
@@ -24,6 +23,9 @@ from jinja2 import FileSystemLoader
 from jinja2 import StrictUndefined
 
 from ..file import File
+from ..types import StrAnyMap
+from ..types import StrPath
+from .types import TemplateKey
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -52,7 +54,7 @@ _SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
 # SECTION: CONSTANTS ======================================================== #
 
 
-TEMPLATES: Final[dict[str, str]] = {
+TEMPLATES: Final[dict[TemplateKey, str]] = {
     'ddl': 'ddl.sql.j2',
     'view': 'view.sql.j2',
 }
@@ -64,7 +66,8 @@ TEMPLATES: Final[dict[str, str]] = {
 def _load_template_text(
     filename: str,
 ) -> str:
-    """Return the bundled template text.
+    """
+    Return the bundled template text.
 
     Parameters
     ----------
@@ -99,16 +102,17 @@ def _load_template_text(
 
 def _resolve_template(
     *,
-    template_key: str | None,
-    template_path: str | None,
+    template_key: TemplateKey | None,
+    template_path: StrPath | None,
 ) -> tuple[Environment, str]:
-    """Return environment and template name for rendering.
+    """
+    Return environment and template name for rendering.
 
     Parameters
     ----------
-    template_key : str | None
+    template_key : TemplateKey | None
         Named template key bundled with the package.
-    template_path : str | None
+    template_path : StrPath | None
         Explicit template file override.
 
     Returns
@@ -123,7 +127,11 @@ def _resolve_template(
     ValueError
         If the template key is unknown.
     """
-    file_override = template_path or os.environ.get('TEMPLATE_NAME')
+    file_override = (
+        str(template_path)
+        if template_path is not None
+        else os.environ.get('TEMPLATE_NAME')
+    )
     if file_override:
         path = Path(file_override)
         if not path.exists():
@@ -137,14 +145,14 @@ def _resolve_template(
         )
         return env, path.name
 
-    key = (template_key or 'ddl').strip()
+    key: TemplateKey = template_key or 'ddl'
     if key not in TEMPLATES:
         choices = ', '.join(sorted(TEMPLATES))
         raise ValueError(
             f'Unknown template key "{key}". Choose from: {choices}',
         )
 
-    # Load template from package data
+    # Load template from package data.
     template_filename = TEMPLATES[key]
     template_source = _load_template_text(template_filename)
 
@@ -161,19 +169,19 @@ def _resolve_template(
 
 
 def load_table_spec(
-    path: Path | str,
-) -> dict[str, Any]:
+    path: StrPath,
+) -> StrAnyMap:
     """
     Load a table specification from disk.
 
     Parameters
     ----------
-    path : Path | str
+    path : StrPath
         Path to the JSON or YAML specification file.
 
     Returns
     -------
-    dict[str, Any]
+    StrAnyMap
         Parsed table specification mapping.
 
     Raises
@@ -210,9 +218,9 @@ def load_table_spec(
 
 
 def render_table_sql(
-    spec: Mapping[str, Any],
+    spec: StrAnyMap,
     *,
-    template: str | None = 'ddl',
+    template: TemplateKey | None = 'ddl',
     template_path: str | None = None,
 ) -> str:
     """
@@ -220,9 +228,9 @@ def render_table_sql(
 
     Parameters
     ----------
-    spec : Mapping[str, Any]
+    spec : StrAnyMap
         Table specification mapping.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
         Path to a custom template file (overrides ``template``).
@@ -241,9 +249,9 @@ def render_table_sql(
 
 
 def render_tables(
-    specs: Iterable[Mapping[str, Any]],
+    specs: Iterable[StrAnyMap],
     *,
-    template: str | None = 'ddl',
+    template: TemplateKey | None = 'ddl',
     template_path: str | None = None,
 ) -> list[str]:
     """
@@ -251,9 +259,9 @@ def render_tables(
 
     Parameters
     ----------
-    specs : Iterable[Mapping[str, Any]]
+    specs : Iterable[StrAnyMap]
         Table specification mappings.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
         Path to a custom template file (overrides ``template``).
@@ -271,21 +279,21 @@ def render_tables(
 
 
 def render_tables_to_string(
-    spec_paths: Iterable[Path | str],
+    spec_paths: Iterable[StrPath],
     *,
-    template: str | None = 'ddl',
-    template_path: Path | str | None = None,
+    template: TemplateKey | None = 'ddl',
+    template_path: StrPath | None = None,
 ) -> str:
     """
     Render one or more specs and concatenate the SQL payloads.
 
     Parameters
     ----------
-    spec_paths : Iterable[Path | str]
+    spec_paths : Iterable[StrPath]
         Paths to table specification files.
-    template : str | None, optional
+    template : TemplateKey | None, optional
         Template key bundled with ETLPlus. Defaults to ``'ddl'``.
-    template_path : Path | str | None, optional
+    template_path : StrPath | None, optional
         Custom Jinja template to override the bundled templates.
 
     Returns
