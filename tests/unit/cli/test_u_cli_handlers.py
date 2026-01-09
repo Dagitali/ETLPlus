@@ -16,11 +16,13 @@ from dataclasses import field
 from pathlib import Path
 from typing import Final
 from typing import cast
+from unittest.mock import ANY
 from unittest.mock import Mock
 
 import pytest
 
 import etlplus.cli.handlers as handlers
+import etlplus.cli.io as _io
 from etlplus.config import PipelineConfig
 from etlplus.enums import FileFormat
 
@@ -101,9 +103,7 @@ class TestCliHandlersInternalHelpers:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that compact mode writes JSON to stdout."""
-        # pylint: disable=protected-access
-
-        handlers._emit_json({'b': 2, 'a': 1}, pretty=False)
+        _io.emit_json({'b': 2, 'a': 1}, pretty=False)
         captured = capsys.readouterr()
         assert captured.out.strip() == '{"b":2,"a":1}'
 
@@ -112,36 +112,28 @@ class TestCliHandlersInternalHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that pretty-printing delegates to :func:`print_json`."""
-        # pylint: disable=protected-access
-
         called_with: list[object] = []
-        monkeypatch.setattr(handlers, 'print_json', called_with.append)
+        monkeypatch.setattr(_io, 'print_json', called_with.append)
 
         payload = {'a': 1}
-        handlers._emit_json(payload, pretty=True)
+        _io.emit_json(payload, pretty=True)
         assert called_with == [payload]
 
     def test_explicit_cli_format_requires_flag(self) -> None:
         """Test that explicit format hint is ignored unless the flag is set."""
-        # pylint: disable=protected-access
-
         args = argparse.Namespace(format='csv', _format_explicit=False)
-        assert handlers._explicit_cli_format(args) is None
+        assert _io.explicit_cli_format(args) is None
 
     def test_explicit_cli_format_normalizes_hint(self) -> None:
         """Test that explicit format hints are normalized when returned."""
-        # pylint: disable=protected-access
-
         args = argparse.Namespace(format='CSV', _format_explicit=True)
-        assert handlers._explicit_cli_format(args) == 'csv'
+        assert _io.explicit_cli_format(args) == 'csv'
 
     def test_materialize_file_payload_non_file(self) -> None:
         """Test that non-file payloads are returned unchanged."""
-        # pylint: disable=protected-access
-
         payload: object = {'foo': 1}
         assert (
-            handlers._materialize_file_payload(
+            _io.materialize_file_payload(
                 payload,
                 format_hint=None,
                 format_explicit=False,
@@ -151,12 +143,10 @@ class TestCliHandlersInternalHelpers:
 
     def test_materialize_file_payload_infers_csv(self, tmp_path: Path) -> None:
         """Test that CSV files are parsed when no explicit hint is provided."""
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'file.csv'
         file_path.write_text(CSV_TEXT)
 
-        rows = handlers._materialize_file_payload(
+        rows = _io.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -170,12 +160,10 @@ class TestCliHandlersInternalHelpers:
         tmp_path: Path,
     ) -> None:
         """Test that JSON files are parsed when no format hint is provided."""
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"alpha": 1}')
 
-        payload = handlers._materialize_file_payload(
+        payload = _io.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -191,8 +179,6 @@ class TestCliHandlersInternalHelpers:
         """
         Test that XML files are materialized via :class:`File` when inferred.
         """
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'payload.xml'
         file_path.write_text('<root><value>1</value></root>')
 
@@ -200,16 +186,22 @@ class TestCliHandlersInternalHelpers:
         captured: dict[str, object] = {}
 
         class DummyFile:
+            """
+            Mock :class:`File` that captures init args and returns a sentinel
+            on read.
+            """
+
             def __init__(self, path_arg: Path, fmt_arg: FileFormat) -> None:
                 captured['path'] = Path(path_arg)
                 captured['fmt'] = fmt_arg
 
             def read(self) -> object:
+                """Return the sentinel object."""
                 return sentinel
 
-        monkeypatch.setattr(handlers, 'File', DummyFile)
+        monkeypatch.setattr(_io, 'File', DummyFile)
 
-        payload = handlers._materialize_file_payload(
+        payload = _io.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -226,12 +218,10 @@ class TestCliHandlersInternalHelpers:
         """
         Test that format hints are ignored when the explicit flag is not set.
         """
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"beta": 2}')
 
-        payload = handlers._materialize_file_payload(
+        payload = _io.materialize_file_payload(
             str(file_path),
             format_hint='csv',
             format_explicit=False,
@@ -246,12 +236,10 @@ class TestCliHandlersInternalHelpers:
         """
         Test that missing input files propagate :class:`FileNotFoundError`.
         """
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'missing.json'
 
         with pytest.raises(FileNotFoundError):
-            handlers._materialize_file_payload(
+            _io.materialize_file_payload(
                 str(file_path),
                 format_hint=None,
                 format_explicit=False,
@@ -262,12 +250,10 @@ class TestCliHandlersInternalHelpers:
         tmp_path: Path,
     ) -> None:
         """Test that explicit format hints override filename inference."""
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'data.txt'
         file_path.write_text(CSV_TEXT)
 
-        rows = handlers._materialize_file_payload(
+        rows = _io.materialize_file_payload(
             str(file_path),
             format_hint='csv',
             format_explicit=True,
@@ -276,7 +262,7 @@ class TestCliHandlersInternalHelpers:
 
         json_path = tmp_path / 'mislabeled.csv'
         json_path.write_text('[{"ok": true}]')
-        payload = handlers._materialize_file_payload(
+        payload = _io.materialize_file_payload(
             str(json_path),
             format_hint='json',
             format_explicit=True,
@@ -301,11 +287,9 @@ class TestCliHandlersInternalHelpers:
         """
         Test that :func:`_read_csv_rows` reads a CSV into row dictionaries.
         """
-        # pylint: disable=protected-access
-
         file_path = tmp_path / 'data.csv'
         file_path.write_text(CSV_TEXT)
-        assert handlers._read_csv_rows(file_path) == [
+        assert _io.read_csv_rows(file_path) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
@@ -318,24 +302,20 @@ class TestCliHandlersInternalHelpers:
         Test that, when a file path is provided, JSON is written via
         :class:`File`.
         """
-        # pylint: disable=protected-access
-
         data = {'x': 1}
 
         dummy_file = Mock()
-        monkeypatch.setattr(handlers, 'File', lambda _p, _f: dummy_file)
+        monkeypatch.setattr(_io, 'File', lambda _p, _f: dummy_file)
 
-        handlers._write_json_output(data, 'out.json', success_message='msg')
+        _io.write_json_output(data, 'out.json', success_message='msg')
         dummy_file.write_json.assert_called_once_with(data)
 
     def test_write_json_output_stdout_flag(self) -> None:
         """
         Test that returning False signals stdout emission when no output path.
         """
-        # pylint: disable=protected-access
-
         assert (
-            handlers._write_json_output(
+            _io.write_json_output(
                 {'x': 1},
                 None,
                 success_message='msg',
@@ -345,10 +325,8 @@ class TestCliHandlersInternalHelpers:
 
     def test_infer_payload_format(self) -> None:
         """Test inferring JSON vs CSV using the first significant byte."""
-        # pylint: disable=protected-access
-
-        assert handlers._infer_payload_format(' {"a":1}') == 'json'
-        assert handlers._infer_payload_format('  col1,col2') == 'csv'
+        assert _io.infer_payload_format(' {"a":1}') == 'json'
+        assert _io.infer_payload_format('  col1,col2') == 'csv'
 
     @pytest.mark.parametrize(
         ('payload', 'fmt', 'expected'),
@@ -368,17 +346,13 @@ class TestCliHandlersInternalHelpers:
         Test that :func:`_parse_text_payload` handles JSON, CSV, and
         passthrough cases.
         """
-        # pylint: disable=protected-access
-
-        assert handlers._parse_text_payload(payload, fmt=fmt) == expected
+        assert _io.parse_text_payload(payload, fmt=fmt) == expected
 
     def test_parse_text_payload_infers_csv_when_unspecified(self) -> None:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        # pylint: disable=protected-access
-
-        result = handlers._parse_text_payload(CSV_TEXT, fmt=None)
+        result = _io.parse_text_payload(CSV_TEXT, fmt=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -388,35 +362,29 @@ class TestCliHandlersInternalHelpers:
         """
         Test that missing attributes fall back to pretty output and non-quiet.
         """
-        # pylint: disable=protected-access
-
-        pretty, quiet = handlers._presentation_flags(argparse.Namespace())
+        pretty, quiet = _io.presentation_flags(argparse.Namespace())
         assert (pretty, quiet) == (True, False)
 
     def test_presentation_flags_custom(self) -> None:
         """Test that explicit pretty/quiet flags are respected."""
-        # pylint: disable=protected-access
-
         args = argparse.Namespace(pretty=False, quiet=True)
-        assert handlers._presentation_flags(args) == (False, True)
+        assert _io.presentation_flags(args) == (False, True)
 
     def test_read_stdin_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that reading stdin returns the buffered stream contents."""
-        # pylint: disable=protected-access
-
         buffer = io.StringIO('stream-data')
         monkeypatch.setattr(
-            handlers,
+            _io,
             'sys',
             types.SimpleNamespace(stdin=buffer),
         )
-        assert handlers._read_stdin_text() == 'stream-data'
+        assert _io.read_stdin_text() == 'stream-data'
 
 
 # TODO: Alphabetize unit test suite classes.
-# TODO: Create simullar unit test suite classes for other command handlers.
+# TODO: Create similar unit test suite classes for other command handlers.
 class TestRenderHandler:
-    """Unit tests for :func:`render_handler`."""
+    """Unit test suite for :func:`render_handler`."""
 
     def test_errors_without_specs(
         self,
@@ -482,7 +450,7 @@ class TestRenderHandler:
 
 
 class TestCliHandlersCommands:
-    """Unit tests that exercise the public CLI handler functions."""
+    """Unit test suite that exercise the public CLI handler functions."""
 
     def test_extract_handler_reads_stdin_and_emits_json(
         self,
@@ -498,10 +466,14 @@ class TestCliHandlersCommands:
             pretty=False,
             quiet=False,
         )
-        monkeypatch.setattr(handlers, '_read_stdin_text', lambda: 'raw-text')
         monkeypatch.setattr(
-            handlers,
-            '_parse_text_payload',
+            handlers.cli_io,
+            'read_stdin_text',
+            lambda: 'raw-text',
+        )
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'parse_text_payload',
             lambda text, fmt: {'payload': text, 'fmt': fmt},
         )
 
@@ -510,15 +482,15 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'extract', fail_extract)
         monkeypatch.setattr(
-            handlers,
-            '_write_json_output',
-            lambda *_a, **_k: False,
+            handlers.cli_io,
+            'emit_or_write',
+            lambda *_a, **_k: None,
         )
 
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            handlers,
-            '_emit_json',
+            handlers.cli_io,
+            'emit_json',
             lambda data, pretty: emitted.append((data, pretty)),
         )
 
@@ -539,10 +511,13 @@ class TestCliHandlersCommands:
             pretty=True,
             quiet=False,
         )
+        emitted: list[tuple[object, bool, object | None, str]] = []
         monkeypatch.setattr(
-            handlers,
-            '_write_json_output',
-            lambda *_a, **_k: False,
+            handlers.cli_io,
+            'emit_or_write',
+            lambda data, output_path, pretty, success_message: emitted.append(
+                (data, pretty, output_path, success_message),
+            ),
         )
 
         observed: dict[str, object] = {}
@@ -557,16 +532,10 @@ class TestCliHandlersCommands:
             return {'status': 'ok'}
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            handlers,
-            '_emit_json',
-            lambda data, pretty: emitted.append((data, pretty)),
-        )
 
         assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert emitted == [({'status': 'ok'}, True)]
+        assert emitted == [({'status': 'ok'}, True, None, ANY)]
 
     def test_extract_handler_file_respects_explicit_format(
         self,
@@ -597,8 +566,8 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
         monkeypatch.setattr(
-            handlers,
-            '_emit_json',
+            handlers.cli_io,
+            'emit_or_write',
             lambda *_a, **_k: None,
         )
 
@@ -637,32 +606,27 @@ class TestCliHandlersCommands:
 
         recorded: dict[str, object] = {}
 
-        def fake_write_json_output(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
+        ) -> None:
             recorded['data'] = data
             recorded['output_path'] = output_path
             recorded['success_message'] = success_message
-            return True
+            recorded['pretty'] = pretty
 
         monkeypatch.setattr(
-            handlers,
-            '_write_json_output',
-            fake_write_json_output,
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
         )
-
-        def fail_emit_json(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError('emit_json should not be called')
-
-        monkeypatch.setattr(handlers, '_emit_json', fail_emit_json)
 
         assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert recorded['data'] == {'status': 'ok'}
         assert recorded['output_path'] == 'export.json'
+        assert recorded['pretty'] is True
         assert isinstance(recorded['success_message'], str)
 
     def test_check_handler_prints_sections(
@@ -682,7 +646,7 @@ class TestCliHandlersCommands:
             lambda _cfg, args: {'targets': ['t1']},
         )
         observed: list[object] = []
-        monkeypatch.setattr(handlers, 'print_json', observed.append)
+        monkeypatch.setattr(_io, 'print_json', observed.append)
 
         args = argparse.Namespace(config='cfg.yml')
         assert handlers.check_handler(args) == 0
@@ -717,7 +681,7 @@ class TestCliHandlersCommands:
             lambda _cfg, _args: {'pipelines': ['p1']},
         )
         captured: list[object] = []
-        monkeypatch.setattr(handlers, 'print_json', captured.append)
+        monkeypatch.setattr(_io, 'print_json', captured.append)
 
         args = argparse.Namespace(config='cfg.yml', substitute=True)
         assert handlers.check_handler(args) == 0
@@ -742,11 +706,6 @@ class TestCliHandlersCommands:
             quiet=False,
             emitted=None,
         )
-        monkeypatch.setattr(
-            handlers,
-            '_write_json_output',
-            lambda *_a, **_k: False,
-        )
 
         recorded: dict[str, object] = {}
 
@@ -760,13 +719,13 @@ class TestCliHandlersCommands:
             return ['rows', src]
 
         monkeypatch.setattr(
-            handlers,
-            '_materialize_file_payload',
+            handlers.cli_io,
+            'materialize_file_payload',
             fake_materialize,
         )
         monkeypatch.setattr(
-            handlers,
-            '_emit_json',
+            handlers.cli_io,
+            'emit_json',
             lambda data, pretty: setattr(args, 'emitted', (data, pretty)),
         )
 
@@ -805,7 +764,9 @@ class TestCliHandlersCommands:
             read_calls['count'] += 1
             return 'stdin-payload'
 
-        monkeypatch.setattr(handlers, '_read_stdin_text', fake_read_stdin)
+        monkeypatch.setattr(
+            handlers.cli_io, 'read_stdin_text', fake_read_stdin,
+        )
 
         parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
         parse_calls: dict[str, object] = {}
@@ -814,17 +775,17 @@ class TestCliHandlersCommands:
             parse_calls['params'] = (text, fmt)
             return parsed_payload
 
-        monkeypatch.setattr(handlers, '_parse_text_payload', fake_parse)
+        monkeypatch.setattr(handlers.cli_io, 'parse_text_payload', fake_parse)
 
         def fail_materialize(*_args: object, **_kwargs: object) -> None:
             raise AssertionError(
-                '_materialize_file_payload should not be called '
+                'materialize_file_payload should not be called '
                 'for stdin sources',
             )
 
         monkeypatch.setattr(
-            handlers,
-            '_materialize_file_payload',
+            handlers.cli_io,
+            'materialize_file_payload',
             fail_materialize,
         )
 
@@ -843,23 +804,20 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(handlers, 'load', fake_load)
 
         writes: list[tuple[object, str | None, str]] = []
+        emissions: list[tuple[object, bool]] = []
 
-        def fake_write_json(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
+        ) -> None:
             writes.append((data, output_path, success_message))
-            return False
+            emissions.append((data, pretty))
 
-        monkeypatch.setattr(handlers, '_write_json_output', fake_write_json)
-
-        emissions: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            handlers,
-            '_emit_json',
-            lambda data, pretty: emissions.append((data, pretty)),
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
         )
 
         assert handlers.load_handler(args) == 0
@@ -915,25 +873,20 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'load', fake_load)
 
-        writes: list[tuple[object, str | None, str]] = []
+        writes: list[tuple[object, str | None, str, bool]] = []
 
-        def fake_write_json(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
-            writes.append((data, output_path, success_message))
-            return True
+        ) -> None:
+            writes.append((data, output_path, success_message, pretty))
 
-        monkeypatch.setattr(handlers, '_write_json_output', fake_write_json)
-
-        def fail_emit(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError(
-                '_emit_json should not be called when output is written',
-            )
-
-        monkeypatch.setattr(handlers, '_emit_json', fail_emit)
+        monkeypatch.setattr(
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
+        )
 
         assert handlers.load_handler(args) == 0
         assert load_record['params'] == (

@@ -17,8 +17,9 @@ from typer.testing import CliRunner
 from typer.testing import Result
 
 import etlplus
-import etlplus.cli.app as cli_app_module
-from etlplus.cli.app import app as cli_app
+import etlplus.cli.handlers as cli_handlers_module
+import etlplus.cli.state as cli_state_module
+from etlplus.cli.commands import app as cli_app
 
 # SECTION: HELPERS ========================================================== #
 
@@ -58,7 +59,7 @@ def capture_cmd_fixture(
             return 0
 
         mock = Mock(side_effect=_fake)
-        monkeypatch.setattr(cli_app_module, name, mock)
+        monkeypatch.setattr(cli_handlers_module, name, mock)
         return captured, mock
 
     return _capture
@@ -119,29 +120,23 @@ class TestCliAppInternalHelpers:
         Test that :func:`_infer_resource_type` classifies common resource
         inputs.
         """
-        # pylint: disable=protected-access
-
-        assert cli_app_module._infer_resource_type(raw) == expected
+        assert cli_state_module.infer_resource_type(raw) == expected
 
     def test_infer_resource_type_file_path(self, tmp_path: Path) -> None:
         """
         Test that :func:`_infer_resource_type` detects local files via
         extension parsing.
         """
-        # pylint: disable=protected-access
-
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_app_module._infer_resource_type(str(path)) == 'file'
+        assert cli_state_module.infer_resource_type(str(path)) == 'file'
 
     def test_infer_resource_type_invalid_raises(self) -> None:
         """
         Unknown resources raise ``ValueError`` to surface helpful guidance.
         """
-        # pylint: disable=protected-access
-
         with pytest.raises(ValueError):
-            cli_app_module._infer_resource_type('unknown-resource')
+            cli_state_module.infer_resource_type('unknown-resource')
 
     @pytest.mark.parametrize(
         ('choice', 'expected'),
@@ -156,10 +151,8 @@ class TestCliAppInternalHelpers:
         Test that :func:`_optional_choice` preserves ``None`` and normalizes
         valid values.
         """
-        # pylint: disable=protected-access
-
         assert (
-            cli_app_module._optional_choice(
+            cli_state_module.optional_choice(
                 choice,
                 {'json', 'csv'},
                 label='format',
@@ -170,17 +163,17 @@ class TestCliAppInternalHelpers:
     @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
     def test_optional_choice_rejects_invalid(self, invalid: str) -> None:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
-        # pylint: disable=protected-access
-
         with pytest.raises(typer.BadParameter):
-            cli_app_module._optional_choice(invalid, {'json'}, label='format')
+            cli_state_module.optional_choice(invalid, {'json'}, label='format')
 
     def test_stateful_namespace_includes_cli_flags(self) -> None:
         """Test that state flags propagate into handler namespaces."""
-        # pylint: disable=protected-access
-
-        state = cli_app_module.CliState(pretty=False, quiet=True, verbose=True)
-        ns = cli_app_module._stateful_namespace(
+        state = cli_state_module.CliState(
+            pretty=False,
+            quiet=True,
+            verbose=True,
+        )
+        ns = cli_state_module.stateful_namespace(
             state,
             command='extract',
             foo='bar',

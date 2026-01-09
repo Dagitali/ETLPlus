@@ -14,7 +14,7 @@ from unittest.mock import Mock
 import pytest
 import typer
 
-import etlplus.cli.app as cli_app_module
+import etlplus.cli.handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
 
 # SECTION: HELPERS ========================================================== #
@@ -86,7 +86,7 @@ class TestCreateParser:
             ['extract', 'file', 'data.csv', '--source-format', 'json'],
         )
 
-        assert namespace.func is cli_main_module.extract_handler
+        assert namespace.func is cli_handlers_module.extract_handler
         assert namespace.source_type == 'file'
         assert namespace.source == 'data.csv'
         assert namespace.source_format == 'json'
@@ -105,7 +105,7 @@ class TestCreateParser:
             ],
         )
 
-        assert namespace.func is cli_main_module.check_handler
+        assert namespace.func is cli_handlers_module.check_handler
         assert namespace.command == 'check'
         assert namespace.config == 'pipelines.yml'
         assert namespace.targets is True
@@ -129,7 +129,7 @@ class TestCreateParser:
             ],
         )
 
-        assert namespace.func is cli_main_module.render_handler
+        assert namespace.func is cli_handlers_module.render_handler
         assert namespace.config == 'pipeline.yml'
         assert namespace.table == 'Customers'
         assert namespace.template == 'ddl'
@@ -173,7 +173,7 @@ class TestMain:
         130.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_handlers_module,
             'extract_handler',
             Mock(side_effect=KeyboardInterrupt),
         )
@@ -203,7 +203,7 @@ class TestMain:
         dispatched command.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_handlers_module,
             'extract_handler',
             Mock(side_effect=SystemExit(5)),
         )
@@ -285,7 +285,7 @@ class TestMain:
         Test that :class:`ValueError` from a command maps to exit code 1.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_handlers_module,
             'extract_handler',
             Mock(side_effect=ValueError('fail')),
         )
