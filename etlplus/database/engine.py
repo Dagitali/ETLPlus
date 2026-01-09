@@ -17,6 +17,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from ..file import File
+from ..types import StrAnyMap
 from ..types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,13 +46,15 @@ DATABASE_URL: Final[str] = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _resolve_url_from_mapping(cfg: Mapping[str, Any]) -> str | None:
+def _resolve_url_from_mapping(
+    cfg: StrAnyMap,
+) -> str | None:
     """
     Return a URL/DSN from a mapping if present.
 
     Parameters
     ----------
-    cfg : Mapping[str, Any]
+    cfg : StrAnyMap
         Configuration mapping potentially containing connection fields.
 
     Returns
