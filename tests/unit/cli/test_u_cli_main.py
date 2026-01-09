@@ -14,7 +14,7 @@ from unittest.mock import Mock
 import pytest
 import typer
 
-import etlplus.cli.app as cli_app_module
+import etlplus.cli.commands as cli_commands_module
 from etlplus.cli.main import main as cli_main
 
 # SECTION: HELPERS ========================================================== #
@@ -173,7 +173,7 @@ class TestMain:
         130.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_commands_module,
             'extract_handler',
             Mock(side_effect=KeyboardInterrupt),
         )
@@ -203,7 +203,7 @@ class TestMain:
         dispatched command.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_commands_module,
             'extract_handler',
             Mock(side_effect=SystemExit(5)),
         )
@@ -285,7 +285,7 @@ class TestMain:
         Test that :class:`ValueError` from a command maps to exit code 1.
         """
         monkeypatch.setattr(
-            cli_app_module,
+            cli_commands_module,
             'extract_handler',
             Mock(side_effect=ValueError('fail')),
         )
