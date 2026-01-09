@@ -16,6 +16,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Final
 from typing import cast
+from unittest.mock import ANY
 from unittest.mock import Mock
 
 import pytest
@@ -465,9 +466,13 @@ class TestCliHandlersCommands:
             pretty=False,
             quiet=False,
         )
-        monkeypatch.setattr(handlers, 'read_stdin_text', lambda: 'raw-text')
         monkeypatch.setattr(
-            handlers,
+            handlers.cli_io,
+            'read_stdin_text',
+            lambda: 'raw-text',
+        )
+        monkeypatch.setattr(
+            handlers.cli_io,
             'parse_text_payload',
             lambda text, fmt: {'payload': text, 'fmt': fmt},
         )
@@ -477,14 +482,14 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'extract', fail_extract)
         monkeypatch.setattr(
-            handlers,
-            'write_json_output',
-            lambda *_a, **_k: False,
+            handlers.cli_io,
+            'emit_or_write',
+            lambda *_a, **_k: None,
         )
 
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            handlers,
+            handlers.cli_io,
             'emit_json',
             lambda data, pretty: emitted.append((data, pretty)),
         )
@@ -506,10 +511,13 @@ class TestCliHandlersCommands:
             pretty=True,
             quiet=False,
         )
+        emitted: list[tuple[object, bool, object | None, str]] = []
         monkeypatch.setattr(
-            handlers,
-            'write_json_output',
-            lambda *_a, **_k: False,
+            handlers.cli_io,
+            'emit_or_write',
+            lambda data, output_path, pretty, success_message: emitted.append(
+                (data, pretty, output_path, success_message),
+            ),
         )
 
         observed: dict[str, object] = {}
@@ -524,16 +532,10 @@ class TestCliHandlersCommands:
             return {'status': 'ok'}
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            handlers,
-            'emit_json',
-            lambda data, pretty: emitted.append((data, pretty)),
-        )
 
         assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert emitted == [({'status': 'ok'}, True)]
+        assert emitted == [({'status': 'ok'}, True, None, ANY)]
 
     def test_extract_handler_file_respects_explicit_format(
         self,
@@ -564,8 +566,8 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
         monkeypatch.setattr(
-            handlers,
-            'emit_json',
+            handlers.cli_io,
+            'emit_or_write',
             lambda *_a, **_k: None,
         )
 
@@ -604,32 +606,27 @@ class TestCliHandlersCommands:
 
         recorded: dict[str, object] = {}
 
-        def fake_write_json_output(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
+        ) -> None:
             recorded['data'] = data
             recorded['output_path'] = output_path
             recorded['success_message'] = success_message
-            return True
+            recorded['pretty'] = pretty
 
         monkeypatch.setattr(
-            handlers,
-            'write_json_output',
-            fake_write_json_output,
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
         )
-
-        def fail_emit_json(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError('emit_json should not be called')
-
-        monkeypatch.setattr(handlers, 'emit_json', fail_emit_json)
 
         assert handlers.extract_handler(args) == 0
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert recorded['data'] == {'status': 'ok'}
         assert recorded['output_path'] == 'export.json'
+        assert recorded['pretty'] is True
         assert isinstance(recorded['success_message'], str)
 
     def test_check_handler_prints_sections(
@@ -709,11 +706,6 @@ class TestCliHandlersCommands:
             quiet=False,
             emitted=None,
         )
-        monkeypatch.setattr(
-            handlers,
-            'write_json_output',
-            lambda *_a, **_k: False,
-        )
 
         recorded: dict[str, object] = {}
 
@@ -727,12 +719,12 @@ class TestCliHandlersCommands:
             return ['rows', src]
 
         monkeypatch.setattr(
-            handlers,
+            handlers.cli_io,
             'materialize_file_payload',
             fake_materialize,
         )
         monkeypatch.setattr(
-            handlers,
+            handlers.cli_io,
             'emit_json',
             lambda data, pretty: setattr(args, 'emitted', (data, pretty)),
         )
@@ -772,7 +764,9 @@ class TestCliHandlersCommands:
             read_calls['count'] += 1
             return 'stdin-payload'
 
-        monkeypatch.setattr(_io, 'read_stdin_text', fake_read_stdin)
+        monkeypatch.setattr(
+            handlers.cli_io, 'read_stdin_text', fake_read_stdin,
+        )
 
         parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
         parse_calls: dict[str, object] = {}
@@ -781,7 +775,7 @@ class TestCliHandlersCommands:
             parse_calls['params'] = (text, fmt)
             return parsed_payload
 
-        monkeypatch.setattr(_io, 'parse_text_payload', fake_parse)
+        monkeypatch.setattr(handlers.cli_io, 'parse_text_payload', fake_parse)
 
         def fail_materialize(*_args: object, **_kwargs: object) -> None:
             raise AssertionError(
@@ -790,7 +784,7 @@ class TestCliHandlersCommands:
             )
 
         monkeypatch.setattr(
-            handlers,
+            handlers.cli_io,
             'materialize_file_payload',
             fail_materialize,
         )
@@ -810,23 +804,20 @@ class TestCliHandlersCommands:
         monkeypatch.setattr(handlers, 'load', fake_load)
 
         writes: list[tuple[object, str | None, str]] = []
+        emissions: list[tuple[object, bool]] = []
 
-        def fake_write_json(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
+        ) -> None:
             writes.append((data, output_path, success_message))
-            return False
+            emissions.append((data, pretty))
 
-        monkeypatch.setattr(handlers, 'write_json_output', fake_write_json)
-
-        emissions: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            handlers,
-            'emit_json',
-            lambda data, pretty: emissions.append((data, pretty)),
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
         )
 
         assert handlers.load_handler(args) == 0
@@ -882,25 +873,20 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'load', fake_load)
 
-        writes: list[tuple[object, str | None, str]] = []
+        writes: list[tuple[object, str | None, str, bool]] = []
 
-        def fake_write_json(
+        def fake_emit_or_write(
             data: object,
             output_path: str | None,
             *,
+            pretty: bool,
             success_message: str,
-        ) -> bool:
-            writes.append((data, output_path, success_message))
-            return True
+        ) -> None:
+            writes.append((data, output_path, success_message, pretty))
 
-        monkeypatch.setattr(handlers, 'write_json_output', fake_write_json)
-
-        def fail_emit(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError(
-                'emit_json should not be called when output is written',
-            )
-
-        monkeypatch.setattr(handlers, 'emit_json', fail_emit)
+        monkeypatch.setattr(
+            handlers.cli_io, 'emit_or_write', fake_emit_or_write,
+        )
 
         assert handlers.load_handler(args) == 0
         assert load_record['params'] == (
