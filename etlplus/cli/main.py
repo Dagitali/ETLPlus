@@ -20,7 +20,7 @@ import typer
 
 from .. import __version__
 from ..utils import json_type
-from .app import app
+from .commands import app
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
