@@ -337,6 +337,7 @@ class TestCheckHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
+        capture_io: dict[str, list],
     ) -> None:
         """
         Test that :func:`check_handler` forwards the substitute flag to config
@@ -361,17 +362,17 @@ class TestCheckHandler:
             '_check_sections',
             lambda _cfg, **_kwargs: {'pipelines': ['p1']},
         )
-        captured: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', captured.append)
-
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
         assert recorded['params'] == ('cfg.yml', True)
-        assert captured == [{'pipelines': ['p1']}]
+        assert capture_io['emit_json'] == [
+            (({'pipelines': ['p1']},), {'pretty': True}),
+        ]
 
     def test_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
+        capture_io: dict[str, list],
     ) -> None:
         """Test that ``check`` prints requested sections."""
         monkeypatch.setattr(
@@ -384,11 +385,10 @@ class TestCheckHandler:
             '_check_sections',
             lambda _cfg, **_kwargs: {'targets': ['t1']},
         )
-        observed: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', observed.append)
-
         assert handlers.check_handler(config='cfg.yml') == 0
-        assert observed == [{'targets': ['t1']}]
+        assert capture_io['emit_json'] == [
+            (({'targets': ['t1']},), {'pretty': True}),
+        ]
 
 
 class TestExtractHandler:
@@ -397,16 +397,9 @@ class TestExtractHandler:
     def test_calls_extract_for_non_file_sources(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """Test that non-stdin sources invoke extract and emit results."""
-        emitted: list[tuple[object, bool, object | None, str]] = []
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            lambda data, output_path, pretty, success_message: emitted.append(
-                (data, pretty, output_path, success_message),
-            ),
-        )
         observed: dict[str, object] = {}
 
         def fake_extract(
@@ -433,11 +426,17 @@ class TestExtractHandler:
         )
 
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert emitted == [({'status': 'ok'}, True, None, ANY)]
+        assert capture_io['emit_or_write'] == [
+            (
+                ({'status': 'ok'}, None),
+                {'pretty': True, 'success_message': ANY},
+            ),
+        ]
 
     def test_file_respects_explicit_format(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """
         Test that explicit format hints are forwarded for file extractions.
@@ -454,12 +453,6 @@ class TestExtractHandler:
             return {'ok': True}
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            lambda *_a, **_k: None,
-        )
-
         assert (
             handlers.extract_handler(
                 source_type='file',
@@ -472,10 +465,12 @@ class TestExtractHandler:
             == 0
         )
         assert captured['params'] == ('file', 'table.dat', 'csv')
+        assert len(capture_io['emit_or_write']) == 1
 
     def test_reads_stdin_and_emits_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """Test that stdin source bypasses extract and emits parsed data."""
         monkeypatch.setattr(
@@ -493,19 +488,6 @@ class TestExtractHandler:
             raise AssertionError('extract should not be called')
 
         monkeypatch.setattr(handlers, 'extract', fail_extract)
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            lambda *_a, **_k: None,
-        )
-
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_json',
-            lambda data, pretty: emitted.append((data, pretty)),
-        )
-
         assert (
             handlers.extract_handler(
                 source_type='api',
@@ -517,11 +499,15 @@ class TestExtractHandler:
             )
             == 0
         )
-        assert emitted == [({'payload': 'raw-text', 'fmt': None}, False)]
+        assert capture_io['emit_json'] == [
+            (({'payload': 'raw-text', 'fmt': None},), {'pretty': False}),
+        ]
+        assert capture_io['emit_or_write'] == []
 
     def test_suppresses_emit_when_output_written(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """
         Test that Extract skips stdout emission when output file is provided.
@@ -539,26 +525,6 @@ class TestExtractHandler:
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
 
-        recorded: dict[str, object] = {}
-
-        def fake_emit_or_write(
-            data: object,
-            output_path: str | None,
-            *,
-            pretty: bool,
-            success_message: str,
-        ) -> None:
-            recorded['data'] = data
-            recorded['output_path'] = output_path
-            recorded['success_message'] = success_message
-            recorded['pretty'] = pretty
-
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            fake_emit_or_write,
-        )
-
         assert (
             handlers.extract_handler(
                 source_type='api',
@@ -571,10 +537,13 @@ class TestExtractHandler:
             == 0
         )
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert recorded['data'] == {'status': 'ok'}
-        assert recorded['output_path'] == 'export.json'
-        assert recorded['pretty'] is True
-        assert isinstance(recorded['success_message'], str)
+        assert capture_io['emit_or_write'][0][0][0] == {'status': 'ok'}
+        assert capture_io['emit_or_write'][0][0][1] == 'export.json'
+        assert capture_io['emit_or_write'][0][1]['pretty'] is True
+        assert isinstance(
+            capture_io['emit_or_write'][0][1]['success_message'],
+            str,
+        )
 
 
 class TestLoadHandler:
@@ -583,6 +552,7 @@ class TestLoadHandler:
     def test_file_target_streams_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """Test that file target streams payload."""
         recorded: dict[str, object] = {}
@@ -600,12 +570,6 @@ class TestLoadHandler:
             handlers.cli_io,
             'materialize_file_payload',
             fake_materialize,
-        )
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_json',
-            lambda data, pretty: emitted.append((data, pretty)),
         )
 
         def fail_load(*_args: object, **_kwargs: object) -> None:
@@ -627,11 +591,14 @@ class TestLoadHandler:
             == 0
         )
         assert recorded['call'] == ('data.csv', None, False)
-        assert emitted == [(['rows', 'data.csv'], True)]
+        assert capture_io['emit_json'] == [
+            ((['rows', 'data.csv'],), {'pretty': True}),
+        ]
 
     def test_reads_stdin_and_invokes_load(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """
         Test that stdin payloads are parsed and routed through :func:`load`.
@@ -683,25 +650,6 @@ class TestLoadHandler:
 
         monkeypatch.setattr(handlers, 'load', fake_load)
 
-        writes: list[tuple[object, str | None, str]] = []
-        emissions: list[tuple[object, bool]] = []
-
-        def fake_emit_or_write(
-            data: object,
-            output_path: str | None,
-            *,
-            pretty: bool,
-            success_message: str,
-        ) -> None:
-            writes.append((data, output_path, success_message))
-            emissions.append((data, pretty))
-
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            fake_emit_or_write,
-        )
-
         assert (
             handlers.load_handler(
                 source='-',
@@ -723,14 +671,18 @@ class TestLoadHandler:
             'endpoint',
             None,
         )
-        assert writes[0][0] == {'loaded': True}
-        assert writes[0][1] is None
-        assert isinstance(writes[0][2], str)
-        assert emissions == [({'loaded': True}, False)]
+        assert capture_io['emit_or_write'][0][0][0] == {'loaded': True}
+        assert capture_io['emit_or_write'][0][0][1] is None
+        assert isinstance(
+            capture_io['emit_or_write'][0][1]['success_message'],
+            str,
+        )
+        assert capture_io['emit_or_write'][0][1]['pretty'] is False
 
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
     ) -> None:
         """
         Test that writing to a file skips stdout emission after :func:`load`.
@@ -754,23 +706,6 @@ class TestLoadHandler:
 
         monkeypatch.setattr(handlers, 'load', fake_load)
 
-        writes: list[tuple[object, str | None, str, bool]] = []
-
-        def fake_emit_or_write(
-            data: object,
-            output_path: str | None,
-            *,
-            pretty: bool,
-            success_message: str,
-        ) -> None:
-            writes.append((data, output_path, success_message, pretty))
-
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            fake_emit_or_write,
-        )
-
         assert (
             handlers.load_handler(
                 source='payload.json',
@@ -790,9 +725,12 @@ class TestLoadHandler:
             'warehouse',
             'json',
         )
-        assert writes[0][0] == {'status': 'queued'}
-        assert writes[0][1] == 'result.json'
-        assert isinstance(writes[0][2], str)
+        assert capture_io['emit_or_write'][0][0][0] == {'status': 'queued'}
+        assert capture_io['emit_or_write'][0][0][1] == 'result.json'
+        assert isinstance(
+            capture_io['emit_or_write'][0][1]['success_message'],
+            str,
+        )
 
 
 class TestRenderHandler:
