@@ -21,6 +21,7 @@ from typing import Final
 from typing import cast
 
 import pytest
+import typer
 from typer.testing import CliRunner
 from typer.testing import Result
 
@@ -82,6 +83,36 @@ def invoke_cli_fixture(runner: CliRunner) -> Callable[..., Result]:
 def runner_fixture() -> CliRunner:
     """Return a reusable Typer CLI runner."""
     return CliRunner()
+
+
+@pytest.fixture(name='stub_command')
+def stub_command_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Callable[..., object]], None]:
+    """Install a Typer command stub that delegates to the provided action."""
+
+    def _install(action: Callable[..., object]) -> None:
+        class _StubCommand:
+            def main(
+                self,
+                *,
+                args: list[str],
+                prog_name: str,
+                standalone_mode: bool,
+            ) -> object:
+                return action(
+                    args=args,
+                    prog_name=prog_name,
+                    standalone_mode=standalone_mode,
+                )
+
+        monkeypatch.setattr(
+            typer.main,
+            'get_command',
+            lambda _app: _StubCommand(),
+        )
+
+    return _install
 
 
 @pytest.fixture(name='widget_spec_paths')
