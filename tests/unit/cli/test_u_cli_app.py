@@ -11,13 +11,11 @@ from pathlib import Path
 
 import pytest
 import typer
-from typer.testing import CliRunner
 from typer.testing import Result
 
 import etlplus
 import etlplus.cli.handlers as handlers
 import etlplus.cli.state as cli_state_module
-from etlplus.cli.commands import app as cli_app
 
 # SECTION: HELPERS ========================================================== #
 
@@ -240,9 +238,9 @@ class TestCliAppInternalHelpers:
         assert calls['source'] == '-'
         assert calls['target'] == 'postgres://db.example.org/app'
 
-    def test_no_args_prints_help(self, runner: CliRunner) -> None:
+    def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
         """Test invoking with no args prints help and exits 0."""
-        result = runner.invoke(cli_app, [])
+        result = invoke_cli()
         assert result.exit_code == 0
         assert 'ETLPlus' in result.stdout
 
@@ -414,8 +412,8 @@ class TestCliAppInternalHelpers:
         assert result.exit_code == 0
         assert calls['source_format'] == 'csv'
 
-    def test_version_flag_exits_zero(self, runner: CliRunner) -> None:
+    def test_version_flag_exits_zero(self, invoke_cli: InvokeCli) -> None:
         """Test that command option ``--version`` exits successfully."""
-        result = runner.invoke(cli_app, ['--version'])
+        result = invoke_cli('--version')
         assert result.exit_code == 0
         assert etlplus.__version__ in result.stdout
