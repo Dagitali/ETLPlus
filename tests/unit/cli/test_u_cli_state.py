@@ -102,153 +102,95 @@ class TestOptionalChoice:
 class TestCliExtractState:
     """Unit test suite of command-line state tests for ``extract``."""
 
-    def test_marks_explicit_format(
+    @pytest.mark.parametrize(
+        ('argv', 'expected'),
+        (
+            (
+                ('extract', '/path/to/file.csv', '--source-format', 'csv'),
+                {
+                    'source': '/path/to/file.csv',
+                    'format_hint': 'csv',
+                    'format_explicit': True,
+                },
+            ),
+            (
+                (
+                    '--no-pretty',
+                    '--quiet',
+                    'extract',
+                    '--source-type',
+                    'api',
+                    'https://example.com/data.json',
+                ),
+                {
+                    'source_type': 'api',
+                    'source': 'https://example.com/data.json',
+                    'pretty': False,
+                },
+            ),
+        ),
+    )
+    def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
+        argv: tuple[str, ...],
+        expected: dict[str, object],
     ) -> None:
-        """
-        Test that ``extract`` marks the data format as explicit when provided.
-        """
-        calls: dict[str, object] = {}
+        """Test that CLI args map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'extract_handler')
 
-        def fake_extract(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'extract_handler', fake_extract)
-
-        result = invoke_cli(
-            'extract',
-            '/path/to/file.csv',
-            '--source-format',
-            'csv',
-        )
+        result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert calls['source'] == '/path/to/file.csv'
-        assert calls['format_hint'] == 'csv'
-        assert calls['format_explicit'] is True
-
-    def test_respects_root_flags(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that root flags propagate into the handler namespace for
-        ``extract``.
-        """
-        calls: dict[str, object] = {}
-
-        def fake_extract(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'extract_handler', fake_extract)
-
-        result = invoke_cli(
-            '--no-pretty',
-            '--quiet',
-            'extract',
-            '--source-type',
-            'api',
-            'https://example.com/data.json',
-        )
-
-        assert result.exit_code == 0
-        assert calls['source_type'] == 'api'
-        assert calls['source'] == 'https://example.com/data.json'
-        assert calls['pretty'] is False
+        for key, value in expected.items():
+            assert calls[key] == value
 
 
 class TestCliLoadState:
     """Unit test suite of command-line state tests for ``load``."""
 
-    def test_defaults_json_format(
+    @pytest.mark.parametrize(
+        ('argv', 'expected'),
+        (
+            (
+                ('load', '--target-type', 'file', '/path/to/out.json'),
+                {
+                    'target': '/path/to/out.json',
+                    'target_format': None,
+                    'format_explicit': False,
+                },
+            ),
+            (
+                ('load', '--target-format', 'csv', '/path/to/out.csv'),
+                {'target_format': 'csv', 'format_explicit': True},
+            ),
+            (
+                (
+                    'load',
+                    '--target-type',
+                    'database',
+                    'postgres://db.example.org/app',
+                ),
+                {'source': '-', 'target': 'postgres://db.example.org/app'},
+            ),
+        ),
+    )
+    def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
+        argv: tuple[str, ...],
+        expected: dict[str, object],
     ) -> None:
-        """
-        Test that ``load`` defaults to JSON and marks the data format as
-        implicit.
-        """
-        calls: dict[str, object] = {}
+        """Test that CLI args map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'load_handler')
 
-        def fake_load(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'load_handler', fake_load)
-
-        result = invoke_cli(
-            'load',
-            '--target-type',
-            'file',
-            '/path/to/out.json',
-        )
+        result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert calls['target'] == '/path/to/out.json'
-        assert calls['target_format'] is None
-        assert calls['format_explicit'] is False
-
-    def test_marks_explicit_target_format(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that ``load`` marks the target data format as explicit when
-        provided.
-        """
-        calls: dict[str, object] = {}
-
-        def fake_load(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'load_handler', fake_load)
-
-        result = invoke_cli(
-            'load',
-            '--target-format',
-            'csv',
-            '/path/to/out.csv',
-        )
-
-        assert result.exit_code == 0
-        assert calls['target_format'] == 'csv'
-        assert calls['format_explicit'] is True
-
-    def test_defaults_source_to_stdin(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that ``load`` defaults to stdin when only target options are
-        provided.
-        """
-        calls: dict[str, object] = {}
-
-        def fake_load(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'load_handler', fake_load)
-
-        result = invoke_cli(
-            'load',
-            '--target-type',
-            'database',
-            'postgres://db.example.org/app',
-        )
-
-        assert result.exit_code == 0
-        assert calls['source'] == '-'
-        assert calls['target'] == 'postgres://db.example.org/app'
+        for key, value in expected.items():
+            assert calls[key] == value
 
 
 class TestCliRenderState:
@@ -257,16 +199,10 @@ class TestCliRenderState:
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
     ) -> None:
-        """Test that ``render`` maps options into the handler namespace."""
-        calls: dict[str, object] = {}
-
-        def fake_render(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'render_handler', fake_render)
+        """Test that CLI args map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'render_handler')
 
         result = invoke_cli(
             'render',
@@ -293,26 +229,13 @@ class TestCliRunState:
     def test_maps_flags(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
     ) -> None:
-        """
-        Test that ``run`` maps job flags into the handler namespace.
-        """
-        calls: dict[str, object] = {}
+        """Test that CLI flags map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'run_handler')
 
-        def fake_run(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
+        result = invoke_cli('run', '--config', 'p.yml', '--job', 'j1')
 
-        monkeypatch.setattr(handlers, 'run_handler', fake_run)
-
-        result = invoke_cli(
-            'run',
-            '--config',
-            'p.yml',
-            '--job',
-            'j1',
-        )
         assert result.exit_code == 0
         assert calls['config'] == 'p.yml'
         assert calls['job'] == 'j1'
@@ -321,118 +244,83 @@ class TestCliRunState:
 class TestCliTransformState:
     """Unit test suite of command-line state tests for ``transform``."""
 
-    def test_parses_operations_json(
+    @pytest.mark.parametrize(
+        ('argv', 'assertions'),
+        (
+            (
+                (
+                    'transform',
+                    '/path/to/file.json',
+                    '--operations',
+                    '{"select": ["id"]}',
+                ),
+                lambda calls: (
+                    calls['source'] == '/path/to/file.json'
+                    and isinstance(calls['operations'], dict)
+                    and calls['operations'].get('select') == ['id']
+                ),
+            ),
+            (
+                ('transform', '--source-format', 'csv'),
+                lambda calls: calls['source_format'] == 'csv',
+            ),
+        ),
+    )
+    def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
+        argv: tuple[str, ...],
+        assertions: Callable[[dict[str, object]], bool],
     ) -> None:
-        """
-        Test that ``transform`` parses JSON operations passed via
-        ``--operations``.
-        """
-        calls: dict[str, object] = {}
+        """Test that CLI args map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'transform_handler')
 
-        def fake_transform(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'transform_handler', fake_transform)
-
-        result = invoke_cli(
-            'transform',
-            '/path/to/file.json',
-            '--operations',
-            '{"select": ["id"]}',
-        )
+        result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert calls['source'] == '/path/to/file.json'
-        assert isinstance(calls['operations'], dict)
-        assert calls['operations'].get('select') == ['id']
-
-    def test_respects_source_format(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that ``transform`` propagates ``--source-format`` into the
-        namespace.
-        """
-        calls: dict[str, object] = {}
-
-        def fake_transform(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'transform_handler', fake_transform)
-
-        result = invoke_cli(
-            'transform',
-            '--source-format',
-            'csv',
-        )
-
-        assert result.exit_code == 0
-        assert calls['source_format'] == 'csv'
+        assert assertions(calls)
 
 
 class TestCliValidateState:
     """Unit test suite of command-line state tests for ``validate``."""
 
-    def test_parses_rules_json(
+    @pytest.mark.parametrize(
+        ('argv', 'assertions'),
+        (
+            (
+                (
+                    'validate',
+                    '/path/to/file.json',
+                    '--rules',
+                    '{"required": ["id"]}',
+                ),
+                lambda calls: (
+                    calls['source'] == '/path/to/file.json'
+                    and isinstance(calls['rules'], dict)
+                    and calls['rules'].get('required') == ['id']
+                ),
+            ),
+            (
+                ('validate', '--source-format', 'csv'),
+                lambda calls: calls['source_format'] == 'csv',
+            ),
+        ),
+    )
+    def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
+        capture_handler: Callable[[object, str], dict[str, object]],
+        argv: tuple[str, ...],
+        assertions: Callable[[dict[str, object]], bool],
     ) -> None:
-        """
-        Test that ``validate`` parses JSON rules passed via ``--rules``.
-        """
-        calls: dict[str, object] = {}
+        """Test that CLI args map to handler parameters correctly."""
+        calls = capture_handler(handlers, 'validate_handler')
 
-        def fake_validate(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'validate_handler', fake_validate)
-
-        result = invoke_cli(
-            'validate',
-            '/path/to/file.json',
-            '--rules',
-            '{"required": ["id"]}',
-        )
+        result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert calls['source'] == '/path/to/file.json'
-        assert isinstance(calls['rules'], dict)
-        assert calls['rules'].get('required') == ['id']
-
-    def test_respects_source_format(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that ``validate`` propagates ``--source-format`` into the
-        namespace.
-        """
-        calls: dict[str, object] = {}
-
-        def fake_validate(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(handlers, 'validate_handler', fake_validate)
-
-        result = invoke_cli(
-            'validate',
-            '--source-format',
-            'csv',
-        )
-
-        assert result.exit_code == 0
-        assert calls['source_format'] == 'csv'
+        assert assertions(calls)
 
 
 class TestCliHelp:
