@@ -795,3 +795,59 @@ class TestTransformHandler:
 
 class TestValidateHandler:
     """Unit test suite for :func:`validate_handler`."""
+
+
+@pytest.mark.parametrize(
+    'kwargs,expected_keys',
+    [
+        # run_handler basic smoke
+        (
+            {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
+            ['config', 'job', 'pretty'],
+        ),
+        # transform_handler basic smoke
+        (
+            {
+                'source': 'data.json',
+                'operations': '{"select": ["id"]}',
+                'pretty': True,
+            },
+            ['source', 'operations', 'pretty'],
+        ),
+        # validate_handler basic smoke
+        (
+            {
+                'source': 'data.json',
+                'rules': '{"required": ["id"]}',
+                'pretty': True,
+            },
+            ['source', 'rules', 'pretty'],
+        ),
+    ],
+)
+def test_handler_smoke(
+    capture_handler,
+    kwargs,
+    expected_keys,
+) -> None:
+    """
+    Smoke test CLI handlers to ensure they accept kwargs and call underlying
+    logic.
+    """
+    # Map handler by keys
+    if 'job' in kwargs:
+        module, attr = handlers, 'run_handler'
+    elif 'operations' in kwargs:
+        module, attr = handlers, 'transform_handler'
+    elif 'rules' in kwargs:
+        module, attr = handlers, 'validate_handler'
+    else:
+        pytest.skip('Unknown handler')
+        # Ensure function exits after skip to avoid unbound variable usage.
+        return
+    calls = capture_handler(module, attr)
+    result = getattr(module, attr)(**kwargs)
+    assert result == 0
+    for key in expected_keys:
+        # assert key in calls['kwargs']
+        assert key in calls
