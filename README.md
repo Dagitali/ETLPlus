@@ -19,7 +19,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
-      - [Inspect Pipelines](#inspect-pipelines)
+      - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
       - [Validate Data](#validate-data)
@@ -136,6 +136,9 @@ etlplus --help
 # Show version
 etlplus --version
 ```
+
+The CLI is implemented with Typer (Click-based). There is no argparse compatibility layer, so rely
+on the documented commands/flags and run `etlplus <command> --help` for current options.
 
 #### Check Pipelines
 
