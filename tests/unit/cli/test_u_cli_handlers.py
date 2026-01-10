@@ -788,13 +788,299 @@ class TestRenderHandler:
 class TestRunHandler:
     """Unit test suite for :func:`run_handler`."""
 
+    def test_emits_pipeline_summary_without_job(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: PipelineConfig,
+        capture_io: dict[str, list],
+    ) -> None:
+        """Test that handler returns a pipeline summary when no job set."""
+        monkeypatch.setattr(
+            handlers,
+            'load_pipeline_config',
+            lambda path, substitute: dummy_cfg,
+        )
+
+        assert (
+            handlers.run_handler(
+                config='pipeline.yml',
+                job=None,
+                pipeline=None,
+                pretty=True,
+            )
+            == 0
+        )
+
+        assert capture_io['emit_json'] == [
+            (
+                (
+                    {
+                        'name': dummy_cfg.name,
+                        'version': dummy_cfg.version,
+                        'sources': ['s1'],
+                        'targets': ['t1'],
+                        'jobs': ['j1'],
+                    },
+                ),
+                {'pretty': True},
+            ),
+        ]
+
+    def test_runs_job_and_emits_result(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: PipelineConfig,
+        capture_io: dict[str, list],
+    ) -> None:
+        """Test that handler executes a named job and emits status."""
+        monkeypatch.setattr(
+            handlers,
+            'load_pipeline_config',
+            lambda path, substitute: dummy_cfg,
+        )
+        run_calls: dict[str, object] = {}
+
+        def fake_run(*, job: str, config_path: str) -> dict[str, object]:
+            run_calls['params'] = (job, config_path)
+            return {'job': job, 'ok': True}
+
+        monkeypatch.setattr(handlers, 'run', fake_run)
+
+        assert (
+            handlers.run_handler(
+                config='pipeline.yml',
+                job='job1',
+                pretty=False,
+            )
+            == 0
+        )
+        assert run_calls['params'] == ('job1', 'pipeline.yml')
+        assert capture_io['emit_json'] == [
+            (
+                ({'status': 'ok', 'result': {'job': 'job1', 'ok': True}},),
+                {'pretty': False},
+            ),
+        ]
+
 
 class TestTransformHandler:
     """Unit test suite for :func:`transform_handler`."""
 
+    def test_emits_transformed_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
+    ) -> None:
+        """Test that transforms emit JSON when no target is specified."""
+        resolve_calls: list[tuple[object, str | None, bool]] = []
+
+        def fake_resolve(
+            source: object,
+            *,
+            format_hint: str | None,
+            format_explicit: bool,
+        ) -> object:
+            resolve_calls.append((source, format_hint, format_explicit))
+            if source == 'data.json':
+                return [{'id': 1}]
+            return {'select': ['id']}
+
+        monkeypatch.setattr(
+            handlers.cli_io, 'resolve_cli_payload', fake_resolve,
+        )
+        monkeypatch.setattr(
+            handlers,
+            'transform',
+            lambda payload, ops: {'rows': payload, 'ops': ops},
+        )
+
+        assert (
+            handlers.transform_handler(
+                source='data.json',
+                operations='ops.json',
+                source_format='json',
+                target=None,
+                pretty=False,
+            )
+            == 0
+        )
+        assert resolve_calls == [
+            ('data.json', 'json', True),
+            ('ops.json', None, True),
+        ]
+        assert capture_io['emit_json'] == [
+            (
+                ({'rows': [{'id': 1}], 'ops': {'select': ['id']}},),
+                {'pretty': False},
+            ),
+        ]
+
+    def test_writes_target_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that transforms write data to file targets."""
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: {'source': source}
+            if source == 'data.json'
+            else {'select': ['id']},
+        )
+        monkeypatch.setattr(
+            handlers,
+            'transform',
+            lambda payload, ops: {'payload': payload, 'ops': ops},
+        )
+        write_calls: dict[str, object] = {}
+
+        def fake_write(
+            path: str, data: object, *, file_format: str | None,
+        ) -> None:
+            write_calls['params'] = (path, data, file_format)
+
+        monkeypatch.setattr(handlers.File, 'write_file', fake_write)
+
+        assert (
+            handlers.transform_handler(
+                source='data.json',
+                operations='ops.json',
+                target='out.json',
+                target_format='json',
+                pretty=True,
+            )
+            == 0
+        )
+        assert write_calls['params'] == (
+            'out.json',
+            {
+                'payload': {'source': 'data.json'},
+                'ops': {'select': ['id']},
+            },
+            'json',
+        )
+        assert (
+            'Data transformed and saved to out.json' in capsys.readouterr().out
+        )
+
 
 class TestValidateHandler:
     """Unit test suite for :func:`validate_handler`."""
+
+    def test_emits_validation_result(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: dict[str, list],
+    ) -> None:
+        """Test that validation emits results when no target set."""
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: {'source': source}
+            if source == 'data.json'
+            else {'id': {'required': True}},
+        )
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda payload, rules: {'data': payload, 'rules': rules},
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                pretty=False,
+            )
+            == 0
+        )
+        assert capture_io['emit_json'] == [
+            (
+                (
+                    {
+                        'data': {'source': 'data.json'},
+                        'rules': {'id': {'required': True}},
+                    },
+                ),
+                {'pretty': False},
+            ),
+        ]
+
+    def test_reports_missing_data_for_target(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that missing data for file output emits an error."""
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: {'source': source}
+            if source == 'data.json'
+            else {'id': {'required': True}},
+        )
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda *_args, **_kwargs: {'data': None},
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                target='out.json',
+                pretty=True,
+            )
+            == 0
+        )
+        assert (
+            'Validation failed, no data to save for out.json'
+            in capsys.readouterr().err
+        )
+
+    def test_writes_validation_output(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that validation writes output when data is present."""
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: {'source': source}
+            if source == 'data.json'
+            else {'id': {'required': True}},
+        )
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda *_args, **_kwargs: {'data': {'id': 1}},
+        )
+        write_calls: dict[str, object] = {}
+
+        def fake_write(
+            data: object, path: str | None, *, success_message: str,
+        ) -> bool:
+            write_calls['params'] = (data, path, success_message)
+            return True
+
+        monkeypatch.setattr(handlers.cli_io, 'write_json_output', fake_write)
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                target='out.json',
+                pretty=True,
+            )
+            == 0
+        )
+        assert write_calls['params'] == (
+            {'id': 1},
+            'out.json',
+            'Validation result saved to',
+        )
 
 
 @pytest.mark.parametrize(
