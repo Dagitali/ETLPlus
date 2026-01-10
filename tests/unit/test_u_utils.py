@@ -10,14 +10,11 @@ Notes
 
 from __future__ import annotations
 
-import argparse
-
 import pytest
 
 from etlplus.utils import cast_str_dict
 from etlplus.utils import coerce_dict
 from etlplus.utils import count_records
-from etlplus.utils import json_type
 from etlplus.utils import maybe_mapping
 from etlplus.utils import normalized_str
 from etlplus.utils import print_json
@@ -121,13 +118,6 @@ class TestUtils:
         assert to_maximum_int('7', default=10) == 10
         assert to_minimum_int('2', default=5) == 2
         assert to_positive_int('not-an-int', default=0, minimum=3) == 3
-
-    def test_json_type(self) -> None:
-        """Test JSON parsing and error behavior."""
-
-        assert json_type('{"a": 1}') == {'a': 1}
-        with pytest.raises(argparse.ArgumentTypeError):
-            json_type('{broken')
 
     def test_maybe_mapping(self) -> None:
         """Test mapping detection helper returns None for non-mappings."""
