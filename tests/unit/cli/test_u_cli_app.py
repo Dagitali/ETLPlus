@@ -27,18 +27,6 @@ pytestmark = pytest.mark.unit
 InvokeCli = Callable[..., Result]
 
 
-@pytest.fixture(name='invoke_cli')
-def invoke_cli_fixture(
-    runner: CliRunner,
-) -> InvokeCli:
-    """Invoke the Typer CLI."""
-
-    def _invoke(*args: str) -> Result:
-        return runner.invoke(cli_app, list(args))
-
-    return _invoke
-
-
 # SECTION: TESTS ============================================================ #
 
 
