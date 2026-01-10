@@ -57,6 +57,25 @@ class DummyCfg:
 # SECTION: FIXTURES ========================================================= #
 
 
+@pytest.fixture(name='capture_handler')
+def capture_handler_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[object, str], dict[str, object]]:
+    """Patch a handler function and capture the kwargs it receives."""
+
+    def _capture(module: object, attr: str) -> dict[str, object]:
+        calls: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            calls.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(module, attr, _stub)
+        return calls
+
+    return _capture
+
+
 @pytest.fixture(name='csv_text')
 def csv_text_fixture() -> str:
     """Return sample CSV text."""
