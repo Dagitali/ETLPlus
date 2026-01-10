@@ -28,13 +28,14 @@ Notes
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
+from typing import Any
 from typing import Literal
 
 import typer
 
 from .. import __version__
-from ..utils import json_type
 from . import handlers
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
@@ -57,7 +58,6 @@ __all__ = ['app']
 
 
 # SECTION: TYPE ALIASES ==================================================== #
-
 
 OperationsOption = Annotated[
     str,
@@ -237,6 +237,41 @@ TargetPathOption = Annotated[
         help='Target file for transformed or validated output (- for stdout).',
     ),
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _parse_json_option(
+    value: str,
+    flag: str,
+) -> Any:
+    """
+    Parse JSON option values and surface a helpful CLI error.
+
+    Parameters
+    ----------
+    value : str
+        The JSON string to parse.
+    flag : str
+        The CLI flag name for error messages.
+
+    Returns
+    -------
+    Any
+        The parsed JSON value.
+
+    Raises
+    ------
+    typer.BadParameter
+        When the JSON is invalid.
+    """
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as e:
+        raise typer.BadParameter(
+            f'Invalid JSON for {flag}: {e.msg} (pos {e.pos})',
+        ) from e
 
 
 # SECTION: TYPER APP ======================================================== #
@@ -739,7 +774,7 @@ def transform_cmd(
     return int(
         handlers.transform_handler(
             source=resolved_source_value,
-            operations=json_type(operations),
+            operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
             source_format=source_format,
             target_format=target_format,
@@ -806,7 +841,7 @@ def validate_cmd(
     return int(
         handlers.validate_handler(
             source=source,
-            rules=json_type(rules),  # convert CLI string to dict
+            rules=_parse_json_option(rules, '--rules'),
             source_format=source_format,
             target=target,
             format_explicit=source_format is not None,
