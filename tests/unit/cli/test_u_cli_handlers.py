@@ -354,78 +354,150 @@ class TestCliHandlersInternalHelpers:
         assert _io.read_stdin_text() == 'stream-data'
 
 
-# TODO: Alphabetize unit test suite classes.
-# TODO: Create similar unit test suite classes for other command handlers.
-class TestRenderHandler:
-    """Unit test suite for :func:`render_handler`."""
+class TestCheckHandler:
+    """Unit test suite for :func:`check_handler`."""
 
-    def test_errors_without_specs(
+    def test_passes_substitute_flag(
         self,
-        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that missing configs/specs surfaces a helpful error."""
+        """
+        Test that :func:`check_handler` forwards the substitute flag to config
+        loader.
+        """
+        cfg = cast(PipelineConfig, DummyCfg())
+        recorded: dict[str, object] = {}
+
+        def fake_load_pipeline_config(
+            path: str,
+            substitute: bool,
+        ) -> PipelineConfig:
+            recorded['params'] = (path, substitute)
+            return cfg
+
+        monkeypatch.setattr(
+            handlers,
+            'load_pipeline_config',
+            fake_load_pipeline_config,
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_check_sections',
+            lambda _cfg, **_kwargs: {'pipelines': ['p1']},
+        )
+        captured: list[object] = []
+        monkeypatch.setattr(_io, 'print_json', captured.append)
+
+        assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
+        assert recorded['params'] == ('cfg.yml', True)
+        assert captured == [{'pipelines': ['p1']}]
+
+    def test_prints_sections(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``check`` prints requested sections."""
+        cfg = cast(PipelineConfig, DummyCfg())
+        monkeypatch.setattr(
+            handlers,
+            'load_pipeline_config',
+            lambda path, substitute: cfg,
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_check_sections',
+            lambda _cfg, **_kwargs: {'targets': ['t1']},
+        )
+        observed: list[object] = []
+        monkeypatch.setattr(_io, 'print_json', observed.append)
+
+        assert handlers.check_handler(config='cfg.yml') == 0
+        assert observed == [{'targets': ['t1']}]
+
+
+class TestExtractHandler:
+    """Unit test suite for :func:`extract_handler`."""
+
+    def test_calls_extract_for_non_file_sources(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that non-stdin sources invoke extract and emit results."""
+        emitted: list[tuple[object, bool, object | None, str]] = []
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'emit_or_write',
+            lambda data, output_path, pretty, success_message: emitted.append(
+                (data, pretty, output_path, success_message),
+            ),
+        )
+        observed: dict[str, object] = {}
+
+        def fake_extract(
+            source_type: str,
+            source: str,
+            *,
+            file_format: str | None,
+        ) -> dict[str, object]:
+            observed['params'] = (source_type, source, file_format)
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(handlers, 'extract', fake_extract)
 
         assert (
-            handlers.render_handler(
-                config=None,
-                spec=None,
-                table=None,
-                template='ddl',
-                template_path=None,
+            handlers.extract_handler(
+                source_type='api',
+                source='endpoint',
+                format_hint='json',
+                format_explicit=True,
                 output=None,
                 pretty=True,
-                quiet=False,
-            )
-            == 1
-        )
-        assert 'No table schemas found' in capsys.readouterr().err
-
-    def test_writes_sql_from_spec(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test rendering a standalone spec to a file."""
-
-        spec = {
-            'schema': 'dbo',
-            'table': 'Widget',
-            'columns': [
-                {'name': 'Id', 'type': 'int', 'nullable': False},
-                {'name': 'Name', 'type': 'nvarchar(50)', 'nullable': True},
-            ],
-            'primary_key': {'columns': ['Id']},
-        }
-
-        spec_path = tmp_path / 'spec.json'
-        spec_path.write_text(json.dumps(spec), encoding='utf-8')
-
-        output_path = tmp_path / 'out.sql'
-        assert (
-            handlers.render_handler(
-                config=None,
-                spec=str(spec_path),
-                table=None,
-                template='ddl',
-                template_path=None,
-                output=str(output_path),
-                pretty=True,
-                quiet=False,
             )
             == 0
         )
 
-        sql_text = output_path.read_text(encoding='utf-8')
-        assert 'CREATE TABLE [dbo].[Widget]' in sql_text
+        assert observed['params'] == ('api', 'endpoint', 'json')
+        assert emitted == [({'status': 'ok'}, True, None, ANY)]
 
-        captured = capsys.readouterr()
-        assert f'Rendered 1 schema(s) to {output_path}' in captured.out
+    def test_file_respects_explicit_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that explicit format hints are forwarded for file extractions.
+        """
+        captured: dict[str, object] = {}
 
+        def fake_extract(
+            source_type: str,
+            source: str,
+            *,
+            file_format: str | None,
+        ) -> dict[str, object]:
+            captured['params'] = (source_type, source, file_format)
+            return {'ok': True}
 
-class TestCliHandlersCommands:
-    """Unit test suite that exercise the public CLI handler functions."""
+        monkeypatch.setattr(handlers, 'extract', fake_extract)
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'emit_or_write',
+            lambda *_a, **_k: None,
+        )
 
-    def test_extract_handler_reads_stdin_and_emits_json(
+        assert (
+            handlers.extract_handler(
+                source_type='file',
+                source='table.dat',
+                format_hint='csv',
+                format_explicit=True,
+                output=None,
+                pretty=True,
+            )
+            == 0
+        )
+        assert captured['params'] == ('file', 'table.dat', 'csv')
+
+    def test_reads_stdin_and_emits_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -471,86 +543,7 @@ class TestCliHandlersCommands:
         )
         assert emitted == [({'payload': 'raw-text', 'fmt': None}, False)]
 
-    def test_extract_handler_calls_extract_for_non_file_sources(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that non-stdin sources invoke extract and emit results."""
-        emitted: list[tuple[object, bool, object | None, str]] = []
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            lambda data, output_path, pretty, success_message: emitted.append(
-                (data, pretty, output_path, success_message),
-            ),
-        )
-        observed: dict[str, object] = {}
-
-        def fake_extract(
-            source_type: str,
-            source: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            observed['params'] = (source_type, source, file_format)
-            return {'status': 'ok'}
-
-        monkeypatch.setattr(handlers, 'extract', fake_extract)
-
-        assert (
-            handlers.extract_handler(
-                source_type='api',
-                source='endpoint',
-                format_hint='json',
-                format_explicit=True,
-                output=None,
-                pretty=True,
-            )
-            == 0
-        )
-
-        assert observed['params'] == ('api', 'endpoint', 'json')
-        assert emitted == [({'status': 'ok'}, True, None, ANY)]
-
-    def test_extract_handler_file_respects_explicit_format(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that explicit format hints are forwarded for file extractions.
-        """
-        captured: dict[str, object] = {}
-
-        def fake_extract(
-            source_type: str,
-            source: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            captured['params'] = (source_type, source, file_format)
-            return {'ok': True}
-
-        monkeypatch.setattr(handlers, 'extract', fake_extract)
-        monkeypatch.setattr(
-            handlers.cli_io,
-            'emit_or_write',
-            lambda *_a, **_k: None,
-        )
-
-        assert (
-            handlers.extract_handler(
-                source_type='file',
-                source='table.dat',
-                format_hint='csv',
-                format_explicit=True,
-                output=None,
-                pretty=True,
-            )
-            == 0
-        )
-        assert captured['params'] == ('file', 'table.dat', 'csv')
-
-    def test_extract_handler_suppresses_emit_when_output_written(
+    def test_suppresses_emit_when_output_written(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -607,64 +600,11 @@ class TestCliHandlersCommands:
         assert recorded['pretty'] is True
         assert isinstance(recorded['success_message'], str)
 
-    def test_check_handler_prints_sections(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ``check`` prints requested sections."""
-        cfg = cast(PipelineConfig, DummyCfg())
-        monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
-            lambda path, substitute: cfg,
-        )
-        monkeypatch.setattr(
-            handlers,
-            '_check_sections',
-            lambda _cfg, **_kwargs: {'targets': ['t1']},
-        )
-        observed: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', observed.append)
 
-        assert handlers.check_handler(config='cfg.yml') == 0
-        assert observed == [{'targets': ['t1']}]
+class TestLoadHandler:
+    """Unit test suite for :func:`load_handler`."""
 
-    def test_check_handler_passes_substitute_flag(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that :func:`check_handler` forwards the substitute flag to config
-        loader.
-        """
-        cfg = cast(PipelineConfig, DummyCfg())
-        recorded: dict[str, object] = {}
-
-        def fake_load_pipeline_config(
-            path: str,
-            substitute: bool,
-        ) -> PipelineConfig:
-            recorded['params'] = (path, substitute)
-            return cfg
-
-        monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
-            fake_load_pipeline_config,
-        )
-        monkeypatch.setattr(
-            handlers,
-            '_check_sections',
-            lambda _cfg, **_kwargs: {'pipelines': ['p1']},
-        )
-        captured: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', captured.append)
-
-        assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
-        assert recorded['params'] == ('cfg.yml', True)
-        assert captured == [{'pipelines': ['p1']}]
-
-    def test_load_handler_file_target_streams_payload(
+    def test_file_target_streams_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -713,7 +653,7 @@ class TestCliHandlersCommands:
         assert recorded['call'] == ('data.csv', None, False)
         assert emitted == [(['rows', 'data.csv'], True)]
 
-    def test_load_handler_reads_stdin_and_invokes_load(
+    def test_reads_stdin_and_invokes_load(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -812,7 +752,7 @@ class TestCliHandlersCommands:
         assert isinstance(writes[0][2], str)
         assert emissions == [({'loaded': True}, False)]
 
-    def test_load_handler_writes_output_file_and_skips_emit(
+    def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -877,3 +817,81 @@ class TestCliHandlersCommands:
         assert writes[0][0] == {'status': 'queued'}
         assert writes[0][1] == 'result.json'
         assert isinstance(writes[0][2], str)
+
+
+class TestRenderHandler:
+    """Unit test suite for :func:`render_handler`."""
+
+    def test_errors_without_specs(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that missing configs/specs surfaces a helpful error."""
+
+        assert (
+            handlers.render_handler(
+                config=None,
+                spec=None,
+                table=None,
+                template='ddl',
+                template_path=None,
+                output=None,
+                pretty=True,
+                quiet=False,
+            )
+            == 1
+        )
+        assert 'No table schemas found' in capsys.readouterr().err
+
+    def test_writes_sql_from_spec(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test rendering a standalone spec to a file."""
+
+        spec = {
+            'schema': 'dbo',
+            'table': 'Widget',
+            'columns': [
+                {'name': 'Id', 'type': 'int', 'nullable': False},
+                {'name': 'Name', 'type': 'nvarchar(50)', 'nullable': True},
+            ],
+            'primary_key': {'columns': ['Id']},
+        }
+
+        spec_path = tmp_path / 'spec.json'
+        spec_path.write_text(json.dumps(spec), encoding='utf-8')
+
+        output_path = tmp_path / 'out.sql'
+        assert (
+            handlers.render_handler(
+                config=None,
+                spec=str(spec_path),
+                table=None,
+                template='ddl',
+                template_path=None,
+                output=str(output_path),
+                pretty=True,
+                quiet=False,
+            )
+            == 0
+        )
+
+        sql_text = output_path.read_text(encoding='utf-8')
+        assert 'CREATE TABLE [dbo].[Widget]' in sql_text
+
+        captured = capsys.readouterr()
+        assert f'Rendered 1 schema(s) to {output_path}' in captured.out
+
+
+class TestRunHandler:
+    """Unit test suite for :func:`run_handler`."""
+
+
+class TestTransformHandler:
+    """Unit test suite for :func:`transform_handler`."""
+
+
+class TestValidateHandler:
+    """Unit test suite for :func:`validate_handler`."""
