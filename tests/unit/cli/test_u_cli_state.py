@@ -99,10 +99,10 @@ class TestOptionalChoice:
             cli_state_module.optional_choice(invalid, {'json'}, label='format')
 
 
-class TestCliState:
-    """Unit test suite for private helper utilities."""
+class TestCliExtractState:
+    """Unit test suite of command-line state tests for ``extract``."""
 
-    def test_extract_explicit_format_maps_namespace(
+    def test_marks_explicit_format(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -130,7 +130,7 @@ class TestCliState:
         assert calls['format_hint'] == 'csv'
         assert calls['format_explicit'] is True
 
-    def test_extract_from_option_sets_source_type_and_state_flags(
+    def test_respects_root_flags(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -161,7 +161,11 @@ class TestCliState:
         assert calls['source'] == 'https://example.com/data.json'
         assert calls['pretty'] is False
 
-    def test_load_default_format_maps_namespace(
+
+class TestCliLoadState:
+    """Unit test suite of command-line state tests for ``load``."""
+
+    def test_defaults_json_format(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -190,7 +194,7 @@ class TestCliState:
         assert calls['target_format'] is None
         assert calls['format_explicit'] is False
 
-    def test_load_explicit_format_maps_namespace(
+    def test_marks_explicit_target_format(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -218,7 +222,7 @@ class TestCliState:
         assert calls['target_format'] == 'csv'
         assert calls['format_explicit'] is True
 
-    def test_load_to_option_defaults_source_to_stdin(
+    def test_defaults_source_to_stdin(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -246,13 +250,11 @@ class TestCliState:
         assert calls['source'] == '-'
         assert calls['target'] == 'postgres://db.example.org/app'
 
-    def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
-        """Test invoking with no args prints help and exits 0."""
-        result = invoke_cli()
-        assert result.exit_code == 0
-        assert 'ETLPlus' in result.stdout
 
-    def test_render_maps_namespace(
+class TestCliRenderState:
+    """Unit test suite of command-line state tests for ``render``."""
+
+    def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -284,7 +286,11 @@ class TestCliState:
         assert calls['template'] == 'ddl'
         assert calls['output'] == 'out.sql'
 
-    def test_run_maps_flags(
+
+class TestCliRunState:
+    """Unit test suite of command-line state tests for ``run``."""
+
+    def test_maps_flags(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -311,7 +317,11 @@ class TestCliState:
         assert calls['config'] == 'p.yml'
         assert calls['job'] == 'j1'
 
-    def test_transform_parses_operations_json(
+
+class TestCliTransformState:
+    """Unit test suite of command-line state tests for ``transform``."""
+
+    def test_parses_operations_json(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -340,7 +350,7 @@ class TestCliState:
         assert isinstance(calls['operations'], dict)
         assert calls['operations'].get('select') == ['id']
 
-    def test_transform_respects_source_format(
+    def test_respects_source_format(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -366,7 +376,11 @@ class TestCliState:
         assert result.exit_code == 0
         assert calls['source_format'] == 'csv'
 
-    def test_validate_parses_rules_json(
+
+class TestCliValidateState:
+    """Unit test suite of command-line state tests for ``validate``."""
+
+    def test_parses_rules_json(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -394,7 +408,7 @@ class TestCliState:
         assert isinstance(calls['rules'], dict)
         assert calls['rules'].get('required') == ['id']
 
-    def test_validate_respects_source_format(
+    def test_respects_source_format(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
@@ -419,6 +433,20 @@ class TestCliState:
 
         assert result.exit_code == 0
         assert calls['source_format'] == 'csv'
+
+
+class TestCliHelp:
+    """Unit test suite of command-line state tests for help text."""
+
+    def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
+        """Test that running with no arguments prints help text."""
+        result = invoke_cli()
+        assert result.exit_code == 0
+        assert 'ETLPlus' in result.stdout
+
+
+class TestCliVersionFlag:
+    """Unit test suite of command-line state tests for global flags."""
 
     def test_version_flag_exits_zero(self, invoke_cli: InvokeCli) -> None:
         """Test that command option ``--version`` exits successfully."""
