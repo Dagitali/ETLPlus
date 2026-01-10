@@ -894,7 +894,9 @@ class TestTransformHandler:
             return {'select': ['id']}
 
         monkeypatch.setattr(
-            handlers.cli_io, 'resolve_cli_payload', fake_resolve,
+            handlers.cli_io,
+            'resolve_cli_payload',
+            fake_resolve,
         )
         monkeypatch.setattr(
             handlers,
@@ -944,7 +946,10 @@ class TestTransformHandler:
         write_calls: dict[str, object] = {}
 
         def fake_write(
-            path: str, data: object, *, file_format: str | None,
+            path: str,
+            data: object,
+            *,
+            file_format: str | None,
         ) -> None:
             write_calls['params'] = (path, data, file_format)
 
@@ -1068,7 +1073,10 @@ class TestValidateHandler:
         write_calls: dict[str, object] = {}
 
         def fake_write(
-            data: object, path: str | None, *, success_message: str,
+            data: object,
+            path: str | None,
+            *,
+            success_message: str,
         ) -> bool:
             write_calls['params'] = (data, path, success_message)
             return True
