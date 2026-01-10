@@ -508,14 +508,14 @@ class TestExtractHandler:
         ]
         assert capture_io['emit_or_write'] == []
 
-    def test_suppresses_emit_when_output_written(
+    def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`extract_handler` skips stdout emission for file
-        output.
+        Test that :func:`extract_handler` writes to a file and skips stdout
+        emission.
         """
         observed: dict[str, object] = {}
 
@@ -690,7 +690,8 @@ class TestLoadHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`load_handler` writes to a file and skips stdout emit.
+        Test that :func:`load_handler` writes to a file and skips stdout
+        emission.
         """
         load_record: dict[str, object] = {}
 
