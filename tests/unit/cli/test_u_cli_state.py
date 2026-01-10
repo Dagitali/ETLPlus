@@ -28,77 +28,6 @@ InvokeCli = Callable[..., Result]
 # SECTION: TESTS ============================================================ #
 
 
-class TestInferResourceType:
-    """Unit test suite for :func:`infer_resource_type`."""
-
-    def test_file_path(self, tmp_path: Path) -> None:
-        """
-        Test that :func:`infer_resource_type` detects local files via
-        extension parsing.
-        """
-        path = tmp_path / 'payload.csv'
-        path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_module.infer_resource_type(str(path)) == 'file'
-
-    def test_invalid_raises(self) -> None:
-        """
-        Unknown resources raise ``ValueError`` to surface helpful guidance.
-        """
-        with pytest.raises(ValueError):
-            cli_state_module.infer_resource_type('unknown-resource')
-
-    @pytest.mark.parametrize(
-        ('raw', 'expected'),
-        (
-            ('-', 'file'),
-            ('https://example.com/data.json', 'api'),
-            ('postgres://user@host/db', 'database'),
-        ),
-    )
-    def test_variants(
-        self,
-        raw: str,
-        expected: str,
-    ) -> None:
-        """
-        Test that :func:`infer_resource_type` classifies common resource
-        inputs.
-        """
-        assert cli_state_module.infer_resource_type(raw) == expected
-
-
-class TestOptionalChoice:
-    """Unit test suite for :func:`optional_choice`."""
-
-    @pytest.mark.parametrize(
-        ('choice', 'expected'),
-        ((None, None), ('json', 'json')),
-    )
-    def test_passthrough_and_validation(
-        self,
-        choice: str | None,
-        expected: str | None,
-    ) -> None:
-        """
-        Test that :func:`optional_choice` preserves ``None`` and normalizes
-        valid values.
-        """
-        assert (
-            cli_state_module.optional_choice(
-                choice,
-                {'json', 'csv'},
-                label='format',
-            )
-            == expected
-        )
-
-    @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
-    def test_rejects_invalid(self, invalid: str) -> None:
-        """Test that invalid choices raise :class:`typer.BadParameter`."""
-        with pytest.raises(typer.BadParameter):
-            cli_state_module.optional_choice(invalid, {'json'}, label='format')
-
-
 class TestCliExtractState:
     """Unit test suite of command-line state tests for ``extract``."""
 
@@ -341,3 +270,74 @@ class TestCliVersionFlag:
         result = invoke_cli('--version')
         assert result.exit_code == 0
         assert etlplus.__version__ in result.stdout
+
+
+class TestInferResourceType:
+    """Unit test suite for :func:`infer_resource_type`."""
+
+    def test_file_path(self, tmp_path: Path) -> None:
+        """
+        Test that :func:`infer_resource_type` detects local files via
+        extension parsing.
+        """
+        path = tmp_path / 'payload.csv'
+        path.write_text('a,b\n1,2\n', encoding='utf-8')
+        assert cli_state_module.infer_resource_type(str(path)) == 'file'
+
+    def test_invalid_raises(self) -> None:
+        """
+        Unknown resources raise ``ValueError`` to surface helpful guidance.
+        """
+        with pytest.raises(ValueError):
+            cli_state_module.infer_resource_type('unknown-resource')
+
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        (
+            ('-', 'file'),
+            ('https://example.com/data.json', 'api'),
+            ('postgres://user@host/db', 'database'),
+        ),
+    )
+    def test_variants(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """
+        Test that :func:`infer_resource_type` classifies common resource
+        inputs.
+        """
+        assert cli_state_module.infer_resource_type(raw) == expected
+
+
+class TestOptionalChoice:
+    """Unit test suite for :func:`optional_choice`."""
+
+    @pytest.mark.parametrize(
+        ('choice', 'expected'),
+        ((None, None), ('json', 'json')),
+    )
+    def test_passthrough_and_validation(
+        self,
+        choice: str | None,
+        expected: str | None,
+    ) -> None:
+        """
+        Test that :func:`optional_choice` preserves ``None`` and normalizes
+        valid values.
+        """
+        assert (
+            cli_state_module.optional_choice(
+                choice,
+                {'json', 'csv'},
+                label='format',
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
+    def test_rejects_invalid(self, invalid: str) -> None:
+        """Test that invalid choices raise :class:`typer.BadParameter`."""
+        with pytest.raises(typer.BadParameter):
+            cli_state_module.optional_choice(invalid, {'json'}, label='format')
