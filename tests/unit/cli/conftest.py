@@ -76,6 +76,37 @@ def capture_handler_fixture(
     return _capture
 
 
+@pytest.fixture(name='capture_io')
+def capture_io_fixture(monkeypatch: pytest.MonkeyPatch):
+    """
+    Patch handler functions and capture CLI output.
+    Returns a dict with lists of call args for each function.
+    """
+    import etlplus.cli.io as _io
+
+    calls: dict[str, list] = {
+        'emit_or_write': [],
+        'emit_json': [],
+        'print_json': [],
+    }
+    monkeypatch.setattr(
+        _io,
+        'emit_or_write',
+        lambda *a, **k: calls['emit_or_write'].append((a, k)),
+    )
+    monkeypatch.setattr(
+        _io,
+        'emit_json',
+        lambda *a, **k: calls['emit_json'].append((a, k)),
+    )
+    monkeypatch.setattr(
+        _io,
+        'print_json',
+        lambda *a, **k: calls['print_json'].append((a, k)),
+    )
+    return calls
+
+
 @pytest.fixture(name='csv_text')
 def csv_text_fixture() -> str:
     """Return sample CSV text."""
