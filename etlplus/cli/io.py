@@ -29,42 +29,13 @@ __all__ = [
     'emit_or_write',
     'infer_payload_format',
     'materialize_file_payload',
+    'parse_json_payload',
     'parse_text_payload',
     'read_csv_rows',
     'read_stdin_text',
     'resolve_cli_payload',
     'write_json_output',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _parse_json_payload(text: str) -> JSONData:
-    """
-    Parse JSON text and surface a concise error when it fails.
-
-    Parameters
-    ----------
-    text : str
-        The JSON text to parse.
-
-    Returns
-    -------
-    JSONData
-        The parsed JSON data.
-
-    Raises
-    ------
-    ValueError
-        When the JSON text is invalid.
-    """
-    try:
-        return cast(JSONData, json.loads(text))
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            f'Invalid JSON payload: {e.msg} (pos {e.pos})',
-        ) from e
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -198,6 +169,33 @@ def materialize_file_payload(
     return File(path, fmt).read()
 
 
+def parse_json_payload(text: str) -> JSONData:
+    """
+    Parse JSON text and surface a concise error when it fails.
+
+    Parameters
+    ----------
+    text : str
+        The JSON text to parse.
+
+    Returns
+    -------
+    JSONData
+        The parsed JSON data.
+
+    Raises
+    ------
+    ValueError
+        When the JSON text is invalid.
+    """
+    try:
+        return cast(JSONData, json.loads(text))
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f'Invalid JSON payload: {e.msg} (pos {e.pos})',
+        ) from e
+
+
 def parse_text_payload(
     text: str,
     fmt: str | None,
@@ -219,7 +217,7 @@ def parse_text_payload(
     """
     effective = (fmt or '').strip().lower() or infer_payload_format(text)
     if effective == 'json':
-        return _parse_json_payload(text)
+        return parse_json_payload(text)
     if effective == 'csv':
         reader = csv.DictReader(_io.StringIO(text))
         return [dict(row) for row in reader]
