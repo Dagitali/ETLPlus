@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.cli.test_u_cli_app` module.
+:mod:`tests.unit.cli.test_u_cli_state` module.
 
-Unit tests for :mod:`etlplus.cli.app`.
+Unit tests for :mod:`etlplus.cli.state`.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ InvokeCli = Callable[..., Result]
 # SECTION: TESTS ============================================================ #
 
 
-class TestCliAppInternalHelpers:
+class TestCliState:
     """Unit tests for private helper utilities."""
 
     @pytest.mark.parametrize(
@@ -45,14 +45,14 @@ class TestCliAppInternalHelpers:
         expected: str,
     ) -> None:
         """
-        Test that :func:`_infer_resource_type` classifies common resource
+        Test that :func:`infer_resource_type` classifies common resource
         inputs.
         """
         assert cli_state_module.infer_resource_type(raw) == expected
 
     def test_infer_resource_type_file_path(self, tmp_path: Path) -> None:
         """
-        Test that :func:`_infer_resource_type` detects local files via
+        Test that :func:`infer_resource_type` detects local files via
         extension parsing.
         """
         path = tmp_path / 'payload.csv'
@@ -76,7 +76,7 @@ class TestCliAppInternalHelpers:
         expected: str | None,
     ) -> None:
         """
-        Test that :func:`_optional_choice` preserves ``None`` and normalizes
+        Test that :func:`optional_choice` preserves ``None`` and normalizes
         valid values.
         """
         assert (
