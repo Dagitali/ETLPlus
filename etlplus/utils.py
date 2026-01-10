@@ -6,7 +6,6 @@ Small shared helpers used across modules.
 
 from __future__ import annotations
 
-import argparse
 import json
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -22,7 +21,6 @@ from .types import StrAnyMap
 __all__ = [
     # Data utilities
     'count_records',
-    'json_type',
     'print_json',
     # Mapping utilities
     'cast_str_dict',
@@ -117,35 +115,6 @@ def count_records(
         Number of records in `data`.
     """
     return len(data) if isinstance(data, list) else 1
-
-
-def json_type(
-    option: str,
-) -> Any:
-    """
-    Argparse ``type=`` hook that parses a JSON string.
-
-    Parameters
-    ----------
-    option : str
-        Raw CLI string to parse as JSON.
-
-    Returns
-    -------
-    Any
-        Parsed JSON value.
-
-    Raises
-    ------
-    argparse.ArgumentTypeError
-        If the input cannot be parsed as JSON.
-    """
-    try:
-        return json.loads(option)
-    except json.JSONDecodeError as e:  # pragma: no cover - argparse path
-        raise argparse.ArgumentTypeError(
-            f'Invalid JSON: {e.msg} (pos {e.pos})',
-        ) from e
 
 
 def maybe_mapping(

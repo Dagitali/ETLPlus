@@ -160,15 +160,15 @@ def _pipeline_summary(
 
 
 def check_handler(
-    args: object | None = None,
     *,
-    config: str | None = None,
+    config: str,
     jobs: bool = False,
     pipelines: bool = False,
     sources: bool = False,
     summary: bool = False,
     targets: bool = False,
     transforms: bool = False,
+    substitute: bool = True,
     pretty: bool = True,
 ) -> int:
     """
@@ -176,12 +176,8 @@ def check_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    config : str | None, optional
-        Path to the pipeline YAML configuration. Required if ``args`` is
-        ``None``. Default is ``None``.
+    config : str
+        Path to the pipeline YAML configuration.
     jobs : bool, optional
         Whether to include job metadata. Default is ``False``.
     pipelines : bool, optional
@@ -194,6 +190,9 @@ def check_handler(
         Whether to include target metadata. Default is ``False``.
     transforms : bool, optional
         Whether to include transform metadata. Default is ``False``.
+    substitute : bool, optional
+        Whether to perform environment variable substitution. Default is
+        ``True``.
     pretty : bool, optional
         Whether to pretty-print output. Default is ``True``.
 
@@ -202,27 +201,8 @@ def check_handler(
     int
         Zero on success.
 
-    Raises
-    ------
-    ValueError
-        If ``config`` is not provided.
     """
-    if args is not None:
-        return check_handler(
-            config=getattr(args, 'config', None),
-            jobs=getattr(args, 'jobs', False),
-            pipelines=getattr(args, 'pipelines', False),
-            sources=getattr(args, 'sources', False),
-            summary=getattr(args, 'summary', False),
-            targets=getattr(args, 'targets', False),
-            transforms=getattr(args, 'transforms', False),
-            pretty=getattr(args, 'pretty', True),
-        )
-
-    if config is None:
-        raise ValueError('config is required')
-
-    cfg = load_pipeline_config(config, substitute=True)
+    cfg = load_pipeline_config(config, substitute=substitute)
     if summary:
         cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
@@ -242,10 +222,9 @@ def check_handler(
 
 
 def extract_handler(
-    args: object | None = None,
     *,
-    source_type: str | None = None,
-    source: str | None = None,
+    source_type: str,
+    source: str,
     format_hint: str | None = None,
     format_explicit: bool = False,
     target: str | None = None,
@@ -257,15 +236,10 @@ def extract_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    source_type : str | None, optional
-        The type of the source (e.g., 'file', 'api', 'database'). Required if
-        ``args`` is ``None``. Default is ``None``.
-    source : str | None, optional
-        The source identifier (e.g., path, URL, DSN). Required if ``args`` is
-        ``None``. Default is ``None``.
+    source_type : str
+        The type of the source (e.g., 'file', 'api', 'database').
+    source : str
+        The source identifier (e.g., path, URL, DSN).
     format_hint : str | None, optional
         An optional format hint (e.g., 'json', 'csv'). Default is ``None``.
     format_explicit : bool, optional
@@ -282,27 +256,7 @@ def extract_handler(
     int
         Zero on success.
 
-    Raises
-    ------
-    ValueError
-        If ``source_type`` or ``source`` is not provided.
     """
-    if args is not None:
-        return extract_handler(
-            source_type=getattr(args, 'source_type', None),
-            source=getattr(args, 'source', None),
-            format_hint=getattr(args, 'format', None)
-            or getattr(args, 'target_format', None)
-            or getattr(args, 'source_format', None),
-            format_explicit=getattr(args, '_format_explicit', False),
-            target=getattr(args, 'target', None),
-            output=getattr(args, 'output', None),
-            pretty=getattr(args, 'pretty', True),
-        )
-
-    if source_type is None or source is None:
-        raise ValueError('source_type and source are required')
-
     explicit_format = format_hint if format_explicit else None
 
     if source == '-':
@@ -333,11 +287,10 @@ def extract_handler(
 
 
 def load_handler(
-    args: object | None = None,
     *,
-    source: str | None = None,
-    target_type: str | None = None,
-    target: str | None = None,
+    source: str,
+    target_type: str,
+    target: str,
     source_format: str | None = None,
     target_format: str | None = None,
     format_explicit: bool = False,
@@ -349,18 +302,12 @@ def load_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    source : str | None, optional
-        The source payload (e.g., path, inline data). Required if ``args`` is
-        ``None``. Default is ``None``.
-    target_type : str | None, optional
-        The type of the target (e.g., 'file', 'database'). Required if ``args``
-        is ``None``. Default is ``None``.
-    target : str | None, optional
-        The target destination (e.g., path, DSN). Required if ``args`` is
-        ``None``. Default is ``None``.
+    source : str
+        The source payload (e.g., path, inline data).
+    target_type : str
+        The type of the target (e.g., 'file', 'database').
+    target : str
+        The target destination (e.g., path, DSN).
     source_format : str | None, optional
         An optional source format hint (e.g., 'json', 'csv'). Default is
         ``None``.
@@ -378,28 +325,7 @@ def load_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If ``source``, ``target_type``, or ``target`` is not provided.
     """
-    if args is not None:
-        return load_handler(
-            source=getattr(args, 'source', None),
-            target_type=getattr(args, 'target_type', None),
-            target=getattr(args, 'target', None),
-            source_format=getattr(args, 'source_format', None),
-            target_format=getattr(args, 'target_format', None)
-            or getattr(args, 'format', None),
-            format_explicit=getattr(args, '_format_explicit', False),
-            output=getattr(args, 'output', None),
-            pretty=getattr(args, 'pretty', True),
-        )
-
-    if source is None or target_type is None or target is None:
-        raise ValueError('source, target_type, and target are required')
-
     explicit_format = target_format if format_explicit else None
 
     # Allow piping into load.
@@ -442,7 +368,6 @@ def load_handler(
 
 
 def render_handler(
-    args: object | None = None,
     *,
     config: str | None = None,
     spec: str | None = None,
@@ -458,9 +383,6 @@ def render_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
     config : str | None, optional
         Path to a pipeline YAML configuration. Default is ``None``.
     spec : str | None, optional
@@ -483,18 +405,6 @@ def render_handler(
     int
         Zero on success.
     """
-    if args is not None:
-        return render_handler(
-            config=getattr(args, 'config', None),
-            spec=getattr(args, 'spec', None),
-            table=getattr(args, 'table', None),
-            template=getattr(args, 'template', None),
-            template_path=getattr(args, 'template_path', None),
-            output=getattr(args, 'output', None),
-            pretty=getattr(args, 'pretty', True),
-            quiet=getattr(args, 'quiet', False),
-        )
-
     template_value: TemplateKey = template or 'ddl'
     template_path_override = template_path
     table_filter = table
@@ -551,9 +461,8 @@ def render_handler(
 
 
 def run_handler(
-    args: object | None = None,
     *,
-    config: str | None = None,
+    config: str,
     job: str | None = None,
     pipeline: str | None = None,
     pretty: bool = True,
@@ -563,12 +472,8 @@ def run_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    config : str | None, optional
-        Path to the pipeline YAML configuration. Required if ``args`` is
-        ``None``. Default is ``None``.
+    config : str
+        Path to the pipeline YAML configuration.
     job : str | None, optional
         Name of the job to run. If not provided, runs the entire pipeline.
         Default is ``None``.
@@ -581,23 +486,7 @@ def run_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If ``config`` is not provided.
     """
-    if args is not None:
-        return run_handler(
-            config=getattr(args, 'config', None),
-            job=getattr(args, 'job', None),
-            pipeline=getattr(args, 'pipeline', None),
-            pretty=getattr(args, 'pretty', True),
-        )
-
-    if config is None:
-        raise ValueError('config is required')
-
     cfg = load_pipeline_config(config, substitute=True)
 
     job_name = job or pipeline
@@ -617,10 +506,9 @@ TransformOperations = Mapping[
 
 
 def transform_handler(
-    args: object | None = None,
     *,
-    source: str | None = None,
-    operations: JSONData | str | None = None,
+    source: str,
+    operations: JSONData | str,
     target: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
@@ -632,15 +520,10 @@ def transform_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    source : str | None, optional
-        The source payload (e.g., path, inline data). Required if ``args`` is
-        ``None``. Default is ``None``.
-    operations : JSONData | str | None, optional
-        The transformation operations (inline JSON or path). Required if
-        ``args`` is ``None``. Default is ``None``.
+    source : str
+        The source payload (e.g., path, inline data).
+    operations : JSONData | str
+        The transformation operations (inline JSON or path).
     target : str | None, optional
         The target destination (e.g., path). Default is ``None``.
     source_format : str | None, optional
@@ -662,22 +545,8 @@ def transform_handler(
     Raises
     ------
     ValueError
-        If ``source`` or ``operations`` is not provided.
+        If the operations payload is not a mapping.
     """
-    if args is not None:
-        return transform_handler(
-            source=getattr(args, 'source', None),
-            operations=getattr(args, 'operations', None),
-            target=getattr(args, 'target', None),
-            source_format=getattr(args, 'source_format', None),
-            target_format=getattr(args, 'target_format', None),
-            pretty=getattr(args, 'pretty', True),
-            format_explicit=getattr(args, '_format_explicit', False),
-        )
-
-    if source is None or operations is None:
-        raise ValueError('source and operations are required')
-
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
 
@@ -710,10 +579,9 @@ def transform_handler(
 
 
 def validate_handler(
-    args: object | None = None,
     *,
-    source: str | None = None,
-    rules: JSONData | str | None = None,
+    source: str,
+    rules: JSONData | str,
     source_format: str | None = None,
     target: str | None = None,
     format_explicit: bool = False,
@@ -724,15 +592,10 @@ def validate_handler(
 
     Parameters
     ----------
-    args : object | None, optional
-        Parsed command-line arguments. If provided, other parameters are
-        ignored. Default is ``None``.
-    source : str | None, optional
-        The source payload (e.g., path, inline data). Required if ``args`` is
-        ``None``. Default is ``None``.
-    rules : JSONData | str | None, optional
-        The validation rules (inline JSON or path). Required if ``args`` is
-        ``None``. Default is ``None``.
+    source : str
+        The source payload (e.g., path, inline data).
+    rules : JSONData | str
+        The validation rules (inline JSON or path).
     source_format : str | None, optional
         An optional source format hint (e.g., 'json', 'csv'). Default is
         ``None``.
@@ -751,21 +614,8 @@ def validate_handler(
     Raises
     ------
     ValueError
-        If ``source`` or ``rules`` is not provided.
+        If the rules payload is not a mapping.
     """
-    if args is not None:
-        return validate_handler(
-            source=getattr(args, 'source', None),
-            rules=getattr(args, 'rules', None),
-            source_format=getattr(args, 'source_format', None),
-            target=getattr(args, 'target', None),
-            format_explicit=getattr(args, '_format_explicit', False),
-            pretty=getattr(args, 'pretty', True),
-        )
-
-    if source is None or rules is None:
-        raise ValueError('source and rules are required')
-
     format_hint: str | None = source_format
     payload = cast(
         JSONData | str,

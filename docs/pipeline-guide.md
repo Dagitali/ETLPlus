@@ -7,6 +7,28 @@ ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative de
 runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
 `validate`, `transform`, and `load`.
 
+CLI note: ETLPlus uses Typer for command parsing and does not ship an argparse shim. Use the
+documented `etlplus` commands and flags (check `etlplus --help`) when wiring your runner.
+
+## Running a pipeline from YAML (CLI)
+
+Use the built-in `etlplus run` command to execute jobs defined in a pipeline YAML. The command reads
+your config, resolves vars and env placeholders, then runs the requested job:
+
+```bash
+# List jobs with the check command
+etlplus check --config examples/configs/pipeline.yml --jobs
+
+# Run a specific job
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+
+# Run another job from the same config
+etlplus run --config examples/configs/pipeline.yml --job api_to_file_github_repos
+```
+
+For scripted usage inside a larger Python project, prefer importing the Python API directly (e.g.,
+`extract`, `transform`, `validate`, `load`) instead of invoking the CLI subprocess.
+
 ## Top-level structure
 
 A pipeline file typically includes:

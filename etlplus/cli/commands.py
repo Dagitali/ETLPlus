@@ -29,17 +29,20 @@ Notes
 from __future__ import annotations
 
 from typing import Annotated
+from typing import Any
 from typing import Literal
+from typing import cast
 
 import typer
 
 from .. import __version__
-from ..utils import json_type
+from ..enums import FileFormat
 from . import handlers
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG
 from .constants import DATA_CONNECTORS
 from .constants import FILE_FORMATS
+from .io import parse_json_payload
 from .options import typer_format_option_kwargs
 from .state import CliState
 from .state import ensure_state
@@ -57,7 +60,6 @@ __all__ = ['app']
 
 
 # SECTION: TYPE ALIASES ==================================================== #
-
 
 OperationsOption = Annotated[
     str,
@@ -147,7 +149,7 @@ RulesOption = Annotated[
 ]
 
 SourceFormatOption = Annotated[
-    str | None,
+    FileFormat | None,
     typer.Option(
         '--source-format',
         **typer_format_option_kwargs(context='source'),
@@ -178,7 +180,7 @@ SourceOverrideOption = Annotated[
 ]
 
 StdinFormatOption = Annotated[
-    str | None,
+    FileFormat | None,
     typer.Option(
         '--source-format',
         **typer_format_option_kwargs(context='source'),
@@ -198,7 +200,7 @@ StreamingSourceArg = Annotated[
 ]
 
 TargetFormatOption = Annotated[
-    str | None,
+    FileFormat | None,
     typer.Option(
         '--target-format',
         **typer_format_option_kwargs(context='target'),
@@ -237,6 +239,41 @@ TargetPathOption = Annotated[
         help='Target file for transformed or validated output (- for stdout).',
     ),
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _parse_json_option(
+    value: str,
+    flag: str,
+) -> Any:
+    """
+    Parse JSON option values and surface a helpful CLI error.
+
+    Parameters
+    ----------
+    value : str
+        The JSON string to parse.
+    flag : str
+        The CLI flag name for error messages.
+
+    Returns
+    -------
+    Any
+        The parsed JSON value.
+
+    Raises
+    ------
+    typer.BadParameter
+        When the JSON is invalid.
+    """
+    try:
+        return parse_json_payload(value)
+    except ValueError as e:
+        raise typer.BadParameter(
+            f'Invalid JSON for {flag}: {e}',
+        ) from e
 
 
 # SECTION: TYPER APP ======================================================== #
@@ -427,10 +464,13 @@ def extract_cmd(
         DATA_CONNECTORS,
         label='source_type',
     )
-    source_format = optional_choice(
-        source_format,
-        FILE_FORMATS,
-        label='source_format',
+    source_format = cast(
+        SourceFormatOption,
+        optional_choice(
+            source_format,
+            FILE_FORMATS,
+            label='source_format',
+        ),
     )
 
     resolved_source = source
@@ -460,9 +500,9 @@ def extract_cmd(
 def load_cmd(
     ctx: typer.Context,
     target: TargetInputArg,
-    source_format: StdinFormatOption | None = None,
-    target_format: TargetFormatOption | None = None,
-    target_type: TargetOverrideOption | None = None,
+    source_format: StdinFormatOption = None,
+    target_format: TargetFormatOption = None,
+    target_type: TargetOverrideOption = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -475,13 +515,13 @@ def load_cmd(
         Load JSON data from stdin into TARGET. Use --to/--target-type to
         override connector inference when needed. Source data must be piped
         into stdin.
-    source_format : StdinFormatOption | None, optional
+    source_format : StdinFormatOption, optional
         Format of the source. Overrides filename-based inference when provided.
         Default is ``None``.
-    target_format : TargetFormatOption | None, optional
+    target_format : TargetFormatOption, optional
         Format of the target. Overrides filename-based inference when provided.
         Default is ``None``.
-    target_type : TargetOverrideOption | None, optional
+    target_type : TargetOverrideOption, optional
         Override the inferred target type (file, database, api). Default is
         ``None``.
 
@@ -492,20 +532,26 @@ def load_cmd(
     """
     state = ensure_state(ctx)
 
-    source_format = optional_choice(
-        source_format,
-        FILE_FORMATS,
-        label='source_format',
+    source_format = cast(
+        StdinFormatOption,
+        optional_choice(
+            source_format,
+            FILE_FORMATS,
+            label='source_format',
+        ),
     )
     target_type = optional_choice(
         target_type,
         DATA_CONNECTORS,
         label='target_type',
     )
-    target_format = optional_choice(
-        target_format,
-        FILE_FORMATS,
-        label='target_format',
+    target_format = cast(
+        TargetFormatOption,
+        optional_choice(
+            target_format,
+            FILE_FORMATS,
+            label='target_format',
+        ),
     )
 
     resolved_target = target
@@ -645,11 +691,11 @@ def transform_cmd(
     ctx: typer.Context,
     operations: OperationsOption = '{}',
     source: StreamingSourceArg = '-',
-    source_format: SourceFormatOption | None = None,
-    source_type: SourceOverrideOption | None = None,
-    target: TargetPathOption | None = None,
-    target_format: TargetFormatOption | None = None,
-    target_type: TargetOverrideOption | None = None,
+    source_format: SourceFormatOption = None,
+    source_type: SourceOverrideOption = None,
+    target: TargetPathOption = None,
+    target_format: TargetFormatOption = None,
+    target_type: TargetOverrideOption = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -662,18 +708,18 @@ def transform_cmd(
         Transformation operations as JSON string.
     source : StreamingSourceArg
         Data source to transform (path, JSON payload, or - for stdin).
-    source_format : SourceFormatOption | None, optional
+    source_format : SourceFormatOption, optional
         Format of the source. Overrides filename-based inference when provided.
         Default is ``None``.
-    source_type : SourceOverrideOption | None, optional
+    source_type : SourceOverrideOption, optional
         Override the inferred source type (file, database, api). Default is
         ``None``.
-    target : TargetPathOption | None, optional
+    target : TargetPathOption, optional
         Target file for transformed output (- for stdout). Default is ``None``.
-    target_format : TargetFormatOption | None, optional
+    target_format : TargetFormatOption, optional
         Format of the target. Overrides filename-based inference when provided.
         Default is ``None``.
-    target_type : TargetOverrideOption | None, optional
+    target_type : TargetOverrideOption, optional
         Override the inferred target type (file, database, api). Default is
         ``None``.
 
@@ -684,20 +730,26 @@ def transform_cmd(
     """
     state = ensure_state(ctx)
 
-    source_format = optional_choice(
-        source_format,
-        FILE_FORMATS,
-        label='source_format',
+    source_format = cast(
+        SourceFormatOption,
+        optional_choice(
+            source_format,
+            FILE_FORMATS,
+            label='source_format',
+        ),
     )
     source_type = optional_choice(
         source_type,
         DATA_CONNECTORS,
         label='source_type',
     )
-    target_format = optional_choice(
-        target_format,
-        FILE_FORMATS,
-        label='target_format',
+    target_format = cast(
+        TargetFormatOption,
+        optional_choice(
+            target_format,
+            FILE_FORMATS,
+            label='target_format',
+        ),
     )
     target_type = optional_choice(
         target_type,
@@ -739,7 +791,7 @@ def transform_cmd(
     return int(
         handlers.transform_handler(
             source=resolved_source_value,
-            operations=json_type(operations),
+            operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
             source_format=source_format,
             target_format=target_format,
@@ -754,9 +806,9 @@ def validate_cmd(
     ctx: typer.Context,
     rules: RulesOption = '{}',
     source: StreamingSourceArg = '-',
-    source_format: SourceFormatOption | None = None,
-    source_type: SourceOverrideOption | None = None,
-    target: TargetPathOption | None = None,
+    source_format: SourceFormatOption = None,
+    source_type: SourceOverrideOption = None,
+    target: TargetPathOption = None,
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -769,13 +821,13 @@ def validate_cmd(
         Validation rules as JSON string.
     source : StreamingSourceArg
         Data source to validate (path, JSON payload, or - for stdin).
-    source_format : SourceFormatOption | None, optional
+    source_format : SourceFormatOption, optional
         Format of the source. Overrides filename-based inference when provided.
         Default is ``None``.
-    source_type : SourceOverrideOption | None, optional
+    source_type : SourceOverrideOption, optional
         Override the inferred source type (file, database, api). Default is
         ``None``.
-    target : TargetPathOption | None, optional
+    target : TargetPathOption, optional
         Target file for validated output (- for stdout). Default is ``None``.
 
     Returns
@@ -783,10 +835,13 @@ def validate_cmd(
     int
         Exit code.
     """
-    source_format = optional_choice(
-        source_format,
-        FILE_FORMATS,
-        label='source_format',
+    source_format = cast(
+        SourceFormatOption,
+        optional_choice(
+            source_format,
+            FILE_FORMATS,
+            label='source_format',
+        ),
     )
     source_type = optional_choice(
         source_type,
@@ -806,7 +861,7 @@ def validate_cmd(
     return int(
         handlers.validate_handler(
             source=source,
-            rules=json_type(rules),  # convert CLI string to dict
+            rules=_parse_json_option(rules, '--rules'),
             source_format=source_format,
             target=target,
             format_explicit=source_format is not None,
