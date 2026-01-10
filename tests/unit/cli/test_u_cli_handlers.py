@@ -874,12 +874,12 @@ class TestRunHandler:
 class TestTransformHandler:
     """Unit test suite for :func:`transform_handler`."""
 
-    def test_emits_transformed_payload(
+    def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that :func:`transform_handler` emits JSON with no target."""
+        """Test that :func:`transform_handler` emits results with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
 
         def fake_resolve(
@@ -928,7 +928,7 @@ class TestTransformHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that :func:`transform_handler` writes data to file targets."""
+        """Test that :func:`transform_handler` writes data to a target file."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -976,7 +976,7 @@ class TestTransformHandler:
 class TestValidateHandler:
     """Unit test suite for :func:`validate_handler`."""
 
-    def test_emits_validation_result(
+    def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
@@ -1048,13 +1048,11 @@ class TestValidateHandler:
             in capsys.readouterr().err
         )
 
-    def test_writes_validation_output(
+    def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that :func:`validate_handler` writes output when data exists.
-        """
+        """Test that: func: `validate_handler` writes data to a target file."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
