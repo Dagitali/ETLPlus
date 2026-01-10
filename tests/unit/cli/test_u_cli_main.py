@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.cli.main`.
 from __future__ import annotations
 
 from collections.abc import Callable
-from importlib import import_module
 from typing import Final
 from unittest.mock import Mock
 
@@ -22,51 +21,7 @@ from etlplus.cli.main import main as cli_main
 
 pytestmark = pytest.mark.unit
 
-cli_main_module = import_module('etlplus.cli.main')
 PROG_NAME: Final[str] = 'etlplus'
-
-
-@pytest.fixture(name='stub_command')
-def stub_command_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[Callable[..., object]], None]:
-    """
-    Install a Typer command stub.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Built-in pytest fixture used to alter Typer bindings.
-
-    Returns
-    -------
-    Callable[[Callable[..., object]], None]
-        Callable that patches :func:`typer.main.get_command` so that calls are
-        delegated to ``action`` while preserving the Typer interface.
-    """
-
-    def _install(action: Callable[..., object]) -> None:
-        class _StubCommand:
-            def main(
-                self,
-                *,
-                args: list[str],
-                prog_name: str,
-                standalone_mode: bool,
-            ) -> object:
-                return action(
-                    args=args,
-                    prog_name=prog_name,
-                    standalone_mode=standalone_mode,
-                )
-
-        monkeypatch.setattr(
-            typer.main,
-            'get_command',
-            lambda _app: _StubCommand(),
-        )
-
-    return _install
 
 
 # SECTION: TESTS ============================================================ #
