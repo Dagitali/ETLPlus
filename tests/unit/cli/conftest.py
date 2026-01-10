@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import types
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -21,7 +22,9 @@ from typing import cast
 
 import pytest
 from typer.testing import CliRunner
+from typer.testing import Result
 
+from etlplus.cli.commands import app as cli_app
 from etlplus.config import PipelineConfig
 
 # SECTION: HELPERS ======================================================== #
@@ -63,6 +66,16 @@ def csv_text_fixture() -> str:
 def dummy_cfg_fixture() -> PipelineConfig:
     """Return a minimal dummy pipeline config."""
     return cast(PipelineConfig, DummyCfg())
+
+
+@pytest.fixture(name='invoke_cli')
+def invoke_cli_fixture(runner: CliRunner) -> Callable[..., Result]:
+    """Invoke the Typer CLI with convenience defaults."""
+
+    def _invoke(*args: str) -> Result:
+        return runner.invoke(cli_app, list(args))
+
+    return _invoke
 
 
 @pytest.fixture(name='runner')
