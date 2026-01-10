@@ -7,14 +7,9 @@ Unit tests for :mod:`etlplus.cli.handlers`.
 from __future__ import annotations
 
 import io
-import json
 import types
 from collections.abc import Mapping
-from dataclasses import dataclass
-from dataclasses import field
 from pathlib import Path
-from typing import Final
-from typing import cast
 from unittest.mock import ANY
 from unittest.mock import Mock
 
@@ -30,28 +25,6 @@ from etlplus.enums import FileFormat
 
 pytestmark = pytest.mark.unit
 
-CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
-
-
-@dataclass(frozen=True, slots=True)
-class DummyCfg:
-    """Minimal stand-in pipeline config for CLI helper tests."""
-
-    name: str = 'p1'
-    version: str = 'v1'
-    sources: list[object] = field(
-        default_factory=lambda: [types.SimpleNamespace(name='s1')],
-    )
-    targets: list[object] = field(
-        default_factory=lambda: [types.SimpleNamespace(name='t1')],
-    )
-    transforms: list[object] = field(
-        default_factory=lambda: [types.SimpleNamespace(name='tr1')],
-    )
-    jobs: list[object] = field(
-        default_factory=lambda: [types.SimpleNamespace(name='j1')],
-    )
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -59,14 +32,12 @@ class DummyCfg:
 class TestCliHandlersInternalHelpers:
     """Unit tests for internal CLI helpers in :mod:`etlplus.cli.handlers`."""
 
-    def test_check_sections_all(self) -> None:
+    def test_check_sections_all(self, dummy_cfg: PipelineConfig) -> None:
         """
         Test that :func:`_check_sections` includes all requested sections."""
         # pylint: disable=protected-access
-
-        cfg = cast(PipelineConfig, DummyCfg())
         result = handlers._check_sections(
-            cfg,
+            dummy_cfg,
             jobs=False,
             pipelines=True,
             sources=True,
@@ -75,16 +46,14 @@ class TestCliHandlersInternalHelpers:
         )
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
-    def test_check_sections_default(self) -> None:
+    def test_check_sections_default(self, dummy_cfg: PipelineConfig) -> None:
         """
         Test that :func:`_check_sections` defaults to jobs when no flags are
         set.
         """
         # pylint: disable=protected-access
-
-        cfg = cast(PipelineConfig, DummyCfg())
         result = handlers._check_sections(
-            cfg,
+            dummy_cfg,
             jobs=False,
             pipelines=False,
             sources=False,
@@ -126,10 +95,14 @@ class TestCliHandlersInternalHelpers:
             is payload
         )
 
-    def test_materialize_file_payload_infers_csv(self, tmp_path: Path) -> None:
+    def test_materialize_file_payload_infers_csv(
+        self,
+        tmp_path: Path,
+        csv_text: str,
+    ) -> None:
         """Test that CSV files are parsed when no explicit hint is provided."""
         file_path = tmp_path / 'file.csv'
-        file_path.write_text(CSV_TEXT)
+        file_path.write_text(csv_text)
 
         rows = _io.materialize_file_payload(
             str(file_path),
@@ -233,10 +206,11 @@ class TestCliHandlersInternalHelpers:
     def test_materialize_file_payload_respects_hint(
         self,
         tmp_path: Path,
+        csv_text: str,
     ) -> None:
         """Test that explicit format hints override filename inference."""
         file_path = tmp_path / 'data.txt'
-        file_path.write_text(CSV_TEXT)
+        file_path.write_text(csv_text)
 
         rows = _io.materialize_file_payload(
             str(file_path),
@@ -254,26 +228,25 @@ class TestCliHandlersInternalHelpers:
         )
         assert payload == [{'ok': True}]
 
-    def test_pipeline_summary(self) -> None:
+    def test_pipeline_summary(self, dummy_cfg: PipelineConfig) -> None:
         """
         Test that :func:`_pipeline_summary` returns a mapping for a pipeline
         config.
         """
         # pylint: disable=protected-access
 
-        cfg = cast(PipelineConfig, DummyCfg())
-        summary = handlers._pipeline_summary(cfg)
+        summary = handlers._pipeline_summary(dummy_cfg)
         result: Mapping[str, object] = summary
         assert result['name'] == 'p1'
         assert result['version'] == 'v1'
         assert set(result) >= {'sources', 'targets', 'jobs'}
 
-    def test_read_csv_rows(self, tmp_path: Path) -> None:
+    def test_read_csv_rows(self, tmp_path: Path, csv_text: str) -> None:
         """
         Test that :func:`_read_csv_rows` reads a CSV into row dictionaries.
         """
         file_path = tmp_path / 'data.csv'
-        file_path.write_text(CSV_TEXT)
+        file_path.write_text(csv_text)
         assert _io.read_csv_rows(file_path) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -333,11 +306,14 @@ class TestCliHandlersInternalHelpers:
         """
         assert _io.parse_text_payload(payload, fmt=fmt) == expected
 
-    def test_parse_text_payload_infers_csv_when_unspecified(self) -> None:
+    def test_parse_text_payload_infers_csv_when_unspecified(
+        self,
+        csv_text: str,
+    ) -> None:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        result = _io.parse_text_payload(CSV_TEXT, fmt=None)
+        result = _io.parse_text_payload(csv_text, fmt=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -360,12 +336,12 @@ class TestCheckHandler:
     def test_passes_substitute_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: PipelineConfig,
     ) -> None:
         """
         Test that :func:`check_handler` forwards the substitute flag to config
         loader.
         """
-        cfg = cast(PipelineConfig, DummyCfg())
         recorded: dict[str, object] = {}
 
         def fake_load_pipeline_config(
@@ -373,7 +349,7 @@ class TestCheckHandler:
             substitute: bool,
         ) -> PipelineConfig:
             recorded['params'] = (path, substitute)
-            return cfg
+            return dummy_cfg
 
         monkeypatch.setattr(
             handlers,
@@ -395,13 +371,13 @@ class TestCheckHandler:
     def test_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: PipelineConfig,
     ) -> None:
         """Test that ``check`` prints requested sections."""
-        cfg = cast(PipelineConfig, DummyCfg())
         monkeypatch.setattr(
             handlers,
             'load_pipeline_config',
-            lambda path, substitute: cfg,
+            lambda path, substitute: dummy_cfg,
         )
         monkeypatch.setattr(
             handlers,
@@ -845,25 +821,11 @@ class TestRenderHandler:
 
     def test_writes_sql_from_spec(
         self,
-        tmp_path: Path,
+        widget_spec_paths: tuple[Path, Path],
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test rendering a standalone spec to a file."""
-
-        spec = {
-            'schema': 'dbo',
-            'table': 'Widget',
-            'columns': [
-                {'name': 'Id', 'type': 'int', 'nullable': False},
-                {'name': 'Name', 'type': 'nvarchar(50)', 'nullable': True},
-            ],
-            'primary_key': {'columns': ['Id']},
-        }
-
-        spec_path = tmp_path / 'spec.json'
-        spec_path.write_text(json.dumps(spec), encoding='utf-8')
-
-        output_path = tmp_path / 'out.sql'
+        spec_path, output_path = widget_spec_paths
         assert (
             handlers.render_handler(
                 config=None,
