@@ -374,7 +374,7 @@ class TestCheckHandler:
         dummy_cfg: PipelineConfig,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that ``check`` prints requested sections."""
+        """Test that :func:`check_handler` prints requested sections."""
         monkeypatch.setattr(
             handlers,
             'load_pipeline_config',
@@ -399,7 +399,9 @@ class TestExtractHandler:
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that non-stdin sources invoke extract and emit results."""
+        """
+        Test that :func:`extract_handler` uses extract for non-stdin sources.
+        """
         observed: dict[str, object] = {}
 
         def fake_extract(
@@ -439,7 +441,7 @@ class TestExtractHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that explicit format hints are forwarded for file extractions.
+        Test that :func:`extract_handler` forwards explicit file format hints.
         """
         captured: dict[str, object] = {}
 
@@ -472,7 +474,9 @@ class TestExtractHandler:
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that stdin source bypasses extract and emits parsed data."""
+        """
+        Test that :func:`extract_handler` reads stdin and emits parsed data.
+        """
         monkeypatch.setattr(
             handlers.cli_io,
             'read_stdin_text',
@@ -510,7 +514,8 @@ class TestExtractHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that Extract skips stdout emission when output file is provided.
+        Test that :func:`extract_handler` skips stdout emission for file
+        output.
         """
         observed: dict[str, object] = {}
 
@@ -554,7 +559,7 @@ class TestLoadHandler:
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that file target streams payload."""
+        """Test that :func:`load_handler` streams payload for file targets."""
         recorded: dict[str, object] = {}
 
         def fake_materialize(
@@ -601,7 +606,7 @@ class TestLoadHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that stdin payloads are parsed and routed through :func:`load`.
+        Test that :func:`load_handler` parses stdin and routes through load.
         """
         read_calls = {'count': 0}
 
@@ -685,7 +690,7 @@ class TestLoadHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that writing to a file skips stdout emission after :func:`load`.
+        Test that :func:`load_handler` writes to a file and skips stdout emit.
         """
         load_record: dict[str, object] = {}
 
@@ -740,7 +745,7 @@ class TestRenderHandler:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that missing configs/specs surfaces a helpful error."""
+        """Test that :func:`render_handler` reports missing specs."""
 
         assert (
             handlers.render_handler(
@@ -762,7 +767,7 @@ class TestRenderHandler:
         widget_spec_paths: tuple[Path, Path],
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test rendering a standalone spec to a file."""
+        """Test that :func:`render_handler` writes SQL for standalone specs."""
         spec_path, output_path = widget_spec_paths
         assert (
             handlers.render_handler(
@@ -794,7 +799,7 @@ class TestRunHandler:
         dummy_cfg: PipelineConfig,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that handler returns a pipeline summary when no job set."""
+        """Test that :func:`run_handler` emits a summary when no job set."""
         monkeypatch.setattr(
             handlers,
             'load_pipeline_config',
@@ -832,7 +837,9 @@ class TestRunHandler:
         dummy_cfg: PipelineConfig,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that handler executes a named job and emits status."""
+        """
+        Test that :func:`run_handler` executes a named job and emits status.
+        """
         monkeypatch.setattr(
             handlers,
             'load_pipeline_config',
@@ -871,7 +878,7 @@ class TestTransformHandler:
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that transforms emit JSON when no target is specified."""
+        """Test that :func:`transform_handler` emits JSON with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
 
         def fake_resolve(
@@ -920,7 +927,7 @@ class TestTransformHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that transforms write data to file targets."""
+        """Test that :func:`transform_handler` writes data to file targets."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -973,7 +980,7 @@ class TestValidateHandler:
         monkeypatch: pytest.MonkeyPatch,
         capture_io: dict[str, list],
     ) -> None:
-        """Test that validation emits results when no target set."""
+        """Test that :func:`validate_handler` emits results with no target."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -1012,7 +1019,7 @@ class TestValidateHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that missing data for file output emits an error."""
+        """Test that :func:`validate_handler` reports missing output data."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -1044,7 +1051,9 @@ class TestValidateHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that validation writes output when data is present."""
+        """
+        Test that :func:`validate_handler` writes output when data exists.
+        """
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
