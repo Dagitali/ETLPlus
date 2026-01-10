@@ -206,7 +206,7 @@ def log_inferred_resource(
     resource_type : str | None
         The inferred resource type, or ``None`` if inference failed.
     """
-    if not state.verbose or resource_type is None:
+    if state.quiet or not state.verbose or resource_type is None:
         return
     print(
         f'Inferred {role}_type={resource_type} for {role}={value}',
