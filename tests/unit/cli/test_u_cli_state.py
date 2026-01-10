@@ -28,8 +28,24 @@ InvokeCli = Callable[..., Result]
 # SECTION: TESTS ============================================================ #
 
 
-class TestCliState:
-    """Unit tests for private helper utilities."""
+class TestInferResourceType:
+    """Unit test suite for :func:`infer_resource_type`."""
+
+    def test_file_path(self, tmp_path: Path) -> None:
+        """
+        Test that :func:`infer_resource_type` detects local files via
+        extension parsing.
+        """
+        path = tmp_path / 'payload.csv'
+        path.write_text('a,b\n1,2\n', encoding='utf-8')
+        assert cli_state_module.infer_resource_type(str(path)) == 'file'
+
+    def test_invalid_raises(self) -> None:
+        """
+        Unknown resources raise ``ValueError`` to surface helpful guidance.
+        """
+        with pytest.raises(ValueError):
+            cli_state_module.infer_resource_type('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
@@ -39,7 +55,7 @@ class TestCliState:
             ('postgres://user@host/db', 'database'),
         ),
     )
-    def test_infer_resource_type_variants(
+    def test_variants(
         self,
         raw: str,
         expected: str,
@@ -50,27 +66,15 @@ class TestCliState:
         """
         assert cli_state_module.infer_resource_type(raw) == expected
 
-    def test_infer_resource_type_file_path(self, tmp_path: Path) -> None:
-        """
-        Test that :func:`infer_resource_type` detects local files via
-        extension parsing.
-        """
-        path = tmp_path / 'payload.csv'
-        path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_module.infer_resource_type(str(path)) == 'file'
 
-    def test_infer_resource_type_invalid_raises(self) -> None:
-        """
-        Unknown resources raise ``ValueError`` to surface helpful guidance.
-        """
-        with pytest.raises(ValueError):
-            cli_state_module.infer_resource_type('unknown-resource')
+class TestOptionalChoice:
+    """Unit test suite for :func:`optional_choice`."""
 
     @pytest.mark.parametrize(
         ('choice', 'expected'),
         ((None, None), ('json', 'json')),
     )
-    def test_optional_choice_passthrough_and_validation(
+    def test_passthrough_and_validation(
         self,
         choice: str | None,
         expected: str | None,
@@ -89,10 +93,14 @@ class TestCliState:
         )
 
     @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
-    def test_optional_choice_rejects_invalid(self, invalid: str) -> None:
+    def test_rejects_invalid(self, invalid: str) -> None:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
             cli_state_module.optional_choice(invalid, {'json'}, label='format')
+
+
+class TestCliState:
+    """Unit test suite for private helper utilities."""
 
     def test_extract_explicit_format_maps_namespace(
         self,
