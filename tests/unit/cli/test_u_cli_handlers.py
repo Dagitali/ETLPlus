@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.cli.handlers`.
 
 from __future__ import annotations
 
-import argparse
 import io
 import json
 import types
@@ -366,19 +365,19 @@ class TestRenderHandler:
     ) -> None:
         """Test that missing configs/specs surfaces a helpful error."""
 
-        args = argparse.Namespace(
-            command='render',
-            config=None,
-            spec=None,
-            table=None,
-            template='ddl',
-            template_path=None,
-            output=None,
-            pretty=True,
-            quiet=False,
+        assert (
+            handlers.render_handler(
+                config=None,
+                spec=None,
+                table=None,
+                template='ddl',
+                template_path=None,
+                output=None,
+                pretty=True,
+                quiet=False,
+            )
+            == 1
         )
-
-        assert handlers.render_handler(args) == 1
         assert 'No table schemas found' in capsys.readouterr().err
 
     def test_writes_sql_from_spec(
@@ -402,19 +401,19 @@ class TestRenderHandler:
         spec_path.write_text(json.dumps(spec), encoding='utf-8')
 
         output_path = tmp_path / 'out.sql'
-        args = argparse.Namespace(
-            command='render',
-            config=None,
-            spec=str(spec_path),
-            table=None,
-            template='ddl',
-            template_path=None,
-            output=str(output_path),
-            pretty=True,
-            quiet=False,
+        assert (
+            handlers.render_handler(
+                config=None,
+                spec=str(spec_path),
+                table=None,
+                template='ddl',
+                template_path=None,
+                output=str(output_path),
+                pretty=True,
+                quiet=False,
+            )
+            == 0
         )
-
-        assert handlers.render_handler(args) == 0
 
         sql_text = output_path.read_text(encoding='utf-8')
         assert 'CREATE TABLE [dbo].[Widget]' in sql_text
@@ -431,15 +430,6 @@ class TestCliHandlersCommands:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that stdin source bypasses extract and emits parsed data."""
-        args = argparse.Namespace(
-            source='-',
-            source_type='api',
-            format=None,
-            output=None,
-            _format_explicit=False,
-            pretty=False,
-            quiet=False,
-        )
         monkeypatch.setattr(
             handlers.cli_io,
             'read_stdin_text',
@@ -468,7 +458,17 @@ class TestCliHandlersCommands:
             lambda data, pretty: emitted.append((data, pretty)),
         )
 
-        assert handlers.extract_handler(args) == 0
+        assert (
+            handlers.extract_handler(
+                source_type='api',
+                source='-',
+                format_hint=None,
+                format_explicit=False,
+                output=None,
+                pretty=False,
+            )
+            == 0
+        )
         assert emitted == [({'payload': 'raw-text', 'fmt': None}, False)]
 
     def test_extract_handler_calls_extract_for_non_file_sources(
@@ -476,15 +476,6 @@ class TestCliHandlersCommands:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that non-stdin sources invoke extract and emit results."""
-        args = argparse.Namespace(
-            source='endpoint',
-            source_type='api',
-            format='json',
-            output=None,
-            _format_explicit=True,
-            pretty=True,
-            quiet=False,
-        )
         emitted: list[tuple[object, bool, object | None, str]] = []
         monkeypatch.setattr(
             handlers.cli_io,
@@ -493,7 +484,6 @@ class TestCliHandlersCommands:
                 (data, pretty, output_path, success_message),
             ),
         )
-
         observed: dict[str, object] = {}
 
         def fake_extract(
@@ -507,7 +497,18 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'extract', fake_extract)
 
-        assert handlers.extract_handler(args) == 0
+        assert (
+            handlers.extract_handler(
+                source_type='api',
+                source='endpoint',
+                format_hint='json',
+                format_explicit=True,
+                output=None,
+                pretty=True,
+            )
+            == 0
+        )
+
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert emitted == [({'status': 'ok'}, True, None, ANY)]
 
@@ -518,15 +519,6 @@ class TestCliHandlersCommands:
         """
         Test that explicit format hints are forwarded for file extractions.
         """
-        args = argparse.Namespace(
-            source='table.dat',
-            source_type='file',
-            format='csv',
-            output=None,
-            _format_explicit=True,
-            pretty=True,
-            quiet=False,
-        )
         captured: dict[str, object] = {}
 
         def fake_extract(
@@ -545,7 +537,17 @@ class TestCliHandlersCommands:
             lambda *_a, **_k: None,
         )
 
-        assert handlers.extract_handler(args) == 0
+        assert (
+            handlers.extract_handler(
+                source_type='file',
+                source='table.dat',
+                format_hint='csv',
+                format_explicit=True,
+                output=None,
+                pretty=True,
+            )
+            == 0
+        )
         assert captured['params'] == ('file', 'table.dat', 'csv')
 
     def test_extract_handler_suppresses_emit_when_output_written(
@@ -555,16 +557,6 @@ class TestCliHandlersCommands:
         """
         Test that Extract skips stdout emission when output file is provided.
         """
-        args = argparse.Namespace(
-            source='endpoint',
-            source_type='api',
-            target_format='json',
-            target='export.json',
-            _format_explicit=True,
-            pretty=True,
-            quiet=False,
-        )
-
         observed: dict[str, object] = {}
 
         def fake_extract(
@@ -598,7 +590,17 @@ class TestCliHandlersCommands:
             fake_emit_or_write,
         )
 
-        assert handlers.extract_handler(args) == 0
+        assert (
+            handlers.extract_handler(
+                source_type='api',
+                source='endpoint',
+                target='export.json',
+                format_hint='json',
+                format_explicit=True,
+                pretty=True,
+            )
+            == 0
+        )
         assert observed['params'] == ('api', 'endpoint', 'json')
         assert recorded['data'] == {'status': 'ok'}
         assert recorded['output_path'] == 'export.json'
@@ -624,8 +626,7 @@ class TestCliHandlersCommands:
         observed: list[object] = []
         monkeypatch.setattr(_io, 'print_json', observed.append)
 
-        args = argparse.Namespace(config='cfg.yml')
-        assert handlers.check_handler(args) == 0
+        assert handlers.check_handler(config='cfg.yml') == 0
         assert observed == [{'targets': ['t1']}]
 
     def test_check_handler_passes_substitute_flag(
@@ -659,8 +660,7 @@ class TestCliHandlersCommands:
         captured: list[object] = []
         monkeypatch.setattr(_io, 'print_json', captured.append)
 
-        args = argparse.Namespace(config='cfg.yml', substitute=True)
-        assert handlers.check_handler(args) == 0
+        assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
         assert recorded['params'] == ('cfg.yml', True)
         assert captured == [{'pipelines': ['p1']}]
 
@@ -669,20 +669,6 @@ class TestCliHandlersCommands:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that file target streams payload."""
-        args = argparse.Namespace(
-            source='data.csv',
-            source_type='file',
-            target_type='file',
-            target='-',
-            source_format=None,
-            format=None,
-            output=None,
-            _format_explicit=False,
-            pretty=True,
-            quiet=False,
-            emitted=None,
-        )
-
         recorded: dict[str, object] = {}
 
         def fake_materialize(
@@ -699,10 +685,11 @@ class TestCliHandlersCommands:
             'materialize_file_payload',
             fake_materialize,
         )
+        emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
             handlers.cli_io,
             'emit_json',
-            lambda data, pretty: setattr(args, 'emitted', (data, pretty)),
+            lambda data, pretty: emitted.append((data, pretty)),
         )
 
         def fail_load(*_args: object, **_kwargs: object) -> None:
@@ -710,9 +697,21 @@ class TestCliHandlersCommands:
 
         monkeypatch.setattr(handlers, 'load', fail_load)
 
-        assert handlers.load_handler(args) == 0
+        assert (
+            handlers.load_handler(
+                source='data.csv',
+                target_type='file',
+                target='-',
+                source_format=None,
+                target_format=None,
+                format_explicit=False,
+                output=None,
+                pretty=True,
+            )
+            == 0
+        )
         assert recorded['call'] == ('data.csv', None, False)
-        assert args.emitted == (['rows', 'data.csv'], True)
+        assert emitted == [(['rows', 'data.csv'], True)]
 
     def test_load_handler_reads_stdin_and_invokes_load(
         self,
@@ -721,19 +720,6 @@ class TestCliHandlersCommands:
         """
         Test that stdin payloads are parsed and routed through :func:`load`.
         """
-        args = argparse.Namespace(
-            source='-',
-            source_type='stream',
-            target_type='api',
-            target='endpoint',
-            source_format=None,
-            format=None,
-            output=None,
-            _format_explicit=False,
-            pretty=False,
-            quiet=False,
-        )
-
         read_calls = {'count': 0}
 
         def fake_read_stdin() -> str:
@@ -800,7 +786,19 @@ class TestCliHandlersCommands:
             fake_emit_or_write,
         )
 
-        assert handlers.load_handler(args) == 0
+        assert (
+            handlers.load_handler(
+                source='-',
+                target_type='api',
+                target='endpoint',
+                source_format=None,
+                target_format=None,
+                format_explicit=False,
+                output=None,
+                pretty=False,
+            )
+            == 0
+        )
         assert read_calls['count'] == 1
         assert parse_calls['params'] == ('stdin-payload', None)
         assert load_record['params'] == (
@@ -821,19 +819,6 @@ class TestCliHandlersCommands:
         """
         Test that writing to a file skips stdout emission after :func:`load`.
         """
-        args = argparse.Namespace(
-            source='payload.json',
-            source_type='file',
-            target_type='db',
-            target='warehouse',
-            source_format='json',
-            format='json',
-            output='result.json',
-            _format_explicit=True,
-            pretty=True,
-            quiet=False,
-        )
-
         load_record: dict[str, object] = {}
 
         def fake_load(
@@ -870,7 +855,19 @@ class TestCliHandlersCommands:
             fake_emit_or_write,
         )
 
-        assert handlers.load_handler(args) == 0
+        assert (
+            handlers.load_handler(
+                source='payload.json',
+                target_type='db',
+                target='warehouse',
+                source_format='json',
+                target_format='json',
+                format_explicit=True,
+                output='result.json',
+                pretty=True,
+            )
+            == 0
+        )
         assert load_record['params'] == (
             'payload.json',
             'db',
