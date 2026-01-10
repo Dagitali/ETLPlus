@@ -294,7 +294,7 @@ def resolve_resource_type(
 
 
 def validate_choice(
-    value: str,
+    value: str | object,
     choices: Collection[str],
     *,
     label: str,
@@ -321,8 +321,13 @@ def validate_choice(
     typer.BadParameter
         If the input value is not in the set of valid choices.
     """
-    v = (value or '').strip()
-    if v in choices:
+    v = str(value or '').strip().lower()
+    normalized_choices = {c.lower() for c in choices}
+    if v in normalized_choices:
+        # Preserve original casing from choices when possible for messages
+        for choice in choices:
+            if choice.lower() == v:
+                return choice
         return v
     allowed = ', '.join(sorted(choices))
     raise typer.BadParameter(
