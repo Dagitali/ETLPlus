@@ -138,6 +138,11 @@ def materialize_file_payload(
     JSONData | object
         The materialized payload if a file was read, otherwise the original
         source.
+
+    Raises
+    ------
+    FileNotFoundError
+        When the specified file does not exist.
     """
     if isinstance(source, (dict, list)):
         return cast(JSONData, source)
