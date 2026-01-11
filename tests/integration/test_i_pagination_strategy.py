@@ -208,7 +208,7 @@ def _run_pipeline_and_collect(
     Parameters
     ----------
     capsys : pytest.CaptureFixture[str]
-        Pytest capture fixture for CLI stdout.
+        Pytest capture fixture for CLI STDOUT.
     out_path : Path
         File path where the pipeline writes JSON results.
     pipeline_cli_runner : Callable[..., str]
@@ -361,7 +361,7 @@ class TestPaginationStrategies:
         tmp_path : Path
             Temporary directory managed by pytest.
         capsys : pytest.CaptureFixture[str]
-            Capture fixture for CLI stdout/stderr.
+            Capture fixture for CLI STDOUT/stderr.
         pipeline_cli_runner : Callable[..., str]
             Helper that materializes and executes the pipeline configuration.
         """
