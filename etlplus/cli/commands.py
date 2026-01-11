@@ -148,6 +148,20 @@ RulesOption = Annotated[
     ),
 ]
 
+SourceArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='SOURCE',
+        help=(
+            'Extract data from SOURCE (JSON payload, file/folder path, '
+            'URI/URL, or - for stdin). Use --source-format to override the '
+            'inferred data format and --source-type to override the inferred '
+            'data connector.'
+        ),
+    ),
+]
+
 SourceFormatOption = Annotated[
     FileFormat | None,
     typer.Option(
@@ -156,45 +170,28 @@ SourceFormatOption = Annotated[
     ),
 ]
 
-SourceInputArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='SOURCE',
-        help=(
-            'Extract from SOURCE. Use --from/--source-type to override the '
-            'inferred connector when needed.'
-        ),
-    ),
-]
-
-SourceOverrideOption = Annotated[
+SourceTypeOption = Annotated[
     str | None,
     typer.Option(
         '--source-type',
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred source type (file, database, api).',
+        help=(
+            'Override the inferred source type (api, database, file, folder).'
+        ),
     ),
 ]
 
-StdinFormatOption = Annotated[
-    FileFormat | None,
-    typer.Option(
-        '--source-format',
-        **typer_format_option_kwargs(context='source'),
-    ),
-]
-
-StreamingSourceArg = Annotated[
+TargetArg = Annotated[
     str,
     typer.Argument(
         ...,
-        metavar='SOURCE',
+        metavar='TARGET',
         help=(
-            'Data source to transform or validate (path, JSON payload, or '
-            '- for stdin).'
+            'Load data into TARGET (file/folder path, URI/URL, or - for '
+            'stdout). Use --target-format to override the inferred data '
+            'format and --target-type to override the inferred data connector.'
         ),
     ),
 ]
@@ -207,36 +204,16 @@ TargetFormatOption = Annotated[
     ),
 ]
 
-TargetInputArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='TARGET',
-        help=(
-            'Load JSON data from stdin into TARGET. Use --to/--target-type '
-            'to override connector inference when needed. Source data must '
-            'be piped into stdin.'
-        ),
-    ),
-]
-
-TargetOverrideOption = Annotated[
+TargetTypeOption = Annotated[
     str | None,
     typer.Option(
         '--target-type',
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred target type (file, database, api).',
-    ),
-]
-
-TargetPathOption = Annotated[
-    str | None,
-    typer.Option(
-        '--target',
-        metavar='PATH',
-        help='Target file for transformed or validated output (- for stdout).',
+        help=(
+            'Override the inferred target type (api, database, file, folder).'
+        ),
     ),
 ]
 
@@ -431,9 +408,9 @@ def check_cmd(
 @app.command('extract')
 def extract_cmd(
     ctx: typer.Context,
-    source: SourceInputArg,
-    source_format: SourceFormatOption | None = None,
-    source_type: SourceOverrideOption | None = None,
+    source: SourceArg = '-',
+    source_format: SourceFormatOption = None,
+    source_type: SourceTypeOption = None,
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -442,15 +419,16 @@ def extract_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    source : SourceInputArg
-        Extract from SOURCE. Use --from/--source-type to override the inferred
-        connector when needed.
-    source_format : SourceFormatOption | None, optional
-        Format of the source. Overrides filename-based inference when provided.
+    source : SourceArg, optional
+        Source (JSON payload, file/folder path, URL/URI, or - for stdin) from
+        which to extract data. Default is ``-``.
+    source_format : SourceFormatOption, optional
+        Source data format. Overrides the inferred format (``csv``, ``json``,
+        ``parquet``, ``xml``) based on filename extension or STDIN content.
         Default is ``None``.
-    source_type : SourceOverrideOption | None, optional
-        Override the inferred source type (file, database, api). Default is
-        ``None``.
+    source_type : SourceTypeOption, optional
+        Data source type. Overrides the inferred type (``api``, ``database``,
+        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
 
     Returns
     -------
@@ -473,22 +451,19 @@ def extract_cmd(
         ),
     )
 
-    resolved_source = source
-    resolved_source_type = source_type or infer_resource_type_or_exit(
-        resolved_source,
-    )
+    resolved_source_type = source_type or infer_resource_type_or_exit(source)
 
     log_inferred_resource(
         state,
         role='source',
-        value=resolved_source,
+        value=source,
         resource_type=resolved_source_type,
     )
 
     return int(
         handlers.extract_handler(
             source_type=resolved_source_type,
-            source=resolved_source,
+            source=source,
             format_hint=source_format,
             format_explicit=source_format is not None,
             pretty=state.pretty,
@@ -499,10 +474,10 @@ def extract_cmd(
 @app.command('load')
 def load_cmd(
     ctx: typer.Context,
-    target: TargetInputArg,
-    source_format: StdinFormatOption = None,
+    source_format: SourceFormatOption = None,
+    target: TargetArg = '-',
     target_format: TargetFormatOption = None,
-    target_type: TargetOverrideOption = None,
+    target_type: TargetTypeOption = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -511,19 +486,19 @@ def load_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    target : TargetInputArg
-        Load JSON data from stdin into TARGET. Use --to/--target-type to
-        override connector inference when needed. Source data must be piped
-        into stdin.
-    source_format : StdinFormatOption, optional
-        Format of the source. Overrides filename-based inference when provided.
-        Default is ``None``.
+    source_format : SourceFormatOption, optional
+        Source data format. Overrides the inferred format (``csv``, ``json``,
+        ``parquet``, ``xml``) based on STDIN content. Default is ``None``.
+    target : TargetArg, optional
+        Target (file/folder path, URL/URI, or - for stdout) into which to load
+        data. Default is ``-``.
     target_format : TargetFormatOption, optional
-        Format of the target. Overrides filename-based inference when provided.
-        Default is ``None``.
-    target_type : TargetOverrideOption, optional
-        Override the inferred target type (file, database, api). Default is
+        Format of the target data. Overrides the inferred format (``csv``,
+        ``json``, ``parquet``, ``xml``) based on filename extension. Default is
         ``None``.
+    target_type : TargetTypeOption, optional
+        Data target type. Overrides the inferred type (``api``, ``database``,
+        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
 
     Returns
     -------
@@ -533,7 +508,7 @@ def load_cmd(
     state = ensure_state(ctx)
 
     source_format = cast(
-        StdinFormatOption,
+        SourceFormatOption,
         optional_choice(
             source_format,
             FILE_FORMATS,
@@ -690,12 +665,12 @@ def run_cmd(
 def transform_cmd(
     ctx: typer.Context,
     operations: OperationsOption = '{}',
-    source: StreamingSourceArg = '-',
+    source: SourceArg = '-',
     source_format: SourceFormatOption = None,
-    source_type: SourceOverrideOption = None,
-    target: TargetPathOption = None,
+    source_type: SourceTypeOption = None,
+    target: TargetArg = '-',
     target_format: TargetFormatOption = None,
-    target_type: TargetOverrideOption = None,
+    target_type: TargetTypeOption = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -704,24 +679,28 @@ def transform_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    operations : OperationsOption
-        Transformation operations as JSON string.
-    source : StreamingSourceArg
-        Data source to transform (path, JSON payload, or - for stdin).
+    operations : OperationsOption, optional
+        Transformation operations as JSON string. Default is ``{}``.
+    source : SourceArg, optional
+        Source (JSON payload, file/folder path, URL/URI, or - for stdin) from
+        which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
-        Format of the source. Overrides filename-based inference when provided.
+        Source data format. Overrides the inferred format (``csv``, ``json``,
+        ``parquet``, ``xml``) based on filename extension or STDIN content.
         Default is ``None``.
-    source_type : SourceOverrideOption, optional
-        Override the inferred source type (file, database, api). Default is
-        ``None``.
-    target : TargetPathOption, optional
-        Target file for transformed output (- for stdout). Default is ``None``.
+    source_type : SourceTypeOption, optional
+        Data source type. Overrides the inferred type (``api``, ``database``,
+        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    target : TargetArg, optional
+        Target (file/folder path, URL/URI, or - for stdout) into which to load
+        data. Default is ``-``.
     target_format : TargetFormatOption, optional
-        Format of the target. Overrides filename-based inference when provided.
-        Default is ``None``.
-    target_type : TargetOverrideOption, optional
-        Override the inferred target type (file, database, api). Default is
+        Format of the target data. Overrides the inferred format (``csv``,
+        ``json``, ``parquet``, ``xml``) based on filename extension. Default is
         ``None``.
+    target_type : TargetTypeOption, optional
+        Data target type. Overrides the inferred type (``api``, ``database``,
+        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
 
     Returns
     -------
@@ -805,10 +784,10 @@ def transform_cmd(
 def validate_cmd(
     ctx: typer.Context,
     rules: RulesOption = '{}',
-    source: StreamingSourceArg = '-',
+    source: SourceArg = '-',
     source_format: SourceFormatOption = None,
-    source_type: SourceOverrideOption = None,
-    target: TargetPathOption = None,
+    source_type: SourceTypeOption = None,
+    target: TargetArg = '-',
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -819,15 +798,15 @@ def validate_cmd(
         The Typer context.
     rules : RulesOption
         Validation rules as JSON string.
-    source : StreamingSourceArg
+    source : SourceArg
         Data source to validate (path, JSON payload, or - for stdin).
     source_format : SourceFormatOption, optional
         Format of the source. Overrides filename-based inference when provided.
         Default is ``None``.
-    source_type : SourceOverrideOption, optional
+    source_type : SourceTypeOption, optional
         Override the inferred source type (file, database, api). Default is
         ``None``.
-    target : TargetPathOption, optional
+    target : TargetArg, optional
         Target file for validated output (- for stdout). Default is ``None``.
 
     Returns
