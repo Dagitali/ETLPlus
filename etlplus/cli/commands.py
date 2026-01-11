@@ -69,12 +69,13 @@ OperationsOption = Annotated[
     ),
 ]
 
-OutputArg = Annotated[
-    str,
-    typer.Argument(
-        ...,
-        metavar='OUTPUT',
-        help='Load content into OUTPUT (file/folder path or - for STDOUT).',
+OutputOption = Annotated[
+    str | None,
+    typer.Option(
+        '--output',
+        '-o',
+        metavar='PATH',
+        help='Write output to file PATH (default: STDOUT).',
     ),
 ]
 
@@ -581,7 +582,7 @@ def render_cmd(
     table: RenderTableOption = None,
     template: RenderTemplateOption = 'ddl',
     template_path: RenderTemplatePathOption = None,
-    output: RenderOutputOption = None,
+    output: OutputOption = None,
 ) -> int:
     """
     Render SQL DDL from table schemas defined in YAML/JSON configs.
@@ -600,8 +601,8 @@ def render_cmd(
         Template key (ddl/view) or path to a Jinja template file.
     template_path : RenderTemplatePathOption, optional
         Explicit path to a Jinja template file (overrides template key).
-    output : RenderOutputOption, optional
-        Write rendered SQL to PATH (default: STDOUT).
+    output : OutputOption, optional
+        Path of file to which to write rendered SQL (default: STDOUT).
 
     Returns
     -------
@@ -796,7 +797,7 @@ def validate_cmd(
     source: SourceArg = '-',
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
-    target: TargetArg = '-',
+    output: OutputOption = '-',
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -815,8 +816,8 @@ def validate_cmd(
     source_type : SourceTypeOption, optional
         Override the inferred source type (file, database, api). Default is
         ``None``.
-    target : TargetArg, optional
-        Target file for validated output (- for STDOUT). Default is ``None``.
+    output : OutputOption, optional
+        Output file for validated output (- for STDOUT). Default is ``None``.
 
     Returns
     -------
@@ -851,7 +852,7 @@ def validate_cmd(
             source=source,
             rules=_parse_json_option(rules, '--rules'),
             source_format=source_format,
-            target=target,
+            target=output,
             format_explicit=source_format is not None,
             pretty=state.pretty,
         ),
