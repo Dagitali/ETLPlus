@@ -19,6 +19,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
+      - [Argument Order and Required Options](#argument-order-and-required-options)
       - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
@@ -139,6 +140,27 @@ etlplus --version
 
 The CLI is implemented with Typer (Click-based). There is no argparse compatibility layer, so rely
 on the documented commands/flags and run `etlplus <command> --help` for current options.
+
+**Example error messages:**
+
+- If you omit a required argument: `Error: Missing required argument 'SOURCE'.`
+- If you place an option before its argument: `Error: Option '--source-format' must follow the 'SOURCE' argument.`
+
+#### Argument Order and Required Options
+
+For each command, positional arguments must precede options. Required options must follow their
+associated argument:
+
+- **extract**: `etlplus extract SOURCE [--source-format ...] [--source-type ...]`
+  - `SOURCE` is required. `--source-format` and `--source-type` must follow `SOURCE`.
+- **transform**: `etlplus transform [--operations ...] SOURCE [--source-format ...] [--source-type ...] TARGET [--target-format ...] [--target-type ...]`
+  - `SOURCE` and `TARGET` are required. Format/type options must follow their respective argument.
+- **load**: `etlplus load TARGET [--target-format ...] [--target-type ...] [--source-format ...]`
+  - `TARGET` is required. `--target-format` and `--target-type` must follow `TARGET`.
+- **validate**: `etlplus validate SOURCE [--rules ...] [--source-format ...] [--source-type ...]`
+  - `SOURCE` is required. `--rules` and format/type options must follow `SOURCE`.
+
+If required arguments or options are missing, or if options are placed before their associated argument, the CLI will display a clear error message.
 
 #### Check Pipelines
 
