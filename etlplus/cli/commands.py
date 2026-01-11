@@ -4,7 +4,7 @@
 Typer application and subcommands for the ``etlplus`` command-line interface
 (CLI). Typer (Click) is used for CLI parsing, help text, and subcommand
 dispatch. The Typer layer focuses on ergonomics (git-style subcommands,
-optional inference of resource types, stdin/stdout piping, and quality-of-life
+optional inference of resource types, STDIN/STDOUT piping, and quality-of-life
 flags), while delegating business logic to the existing :func:`*_handler`
 handlers.
 
@@ -19,7 +19,7 @@ Subcommands
 
 Notes
 -----
-- Use ``-`` to read from stdin or to write to stdout.
+- Use ``-`` to read from STDIN or to write to STDOUT.
 - Commands ``extract`` and ``transform`` support the command-line option
     ``--source-type`` to override inferred resource types.
 - Commands ``transform`` and ``load`` support the command-line option
@@ -69,6 +69,15 @@ OperationsOption = Annotated[
     ),
 ]
 
+OutputArg = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        metavar='OUTPUT',
+        help='Load content into OUTPUT (file/folder path or - for STDOUT).',
+    ),
+]
+
 PipelineConfigOption = Annotated[
     str,
     typer.Option(
@@ -95,7 +104,7 @@ RenderOutputOption = Annotated[
         '--output',
         '-o',
         metavar='PATH',
-        help='Write rendered SQL to PATH (default: stdout).',
+        help='Write rendered SQL to PATH (default: STDOUT).',
     ),
 ]
 
@@ -155,7 +164,7 @@ SourceArg = Annotated[
         metavar='SOURCE',
         help=(
             'Extract data from SOURCE (JSON payload, file/folder path, '
-            'URI/URL, or - for stdin). Use --source-format to override the '
+            'URI/URL, or - for STDIN). Use --source-format to override the '
             'inferred data format and --source-type to override the inferred '
             'data connector.'
         ),
@@ -190,7 +199,7 @@ TargetArg = Annotated[
         metavar='TARGET',
         help=(
             'Load data into TARGET (file/folder path, URI/URL, or - for '
-            'stdout). Use --target-format to override the inferred data '
+            'STDOUT). Use --target-format to override the inferred data '
             'format and --target-type to override the inferred data connector.'
         ),
     ),
@@ -291,7 +300,7 @@ def _root(
         False,
         '--verbose',
         '-v',
-        help='Emit extra diagnostics to stderr.',
+        help='Emit extra diagnostics to STDERR.',
     ),
 ) -> None:
     """
@@ -309,7 +318,7 @@ def _root(
         Whether to suppress warnings and non-essential output. Default is
         ``False``.
     verbose : bool, optional
-        Whether to emit extra diagnostics to stderr. Default is ``False``.
+        Whether to emit extra diagnostics to STDERR. Default is ``False``.
 
     Raises
     ------
@@ -420,8 +429,8 @@ def extract_cmd(
     ctx : typer.Context
         The Typer context.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for stdin) from
-        which to extract data. Default is ``-``.
+        Source (JSON payload, file/folder path, URL/URI, or - for STDIN)
+        from which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Source data format. Overrides the inferred format (``csv``, ``json``,
         ``parquet``, ``xml``) based on filename extension or STDIN content.
@@ -490,7 +499,7 @@ def load_cmd(
         Source data format. Overrides the inferred format (``csv``, ``json``,
         ``parquet``, ``xml``) based on STDIN content. Default is ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for stdout) into which to load
+        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Format of the target data. Overrides the inferred format (``csv``,
@@ -592,7 +601,7 @@ def render_cmd(
     template_path : RenderTemplatePathOption, optional
         Explicit path to a Jinja template file (overrides template key).
     output : RenderOutputOption, optional
-        Write rendered SQL to PATH (default: stdout).
+        Write rendered SQL to PATH (default: STDOUT).
 
     Returns
     -------
@@ -682,7 +691,7 @@ def transform_cmd(
     operations : OperationsOption, optional
         Transformation operations as JSON string. Default is ``{}``.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for stdin) from
+        Source (JSON payload, file/folder path, URL/URI, or - for STDIN) from
         which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Source data format. Overrides the inferred format (``csv``, ``json``,
@@ -692,7 +701,7 @@ def transform_cmd(
         Data source type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for stdout) into which to load
+        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Format of the target data. Overrides the inferred format (``csv``,
@@ -799,7 +808,7 @@ def validate_cmd(
     rules : RulesOption
         Validation rules as JSON string.
     source : SourceArg
-        Data source to validate (path, JSON payload, or - for stdin).
+        Data source to validate (path, JSON payload, or - for STDIN).
     source_format : SourceFormatOption, optional
         Format of the source. Overrides filename-based inference when provided.
         Default is ``None``.
@@ -807,7 +816,7 @@ def validate_cmd(
         Override the inferred source type (file, database, api). Default is
         ``None``.
     target : TargetArg, optional
-        Target file for validated output (- for stdout). Default is ``None``.
+        Target file for validated output (- for STDOUT). Default is ``None``.
 
     Returns
     -------
