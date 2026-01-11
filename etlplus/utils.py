@@ -150,7 +150,7 @@ def print_json(
     Returns
     -------
     None
-        This helper writes directly to ``STDOUT``.
+        This helper writes directly to STDOUT.
     """
     print(json.dumps(obj, indent=2, ensure_ascii=False))
 
