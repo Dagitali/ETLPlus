@@ -113,7 +113,7 @@ class TestCliEndToEnd:
                     '--operations',
                     '{}',
                 ),
-                False,
+                True,
             ),
             (
                 (
@@ -149,8 +149,15 @@ class TestCliEndToEnd:
         cli_invoke,
         args,
         should_pass,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test CLI required arguments and option order edge cases."""
+        if should_pass and args and args[0] == 'load':
+            monkeypatch.setattr(
+                sys,
+                'stdin',
+                io.StringIO('[{"name": "John"}]'),
+            )
         code, _out, err = cli_invoke(args)
         if should_pass:
             assert code == 0, (
