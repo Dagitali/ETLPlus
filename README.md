@@ -106,8 +106,8 @@ etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
 etlplus extract file examples/data/sample.csv \
-  | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o temp/sample_output.json
+  | etlplus transform - temp/sample_output.json \
+  --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}'
 ```
 
 [Python API](#python-api):
@@ -206,7 +206,7 @@ etlplus extract api https://api.example.com/data
 
 Save extracted data to file:
 ```bash
-etlplus extract file examples/data/sample.csv -o temp/sample_output.json
+etlplus extract file examples/data/sample.csv > temp/sample_output.json
 ```
 
 #### Validate Data
@@ -226,15 +226,15 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
 `-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
 control the emitted format for stdout or other non-file outputs, just like `etlplus load`. File
-paths continue to infer formats from their extensions. Use `--from` to override the inferred source
-connector type and `--to` to override the inferred target connector type, matching the `etlplus
-extract`/`etlplus load` behavior.
+paths continue to infer formats from their extensions. Use `--source-type` to override the inferred
+source connector type and `--target-type` to override the inferred target connector type, matching
+the `etlplus extract`/`etlplus load` behavior.
 
 Transform file inputs while overriding connector types:
 ```bash
-etlplus transform --from file examples/data/sample.json \
+etlplus transform --source-type file examples/data/sample.json \
   --operations '{"select": ["name", "email"]}' \
-  --to file -o temp/selected_output.json
+  temp/selected_output.json --target-type file
 ```
 
 Filter and select fields:
@@ -265,19 +265,19 @@ etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_
 Load to JSON file:
 ```bash
 etlplus extract file examples/data/sample.json \
-  | etlplus load --to file temp/sample_output.json
+  | etlplus load temp/sample_output.json --target-type file
 ```
 
 Load to CSV file:
 ```bash
 etlplus extract file examples/data/sample.csv \
-  | etlplus load --to file temp/sample_output.csv
+  | etlplus load temp/sample_output.csv --target-type file
 ```
 
 Load to REST API:
 ```bash
 cat examples/data/sample.json \
-  | etlplus load --to api https://api.example.com/endpoint
+  | etlplus load https://api.example.com/endpoint --target-type api
 ```
 
 ### Python API
@@ -330,12 +330,12 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file examples/data/sample.csv -o temp/sample_extracted.json
+etlplus extract file examples/data/sample.csv > temp/sample_extracted.json
 
 # 2. Transform (filter and select fields)
 etlplus transform temp/sample_extracted.json \
   --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o temp/sample_transformed.json
+  temp/sample_transformed.json
 
 # 3. Validate transformed data
 etlplus validate temp/sample_transformed.json \
@@ -343,7 +343,7 @@ etlplus validate temp/sample_transformed.json \
 
 # 4. Load to CSV
 cat temp/sample_transformed.json \
-  | etlplus load --to temp/sample_output.csv
+  | etlplus load temp/sample_output.csv
 ```
 
 ### Format Overrides
@@ -356,14 +356,14 @@ Examples (zsh):
 
 ```zsh
 # Force CSV parsing for an extension-less file
-etlplus extract --from file data.txt --source-format csv
+etlplus extract data.txt --source-type file --source-format csv
 
 # Write CSV to a file without the .csv suffix
-etlplus load --to file output.bin --target-format csv < data.json
+etlplus load output.bin --target-type file --target-format csv < data.json
 
 # Leave the flags off when extensions already match the desired format
-etlplus extract --from file data.csv
-etlplus load --to file data.json < data.json
+etlplus extract data.csv --source-type file
+etlplus load data.json --target-type file  < data.json
 ```
 
 ## Transformation Operations
