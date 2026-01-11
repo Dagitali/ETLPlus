@@ -225,7 +225,7 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
 `-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
-control the emitted format for stdout or other non-file outputs, just like `etlplus load`. File
+control the emitted format for STDOUT or other non-file outputs, just like `etlplus load`. File
 paths continue to infer formats from their extensions. Use `--source-type` to override the inferred
 source connector type and `--target-type` to override the inferred target connector type, matching
 the `etlplus extract`/`etlplus load` behavior.
@@ -260,7 +260,7 @@ etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_
 
 #### Load Data
 
-`etlplus load` consumes JSON from stdin; provide only the target argument plus optional flags.
+`etlplus load` consumes JSON from STDIN; provide only the target argument plus optional flags.
 
 Load to JSON file:
 ```bash
