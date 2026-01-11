@@ -444,8 +444,24 @@ def extract_cmd(
     -------
     int
         Exit code.
+
+    Raises
+    ------
+    typer.Exit
+        When argument order is invalid or required arguments are missing.
     """
     state = ensure_state(ctx)
+
+    # Argument order enforcement
+    if source.startswith('--'):
+        typer.echo(
+            f"Error: Option '{source}' must follow the 'SOURCE' argument.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    if not source:
+        typer.echo("Error: Missing required argument 'SOURCE'.", err=True)
+        raise typer.Exit(2)
 
     source_type = optional_choice(
         source_type,
@@ -514,7 +530,23 @@ def load_cmd(
     -------
     int
         Exit code.
+
+    Raises
+    ------
+    typer.Exit
+        When argument order is invalid or required arguments are missing.
     """
+    # Argument order enforcement
+    if target.startswith('--'):
+        typer.echo(
+            f"Error: Option '{target}' must follow the 'TARGET' argument.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    if not target:
+        typer.echo("Error: Missing required argument 'TARGET'.", err=True)
+        raise typer.Exit(2)
+
     state = ensure_state(ctx)
 
     source_format = cast(
