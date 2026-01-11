@@ -37,18 +37,24 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
     [
         'ETLPlus - A Swiss Army knife for simple ETL operations.',
         '',
-        '    Provide a subcommand and options. Examples:',
+        'Provide a subcommand and options. Examples:',
         '',
         '    etlplus extract in.csv > out.json',
         '    etlplus validate in.json --rules "{"required": ["id"]}"',
         (
-            '    etlplus transform --from file in.json '
-            '--operations "{"select": ["id"]}" --to file -o out.json'
+            '    etlplus transform in.json --source-type file out.json '
+            '--target-type file --operations "{"select": ["id"]}"'
         ),
-        '    etlplus extract in.csv | etlplus load --to file out.json',
-        '    cat data.json | etlplus load --to api https://example.com/data',
+        (
+            '    etlplus extract in.csv | '
+            'etlplus load out.json --target-type file'
+        ),
+        (
+            '    cat data.json | '
+            'etlplus load https://example.com/data --target-type api'
+        ),
         '',
-        '    Override format inference when extensions are misleading:',
+        'Override format inference when extensions are misleading:',
         '',
         '    etlplus extract data.txt --source-format csv',
         '    etlplus load payload.bin --target-format json',
@@ -57,7 +63,7 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
 CLI_EPILOG: Final[str] = '\n'.join(
     [
         'Tip:',
-        '--source-format and --target-format override format inference '
+        '`--source-format` and `--target-format` override format inference '
         'based on filename extensions when needed.',
     ],
 )
