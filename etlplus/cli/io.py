@@ -164,11 +164,17 @@ def materialize_file_payload(
 
     if fmt is None:
         return source
-    if isinstance(source, str) and not path.exists():
-        try:
-            return parse_text_payload(source, format_hint)
-        except ValueError:
-            pass
+    if not path.exists():
+        if isinstance(source, str):
+            stripped = source.lstrip()
+            hint = (format_hint or '').strip().lower()
+            if (
+                stripped.startswith(('{', '['))
+                or '\n' in source
+                or (hint == 'csv' and ',' in source)
+            ):
+                return parse_text_payload(source, format_hint)
+        raise FileNotFoundError(f'File not found: {path}')
     if fmt == FileFormat.CSV:
         return read_csv_rows(path)
     return File(path, fmt).read()
