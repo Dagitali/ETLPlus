@@ -10,7 +10,7 @@ from etlplus.validate import FieldRules
 
 # Extract sample data
 DATA_PATH = 'examples/data/sample.json'
-OUTPUT_PATH = 'examples/sample_output.json'
+OUTPUT_PATH = 'temp/sample_output.json'
 
 
 def main() -> None:

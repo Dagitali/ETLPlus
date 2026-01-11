@@ -34,7 +34,7 @@ def _emit_context_help(
     ctx: click.Context | None,
 ) -> bool:
     """
-    Mirror Click help output for the provided context onto stderr.
+    Mirror Click help output for the provided context onto STDERR.
 
     Parameters
     ----------
@@ -92,6 +92,7 @@ def _is_illegal_option_error(
         exc,
         (
             click.exceptions.BadOptionUsage,
+            click.exceptions.BadParameter,
             click.exceptions.NoSuchOption,
         ),
     )
