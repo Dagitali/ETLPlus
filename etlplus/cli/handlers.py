@@ -637,18 +637,17 @@ def validate_handler(
     field_rules = cast(Mapping[str, FieldRules], rules_payload)
     result = validate(payload, field_rules)
 
-    target_path = target
-    if target_path:
+    if target and target != '-':
         validated_data = result.get('data')
         if validated_data is not None:
             cli_io.write_json_output(
                 validated_data,
-                target_path,
+                target,
                 success_message='Validation result saved to',
             )
         else:
             print(
-                f'Validation failed, no data to save for {target_path}',
+                f'Validation failed, no data to save for {target}',
                 file=sys.stderr,
             )
     else:
