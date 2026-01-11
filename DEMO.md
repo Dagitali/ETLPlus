@@ -151,7 +151,7 @@ $ etlplus load '{"name": "John", "status": "active"}' file output.json
 $ etlplus load '[
     {"name": "John", "email": "john@example.com"},
     {"name": "Jane", "email": "jane@example.com"}
-  ]' --to users.csv
+  ]' users.csv
 {
   "status": "success",
   "message": "Data loaded to users.csv",
@@ -173,11 +173,11 @@ This example shows a complete ETL workflow:
 $ etlplus extract raw_data.csv > extracted.json
 
 # Step 2: Transform
-$ etlplus transform --from extracted.json \
+$ etlplus transform extracted.json \
   --operations '{
     "filter": {"field": "age", "op": "gte", "value": 18},
     "select": ["name", "email", "age"]
-  }' --to transformed.json
+  }' transformed.json
 
 # Step 3: Validate
 $ etlplus validate transformed.json \
