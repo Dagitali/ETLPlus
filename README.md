@@ -106,8 +106,8 @@ etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
 etlplus extract file examples/data/sample.csv \
-  | etlplus transform - temp/sample_output.json \
-  --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}'
+  | etlplus transform --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  - temp/sample_output.json
 ```
 
 [Python API](#python-api):
@@ -232,30 +232,38 @@ the `etlplus extract`/`etlplus load` behavior.
 
 Transform file inputs while overriding connector types:
 ```bash
-etlplus transform --source-type file examples/data/sample.json \
+etlplus transform \
   --operations '{"select": ["name", "email"]}' \
+  examples/data/sample.json  --source-type file \
   temp/selected_output.json --target-type file
 ```
 
 Filter and select fields:
 ```bash
-etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
-  --operations '{"filter": {"field": "age", "op": "gt", "value": 26}, "select": ["name"]}'
+etlplus transform \
+  --operations '{"filter": {"field": "age", "op": "gt", "value": 26}, "select": ["name"]}' \
+  '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]'
 ```
 
 Sort data:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"sort": {"field": "age", "reverse": true}}'
+etlplus transform \
+  --operations '{"sort": {"field": "age", "reverse": true}}' \
+  examples/data/sample.json
 ```
 
 Aggregate data:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"aggregate": {"field": "age", "func": "sum"}}'
+etlplus transform \
+  --operations '{"aggregate": {"field": "age", "func": "sum"}}' \
+  examples/data/sample.json
 ```
 
 Map/rename fields:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_name"}}'
+etlplus transform \
+  --operations '{"map": {"name": "new_name"}}' \
+  examples/data/sample.json
 ```
 
 #### Load Data
@@ -333,13 +341,15 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 etlplus extract file examples/data/sample.csv > temp/sample_extracted.json
 
 # 2. Transform (filter and select fields)
-etlplus transform temp/sample_extracted.json \
+etlplus transform \
   --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  temp/sample_extracted.json \
   temp/sample_transformed.json
 
 # 3. Validate transformed data
-etlplus validate temp/sample_transformed.json \
-  --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
+etlplus validate \
+  --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}' \
+  temo/sample_transformed.json
 
 # 4. Load to CSV
 cat temp/sample_transformed.json \
