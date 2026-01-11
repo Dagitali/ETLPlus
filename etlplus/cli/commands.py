@@ -399,7 +399,17 @@ def check_cmd(
     -------
     int
         Exit code.
+
+    Raises
+    ------
+    typer.Exit
+        When argument order is invalid or required arguments are missing.
     """
+    # Argument order enforcement.
+    if not config:
+        typer.echo("Error: Missing required option '--config'.", err=True)
+        raise typer.Exit(2)
+
     state = ensure_state(ctx)
     return int(
         handlers.check_handler(
@@ -640,7 +650,20 @@ def render_cmd(
     -------
     int
         Exit code.
+
+    Raises
+    ------
+    typer.Exit
+        When argument order is invalid or required arguments are missing.
     """
+    # Argument order enforcement
+    if not (config or spec):
+        typer.echo(
+            "Error: Missing required option '--config' or '--spec'.",
+            err=True,
+        )
+        raise typer.Exit(2)
+
     state = ensure_state(ctx)
     return int(
         handlers.render_handler(
@@ -691,7 +714,17 @@ def run_cmd(
     -------
     int
         Exit code.
+
+    Raises
+    ------
+    typer.Exit
+        When argument order is invalid or required arguments are missing.
     """
+    # Argument order enforcement
+    if not config:
+        typer.echo("Error: Missing required option '--config'.", err=True)
+        raise typer.Exit(2)
+
     state = ensure_state(ctx)
     return int(
         handlers.run_handler(
