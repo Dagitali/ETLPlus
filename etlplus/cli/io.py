@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.cli.io` module.
 
-Shared I/O helpers for CLI handlers (stdin/stdout, payload hydration).
+Shared I/O helpers for CLI handlers (STDIN/STDOUT, payload hydration).
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def emit_or_write(
     data : Any
         The data to serialize.
     output_path : str | None
-        Target file path; when falsy or ``'-'`` data is emitted to stdout.
+        Target file path; when falsy or ``'-'`` data is emitted to STDOUT.
     pretty : bool
         Whether to pretty-print JSON emission.
     success_message : str
@@ -246,7 +246,7 @@ def read_csv_rows(
 
 
 def read_stdin_text() -> str:
-    """Return entire stdin payload."""
+    """Return entire STDIN payload."""
     return sys.stdin.read()
 
 
@@ -258,12 +258,12 @@ def resolve_cli_payload(
     hydrate_files: bool = True,
 ) -> JSONData | object:
     """
-    Normalize CLI-provided payloads, honoring stdin and inline data.
+    Normalize CLI-provided payloads, honoring STDIN and inline data.
 
     Parameters
     ----------
     source : object
-        The source payload, potentially stdin or a file path.
+        The source payload, potentially STDIN or a file path.
     format_hint : str | None
         An optional format hint (e.g., 'json', 'csv').
     format_explicit : bool
