@@ -92,6 +92,7 @@ def _is_illegal_option_error(
         exc,
         (
             click.exceptions.BadOptionUsage,
+            click.exceptions.BadParameter,
             click.exceptions.NoSuchOption,
         ),
     )
