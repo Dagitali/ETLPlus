@@ -104,7 +104,7 @@ def load_data(
         return File(source, FileFormat.JSON).read_json()
 
     if isinstance(source, str):
-        # Special case: '-' means read JSON from stdin (Unix convention).
+        # Special case: '-' means read JSON from STDIN (Unix convention).
         if source == '-':
             raw = sys.stdin.read()
             return _parse_json_string(raw)
