@@ -26,8 +26,10 @@ etlplus --version
 etlplus --help
 
 # Transform the sample data and write JSON
-etlplus transform examples/data/sample.json temp/sample_output.json \
-  --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}'
+etlplus transform \
+  --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  examples/data/sample.json \
+  temp/sample_output.json
 ```
 
 ## Pipelines
