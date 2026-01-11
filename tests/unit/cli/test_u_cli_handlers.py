@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import types
+from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import ANY
@@ -1141,9 +1142,9 @@ class TestValidateHandler:
     ],
 )
 def test_handler_smoke(
-    capture_handler,
-    kwargs,
-    expected_keys,
+    capture_handler: Callable[[object, str], dict[str, object]],
+    kwargs: dict[str, str | bool],
+    expected_keys: list[str],
 ) -> None:
     """
     Smoke test CLI handlers to ensure they accept kwargs and call underlying
