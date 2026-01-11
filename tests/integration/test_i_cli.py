@@ -39,6 +39,126 @@ pytestmark = pytest.mark.integration
 class TestCliEndToEnd:
     """Integration test suite for :mod:`etlplus.cli`."""
 
+    @pytest.mark.parametrize(
+        'args,should_pass',
+        [
+            # extract: valid/invalid option placements
+            (
+                (
+                    'extract',
+                    'examples/data/sample.csv',
+                    '--source-format',
+                    'csv',
+                ),
+                True,
+            ),
+            (
+                (
+                    'extract',
+                    '--source-format',
+                    'csv',
+                    'examples/data/sample.csv',
+                ),
+                True,
+            ),
+            (('extract',), False),
+            (
+                (
+                    'extract',
+                    'examples/data/sample.csv',
+                    '--source-type',
+                    'file',
+                ),
+                True,
+            ),
+            (
+                (
+                    'extract',
+                    'examples/data/sample.csv',
+                    '--source-format',
+                    'badformat',
+                ),
+                False,
+            ),
+            # load: valid/invalid option placements
+            (('load', 'output.csv', '--target-format', 'csv'), True),
+            (('load', '--target-format', 'csv', 'output.csv'), False),
+            (('load',), False),
+            (('load', 'output.csv', '--target-type', 'file'), True),
+            (('load', 'output.csv', '--target-format', 'badformat'), False),
+            # transform: valid/invalid placements for source/target options
+            (
+                (
+                    'transform',
+                    '[{}]',
+                    'output.json',
+                    '--source-format',
+                    'json',
+                    '--target-format',
+                    'json',
+                    '--operations',
+                    '{}',
+                ),
+                True,
+            ),
+            (
+                (
+                    'transform',
+                    '[{}]',
+                    '--source-format',
+                    'json',
+                    'output.json',
+                    '--target-format',
+                    'json',
+                    '--operations',
+                    '{}',
+                ),
+                False,
+            ),
+            (
+                (
+                    'transform',
+                    '[{}]',
+                    'output.json',
+                    '--target-format',
+                    'json',
+                    '--source-format',
+                    'json',
+                    '--operations',
+                    '{}',
+                ),
+                True,
+            ),
+            (('transform',), False),
+            (
+                (
+                    'transform',
+                    '[{}]',
+                    'output.json',
+                    '--source-format',
+                    'badformat',
+                    '--operations',
+                    '{}',
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_cli_option_order_and_required_args(
+        self,
+        cli_invoke,
+        args,
+        should_pass,
+    ):
+        """Test CLI required arguments and option order edge cases."""
+        code, _out, err = cli_invoke(args)
+        if should_pass:
+            assert code == 0, (
+                f'Expected success for args: {args}, got error: {err}'
+            )
+        else:
+            assert code != 0, f'Expected failure for args: {args}'
+
     def test_extract_source_format_override(
         self,
         tmp_path: Path,
