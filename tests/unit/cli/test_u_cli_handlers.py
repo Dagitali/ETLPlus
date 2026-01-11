@@ -187,6 +187,19 @@ class TestCliHandlersInternalHelpers:
 
         assert payload == {'beta': 2}
 
+    def test_materialize_file_payload_inline_payload_with_hint(
+        self,
+    ) -> None:
+        """
+        Test that inline payloads parse when format hints are explicit.
+        """
+        payload = _io.materialize_file_payload(
+            '[{"ok": true}]',
+            format_hint='json',
+            format_explicit=True,
+        )
+        assert payload == [{'ok': True}]
+
     def test_materialize_file_payload_missing_file_raises(
         self,
         tmp_path: Path,
