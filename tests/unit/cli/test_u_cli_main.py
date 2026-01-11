@@ -72,7 +72,7 @@ class TestMain:
         stub_command: Callable[[Callable[..., object]], None],
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that any :class:`OSError` surfaces to stderr and return 1."""
+        """Test that any :class:`OSError` surfaces to STDERR and return 1."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise OSError('disk full')
@@ -154,9 +154,9 @@ class TestMain:
         cli_args : list[str]
             Command-line invocation passed to :func:`cli_main`.
         expected_message : str
-            Substring expected in stderr describing the error.
+            Substring expected in STDERR describing the error.
         capsys : pytest.CaptureFixture[str]
-            Pytest capture fixture used to inspect stderr output.
+            Pytest capture fixture used to inspect STDERR output.
         """
         exit_code = cli_main(cli_args)
         captured = capsys.readouterr()
