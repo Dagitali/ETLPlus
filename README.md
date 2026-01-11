@@ -19,6 +19,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Quickstart](#quickstart)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
+      - [Argument Order and Required Options](#argument-order-and-required-options)
       - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
@@ -106,8 +107,8 @@ etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
 etlplus extract file examples/data/sample.csv \
-  | etlplus transform - --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o temp/sample_output.json
+  | etlplus transform --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
+  - temp/sample_output.json
 ```
 
 [Python API](#python-api):
@@ -139,6 +140,27 @@ etlplus --version
 
 The CLI is implemented with Typer (Click-based). There is no argparse compatibility layer, so rely
 on the documented commands/flags and run `etlplus <command> --help` for current options.
+
+**Example error messages:**
+
+- If you omit a required argument: `Error: Missing required argument 'SOURCE'.`
+- If you place an option before its argument: `Error: Option '--source-format' must follow the 'SOURCE' argument.`
+
+#### Argument Order and Required Options
+
+For each command, positional arguments must precede options. Required options must follow their
+associated argument:
+
+- **extract**: `etlplus extract SOURCE [--source-format ...] [--source-type ...]`
+  - `SOURCE` is required. `--source-format` and `--source-type` must follow `SOURCE`.
+- **transform**: `etlplus transform [--operations ...] SOURCE [--source-format ...] [--source-type ...] TARGET [--target-format ...] [--target-type ...]`
+  - `SOURCE` and `TARGET` are required. Format/type options must follow their respective argument.
+- **load**: `etlplus load TARGET [--target-format ...] [--target-type ...] [--source-format ...]`
+  - `TARGET` is required. `--target-format` and `--target-type` must follow `TARGET`.
+- **validate**: `etlplus validate SOURCE [--rules ...] [--source-format ...] [--source-type ...]`
+  - `SOURCE` is required. `--rules` and format/type options must follow `SOURCE`.
+
+If required arguments or options are missing, or if options are placed before their associated argument, the CLI will display a clear error message.
 
 #### Check Pipelines
 
@@ -206,7 +228,7 @@ etlplus extract api https://api.example.com/data
 
 Save extracted data to file:
 ```bash
-etlplus extract file examples/data/sample.csv -o temp/sample_output.json
+etlplus extract file examples/data/sample.csv > temp/sample_output.json
 ```
 
 #### Validate Data
@@ -225,59 +247,67 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
 `-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
-control the emitted format for stdout or other non-file outputs, just like `etlplus load`. File
-paths continue to infer formats from their extensions. Use `--from` to override the inferred source
-connector type and `--to` to override the inferred target connector type, matching the `etlplus
-extract`/`etlplus load` behavior.
+control the emitted format for STDOUT or other non-file outputs, just like `etlplus load`. File
+paths continue to infer formats from their extensions. Use `--source-type` to override the inferred
+source connector type and `--target-type` to override the inferred target connector type, matching
+the `etlplus extract`/`etlplus load` behavior.
 
 Transform file inputs while overriding connector types:
 ```bash
-etlplus transform --from file examples/data/sample.json \
+etlplus transform \
   --operations '{"select": ["name", "email"]}' \
-  --to file -o temp/selected_output.json
+  examples/data/sample.json  --source-type file \
+  temp/selected_output.json --target-type file
 ```
 
 Filter and select fields:
 ```bash
-etlplus transform '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]' \
-  --operations '{"filter": {"field": "age", "op": "gt", "value": 26}, "select": ["name"]}'
+etlplus transform \
+  --operations '{"filter": {"field": "age", "op": "gt", "value": 26}, "select": ["name"]}' \
+  '[{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]'
 ```
 
 Sort data:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"sort": {"field": "age", "reverse": true}}'
+etlplus transform \
+  --operations '{"sort": {"field": "age", "reverse": true}}' \
+  examples/data/sample.json
 ```
 
 Aggregate data:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"aggregate": {"field": "age", "func": "sum"}}'
+etlplus transform \
+  --operations '{"aggregate": {"field": "age", "func": "sum"}}' \
+  examples/data/sample.json
 ```
 
 Map/rename fields:
 ```bash
-etlplus transform examples/data/sample.json --operations '{"map": {"name": "new_name"}}'
+etlplus transform \
+  --operations '{"map": {"name": "new_name"}}' \
+  examples/data/sample.json
 ```
 
 #### Load Data
 
-`etlplus load` consumes JSON from stdin; provide only the target argument plus optional flags.
+`etlplus load` consumes JSON from STDIN; provide only the target argument plus optional flags.
 
 Load to JSON file:
 ```bash
 etlplus extract file examples/data/sample.json \
-  | etlplus load --to file temp/sample_output.json
+  | etlplus load temp/sample_output.json --target-type file
 ```
 
 Load to CSV file:
 ```bash
 etlplus extract file examples/data/sample.csv \
-  | etlplus load --to file temp/sample_output.csv
+  | etlplus load temp/sample_output.csv --target-type file
 ```
 
 Load to REST API:
 ```bash
 cat examples/data/sample.json \
-  | etlplus load --to api https://api.example.com/endpoint
+  | etlplus load https://api.example.com/endpoint --target-type api
 ```
 
 ### Python API
@@ -330,20 +360,22 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file examples/data/sample.csv -o temp/sample_extracted.json
+etlplus extract file examples/data/sample.csv > temp/sample_extracted.json
 
 # 2. Transform (filter and select fields)
-etlplus transform temp/sample_extracted.json \
+etlplus transform \
   --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o temp/sample_transformed.json
+  temp/sample_extracted.json \
+  temp/sample_transformed.json
 
 # 3. Validate transformed data
-etlplus validate temp/sample_transformed.json \
-  --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}'
+etlplus validate \
+  --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}' \
+  temo/sample_transformed.json
 
 # 4. Load to CSV
 cat temp/sample_transformed.json \
-  | etlplus load --to temp/sample_output.csv
+  | etlplus load temp/sample_output.csv
 ```
 
 ### Format Overrides
@@ -356,14 +388,14 @@ Examples (zsh):
 
 ```zsh
 # Force CSV parsing for an extension-less file
-etlplus extract --from file data.txt --source-format csv
+etlplus extract data.txt --source-type file --source-format csv
 
 # Write CSV to a file without the .csv suffix
-etlplus load --to file output.bin --target-format csv < data.json
+etlplus load output.bin --target-type file --target-format csv < data.json
 
 # Leave the flags off when extensions already match the desired format
-etlplus extract --from file data.csv
-etlplus load --to file data.json < data.json
+etlplus extract data.csv --source-type file
+etlplus load data.json --target-type file  < data.json
 ```
 
 ## Transformation Operations

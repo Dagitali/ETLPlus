@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import types
+from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import ANY
@@ -66,7 +67,7 @@ class TestCliHandlersInternalHelpers:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that compact mode writes JSON to stdout."""
+        """Test that compact mode writes JSON to STDOUT."""
         _io.emit_json({'b': 2, 'a': 1}, pretty=False)
         captured = capsys.readouterr()
         assert captured.out.strip() == '{"b":2,"a":1}'
@@ -187,6 +188,19 @@ class TestCliHandlersInternalHelpers:
 
         assert payload == {'beta': 2}
 
+    def test_materialize_file_payload_inline_payload_with_hint(
+        self,
+    ) -> None:
+        """
+        Test that inline payloads parse when format hints are explicit.
+        """
+        payload = _io.materialize_file_payload(
+            '[{"ok": true}]',
+            format_hint='json',
+            format_explicit=True,
+        )
+        assert payload == [{'ok': True}]
+
     def test_materialize_file_payload_missing_file_raises(
         self,
         tmp_path: Path,
@@ -270,7 +284,7 @@ class TestCliHandlersInternalHelpers:
 
     def test_write_json_output_stdout_flag(self) -> None:
         """
-        Test that returning False signals stdout emission when no output path.
+        Test that returning False signals STDOUT emission when no output path.
         """
         assert (
             _io.write_json_output(
@@ -320,7 +334,7 @@ class TestCliHandlersInternalHelpers:
         ]
 
     def test_read_stdin_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test that reading stdin returns the buffered stream contents."""
+        """Test that reading STDIN returns the buffered stream contents."""
         buffer = io.StringIO('stream-data')
         monkeypatch.setattr(
             _io,
@@ -400,7 +414,7 @@ class TestExtractHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`extract_handler` uses extract for non-stdin sources.
+        Test that :func:`extract_handler` uses extract for non-STDIN sources.
         """
         observed: dict[str, object] = {}
 
@@ -475,7 +489,7 @@ class TestExtractHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`extract_handler` reads stdin and emits parsed data.
+        Test that :func:`extract_handler` reads STDIN and emits parsed data.
         """
         monkeypatch.setattr(
             handlers.cli_io,
@@ -514,7 +528,7 @@ class TestExtractHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`extract_handler` writes to a file and skips stdout
+        Test that :func:`extract_handler` writes to a file and skips STDOUT
         emission.
         """
         observed: dict[str, object] = {}
@@ -578,7 +592,7 @@ class TestLoadHandler:
         )
 
         def fail_load(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError('load should not be called for stdout path')
+            raise AssertionError('load should not be called for STDOUT path')
 
         monkeypatch.setattr(handlers, 'load', fail_load)
 
@@ -606,7 +620,7 @@ class TestLoadHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`load_handler` parses stdin and routes through load.
+        Test that :func:`load_handler` parses STDIN and routes through load.
         """
         read_calls = {'count': 0}
 
@@ -632,7 +646,7 @@ class TestLoadHandler:
         def fail_materialize(*_args: object, **_kwargs: object) -> None:
             raise AssertionError(
                 'materialize_file_payload should not be called '
-                'for stdin sources',
+                'for STDIN sources',
             )
 
         monkeypatch.setattr(
@@ -690,7 +704,7 @@ class TestLoadHandler:
         capture_io: dict[str, list],
     ) -> None:
         """
-        Test that :func:`load_handler` writes to a file and skips stdout
+        Test that :func:`load_handler` writes to a file and skips STDOUT
         emission.
         """
         load_record: dict[str, object] = {}
@@ -1128,9 +1142,9 @@ class TestValidateHandler:
     ],
 )
 def test_handler_smoke(
-    capture_handler,
-    kwargs,
-    expected_keys,
+    capture_handler: Callable[[object, str], dict[str, object]],
+    kwargs: dict[str, str | bool],
+    expected_keys: list[str],
 ) -> None:
     """
     Smoke test CLI handlers to ensure they accept kwargs and call underlying

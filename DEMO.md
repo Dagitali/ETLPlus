@@ -89,14 +89,14 @@ $ etlplus validate '{"email": "user@example.com", "age": 25}' \
 
 ### Filter and Select
 ```bash
-$ etlplus transform '[
+$ etlplus transform --operations '{
+    "filter": {"field": "age", "op": "gt", "value": 26},
+    "select": ["name", "age"]
+  }' '[
     {"name": "John", "age": 30, "city": "NYC"},
     {"name": "Jane", "age": 25, "city": "LA"},
     {"name": "Bob", "age": 35, "city": "Chicago"}
-  ]' --operations '{
-    "filter": {"field": "age", "op": "gt", "value": 26},
-    "select": ["name", "age"]
-  }'
+  ]'
 [
   {
     "name": "John",
@@ -111,24 +111,19 @@ $ etlplus transform '[
 
 ### Sort Data
 ```bash
-$ etlplus transform '[
-    {"name": "Charlie", "score": 85},
-    {"name": "Alice", "score": 95},
-    {"name": "Bob", "score": 90}
-  ]' --operations '{
-    "sort": {"field": "score", "reverse": true}
-  }'
+$ etlplus transform -\
+  -operations '{"sort": {"field": "score", "reverse": true}}' \
+  '[{"name": "Charlie", "score": 85}, {"name": "Alice", "score": 95}, {"name": "Bob", "score": 90}]'
 ```
 
 ### Aggregate Data
 ```bash
-$ etlplus transform '[
+$ etlplus transform --operations '{"aggregate": {"field": "sales", "func": "sum"}}' \
+  '[
     {"product": "A", "sales": 100},
     {"product": "B", "sales": 150},
     {"product": "C", "sales": 200}
-  ]' --operations '{
-    "aggregate": {"field": "sales", "func": "sum"}
-  }'
+  ]'
 {
   "sum_sales": 450
 }
@@ -138,7 +133,9 @@ $ etlplus transform '[
 
 ### Load to JSON File
 ```bash
-$ etlplus load '{"name": "John", "status": "active"}' file output.json
+$ etlplus load \
+  '{"name": "John", "status": "active"}' \
+  output.json --target-type file
 {
   "status": "success",
   "message": "Data loaded to output.json",
@@ -148,10 +145,12 @@ $ etlplus load '{"name": "John", "status": "active"}' file output.json
 
 ### Load to CSV File
 ```bash
-$ etlplus load '[
+$ etlplus load \
+  '[
     {"name": "John", "email": "john@example.com"},
     {"name": "Jane", "email": "jane@example.com"}
-  ]' --to users.csv
+  ]' \
+  users.csv --target-type file
 {
   "status": "success",
   "message": "Data loaded to users.csv",
@@ -173,19 +172,22 @@ This example shows a complete ETL workflow:
 $ etlplus extract raw_data.csv > extracted.json
 
 # Step 2: Transform
-$ etlplus transform --from extracted.json \
+$ etlplus transform \
   --operations '{
     "filter": {"field": "age", "op": "gte", "value": 18},
     "select": ["name", "email", "age"]
-  }' --to transformed.json
+  }' \
+  extracted.json \
+  transformed.json
 
 # Step 3: Validate
-$ etlplus validate transformed.json \
+$ etlplus validate \
   --rules '{
     "name": {"type": "string", "required": true},
     "email": {"type": "string", "required": true, "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$"},
     "age": {"type": "number", "min": 18, "max": 120}
-  }'
+  }' \
+  transformed.json
 
 # Step 4: Load
 $ etlplus load transformed.json file final_output.csv

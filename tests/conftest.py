@@ -181,14 +181,14 @@ def cli_invoke(
     capsys: pytest.CaptureFixture[str],
 ) -> CliInvoke:
     """
-    Run CLI commands and return exit code, stdout, and stderr.
+    Run CLI commands and return exit code, STDOUT, and stderr.
 
     Parameters
     ----------
     cli_runner : CliRunner
         Helper fixture defined above.
     capsys : pytest.CaptureFixture[str]
-        Pytest fixture for capturing stdout/stderr.
+        Pytest fixture for capturing STDOUT/stderr.
 
     Returns
     -------

@@ -14,7 +14,7 @@ What it does:
 - Extracts `examples/data/sample.json`
 - Filters to `age > 25` and selects `name` + `email`
 - Validates fields exist
-- Writes `examples/sample_output.json`
+- Writes `temp/sample_output.json`
 
 ## CLI quickstart
 
@@ -26,9 +26,10 @@ etlplus --version
 etlplus --help
 
 # Transform the sample data and write JSON
-etlplus transform examples/data/sample.json \
+etlplus transform \
   --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
-  -o examples/sample_output.json
+  examples/data/sample.json \
+  temp/sample_output.json
 ```
 
 ## Pipelines

@@ -130,7 +130,8 @@ def infer_resource_type(
         return 'file'
 
     raise ValueError(
-        'Could not infer resource type. Use --from/--to to specify it.',
+        'Could not infer resource type. '
+        'Use --source-type/--target-type to specify it.',
     )
 
 
@@ -304,7 +305,7 @@ def validate_choice(
 
     Parameters
     ----------
-    value : str
+    value : str | object
         The input value to validate.
     choices : Collection[str]
         The set of valid choices.

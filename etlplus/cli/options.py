@@ -43,7 +43,7 @@ def typer_format_option_kwargs(
         'show_default': False,
         'rich_help_panel': rich_help_panel,
         'help': (
-            f'Payload format when the {context} is stdin/inline or a '
+            f'Payload format when the {context} is STDIN/inline or a '
             'non-file connector. File connectors infer from extensions.'
         ),
     }

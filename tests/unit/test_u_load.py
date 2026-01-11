@@ -400,7 +400,7 @@ class TestLoadData:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test loading from stdin using monkeypatch.
+        Test loading from STDIN using monkeypatch.
 
         Parameters
         ----------
