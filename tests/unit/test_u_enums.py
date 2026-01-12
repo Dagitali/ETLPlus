@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from etlplus.enums import AggregateName
+from etlplus.enums import CompressionFormat
 from etlplus.enums import DataConnectorType
 from etlplus.enums import FileFormat
 from etlplus.enums import HttpMethod
@@ -17,6 +18,7 @@ from etlplus.enums import PipelineStep
 from etlplus.enums import coerce_data_connector_type
 from etlplus.enums import coerce_file_format
 from etlplus.enums import coerce_http_method
+from etlplus.enums import infer_file_format_and_compression
 
 # SECTION: HELPERS ========================================================== #
 
@@ -109,6 +111,34 @@ class TestHttpMethod:
     def test_coerce_wrapper(self) -> None:
         """Test the :func:`coerce_http_method` helper."""
         assert coerce_http_method('delete') is HttpMethod.DELETE
+
+
+@pytest.mark.unit
+class TestInferFileFormatAndCompression:
+    """Unit test suite for :func:`infer_file_format_and_compression`."""
+
+    @pytest.mark.parametrize(
+        'value,expected_format,expected_compression',
+        [
+            ('data.csv.gz', FileFormat.CSV, CompressionFormat.GZ),
+            ('data.jsonl.gz', FileFormat.NDJSON, CompressionFormat.GZ),
+            ('data.zip', None, CompressionFormat.ZIP),
+            ('application/json; charset=utf-8', FileFormat.JSON, None),
+            ('application/gzip', None, CompressionFormat.GZ),
+            (FileFormat.GZ, None, CompressionFormat.GZ),
+            (CompressionFormat.ZIP, None, CompressionFormat.ZIP),
+        ],
+    )
+    def test_infers_format_and_compression(
+        self,
+        value: object,
+        expected_format: FileFormat | None,
+        expected_compression: CompressionFormat | None,
+    ) -> None:
+        """Test mixed inputs for format and compression inference."""
+        fmt, compression = infer_file_format_and_compression(value)
+        assert fmt is expected_format
+        assert compression is expected_compression
 
 
 @pytest.mark.unit
