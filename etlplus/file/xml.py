@@ -113,7 +113,7 @@ def _element_to_dict(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read_xml(
+def read(
     path: Path,
 ) -> JSONDict:
     """
@@ -135,7 +135,7 @@ def read_xml(
     return {root.tag: _element_to_dict(root)}
 
 
-def write_xml(path: Path, data: JSONData, *, root_tag: str) -> int:
+def write(path: Path, data: JSONData, *, root_tag: str) -> int:
     """
     Write ``data`` as XML to ``path`` and return record count.
 

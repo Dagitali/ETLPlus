@@ -16,15 +16,10 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
-from .csv import read_csv
-from .csv import write_csv
-from .json import read_json
-from .json import write_json
-from .xml import DEFAULT_XML_ROOT
-from .xml import read_xml
-from .xml import write_xml
-from .yaml import read_yaml
-from .yaml import write_yaml
+from . import csv
+from . import json
+from . import xml
+from . import yaml
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -164,7 +159,7 @@ class File:
         self,
         data: JSONData,
         *,
-        root_tag: str = DEFAULT_XML_ROOT,
+        root_tag: str = xml.DEFAULT_XML_ROOT,
     ) -> int:
         """
         Write ``data`` to :attr:`path` using :attr:`file_format`.
@@ -212,7 +207,7 @@ class File:
         """
         self._assert_exists()
 
-        return read_csv(self.path)
+        return csv.read(self.path)
 
     def write_csv(
         self,
@@ -232,7 +227,7 @@ class File:
         int
             The number of rows written to the CSV file.
         """
-        return write_csv(self.path, data)
+        return csv.write(self.path, data)
 
     # -- Instance Methods (JSON) -- #
 
@@ -247,7 +242,7 @@ class File:
         """
         self._assert_exists()
 
-        return read_json(self.path)
+        return json.read(self.path)
 
     def write_json(
         self,
@@ -266,7 +261,7 @@ class File:
         int
             The number of records written to the JSON file.
         """
-        return write_json(self.path, data)
+        return json.write(self.path, data)
 
     # -- Instance Methods (XML) -- #
 
@@ -281,13 +276,13 @@ class File:
         """
         self._assert_exists()
 
-        return read_xml(self.path)
+        return xml.read(self.path)
 
     def write_xml(
         self,
         data: JSONData,
         *,
-        root_tag: str = DEFAULT_XML_ROOT,
+        root_tag: str = xml.DEFAULT_XML_ROOT,
     ) -> int:
         """
         Write ``data`` as XML to :attr:`path` and return record count.
@@ -305,7 +300,7 @@ class File:
         int
             The number of records written to the XML file.
         """
-        return write_xml(self.path, data, root_tag=root_tag)
+        return xml.write(self.path, data, root_tag=root_tag)
 
     # -- Instance Methods (YAML) -- #
 
@@ -318,7 +313,7 @@ class File:
         JSONData
             The structured data read from the YAML file.
         """
-        return read_yaml(self.path)
+        return yaml.read(self.path)
 
     def write_yaml(
         self,
@@ -337,7 +332,7 @@ class File:
         int
             The number of records written.
         """
-        return write_yaml(self.path, data)
+        return yaml.write(self.path, data)
 
     # -- Class Methods -- #
 
@@ -404,7 +399,7 @@ class File:
         data: JSONData,
         file_format: FileFormat | str | None = None,
         *,
-        root_tag: str = DEFAULT_XML_ROOT,
+        root_tag: str = xml.DEFAULT_XML_ROOT,
     ) -> int:
         """
         Write structured data and count written records.

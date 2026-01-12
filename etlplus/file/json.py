@@ -18,7 +18,7 @@ from ..utils import count_records
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read_json(
+def read(
     path: Path,
 ) -> JSONData:
     """
@@ -55,7 +55,7 @@ def read_json(
     )
 
 
-def write_json(
+def write(
     path: Path,
     data: JSONData,
 ) -> int:

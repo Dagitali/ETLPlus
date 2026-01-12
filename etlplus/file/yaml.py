@@ -55,7 +55,7 @@ def _require_yaml() -> None:
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read_yaml(
+def read(
     path: Path,
 ) -> JSONData:
     """
@@ -94,7 +94,7 @@ def read_yaml(
     )
 
 
-def write_yaml(
+def write(
     path: Path,
     data: JSONData,
 ) -> int:

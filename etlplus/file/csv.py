@@ -17,7 +17,7 @@ from ..types import JSONList
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read_csv(
+def read(
     path: Path,
 ) -> JSONList:
     """
@@ -43,7 +43,7 @@ def read_csv(
     return rows
 
 
-def write_csv(
+def write(
     path: Path,
     data: JSONData,
 ) -> int:
