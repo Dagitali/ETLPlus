@@ -85,7 +85,7 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """
-        ``read_file`` and ``write_file`` should round-trip via classmethods.
+        Test that ``read_file`` and ``write_file`` round-trip via classmethods.
         """
 
         path = tmp_path / 'delegated.json'
@@ -96,6 +96,55 @@ class TestFile:
 
         assert isinstance(result, dict)
         assert result['name'] == 'delegated'
+
+    def test_compression_only_extension_defers_error(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test compression-only file extension handling and error deferral.
+        """
+        p = tmp_path / 'data.gz'
+        p.write_text('compressed', encoding='utf-8')
+
+        f = File(p)
+
+        assert f.file_format is None
+        with pytest.raises(ValueError) as e:
+            f.read()
+        assert 'compressed file' in str(e.value)
+
+    @pytest.mark.parametrize(
+        'filename,expected_format',
+        [
+            ('data.csv.gz', FileFormat.CSV),
+            ('data.jsonl.gz', FileFormat.NDJSON),
+        ],
+    )
+    def test_infers_format_from_compressed_suffixes(
+        self,
+        tmp_path: Path,
+        filename: str,
+        expected_format: FileFormat,
+    ) -> None:
+        """
+        Test format inference from multi-suffix compressed filenames.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory path.
+        filename : str
+            Name of the file to create.
+        expected_format : FileFormat
+            Expected file format.
+        """
+        p = tmp_path / filename
+        p.write_text('{}', encoding='utf-8')
+
+        f = File(p)
+
+        assert f.file_format == expected_format
 
     @pytest.mark.parametrize(
         'filename,expected_format,expected_content',
