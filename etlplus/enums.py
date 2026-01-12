@@ -300,12 +300,16 @@ class FileFormat(CoercibleStrEnum):
             '.yml': 'yaml',
             # MIME types
             'application/avro': 'avro',
+            'application/csv': 'csv',
             'application/feather': 'feather',
             'application/gzip': 'gz',
             'application/json': 'json',
             'application/jsonlines': 'ndjson',
             'application/ndjson': 'ndjson',
             'application/orc': 'orc',
+            'application/parquet': 'parquet',
+            'application/vnd.apache.avro': 'avro',
+            'application/vnd.apache.parquet': 'parquet',
             'application/vnd.apache.arrow.file': 'feather',
             'application/vnd.apache.orc': 'orc',
             'application/vnd.ms-excel': 'xls',
@@ -314,13 +318,20 @@ class FileFormat(CoercibleStrEnum):
                 'officedocument.spreadsheetml.sheet'
             ): 'xlsx',
             'application/x-avro': 'avro',
+            'application/x-csv': 'csv',
+            'application/x-feather': 'feather',
+            'application/x-orc': 'orc',
             'application/x-ndjson': 'ndjson',
             'application/x-parquet': 'parquet',
+            'application/x-yaml': 'yaml',
             'application/xml': 'xml',
             'application/zip': 'zip',
             'text/csv': 'csv',
             'text/plain': 'txt',
             'text/tab-separated-values': 'tsv',
+            'text/tsv': 'tsv',
+            'text/xml': 'xml',
+            'text/yaml': 'yaml',
         }
 
 
