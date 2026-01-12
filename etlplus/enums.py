@@ -567,8 +567,9 @@ def infer_file_format_and_compression(
     normalized = text.casefold()
     mime = normalized.split(';', 1)[0].strip()
 
+    is_octet_stream = mime == 'application/octet-stream'
     compression = CompressionFormat.try_coerce(mime)
-    fmt = FileFormat.try_coerce(mime)
+    fmt = None if is_octet_stream else FileFormat.try_coerce(mime)
 
     is_mime = mime.startswith(
         (
