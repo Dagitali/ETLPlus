@@ -17,7 +17,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.file as file_module
+import etlplus.file.yaml as yaml_module
 from etlplus.enums import FileFormat
 from etlplus.file import File
 
@@ -61,10 +61,10 @@ def yaml_stub_fixture() -> Generator[_StubYaml]:
     # pylint: disable=protected-access
 
     stub = _StubYaml()
-    file_module._YAML_CACHE.clear()
-    file_module._YAML_CACHE['mod'] = stub
+    yaml_module._YAML_CACHE.clear()
+    yaml_module._YAML_CACHE['mod'] = stub
     yield stub
-    file_module._YAML_CACHE.clear()
+    yaml_module._YAML_CACHE.clear()
 
 
 # SECTION: TESTS ============================================================ #
@@ -87,7 +87,6 @@ class TestFile:
         """
         Test that ``read_file`` and ``write_file`` round-trip via classmethods.
         """
-
         path = tmp_path / 'delegated.json'
         data = {'name': 'delegated'}
 
@@ -184,7 +183,6 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """Test CSV reader ignoring empty rows."""
-
         payload = 'name,age\nJohn,30\n,\nJane,25\n'
         path = tmp_path / 'data.csv'
         path.write_text(payload, encoding='utf-8')
@@ -195,7 +193,6 @@ class TestFile:
 
     def test_read_json_type_errors(self, tmp_path: Path) -> None:
         """Test list elements being dicts when reading JSON."""
-
         path = tmp_path / 'bad.json'
         path.write_text('[{"ok": 1}, 2]', encoding='utf-8')
 
@@ -244,7 +241,6 @@ class TestFile:
         """
         Test non-dict entries being ignored when writing CSV rows.
         """
-
         path = tmp_path / 'data.csv'
         invalid_entry = cast(dict[str, object], 'invalid')
         count = File(path, FileFormat.CSV).write_csv(
@@ -261,7 +257,6 @@ class TestFile:
         """
         Test ``write_json`` returning the record count for lists.
         """
-
         path = tmp_path / 'data.json'
         records = [{'a': 1}, {'a': 2}]
 
@@ -279,7 +274,6 @@ class TestFile:
         """
         Test XML write/read preserving nested dictionaries.
         """
-
         path = tmp_path / 'data.xml'
         payload = {'root': {'items': [{'text': 'one'}, {'text': 'two'}]}}
 
@@ -295,7 +289,6 @@ class TestFile:
         """
         Test custom root_tag being used when data lacks a single root.
         """
-
         path = tmp_path / 'export.xml'
         records = [{'name': 'Ada'}, {'name': 'Linus'}]
 
@@ -318,7 +311,7 @@ class TestYamlSupport:
         """
         Test reading YAML should invoke stub ``safe_load``.
         """
-
+        assert yaml_module._YAML_CACHE['mod'] is yaml_stub
         path = tmp_path / 'data.yaml'
         path.write_text('name: etl', encoding='utf-8')
 
@@ -334,7 +327,6 @@ class TestYamlSupport:
         """
         Test writing YAML should invoke stub ``safe_dump``.
         """
-
         path = tmp_path / 'data.yaml'
         payload = [{'name': 'etl'}]
 
