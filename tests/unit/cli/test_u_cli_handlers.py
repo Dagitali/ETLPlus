@@ -6,20 +6,18 @@ Unit tests for :mod:`etlplus.cli.handlers`.
 
 from __future__ import annotations
 
-import io
-import types
-from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import ANY
-from unittest.mock import Mock
 
 import pytest
 
 import etlplus.cli.handlers as handlers
-import etlplus.cli.io as _io
 from etlplus.config import PipelineConfig
-from etlplus.enums import FileFormat
+from tests.unit.cli.conftest import CaptureHandler
+from tests.unit.cli.conftest import CaptureIo
+from tests.unit.cli.conftest import assert_emit_json
+from tests.unit.cli.conftest import assert_emit_or_write
 
 # SECTION: HELPERS ========================================================== #
 
@@ -63,185 +61,6 @@ class TestCliHandlersInternalHelpers:
         )
         assert 'jobs' in result
 
-    def test_emit_json_compact_prints_minified(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that compact mode writes JSON to STDOUT."""
-        _io.emit_json({'b': 2, 'a': 1}, pretty=False)
-        captured = capsys.readouterr()
-        assert captured.out.strip() == '{"b":2,"a":1}'
-
-    def test_emit_json_pretty_uses_print_json(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that pretty-printing delegates to :func:`print_json`."""
-        called_with: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', called_with.append)
-
-        payload = {'a': 1}
-        _io.emit_json(payload, pretty=True)
-        assert called_with == [payload]
-
-    def test_materialize_file_payload_non_file(self) -> None:
-        """Test that non-file payloads are returned unchanged."""
-        payload: object = {'foo': 1}
-        assert (
-            _io.materialize_file_payload(
-                payload,
-                format_hint=None,
-                format_explicit=False,
-            )
-            is payload
-        )
-
-    def test_materialize_file_payload_infers_csv(
-        self,
-        tmp_path: Path,
-        csv_text: str,
-    ) -> None:
-        """Test that CSV files are parsed when no explicit hint is provided."""
-        file_path = tmp_path / 'file.csv'
-        file_path.write_text(csv_text)
-
-        rows = _io.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert isinstance(rows, list)
-        assert rows[0] == {'a': '1', 'b': '2'}
-
-    def test_materialize_file_payload_infers_json(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that JSON files are parsed when no format hint is provided."""
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"alpha": 1}')
-
-        payload = _io.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert payload == {'alpha': 1}
-
-    def test_materialize_file_payload_infers_xml(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that XML files are materialized via :class:`File` when inferred.
-        """
-        file_path = tmp_path / 'payload.xml'
-        file_path.write_text('<root><value>1</value></root>')
-
-        sentinel = {'xml': True}
-        captured: dict[str, object] = {}
-
-        class DummyFile:
-            """
-            Mock :class:`File` that captures init args and returns a sentinel
-            on read.
-            """
-
-            def __init__(self, path_arg: Path, fmt_arg: FileFormat) -> None:
-                captured['path'] = Path(path_arg)
-                captured['fmt'] = fmt_arg
-
-            def read(self) -> object:
-                """Return the sentinel object."""
-                return sentinel
-
-        monkeypatch.setattr(_io, 'File', DummyFile)
-
-        payload = _io.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert payload is sentinel
-        assert captured['path'] == file_path
-        assert captured['fmt'] == FileFormat.XML
-
-    def test_materialize_file_payload_ignores_hint_without_flag(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that format hints are ignored when the explicit flag is not set.
-        """
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"beta": 2}')
-
-        payload = _io.materialize_file_payload(
-            str(file_path),
-            format_hint='csv',
-            format_explicit=False,
-        )
-
-        assert payload == {'beta': 2}
-
-    def test_materialize_file_payload_inline_payload_with_hint(
-        self,
-    ) -> None:
-        """
-        Test that inline payloads parse when format hints are explicit.
-        """
-        payload = _io.materialize_file_payload(
-            '[{"ok": true}]',
-            format_hint='json',
-            format_explicit=True,
-        )
-        assert payload == [{'ok': True}]
-
-    def test_materialize_file_payload_missing_file_raises(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that missing input files propagate :class:`FileNotFoundError`.
-        """
-        file_path = tmp_path / 'missing.json'
-
-        with pytest.raises(FileNotFoundError):
-            _io.materialize_file_payload(
-                str(file_path),
-                format_hint=None,
-                format_explicit=False,
-            )
-
-    def test_materialize_file_payload_respects_hint(
-        self,
-        tmp_path: Path,
-        csv_text: str,
-    ) -> None:
-        """Test that explicit format hints override filename inference."""
-        file_path = tmp_path / 'data.txt'
-        file_path.write_text(csv_text)
-
-        rows = _io.materialize_file_payload(
-            str(file_path),
-            format_hint='csv',
-            format_explicit=True,
-        )
-        assert isinstance(rows, list)
-
-        json_path = tmp_path / 'mislabeled.csv'
-        json_path.write_text('[{"ok": true}]')
-        payload = _io.materialize_file_payload(
-            str(json_path),
-            format_hint='json',
-            format_explicit=True,
-        )
-        assert payload == [{'ok': True}]
-
     def test_pipeline_summary(self, dummy_cfg: PipelineConfig) -> None:
         """
         Test that :func:`_pipeline_summary` returns a mapping for a pipeline
@@ -255,94 +74,6 @@ class TestCliHandlersInternalHelpers:
         assert result['version'] == 'v1'
         assert set(result) >= {'sources', 'targets', 'jobs'}
 
-    def test_read_csv_rows(self, tmp_path: Path, csv_text: str) -> None:
-        """
-        Test that :func:`_read_csv_rows` reads a CSV into row dictionaries.
-        """
-        file_path = tmp_path / 'data.csv'
-        file_path.write_text(csv_text)
-        assert _io.read_csv_rows(file_path) == [
-            {'a': '1', 'b': '2'},
-            {'a': '3', 'b': '4'},
-        ]
-
-    def test_write_json_output_file(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that, when a file path is provided, JSON is written via
-        :class:`File`.
-        """
-        data = {'x': 1}
-
-        dummy_file = Mock()
-        monkeypatch.setattr(_io, 'File', lambda _p, _f: dummy_file)
-
-        _io.write_json_output(data, 'out.json', success_message='msg')
-        dummy_file.write_json.assert_called_once_with(data)
-
-    def test_write_json_output_stdout_flag(self) -> None:
-        """
-        Test that returning False signals STDOUT emission when no output path.
-        """
-        assert (
-            _io.write_json_output(
-                {'x': 1},
-                None,
-                success_message='msg',
-            )
-            is False
-        )
-
-    def test_infer_payload_format(self) -> None:
-        """Test inferring JSON vs CSV using the first significant byte."""
-        assert _io.infer_payload_format(' {"a":1}') == 'json'
-        assert _io.infer_payload_format('  col1,col2') == 'csv'
-
-    @pytest.mark.parametrize(
-        ('payload', 'fmt', 'expected'),
-        (
-            ('{"a": 1}', None, {'a': 1}),
-            ('a,b\n1,2\n', 'csv', [{'a': '1', 'b': '2'}]),
-            ('payload', 'yaml', 'payload'),
-        ),
-    )
-    def test_parse_text_payload_variants(
-        self,
-        payload: str,
-        fmt: str | None,
-        expected: object,
-    ) -> None:
-        """
-        Test that :func:`_parse_text_payload` handles JSON, CSV, and
-        passthrough cases.
-        """
-        assert _io.parse_text_payload(payload, fmt=fmt) == expected
-
-    def test_parse_text_payload_infers_csv_when_unspecified(
-        self,
-        csv_text: str,
-    ) -> None:
-        """
-        Test that CSV payloads are parsed when no format hint is provided.
-        """
-        result = _io.parse_text_payload(csv_text, fmt=None)
-        assert result == [
-            {'a': '1', 'b': '2'},
-            {'a': '3', 'b': '4'},
-        ]
-
-    def test_read_stdin_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test that reading STDIN returns the buffered stream contents."""
-        buffer = io.StringIO('stream-data')
-        monkeypatch.setattr(
-            _io,
-            'sys',
-            types.SimpleNamespace(stdin=buffer),
-        )
-        assert _io.read_stdin_text() == 'stream-data'
-
 
 class TestCheckHandler:
     """Unit test suite for :func:`check_handler`."""
@@ -351,7 +82,7 @@ class TestCheckHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`check_handler` forwards the substitute flag to config
@@ -378,15 +109,13 @@ class TestCheckHandler:
         )
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
         assert recorded['params'] == ('cfg.yml', True)
-        assert capture_io['emit_json'] == [
-            (({'pipelines': ['p1']},), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, {'pipelines': ['p1']}, pretty=True)
 
     def test_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
         monkeypatch.setattr(
@@ -400,9 +129,7 @@ class TestCheckHandler:
             lambda _cfg, **_kwargs: {'targets': ['t1']},
         )
         assert handlers.check_handler(config='cfg.yml') == 0
-        assert capture_io['emit_json'] == [
-            (({'targets': ['t1']},), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, {'targets': ['t1']}, pretty=True)
 
 
 class TestExtractHandler:
@@ -411,7 +138,7 @@ class TestExtractHandler:
     def test_calls_extract_for_non_file_sources(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` uses extract for non-STDIN sources.
@@ -442,17 +169,18 @@ class TestExtractHandler:
         )
 
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert capture_io['emit_or_write'] == [
-            (
-                ({'status': 'ok'}, None),
-                {'pretty': True, 'success_message': ANY},
-            ),
-        ]
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'ok'},
+            None,
+            pretty=True,
+        )
+        assert kwargs['success_message'] == ANY
 
     def test_file_respects_explicit_format(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` forwards explicit file format hints.
@@ -486,7 +214,7 @@ class TestExtractHandler:
     def test_reads_stdin_and_emits_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` reads STDIN and emits parsed data.
@@ -517,15 +245,17 @@ class TestExtractHandler:
             )
             == 0
         )
-        assert capture_io['emit_json'] == [
-            (({'payload': 'raw-text', 'fmt': None},), {'pretty': False}),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'payload': 'raw-text', 'fmt': None},
+            pretty=False,
+        )
         assert capture_io['emit_or_write'] == []
 
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` writes to a file and skips STDOUT
@@ -556,13 +286,13 @@ class TestExtractHandler:
             == 0
         )
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert capture_io['emit_or_write'][0][0][0] == {'status': 'ok'}
-        assert capture_io['emit_or_write'][0][0][1] == 'export.json'
-        assert capture_io['emit_or_write'][0][1]['pretty'] is True
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'ok'},
+            'export.json',
+            pretty=True,
         )
+        assert isinstance(kwargs['success_message'], str)
 
 
 class TestLoadHandler:
@@ -571,7 +301,7 @@ class TestLoadHandler:
     def test_file_target_streams_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`load_handler` streams payload for file targets."""
         recorded: dict[str, object] = {}
@@ -610,14 +340,12 @@ class TestLoadHandler:
             == 0
         )
         assert recorded['call'] == ('data.csv', None, False)
-        assert capture_io['emit_json'] == [
-            ((['rows', 'data.csv'],), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, ['rows', 'data.csv'], pretty=True)
 
     def test_reads_stdin_and_invokes_load(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`load_handler` parses STDIN and routes through load.
@@ -690,18 +418,18 @@ class TestLoadHandler:
             'endpoint',
             None,
         )
-        assert capture_io['emit_or_write'][0][0][0] == {'loaded': True}
-        assert capture_io['emit_or_write'][0][0][1] is None
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'loaded': True},
+            None,
+            pretty=False,
         )
-        assert capture_io['emit_or_write'][0][1]['pretty'] is False
+        assert isinstance(kwargs['success_message'], str)
 
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`load_handler` writes to a file and skips STDOUT
@@ -745,12 +473,13 @@ class TestLoadHandler:
             'warehouse',
             'json',
         )
-        assert capture_io['emit_or_write'][0][0][0] == {'status': 'queued'}
-        assert capture_io['emit_or_write'][0][0][1] == 'result.json'
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'queued'},
+            'result.json',
+            pretty=True,
         )
+        assert isinstance(kwargs['success_message'], str)
 
 
 class TestRenderHandler:
@@ -812,7 +541,7 @@ class TestRunHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
         monkeypatch.setattr(
@@ -831,26 +560,23 @@ class TestRunHandler:
             == 0
         )
 
-        assert capture_io['emit_json'] == [
-            (
-                (
-                    {
-                        'name': dummy_cfg.name,
-                        'version': dummy_cfg.version,
-                        'sources': ['s1'],
-                        'targets': ['t1'],
-                        'jobs': ['j1'],
-                    },
-                ),
-                {'pretty': True},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'name': dummy_cfg.name,
+                'version': dummy_cfg.version,
+                'sources': ['s1'],
+                'targets': ['t1'],
+                'jobs': ['j1'],
+            },
+            pretty=True,
+        )
 
     def test_runs_job_and_emits_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`run_handler` executes a named job and emits status.
@@ -877,12 +603,11 @@ class TestRunHandler:
             == 0
         )
         assert run_calls['params'] == ('job1', 'pipeline.yml')
-        assert capture_io['emit_json'] == [
-            (
-                ({'status': 'ok', 'result': {'job': 'job1', 'ok': True}},),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'status': 'ok', 'result': {'job': 'job1', 'ok': True}},
+            pretty=False,
+        )
 
 
 class TestTransformHandler:
@@ -891,7 +616,7 @@ class TestTransformHandler:
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`transform_handler` emits results with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
@@ -932,12 +657,11 @@ class TestTransformHandler:
             ('data.json', 'json', True),
             ('ops.json', None, True),
         ]
-        assert capture_io['emit_json'] == [
-            (
-                ({'rows': [{'id': 1}], 'ops': {'select': ['id']}},),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'rows': [{'id': 1}], 'ops': {'select': ['id']}},
+            pretty=False,
+        )
 
     def test_writes_target_file(
         self,
@@ -998,7 +722,7 @@ class TestValidateHandler:
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`validate_handler` emits results with no target."""
         monkeypatch.setattr(
@@ -1022,17 +746,14 @@ class TestValidateHandler:
             )
             == 0
         )
-        assert capture_io['emit_json'] == [
-            (
-                (
-                    {
-                        'data': {'source': 'data.json'},
-                        'rules': {'id': {'required': True}},
-                    },
-                ),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'data': {'source': 'data.json'},
+                'rules': {'id': {'required': True}},
+            },
+            pretty=False,
+        )
 
     def test_reports_missing_data_for_target(
         self,
@@ -1071,7 +792,7 @@ class TestValidateHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that: func: `validate_handler` writes data to a target file."""
+        """Test that :func:`validate_handler` writes data to a target file."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -1114,35 +835,35 @@ class TestValidateHandler:
 
 
 @pytest.mark.parametrize(
-    'kwargs,expected_keys',
-    [
-        # run_handler basic smoke
-        (
+    ('kwargs', 'expected_keys'),
+    (
+        pytest.param(
             {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
             ['config', 'job', 'pretty'],
+            id='run-handler-smoke',
         ),
-        # transform_handler basic smoke
-        (
+        pytest.param(
             {
                 'source': 'data.json',
                 'operations': '{"select": ["id"]}',
                 'pretty': True,
             },
             ['source', 'operations', 'pretty'],
+            id='transform-handler-smoke',
         ),
-        # validate_handler basic smoke
-        (
+        pytest.param(
             {
                 'source': 'data.json',
                 'rules': '{"required": ["id"]}',
                 'pretty': True,
             },
             ['source', 'rules', 'pretty'],
+            id='validate-handler-smoke',
         ),
-    ],
+    ),
 )
 def test_handler_smoke(
-    capture_handler: Callable[[object, str], dict[str, object]],
+    capture_handler: CaptureHandler,
     kwargs: dict[str, str | bool],
     expected_keys: list[str],
 ) -> None:
@@ -1165,5 +886,4 @@ def test_handler_smoke(
     result = getattr(module, attr)(**kwargs)
     assert result == 0
     for key in expected_keys:
-        # assert key in calls['kwargs']
         assert key in calls

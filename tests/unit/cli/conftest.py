@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import types
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -32,6 +33,84 @@ from etlplus.config import PipelineConfig
 
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
+
+type CaptureHandler = Callable[[object, str], dict[str, object]]
+type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
+type InvokeCli = Callable[..., Result]
+type StubCommand = Callable[[Callable[..., object]], None]
+
+
+def assert_emit_json(
+    calls: CaptureIo,
+    payload: object,
+    *,
+    pretty: bool,
+) -> None:
+    """
+    Assert that :func:`emit_json` was called once with expected payload.
+
+    Parameters
+    ----------
+    calls : CaptureIo
+        Captured IO calls from the CLI fixtures.
+    payload : object
+        Expected JSON payload.
+    pretty : bool
+        Expected pretty-print flag.
+    """
+    assert calls['emit_json'] == [((payload,), {'pretty': pretty})]
+
+
+def assert_emit_or_write(
+    calls: CaptureIo,
+    payload: object,
+    target: object,
+    *,
+    pretty: bool,
+) -> dict[str, object]:
+    """
+    Assert that :func:`emit_or_write` was called once and return kwargs.
+
+    Parameters
+    ----------
+    calls : CaptureIo
+        Captured IO calls from the CLI fixtures.
+    payload : object
+        Expected payload argument.
+    target : object
+        Expected output path argument.
+    pretty : bool
+        Expected pretty-print flag.
+
+    Returns
+    -------
+    dict[str, object]
+        Captured keyword arguments for the call.
+    """
+    assert len(calls['emit_or_write']) == 1
+    args, kwargs = calls['emit_or_write'][0]
+    assert args[0] == payload
+    assert args[1] == target
+    assert kwargs['pretty'] is pretty
+    return kwargs
+
+
+def assert_mapping_contains(
+    actual: Mapping[str, object],
+    expected: Mapping[str, object],
+) -> None:
+    """
+    Assert that ``actual`` contains the ``expected`` key/value pairs.
+
+    Parameters
+    ----------
+    actual : Mapping[str, object]
+        Mapping returned by the handler capture fixture.
+    expected : Mapping[str, object]
+        Expected key/value pairs that must be present in ``actual``.
+    """
+    for key, value in expected.items():
+        assert actual[key] == value
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,8 +139,20 @@ class DummyCfg:
 @pytest.fixture(name='capture_handler')
 def capture_handler_fixture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[object, str], dict[str, object]]:
-    """Patch a handler function and capture the kwargs it receives."""
+) -> CaptureHandler:
+    """
+    Patch a handler function and capture the kwargs it receives.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    CaptureHandler
+        Callable that records handler keyword arguments.
+    """
 
     def _capture(module: object, attr: str) -> dict[str, object]:
         calls: dict[str, object] = {}
@@ -77,14 +168,24 @@ def capture_handler_fixture(
 
 
 @pytest.fixture(name='capture_io')
-def capture_io_fixture(monkeypatch: pytest.MonkeyPatch):
+def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     """
     Patch handler functions and capture CLI output.
     Returns a dict with lists of call args for each function.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    CaptureIo
+        Mapping of captured IO call arguments by function name.
     """
     import etlplus.cli.io as _io
 
-    calls: dict[str, list] = {
+    calls: CaptureIo = {
         'emit_or_write': [],
         'emit_json': [],
         'print_json': [],
