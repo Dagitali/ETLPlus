@@ -23,6 +23,8 @@ pytestmark = pytest.mark.unit
 
 PROG_NAME: Final[str] = 'etlplus'
 
+type StubCommand = Callable[[Callable[..., object]], None]
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -32,14 +34,14 @@ class TestMain:
 
     def test_command_return_value_is_passthrough(
         self,
-        stub_command: Callable[[Callable[..., object]], None],
+        stub_command: StubCommand,
     ) -> None:
         """
         Test that the command return values flow through unchanged.
 
         Parameters
         ----------
-        stub_command : Callable[[Callable[..., object]], None]
+        stub_command : StubCommand
             Fixture that wires Typer's command execution to ``action``.
         """
         captured: dict[str, object] = {}
@@ -55,24 +57,72 @@ class TestMain:
         assert captured['prog_name'] == PROG_NAME
         assert captured['standalone_mode'] is False
 
-    def test_handles_keyboard_interrupt(
+    @pytest.mark.parametrize(
+        ('exception', 'expected_code', 'expected_err'),
+        (
+            pytest.param(
+                KeyboardInterrupt,
+                130,
+                None,
+                id='keyboard-interrupt',
+            ),
+            pytest.param(ValueError('fail'), 1, 'Error:', id='value-error'),
+        ),
+    )
+    def test_maps_common_exceptions(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        exception: BaseException | type[BaseException],
+        expected_code: int,
+        expected_err: str | None,
     ) -> None:
-        """Test that :class:`KeyboardInterrupt` maps to exit code 130."""
+        """
+        Test that common exceptions map to expected exit codes.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest monkeypatch fixture.
+        capsys : pytest.CaptureFixture[str]
+            Capture fixture for STDOUT/STDERR.
+        exception : BaseException | type[BaseException]
+            Exception instance or type to trigger.
+        expected_code : int
+            Expected exit code emitted by :func:`cli_main`.
+        expected_err : str | None
+            Expected STDERR substring when provided.
+        """
+        side_effect: BaseException
+        if isinstance(exception, type):
+            side_effect = exception()
+        else:
+            side_effect = exception
         monkeypatch.setattr(
             cli_handlers_module,
             'extract_handler',
-            Mock(side_effect=KeyboardInterrupt),
+            Mock(side_effect=side_effect),
         )
-        assert cli_main(['extract', 'foo.csv']) == 130
+        assert cli_main(['extract', 'foo.csv']) == expected_code
+        stderr = capsys.readouterr().err
+        if expected_err is not None:
+            assert expected_err in stderr
 
     def test_handles_os_error(
         self,
-        stub_command: Callable[[Callable[..., object]], None],
+        stub_command: StubCommand,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that any :class:`OSError` surfaces to STDERR and return 1."""
+        """
+        Test that any :class:`OSError` surfaces to STDERR and return 1.
+
+        Parameters
+        ----------
+        stub_command : StubCommand
+            Fixture that wires Typer's command execution to ``action``.
+        capsys : pytest.CaptureFixture[str]
+            Capture fixture for STDOUT/STDERR.
+        """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise OSError('disk full')
@@ -147,7 +197,8 @@ class TestMain:
         expected_message: str,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that unknown CLI arguments echo usage help.
+        """
+        Test that unknown CLI arguments echo usage help.
 
         Parameters
         ----------
@@ -164,19 +215,3 @@ class TestMain:
         assert exit_code == 2
         assert expected_message in captured.err
         assert 'Usage:' in captured.err
-
-    def test_value_error_returns_exit_code_1(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """
-        Test that :class:`ValueError` from a command maps to exit code 1.
-        """
-        monkeypatch.setattr(
-            cli_handlers_module,
-            'extract_handler',
-            Mock(side_effect=ValueError('fail')),
-        )
-        assert cli_main(['extract', 'foo.csv']) == 1
-        assert 'Error:' in capsys.readouterr().err
