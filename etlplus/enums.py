@@ -208,8 +208,19 @@ class FileFormat(CoercibleStrEnum):
 
     # -- Constants -- #
 
+    AVRO = 'avro'
     CSV = 'csv'
+    FEATHER = 'feather'
+    GZ = 'gz'
     JSON = 'json'
+    NDJSON = 'ndjson'
+    ORC = 'orc'
+    PARQUET = 'parquet'
+    TSV = 'tsv'
+    TXT = 'txt'
+    XLS = 'xls'
+    XLSX = 'xlsx'
+    ZIP = 'zip'
     XML = 'xml'
     YAML = 'yaml'
 
@@ -227,11 +238,50 @@ class FileFormat(CoercibleStrEnum):
         """
         return {
             # Common shorthand
+            'parq': 'parquet',
             'yml': 'yaml',
+            # File extensions
+            '.avro': 'avro',
+            '.csv': 'csv',
+            '.feather': 'feather',
+            '.gz': 'gz',
+            '.json': 'json',
+            '.jsonl': 'ndjson',
+            '.ndjson': 'ndjson',
+            '.orc': 'orc',
+            '.parquet': 'parquet',
+            '.pq': 'parquet',
+            '.tsv': 'tsv',
+            '.txt': 'txt',
+            '.xls': 'xls',
+            '.xlsx': 'xlsx',
+            '.zip': 'zip',
+            '.xml': 'xml',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
             # MIME types
-            'text/csv': 'csv',
+            'application/avro': 'avro',
+            'application/feather': 'feather',
+            'application/gzip': 'gz',
             'application/json': 'json',
+            'application/jsonlines': 'ndjson',
+            'application/ndjson': 'ndjson',
+            'application/orc': 'orc',
+            'application/vnd.apache.arrow.file': 'feather',
+            'application/vnd.apache.orc': 'orc',
+            'application/vnd.ms-excel': 'xls',
+            (
+                'application/vnd.openxmlformats-'
+                'officedocument.spreadsheetml.sheet'
+            ): 'xlsx',
+            'application/x-avro': 'avro',
+            'application/x-ndjson': 'ndjson',
+            'application/x-parquet': 'parquet',
             'application/xml': 'xml',
+            'application/zip': 'zip',
+            'text/csv': 'csv',
+            'text/plain': 'txt',
+            'text/tab-separated-values': 'tsv',
         }
 
 
