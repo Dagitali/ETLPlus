@@ -33,6 +33,9 @@ from etlplus.config import PipelineConfig
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
 
+type CaptureHandler = Callable[[object, str], dict[str, object]]
+type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
+
 
 @dataclass(frozen=True, slots=True)
 class DummyCfg:
@@ -60,8 +63,20 @@ class DummyCfg:
 @pytest.fixture(name='capture_handler')
 def capture_handler_fixture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[object, str], dict[str, object]]:
-    """Patch a handler function and capture the kwargs it receives."""
+) -> CaptureHandler:
+    """
+    Patch a handler function and capture the kwargs it receives.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    CaptureHandler
+        Callable that records handler keyword arguments.
+    """
 
     def _capture(module: object, attr: str) -> dict[str, object]:
         calls: dict[str, object] = {}
@@ -77,14 +92,24 @@ def capture_handler_fixture(
 
 
 @pytest.fixture(name='capture_io')
-def capture_io_fixture(monkeypatch: pytest.MonkeyPatch):
+def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     """
     Patch handler functions and capture CLI output.
     Returns a dict with lists of call args for each function.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    CaptureIo
+        Mapping of captured IO call arguments by function name.
     """
     import etlplus.cli.io as _io
 
-    calls: dict[str, list] = {
+    calls: CaptureIo = {
         'emit_or_write': [],
         'emit_json': [],
         'print_json': [],
