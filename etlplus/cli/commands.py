@@ -443,9 +443,9 @@ def extract_cmd(
         Source (JSON payload, file/folder path, URL/URI, or - for STDIN)
         from which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
-        Source data format. Overrides the inferred format (``csv``, ``json``,
-        ``parquet``, ``xml``) based on filename extension or STDIN content.
-        Default is ``None``.
+        Data source format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension or STDIN content. Default is
+        ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
@@ -523,15 +523,15 @@ def load_cmd(
     ctx : typer.Context
         The Typer context.
     source_format : SourceFormatOption, optional
-        Source data format. Overrides the inferred format (``csv``, ``json``,
-        ``parquet``, ``xml``) based on STDIN content. Default is ``None``.
+        Data source format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension or STDIN content. Default is
+        ``None``.
     target : TargetArg, optional
         Target (file/folder path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
-        Format of the target data. Overrides the inferred format (``csv``,
-        ``json``, ``parquet``, ``xml``) based on filename extension. Default is
-        ``None``.
+        Target data format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
@@ -760,9 +760,9 @@ def transform_cmd(
         Source (JSON payload, file/folder path, URL/URI, or - for STDIN) from
         which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
-        Source data format. Overrides the inferred format (``csv``, ``json``,
-        ``parquet``, ``xml``) based on filename extension or STDIN content.
-        Default is ``None``.
+        Data source format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension or STDIN content. Default is
+        ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
@@ -770,9 +770,8 @@ def transform_cmd(
         Target (file/folder path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
-        Format of the target data. Overrides the inferred format (``csv``,
-        ``json``, ``parquet``, ``xml``) based on filename extension. Default is
-        ``None``.
+        Target data format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
@@ -876,11 +875,12 @@ def validate_cmd(
     source : SourceArg
         Data source to validate (path, JSON payload, or - for STDIN).
     source_format : SourceFormatOption, optional
-        Format of the source. Overrides filename-based inference when provided.
-        Default is ``None``.
-    source_type : SourceTypeOption, optional
-        Override the inferred source type (file, database, api). Default is
+        Data source format. Overrides the inferred format (``csv``, ``json``,
+        etc.) based on filename extension or STDIN content. Default is
         ``None``.
+    source_type : SourceTypeOption, optional
+        Data source type. Overrides the inferred type (``api``, ``database``,
+        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
     output : OutputOption, optional
         Output file for validated output (- for STDOUT). Default is ``None``.
 
