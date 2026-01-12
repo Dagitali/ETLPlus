@@ -132,6 +132,7 @@ class TestInferFileFormatAndCompression:
                 FileFormat.CSV,
                 CompressionFormat.GZ,
             ),
+            ('application/octet-stream', None, None, None),
             (FileFormat.GZ, None, None, CompressionFormat.GZ),
             (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
         ],
