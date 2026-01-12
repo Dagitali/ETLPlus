@@ -16,6 +16,7 @@ from typing import Any
 from typing import cast
 
 from .enums import FileFormat
+from .enums import infer_file_format_and_compression
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -32,15 +33,6 @@ __all__ = ['File']
 
 
 _DEFAULT_XML_ROOT = 'root'
-
-# Map common filename extensions to FileFormat (used for inference)
-_EXT_TO_FORMAT: dict[str, FileFormat] = {
-    'csv': FileFormat.CSV,
-    'json': FileFormat.JSON,
-    'xml': FileFormat.XML,
-    'yaml': FileFormat.YAML,
-    'yml': FileFormat.YAML,
-}
 
 # Optional YAML support (lazy-loaded to avoid hard dependency)
 # Cached access function to avoid global statements.
@@ -246,14 +238,18 @@ class File:
         ValueError
             If the extension is unknown or unsupported.
         """
-        ext = self.path.suffix.lstrip('.').casefold()
-        try:
-            return _EXT_TO_FORMAT[ext]
-        except KeyError as e:
+        fmt, compression = infer_file_format_and_compression(self.path)
+        if fmt is not None:
+            return fmt
+        if compression is not None:
             raise ValueError(
-                'Cannot infer file format from '
-                f'extension {self.path.suffix!r}',
-            ) from e
+                'Cannot infer file format from compressed file '
+                f'{self.path!r} with compression {compression.value!r}',
+            )
+        raise ValueError(
+            'Cannot infer file format from '
+            f'extension {self.path.suffix!r}',
+        )
 
     # -- Instance Methods (Generic API) -- #
 

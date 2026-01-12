@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import enum
 import operator as _op
+from pathlib import PurePath
 from statistics import fmean
 from typing import Self
 
@@ -19,16 +20,21 @@ from .types import StrStrMap
 
 
 __all__ = [
+    # Enums
     'AggregateName',
     'CoercibleStrEnum',
+    'CompressionFormat',
     'DataConnectorType',
     'FileFormat',
     'HttpMethod',
     'OperatorName',
     'PipelineStep',
+    # Functions
+    'coerce_compression_format',
     'coerce_data_connector_type',
     'coerce_file_format',
     'coerce_http_method',
+    'infer_file_format_and_compression',
 ]
 
 
@@ -170,6 +176,39 @@ class AggregateName(CoercibleStrEnum):
 
         # AVG
         return lambda xs, n: (fmean(xs) if xs else 0.0)
+
+
+class CompressionFormat(CoercibleStrEnum):
+    """Supported compression formats for data files."""
+
+    # -- Constants -- #
+
+    GZ = 'gz'
+    ZIP = 'zip'
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def aliases(cls) -> StrStrMap:
+        """
+        Return a mapping of common aliases for each enum member.
+
+        Returns
+        -------
+        StrStrMap
+            A mapping of alias names to their corresponding enum member names.
+        """
+        return {
+            # File extensions
+            '.gz': 'gz',
+            '.gzip': 'gz',
+            '.zip': 'zip',
+            # MIME types
+            'application/gzip': 'gz',
+            'application/x-gzip': 'gz',
+            'application/zip': 'zip',
+            'application/x-zip-compressed': 'zip',
+        }
 
 
 class DataConnectorType(CoercibleStrEnum):
@@ -415,6 +454,13 @@ class PipelineStep(CoercibleStrEnum):
 # SECTION: INTERNAL CONSTANTS ============================================== #
 
 
+# Compression formats that are also file formats.
+_COMPRESSION_FILE_FORMATS: set[FileFormat] = {
+    FileFormat.GZ,
+    FileFormat.ZIP,
+}
+
+
 # Precomputed order index for PipelineStep; avoids recomputing on each access.
 _PIPELINE_ORDER_INDEX: dict[PipelineStep, int] = {
     PipelineStep.FILTER: 0,
@@ -452,6 +498,18 @@ def coerce_file_format(
     return FileFormat.coerce(file_format)
 
 
+def coerce_compression_format(
+    compression_format: CompressionFormat | str,
+) -> CompressionFormat:
+    """
+    Normalize textual compression format values to :class:`CompressionFormat`.
+
+    This thin wrapper is kept for backward compatibility; prefer
+    :meth:`CompressionFormat.coerce` going forward.
+    """
+    return CompressionFormat.coerce(compression_format)
+
+
 def coerce_http_method(
     http_method: HttpMethod | str,
 ) -> HttpMethod:
@@ -462,3 +520,55 @@ def coerce_http_method(
     :meth:`HttpMethod.coerce` going forward.
     """
     return HttpMethod.coerce(http_method)
+
+
+def infer_file_format_and_compression(
+    value: object,
+) -> tuple[FileFormat | None, CompressionFormat | None]:
+    """
+    Infer data format and compression from a filename, extension, or MIME type.
+
+    Parameters
+    ----------
+    value : object
+        A filename, extension, MIME type, or existing enum member.
+
+    Returns
+    -------
+    tuple[FileFormat | None, CompressionFormat | None]
+        The inferred data format and compression, if any.
+    """
+    if isinstance(value, FileFormat):
+        if value in _COMPRESSION_FILE_FORMATS:
+            return None, CompressionFormat.coerce(value.value)
+        return value, None
+    if isinstance(value, CompressionFormat):
+        return None, value
+
+    text = str(value).strip()
+    if not text:
+        return None, None
+
+    normalized = text.casefold()
+    mime = normalized.split(';', 1)[0].strip()
+
+    compression = CompressionFormat.try_coerce(mime)
+    fmt = FileFormat.try_coerce(mime)
+
+    suffixes = PurePath(text).suffixes
+    if suffixes:
+        normalized_suffixes = [suffix.casefold() for suffix in suffixes]
+        compression = (
+            CompressionFormat.try_coerce(normalized_suffixes[-1])
+            or compression
+        )
+        if compression is not None:
+            normalized_suffixes = normalized_suffixes[:-1]
+        if normalized_suffixes:
+            fmt = FileFormat.try_coerce(normalized_suffixes[-1]) or fmt
+
+    if fmt in _COMPRESSION_FILE_FORMATS:
+        compression = compression or CompressionFormat.coerce(fmt.value)
+        fmt = None
+
+    return fmt, compression
