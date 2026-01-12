@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.cli.handlers`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import ANY
@@ -15,6 +14,10 @@ import pytest
 
 import etlplus.cli.handlers as handlers
 from etlplus.config import PipelineConfig
+from tests.unit.cli.conftest import CaptureHandler
+from tests.unit.cli.conftest import CaptureIo
+from tests.unit.cli.conftest import assert_emit_json
+from tests.unit.cli.conftest import assert_emit_or_write
 
 # SECTION: HELPERS ========================================================== #
 
@@ -79,7 +82,7 @@ class TestCheckHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`check_handler` forwards the substitute flag to config
@@ -106,15 +109,13 @@ class TestCheckHandler:
         )
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
         assert recorded['params'] == ('cfg.yml', True)
-        assert capture_io['emit_json'] == [
-            (({'pipelines': ['p1']},), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, {'pipelines': ['p1']}, pretty=True)
 
     def test_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
         monkeypatch.setattr(
@@ -128,9 +129,7 @@ class TestCheckHandler:
             lambda _cfg, **_kwargs: {'targets': ['t1']},
         )
         assert handlers.check_handler(config='cfg.yml') == 0
-        assert capture_io['emit_json'] == [
-            (({'targets': ['t1']},), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, {'targets': ['t1']}, pretty=True)
 
 
 class TestExtractHandler:
@@ -139,7 +138,7 @@ class TestExtractHandler:
     def test_calls_extract_for_non_file_sources(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` uses extract for non-STDIN sources.
@@ -170,17 +169,18 @@ class TestExtractHandler:
         )
 
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert capture_io['emit_or_write'] == [
-            (
-                ({'status': 'ok'}, None),
-                {'pretty': True, 'success_message': ANY},
-            ),
-        ]
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'ok'},
+            None,
+            pretty=True,
+        )
+        assert kwargs['success_message'] == ANY
 
     def test_file_respects_explicit_format(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` forwards explicit file format hints.
@@ -214,7 +214,7 @@ class TestExtractHandler:
     def test_reads_stdin_and_emits_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` reads STDIN and emits parsed data.
@@ -245,15 +245,17 @@ class TestExtractHandler:
             )
             == 0
         )
-        assert capture_io['emit_json'] == [
-            (({'payload': 'raw-text', 'fmt': None},), {'pretty': False}),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'payload': 'raw-text', 'fmt': None},
+            pretty=False,
+        )
         assert capture_io['emit_or_write'] == []
 
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`extract_handler` writes to a file and skips STDOUT
@@ -284,13 +286,13 @@ class TestExtractHandler:
             == 0
         )
         assert observed['params'] == ('api', 'endpoint', 'json')
-        assert capture_io['emit_or_write'][0][0][0] == {'status': 'ok'}
-        assert capture_io['emit_or_write'][0][0][1] == 'export.json'
-        assert capture_io['emit_or_write'][0][1]['pretty'] is True
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'ok'},
+            'export.json',
+            pretty=True,
         )
+        assert isinstance(kwargs['success_message'], str)
 
 
 class TestLoadHandler:
@@ -299,7 +301,7 @@ class TestLoadHandler:
     def test_file_target_streams_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`load_handler` streams payload for file targets."""
         recorded: dict[str, object] = {}
@@ -338,14 +340,12 @@ class TestLoadHandler:
             == 0
         )
         assert recorded['call'] == ('data.csv', None, False)
-        assert capture_io['emit_json'] == [
-            ((['rows', 'data.csv'],), {'pretty': True}),
-        ]
+        assert_emit_json(capture_io, ['rows', 'data.csv'], pretty=True)
 
     def test_reads_stdin_and_invokes_load(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`load_handler` parses STDIN and routes through load.
@@ -418,18 +418,18 @@ class TestLoadHandler:
             'endpoint',
             None,
         )
-        assert capture_io['emit_or_write'][0][0][0] == {'loaded': True}
-        assert capture_io['emit_or_write'][0][0][1] is None
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'loaded': True},
+            None,
+            pretty=False,
         )
-        assert capture_io['emit_or_write'][0][1]['pretty'] is False
+        assert isinstance(kwargs['success_message'], str)
 
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`load_handler` writes to a file and skips STDOUT
@@ -473,12 +473,13 @@ class TestLoadHandler:
             'warehouse',
             'json',
         )
-        assert capture_io['emit_or_write'][0][0][0] == {'status': 'queued'}
-        assert capture_io['emit_or_write'][0][0][1] == 'result.json'
-        assert isinstance(
-            capture_io['emit_or_write'][0][1]['success_message'],
-            str,
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'queued'},
+            'result.json',
+            pretty=True,
         )
+        assert isinstance(kwargs['success_message'], str)
 
 
 class TestRenderHandler:
@@ -540,7 +541,7 @@ class TestRunHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
         monkeypatch.setattr(
@@ -559,26 +560,23 @@ class TestRunHandler:
             == 0
         )
 
-        assert capture_io['emit_json'] == [
-            (
-                (
-                    {
-                        'name': dummy_cfg.name,
-                        'version': dummy_cfg.version,
-                        'sources': ['s1'],
-                        'targets': ['t1'],
-                        'jobs': ['j1'],
-                    },
-                ),
-                {'pretty': True},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'name': dummy_cfg.name,
+                'version': dummy_cfg.version,
+                'sources': ['s1'],
+                'targets': ['t1'],
+                'jobs': ['j1'],
+            },
+            pretty=True,
+        )
 
     def test_runs_job_and_emits_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: PipelineConfig,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`run_handler` executes a named job and emits status.
@@ -605,12 +603,11 @@ class TestRunHandler:
             == 0
         )
         assert run_calls['params'] == ('job1', 'pipeline.yml')
-        assert capture_io['emit_json'] == [
-            (
-                ({'status': 'ok', 'result': {'job': 'job1', 'ok': True}},),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'status': 'ok', 'result': {'job': 'job1', 'ok': True}},
+            pretty=False,
+        )
 
 
 class TestTransformHandler:
@@ -619,7 +616,7 @@ class TestTransformHandler:
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`transform_handler` emits results with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
@@ -660,12 +657,11 @@ class TestTransformHandler:
             ('data.json', 'json', True),
             ('ops.json', None, True),
         ]
-        assert capture_io['emit_json'] == [
-            (
-                ({'rows': [{'id': 1}], 'ops': {'select': ['id']}},),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {'rows': [{'id': 1}], 'ops': {'select': ['id']}},
+            pretty=False,
+        )
 
     def test_writes_target_file(
         self,
@@ -726,7 +722,7 @@ class TestValidateHandler:
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capture_io: dict[str, list],
+        capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`validate_handler` emits results with no target."""
         monkeypatch.setattr(
@@ -750,17 +746,14 @@ class TestValidateHandler:
             )
             == 0
         )
-        assert capture_io['emit_json'] == [
-            (
-                (
-                    {
-                        'data': {'source': 'data.json'},
-                        'rules': {'id': {'required': True}},
-                    },
-                ),
-                {'pretty': False},
-            ),
-        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'data': {'source': 'data.json'},
+                'rules': {'id': {'required': True}},
+            },
+            pretty=False,
+        )
 
     def test_reports_missing_data_for_target(
         self,
@@ -799,7 +792,7 @@ class TestValidateHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that: func: `validate_handler` writes data to a target file."""
+        """Test that :func:`validate_handler` writes data to a target file."""
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -842,35 +835,35 @@ class TestValidateHandler:
 
 
 @pytest.mark.parametrize(
-    'kwargs,expected_keys',
-    [
-        # run_handler basic smoke
-        (
+    ('kwargs', 'expected_keys'),
+    (
+        pytest.param(
             {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
             ['config', 'job', 'pretty'],
+            id='run-handler-smoke',
         ),
-        # transform_handler basic smoke
-        (
+        pytest.param(
             {
                 'source': 'data.json',
                 'operations': '{"select": ["id"]}',
                 'pretty': True,
             },
             ['source', 'operations', 'pretty'],
+            id='transform-handler-smoke',
         ),
-        # validate_handler basic smoke
-        (
+        pytest.param(
             {
                 'source': 'data.json',
                 'rules': '{"required": ["id"]}',
                 'pretty': True,
             },
             ['source', 'rules', 'pretty'],
+            id='validate-handler-smoke',
         ),
-    ],
+    ),
 )
 def test_handler_smoke(
-    capture_handler: Callable[[object, str], dict[str, object]],
+    capture_handler: CaptureHandler,
     kwargs: dict[str, str | bool],
     expected_keys: list[str],
 ) -> None:
@@ -893,5 +886,4 @@ def test_handler_smoke(
     result = getattr(module, attr)(**kwargs)
     assert result == 0
     for key in expected_keys:
-        # assert key in calls['kwargs']
         assert key in calls
