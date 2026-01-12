@@ -247,8 +247,7 @@ class File:
                 f'{self.path!r} with compression {compression.value!r}',
             )
         raise ValueError(
-            'Cannot infer file format from '
-            f'extension {self.path.suffix!r}',
+            f'Cannot infer file format from extension {self.path.suffix!r}',
         )
 
     # -- Instance Methods (Generic API) -- #

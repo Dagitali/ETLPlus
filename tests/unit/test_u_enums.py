@@ -93,6 +93,7 @@ class TestFileFormat:
         assert coerce_file_format(value) is expected
 
     def test_invalid_value(self) -> None:
+        """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError, match='Invalid FileFormat'):
             coerce_file_format('ini')
 
