@@ -6,43 +6,22 @@ Unit tests for :mod:`etlplus.cli.state`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 import typer
-from typer.testing import Result
 
 import etlplus
 import etlplus.cli.handlers as handlers
 import etlplus.cli.state as cli_state_module
+from tests.unit.cli.conftest import CaptureHandler
+from tests.unit.cli.conftest import InvokeCli
+from tests.unit.cli.conftest import assert_mapping_contains
 
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
-
-type InvokeCli = Callable[..., Result]
-type CaptureHandler = Callable[[object, str], dict[str, object]]
-
-
-def assert_mapping_contains(
-    actual: Mapping[str, object],
-    expected: Mapping[str, object],
-) -> None:
-    """
-    Assert that ``actual`` contains the ``expected`` key/value pairs.
-
-    Parameters
-    ----------
-    actual : Mapping[str, object]
-        Mapping returned by the handler capture fixture.
-    expected : Mapping[str, object]
-        Expected key/value pairs that must be present in ``actual``.
-    """
-    for key, value in expected.items():
-        assert actual[key] == value
 
 
 # SECTION: TESTS ============================================================ #
