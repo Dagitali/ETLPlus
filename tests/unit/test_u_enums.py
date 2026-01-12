@@ -119,25 +119,32 @@ class TestInferFileFormatAndCompression:
     """Unit test suite for :func:`infer_file_format_and_compression`."""
 
     @pytest.mark.parametrize(
-        'value,expected_format,expected_compression',
+        'value,filename,expected_format,expected_compression',
         [
-            ('data.csv.gz', FileFormat.CSV, CompressionFormat.GZ),
-            ('data.jsonl.gz', FileFormat.NDJSON, CompressionFormat.GZ),
-            ('data.zip', None, CompressionFormat.ZIP),
-            ('application/json; charset=utf-8', FileFormat.JSON, None),
-            ('application/gzip', None, CompressionFormat.GZ),
-            (FileFormat.GZ, None, CompressionFormat.GZ),
-            (CompressionFormat.ZIP, None, CompressionFormat.ZIP),
+            ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
+            ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
+            ('data.zip', None, None, CompressionFormat.ZIP),
+            ('application/json; charset=utf-8', None, FileFormat.JSON, None),
+            ('application/gzip', None, None, CompressionFormat.GZ),
+            (
+                'application/octet-stream',
+                'payload.csv.gz',
+                FileFormat.CSV,
+                CompressionFormat.GZ,
+            ),
+            (FileFormat.GZ, None, None, CompressionFormat.GZ),
+            (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
         ],
     )
     def test_infers_format_and_compression(
         self,
         value: object,
+        filename: object | None,
         expected_format: FileFormat | None,
         expected_compression: CompressionFormat | None,
     ) -> None:
         """Test mixed inputs for format and compression inference."""
-        fmt, compression = infer_file_format_and_compression(value)
+        fmt, compression = infer_file_format_and_compression(value, filename)
         assert fmt is expected_format
         assert compression is expected_compression
 
