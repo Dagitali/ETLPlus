@@ -237,7 +237,7 @@ class TestParseTextPayload:
         expected: object,
     ) -> None:
         """
-        Test that :func:`_parse_text_payload` handles JSON, CSV, and
+        Test that :func:`parse_text_payload` handles JSON, CSV, and
         passthrough cases.
         """
         assert _io.parse_text_payload(payload, fmt=fmt) == expected
