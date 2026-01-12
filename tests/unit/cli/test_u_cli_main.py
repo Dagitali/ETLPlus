@@ -15,6 +15,7 @@ import typer
 
 import etlplus.cli.handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
+from tests.unit.cli.conftest import StubCommand
 
 # SECTION: HELPERS ========================================================== #
 
@@ -22,8 +23,6 @@ from etlplus.cli.main import main as cli_main
 pytestmark = pytest.mark.unit
 
 PROG_NAME: Final[str] = 'etlplus'
-
-type StubCommand = Callable[[Callable[..., object]], None]
 
 
 # SECTION: TESTS ============================================================ #
