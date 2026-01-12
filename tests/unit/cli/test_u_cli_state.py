@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.cli.state`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -22,7 +23,26 @@ import etlplus.cli.state as cli_state_module
 
 pytestmark = pytest.mark.unit
 
-InvokeCli = Callable[..., Result]
+type InvokeCli = Callable[..., Result]
+type CaptureHandler = Callable[[object, str], dict[str, object]]
+
+
+def assert_mapping_contains(
+    actual: Mapping[str, object],
+    expected: Mapping[str, object],
+) -> None:
+    """
+    Assert that ``actual`` contains the ``expected`` key/value pairs.
+
+    Parameters
+    ----------
+    actual : Mapping[str, object]
+        Mapping returned by the handler capture fixture.
+    expected : Mapping[str, object]
+        Expected key/value pairs that must be present in ``actual``.
+    """
+    for key, value in expected.items():
+        assert actual[key] == value
 
 
 # SECTION: TESTS ============================================================ #
@@ -34,15 +54,16 @@ class TestCliExtractState:
     @pytest.mark.parametrize(
         ('argv', 'expected'),
         (
-            (
+            pytest.param(
                 ('extract', '/path/to/file.csv', '--source-format', 'csv'),
                 {
                     'source': '/path/to/file.csv',
                     'format_hint': 'csv',
                     'format_explicit': True,
                 },
+                id='extract-file-format',
             ),
-            (
+            pytest.param(
                 (
                     '--no-pretty',
                     '--quiet',
@@ -56,13 +77,14 @@ class TestCliExtractState:
                     'source': 'https://example.com/data.json',
                     'pretty': False,
                 },
+                id='extract-api-quiet',
             ),
         ),
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
         argv: tuple[str, ...],
         expected: dict[str, object],
     ) -> None:
@@ -72,8 +94,7 @@ class TestCliExtractState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        for key, value in expected.items():
-            assert calls[key] == value
+        assert_mapping_contains(calls, expected)
 
 
 class TestCliLoadState:
@@ -82,19 +103,21 @@ class TestCliLoadState:
     @pytest.mark.parametrize(
         ('argv', 'expected'),
         (
-            (
+            pytest.param(
                 ('load', '--target-type', 'file', '/path/to/out.json'),
                 {
                     'target': '/path/to/out.json',
                     'target_format': None,
                     'format_explicit': False,
                 },
+                id='load-file-target',
             ),
-            (
+            pytest.param(
                 ('load', '--target-format', 'csv', '/path/to/out.csv'),
                 {'target_format': 'csv', 'format_explicit': True},
+                id='load-explicit-target-format',
             ),
-            (
+            pytest.param(
                 (
                     'load',
                     '--target-type',
@@ -102,13 +125,14 @@ class TestCliLoadState:
                     'postgres://db.example.org/app',
                 ),
                 {'source': '-', 'target': 'postgres://db.example.org/app'},
+                id='load-default-source',
             ),
         ),
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
         argv: tuple[str, ...],
         expected: dict[str, object],
     ) -> None:
@@ -118,8 +142,7 @@ class TestCliLoadState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        for key, value in expected.items():
-            assert calls[key] == value
+        assert_mapping_contains(calls, expected)
 
 
 class TestCliRenderState:
@@ -128,7 +151,7 @@ class TestCliRenderState:
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
         calls = capture_handler(handlers, 'render_handler')
@@ -158,7 +181,7 @@ class TestCliRunState:
     def test_maps_flags(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
     ) -> None:
         """Test that CLI flags map to handler parameters correctly."""
         calls = capture_handler(handlers, 'run_handler')
@@ -174,33 +197,34 @@ class TestCliTransformState:
     """Unit test suite of command-line state tests for ``transform``."""
 
     @pytest.mark.parametrize(
-        ('argv', 'assertions'),
+        ('argv', 'expected'),
         (
-            (
+            pytest.param(
                 (
                     'transform',
                     '/path/to/file.json',
                     '--operations',
                     '{"select": ["id"]}',
                 ),
-                lambda calls: (
-                    calls['source'] == '/path/to/file.json'
-                    and isinstance(calls['operations'], dict)
-                    and calls['operations'].get('select') == ['id']
-                ),
+                {
+                    'source': '/path/to/file.json',
+                    'operations': {'select': ['id']},
+                },
+                id='transform-inline-ops',
             ),
-            (
+            pytest.param(
                 ('transform', '--source-format', 'csv'),
-                lambda calls: calls['source_format'] == 'csv',
+                {'source_format': 'csv'},
+                id='transform-source-format',
             ),
         ),
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
         argv: tuple[str, ...],
-        assertions: Callable[[dict[str, object]], bool],
+        expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
         calls = capture_handler(handlers, 'transform_handler')
@@ -208,40 +232,41 @@ class TestCliTransformState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert assertions(calls)
+        assert_mapping_contains(calls, expected)
 
 
 class TestCliValidateState:
     """Unit test suite of command-line state tests for ``validate``."""
 
     @pytest.mark.parametrize(
-        ('argv', 'assertions'),
+        ('argv', 'expected'),
         (
-            (
+            pytest.param(
                 (
                     'validate',
                     '/path/to/file.json',
                     '--rules',
                     '{"required": ["id"]}',
                 ),
-                lambda calls: (
-                    calls['source'] == '/path/to/file.json'
-                    and isinstance(calls['rules'], dict)
-                    and calls['rules'].get('required') == ['id']
-                ),
+                {
+                    'source': '/path/to/file.json',
+                    'rules': {'required': ['id']},
+                },
+                id='validate-inline-rules',
             ),
-            (
+            pytest.param(
                 ('validate', '--source-format', 'csv'),
-                lambda calls: calls['source_format'] == 'csv',
+                {'source_format': 'csv'},
+                id='validate-source-format',
             ),
         ),
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
-        capture_handler: Callable[[object, str], dict[str, object]],
+        capture_handler: CaptureHandler,
         argv: tuple[str, ...],
-        assertions: Callable[[dict[str, object]], bool],
+        expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
         calls = capture_handler(handlers, 'validate_handler')
@@ -249,7 +274,7 @@ class TestCliValidateState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert assertions(calls)
+        assert_mapping_contains(calls, expected)
 
 
 class TestCliHelp:
