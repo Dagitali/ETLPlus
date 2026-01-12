@@ -524,6 +524,7 @@ def coerce_http_method(
 
 def infer_file_format_and_compression(
     value: object,
+    filename: object | None = None,
 ) -> tuple[FileFormat | None, CompressionFormat | None]:
     """
     Infer data format and compression from a filename, extension, or MIME type.
@@ -532,6 +533,9 @@ def infer_file_format_and_compression(
     ----------
     value : object
         A filename, extension, MIME type, or existing enum member.
+    filename : object | None, optional
+        A filename to consult for extension-based inference (e.g. when
+        ``value`` is ``application/octet-stream``).
 
     Returns
     -------
@@ -555,7 +559,25 @@ def infer_file_format_and_compression(
     compression = CompressionFormat.try_coerce(mime)
     fmt = FileFormat.try_coerce(mime)
 
-    suffixes = PurePath(text).suffixes
+    is_mime = mime.startswith(
+        (
+            'application/',
+            'text/',
+            'audio/',
+            'image/',
+            'video/',
+            'multipart/',
+        ),
+    )
+    suffix_source: object | None = filename if filename is not None else text
+    if is_mime and filename is None:
+        suffix_source = None
+
+    suffixes = (
+        PurePath(str(suffix_source)).suffixes
+        if suffix_source is not None
+        else []
+    )
     if suffixes:
         normalized_suffixes = [suffix.casefold() for suffix in suffixes]
         compression = (
