@@ -101,7 +101,7 @@ def load_data(
         return cast(JSONData, source)
 
     if isinstance(source, Path):
-        return File(source, FileFormat.JSON).read_json()
+        return File(source, FileFormat.JSON).read()
 
     if isinstance(source, str):
         # Special case: '-' means read JSON from STDIN (Unix convention).
@@ -111,7 +111,7 @@ def load_data(
         candidate = Path(source)
         if candidate.exists():
             try:
-                return File(candidate, FileFormat.JSON).read_json()
+                return File(candidate, FileFormat.JSON).read()
             except (OSError, json.JSONDecodeError, ValueError):
                 # Fall back to treating the string as raw JSON content.
                 pass

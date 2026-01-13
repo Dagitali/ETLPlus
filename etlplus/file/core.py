@@ -13,8 +13,6 @@ from pathlib import Path
 from ..enums import FileFormat
 from ..enums import infer_file_format_and_compression
 from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
 from ..types import StrPath
 from . import csv
 from . import json
@@ -143,16 +141,17 @@ class File:
         ValueError
             If the resolved file format is unsupported.
         """
+        self._assert_exists()
         fmt = self._ensure_format()
         match fmt:
-            case FileFormat.JSON:
-                return self.read_json()
             case FileFormat.CSV:
-                return self.read_csv()
+                return csv.read(self.path)
+            case FileFormat.JSON:
+                return json.read(self.path)
             case FileFormat.XML:
-                return self.read_xml()
+                return xml.read(self.path)
             case FileFormat.YAML:
-                return self.read_yaml()
+                return yaml.read(self.path)
         raise ValueError(f'Unsupported format: {fmt}')
 
     def write(
@@ -184,155 +183,15 @@ class File:
         """
         fmt = self._ensure_format()
         match fmt:
-            case FileFormat.JSON:
-                return self.write_json(data)
             case FileFormat.CSV:
-                return self.write_csv(data)
+                return csv.write(self.path, data)
+            case FileFormat.JSON:
+                return json.write(self.path, data)
             case FileFormat.XML:
-                return self.write_xml(data, root_tag=root_tag)
+                return xml.write(self.path, data, root_tag=root_tag)
             case FileFormat.YAML:
-                return self.write_yaml(data)
+                return yaml.write(self.path, data)
         raise ValueError(f'Unsupported format: {fmt}')
-
-    # -- Instance Methods (CSV) -- #
-
-    def read_csv(self) -> JSONList:
-        """
-        Load CSV content as a list of dictionaries from :attr:`path`.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the CSV file.
-        """
-        self._assert_exists()
-
-        return csv.read(self.path)
-
-    def write_csv(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Write CSV rows to :attr:`path` and return the number of rows.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data to write as CSV. Should be a list of dictionaries or a
-            single dictionary.
-
-        Returns
-        -------
-        int
-            The number of rows written to the CSV file.
-        """
-        return csv.write(self.path, data)
-
-    # -- Instance Methods (JSON) -- #
-
-    def read_json(self) -> JSONData:
-        """
-        Load and validate JSON payloads from :attr:`path`.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the JSON file.
-        """
-        self._assert_exists()
-
-        return json.read(self.path)
-
-    def write_json(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Write ``data`` as formatted JSON to :attr:`path`.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data to serialize as JSON.
-
-        Returns
-        -------
-        int
-            The number of records written to the JSON file.
-        """
-        return json.write(self.path, data)
-
-    # -- Instance Methods (XML) -- #
-
-    def read_xml(self) -> JSONDict:
-        """
-        Parse XML document at :attr:`path` into a nested dictionary.
-
-        Returns
-        -------
-        JSONDict
-            Nested dictionary representation of the XML file.
-        """
-        self._assert_exists()
-
-        return xml.read(self.path)
-
-    def write_xml(
-        self,
-        data: JSONData,
-        *,
-        root_tag: str = xml.DEFAULT_XML_ROOT,
-    ) -> int:
-        """
-        Write ``data`` as XML to :attr:`path` and return record count.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data to write as XML.
-        root_tag : str, optional
-            Root tag name to use when writing XML files. Defaults to
-            ``'root'``.
-
-        Returns
-        -------
-        int
-            The number of records written to the XML file.
-        """
-        return xml.write(self.path, data, root_tag=root_tag)
-
-    # -- Instance Methods (YAML) -- #
-
-    def read_yaml(self) -> JSONData:
-        """
-        Load and validate YAML payloads from :attr:`path`.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the YAML file.
-        """
-        return yaml.read(self.path)
-
-    def write_yaml(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Write ``data`` as YAML to :attr:`path` and return record count.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data to write as YAML.
-
-        Returns
-        -------
-        int
-            The number of records written.
-        """
-        return yaml.write(self.path, data)
 
     # -- Class Methods -- #
 

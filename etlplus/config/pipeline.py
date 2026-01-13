@@ -246,7 +246,7 @@ class PipelineConfig:
         TypeError
             If the YAML root is not a mapping/object.
         """
-        raw = File(Path(path), FileFormat.YAML).read_yaml()
+        raw = File(Path(path), FileFormat.YAML).read()
         if not isinstance(raw, dict):
             raise TypeError('Pipeline YAML must have a mapping/object root')
 
