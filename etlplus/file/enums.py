@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import PurePath
 
-from ..enum_base import CoercibleStrEnum
+from ..enums import CoercibleStrEnum
 from ..types import StrStrMap
 
 # SECTION: EXPORTS ========================================================= #
