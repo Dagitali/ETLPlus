@@ -13,10 +13,6 @@ from etlplus.enums import DataConnectorType
 from etlplus.enums import HttpMethod
 from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
-from etlplus.enums import coerce_data_connector_type
-from etlplus.enums import coerce_http_method
-from etlplus.file import FileFormat
-from etlplus.file import coerce_file_format
 
 # SECTION: HELPERS ========================================================== #
 
@@ -43,7 +39,6 @@ class TestAggregateName:
         assert AggregateName.AVG.func(nums, len(nums)) == pytest.approx(2.0)
 
 
-@pytest.mark.unit
 class TestDataConnectorType:
     """Unit test suite for :class:`etlplus.enums.DataConnectorType`."""
 
@@ -62,41 +57,14 @@ class TestDataConnectorType:
         expected: DataConnectorType,
     ) -> None:
         """Test alias coercions."""
-        assert coerce_data_connector_type(value) is expected
+        assert DataConnectorType.coerce(value) is expected
 
     def test_invalid_value(self) -> None:
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
-            coerce_data_connector_type('queue')
+            DataConnectorType.coerce('queue')
 
 
-@pytest.mark.unit
-class TestFileFormat:
-    """Unit test suite for :class:`etlplus.enums.FileFormat`."""
-
-    @pytest.mark.parametrize(
-        'value,expected',
-        [
-            ('JSON', FileFormat.JSON),
-            ('application/xml', FileFormat.XML),
-            ('yml', FileFormat.YAML),
-        ],
-    )
-    def test_aliases(
-        self,
-        value: str,
-        expected: FileFormat,
-    ) -> None:
-        """Test alias coercions."""
-        assert coerce_file_format(value) is expected
-
-    def test_invalid_value(self) -> None:
-        """Test that invalid values raise ValueError."""
-        with pytest.raises(ValueError, match='Invalid FileFormat'):
-            coerce_file_format('ini')
-
-
-@pytest.mark.unit
 class TestHttpMethod:
     """Unit test suite for :class:`etlplus.enums.HttpMethod`."""
 
@@ -107,12 +75,11 @@ class TestHttpMethod:
         assert HttpMethod.PATCH.allows_body is True
         assert HttpMethod.GET.allows_body is False
 
-    def test_coerce_wrapper(self) -> None:
-        """Test the :func:`coerce_http_method` helper."""
-        assert coerce_http_method('delete') is HttpMethod.DELETE
+    def test_coerce(self) -> None:
+        """Test :meth:`coerce`."""
+        assert HttpMethod.coerce('delete') is HttpMethod.DELETE
 
 
-@pytest.mark.unit
 class TestOperatorName:
     """Unit test suite for :class:`etlplus.enums.OperatorName`."""
 
@@ -126,7 +93,6 @@ class TestOperatorName:
         assert OperatorName.CONTAINS.func('alphabet', 'bet') is True
 
 
-@pytest.mark.unit
 class TestPipelineStep:
     """Unit test suite for :class:`etlplus.enums.PipelineStep`."""
 

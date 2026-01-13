@@ -26,9 +26,6 @@ __all__ = [
     'HttpMethod',
     'OperatorName',
     'PipelineStep',
-    # Functions
-    'coerce_data_connector_type',
-    'coerce_http_method',
 ]
 
 
@@ -341,30 +338,3 @@ _PIPELINE_ORDER_INDEX: dict[PipelineStep, int] = {
     PipelineStep.SORT: 3,
     PipelineStep.AGGREGATE: 4,
 }
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def coerce_data_connector_type(
-    connector: DataConnectorType | str,
-) -> DataConnectorType:
-    """
-    Normalize textual data connector values to :class:`DataConnectorType`.
-
-    This thin wrapper is kept for backward compatibility; prefer
-    :meth:`DataConnectorType.coerce` going forward.
-    """
-    return DataConnectorType.coerce(connector)
-
-
-def coerce_http_method(
-    http_method: HttpMethod | str,
-) -> HttpMethod:
-    """
-    Normalize textual HTTP method values to :class:`HttpMethod`.
-
-    This thin wrapper is kept for backward compatibility; prefer
-    :meth:`HttpMethod.coerce` going forward.
-    """
-    return HttpMethod.coerce(http_method)

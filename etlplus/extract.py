@@ -14,10 +14,8 @@ import requests  # type: ignore[import]
 
 from .enums import DataConnectorType
 from .enums import HttpMethod
-from .enums import coerce_data_connector_type
 from .file import File
 from .file import FileFormat
-from .file import coerce_file_format
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -55,7 +53,7 @@ def extract_from_file(
     # If no explicit format is provided, let File infer from extension.
     if file_format is None:
         return File(path, None).read()
-    fmt = coerce_file_format(file_format)
+    fmt = FileFormat.coerce(file_format)
 
     # Let file module perform existence and format validation.
     return File(path, fmt).read()
@@ -202,7 +200,7 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
-    match coerce_data_connector_type(source_type):
+    match DataConnectorType.coerce(source_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
             return extract_from_file(source, file_format)
@@ -213,6 +211,6 @@ def extract(
             # ``file_format`` is ignored for APIs.
             return extract_from_api(str(source), **kwargs)
         case _:
-            # ``coerce_data_connector_type`` covers invalid entries, but keep
-            # explicit guard for defensive programming.
+            # :meth:`coerce` already raises for invalid connector types, but
+            # keep explicit guard for defensive programming.
             raise ValueError(f'Invalid source type: {source_type}')
