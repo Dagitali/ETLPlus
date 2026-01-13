@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_u_file` module.
+:mod:`tests.unit.test_u_file_core` module.
 
-Unit tests for :mod:`etlplus.file`.
+Unit tests for :mod:`etlplus.file.core`.
 
 Notes
 -----
@@ -11,63 +11,19 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from pathlib import Path
 from typing import cast
 
 import pytest
 
-import etlplus.file.yaml as yaml_module
-from etlplus.file import CompressionFormat
 from etlplus.file import File
 from etlplus.file import FileFormat
-from etlplus.file import infer_file_format_and_compression
 from etlplus.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
-
-
-class _StubYaml:
-    """Minimal PyYAML substitute to avoid optional dependency in tests."""
-
-    def __init__(self) -> None:
-        self.dump_calls: list[dict[str, object]] = []
-
-    def safe_load(
-        self,
-        handle: object,
-    ) -> dict[str, str]:
-        """Stub for PyYAML's ``safe_load`` function."""
-        text = ''
-        if hasattr(handle, 'read'):  # type: ignore[call-arg]
-            text = handle.read()
-        return {'loaded': str(text).strip()}
-
-    def safe_dump(
-        self,
-        data: object,
-        handle: object,
-        **kwargs: object,
-    ) -> None:
-        """Stub for PyYAML's ``safe_dump`` function."""
-        self.dump_calls.append({'data': data, 'kwargs': kwargs})
-        if hasattr(handle, 'write'):
-            handle.write('yaml')  # type: ignore[call-arg]
-
-
-@pytest.fixture(name='yaml_stub')
-def yaml_stub_fixture() -> Generator[_StubYaml]:
-    """Install a stub PyYAML module for YAML tests."""
-    # pylint: disable=protected-access
-
-    stub = _StubYaml()
-    yaml_module._YAML_CACHE.clear()
-    yaml_module._YAML_CACHE['mod'] = stub
-    yield stub
-    yaml_module._YAML_CACHE.clear()
 
 
 # SECTION: TESTS ============================================================ #
@@ -303,107 +259,3 @@ class TestFile:
         text = path.read_text(encoding='utf-8')
         assert text.startswith('<?xml')
         assert '<records>' in text
-
-
-class TestFileFormat:
-    """Unit test suite for :class:`etlplus.enums.FileFormat`."""
-
-    @pytest.mark.parametrize(
-        'value,expected',
-        [
-            ('JSON', FileFormat.JSON),
-            ('application/xml', FileFormat.XML),
-            ('yml', FileFormat.YAML),
-        ],
-    )
-    def test_aliases(
-        self,
-        value: str,
-        expected: FileFormat,
-    ) -> None:
-        """Test alias coercions."""
-        assert FileFormat.coerce(value) is expected
-
-    def test_coerce(self) -> None:
-        """Test :meth:`coerce`."""
-        assert FileFormat.coerce('csv') is FileFormat.CSV
-
-    def test_invalid_value(self) -> None:
-        """Test that invalid values raise ValueError."""
-        with pytest.raises(ValueError, match='Invalid FileFormat'):
-            FileFormat.coerce('ini')
-
-
-class TestInferFileFormatAndCompression:
-    """Unit test suite for :func:`infer_file_format_and_compression`."""
-
-    @pytest.mark.parametrize(
-        'value,filename,expected_format,expected_compression',
-        [
-            ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
-            ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
-            ('data.zip', None, None, CompressionFormat.ZIP),
-            ('application/json; charset=utf-8', None, FileFormat.JSON, None),
-            ('application/gzip', None, None, CompressionFormat.GZ),
-            (
-                'application/octet-stream',
-                'payload.csv.gz',
-                FileFormat.CSV,
-                CompressionFormat.GZ,
-            ),
-            ('application/octet-stream', None, None, None),
-            (FileFormat.GZ, None, None, CompressionFormat.GZ),
-            (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
-        ],
-    )
-    def test_infers_format_and_compression(
-        self,
-        value: object,
-        filename: object | None,
-        expected_format: FileFormat | None,
-        expected_compression: CompressionFormat | None,
-    ) -> None:
-        """Test mixed inputs for format and compression inference."""
-        fmt, compression = infer_file_format_and_compression(value, filename)
-        assert fmt is expected_format
-        assert compression is expected_compression
-
-
-@pytest.mark.unit
-class TestYamlSupport:
-    """Unit tests exercising YAML read/write helpers without PyYAML."""
-
-    def test_read_yaml_uses_stub(
-        self,
-        tmp_path: Path,
-        yaml_stub: _StubYaml,
-    ) -> None:
-        """
-        Test reading YAML should invoke stub ``safe_load``.
-        """
-        # pylint: disable=protected-access
-
-        assert yaml_module._YAML_CACHE['mod'] is yaml_stub
-        path = tmp_path / 'data.yaml'
-        path.write_text('name: etl', encoding='utf-8')
-
-        result = File(path, FileFormat.YAML).read()
-
-        assert result == {'loaded': 'name: etl'}
-
-    def test_write_yaml_uses_stub(
-        self,
-        tmp_path: Path,
-        yaml_stub: _StubYaml,
-    ) -> None:
-        """
-        Test writing YAML should invoke stub ``safe_dump``.
-        """
-        path = tmp_path / 'data.yaml'
-        payload = [{'name': 'etl'}]
-
-        written = File(path, FileFormat.YAML).write(payload)
-
-        assert written == 1
-        assert yaml_stub.dump_calls
-        assert yaml_stub.dump_calls[0]['data'] == payload
