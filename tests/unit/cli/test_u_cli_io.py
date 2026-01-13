@@ -14,7 +14,7 @@ from unittest.mock import Mock
 import pytest
 
 import etlplus.cli.io as _io
-from etlplus.enums import FileFormat
+from etlplus.file import FileFormat
 
 # SECTION: HELPERS ========================================================== #
 
