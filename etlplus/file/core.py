@@ -125,7 +125,7 @@ class File:
             f'Cannot infer file format from extension {self.path.suffix!r}',
         )
 
-    # -- Instance Methods (Generic API) -- #
+    # -- Instance Methods -- #
 
     def read(self) -> JSONData:
         """
