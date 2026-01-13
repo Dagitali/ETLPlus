@@ -18,8 +18,10 @@ from typing import cast
 import pytest
 
 import etlplus.file.yaml as yaml_module
-from etlplus.enums import FileFormat
+from etlplus.file import CompressionFormat
 from etlplus.file import File
+from etlplus.file import FileFormat
+from etlplus.file import infer_file_format_and_compression
 from etlplus.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
@@ -71,7 +73,41 @@ def yaml_stub_fixture() -> Generator[_StubYaml]:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
+class TestInferFileFormatAndCompression:
+    """Unit test suite for :func:`infer_file_format_and_compression`."""
+
+    @pytest.mark.parametrize(
+        'value,filename,expected_format,expected_compression',
+        [
+            ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
+            ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
+            ('data.zip', None, None, CompressionFormat.ZIP),
+            ('application/json; charset=utf-8', None, FileFormat.JSON, None),
+            ('application/gzip', None, None, CompressionFormat.GZ),
+            (
+                'application/octet-stream',
+                'payload.csv.gz',
+                FileFormat.CSV,
+                CompressionFormat.GZ,
+            ),
+            ('application/octet-stream', None, None, None),
+            (FileFormat.GZ, None, None, CompressionFormat.GZ),
+            (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
+        ],
+    )
+    def test_infers_format_and_compression(
+        self,
+        value: object,
+        filename: object | None,
+        expected_format: FileFormat | None,
+        expected_compression: CompressionFormat | None,
+    ) -> None:
+        """Test mixed inputs for format and compression inference."""
+        fmt, compression = infer_file_format_and_compression(value, filename)
+        assert fmt is expected_format
+        assert compression is expected_compression
+
+
 class TestFile:
     """
     Unit test suite for :class:`etlplus.file.File`.
