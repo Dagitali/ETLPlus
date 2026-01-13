@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Final
 
 from ..enums import DataConnectorType
-from ..enums import FileFormat
+from ..file import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -24,8 +24,8 @@ from typing import Any
 from typing import Self
 
 from ..api import ApiConfig
-from ..enums import FileFormat
 from ..file import File
+from ..file import FileFormat
 from ..types import StrAnyMap
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
@@ -246,7 +246,7 @@ class PipelineConfig:
         TypeError
             If the YAML root is not a mapping/object.
         """
-        raw = File(Path(path), FileFormat.YAML).read_yaml()
+        raw = File(Path(path), FileFormat.YAML).read()
         if not isinstance(raw, dict):
             raise TypeError('Pipeline YAML must have a mapping/object root')
 

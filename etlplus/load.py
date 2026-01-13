@@ -15,12 +15,12 @@ from typing import cast
 import requests  # type: ignore[import]
 
 from .enums import DataConnectorType
-from .enums import FileFormat
 from .enums import HttpMethod
 from .enums import coerce_data_connector_type
-from .enums import coerce_file_format
 from .enums import coerce_http_method
 from .file import File
+from .file import FileFormat
+from .file import coerce_file_format
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -101,7 +101,7 @@ def load_data(
         return cast(JSONData, source)
 
     if isinstance(source, Path):
-        return File(source, FileFormat.JSON).read_json()
+        return File(source, FileFormat.JSON).read()
 
     if isinstance(source, str):
         # Special case: '-' means read JSON from STDIN (Unix convention).
@@ -111,7 +111,7 @@ def load_data(
         candidate = Path(source)
         if candidate.exists():
             try:
-                return File(candidate, FileFormat.JSON).read_json()
+                return File(candidate, FileFormat.JSON).read()
             except (OSError, json.JSONDecodeError, ValueError):
                 # Fall back to treating the string as raw JSON content.
                 pass
