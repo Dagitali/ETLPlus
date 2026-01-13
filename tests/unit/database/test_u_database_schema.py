@@ -76,7 +76,7 @@ class TestLoadTableSpecs:
 
     Notes
     -----
-    Reuses a helper fixture to patch ``File.read_file`` and avoid disk IO.
+    Reuses a helper fixture to patch :meth:`File.read` and avoid disk IO.
     """
 
     @pytest.fixture()
@@ -84,7 +84,9 @@ class TestLoadTableSpecs:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[[Any], None]:
-        """Return helper that patches ``File.read_file`` to return payload.
+        """
+        Return helper that patches the :meth:`read` instance method to return a
+        payload.
 
         Parameters
         ----------
@@ -96,21 +98,14 @@ class TestLoadTableSpecs:
         Callable[[Any], None]
             Function that applies the patch when invoked with a payload.
         """
-
         def _apply(payload: Any) -> None:
-            if callable(payload):
-                monkeypatch.setattr(
-                    schema_mod.File,
-                    'read_file',
-                    staticmethod(payload),
-                )
-            else:
-                monkeypatch.setattr(
-                    schema_mod.File,
-                    'read_file',
-                    staticmethod(lambda path: payload),
-                )
+            # pylint: disable=unused-argument
+            """Apply the patch to :meth:`File.read` to return the payload."""
 
+            def fake_read(self, *args, **kwargs):
+                """Fake :meth:`File.read` method returning the payload."""
+                return payload(self.path) if callable(payload) else payload
+            monkeypatch.setattr(schema_mod.File, 'read', fake_read)
         return _apply
 
     def test_empty_payload(
