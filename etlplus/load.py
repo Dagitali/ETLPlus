@@ -15,12 +15,12 @@ from typing import cast
 import requests  # type: ignore[import]
 
 from .enums import DataConnectorType
-from .enums import FileFormat
 from .enums import HttpMethod
 from .enums import coerce_data_connector_type
-from .enums import coerce_file_format
 from .enums import coerce_http_method
 from .file import File
+from .file import FileFormat
+from .file import coerce_file_format
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList

@@ -10,14 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..enums import FileFormat
-from ..enums import infer_file_format_and_compression
 from ..types import JSONData
 from ..types import StrPath
 from . import csv
 from . import json
 from . import xml
 from . import yaml
+from .enums import FileFormat
+from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
