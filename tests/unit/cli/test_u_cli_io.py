@@ -309,7 +309,7 @@ class TestWriteJsonOutput:
         monkeypatch.setattr(_io, 'File', lambda _p, _f: dummy_file)
 
         _io.write_json_output(data, 'out.json', success_message='msg')
-        dummy_file.write_json.assert_called_once_with(data)
+        dummy_file.write.assert_called_once_with(data)
 
     def test_writing_to_stdout(self) -> None:
         """
