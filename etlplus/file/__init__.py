@@ -9,7 +9,6 @@ from __future__ import annotations
 from .core import File
 from .enums import CompressionFormat
 from .enums import FileFormat
-from .enums import coerce_file_format
 from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
@@ -22,6 +21,5 @@ __all__ = [
     'CompressionFormat',
     'FileFormat',
     # Functions
-    'coerce_file_format',
     'infer_file_format_and_compression',
 ]
