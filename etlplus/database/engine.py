@@ -113,7 +113,7 @@ def load_database_url_from_config(
     ValueError
         If no connection string/URL/DSN is found for the specified entry.
     """
-    cfg = File.read_file(Path(path))
+    cfg = File(Path(path)).read()
     if not isinstance(cfg, Mapping):
         raise TypeError('Database config must be a mapping')
 
