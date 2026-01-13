@@ -54,12 +54,14 @@ class TestLoadDatabaseUrlFromConfig:
         Callable[[Any], None]
             Function that patches ``File.read`` to return the payload.
         """
+
         def _apply(payload: Any) -> None:
             monkeypatch.setattr(
                 engine_mod.File,
                 'read',
                 lambda self: payload,
             )
+
         return _apply
 
     def test_loads_default_and_named_entries(
