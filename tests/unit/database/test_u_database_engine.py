@@ -41,7 +41,8 @@ class TestLoadDatabaseUrlFromConfig:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[[Any], None]:
-        """Return a helper that patches ``File.read_file`` with a payload.
+        """
+        Return a helper that patches :meth:`read` to return a payload.
 
         Parameters
         ----------
@@ -51,16 +52,14 @@ class TestLoadDatabaseUrlFromConfig:
         Returns
         -------
         Callable[[Any], None]
-            Function that patches ``File.read_file`` to return the payload.
+            Function that patches ``File.read`` to return the payload.
         """
-
         def _apply(payload: Any) -> None:
             monkeypatch.setattr(
                 engine_mod.File,
-                'read_file',
-                staticmethod(lambda path: payload),
+                'read',
+                lambda self: payload,
             )
-
         return _apply
 
     def test_loads_default_and_named_entries(

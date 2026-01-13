@@ -260,7 +260,7 @@ def load_table_specs(
     list[TableSpec]
         A list of TableSpec instances parsed from the YAML file.
     """
-    data = File.read_file(Path(path))
+    data = File(Path(path)).read()
     if not data:
         return []
 
