@@ -16,11 +16,8 @@ import requests  # type: ignore[import]
 
 from .enums import DataConnectorType
 from .enums import HttpMethod
-from .enums import coerce_data_connector_type
-from .enums import coerce_http_method
 from .file import File
 from .file import FileFormat
-from .file import coerce_file_format
 from .types import JSONData
 from .types import JSONDict
 from .types import JSONList
@@ -155,9 +152,9 @@ def load_to_file(
     if file_format is None:
         records = File(path).write(data)
         ext = path.suffix.lstrip('.').lower()
-        fmt = coerce_file_format(ext) if ext else FileFormat.JSON
+        fmt = FileFormat.coerce(ext) if ext else FileFormat.JSON
     else:
-        fmt = coerce_file_format(file_format)
+        fmt = FileFormat.coerce(file_format)
         records = File(path, fmt).write(data)
     if fmt is FileFormat.CSV and records == 0:
         message = 'No data to write'
@@ -242,7 +239,7 @@ def load_to_api(
     TypeError
         If the session object is not valid.
     """
-    http_method = coerce_http_method(method)
+    http_method = HttpMethod.coerce(method)
 
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
@@ -316,7 +313,7 @@ def load(
     """
     data = load_data(source)
 
-    match coerce_data_connector_type(target_type):
+    match DataConnectorType.coerce(target_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
             return load_to_file(data, target, file_format)
@@ -331,6 +328,6 @@ def load(
                 **kwargs,
             )
         case _:
-            # `coerce_data_connector_type` covers invalid entries, but keep
-            # explicit guard.
+            # :meth:`coerce` already raises for invalid connector types, but
+            # keep explicit guard for defensive programming.
             raise ValueError(f'Invalid target type: {target_type}')
