@@ -331,6 +331,6 @@ def write_json_output(
     """
     if not output_path or output_path == '-':
         return False
-    File(Path(output_path), FileFormat.JSON).write_json(data)
+    File(Path(output_path), FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
     return True
