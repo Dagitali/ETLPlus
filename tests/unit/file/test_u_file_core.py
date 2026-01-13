@@ -38,18 +38,18 @@ class TestFile:
     - Exercises JSON detection and defers errors for unknown extensions.
     """
 
-    def test_classmethods_delegate(
+    def test_instance_methods_round_trip(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Test that ``read_file`` and ``write_file`` round-trip via classmethods.
+        Test :meth:`read` and :meth:`write` round-tripping data.
         """
         path = tmp_path / 'delegated.json'
         data = {'name': 'delegated'}
 
-        File.write_file(path, data, file_format='json')
-        result = File.read_file(path, file_format='json')
+        File(path, file_format=FileFormat.JSON).write(data)
+        result = File(path, file_format=FileFormat.JSON).read()
 
         assert isinstance(result, dict)
         assert result['name'] == 'delegated'
