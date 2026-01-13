@@ -23,7 +23,6 @@ from .api import RetryPolicy
 from .api import Url
 from .config import load_pipeline_config
 from .enums import DataConnectorType
-from .enums import coerce_data_connector_type
 from .extract import extract
 from .load import load
 from .run_helpers import compose_api_request_env
@@ -185,8 +184,7 @@ def run(
 
     data: Any
     stype_raw = getattr(source_obj, 'type', None)
-    stype = coerce_data_connector_type(stype_raw or '')
-    match stype:
+    match DataConnectorType.coerce(stype_raw or ''):
         case DataConnectorType.FILE:
             path = getattr(source_obj, 'path', None)
             fmt = ex_opts.get('format') or getattr(
@@ -261,8 +259,8 @@ def run(
                     sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
                 )
         case _:
-            # ``coerce_data_connector_type`` already raises for invalid
-            # connector types; this branch is defensive only.
+            # :meth:`coerce` already raises for invalid connector types, but
+            # keep explicit guard for defensive programming.
             raise ValueError(f'Unsupported source type: {stype_raw}')
 
     # DRY: unified validation helper (pre/post transform)
@@ -318,8 +316,7 @@ def run(
     overrides = job_obj.load.overrides or {}
 
     ttype_raw = getattr(target_obj, 'type', None)
-    ttype = coerce_data_connector_type(ttype_raw or '')
-    match ttype:
+    match DataConnectorType.coerce(ttype_raw or ''):
         case DataConnectorType.FILE:
             path = overrides.get('path') or getattr(target_obj, 'path', None)
             fmt = overrides.get('format') or getattr(
@@ -357,8 +354,8 @@ def run(
             )
             result = load(data, 'database', str(conn))
         case _:
-            # ``coerce_data_connector_type`` already raises for invalid
-            # connector types; this branch is defensive only.
+            # :meth:`coerce` already raises for invalid connector types, but
+            # keep explicit guard for defensive programming.
             raise ValueError(f'Unsupported target type: {ttype_raw}')
 
     # Return the terminal load result directly; callers (e.g., CLI) can wrap
