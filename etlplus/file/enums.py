@@ -16,8 +16,6 @@ from ..types import StrStrMap
 __all__ = [
     'CompressionFormat',
     'FileFormat',
-    'coerce_compression_format',
-    'coerce_file_format',
     'infer_file_format_and_compression',
 ]
 
@@ -162,32 +160,6 @@ _COMPRESSION_FILE_FORMATS: set[FileFormat] = {
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-# TODO: Deprecate in favor of using the enum methods directly.
-def coerce_compression_format(
-    compression_format: CompressionFormat | str,
-) -> CompressionFormat:
-    """
-    Normalize textual compression format values to :class:`CompressionFormat`.
-
-    This thin wrapper is kept for backward compatibility; prefer
-    :meth:`CompressionFormat.coerce` going forward.
-    """
-    return CompressionFormat.coerce(compression_format)
-
-
-# TODO: Deprecate in favor of using the enum methods directly.
-def coerce_file_format(
-    file_format: FileFormat | str,
-) -> FileFormat:
-    """
-    Normalize textual file format values to :class:`FileFormat`.
-
-    This thin wrapper is kept for backward compatibility; prefer
-    :meth:`FileFormat.coerce` going forward.
-    """
-    return FileFormat.coerce(file_format)
 
 
 # TODO: Convert to a method on FileFormat or CompressionFormat?
