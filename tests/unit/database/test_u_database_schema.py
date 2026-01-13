@@ -98,6 +98,7 @@ class TestLoadTableSpecs:
         Callable[[Any], None]
             Function that applies the patch when invoked with a payload.
         """
+
         def _apply(payload: Any) -> None:
             # pylint: disable=unused-argument
             """Apply the patch to :meth:`File.read` to return the payload."""
@@ -105,7 +106,9 @@ class TestLoadTableSpecs:
             def fake_read(self, *args, **kwargs):
                 """Fake :meth:`File.read` method returning the payload."""
                 return payload(self.path) if callable(payload) else payload
+
             monkeypatch.setattr(schema_mod.File, 'read', fake_read)
+
         return _apply
 
     def test_empty_payload(
