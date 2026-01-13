@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-from ..enums import FileFormat
 from ..file import File
+from ..file import FileFormat
 from ..types import JSONData
 from ..utils import print_json
 
