@@ -36,7 +36,7 @@ from typing import cast
 import typer
 
 from .. import __version__
-from ..enums import FileFormat
+from ..file import FileFormat
 from . import handlers
 from .constants import CLI_DESCRIPTION
 from .constants import CLI_EPILOG

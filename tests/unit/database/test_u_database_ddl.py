@@ -76,8 +76,9 @@ class TestLoadTableSpec:
             yaml.safe_dump(sample_spec, sort_keys=False),
             encoding='utf-8',
         )
+        # pylint: disable=import-outside-toplevel,protected-access
 
-        import etlplus.file as file_mod
+        import etlplus.file.yaml as file_mod
 
         file_mod._YAML_CACHE.clear()
 
@@ -96,7 +97,6 @@ class TestLoadTableSpec:
             json.dumps([{'not': 'mapping'}]),
             encoding='utf-8',
         )
-
         with pytest.raises(TypeError):
             ddl.load_table_spec(spec_path)
 
@@ -201,7 +201,10 @@ class TestRenderTableSql:
     ) -> None:
         """Test that an unknown template key raises ValueError."""
         with pytest.raises(ValueError):
-            ddl.render_table_sql(sample_spec, template='does_not_exist')
+            ddl.render_table_sql(
+                sample_spec,
+                template='does not exist',  # type: ignore[arg-type]
+            )
 
 
 class TestRenderTablesToString:

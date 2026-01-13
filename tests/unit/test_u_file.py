@@ -17,9 +17,12 @@ from typing import cast
 
 import pytest
 
-import etlplus.file as file_module
-from etlplus.enums import FileFormat
+import etlplus.file.yaml as yaml_module
+from etlplus.file import CompressionFormat
 from etlplus.file import File
+from etlplus.file import FileFormat
+from etlplus.file import infer_file_format_and_compression
+from etlplus.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
 
@@ -61,16 +64,50 @@ def yaml_stub_fixture() -> Generator[_StubYaml]:
     # pylint: disable=protected-access
 
     stub = _StubYaml()
-    file_module._YAML_CACHE.clear()
-    file_module._YAML_CACHE['mod'] = stub
+    yaml_module._YAML_CACHE.clear()
+    yaml_module._YAML_CACHE['mod'] = stub
     yield stub
-    file_module._YAML_CACHE.clear()
+    yaml_module._YAML_CACHE.clear()
 
 
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
+class TestInferFileFormatAndCompression:
+    """Unit test suite for :func:`infer_file_format_and_compression`."""
+
+    @pytest.mark.parametrize(
+        'value,filename,expected_format,expected_compression',
+        [
+            ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
+            ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
+            ('data.zip', None, None, CompressionFormat.ZIP),
+            ('application/json; charset=utf-8', None, FileFormat.JSON, None),
+            ('application/gzip', None, None, CompressionFormat.GZ),
+            (
+                'application/octet-stream',
+                'payload.csv.gz',
+                FileFormat.CSV,
+                CompressionFormat.GZ,
+            ),
+            ('application/octet-stream', None, None, None),
+            (FileFormat.GZ, None, None, CompressionFormat.GZ),
+            (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
+        ],
+    )
+    def test_infers_format_and_compression(
+        self,
+        value: object,
+        filename: object | None,
+        expected_format: FileFormat | None,
+        expected_compression: CompressionFormat | None,
+    ) -> None:
+        """Test mixed inputs for format and compression inference."""
+        fmt, compression = infer_file_format_and_compression(value, filename)
+        assert fmt is expected_format
+        assert compression is expected_compression
+
+
 class TestFile:
     """
     Unit test suite for :class:`etlplus.file.File`.
@@ -87,7 +124,6 @@ class TestFile:
         """
         Test that ``read_file`` and ``write_file`` round-trip via classmethods.
         """
-
         path = tmp_path / 'delegated.json'
         data = {'name': 'delegated'}
 
@@ -184,23 +220,25 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """Test CSV reader ignoring empty rows."""
-
         payload = 'name,age\nJohn,30\n,\nJane,25\n'
         path = tmp_path / 'data.csv'
         path.write_text(payload, encoding='utf-8')
 
-        rows = File(path, FileFormat.CSV).read_csv()
+        rows = File(path, FileFormat.CSV).read()
 
-        assert [row['name'] for row in rows] == ['John', 'Jane']
+        assert [
+            row['name']
+            for row in rows
+            if isinstance(row, dict) and 'name' in row
+        ] == ['John', 'Jane']
 
     def test_read_json_type_errors(self, tmp_path: Path) -> None:
         """Test list elements being dicts when reading JSON."""
-
         path = tmp_path / 'bad.json'
         path.write_text('[{"ok": 1}, 2]', encoding='utf-8')
 
         with pytest.raises(TypeError):
-            File(path, FileFormat.JSON).read_json()
+            File(path, FileFormat.JSON).read()
 
     @pytest.mark.parametrize(
         'filename,expected_format',
@@ -244,10 +282,9 @@ class TestFile:
         """
         Test non-dict entries being ignored when writing CSV rows.
         """
-
         path = tmp_path / 'data.csv'
         invalid_entry = cast(dict[str, object], 'invalid')
-        count = File(path, FileFormat.CSV).write_csv(
+        count = File(path, FileFormat.CSV).write(
             [{'name': 'John'}, invalid_entry],
         )
 
@@ -261,11 +298,10 @@ class TestFile:
         """
         Test ``write_json`` returning the record count for lists.
         """
-
         path = tmp_path / 'data.json'
         records = [{'a': 1}, {'a': 2}]
 
-        written = File(path, FileFormat.JSON).write_json(records)
+        written = File(path, FileFormat.JSON).write(records)
 
         assert written == 2
         json_content = path.read_text(encoding='utf-8')
@@ -279,12 +315,11 @@ class TestFile:
         """
         Test XML write/read preserving nested dictionaries.
         """
-
         path = tmp_path / 'data.xml'
         payload = {'root': {'items': [{'text': 'one'}, {'text': 'two'}]}}
 
-        File(path, FileFormat.XML).write_xml(payload)
-        result = File(path, FileFormat.XML).read_xml()
+        File(path, FileFormat.XML).write(payload)
+        result = cast(JSONDict, File(path, FileFormat.XML).read())
 
         assert result['root']['items'][0]['text'] == 'one'
 
@@ -295,11 +330,10 @@ class TestFile:
         """
         Test custom root_tag being used when data lacks a single root.
         """
-
         path = tmp_path / 'export.xml'
         records = [{'name': 'Ada'}, {'name': 'Linus'}]
 
-        File(path, FileFormat.XML).write_xml(records, root_tag='records')
+        File(path, FileFormat.XML).write(records, root_tag='records')
 
         text = path.read_text(encoding='utf-8')
         assert text.startswith('<?xml')
@@ -318,11 +352,13 @@ class TestYamlSupport:
         """
         Test reading YAML should invoke stub ``safe_load``.
         """
+        # pylint: disable=protected-access
 
+        assert yaml_module._YAML_CACHE['mod'] is yaml_stub
         path = tmp_path / 'data.yaml'
         path.write_text('name: etl', encoding='utf-8')
 
-        result = File(path, FileFormat.YAML).read_yaml()
+        result = File(path, FileFormat.YAML).read()
 
         assert result == {'loaded': 'name: etl'}
 
@@ -334,11 +370,10 @@ class TestYamlSupport:
         """
         Test writing YAML should invoke stub ``safe_dump``.
         """
-
         path = tmp_path / 'data.yaml'
         payload = [{'name': 'etl'}]
 
-        written = File(path, FileFormat.YAML).write_yaml(payload)
+        written = File(path, FileFormat.YAML).write(payload)
 
         assert written == 1
         assert yaml_stub.dump_calls
