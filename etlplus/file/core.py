@@ -25,7 +25,7 @@ from . import xls
 from . import xlsx
 from . import xml
 from . import yaml
-from . import zip
+from . import zip as zip_
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
 
@@ -222,7 +222,7 @@ class File:
             case FileFormat.YAML:
                 return yaml.read(self.path)
             case FileFormat.ZIP:
-                return zip.read(self.path)
+                return zip_.read(self.path)
         raise ValueError(f'Unsupported format: {fmt}')
 
     def write(
@@ -283,5 +283,5 @@ class File:
             case FileFormat.YAML:
                 return yaml.write(self.path, data)
             case FileFormat.ZIP:
-                return zip.write(self.path, data)
+                return zip_.write(self.path, data)
         raise ValueError(f'Unsupported format: {fmt}')
