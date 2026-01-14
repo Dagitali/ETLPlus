@@ -42,10 +42,12 @@ package and command-line interface for data extraction, validation, transformati
     - [Linting](#linting)
     - [Updating Demo Snippets](#updating-demo-snippets)
     - [Releasing to PyPI](#releasing-to-pypi)
-  - [Python Subpackage Documentation](#python-subpackage-documentation)
-  - [Additional Documentation](#additional-documentation)
   - [License](#license)
   - [Contributing](#contributing)
+  - [Documentation](#documentation)
+    - [Python Packages/Subpackage](#python-packagessubpackage)
+    - [Community Health](#community-health)
+    - [Other](#other)
   - [Acknowledgments](#acknowledgments)
 
 ## Features
@@ -559,30 +561,6 @@ git push origin v1.4.0
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
 
-## Python Subpackage Documentation
-
-Navigate to detailed documentation for each subpackage:
-
-- [etlplus.api](etlplus/api/README.md): Lightweight HTTP client and paginated REST helpers
-- [etlplus.file](etlplus/file/README.md): Unified file format support and helpers
-- [etlplus.config](etlplus/config/README.md): Configuration helpers for connectors, pipelines, jobs,
-  and profiles
-- [etlplus.cli](etlplus/cli/README.md): Command-line interface for ETLPlus workflows
-- [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
-- [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
-- [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
-
-## Additional Documentation
-
-- API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
-- Examples: [`examples/README.md`](examples/README.md)
-- Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
-- Runner internals: [`docs/run-module.md`](docs/run-module.md)
-- Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
-- Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
-- Demo and walkthrough: [`DEMO.md`](DEMO.md)
-- Additional references: [`REFERENCES.md`](`REFERENCES.md)
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
@@ -605,6 +583,34 @@ If you choose to be a code contributor, please first refer these documents:
   [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
 - Typing philosophy (TypedDicts as editor hints, permissive runtime):
   [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
+
+## Documentation
+
+### Python Packages/Subpackage
+
+Navigate to detailed documentation for each subpackage:
+
+- [etlplus.api](etlplus/api/README.md): Lightweight HTTP client and paginated REST helpers
+- [etlplus.file](etlplus/file/README.md): Unified file format support and helpers
+- [etlplus.config](etlplus/config/README.md): Configuration helpers for connectors, pipelines, jobs,
+  and profiles
+- [etlplus.cli](etlplus/cli/README.md): Command-line interface for ETLPlus workflows
+- [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
+- [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
+- [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
+
+### Community Health
+
+### Other
+
+- API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
+- Examples: [`examples/README.md`](examples/README.md)
+- Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
+- Runner internals: [`docs/run-module.md`](docs/run-module.md)
+- Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
+- Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
+- Demo and walkthrough: [`DEMO.md`](DEMO.md)
+- Additional references: [`REFERENCES.md`](`REFERENCES.md)
 
 ## Acknowledgments
 
