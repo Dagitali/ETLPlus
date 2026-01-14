@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import StrPath
 from . import csv
 from . import json
 from . import xml
@@ -61,18 +60,6 @@ class File:
 
     # -- Magic Methods (Object Lifecycle) -- #
 
-    def __init__(
-        self,
-        path: StrPath,
-        file_format: FileFormat | str | None = None,
-    ):
-        self.path = Path(path)
-        if isinstance(file_format, str):
-            self.file_format = FileFormat.coerce(file_format)
-        else:
-            self.file_format = file_format
-        self.__post_init__()
-
     def __post_init__(self) -> None:
         """
         Auto-detect and set the file format on initialization.
@@ -82,16 +69,10 @@ class File:
         extension is unknown, the attribute is left as ``None`` and will be
         validated later by :meth:`_ensure_format`.
         """
-        # Normalize incoming path (allow str in constructor) to Path.
-        if isinstance(self.path, str):
-            self.path = Path(self.path)
-
+        self.path = Path(self.path)
+        self.file_format = self._coerce_format(self.file_format)
         if self.file_format is None:
-            try:
-                self.file_format = self._guess_format()
-            except ValueError:
-                # Leave as None; _ensure_format() will raise on use if needed.
-                pass
+            self.file_format = self._maybe_guess_format()
 
     # -- Internal Instance Methods -- #
 
@@ -103,6 +84,28 @@ class File:
         """
         if not self.path.exists():
             raise FileNotFoundError(f'File not found: {self.path}')
+
+    def _coerce_format(
+        self,
+        file_format: FileFormat | str | None,
+    ) -> FileFormat | None:
+        """
+        Normalize the file format input.
+
+        Parameters
+        ----------
+        file_format : FileFormat | str | None
+            File format specifier. Strings are coerced into
+            :class:`FileFormat`.
+
+        Returns
+        -------
+        FileFormat | None
+            A normalized file format, or ``None`` when unspecified.
+        """
+        if file_format is None or isinstance(file_format, FileFormat):
+            return file_format
+        return FileFormat.coerce(file_format)
 
     def _ensure_format(self) -> FileFormat:
         """
@@ -144,6 +147,21 @@ class File:
         raise ValueError(
             f'Cannot infer file format from extension {self.path.suffix!r}',
         )
+
+    def _maybe_guess_format(self) -> FileFormat | None:
+        """
+        Try to infer the format, returning ``None`` if it cannot be inferred.
+
+        Returns
+        -------
+        FileFormat | None
+            The inferred format, or ``None`` if inference fails.
+        """
+        try:
+            return self._guess_format()
+        except ValueError:
+            # Leave as None; _ensure_format() will raise on use if needed.
+            return None
 
     # -- Instance Methods -- #
 
