@@ -11,10 +11,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..types import JSONData
+from . import avro
 from . import csv
+from . import feather
+from . import gz
 from . import json
+from . import ndjson
+from . import orc
+from . import parquet
+from . import tsv
+from . import txt
+from . import xls
+from . import xlsx
 from . import xml
 from . import yaml
+from . import zip
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
 
@@ -182,14 +193,36 @@ class File:
         self._assert_exists()
         fmt = self._ensure_format()
         match fmt:
+            case FileFormat.AVRO:
+                return avro.read(self.path)
             case FileFormat.CSV:
                 return csv.read(self.path)
+            case FileFormat.FEATHER:
+                return feather.read(self.path)
+            case FileFormat.GZ:
+                return gz.read(self.path)
             case FileFormat.JSON:
                 return json.read(self.path)
+            case FileFormat.NDJSON:
+                return ndjson.read(self.path)
+            case FileFormat.ORC:
+                return orc.read(self.path)
+            case FileFormat.PARQUET:
+                return parquet.read(self.path)
+            case FileFormat.TSV:
+                return tsv.read(self.path)
+            case FileFormat.TXT:
+                return txt.read(self.path)
+            case FileFormat.XLS:
+                return xls.read(self.path)
+            case FileFormat.XLSX:
+                return xlsx.read(self.path)
             case FileFormat.XML:
                 return xml.read(self.path)
             case FileFormat.YAML:
                 return yaml.read(self.path)
+            case FileFormat.ZIP:
+                return zip.read(self.path)
         raise ValueError(f'Unsupported format: {fmt}')
 
     def write(
@@ -221,12 +254,34 @@ class File:
         """
         fmt = self._ensure_format()
         match fmt:
+            case FileFormat.AVRO:
+                return avro.write(self.path, data)
             case FileFormat.CSV:
                 return csv.write(self.path, data)
+            case FileFormat.FEATHER:
+                return feather.write(self.path, data)
+            case FileFormat.GZ:
+                return gz.write(self.path, data)
             case FileFormat.JSON:
                 return json.write(self.path, data)
+            case FileFormat.NDJSON:
+                return ndjson.write(self.path, data)
+            case FileFormat.ORC:
+                return orc.write(self.path, data)
+            case FileFormat.PARQUET:
+                return parquet.write(self.path, data)
+            case FileFormat.TSV:
+                return tsv.write(self.path, data)
+            case FileFormat.TXT:
+                return txt.write(self.path, data)
+            case FileFormat.XLS:
+                return xls.write(self.path, data)
+            case FileFormat.XLSX:
+                return xlsx.write(self.path, data)
             case FileFormat.XML:
                 return xml.write(self.path, data, root_tag=root_tag)
             case FileFormat.YAML:
                 return yaml.write(self.path, data)
+            case FileFormat.ZIP:
+                return zip.write(self.path, data)
         raise ValueError(f'Unsupported format: {fmt}')
