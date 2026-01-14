@@ -6,13 +6,12 @@ Helpers for reading/writing TSV files.
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import JSONList
+from ._io import read_delimited
+from ._io import write_delimited
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -42,14 +41,7 @@ def read(
     JSONList
         The list of dictionaries read from the TSV file.
     """
-    with path.open('r', encoding='utf-8', newline='') as handle:
-        reader: csv.DictReader[str] = csv.DictReader(handle, delimiter='\t')
-        rows: JSONList = []
-        for row in reader:
-            if not any(row.values()):
-                continue
-            rows.append(cast(JSONDict, dict(row)))
-    return rows
+    return read_delimited(path, delimiter='\t')
 
 
 def write(
@@ -72,20 +64,4 @@ def write(
     int
         The number of rows written to the TSV file.
     """
-    rows: list[JSONDict]
-    if isinstance(data, list):
-        rows = [row for row in data if isinstance(row, dict)]
-    else:
-        rows = [data]
-
-    if not rows:
-        return 0
-
-    fieldnames = sorted({key for row in rows for key in row})
-    with path.open('w', encoding='utf-8', newline='') as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, delimiter='\t')
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field) for field in fieldnames})
-
-    return len(rows)
+    return write_delimited(path, data, delimiter='\t')

@@ -7,12 +7,11 @@ Helpers for reading/writing Excel XLS files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import JSONList
+from ._pandas import get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -21,49 +20,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_PANDAS_CACHE: dict[str, Any] = {}
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_pandas() -> Any:
-    """
-    Return the pandas module, importing it on first use.
-
-    Raises an informative ImportError if the optional dependency is missing.
-    """
-    mod = _PANDAS_CACHE.get('mod')
-    if mod is not None:  # pragma: no cover - tiny branch
-        return mod
-    try:
-        _pd = __import__('pandas')  # type: ignore[assignment]
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'XLS support requires optional dependency "pandas".\n'
-            'Install with: pip install pandas',
-        ) from e
-    _PANDAS_CACHE['mod'] = _pd
-
-    return _pd
-
-
-def _normalize_records(data: JSONData) -> JSONList:
-    """
-    Normalize JSON payloads into a list of dictionaries.
-
-    Raises TypeError when payloads contain non-dict items.
-    """
-    if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise TypeError('XLS payloads must contain only objects (dicts)')
-        return cast(JSONList, data)
-    return [cast(JSONDict, data)]
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -90,7 +46,7 @@ def read(
     ImportError
         If the optional dependency "xlrd" is not installed.
     """
-    pandas = _get_pandas()
+    pandas = get_pandas('XLS')
     try:
         frame = pandas.read_excel(path, engine='xlrd')
     except ImportError as e:  # pragma: no cover
@@ -126,7 +82,7 @@ def write(
 
     Raises
     ------
-    ImportError
-        If the optional dependency "xlwt" is not installed.
+    RuntimeError
+        If XLS writing is attempted.
     """
     raise RuntimeError('XLS write is not supported; use XLSX instead')
