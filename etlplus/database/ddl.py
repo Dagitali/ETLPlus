@@ -203,7 +203,7 @@ def load_table_spec(
         raise ValueError('Spec must be .json, .yml, or .yaml')
 
     try:
-        spec = File.from_path(spec_path).read()
+        spec = File(spec_path).read()
     except ImportError as e:
         if suffix in {'.yml', '.yaml'}:
             raise RuntimeError(
