@@ -1,7 +1,7 @@
-# etlplus.api module.
+# etlplus.api subpackage
 
-Focused documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for
-paginated REST endpoints.
+Documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for paginated
+REST endpoints.
 
 - Provides a small `EndpointClient` for calling JSON APIs
 - Supports page-, offset-, and cursor-based pagination via `PaginationConfig`
@@ -11,6 +11,20 @@ paginated REST endpoints.
   library.
 
 Back to project overview: see the top-level [README](../../README.md).
+
+- [etlplus.api subpackage](#etlplusapi-subpackage)
+  - [Installation](#installation)
+  - [Quickstart](#quickstart)
+    - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)
+  - [Choosing `records_path` and `cursor_path`](#choosing-records_path-and-cursor_path)
+  - [Cursor-Based Pagination Example](#cursor-based-pagination-example)
+  - [Offset-based pagination example](#offset-based-pagination-example)
+  - [Authentication](#authentication)
+  - [Errors and Rate Limiting](#errors-and-rate-limiting)
+  - [Types and Transport](#types-and-transport)
+  - [Supporting Modules](#supporting-modules)
+  - [Minimal Contract](#minimal-contract)
+  - [See also](#see-also)
 
 ## Installation
 
@@ -233,3 +247,6 @@ providers can fall back to their own defaults. If you already possess a static t
 ## See also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
+
+
+[def]: #installation
