@@ -57,6 +57,8 @@ setup(
         'requests>=2.32.5',
         'SQLAlchemy>=2.0.45',
         'typer>=0.21.0',
+        'xlrd>=2.0.2',
+        'xlwt>=1.3.0',
     ],
     extras_require={
         'dev': [
