@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.xml` module.
 
-XML read/write helpers.
+Helpers for reading/writing XML files.
 """
 
 from __future__ import annotations
@@ -13,6 +13,15 @@ from typing import Any
 from ..types import JSONData
 from ..types import JSONDict
 from ..utils import count_records
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'read',
+    'write',
+]
+
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -117,7 +126,7 @@ def read(
     path: Path,
 ) -> JSONDict:
     """
-    Parse XML document at ``path`` into a nested dictionary.
+    Read XML content from ``path``.
 
     Parameters
     ----------
@@ -137,7 +146,7 @@ def read(
 
 def write(path: Path, data: JSONData, *, root_tag: str) -> int:
     """
-    Write ``data`` as XML to ``path`` and return record count.
+    Write ``data`` to XML at ``path`` and return record count.
 
     Parameters
     ----------

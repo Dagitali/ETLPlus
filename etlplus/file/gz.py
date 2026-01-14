@@ -1,21 +1,71 @@
 """
 :mod:`etlplus.file.gz` module.
 
-Stub helpers for GZ read/write.
+Helpers for reading/writing GZ files.
 """
 
 from __future__ import annotations
 
+import gzip
+import tempfile
 from pathlib import Path
 
 from ..types import JSONData
+from .enums import CompressionFormat
+from .enums import FileFormat
+from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
 
-def read(path: Path) -> JSONData:
+__all__ = [
+    'read',
+    'write',
+]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _resolve_format(
+    path: Path,
+) -> FileFormat:
     """
-    Read GZ content from ``path``.
+    Resolve the inner file format from a .gz filename.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the GZ file on disk.
+
+    Returns
+    -------
+    FileFormat
+        The inferred inner file format.
+
+    Raises
+    ------
+    ValueError
+        If the file format cannot be inferred from the filename.
+    """
+    fmt, compression = infer_file_format_and_compression(path)
+    if compression is not CompressionFormat.GZ:
+        raise ValueError(f'Not a gzip file: {path}')
+    if fmt is None:
+        raise ValueError(
+            f'Cannot infer file format from compressed file {path!r}',
+        )
+    return fmt
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def read(
+    path: Path,
+) -> JSONData:
+    """
+    Read GZ content from ``path`` and parse the inner payload.
 
     Parameters
     ----------
@@ -26,18 +76,25 @@ def read(path: Path) -> JSONData:
     -------
     JSONData
         Parsed payload.
-
-    Raises
-    ------
-    NotImplementedError
-        GZ :func:`read` is not implemented yet.
     """
-    raise NotImplementedError('GZ read is not implemented yet')
+    fmt = _resolve_format(path)
+    with gzip.open(path, 'rb') as handle:
+        payload = handle.read()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
+        tmp_path.write_bytes(payload)
+        from .core import File
+
+        return File(tmp_path, fmt).read()
 
 
-def write(path: Path, data: JSONData) -> int:
+def write(
+    path: Path,
+    data: JSONData,
+) -> int:
     """
-    Write ``data`` to GZ at ``path``.
+    Write ``data`` to GZ at ``path`` and return record count.
 
     Parameters
     ----------
@@ -50,10 +107,17 @@ def write(path: Path, data: JSONData) -> int:
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    NotImplementedError
-        GZ :func:`write` is not implemented yet.
     """
-    raise NotImplementedError('GZ write is not implemented yet')
+    fmt = _resolve_format(path)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
+        from .core import File
+
+        count = File(tmp_path, fmt).write(data)
+        payload = tmp_path.read_bytes()
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, 'wb') as handle:
+        handle.write(payload)
+
+    return count
