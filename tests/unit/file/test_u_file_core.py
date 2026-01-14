@@ -259,3 +259,60 @@ class TestFile:
         text = path.read_text(encoding='utf-8')
         assert text.startswith('<?xml')
         assert '<records>' in text
+
+    @pytest.mark.parametrize(
+        'file_format,filename',
+        [
+            (FileFormat.AVRO, 'data.avro'),
+            (FileFormat.FEATHER, 'data.feather'),
+            (FileFormat.GZ, 'data.gz'),
+            (FileFormat.NDJSON, 'data.ndjson'),
+            (FileFormat.ORC, 'data.orc'),
+            (FileFormat.PARQUET, 'data.parquet'),
+            (FileFormat.TSV, 'data.tsv'),
+            (FileFormat.TXT, 'data.txt'),
+            (FileFormat.XLS, 'data.xls'),
+            (FileFormat.XLSX, 'data.xlsx'),
+            (FileFormat.ZIP, 'data.zip'),
+        ],
+    )
+    def test_stub_formats_raise_on_read(
+        self,
+        tmp_path: Path,
+        file_format: FileFormat,
+        filename: str,
+    ) -> None:
+        """Test stub formats raising NotImplementedError on read."""
+        path = tmp_path / filename
+        path.write_text('stub', encoding='utf-8')
+
+        with pytest.raises(NotImplementedError):
+            File(path, file_format).read()
+
+    @pytest.mark.parametrize(
+        'file_format,filename',
+        [
+            (FileFormat.AVRO, 'data.avro'),
+            (FileFormat.FEATHER, 'data.feather'),
+            (FileFormat.GZ, 'data.gz'),
+            (FileFormat.NDJSON, 'data.ndjson'),
+            (FileFormat.ORC, 'data.orc'),
+            (FileFormat.PARQUET, 'data.parquet'),
+            (FileFormat.TSV, 'data.tsv'),
+            (FileFormat.TXT, 'data.txt'),
+            (FileFormat.XLS, 'data.xls'),
+            (FileFormat.XLSX, 'data.xlsx'),
+            (FileFormat.ZIP, 'data.zip'),
+        ],
+    )
+    def test_stub_formats_raise_on_write(
+        self,
+        tmp_path: Path,
+        file_format: FileFormat,
+        filename: str,
+    ) -> None:
+        """Test stub formats raising NotImplementedError on write."""
+        path = tmp_path / filename
+
+        with pytest.raises(NotImplementedError):
+            File(path, file_format).write({'stub': True})
