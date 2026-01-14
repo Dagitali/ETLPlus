@@ -1,21 +1,36 @@
 """
 :mod:`etlplus.file.txt` module.
 
-Stub helpers for TXT read/write.
+TXT read/write helpers.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..utils import count_records
 
 # SECTION: EXPORTS ========================================================== #
 
 
-def read(path: Path) -> JSONData:
+__all__ = [
+    'read',
+    'write',
+]
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def read(
+    path: Path,
+) -> JSONList:
     """
-    Read TXT content from ``path``.
+    Load TXT content as a list of dictionaries.
 
     Parameters
     ----------
@@ -24,18 +39,23 @@ def read(path: Path) -> JSONData:
 
     Returns
     -------
-    JSONData
-        Parsed payload.
-
-    Raises
-    ------
-    NotImplementedError
-        TXT :func:`read` is not implemented yet.
+    JSONList
+        The list of dictionaries read from the TXT file.
     """
-    raise NotImplementedError('TXT read is not implemented yet')
+    rows: JSONList = []
+    with path.open('r', encoding='utf-8') as handle:
+        for line in handle:
+            text = line.rstrip('\n')
+            if text == '':
+                continue
+            rows.append({'text': text})
+    return rows
 
 
-def write(path: Path, data: JSONData) -> int:
+def write(
+    path: Path,
+    data: JSONData,
+) -> int:
     """
     Write ``data`` to TXT at ``path``.
 
@@ -44,7 +64,7 @@ def write(path: Path, data: JSONData) -> int:
     path : Path
         Path to the TXT file on disk.
     data : JSONData
-        Data to write.
+        Data to write. Expects ``{'text': '...'} `` or a list of those.
 
     Returns
     -------
@@ -53,7 +73,27 @@ def write(path: Path, data: JSONData) -> int:
 
     Raises
     ------
-    NotImplementedError
-        TXT :func:`write` is not implemented yet.
+    TypeError
+        If any item in ``data`` is not a dictionary or if any dictionary
+        does not contain a ``'text'`` key.
     """
-    raise NotImplementedError('TXT write is not implemented yet')
+    rows: JSONList
+    if isinstance(data, list):
+        if not all(isinstance(item, dict) for item in data):
+            raise TypeError('TXT payloads must contain only objects (dicts)')
+        rows = cast(JSONList, data)
+    else:
+        rows = [cast(JSONDict, data)]
+
+    if not rows:
+        return 0
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w', encoding='utf-8') as handle:
+        for row in rows:
+            if 'text' not in row:
+                raise TypeError('TXT payloads must include a "text" key')
+            handle.write(str(row['text']))
+            handle.write('\n')
+
+    return count_records(rows)

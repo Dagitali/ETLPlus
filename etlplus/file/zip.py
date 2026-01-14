@@ -13,6 +13,15 @@ from ..types import JSONData
 # SECTION: EXPORTS ========================================================== #
 
 
+__all__ = [
+    'read',
+    'write',
+]
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(path: Path) -> JSONData:
     """
     Read ZIP content from ``path``.
@@ -26,6 +35,11 @@ def read(path: Path) -> JSONData:
     -------
     JSONData
         Parsed payload.
+
+    Raises
+    ------
+    NotImplementedError
+        ZIP :func:`read` is not implemented yet.
     """
     raise NotImplementedError('ZIP read is not implemented yet')
 
@@ -45,5 +59,10 @@ def write(path: Path, data: JSONData) -> int:
     -------
     int
         Number of records written.
+
+    Raises
+    ------
+    NotImplementedError
+        ZIP :func:`write` is not implemented yet.
     """
     raise NotImplementedError('ZIP write is not implemented yet')
