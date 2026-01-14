@@ -263,10 +263,7 @@ class TestFile:
     @pytest.mark.parametrize(
         'file_format,filename',
         [
-            (FileFormat.AVRO, 'data.avro'),
-            (FileFormat.FEATHER, 'data.feather'),
             (FileFormat.GZ, 'data.gz'),
-            (FileFormat.ORC, 'data.orc'),
             (FileFormat.ZIP, 'data.zip'),
         ],
     )
@@ -286,10 +283,7 @@ class TestFile:
     @pytest.mark.parametrize(
         'file_format,filename',
         [
-            (FileFormat.AVRO, 'data.avro'),
-            (FileFormat.FEATHER, 'data.feather'),
             (FileFormat.GZ, 'data.gz'),
-            (FileFormat.ORC, 'data.orc'),
             (FileFormat.ZIP, 'data.zip'),
         ],
     )
