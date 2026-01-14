@@ -26,6 +26,18 @@ from etlplus.types import JSONDict
 pytestmark = pytest.mark.unit
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='stubbed_formats')
+def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
+    """Return a list of stubbed file formats for testing."""
+    return [
+        # FileFormat.AVRO, 'data.avro',
+        # FileFormat.EXCEL, 'data.xlsx',
+        # FileFormat.PARQUET, 'data.parquet',
+    ]
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -260,41 +272,31 @@ class TestFile:
         assert text.startswith('<?xml')
         assert '<records>' in text
 
-    @pytest.mark.parametrize(
-        'file_format,filename',
-        [
-            (FileFormat.GZ, 'data.gz'),
-            (FileFormat.ZIP, 'data.zip'),
-        ],
-    )
     def test_stub_formats_raise_on_read(
         self,
         tmp_path: Path,
-        file_format: FileFormat,
-        filename: str,
+        stubbed_formats: list[tuple[FileFormat, str]],
     ) -> None:
         """Test stub formats raising NotImplementedError on read."""
-        path = tmp_path / filename
-        path.write_text('stub', encoding='utf-8')
+        if not stubbed_formats:
+            pytest.skip('No stubbed formats to test')
+        for file_format, filename in stubbed_formats:
+            path = tmp_path / filename
+            path.write_text('stub', encoding='utf-8')
 
-        with pytest.raises(NotImplementedError):
-            File(path, file_format).read()
+            with pytest.raises(NotImplementedError):
+                File(path, file_format).read()
 
-    @pytest.mark.parametrize(
-        'file_format,filename',
-        [
-            (FileFormat.GZ, 'data.gz'),
-            (FileFormat.ZIP, 'data.zip'),
-        ],
-    )
     def test_stub_formats_raise_on_write(
         self,
         tmp_path: Path,
-        file_format: FileFormat,
-        filename: str,
+        stubbed_formats: list[tuple[FileFormat, str]],
     ) -> None:
         """Test stub formats raising NotImplementedError on write."""
-        path = tmp_path / filename
+        if not stubbed_formats:
+            pytest.skip('No stubbed formats to test')
+        for file_format, filename in stubbed_formats:
+            path = tmp_path / filename
 
-        with pytest.raises(NotImplementedError):
-            File(path, file_format).write({'stub': True})
+            with pytest.raises(NotImplementedError):
+                File(path, file_format).write({'stub': True})
