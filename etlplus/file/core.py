@@ -43,7 +43,15 @@ class File:
         Path to the file on disk.
     file_format : FileFormat | None, optional
         Explicit format. If omitted, the format is inferred from the file
-        extension (``.csv``, ``.json``, or ``.xml``).
+        extension (``.csv``, ``.json``, etc.).
+
+    Parameters
+    ----------
+    path : StrPath
+        Path to the file on disk.
+    file_format : FileFormat | str | None, optional
+        Explicit format. If omitted, the format is inferred from the file
+        extension (``.csv``, ``.json``, etc.).
     """
 
     # -- Attributes -- #
@@ -52,6 +60,18 @@ class File:
     file_format: FileFormat | None = None
 
     # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        path: StrPath,
+        file_format: FileFormat | str | None = None,
+    ):
+        self.path = Path(path)
+        if isinstance(file_format, str):
+            self.file_format = FileFormat.coerce(file_format)
+        else:
+            self.file_format = file_format
+        self.__post_init__()
 
     def __post_init__(self) -> None:
         """
@@ -192,37 +212,3 @@ class File:
             case FileFormat.YAML:
                 return yaml.write(self.path, data)
         raise ValueError(f'Unsupported format: {fmt}')
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def from_path(
-        cls,
-        path: StrPath,
-        *,
-        file_format: FileFormat | str | None = None,
-    ) -> File:
-        """
-        Create a :class:`File` from any path-like and optional format.
-
-        Parameters
-        ----------
-        path : StrPath
-            Path to the file on disk.
-        file_format : FileFormat | str | None, optional
-            Explicit format. If omitted, the format is inferred from the file
-            extension (``.csv``, ``.json``, or ``.xml``).
-
-        Returns
-        -------
-        File
-            The constructed :class:`File` instance.
-        """
-        resolved = Path(path)
-        ff: FileFormat | None
-        if isinstance(file_format, str):
-            ff = FileFormat.coerce(file_format)
-        else:
-            ff = file_format
-
-        return cls(resolved, ff)
