@@ -42,7 +42,8 @@ package and command-line interface for data extraction, validation, transformati
     - [Linting](#linting)
     - [Updating Demo Snippets](#updating-demo-snippets)
     - [Releasing to PyPI](#releasing-to-pypi)
-  - [Links](#links)
+  - [Python Subpackage Documentation](#python-subpackage-documentation)
+  - [Additional Documentation](#additional-documentation)
   - [License](#license)
   - [Contributing](#contributing)
   - [Acknowledgments](#acknowledgments)
@@ -371,7 +372,7 @@ etlplus transform \
 # 3. Validate transformed data
 etlplus validate \
   --rules '{"name": {"type": "string", "required": true}, "email": {"type": "string", "required": true}}' \
-  temo/sample_transformed.json
+  temp/sample_transformed.json
 
 # 4. Load to CSV
 cat temp/sample_transformed.json \
@@ -558,7 +559,20 @@ git push origin v1.4.0
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
 
-## Links
+## Python Subpackage Documentation
+
+Navigate to detailed documentation for each subpackage:
+
+- [etlplus.api](etlplus/api/README.md): Lightweight HTTP client and paginated REST helpers
+- [etlplus.file](etlplus/file/README.md): Unified file format support and helpers
+- [etlplus.config](etlplus/config/README.md): Configuration helpers for connectors, pipelines, jobs,
+  and profiles
+- [etlplus.cli](etlplus/cli/README.md): Command-line interface for ETLPlus workflows
+- [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
+- [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
+- [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
+
+## Additional Documentation
 
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
 - Examples: [`examples/README.md`](examples/README.md)
