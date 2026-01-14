@@ -57,8 +57,7 @@ def read(
             payload = json.loads(text)
             if not isinstance(payload, dict):
                 raise TypeError(
-                    'NDJSON lines must be objects (dicts) '
-                    f'(line {idx})',
+                    f'NDJSON lines must be objects (dicts) (line {idx})',
                 )
             rows.append(cast(JSONDict, payload))
     return rows
