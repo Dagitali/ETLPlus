@@ -1,19 +1,150 @@
 """
 :mod:`etlplus.file.avro` module.
 
-Stub helpers for AVRO read/write.
+Avro read/write helpers.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
 
 # SECTION: EXPORTS ========================================================== #
 
 
-def read(path: Path) -> JSONData:
+__all__ = [
+    'read',
+    'write',
+]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_FASTAVRO_CACHE: dict[str, Any] = {}
+
+
+_PRIMITIVE_TYPES: tuple[type, ...] = (
+    bool,
+    int,
+    float,
+    str,
+    bytes,
+    bytearray,
+)
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _get_fastavro() -> Any:
+    """
+    Return the fastavro module, importing it on first use.
+
+    Raises an informative ImportError if the optional dependency is missing.
+    """
+    mod = _FASTAVRO_CACHE.get('mod')
+    if mod is not None:  # pragma: no cover - tiny branch
+        return mod
+    try:
+        _fastavro = __import__('fastavro')  # type: ignore[assignment]
+    except ImportError as e:  # pragma: no cover
+        raise ImportError(
+            'AVRO support requires optional dependency "fastavro".\n'
+            'Install with: pip install fastavro',
+        ) from e
+    _FASTAVRO_CACHE['mod'] = _fastavro
+
+    return _fastavro
+
+
+def _normalize_records(data: JSONData) -> JSONList:
+    """
+    Normalize JSON payloads into a list of dictionaries.
+
+    Raises TypeError when payloads contain non-dict items.
+    """
+    if isinstance(data, list):
+        if not all(isinstance(item, dict) for item in data):
+            raise TypeError('AVRO payloads must contain only objects (dicts)')
+        return cast(JSONList, data)
+    return [cast(JSONDict, data)]
+
+
+def _infer_value_type(value: object) -> str | list[str]:
+    """
+    Infer the Avro type for a primitive value.
+
+    Raises TypeError for unsupported types.
+    """
+    if value is None:
+        return 'null'
+    if isinstance(value, bool):
+        return 'boolean'
+    if isinstance(value, int):
+        return 'long'
+    if isinstance(value, float):
+        return 'double'
+    if isinstance(value, str):
+        return 'string'
+    if isinstance(value, (bytes, bytearray)):
+        return 'bytes'
+    raise TypeError('AVRO payloads must contain only primitive values')
+
+
+def _merge_types(types: list[str]) -> str | list[str]:
+    """Return a stable Avro type union for a list of types."""
+    unique = list(dict.fromkeys(types))
+    if len(unique) == 1:
+        return unique[0]
+    ordered = ['null'] + sorted(t for t in unique if t != 'null')
+    return ordered
+
+
+def _infer_schema(records: JSONList) -> dict[str, Any]:
+    """
+    Infer a basic Avro schema from record payloads.
+
+    Only primitive field values are supported; complex values raise TypeError.
+    """
+    field_names = sorted({key for record in records for key in record})
+    fields: list[dict[str, Any]] = []
+    for name in field_names:
+        types: list[str] = []
+        for record in records:
+            value = record.get(name)
+            if value is None:
+                types.append('null')
+                continue
+            if isinstance(value, dict | list):
+                raise TypeError(
+                    'AVRO payloads must contain only primitive values',
+                )
+            if not isinstance(value, _PRIMITIVE_TYPES):
+                raise TypeError(
+                    'AVRO payloads must contain only primitive values',
+                )
+            types.append(cast(str, _infer_value_type(value)))
+        fields.append({'name': name, 'type': _merge_types(types)})
+
+    return {
+        'name': 'etlplus_record',
+        'type': 'record',
+        'fields': fields,
+    }
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def read(
+    path: Path,
+) -> JSONList:
     """
     Read AVRO content from ``path``.
 
@@ -24,18 +155,19 @@ def read(path: Path) -> JSONData:
 
     Returns
     -------
-    JSONData
+    JSONList
         Parsed payload.
-
-    Raises
-    ------
-    NotImplementedError
-        AVRO :func:`read` is not implemented yet.
     """
-    raise NotImplementedError('AVRO read is not implemented yet')
+    fastavro = _get_fastavro()
+    with path.open('rb') as handle:
+        reader = fastavro.reader(handle)
+        return [cast(JSONDict, record) for record in reader]
 
 
-def write(path: Path, data: JSONData) -> int:
+def write(
+    path: Path,
+    data: JSONData,
+) -> int:
     """
     Write ``data`` to AVRO at ``path``.
 
@@ -50,10 +182,17 @@ def write(path: Path, data: JSONData) -> int:
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    NotImplementedError
-        AVRO :func:`write` is not implemented yet.
     """
-    raise NotImplementedError('AVRO write is not implemented yet')
+    records = _normalize_records(data)
+    if not records:
+        return 0
+
+    fastavro = _get_fastavro()
+    schema = _infer_schema(records)
+    parsed_schema = fastavro.parse_schema(schema)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('wb') as handle:
+        fastavro.writer(handle, parsed_schema, records)
+
+    return len(records)
