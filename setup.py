@@ -46,6 +46,7 @@ setup(
     ],
     python_requires='>=3.13,<3.15',
     install_requires=[
+        'fastavro>=1.12.1',
         'jinja2>=3.1.6',
         'openpyxl>=3.1.5',
         'pandas>=2.3.3',
