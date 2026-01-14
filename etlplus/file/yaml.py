@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.yaml` module.
 
-Optional YAML read/write helpers.
+Helpers for reading/writing YAML files.
 """
 
 from __future__ import annotations
@@ -68,7 +68,9 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Load and validate YAML payloads from ``path``.
+    Read YAML content from ``path``.
+
+    Validates that the YAML root is a dict or a list of dicts.
 
     Parameters
     ----------

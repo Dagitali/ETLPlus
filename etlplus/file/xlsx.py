@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.xlsx` module.
 
-XLSX read/write helpers.
+Helpers for reading/writing Excel XLSX files.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the XLSX file.
 
     Raises
     ------
@@ -106,7 +106,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to XLSX at ``path``.
+    Write ``data`` to XLSX at ``path`` and return record count.
 
     Parameters
     ----------

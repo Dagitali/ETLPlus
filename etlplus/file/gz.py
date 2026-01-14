@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.gz` module.
 
-GZ read/write helpers.
+Helpers for reading/writing GZ files.
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to GZ at ``path`` using the inferred inner format.
+    Write ``data`` to GZ at ``path`` and return record count.
 
     Parameters
     ----------

@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.tsv` module.
 
-TSV read/write helpers.
+Helpers for reading/writing TSV files.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Load TSV content as a list of dictionaries.
+    Read TSV content from ``path``.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write TSV rows to ``path`` and return the number of rows.
+    Write ``data`` to TSV at ``path`` and return record count.
 
     Parameters
     ----------

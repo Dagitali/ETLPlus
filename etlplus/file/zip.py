@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.zip` module.
 
-ZIP read/write helpers.
+Helpers for reading/writing ZIP files.
 """
 
 from __future__ import annotations
@@ -140,7 +140,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to ZIP at ``path`` using the inferred inner format.
+    Write ``data`` to ZIP at ``path`` and return record count.
 
     Parameters
     ----------

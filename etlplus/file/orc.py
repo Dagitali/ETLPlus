@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.orc` module.
 
-ORC read/write helpers.
+Helpers for reading/writing ORC files.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the ORC file.
 
     Raises
     ------
@@ -106,7 +106,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to ORC at ``path``.
+    Write ``data`` to ORC at ``path`` and return record count.
 
     Parameters
     ----------

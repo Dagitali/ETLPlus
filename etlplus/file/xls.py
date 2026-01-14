@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.xls` module.
 
-XLS read/write helpers.
+Helpers for reading/writing Excel XLS files.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the XLS file.
 
     Raises
     ------
@@ -106,7 +106,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to XLS at ``path``.
+    Write ``data`` to XLS at ``path`` and return record count.
 
     Parameters
     ----------

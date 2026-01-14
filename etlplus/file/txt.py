@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.txt` module.
 
-TXT read/write helpers.
+Helpers for reading/writing text files.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Load TXT content as a list of dictionaries.
+    Read TXT content from ``path``.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to TXT at ``path``.
+    Write ``data`` to TXT at ``path`` and return record count.
 
     Parameters
     ----------

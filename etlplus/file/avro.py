@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.avro` module.
 
-Avro read/write helpers.
+Helpers for reading/writing Avro files.
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the AVRO file.
     """
     fastavro = _get_fastavro()
     with path.open('rb') as handle:
@@ -169,7 +169,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to AVRO at ``path``.
+    Write ``data`` to AVRO at ``path`` and return record count.
 
     Parameters
     ----------

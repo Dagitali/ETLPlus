@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.feather` module.
 
-Feather read/write helpers.
+Helpers for reading/writing Feather files.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the Feather file.
 
     Raises
     ------
@@ -108,7 +108,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to Feather at ``path``.
+    Write ``data`` to Feather at ``path`` and return record count.
 
     Parameters
     ----------

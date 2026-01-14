@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.parquet` module.
 
-Parquet read/write helpers.
+Helpers for reading/writing Parquet files.
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read PARQUET content from ``path``.
+    Read Parquet content from ``path``.
 
     Parameters
     ----------
@@ -85,7 +85,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the Parquet file.
 
     Raises
     ------
@@ -109,7 +109,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to PARQUET at ``path``.
+    Write ``data`` to Parquet at ``path`` and return record count.
 
     Parameters
     ----------

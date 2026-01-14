@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.ndjson` module.
 
-NDJSON read/write helpers.
+Helpers for reading/writing NDJSON files.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def read(
     Returns
     -------
     JSONList
-        Parsed payload.
+        The list of dictionaries read from the NDJSON file.
 
     Raises
     ------
