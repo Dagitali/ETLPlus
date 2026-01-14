@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.csv` module.
 
-CSV read/write helpers.
+Helpers for reading/writing CSV files.
 """
 
 from __future__ import annotations
@@ -14,6 +14,15 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'read',
+    'write',
+]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -21,7 +30,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Load CSV content as a list of dictionaries.
+    Read CSV content from ``path``.
 
     Parameters
     ----------
@@ -48,7 +57,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write CSV rows to ``path`` and return the number of rows.
+    Write ``data`` to CSV at ``path`` and return record count.
 
     Parameters
     ----------

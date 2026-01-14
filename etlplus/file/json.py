@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.json` module.
 
-JSON read/write helpers.
+Helpers for reading/writing JSON files.
 """
 
 from __future__ import annotations
@@ -15,6 +15,15 @@ from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    'read',
+    'write',
+]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -22,7 +31,9 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Load and validate JSON payloads from ``path``.
+    Read JSON content from ``path``.
+
+    Validates that the JSON root is a dict or a list of dicts.
 
     Parameters
     ----------

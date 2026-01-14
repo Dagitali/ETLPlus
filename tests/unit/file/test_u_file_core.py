@@ -11,6 +11,8 @@ Notes
 
 from __future__ import annotations
 
+import math
+import numbers
 from pathlib import Path
 from typing import cast
 
@@ -18,12 +20,181 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.types import JSONData
 from etlplus.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+FORMAT_CASES: list[
+    tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
+] = [
+    (
+        FileFormat.CSV,
+        'sample.csv',
+        [{'name': 'Ada', 'age': '36'}],
+        [{'name': 'Ada', 'age': '36'}],
+        (),
+    ),
+    (
+        FileFormat.TSV,
+        'sample.tsv',
+        [{'name': 'Ada', 'age': '36'}],
+        [{'name': 'Ada', 'age': '36'}],
+        (),
+    ),
+    (
+        FileFormat.JSON,
+        'sample.json',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        (),
+    ),
+    (
+        FileFormat.NDJSON,
+        'sample.ndjson',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        (),
+    ),
+    (
+        FileFormat.YAML,
+        'sample.yaml',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('yaml',),
+    ),
+    (
+        FileFormat.XML,
+        'sample.xml',
+        {'root': {'items': [{'text': 'one'}]}},
+        {'root': {'items': [{'text': 'one'}]}},
+        (),
+    ),
+    (
+        FileFormat.TXT,
+        'sample.txt',
+        [{'text': 'hello'}, {'text': 'world'}],
+        [{'text': 'hello'}, {'text': 'world'}],
+        (),
+    ),
+    (
+        FileFormat.GZ,
+        'sample.json.gz',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        (),
+    ),
+    (
+        FileFormat.ZIP,
+        'sample.json.zip',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        (),
+    ),
+    (
+        FileFormat.PARQUET,
+        'sample.parquet',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('pandas', 'pyarrow'),
+    ),
+    (
+        FileFormat.FEATHER,
+        'sample.feather',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('pandas', 'pyarrow'),
+    ),
+    (
+        FileFormat.ORC,
+        'sample.orc',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('pandas', 'pyarrow'),
+    ),
+    (
+        FileFormat.AVRO,
+        'sample.avro',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('fastavro',),
+    ),
+    (
+        FileFormat.XLSX,
+        'sample.xlsx',
+        [{'name': 'Ada', 'age': 36}],
+        [{'name': 'Ada', 'age': 36}],
+        ('pandas', 'openpyxl'),
+    ),
+]
+
+
+def _require_modules(modules: tuple[str, ...]) -> None:
+    """Skip the test when optional dependencies are missing."""
+    for module in modules:
+        pytest.importorskip(module)
+
+
+def _normalize_xml_payload(payload: JSONData) -> JSONData:
+    """Normalize XML payloads to list-based item structures when possible."""
+    if not isinstance(payload, dict):
+        return payload
+    root = payload.get('root')
+    if not isinstance(root, dict):
+        return payload
+    items = root.get('items')
+    if isinstance(items, dict):
+        root = {**root, 'items': [items]}
+        return {**payload, 'root': root}
+    return payload
+
+
+def _normalize_numeric_records(records: JSONData) -> JSONData:
+    """Normalize numeric record values (e.g., floats to ints when integral)."""
+    if isinstance(records, list):
+        normalized: list[JSONDict] = []
+        for row in records:
+            if not isinstance(row, dict):
+                normalized.append(row)
+                continue
+            cleaned: JSONDict = {}
+            for key, value in row.items():
+                cleaned[key] = _coerce_numeric_value(value)
+            normalized.append(cleaned)
+        return normalized
+    return records
+
+
+def _coerce_numeric_value(value: object) -> object:
+    """Coerce numeric scalars into stable Python numeric types."""
+    if isinstance(value, numbers.Real):
+        try:
+            numeric = float(value)
+            if math.isnan(numeric):
+                return None
+        except (TypeError, ValueError):
+            return value
+        if numeric.is_integer():
+            return int(numeric)
+        return float(numeric)
+    return value
+
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='stubbed_formats')
+def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
+    """Return a list of stubbed file formats for testing."""
+    return [
+        # FileFormat.AVRO, 'data.avro',
+        # FileFormat.EXCEL, 'data.xlsx',
+        # FileFormat.PARQUET, 'data.parquet',
+    ]
 
 
 # SECTION: TESTS ============================================================ #
@@ -162,6 +333,78 @@ class TestFile:
             File(path, FileFormat.JSON).read()
 
     @pytest.mark.parametrize(
+        'file_format,filename,payload,expected,requires',
+        [
+            pytest.param(
+                file_format,
+                filename,
+                payload,
+                expected,
+                requires,
+                id=file_format.value,
+            )
+            for (
+                file_format,
+                filename,
+                payload,
+                expected,
+                requires,
+            ) in FORMAT_CASES
+        ],
+    )
+    def test_round_trip_by_format(
+        self,
+        tmp_path: Path,
+        file_format: FileFormat,
+        filename: str,
+        payload: JSONData,
+        expected: JSONData,
+        requires: tuple[str, ...],
+    ) -> None:
+        """Test round-trip reads and writes across file formats."""
+        _require_modules(requires)
+        path = tmp_path / filename
+
+        File(path, file_format).write(payload)
+        result = File(path, file_format).read()
+
+        if file_format is FileFormat.XML:
+            result = _normalize_xml_payload(result)
+            expected = _normalize_xml_payload(expected)
+        if file_format is FileFormat.XLS:
+            result = _normalize_numeric_records(result)
+        assert result == expected
+
+    def test_stub_formats_raise_on_read(
+        self,
+        tmp_path: Path,
+        stubbed_formats: list[tuple[FileFormat, str]],
+    ) -> None:
+        """Test stub formats raising NotImplementedError on read."""
+        if not stubbed_formats:
+            pytest.skip('No stubbed formats to test')
+        for file_format, filename in stubbed_formats:
+            path = tmp_path / filename
+            path.write_text('stub', encoding='utf-8')
+
+            with pytest.raises(NotImplementedError):
+                File(path, file_format).read()
+
+    def test_stub_formats_raise_on_write(
+        self,
+        tmp_path: Path,
+        stubbed_formats: list[tuple[FileFormat, str]],
+    ) -> None:
+        """Test stub formats raising NotImplementedError on write."""
+        if not stubbed_formats:
+            pytest.skip('No stubbed formats to test')
+        for file_format, filename in stubbed_formats:
+            path = tmp_path / filename
+
+            with pytest.raises(NotImplementedError):
+                File(path, file_format).write({'stub': True})
+
+    @pytest.mark.parametrize(
         'filename,expected_format',
         [
             ('weird.data', None),
@@ -229,6 +472,17 @@ class TestFile:
         assert json_content
         assert json_content.count('\n') >= 2
 
+    def test_xls_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test XLS writes raise a clear error."""
+        pytest.importorskip('pandas')
+        path = tmp_path / 'sample.xls'
+
+        with pytest.raises(RuntimeError, match='XLS write is not supported'):
+            File(path, FileFormat.XLS).write([{'name': 'Ada', 'age': 36}])
+
     def test_xml_round_trip(
         self,
         tmp_path: Path,
@@ -259,60 +513,3 @@ class TestFile:
         text = path.read_text(encoding='utf-8')
         assert text.startswith('<?xml')
         assert '<records>' in text
-
-    @pytest.mark.parametrize(
-        'file_format,filename',
-        [
-            (FileFormat.AVRO, 'data.avro'),
-            (FileFormat.FEATHER, 'data.feather'),
-            (FileFormat.GZ, 'data.gz'),
-            (FileFormat.NDJSON, 'data.ndjson'),
-            (FileFormat.ORC, 'data.orc'),
-            (FileFormat.PARQUET, 'data.parquet'),
-            (FileFormat.TSV, 'data.tsv'),
-            (FileFormat.TXT, 'data.txt'),
-            (FileFormat.XLS, 'data.xls'),
-            (FileFormat.XLSX, 'data.xlsx'),
-            (FileFormat.ZIP, 'data.zip'),
-        ],
-    )
-    def test_stub_formats_raise_on_read(
-        self,
-        tmp_path: Path,
-        file_format: FileFormat,
-        filename: str,
-    ) -> None:
-        """Test stub formats raising NotImplementedError on read."""
-        path = tmp_path / filename
-        path.write_text('stub', encoding='utf-8')
-
-        with pytest.raises(NotImplementedError):
-            File(path, file_format).read()
-
-    @pytest.mark.parametrize(
-        'file_format,filename',
-        [
-            (FileFormat.AVRO, 'data.avro'),
-            (FileFormat.FEATHER, 'data.feather'),
-            (FileFormat.GZ, 'data.gz'),
-            (FileFormat.NDJSON, 'data.ndjson'),
-            (FileFormat.ORC, 'data.orc'),
-            (FileFormat.PARQUET, 'data.parquet'),
-            (FileFormat.TSV, 'data.tsv'),
-            (FileFormat.TXT, 'data.txt'),
-            (FileFormat.XLS, 'data.xls'),
-            (FileFormat.XLSX, 'data.xlsx'),
-            (FileFormat.ZIP, 'data.zip'),
-        ],
-    )
-    def test_stub_formats_raise_on_write(
-        self,
-        tmp_path: Path,
-        file_format: FileFormat,
-        filename: str,
-    ) -> None:
-        """Test stub formats raising NotImplementedError on write."""
-        path = tmp_path / filename
-
-        with pytest.raises(NotImplementedError):
-            File(path, file_format).write({'stub': True})
