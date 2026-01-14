@@ -47,9 +47,11 @@ setup(
     python_requires='>=3.13,<3.15',
     install_requires=[
         'jinja2>=3.1.6',
+        'openpyxl>=3.1.5',
         'pandas>=2.3.3',
         'pydantic>=2.12.5',
         'pyodbc>=5.3.0',
+        'pyarrow>=22.0.0',
         'PyYAML>=6.0.3',
         'python-dotenv>=1.2.1',
         'requests>=2.32.5',

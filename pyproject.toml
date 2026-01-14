@@ -24,7 +24,9 @@ classifiers = [
 ]
 dependencies = [
   "jinja2>=3.1.6",
+  "openpyxl>=3.1.5",
   "pyodbc>=5.3.0",
+  "pyarrow>=22.0.0",
   "python-dotenv>=1.2.1",
   "pandas>=2.3.3",
   "pydantic>=2.12.5",
