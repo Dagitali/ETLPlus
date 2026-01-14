@@ -108,6 +108,10 @@ def write(
     """
     Write ``data`` to XLS at ``path`` and return record count.
 
+    Notes
+    -----
+    XLS writing is not supported by pandas 2.x. Use XLSX for writes.
+
     Parameters
     ----------
     path : Path
@@ -125,18 +129,4 @@ def write(
     ImportError
         If the optional dependency "xlwt" is not installed.
     """
-    records = _normalize_records(data)
-    if not records:
-        return 0
-
-    pandas = _get_pandas()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_excel(path, index=False, engine='xlwt')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'XLS support requires optional dependency "xlwt".\n'
-            'Install with: pip install xlwt',
-        ) from e
-    return len(records)
+    raise RuntimeError('XLS write is not supported; use XLSX instead')
