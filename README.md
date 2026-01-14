@@ -14,6 +14,7 @@ ETLPlus is a veritable Swiss Army knife for enabling simple ETL operations, offe
 package and command-line interface for data extraction, validation, transformation, and loading.
 
 - [ETLPlus](#etlplus)
+  - [Getting Started](#getting-started)
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
@@ -49,6 +50,19 @@ package and command-line interface for data extraction, validation, transformati
     - [Community Health](#community-health)
     - [Other](#other)
   - [Acknowledgments](#acknowledgments)
+
+## Getting Started
+
+ETLPlus helps you extract, validate, transform, and load data from files, databases, and APIs, either
+as a Python library or from the command line.
+
+To get started:
+
+- See [Installation](#installation) for setup instructions.
+- Try the [Quickstart](#quickstart) for a minimal working example (CLI and Python).
+- Explore [Usage](#usage) for more detailed options and workflows.
+
+ETLPlus supports Python 3.13 and above.
 
 ## Features
 
