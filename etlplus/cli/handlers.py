@@ -570,7 +570,7 @@ def transform_handler(
     data = transform(payload, cast(TransformOperations, operations_payload))
 
     if target and target != '-':
-        File.from_path(target, file_format=target_format).write(data)
+        File(target, file_format=target_format).write(data)
         print(f'Data transformed and saved to {target}')
         return 0
 
