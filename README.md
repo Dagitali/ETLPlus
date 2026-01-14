@@ -601,6 +601,11 @@ Navigate to detailed documentation for each subpackage:
 
 ### Community Health
 
+- [Contributing Guidelines](CONTRIBUTING.md): How to contribute, report issues, and submit PRs
+- [Code of Conduct](CODE_OF_CONDUCT.md): Community standards and expectations
+- [Security Policy](SECURITY.md): Responsible disclosure and vulnerability reporting
+- [Support](SUPPORT.md): Where to get help
+
 ### Other
 
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
@@ -610,7 +615,7 @@ Navigate to detailed documentation for each subpackage:
 - Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
 - Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 - Demo and walkthrough: [`DEMO.md`](DEMO.md)
-- Additional references: [`REFERENCES.md`](`REFERENCES.md)
+- Additional references: [`REFERENCES.md`](REFERENCES.md)
 
 ## Acknowledgments
 
