@@ -13,6 +13,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -63,49 +64,6 @@ def _get_fastavro() -> Any:
     return _fastavro
 
 
-def _normalize_records(data: JSONData) -> JSONList:
-    """
-    Normalize JSON payloads into a list of dictionaries.
-
-    Raises TypeError when payloads contain non-dict items.
-    """
-    if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise TypeError('AVRO payloads must contain only objects (dicts)')
-        return cast(JSONList, data)
-    return [cast(JSONDict, data)]
-
-
-def _infer_value_type(value: object) -> str | list[str]:
-    """
-    Infer the Avro type for a primitive value.
-
-    Raises TypeError for unsupported types.
-    """
-    if value is None:
-        return 'null'
-    if isinstance(value, bool):
-        return 'boolean'
-    if isinstance(value, int):
-        return 'long'
-    if isinstance(value, float):
-        return 'double'
-    if isinstance(value, str):
-        return 'string'
-    if isinstance(value, (bytes, bytearray)):
-        return 'bytes'
-    raise TypeError('AVRO payloads must contain only primitive values')
-
-
-def _merge_types(types: list[str]) -> str | list[str]:
-    """Return a stable Avro type union for a list of types."""
-    unique = list(dict.fromkeys(types))
-    if len(unique) == 1:
-        return unique[0]
-    ordered = ['null'] + sorted(t for t in unique if t != 'null')
-    return ordered
-
-
 def _infer_schema(records: JSONList) -> dict[str, Any]:
     """
     Infer a basic Avro schema from record payloads.
@@ -137,6 +95,36 @@ def _infer_schema(records: JSONList) -> dict[str, Any]:
         'type': 'record',
         'fields': fields,
     }
+
+
+def _infer_value_type(value: object) -> str | list[str]:
+    """
+    Infer the Avro type for a primitive value.
+
+    Raises TypeError for unsupported types.
+    """
+    if value is None:
+        return 'null'
+    if isinstance(value, bool):
+        return 'boolean'
+    if isinstance(value, int):
+        return 'long'
+    if isinstance(value, float):
+        return 'double'
+    if isinstance(value, str):
+        return 'string'
+    if isinstance(value, (bytes, bytearray)):
+        return 'bytes'
+    raise TypeError('AVRO payloads must contain only primitive values')
+
+
+def _merge_types(types: list[str]) -> str | list[str]:
+    """Return a stable Avro type union for a list of types."""
+    unique = list(dict.fromkeys(types))
+    if len(unique) == 1:
+        return unique[0]
+    ordered = ['null'] + sorted(t for t in unique if t != 'null')
+    return ordered
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -183,7 +171,7 @@ def write(
     int
         Number of records written.
     """
-    records = _normalize_records(data)
+    records = normalize_records(data, 'AVRO')
     if not records:
         return 0
 
