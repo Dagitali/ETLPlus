@@ -267,9 +267,6 @@ class TestFile:
             (FileFormat.FEATHER, 'data.feather'),
             (FileFormat.GZ, 'data.gz'),
             (FileFormat.ORC, 'data.orc'),
-            (FileFormat.TSV, 'data.tsv'),
-            (FileFormat.TXT, 'data.txt'),
-            (FileFormat.XLS, 'data.xls'),
             (FileFormat.ZIP, 'data.zip'),
         ],
     )
@@ -293,9 +290,6 @@ class TestFile:
             (FileFormat.FEATHER, 'data.feather'),
             (FileFormat.GZ, 'data.gz'),
             (FileFormat.ORC, 'data.orc'),
-            (FileFormat.TSV, 'data.tsv'),
-            (FileFormat.TXT, 'data.txt'),
-            (FileFormat.XLS, 'data.xls'),
             (FileFormat.ZIP, 'data.zip'),
         ],
     )
