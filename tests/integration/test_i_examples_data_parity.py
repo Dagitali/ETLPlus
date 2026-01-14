@@ -48,8 +48,8 @@ def test_examples_sample_csv_json_parity_integration():
     assert csv_path.exists(), f'Missing CSV fixture: {csv_path}'
     assert json_path.exists(), f'Missing JSON fixture: {json_path}'
 
-    csv_data = File.read_file(csv_path)
-    json_data = File.read_file(json_path)
+    csv_data = File.from_path(csv_path).read()
+    json_data = File.from_path(json_path).read()
 
     assert isinstance(csv_data, list), 'CSV should load as a list of dicts'
     assert isinstance(json_data, list), 'JSON should load as a list of dicts'

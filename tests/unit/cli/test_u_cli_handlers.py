@@ -683,15 +683,11 @@ class TestTransformHandler:
         )
         write_calls: dict[str, object] = {}
 
-        def fake_write(
-            path: str,
-            data: object,
-            *,
-            file_format: str | None,
-        ) -> None:
-            write_calls['params'] = (path, data, file_format)
+        def fake_write(self, data, **kwargs):
+            # Only capture path and data; ignore root_tag.
+            write_calls['params'] = (str(self.path), data)
 
-        monkeypatch.setattr(handlers.File, 'write_file', fake_write)
+        monkeypatch.setattr(handlers.File, 'write', fake_write)
 
         assert (
             handlers.transform_handler(
@@ -709,7 +705,6 @@ class TestTransformHandler:
                 'payload': {'source': 'data.json'},
                 'ops': {'select': ['id']},
             },
-            'json',
         )
         assert (
             'Data transformed and saved to out.json' in capsys.readouterr().out
