@@ -66,6 +66,10 @@ class FileFormat(CoercibleStrEnum):
 
     # Tabular & delimited text
     CSV = 'csv'
+    FWF = 'fwf'
+    DAT = 'dat'
+    PSV = 'psv'
+    TAB = 'tab'
     TSV = 'tsv'
     TXT = 'txt'
 
