@@ -14,6 +14,21 @@ from typing import Any
 
 _MODULE_CACHE: dict[str, Any] = {}
 
+_OPTIONAL_ERRORS: dict[str, str] = {
+    'fastavro': (
+        'AVRO support requires optional dependency "fastavro".\n'
+        'Install with: pip install fastavro'
+    ),
+    'pandas': (
+        '%s support requires optional dependency "pandas".\n'
+        'Install with: pip install pandas'
+    ),
+    'yaml': (
+        'YAML support requires optional dependency "PyYAML".\n'
+        'Install with: pip install PyYAML'
+    ),
+}
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -58,10 +73,7 @@ def get_fastavro() -> Any:
     """
     return get_optional_module(
         'fastavro',
-        error_message=(
-            'AVRO support requires optional dependency "fastavro".\n'
-            'Install with: pip install fastavro'
-        ),
+        error_message=_OPTIONAL_ERRORS['fastavro'],
     )
 
 
@@ -81,10 +93,7 @@ def get_pandas(format_name: str) -> Any:
     """
     return get_optional_module(
         'pandas',
-        error_message=(
-            f'{format_name} support requires optional dependency "pandas".\n'
-            'Install with: pip install pandas'
-        ),
+        error_message=_OPTIONAL_ERRORS['pandas'] % format_name,
     )
 
 
@@ -96,8 +105,5 @@ def get_yaml() -> Any:
     """
     return get_optional_module(
         'yaml',
-        error_message=(
-            'YAML support requires optional dependency "PyYAML".\n'
-            'Install with: pip install PyYAML'
-        ),
+        error_message=_OPTIONAL_ERRORS['yaml'],
     )
