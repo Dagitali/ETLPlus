@@ -30,10 +30,52 @@ _OPTIONAL_ERRORS: dict[str, str] = {
 }
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _format_error(
+    module_name: str,
+    *,
+    format_name: str | None = None,
+) -> str:
+    """
+    Build an import error message for an optional dependency.
+
+    Parameters
+    ----------
+    module_name : str
+        Module name to look up.
+    format_name : str | None, optional
+        Optional human-readable format name for templated messages.
+
+    Returns
+    -------
+    str
+        Formatted error message.
+
+    Raises
+    ------
+    ValueError
+        If ``format_name`` is required but not provided.
+    """
+    template = _OPTIONAL_ERRORS[module_name]
+    if '%s' in template:
+        if format_name is None:
+            raise ValueError(
+                f'format_name is required for {module_name} error messages',
+            )
+        return template % format_name
+    return template
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def get_optional_module(module_name: str, *, error_message: str) -> Any:
+def get_optional_module(
+    module_name: str,
+    *,
+    error_message: str,
+) -> Any:
     """
     Return an optional dependency module, caching on first import.
 
@@ -70,14 +112,20 @@ def get_fastavro() -> Any:
     Return the fastavro module, importing it on first use.
 
     Raises an informative ImportError if the optional dependency is missing.
+
+    Notes
+    -----
+    Prefer :func:`get_optional_module` for new call sites.
     """
     return get_optional_module(
         'fastavro',
-        error_message=_OPTIONAL_ERRORS['fastavro'],
+        error_message=_format_error('fastavro'),
     )
 
 
-def get_pandas(format_name: str) -> Any:
+def get_pandas(
+    format_name: str,
+) -> Any:
     """
     Return the pandas module, importing it on first use.
 
@@ -90,10 +138,14 @@ def get_pandas(format_name: str) -> Any:
     -------
     Any
         The pandas module.
+
+    Notes
+    -----
+    Prefer :func:`get_optional_module` for new call sites.
     """
     return get_optional_module(
         'pandas',
-        error_message=_OPTIONAL_ERRORS['pandas'] % format_name,
+        error_message=_format_error('pandas', format_name=format_name),
     )
 
 
@@ -102,8 +154,12 @@ def get_yaml() -> Any:
     Return the PyYAML module, importing it on first use.
 
     Raises an informative ImportError if the optional dependency is missing.
+
+    Notes
+    -----
+    Prefer :func:`get_optional_module` for new call sites.
     """
     return get_optional_module(
         'yaml',
-        error_message=_OPTIONAL_ERRORS['yaml'],
+        error_message=_format_error('yaml'),
     )
