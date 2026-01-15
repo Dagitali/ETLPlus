@@ -6,7 +6,6 @@ Helpers for reading/writing Avro files.
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -48,13 +47,15 @@ def _get_fastavro() -> Any:
 
     Raises an informative ImportError if the optional dependency is missing.
     """
-    try:
-        return import_module('fastavro')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
+    from ._imports import get_optional_module
+
+    return get_optional_module(
+        'fastavro',
+        error_message=(
             'AVRO support requires optional dependency "fastavro".\n'
-            'Install with: pip install fastavro',
-        ) from e
+            'Install with: pip install fastavro'
+        ),
+    )
 
 
 def _infer_schema(records: JSONList) -> dict[str, Any]:
