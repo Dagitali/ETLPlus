@@ -200,9 +200,7 @@ def _require_modules(
 def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
     """Return a list of stubbed file formats for testing."""
     return [
-        # FileFormat.AVRO, 'data.avro',
-        # FileFormat.EXCEL, 'data.xlsx',
-        # FileFormat.PARQUET, 'data.parquet',
+        (FileFormat.STUB, 'data.stub'),
     ]
 
 
