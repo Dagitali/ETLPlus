@@ -6,6 +6,7 @@ Helpers for reading/writing YAML files.
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -35,6 +36,7 @@ _YAML_CACHE: dict[str, Any] = {}
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+# TODO: Replace with get_module.
 def _get_yaml() -> Any:
     """
     Return the PyYAML module, importing it on first use.
@@ -45,7 +47,7 @@ def _get_yaml() -> Any:
     if mod is not None:  # pragma: no cover - tiny branch
         return mod
     try:
-        _yaml_mod = __import__('yaml')  # type: ignore[assignment]
+        _yaml_mod = import_module('yaml')
     except ImportError as e:  # pragma: no cover
         raise ImportError(
             'YAML support requires optional dependency "PyYAML".\n'
