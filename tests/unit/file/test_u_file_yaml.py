@@ -26,6 +26,9 @@ from etlplus.file import FileFormat
 pytestmark = pytest.mark.unit
 
 
+_YAML_CACHE = yaml_module._YAML_CACHE  # pylint: disable=protected-access
+
+
 class _StubYaml:
     """Minimal PyYAML substitute to avoid optional dependency in tests."""
 
@@ -57,13 +60,11 @@ class _StubYaml:
 @pytest.fixture(name='yaml_stub')
 def yaml_stub_fixture() -> Generator[_StubYaml]:
     """Install a stub PyYAML module for YAML tests."""
-    # pylint: disable=protected-access
-
     stub = _StubYaml()
-    yaml_module._YAML_CACHE.clear()
-    yaml_module._YAML_CACHE['mod'] = stub
+    _YAML_CACHE.clear()
+    _YAML_CACHE['mod'] = stub
     yield stub
-    yaml_module._YAML_CACHE.clear()
+    _YAML_CACHE.clear()
 
 
 # SECTION: TESTS ============================================================ #
@@ -82,9 +83,7 @@ class TestYamlSupport:
         """
         Test reading YAML should invoke stub ``safe_load``.
         """
-        # pylint: disable=protected-access
-
-        assert yaml_module._YAML_CACHE['mod'] is yaml_stub
+        assert _YAML_CACHE['mod'] is yaml_stub
         path = tmp_path / 'data.yaml'
         path.write_text('name: etl', encoding='utf-8')
 
