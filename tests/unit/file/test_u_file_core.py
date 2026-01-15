@@ -29,9 +29,10 @@ from etlplus.types import JSONDict
 pytestmark = pytest.mark.unit
 
 
-FORMAT_CASES: list[
-    tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
-] = [
+type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
+
+
+FORMAT_CASES: list[FormatCase] = [
     (
         FileFormat.CSV,
         'sample.csv',
@@ -133,27 +134,26 @@ FORMAT_CASES: list[
 ]
 
 
-def _require_modules(modules: tuple[str, ...]) -> None:
-    """Skip the test when optional dependencies are missing."""
-    for module in modules:
-        pytest.importorskip(module)
+def _coerce_numeric_value(
+    value: object,
+) -> object:
+    """Coerce numeric scalars into stable Python numeric types."""
+    if isinstance(value, numbers.Real):
+        try:
+            numeric = float(value)
+            if math.isnan(numeric):
+                return None
+        except (TypeError, ValueError):
+            return value
+        if numeric.is_integer():
+            return int(numeric)
+        return float(numeric)
+    return value
 
 
-def _normalize_xml_payload(payload: JSONData) -> JSONData:
-    """Normalize XML payloads to list-based item structures when possible."""
-    if not isinstance(payload, dict):
-        return payload
-    root = payload.get('root')
-    if not isinstance(root, dict):
-        return payload
-    items = root.get('items')
-    if isinstance(items, dict):
-        root = {**root, 'items': [items]}
-        return {**payload, 'root': root}
-    return payload
-
-
-def _normalize_numeric_records(records: JSONData) -> JSONData:
+def _normalize_numeric_records(
+    records: JSONData,
+) -> JSONData:
     """Normalize numeric record values (e.g., floats to ints when integral)."""
     if isinstance(records, list):
         normalized: list[JSONDict] = []
@@ -169,19 +169,28 @@ def _normalize_numeric_records(records: JSONData) -> JSONData:
     return records
 
 
-def _coerce_numeric_value(value: object) -> object:
-    """Coerce numeric scalars into stable Python numeric types."""
-    if isinstance(value, numbers.Real):
-        try:
-            numeric = float(value)
-            if math.isnan(numeric):
-                return None
-        except (TypeError, ValueError):
-            return value
-        if numeric.is_integer():
-            return int(numeric)
-        return float(numeric)
-    return value
+def _normalize_xml_payload(
+    payload: JSONData,
+) -> JSONData:
+    """Normalize XML payloads to list-based item structures when possible."""
+    if not isinstance(payload, dict):
+        return payload
+    root = payload.get('root')
+    if not isinstance(root, dict):
+        return payload
+    items = root.get('items')
+    if isinstance(items, dict):
+        root = {**root, 'items': [items]}
+        return {**payload, 'root': root}
+    return payload
+
+
+def _require_modules(
+    modules: tuple[str, ...],
+) -> None:
+    """Skip the test when optional dependencies are missing."""
+    for module in modules:
+        pytest.importorskip(module)
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -208,22 +217,6 @@ class TestFile:
     -----
     - Exercises JSON detection and defers errors for unknown extensions.
     """
-
-    def test_instance_methods_round_trip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test :meth:`read` and :meth:`write` round-tripping data.
-        """
-        path = tmp_path / 'delegated.json'
-        data = {'name': 'delegated'}
-
-        File(path, file_format=FileFormat.JSON).write(data)
-        result = File(path, file_format=FileFormat.JSON).read()
-
-        assert isinstance(result, dict)
-        assert result['name'] == 'delegated'
 
     def test_compression_only_extension_defers_error(
         self,
@@ -482,21 +475,6 @@ class TestFile:
 
         with pytest.raises(RuntimeError, match='XLS write is not supported'):
             File(path, FileFormat.XLS).write([{'name': 'Ada', 'age': 36}])
-
-    def test_xml_round_trip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test XML write/read preserving nested dictionaries.
-        """
-        path = tmp_path / 'data.xml'
-        payload = {'root': {'items': [{'text': 'one'}, {'text': 'two'}]}}
-
-        File(path, FileFormat.XML).write(payload)
-        result = cast(JSONDict, File(path, FileFormat.XML).read())
-
-        assert result['root']['items'][0]['text'] == 'one'
 
     def test_xml_respects_root_tag(
         self,
