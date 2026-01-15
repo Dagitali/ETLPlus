@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
+from etlplus.file._imports import get_fastavro
+
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
@@ -38,24 +40,6 @@ _PRIMITIVE_TYPES: tuple[type, ...] = (
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-# TODO: Replace with get_module.
-def _get_fastavro() -> Any:
-    """
-    Return the fastavro module, importing it on first use.
-
-    Raises an informative ImportError if the optional dependency is missing.
-    """
-    from ._imports import get_optional_module
-
-    return get_optional_module(
-        'fastavro',
-        error_message=(
-            'AVRO support requires optional dependency "fastavro".\n'
-            'Install with: pip install fastavro'
-        ),
-    )
 
 
 def _infer_schema(records: JSONList) -> dict[str, Any]:
@@ -140,7 +124,7 @@ def read(
     JSONList
         The list of dictionaries read from the AVRO file.
     """
-    fastavro = _get_fastavro()
+    fastavro = get_fastavro()
     with path.open('rb') as handle:
         reader = fastavro.reader(handle)
         return [cast(JSONDict, record) for record in reader]
@@ -169,7 +153,7 @@ def write(
     if not records:
         return 0
 
-    fastavro = _get_fastavro()
+    fastavro = get_fastavro()
     schema = _infer_schema(records)
     parsed_schema = fastavro.parse_schema(schema)
 

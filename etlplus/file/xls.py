@@ -11,7 +11,7 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._pandas import get_pandas
+from ._imports import get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
