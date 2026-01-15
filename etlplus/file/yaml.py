@@ -6,7 +6,6 @@ Helpers for reading/writing YAML files.
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -25,14 +24,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-# Optional YAML support (lazy-loaded to avoid hard dependency)
-# Cached access function to avoid global statements.
-_YAML_CACHE: dict[str, Any] = {}
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -43,19 +34,15 @@ def _get_yaml() -> Any:
 
     Raises an informative ImportError if the optional dependency is missing.
     """
-    mod = _YAML_CACHE.get('mod')
-    if mod is not None:  # pragma: no cover - tiny branch
-        return mod
-    try:
-        _yaml_mod = import_module('yaml')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'YAML support requires optional dependency "PyYAML".\n'
-            'Install with: pip install PyYAML',
-        ) from e
-    _YAML_CACHE['mod'] = _yaml_mod
+    from ._imports import get_optional_module
 
-    return _yaml_mod
+    return get_optional_module(
+        'yaml',
+        error_message=(
+            'YAML support requires optional dependency "PyYAML".\n'
+            'Install with: pip install PyYAML'
+        ),
+    )
 
 
 def _require_yaml() -> None:
