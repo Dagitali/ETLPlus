@@ -19,6 +19,7 @@ from . import json
 from . import ndjson
 from . import orc
 from . import parquet
+from . import stub
 from . import tsv
 from . import txt
 from . import xls
@@ -209,6 +210,8 @@ class File:
                 return orc.read(self.path)
             case FileFormat.PARQUET:
                 return parquet.read(self.path)
+            case FileFormat.STUB:
+                return stub.read(self.path)
             case FileFormat.TSV:
                 return tsv.read(self.path)
             case FileFormat.TXT:
@@ -270,6 +273,8 @@ class File:
                 return orc.write(self.path, data)
             case FileFormat.PARQUET:
                 return parquet.write(self.path, data)
+            case FileFormat.STUB:
+                return stub.write(self.path, data)
             case FileFormat.TSV:
                 return tsv.write(self.path, data)
             case FileFormat.TXT:
