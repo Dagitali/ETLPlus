@@ -13,13 +13,17 @@ from pathlib import Path
 from ..types import JSONData
 from . import avro
 from . import csv
+from . import dat
 from . import feather
+from . import fwf
 from . import gz
 from . import json
 from . import ndjson
 from . import orc
 from . import parquet
+from . import psv
 from . import stub
+from . import tab
 from . import tsv
 from . import txt
 from . import xls
@@ -198,8 +202,12 @@ class File:
                 return avro.read(self.path)
             case FileFormat.CSV:
                 return csv.read(self.path)
+            case FileFormat.DAT:
+                return dat.read(self.path)
             case FileFormat.FEATHER:
                 return feather.read(self.path)
+            case FileFormat.FWF:
+                return fwf.read(self.path)
             case FileFormat.GZ:
                 return gz.read(self.path)
             case FileFormat.JSON:
@@ -210,8 +218,12 @@ class File:
                 return orc.read(self.path)
             case FileFormat.PARQUET:
                 return parquet.read(self.path)
+            case FileFormat.PSV:
+                return psv.read(self.path)
             case FileFormat.STUB:
                 return stub.read(self.path)
+            case FileFormat.TAB:
+                return tab.read(self.path)
             case FileFormat.TSV:
                 return tsv.read(self.path)
             case FileFormat.TXT:
@@ -261,8 +273,12 @@ class File:
                 return avro.write(self.path, data)
             case FileFormat.CSV:
                 return csv.write(self.path, data)
+            case FileFormat.DAT:
+                return dat.write(self.path, data)
             case FileFormat.FEATHER:
                 return feather.write(self.path, data)
+            case FileFormat.FWF:
+                return fwf.write(self.path, data)
             case FileFormat.GZ:
                 return gz.write(self.path, data)
             case FileFormat.JSON:
@@ -273,8 +289,12 @@ class File:
                 return orc.write(self.path, data)
             case FileFormat.PARQUET:
                 return parquet.write(self.path, data)
+            case FileFormat.PSV:
+                return psv.write(self.path, data)
             case FileFormat.STUB:
                 return stub.write(self.path, data)
+            case FileFormat.TAB:
+                return tab.write(self.path, data)
             case FileFormat.TSV:
                 return tsv.write(self.path, data)
             case FileFormat.TXT:

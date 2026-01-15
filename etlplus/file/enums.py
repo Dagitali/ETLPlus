@@ -61,22 +61,49 @@ class FileFormat(CoercibleStrEnum):
 
     # -- Constants -- #
 
-    AVRO = 'avro'
-    CSV = 'csv'
-    FEATHER = 'feather'
-    GZ = 'gz'
-    JSON = 'json'
-    NDJSON = 'ndjson'
-    ORC = 'orc'
-    PARQUET = 'parquet'
+    # Stubbed / placeholder
     STUB = 'stub'
+
+    # Tabular & delimited text
+    CSV = 'csv'
+    FWF = 'fwf'
+    DAT = 'dat'
+    PSV = 'psv'
+    TAB = 'tab'
     TSV = 'tsv'
     TXT = 'txt'
-    XLS = 'xls'
-    XLSX = 'xlsx'
-    ZIP = 'zip'
+
+    # Semi-structured text
+    JSON = 'json'
+    NDJSON = 'ndjson'
     XML = 'xml'
     YAML = 'yaml'
+
+    # Columnar / analytics-friendly
+    FEATHER = 'feather'
+    ORC = 'orc'
+    PARQUET = 'parquet'
+
+    # Binary serialization and interchange
+    AVRO = 'avro'
+
+    # Databases and embedded storage
+
+    # Spreadsheets
+    XLS = 'xls'
+    XLSX = 'xlsx'
+
+    # Statistical / scientific / numeric computing
+
+    # Geospatial data
+
+    # Logs and event streams
+
+    # “Data archives” and packaging
+    GZ = 'gz'
+    ZIP = 'zip'
+
+    # Domain-specific and less common
 
     # -- Class Methods -- #
 
