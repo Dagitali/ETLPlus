@@ -5,8 +5,7 @@ Unit tests for :mod:`etlplus.file.enums`.
 
 Notes
 -----
-- Uses ``tmp_path`` for filesystem isolation.
-- Exercises JSON detection and defers errors for unknown extensions.
+- Exercises format/compression inference rules and coercion helpers.
 """
 
 from __future__ import annotations
@@ -21,6 +20,31 @@ from etlplus.file import infer_file_format_and_compression
 
 
 pytestmark = pytest.mark.unit
+
+
+type InferCase = tuple[
+    object,
+    object | None,
+    FileFormat | None,
+    CompressionFormat | None,
+]
+
+INFER_CASES: list[InferCase] = [
+    ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
+    ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
+    ('data.zip', None, None, CompressionFormat.ZIP),
+    ('application/json; charset=utf-8', None, FileFormat.JSON, None),
+    ('application/gzip', None, None, CompressionFormat.GZ),
+    (
+        'application/octet-stream',
+        'payload.csv.gz',
+        FileFormat.CSV,
+        CompressionFormat.GZ,
+    ),
+    ('application/octet-stream', None, None, None),
+    (FileFormat.GZ, None, None, CompressionFormat.GZ),
+    (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
+]
 
 
 # SECTION: TESTS ============================================================ #
@@ -60,22 +84,7 @@ class TestInferFileFormatAndCompression:
 
     @pytest.mark.parametrize(
         'value,filename,expected_format,expected_compression',
-        [
-            ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
-            ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
-            ('data.zip', None, None, CompressionFormat.ZIP),
-            ('application/json; charset=utf-8', None, FileFormat.JSON, None),
-            ('application/gzip', None, None, CompressionFormat.GZ),
-            (
-                'application/octet-stream',
-                'payload.csv.gz',
-                FileFormat.CSV,
-                CompressionFormat.GZ,
-            ),
-            ('application/octet-stream', None, None, None),
-            (FileFormat.GZ, None, None, CompressionFormat.GZ),
-            (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
-        ],
+        INFER_CASES,
     )
     def test_infers_format_and_compression(
         self,
