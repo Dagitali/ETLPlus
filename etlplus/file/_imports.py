@@ -48,3 +48,56 @@ def get_optional_module(module_name: str, *, error_message: str) -> Any:
         raise ImportError(error_message) from e
     _MODULE_CACHE[module_name] = module
     return module
+
+
+def get_fastavro() -> Any:
+    """
+    Return the fastavro module, importing it on first use.
+
+    Raises an informative ImportError if the optional dependency is missing.
+    """
+    return get_optional_module(
+        'fastavro',
+        error_message=(
+            'AVRO support requires optional dependency "fastavro".\n'
+            'Install with: pip install fastavro'
+        ),
+    )
+
+
+def get_pandas(format_name: str) -> Any:
+    """
+    Return the pandas module, importing it on first use.
+
+    Parameters
+    ----------
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    Any
+        The pandas module.
+    """
+    return get_optional_module(
+        'pandas',
+        error_message=(
+            f'{format_name} support requires optional dependency "pandas".\n'
+            'Install with: pip install pandas'
+        ),
+    )
+
+
+def get_yaml() -> Any:
+    """
+    Return the PyYAML module, importing it on first use.
+
+    Raises an informative ImportError if the optional dependency is missing.
+    """
+    return get_optional_module(
+        'yaml',
+        error_message=(
+            'YAML support requires optional dependency "PyYAML".\n'
+            'Install with: pip install PyYAML'
+        ),
+    )
