@@ -6,6 +6,7 @@ Helpers for reading/writing Avro files.
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -27,9 +28,6 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_FASTAVRO_CACHE: dict[str, Any] = {}
-
-
 _PRIMITIVE_TYPES: tuple[type, ...] = (
     bool,
     int,
@@ -43,25 +41,20 @@ _PRIMITIVE_TYPES: tuple[type, ...] = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+# TODO: Replace with get_module.
 def _get_fastavro() -> Any:
     """
     Return the fastavro module, importing it on first use.
 
     Raises an informative ImportError if the optional dependency is missing.
     """
-    mod = _FASTAVRO_CACHE.get('mod')
-    if mod is not None:  # pragma: no cover - tiny branch
-        return mod
     try:
-        _fastavro = __import__('fastavro')  # type: ignore[assignment]
+        return import_module('fastavro')
     except ImportError as e:  # pragma: no cover
         raise ImportError(
             'AVRO support requires optional dependency "fastavro".\n'
             'Install with: pip install fastavro',
         ) from e
-    _FASTAVRO_CACHE['mod'] = _fastavro
-
-    return _fastavro
 
 
 def _infer_schema(records: JSONList) -> dict[str, Any]:
