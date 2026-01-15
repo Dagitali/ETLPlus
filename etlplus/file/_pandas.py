@@ -6,6 +6,7 @@ Shared helpers for optional pandas usage.
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any
 
 # SECTION: EXPORTS ========================================================== #
@@ -14,12 +15,6 @@ from typing import Any
 __all__ = [
     'get_pandas',
 ]
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_PANDAS_CACHE: dict[str, Any] = {}
-
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -43,16 +38,10 @@ def get_pandas(format_name: str) -> Any:
     ImportError
         If the optional dependency is missing.
     """
-    mod = _PANDAS_CACHE.get('mod')
-    if mod is not None:  # pragma: no cover - tiny branch
-        return mod
     try:
-        _pd = __import__('pandas')  # type: ignore[assignment]
+        return import_module('pandas')
     except ImportError as e:  # pragma: no cover
         raise ImportError(
             f'{format_name} support requires optional dependency "pandas".\n'
             'Install with: pip install pandas',
         ) from e
-    _PANDAS_CACHE['mod'] = _pd
-
-    return _pd
