@@ -78,9 +78,10 @@ class TestLoadTableSpec:
         )
         # pylint: disable=import-outside-toplevel,protected-access
 
+        import etlplus.file._imports as import_helpers
         import etlplus.file.yaml as file_mod
 
-        file_mod._YAML_CACHE.clear()
+        import_helpers._MODULE_CACHE.clear()
 
         def _raise_import_error() -> None:
             raise ImportError('forced failure for test')
