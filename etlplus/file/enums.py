@@ -69,6 +69,7 @@ class FileFormat(CoercibleStrEnum):
     NDJSON = 'ndjson'
     ORC = 'orc'
     PARQUET = 'parquet'
+    STUB = 'stub'
     TSV = 'tsv'
     TXT = 'txt'
     XLS = 'xls'
@@ -104,6 +105,7 @@ class FileFormat(CoercibleStrEnum):
             '.orc': 'orc',
             '.parquet': 'parquet',
             '.pq': 'parquet',
+            '.stub': 'stub',
             '.tsv': 'tsv',
             '.txt': 'txt',
             '.xls': 'xls',
