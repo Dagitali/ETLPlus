@@ -79,13 +79,14 @@ class TestLoadTableSpec:
         # pylint: disable=import-outside-toplevel,protected-access
 
         import etlplus.file._imports as import_helpers
+        import etlplus.file.yaml as file_mod
 
         import_helpers._MODULE_CACHE.clear()
 
         def _raise_import_error() -> None:
             raise ImportError('forced failure for test')
 
-        monkeypatch.setattr(import_helpers, 'get_yaml', _raise_import_error)
+        monkeypatch.setattr(file_mod, 'get_yaml', _raise_import_error)
 
         with pytest.raises(RuntimeError):
             ddl.load_table_spec(spec_path)
