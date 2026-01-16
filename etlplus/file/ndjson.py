@@ -14,6 +14,7 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -87,15 +88,7 @@ def write(
     TypeError
         If ``data`` is a list containing non-dict items.
     """
-    rows: JSONList
-    if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise TypeError(
-                'NDJSON payloads must contain only objects (dicts)',
-            )
-        rows = cast(JSONList, data)
-    else:
-        rows = [cast(JSONDict, data)]
+    rows = normalize_records(data, 'NDJSON')
 
     if not rows:
         return 0

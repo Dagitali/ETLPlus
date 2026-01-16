@@ -25,14 +25,17 @@ __all__ = [
 
 def read(
     path: Path,
+    format_name: str = 'Stubbed',
 ) -> JSONList:
     """
-    Read stubbed content from ``path``.
+    Raises a :class:`NotImplementedError` for stubbed reads.
 
     Parameters
     ----------
     path : Path
         Path to the stubbed file on disk.
+    format_name : str
+        Human-readable format name.
 
     Returns
     -------
@@ -44,15 +47,17 @@ def read(
     NotImplementedError
         Always, since this is a stub implementation.
     """
-    raise NotImplementedError('Stubbed read is not implemented yet')
+    _ = path
+    raise NotImplementedError(f'{format_name} read is not implemented yet')
 
 
 def write(
     path: Path,
     data: JSONData,
+    format_name: str = 'Stubbed',
 ) -> int:
     """
-    Write ``data`` to stubbed file at ``path`` and return record count.
+    Raises a :class:`NotImplementedError` for stubbed writes.
 
     Parameters
     ----------
@@ -61,6 +66,8 @@ def write(
     data : JSONData
         Data to write as stubbed file. Should be a list of dictionaries or a
         single dictionary.
+    format_name : str
+        Human-readable format name.
 
     Returns
     -------
@@ -72,4 +79,6 @@ def write(
     NotImplementedError
         Always, since this is a stub implementation.
     """
-    raise NotImplementedError('Stubbed write is not implemented yet')
+    _ = path
+    _ = data
+    raise NotImplementedError(f'{format_name} write is not implemented yet')

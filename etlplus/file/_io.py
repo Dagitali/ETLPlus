@@ -107,6 +107,7 @@ def write_delimited(path: Path, data: JSONData, *, delimiter: str) -> int:
         return 0
 
     fieldnames = sorted({key for row in rows for key in row})
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('w', encoding='utf-8', newline='') as handle:
         writer = csv.DictWriter(
             handle,

@@ -7,12 +7,11 @@ Helpers for reading/writing text files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -77,13 +76,7 @@ def write(
         If any item in ``data`` is not a dictionary or if any dictionary
         does not contain a ``'text'`` key.
     """
-    rows: JSONList
-    if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise TypeError('TXT payloads must contain only objects (dicts)')
-        rows = cast(JSONList, data)
-    else:
-        rows = [cast(JSONDict, data)]
+    rows = normalize_records(data, 'TXT')
 
     if not rows:
         return 0

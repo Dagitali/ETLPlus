@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
+from . import stub
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,13 +39,8 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the PSV file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
-    raise NotImplementedError('PSV read is not implemented yet')
+    return stub.read(path, format_name='PSV')
 
 
 def write(
@@ -66,10 +62,5 @@ def write(
     -------
     int
         The number of rows written to the PSV file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
-    raise NotImplementedError('PSV write is not implemented yet')
+    return stub.write(path, data, format_name='PSV')

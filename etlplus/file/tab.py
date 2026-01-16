@@ -26,6 +26,7 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
+from . import stub
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -54,13 +55,8 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the TAB file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
-    raise NotImplementedError('TAB read is not implemented yet')
+    return stub.read(path, format_name='TAB')
 
 
 def write(
@@ -82,10 +78,5 @@ def write(
     -------
     int
         The number of rows written to the TAB file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
-    raise NotImplementedError('TAB write is not implemented yet')
+    return stub.write(path, data, format_name='TAB')
