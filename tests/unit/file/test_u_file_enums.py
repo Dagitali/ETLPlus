@@ -76,7 +76,7 @@ class TestFileFormat:
     def test_invalid_value(self) -> None:
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError, match='Invalid FileFormat'):
-            FileFormat.coerce('ini')
+            FileFormat.coerce('badformat')
 
 
 class TestInferFileFormatAndCompression:
