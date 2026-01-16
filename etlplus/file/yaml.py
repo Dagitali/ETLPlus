@@ -7,13 +7,13 @@ Helpers for reading/writing YAML files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
+from ._imports import get_yaml
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -22,43 +22,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-# Optional YAML support (lazy-loaded to avoid hard dependency)
-# Cached access function to avoid global statements.
-_YAML_CACHE: dict[str, Any] = {}
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_yaml() -> Any:
-    """
-    Return the PyYAML module, importing it on first use.
-
-    Raises an informative ImportError if the optional dependency is missing.
-    """
-    mod = _YAML_CACHE.get('mod')
-    if mod is not None:  # pragma: no cover - tiny branch
-        return mod
-    try:
-        _yaml_mod = __import__('yaml')  # type: ignore[assignment]
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'YAML support requires optional dependency "PyYAML".\n'
-            'Install with: pip install PyYAML',
-        ) from e
-    _YAML_CACHE['mod'] = _yaml_mod
-
-    return _yaml_mod
-
-
-def _require_yaml() -> None:
-    """Ensure PyYAML is available or raise an informative error."""
-    _get_yaml()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -87,10 +50,10 @@ def read(
     TypeError
         If the YAML root is not an object or an array of objects.
     """
-    _require_yaml()
+    # _require_yaml()
 
     with path.open('r', encoding='utf-8') as handle:
-        loaded = _get_yaml().safe_load(handle)
+        loaded = get_yaml().safe_load(handle)
 
     if isinstance(loaded, dict):
         return cast(JSONDict, loaded)
@@ -124,9 +87,9 @@ def write(
     int
         The number of records written.
     """
-    _require_yaml()
+    # _require_yaml()
     with path.open('w', encoding='utf-8') as handle:
-        _get_yaml().safe_dump(
+        get_yaml().safe_dump(
             data,
             handle,
             sort_keys=False,

@@ -11,8 +11,8 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ._imports import get_pandas
 from ._io import normalize_records
-from ._pandas import get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 

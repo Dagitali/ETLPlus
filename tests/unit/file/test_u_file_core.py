@@ -33,6 +33,7 @@ type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 
 
 FORMAT_CASES: list[FormatCase] = [
+    # Tabular & delimited text
     (
         FileFormat.CSV,
         'sample.csv',
@@ -40,11 +41,53 @@ FORMAT_CASES: list[FormatCase] = [
         [{'name': 'Ada', 'age': '36'}],
         (),
     ),
+    # (
+    #     FileFormat.DAT,
+    #     'sample.dat',
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     (),
+    # ),
+    # (
+    #     FileFormat.FWF,
+    #     'sample.fwf',
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     (),
+    # ),
+    # (
+    #     FileFormat.PSV,
+    #     'sample.psv',
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     (),
+    # ),
+    # (
+    #     FileFormat.TAB,
+    #     'sample.tab',
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     (),
+    # ),
     (
         FileFormat.TSV,
         'sample.tsv',
         [{'name': 'Ada', 'age': '36'}],
         [{'name': 'Ada', 'age': '36'}],
+        (),
+    ),
+    # (
+    #     FileFormat.TXT,
+    #     'sample.txt',
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     [{'name': 'Ada', 'age': '36'}],
+    #     (),
+    # ),
+    (
+        FileFormat.TXT,
+        'sample.txt',
+        [{'text': 'hello'}, {'text': 'world'}],
+        [{'text': 'hello'}, {'text': 'world'}],
         (),
     ),
     (
@@ -73,13 +116,6 @@ FORMAT_CASES: list[FormatCase] = [
         'sample.xml',
         {'root': {'items': [{'text': 'one'}]}},
         {'root': {'items': [{'text': 'one'}]}},
-        (),
-    ),
-    (
-        FileFormat.TXT,
-        'sample.txt',
-        [{'text': 'hello'}, {'text': 'world'}],
-        [{'text': 'hello'}, {'text': 'world'}],
         (),
     ),
     (
@@ -200,7 +236,13 @@ def _require_modules(
 def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
     """Return a list of stubbed file formats for testing."""
     return [
+        # Permanent stub as formality
         (FileFormat.STUB, 'data.stub'),
+        # Temporary stubs until implemented
+        (FileFormat.DAT, 'data.dat'),
+        (FileFormat.FWF, 'data.fwf'),
+        (FileFormat.PSV, 'data.psv'),
+        (FileFormat.TAB, 'data.tab'),
     ]
 
 

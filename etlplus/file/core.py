@@ -7,26 +7,15 @@ files.
 
 from __future__ import annotations
 
+import importlib
+import inspect
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
+from types import ModuleType
 
 from ..types import JSONData
-from . import avro
-from . import csv
-from . import feather
-from . import gz
-from . import json
-from . import ndjson
-from . import orc
-from . import parquet
-from . import stub
-from . import tsv
-from . import txt
-from . import xls
-from . import xlsx
 from . import xml
-from . import yaml
-from . import zip as zip_
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
 
@@ -34,6 +23,53 @@ from .enums import infer_file_format_and_compression
 
 
 __all__ = ['File']
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _accepts_root_tag(handler: object) -> bool:
+    """
+    Return True when ``handler`` supports a ``root_tag`` argument.
+
+    Parameters
+    ----------
+    handler : object
+        Callable to inspect.
+
+    Returns
+    -------
+    bool
+        True if ``root_tag`` is accepted by the handler.
+    """
+    if not callable(handler):
+        return False
+    try:
+        signature = inspect.signature(handler)
+    except (TypeError, ValueError):
+        return False
+    for param in signature.parameters.values():
+        if param.kind is param.VAR_KEYWORD:
+            return True
+    return 'root_tag' in signature.parameters
+
+
+@cache
+def _module_for_format(file_format: FileFormat) -> ModuleType:
+    """
+    Import and return the module for ``file_format``.
+
+    Parameters
+    ----------
+    file_format : FileFormat
+        File format enum value.
+
+    Returns
+    -------
+    ModuleType
+        The module implementing IO for the format.
+    """
+    return importlib.import_module(f'{__package__}.{file_format.value}')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -175,6 +211,53 @@ class File:
             # Leave as None; _ensure_format() will raise on use if needed.
             return None
 
+    def _resolve_handler(self, name: str) -> object:
+        """
+        Resolve a handler from the module for the active file format.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name to resolve (``'read'`` or ``'write'``).
+
+        Returns
+        -------
+        object
+            Callable handler exported by the module.
+
+        Raises
+        ------
+        ValueError
+            If the resolved file format is unsupported.
+        """
+        module = self._resolve_module()
+        try:
+            return getattr(module, name)
+        except AttributeError as e:
+            raise ValueError(
+                f'Module {module.__name__} does not implement {name}()',
+            ) from e
+
+    def _resolve_module(self) -> ModuleType:
+        """
+        Resolve the IO module for the active file format.
+
+        Returns
+        -------
+        ModuleType
+            The module that implements read/write for the format.
+
+        Raises
+        ------
+        ValueError
+            If the resolved file format is unsupported.
+        """
+        fmt = self._ensure_format()
+        try:
+            return _module_for_format(fmt)
+        except ModuleNotFoundError as e:
+            raise ValueError(f'Unsupported format: {fmt}') from e
+
     # -- Instance Methods -- #
 
     def read(self) -> JSONData:
@@ -188,45 +271,18 @@ class File:
 
         Raises
         ------
-        ValueError
-            If the resolved file format is unsupported.
+        TypeError
+            If the resolved 'read' handler is not callable.
         """
         self._assert_exists()
-        fmt = self._ensure_format()
-        match fmt:
-            case FileFormat.AVRO:
-                return avro.read(self.path)
-            case FileFormat.CSV:
-                return csv.read(self.path)
-            case FileFormat.FEATHER:
-                return feather.read(self.path)
-            case FileFormat.GZ:
-                return gz.read(self.path)
-            case FileFormat.JSON:
-                return json.read(self.path)
-            case FileFormat.NDJSON:
-                return ndjson.read(self.path)
-            case FileFormat.ORC:
-                return orc.read(self.path)
-            case FileFormat.PARQUET:
-                return parquet.read(self.path)
-            case FileFormat.STUB:
-                return stub.read(self.path)
-            case FileFormat.TSV:
-                return tsv.read(self.path)
-            case FileFormat.TXT:
-                return txt.read(self.path)
-            case FileFormat.XLS:
-                return xls.read(self.path)
-            case FileFormat.XLSX:
-                return xlsx.read(self.path)
-            case FileFormat.XML:
-                return xml.read(self.path)
-            case FileFormat.YAML:
-                return yaml.read(self.path)
-            case FileFormat.ZIP:
-                return zip_.read(self.path)
-        raise ValueError(f'Unsupported format: {fmt}')
+        reader = self._resolve_handler('read')
+        if callable(reader):
+            return reader(self.path)
+        else:
+            raise TypeError(
+                f"'read' handler for format {self.file_format} "
+                'is not callable',
+            )
 
     def write(
         self,
@@ -252,41 +308,15 @@ class File:
 
         Raises
         ------
-        ValueError
-            If the resolved file format is unsupported.
+        TypeError
+            If the resolved 'write' handler is not callable.
         """
-        fmt = self._ensure_format()
-        match fmt:
-            case FileFormat.AVRO:
-                return avro.write(self.path, data)
-            case FileFormat.CSV:
-                return csv.write(self.path, data)
-            case FileFormat.FEATHER:
-                return feather.write(self.path, data)
-            case FileFormat.GZ:
-                return gz.write(self.path, data)
-            case FileFormat.JSON:
-                return json.write(self.path, data)
-            case FileFormat.NDJSON:
-                return ndjson.write(self.path, data)
-            case FileFormat.ORC:
-                return orc.write(self.path, data)
-            case FileFormat.PARQUET:
-                return parquet.write(self.path, data)
-            case FileFormat.STUB:
-                return stub.write(self.path, data)
-            case FileFormat.TSV:
-                return tsv.write(self.path, data)
-            case FileFormat.TXT:
-                return txt.write(self.path, data)
-            case FileFormat.XLS:
-                return xls.write(self.path, data)
-            case FileFormat.XLSX:
-                return xlsx.write(self.path, data)
-            case FileFormat.XML:
-                return xml.write(self.path, data, root_tag=root_tag)
-            case FileFormat.YAML:
-                return yaml.write(self.path, data)
-            case FileFormat.ZIP:
-                return zip_.write(self.path, data)
-        raise ValueError(f'Unsupported format: {fmt}')
+        writer = self._resolve_handler('write')
+        if not callable(writer):
+            raise TypeError(
+                f"'write' handler for format {self.file_format} "
+                'is not callable',
+            )
+        if _accepts_root_tag(writer):
+            return writer(self.path, data, root_tag=root_tag)
+        return writer(self.path, data)
