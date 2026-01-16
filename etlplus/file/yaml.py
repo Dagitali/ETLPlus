@@ -50,8 +50,6 @@ def read(
     TypeError
         If the YAML root is not an object or an array of objects.
     """
-    # _require_yaml()
-
     with path.open('r', encoding='utf-8') as handle:
         loaded = get_yaml().safe_load(handle)
 
@@ -87,7 +85,6 @@ def write(
     int
         The number of records written.
     """
-    # _require_yaml()
     with path.open('w', encoding='utf-8') as handle:
         get_yaml().safe_dump(
             data,
