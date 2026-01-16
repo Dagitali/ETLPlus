@@ -62,7 +62,7 @@ class FileFormat(CoercibleStrEnum):
     # -- Constants -- #
 
     # Stubbed / placeholder
-    STUB = 'stub'  # Placeholder format for testing
+    STUB = 'stub'  # Placeholder format for tests & future connectors
 
     # Tabular & delimited text
     CSV = 'csv'  # Comma-Separated Values
@@ -81,7 +81,7 @@ class FileFormat(CoercibleStrEnum):
     NDJSON = 'ndjson'  # Newline-Delimited JSON
     PROPS = 'properties'  # Java-style key-value pairs
     TOML = 'toml'  # Tom's Obvious Minimal Language
-    XML = 'xml'  # EXtensible Markup Language
+    XML = 'xml'  # Extensible Markup Language
     YAML = 'yaml'  # YAML Ain't Markup Language
 
     # Columnar / analytics-friendly
@@ -90,7 +90,7 @@ class FileFormat(CoercibleStrEnum):
     ORC = 'orc'  # Optimized Row Columnar; common in Hadoop
     PARQUET = 'parquet'  # Apache Parquet; common in Big Data
 
-    # Binary serialization and interchange
+    # Binary serialization & interchange
     AVRO = 'avro'  # Apache Avro
     BSON = 'bson'  # Binary JSON; common with MongoDB exports/dumps
     CBOR = 'cbor'  # Concise Binary Object Representation
@@ -100,7 +100,7 @@ class FileFormat(CoercibleStrEnum):
     PBF = 'pbf'  # Protocolbuffer Binary Format; often for GIS data
     PROTO = 'proto'  # Protocol Buffers schema; often in .pb / .bin
 
-    # Databases and embedded storage
+    # Databases & embedded storage
     ACCDB = 'accdb'  # Microsoft Access database file (newer format)
     DUCKDB = 'duckdb'  # DuckDB database file
     MDB = 'mdb'  # Microsoft Access database file (older format)
@@ -110,7 +110,7 @@ class FileFormat(CoercibleStrEnum):
     NUMBERS = 'numbers'  # Apple Numbers spreadsheet
     ODS = 'ods'  # OpenDocument Spreadsheet
     WKS = 'wks'  # Lotus 1-2-3 spreadsheet
-    XLS = 'xls'  # Microsoft Excel (BIFF)
+    XLS = 'xls'  # Microsoft Excel (BIFF); read-only
     XLSM = 'xlsm'  # Microsoft Excel Macro-Enabled (Open XML)
     XLSX = 'xlsx'  # Microsoft Excel (Open XML)
 
@@ -153,7 +153,7 @@ class FileFormat(CoercibleStrEnum):
     WKB = 'wkb'  # Well-Known Binary
     WKT = 'wkt'  # Well-Known Text
 
-    # Logs and event streams
+    # Logs & event streams
     EVT = 'evt'  # Windows Event Trace Log (pre-Vista)
     EVTX = 'evtx'  # Windows Event Trace Log (Vista and later)
     LOG = 'log'  # Generic log file
@@ -162,7 +162,7 @@ class FileFormat(CoercibleStrEnum):
     SLOG = 'slog'  # Structured log file
     W3CLOG = 'w3clog'  # W3C Extended Log File Format
 
-    # “Data archives” and packaging
+    # “Data archives” & packaging
     _7Z = '7z'  # 7-Zip archive
     GZ = 'gz'  # Gzip-compressed file
     JAR = 'jar'  # Java archive
@@ -173,7 +173,7 @@ class FileFormat(CoercibleStrEnum):
     TGZ = 'tgz'  # Gzip-compressed TAR archive
     ZIP = 'zip'  # ZIP archive
 
-    # Domain-specific and less common
+    # Domain-specific & less common
 
     # -- Class Methods -- #
 
