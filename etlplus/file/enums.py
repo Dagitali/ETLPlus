@@ -62,48 +62,118 @@ class FileFormat(CoercibleStrEnum):
     # -- Constants -- #
 
     # Stubbed / placeholder
-    STUB = 'stub'
+    STUB = 'stub'  # Placeholder format for tests & future connectors
 
     # Tabular & delimited text
-    CSV = 'csv'
-    FWF = 'fwf'
-    DAT = 'dat'
-    PSV = 'psv'
-    TAB = 'tab'
-    TSV = 'tsv'
-    TXT = 'txt'
+    CSV = 'csv'  # Comma-Separated Values
+    FWF = 'fwf'  # Fixed-Width Formatted
+    DAT = 'dat'  # Generic data file, often delimited or fixed-width
+    PSV = 'psv'  # Pipe-Separated Values
+    TAB = 'tab'  # Often synonymous with TSV
+    TSV = 'tsv'  # Tab-Separated Values
+    TXT = 'txt'  # Plain text, often delimited or fixed-width
 
     # Semi-structured text
-    JSON = 'json'
-    NDJSON = 'ndjson'
-    XML = 'xml'
-    YAML = 'yaml'
+    CFG = 'cfg'  # Config-style key-value pairs
+    CONF = 'conf'  # Config-style key-value pairs
+    INI = 'ini'  # INI-style key-value pairs
+    JSON = 'json'  # JavaScript Object Notation
+    NDJSON = 'ndjson'  # Newline-Delimited JSON
+    PROPS = 'properties'  # Java-style key-value pairs
+    TOML = 'toml'  # Tom's Obvious Minimal Language
+    XML = 'xml'  # Extensible Markup Language
+    YAML = 'yaml'  # YAML Ain't Markup Language
 
     # Columnar / analytics-friendly
-    FEATHER = 'feather'
-    ORC = 'orc'
-    PARQUET = 'parquet'
+    ARROW = 'arrow'  # Apache Arrow IPC
+    FEATHER = 'feather'  # Apache Arrow Feather
+    ORC = 'orc'  # Optimized Row Columnar; common in Hadoop
+    PARQUET = 'parquet'  # Apache Parquet; common in Big Data
 
-    # Binary serialization and interchange
-    AVRO = 'avro'
+    # Binary serialization & interchange
+    AVRO = 'avro'  # Apache Avro
+    BSON = 'bson'  # Binary JSON; common with MongoDB exports/dumps
+    CBOR = 'cbor'  # Concise Binary Object Representation
+    ION = 'ion'  # Amazon Ion
+    MSGPACK = 'msgpack'  # MessagePack
+    PB = 'pb'  # Protocol Buffers (Google Protobuf)
+    PBF = 'pbf'  # Protocolbuffer Binary Format; often for GIS data
+    PROTO = 'proto'  # Protocol Buffers schema; often in .pb / .bin
 
-    # Databases and embedded storage
+    # Databases & embedded storage
+    ACCDB = 'accdb'  # Microsoft Access database file (newer format)
+    DUCKDB = 'duckdb'  # DuckDB database file
+    MDB = 'mdb'  # Microsoft Access database file (older format)
+    SQLITE = 'sqlite'  # SQLite database file
 
     # Spreadsheets
-    XLS = 'xls'
-    XLSX = 'xlsx'
+    NUMBERS = 'numbers'  # Apple Numbers spreadsheet
+    ODS = 'ods'  # OpenDocument Spreadsheet
+    WKS = 'wks'  # Lotus 1-2-3 spreadsheet
+    XLS = 'xls'  # Microsoft Excel (BIFF); read-only
+    XLSM = 'xlsm'  # Microsoft Excel Macro-Enabled (Open XML)
+    XLSX = 'xlsx'  # Microsoft Excel (Open XML)
 
     # Statistical / scientific / numeric computing
+    DTA = 'dta'  # Stata data file
+    H5 = 'h5'  # Hierarchical Data Format
+    MAT = 'mat'  # MATLAB data file
+    NC = 'nc'  # NetCDF data file
+    RDA = 'rda'  # RData workspace/object bundle
+    RDS = 'rds'  # R data file
+    SAS7BDAT = 'sas7bdat'  # SAS data file
+    SAV = 'sav'  # SPSS data file
+    SYLK = 'sylk'  # Symbolic Link (SYmbolic LinK)
+    XPT = 'xpt'  # SAS Transport file
+    ZSAV = 'zsav'  # Compressed SPSS data file
+
+    # Time series and financial data
+    CAMT = 'camt'  # ISO 20022 Cash Management messages
+    FXT = 'fxt'  # Forex time series data
+    MT940 = 'mt940'  # SWIFT MT940 bank statement format
+    MT942 = 'mt942'  # SWIFT MT942 interim transaction report format
+    OFX = 'ofx'  # Open Financial Exchange
+    QFX = 'qfx'  # Quicken Financial Exchange
+    QIF = 'qif'  # Quicken Interchange Format
+    QQQ = 'qqq'  # QuantQuote historical data
+    TRR = 'trr'  # Trade and transaction reports
+    TSDB = 'tsdb'  # Time series database export
 
     # Geospatial data
+    GEOJSON = 'geojson'  # GeoJSON
+    GEOTIFF = 'geotiff'  # GeoTIFF
+    GML = 'gml'  # Geography Markup Language
+    GPKG = 'gpkg'  # GeoPackage
+    GPX = 'gpx'  # GPS Exchange Format
+    KML = 'kml'  # Keyhole Markup Language
+    LAS = 'las'  # LiDAR Aerial Survey
+    LAZ = 'laz'  # LASzip (compressed LAS)
+    OSM = 'osm'  # OpenStreetMap XML Data
+    SHP = 'shp'  # ESRI Shapefile
+    WKB = 'wkb'  # Well-Known Binary
+    WKT = 'wkt'  # Well-Known Text
 
-    # Logs and event streams
+    # Logs & event streams
+    EVT = 'evt'  # Windows Event Trace Log (pre-Vista)
+    EVTX = 'evtx'  # Windows Event Trace Log (Vista and later)
+    LOG = 'log'  # Generic log file
+    PCAP = 'pcap'  # Packet Capture file
+    PCAPPNG = 'pcapng'  # Packet Capture Next Generation file
+    SLOG = 'slog'  # Structured log file
+    W3CLOG = 'w3clog'  # W3C Extended Log File Format
 
-    # “Data archives” and packaging
-    GZ = 'gz'
-    ZIP = 'zip'
+    # “Data archives” & packaging
+    _7Z = '7z'  # 7-Zip archive
+    GZ = 'gz'  # Gzip-compressed file
+    JAR = 'jar'  # Java archive
+    RAR = 'rar'  # RAR archive
+    SIT = 'sit'  # StuffIt archive
+    SITX = 'sitx'  # StuffIt X archive
+    TAR = 'tar'  # TAR archive
+    TGZ = 'tgz'  # Gzip-compressed TAR archive
+    ZIP = 'zip'  # ZIP archive
 
-    # Domain-specific and less common
+    # Domain-specific & less common
 
     # -- Class Methods -- #
 
