@@ -18,6 +18,17 @@ package and command-line interface for data extraction, validation, transformati
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
+  - [Data Connectors](#data-connectors)
+    - [REST APIs (`api`)](#rest-apis-api)
+    - [Databases (`database`)](#databases-database)
+    - [Files (`file`)](#files-file)
+      - [Stubbed / Placeholder](#stubbed--placeholder)
+      - [Tabular \& Delimited Text](#tabular--delimited-text)
+      - [Semi-Structured Text](#semi-structured-text)
+      - [Columnar / Analytics-Friendly](#columnar--analytics-friendly)
+      - [Binary Serialization and Interchange](#binary-serialization-and-interchange)
+      - [Spreadsheets](#spreadsheets)
+      - [Data Archives](#data-archives)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
       - [Argument Order and Required Options](#argument-order-and-required-options)
@@ -140,6 +151,83 @@ rules = {"name": {"type": "string", "required": True}, "email": {"type": "string
 assert validate(filtered, rules)["valid"]
 load(filtered, "file", "temp/sample_output.json", file_format="json")
 ```
+
+## Data Connectors
+
+Data connectors abstract sources from which to extract data and targets to which to load data. They
+are differentiated by their types, each of which is represented in the subsections below.
+
+### REST APIs (`api`)
+
+ETLPlus can extract from REST APIs and load results via common HTTP methods. Supported operations
+include GET for extract and PATCH/POST/PUT for load.
+
+### Databases (`database`)
+
+Database connectors use connection strings for extraction and loading, and
+DDL can be rendered from table specs for migrations or schema checks.
+
+### Files (`file`)
+
+File formats are grouped as in `FileFormat`. Support is marked as:
+
+- **Y**: implemented (may require optional dependencies)
+- **N**: stubbed or not yet implemented
+
+#### Stubbed / Placeholder
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `stub` | N | Placeholder format for tests and future connectors. |
+
+#### Tabular & Delimited Text
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `csv` | Y | Comma-Separated Values |
+| `fwf` | N | Fixed-Width Fields |
+| `dat` | N | Generic data file, often delimited or fixed-width |
+| `psv` | N | Pipe-Separated Values |
+| `tab` | N | Often synonymous with TSV |
+| `tsv` | Y | Tab-Separated Values |
+| `txt` | Y | Plain text, often delimited or fixed-width |
+
+#### Semi-Structured Text
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `json` | Y | JavaScript Object Notation |
+| `ndjson` | Y | Newline-Delimited JSON |
+| `xml` | Y | Extensible Markup Language |
+| `yaml` | Y | YAML Ain't Markup Language |
+
+#### Columnar / Analytics-Friendly
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `feather` | Y | Apache Arrow Feather |
+| `orc` | Y | Optimized Row Columnar; common in Hadoop |
+| `parquet` | Y | Apache Parquet; common in Big Data |
+
+#### Binary Serialization and Interchange
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `avro` | Y | Apache Avro |
+
+#### Spreadsheets
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `xls` | Y | Microsoft Excel (BIFF); read-only |
+| `xlsx` | Y | Microsoft Excel (Open XML) |
+
+#### Data Archives
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `gz` | Y | Gzip-compressed file |
+| `zip` | Y | ZIP archive |
 
 ## Usage
 
