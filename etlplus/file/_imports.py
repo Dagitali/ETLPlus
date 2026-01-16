@@ -14,29 +14,13 @@ from typing import Any
 
 _MODULE_CACHE: dict[str, Any] = {}
 
-_OPTIONAL_ERRORS: dict[str, str] = {
-    'fastavro': (
-        'AVRO support requires optional dependency "fastavro".\n'
-        'Install with: pip install fastavro'
-    ),
-    'pandas': (
-        '%s support requires optional dependency "pandas".\n'
-        'Install with: pip install pandas'
-    ),
-    'yaml': (
-        'YAML support requires optional dependency "PyYAML".\n'
-        'Install with: pip install PyYAML'
-    ),
-}
-
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _format_error(
+def _error_message(
     module_name: str,
-    *,
-    format_name: str | None = None,
+    format_name: str,
 ) -> str:
     """
     Build an import error message for an optional dependency.
@@ -45,27 +29,19 @@ def _format_error(
     ----------
     module_name : str
         Module name to look up.
-    format_name : str | None, optional
-        Optional human-readable format name for templated messages.
+    format_name : str
+        Human-readable format name for templated messages.
 
     Returns
     -------
     str
         Formatted error message.
-
-    Raises
-    ------
-    ValueError
-        If ``format_name`` is required but not provided.
     """
-    template = _OPTIONAL_ERRORS[module_name]
-    if '%s' in template:
-        if format_name is None:
-            raise ValueError(
-                f'format_name is required for {module_name} error messages',
-            )
-        return template % format_name
-    return template
+    return (
+        f'{format_name} support requires '
+        f'optional dependency "{module_name}".\n'
+        f'Install with: pip install {module_name}'
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -119,7 +95,7 @@ def get_fastavro() -> Any:
     """
     return get_optional_module(
         'fastavro',
-        error_message=_format_error('fastavro'),
+        error_message=_error_message('fastavro', format_name='AVRO'),
     )
 
 
@@ -145,7 +121,7 @@ def get_pandas(
     """
     return get_optional_module(
         'pandas',
-        error_message=_format_error('pandas', format_name=format_name),
+        error_message=_error_message('pandas', format_name=format_name),
     )
 
 
@@ -161,5 +137,5 @@ def get_yaml() -> Any:
     """
     return get_optional_module(
         'yaml',
-        error_message=_format_error('yaml'),
+        error_message=_error_message('PyYAML', format_name='YAML'),
     )
