@@ -1,7 +1,18 @@
 """
 :mod:`etlplus.file.ndjson` module.
 
-Helpers for reading/writing NDJSON files.
+Helpers for reading/writing Newline Delimited JSON (NDJSON) files.
+
+Notes
+-----
+- An NDJSON file is a format where each line is a separate JSON object.
+- Common cases:
+    - Streaming JSON data.
+    - Log files with JSON entries.
+    - Large datasets that are processed line-by-line.
+- Rule of thumb:
+    - If the file follows the NDJSON specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations
@@ -82,11 +93,6 @@ def write(
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    TypeError
-        If ``data`` is a list containing non-dict items.
     """
     rows = normalize_records(data, 'NDJSON')
 

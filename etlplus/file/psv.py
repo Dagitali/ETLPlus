@@ -1,7 +1,20 @@
 """
 :mod:`etlplus.file.psv` module.
 
-Helpers for reading/writing PSV (pipe-separated values) files.
+Helpers for reading/writing Pipe-Separated Values (PSV) files.
+
+Notes
+-----
+- A PSV file is a plain text file that uses the pipe character (`|`) to
+    separate values.
+- Common cases:
+    - Each line in the file represents a single record.
+    - The first line often contains headers that define the column names.
+    - Values may be enclosed in quotes, especially if they contain pipes
+        or special characters.
+- Rule of thumb:
+    - If the file follows the PSV specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

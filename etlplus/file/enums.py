@@ -66,8 +66,8 @@ class FileFormat(CoercibleStrEnum):
 
     # Tabular & delimited text
     CSV = 'csv'  # Comma-Separated Values
-    FWF = 'fwf'  # Fixed-Width Formatted
     DAT = 'dat'  # Generic data file, often delimited or fixed-width
+    FWF = 'fwf'  # Fixed-Width Formatted
     PSV = 'psv'  # Pipe-Separated Values
     TAB = 'tab'  # Often synonymous with TSV
     TSV = 'tsv'  # Tab-Separated Values

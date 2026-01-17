@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.avro` module.
 
-Helpers for reading/writing Avro files.
+Helpers for reading/writing Apache Avro (AVRO) files.
+
+Notes
+-----
+- An AVRO file is a binary file format designed for efficient
+    on-disk storage of data, with a schema definition.
+- Common cases:
+    - Data serialization for distributed systems.
+    - Interoperability between different programming languages.
+    - Storage of large datasets with schema evolution support.
+- Rule of thumb:
+    - If the file follows the Apache Avro specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

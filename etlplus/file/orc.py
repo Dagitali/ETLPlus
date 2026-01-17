@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.orc` module.
 
-Helpers for reading/writing ORC files.
+Helpers for reading/writing Optimized Row Columnar (ORC) files.
+
+Notes
+-----
+- An ORC file is a columnar storage file format optimized for Big Data
+    processing.
+- Common cases:
+    - Efficient storage and retrieval of large datasets.
+    - Integration with big data frameworks like Apache Hive and Apache Spark.
+    - Compression and performance optimization for analytical queries.
+- Rule of thumb:
+    - If the file follows the ORC specification, use this module for reading
+        and writing.
 """
 
 from __future__ import annotations

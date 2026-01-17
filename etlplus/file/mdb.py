@@ -1,19 +1,19 @@
 """
-:mod:`etlplus.file.csv` module.
+:mod:`etlplus.file.mdb` module.
 
-Helpers for reading/writing Comma-Separated Values (CSV) files.
+Helpers for reading/writing newer Microsoft Access database (MDB) files.
 
 Notes
 -----
-- A CSV file is a plain text file that uses commas to separate values.
+- An MDB file is a proprietary database file format used by Microsoft Access
+    2003 and earlier.
 - Common cases:
-    - Each line in the file represents a single record.
-    - The first line often contains headers that define the column names.
-    - Values may be enclosed in quotes, especially if they contain commas
-        or special characters.
+    - Storing relational data for small to medium-sized applications.
+    - Desktop database applications.
+    - Data management for non-enterprise solutions.
 - Rule of thumb:
-    - If the file follows the CSV specification, use this module for
-        reading and writing.
+    - If the file follows the MDB specification, use this module for reading
+        and writing.
 """
 
 from __future__ import annotations
@@ -22,8 +22,7 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from ._io import read_delimited
-from ._io import write_delimited
+from . import stub
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -53,7 +52,7 @@ def read(
     JSONList
         The list of dictionaries read from the CSV file.
     """
-    return read_delimited(path, delimiter=',')
+    return stub.read(path, format_name='DAT')
 
 
 def write(
@@ -76,4 +75,4 @@ def write(
     int
         The number of rows written to the CSV file.
     """
-    return write_delimited(path, data, delimiter=',')
+    return stub.write(path, data, format_name='DAT')

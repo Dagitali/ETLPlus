@@ -1,7 +1,17 @@
 """
 :mod:`etlplus.file.txt` module.
 
-Helpers for reading/writing text files.
+Helpers for reading/writing text (TXT) files.
+
+Notes
+-----
+- A TXT file is a plain text file that contains unformatted text.
+- Common cases:
+    - Each line in the file represents a single piece of text.
+    - Lines may vary in length and content.
+- Rule of thumb:
+    - If the file is a simple text file without specific formatting
+        requirements, use this module for reading and writing.
 """
 
 from __future__ import annotations

@@ -1,13 +1,12 @@
 """
 :mod:`etlplus.file.tab` module.
 
-Helpers for reading/writing TAB (tab-separated values) files.
+Helpers for reading/writing "tab"-formatted (TAB) files.
 
 Notes
 -----
-- A “TAB-formatted” file is not necessarily a TSV file when tabs aren’t
-    actually the delimiter that defines the fields, even if the text looks
-    column-aligned.
+- A TAB file is not necessarily a TSV file when tabs aren’t actually the
+    delimiter that defines the fields, even if the text looks column-aligned.
 - Common cases:
     - Fixed-width text (FWF) that uses tabs for alignment.
     - Mixed whitespace (tabs + spaces) as “pretty printing”.
