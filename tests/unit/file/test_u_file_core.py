@@ -239,10 +239,35 @@ def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
         # Permanent stub as formality
         (FileFormat.STUB, 'data.stub'),
         # Temporary stubs until implemented
+        (FileFormat.ACCDB, 'data.accdb'),
+        (FileFormat.BSON, 'data.bson'),
+        (FileFormat.CFG, 'data.cfg'),
+        (FileFormat.CBOR, 'data.cbor'),
+        (FileFormat.CONF, 'data.conf'),
         (FileFormat.DAT, 'data.dat'),
+        (FileFormat.DUCKDB, 'data.duckdb'),
         (FileFormat.FWF, 'data.fwf'),
+        (FileFormat.INI, 'data.ini'),
+        (FileFormat.ION, 'data.ion'),
+        (FileFormat.LOG, 'data.log'),
+        (FileFormat.MDB, 'data.mdb'),
+        # (FileFormat.MDF, 'data.mdf'),
+        (FileFormat.MSGPACK, 'data.msgpack'),
+        # (FileFormat.RAW, 'data.raw'),
+        (FileFormat.PB, 'data.pb'),
+        (FileFormat.PBF, 'data.pbf'),
+        (FileFormat.PROPS, 'data.properties'),
         (FileFormat.PSV, 'data.psv'),
+        (FileFormat.PROTO, 'data.proto'),
+        # (FileFormat.RTF, 'data.rtf'),
+        # (FileFormat.SDF, 'data.sdf'),
+        # (FileFormat.SLV, 'data.slv'),
+        (FileFormat.SQLITE, 'data.sqlite'),
         (FileFormat.TAB, 'data.tab'),
+        (FileFormat.TOML, 'data.toml'),
+        # (FileFormat.VCF, 'data.vcf'),
+        # (FileFormat.WSV, 'data.wsv'),
+
     ]
 
 
