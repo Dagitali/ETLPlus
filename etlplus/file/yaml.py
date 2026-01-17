@@ -1,7 +1,18 @@
 """
 :mod:`etlplus.file.yaml` module.
 
-Helpers for reading/writing YAML files.
+Helpers for reading/writing YAML Ain't Markup Language (YAML) files.
+
+Notes
+-----
+- A YAML file is a human-readable data serialization format.
+- Common cases:
+    - Configuration files.
+    - Data exchange between languages with different data structures.
+    - Complex data storage.
+- Rule of thumb:
+    - If the file follows the YAML specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations
