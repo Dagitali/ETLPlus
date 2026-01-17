@@ -267,7 +267,6 @@ def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
         (FileFormat.TOML, 'data.toml'),
         # (FileFormat.VCF, 'data.vcf'),
         # (FileFormat.WSV, 'data.wsv'),
-
     ]
 
 
