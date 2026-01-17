@@ -1,7 +1,18 @@
 """
 :mod:`etlplus.file.fwf` module.
 
-Helpers for reading/writing FWF (fixed-width fields) files.
+Helpers for reading/writing Fixed-Width Fields (FWF) files.
+
+Notes
+-----
+- An FWF file is a text file format where each field has a fixed width.
+- Common cases:
+    - Data files from legacy systems.
+    - Reports with aligned columns.
+    - Data exchange in mainframe environments.
+- Rule of thumb:
+    - If the file follows the FWF specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.parquet` module.
 
-Helpers for reading/writing Parquet files.
+Helpers for reading/writing Apache Parquet (PARQUET) files.
+
+Notes
+-----
+- An Apache Parquet file is a columnar storage file format optimized for Big
+    Data processing.
+- Common cases:
+    - Efficient storage and retrieval of large datasets.
+    - Integration with big data frameworks like Apache Hive and Apache Spark.
+    - Compression and performance optimization for analytical queries.
+- Rule of thumb:
+    - If the file follows the Apache Parquet specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

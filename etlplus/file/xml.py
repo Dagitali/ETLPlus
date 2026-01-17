@@ -1,7 +1,18 @@
 """
 :mod:`etlplus.file.xml` module.
 
-Helpers for reading/writing XML files.
+Helpers for reading/writing Extensible Markup Language (XML) files.
+
+Notes
+-----
+- An XML file is a markup language file that uses tags to define elements.
+- Common cases:
+    - Configuration files.
+    - Data interchange between systems.
+    - Document formatting.
+- Rule of thumb:
+    - If the file follows the XML specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.json` module.
 
-Helpers for reading/writing JSON files.
+Helpers for reading/writing JavaScript Object Notation (JSON) files.
+
+Notes
+-----
+- A JSON file is a widely used data interchange format that uses
+    human-readable text to represent structured data.
+- Common cases:
+    - Data interchange between web applications and servers.
+    - Configuration files for applications.
+    - Data storage for NoSQL databases.
+- Rule of thumb:
+    - If the file follows the JSON specification, use this module for
+        reading and writing.
 """
 
 from __future__ import annotations

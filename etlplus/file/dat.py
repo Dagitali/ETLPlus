@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.dat` module.
 
-Helpers for reading/writing DAT (data) files.
+Helpers for reading/writing data (DAT) files.
+
+Notes
+-----
+- A “DAT-formatted” file is a generic data file that may use various
+    delimiters or fixed-width formats.
+- Common cases:
+    - Delimited text files (e.g., CSV, TSV).
+    - Fixed-width formatted files.
+    - Custom formats specific to certain applications.
+- Rule of thumb:
+    - If the file does not follow a specific standard format, use this module
+        for reading and writing.
 """
 
 from __future__ import annotations
