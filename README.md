@@ -27,8 +27,10 @@ package and command-line interface for data extraction, validation, transformati
       - [Semi-Structured Text](#semi-structured-text)
       - [Columnar / Analytics-Friendly](#columnar--analytics-friendly)
       - [Binary Serialization and Interchange](#binary-serialization-and-interchange)
+      - [Databases and Embedded Storage](#databases-and-embedded-storage)
       - [Spreadsheets](#spreadsheets)
       - [Data Archives](#data-archives)
+      - [Logs and Event Streams](#logs-and-event-streams)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
       - [Argument Order and Required Options](#argument-order-and-required-options)
@@ -196,8 +198,13 @@ File formats are grouped as in `FileFormat`. Support is marked as:
 
 | Format | Supported | Description |
 | --- | --- | --- |
+| `cfg` | N | Config-style key-value pairs |
+| `conf` | N | Config-style key-value pairs |
+| `ini` | N | Config-style key-value pairs |
 | `json` | Y | JavaScript Object Notation |
 | `ndjson` | Y | Newline-Delimited JSON |
+| `properties` | N | Java-style key-value pairs |
+| `toml` | N | Tom's Obvious Minimal Language |
 | `xml` | Y | Extensible Markup Language |
 | `yaml` | Y | YAML Ain't Markup Language |
 
@@ -205,6 +212,7 @@ File formats are grouped as in `FileFormat`. Support is marked as:
 
 | Format | Supported | Description |
 | --- | --- | --- |
+| `arrow` | N | Apache Arrow IPC |
 | `feather` | Y | Apache Arrow Feather |
 | `orc` | Y | Optimized Row Columnar; common in Hadoop |
 | `parquet` | Y | Apache Parquet; common in Big Data |
@@ -214,6 +222,22 @@ File formats are grouped as in `FileFormat`. Support is marked as:
 | Format | Supported | Description |
 | --- | --- | --- |
 | `avro` | Y | Apache Avro |
+| `bson` | N | Binary JSON; common with MongoDB exports/dumps |
+| `cbor` | N | Concise Binary Object Representation |
+| `ion` | N | Amazon Ion |
+| `msgpack` | N | MessagePack |
+| `pb` | N | Protocol Buffers (Google Protobuf) |
+| `pbf` | N | Protocolbuffer Binary Format; often for GIS data |
+| `proto` | N | Protocol Buffers schema; often in .pb / .bin |
+
+#### Databases and Embedded Storage
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `accdb` | N | Microsoft Access database file (newer format) |
+| `duckdb` | N | DuckDB database file |
+| `mdb` | N | Microsoft Access database file (older format) |
+| `sqlite` | N | SQLite database file |
 
 #### Spreadsheets
 
@@ -228,6 +252,12 @@ File formats are grouped as in `FileFormat`. Support is marked as:
 | --- | --- | --- |
 | `gz` | Y | Gzip-compressed file |
 | `zip` | Y | ZIP archive |
+
+#### Logs and Event Streams
+
+| Format | Supported | Description |
+| --- | --- | --- |
+| `log` | N | Generic log file |
 
 ## Usage
 
