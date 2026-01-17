@@ -1,7 +1,19 @@
 """
 :mod:`etlplus.file.feather` module.
 
-Helpers for reading/writing Feather files.
+Helpers for reading/writing Apache Arrow Feather (FEATHER) files.
+
+Notes
+-----
+- A FEATHER file is a binary file format designed for efficient
+    on-disk storage of data frames, built on top of Apache Arrow.
+- Common cases:
+    - Fast read/write operations for data frames.
+    - Interoperability between different data analysis tools.
+    - Storage of large datasets with efficient compression.
+- Rule of thumb:
+    - If the file follows the Apache Arrow Feather specification, use this
+        module for reading and writing.
 """
 
 from __future__ import annotations
