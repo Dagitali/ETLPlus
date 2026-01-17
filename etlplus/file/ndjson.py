@@ -93,11 +93,6 @@ def write(
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    TypeError
-        If ``data`` is a list containing non-dict items.
     """
     rows = normalize_records(data, 'NDJSON')
 
