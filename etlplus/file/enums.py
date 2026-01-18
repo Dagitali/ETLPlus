@@ -79,7 +79,7 @@ class FileFormat(CoercibleStrEnum):
     INI = 'ini'  # INI-style key-value pairs
     JSON = 'json'  # JavaScript Object Notation
     NDJSON = 'ndjson'  # Newline-Delimited JSON
-    PROPS = 'properties'  # Java-style key-value pairs
+    PROPERTIES = 'properties'  # Java-style key-value pairs
     TOML = 'toml'  # Tom's Obvious Minimal Language
     XML = 'xml'  # Extensible Markup Language
     YAML = 'yaml'  # YAML Ain't Markup Language
