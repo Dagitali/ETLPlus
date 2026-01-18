@@ -34,10 +34,7 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
@@ -100,6 +97,8 @@ class JobConfig:
         Unique job name.
     description : str | None
         Optional human-friendly description.
+    depends_on : list[str]
+        Optional job dependency list. Dependencies must refer to other jobs.
     extract : ExtractRef | None
         Extraction reference.
     validate : ValidationRef | None
@@ -114,6 +113,7 @@ class JobConfig:
 
     name: str
     description: str | None = None
+    depends_on: list[str] = field(default_factory=list)
     extract: ExtractRef | None = None
     validate: ValidationRef | None = None
     transform: TransformRef | None = None
@@ -149,9 +149,19 @@ class JobConfig:
         if description is not None and not isinstance(description, str):
             description = str(description)
 
+        depends_raw = data.get('depends_on')
+        depends_on: list[str] = []
+        if isinstance(depends_raw, str):
+            depends_on = [depends_raw]
+        elif isinstance(depends_raw, list):
+            for entry in depends_raw:
+                if isinstance(entry, str):
+                    depends_on.append(entry)
+
         return cls(
             name=name,
             description=description,
+            depends_on=depends_on,
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             transform=TransformRef.from_obj(data.get('transform')),
