@@ -390,10 +390,20 @@ target:
 ```yaml
 jobs:
   - name: file_to_file_customers
+    depends_on: [seed_customers]
     extract: { source: customers_csv }
     validate: { ruleset: customers_basic }
     transform: { pipeline: clean_customers }
     load: { target: customers_json_out }
+  - name: seed_customers
+    extract: { source: seed_customers_csv }
+    load: { target: customers_db_out }
+```
+
+Notes:
+
+- `depends_on` is optional and can be a string or list of job names.
+- Jobs without dependencies run first when ordered as a DAG.
 
 ## Running pipelines (CLI and Python)
 
