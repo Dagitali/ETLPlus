@@ -256,7 +256,7 @@ def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
         # (FileFormat.RAW, 'data.raw'),
         (FileFormat.PB, 'data.pb'),
         (FileFormat.PBF, 'data.pbf'),
-        (FileFormat.PROPS, 'data.properties'),
+        (FileFormat.PROPERTIES, 'data.properties'),
         (FileFormat.PSV, 'data.psv'),
         (FileFormat.PROTO, 'data.proto'),
         # (FileFormat.RTF, 'data.rtf'),

@@ -79,7 +79,7 @@ class FileFormat(CoercibleStrEnum):
     INI = 'ini'  # INI-style key-value pairs
     JSON = 'json'  # JavaScript Object Notation
     NDJSON = 'ndjson'  # Newline-Delimited JSON
-    PROPS = 'properties'  # Java-style key-value pairs
+    PROPERTIES = 'properties'  # Java-style key-value pairs
     TOML = 'toml'  # Tom's Obvious Minimal Language
     XML = 'xml'  # Extensible Markup Language
     YAML = 'yaml'  # YAML Ain't Markup Language
@@ -108,7 +108,7 @@ class FileFormat(CoercibleStrEnum):
 
     # Spreadsheets
     NUMBERS = 'numbers'  # Apple Numbers spreadsheet
-    ODS = 'ods'  # OpenDocument Spreadsheet
+    ODS = 'ods'  # OpenDocument spreadsheet
     WKS = 'wks'  # Lotus 1-2-3 spreadsheet
     XLS = 'xls'  # Microsoft Excel (BIFF); read-only
     XLSM = 'xlsm'  # Microsoft Excel Macro-Enabled (Open XML)
@@ -116,7 +116,7 @@ class FileFormat(CoercibleStrEnum):
 
     # Statistical / scientific / numeric computing
     DTA = 'dta'  # Stata data file
-    H5 = 'h5'  # Hierarchical Data Format
+    HDF5 = 'hdf5'  # Hierarchical Data Format
     MAT = 'mat'  # MATLAB data file
     NC = 'nc'  # NetCDF data file
     RDA = 'rda'  # RData workspace/object bundle
@@ -174,6 +174,12 @@ class FileFormat(CoercibleStrEnum):
     ZIP = 'zip'  # ZIP archive
 
     # Domain-specific & less common
+
+    # Templates
+    HBS = 'hbs'  # Handlebars
+    JINJA2 = 'jinja2'  # Jinja2
+    MUSTACHE = 'mustache'  # Mustache
+    VM = 'vm'  # Apache Velocity
 
     # -- Class Methods -- #
 

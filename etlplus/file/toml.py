@@ -5,7 +5,7 @@ Helpers for reading/writing Tom's Obvious Minimal Language (TOML) files.
 
 Notes
 -----
-- A “TOML-formatted” file is a configuration file that uses the TOML syntax.
+- A TOML file is a configuration file that uses the TOML syntax.
 - Common cases:
     - Simple key-value pairs.
     - Nested tables and arrays.
