@@ -29,8 +29,10 @@ package and command-line interface for data extraction, validation, transformati
       - [Binary Serialization and Interchange](#binary-serialization-and-interchange)
       - [Databases and Embedded Storage](#databases-and-embedded-storage)
       - [Spreadsheets](#spreadsheets)
-      - [Data Archives](#data-archives)
+      - [Statistical / Scientific / Numeric Computing](#statistical--scientific--numeric-computing)
       - [Logs and Event Streams](#logs-and-event-streams)
+      - [Data Archives](#data-archives)
+      - [Templates](#templates)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface)
       - [Argument Order and Required Options](#argument-order-and-required-options)
@@ -171,93 +173,122 @@ DDL can be rendered from table specs for migrations or schema checks.
 
 ### Files (`file`)
 
-File formats are grouped as in `FileFormat`. Support is marked as:
+Recognized file formats are listed in the tables below. Support for reading to or writing from a recognized file format is marked as:
 
 - **Y**: implemented (may require optional dependencies)
 - **N**: stubbed or not yet implemented
 
 #### Stubbed / Placeholder
 
-| Format | Supported | Description |
-| --- | --- | --- |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
 | `stub` | N | Placeholder format for tests and future connectors. |
 
 #### Tabular & Delimited Text
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `csv` | Y | Comma-Separated Values |
-| `fwf` | N | Fixed-Width Fields |
-| `dat` | N | Generic data file, often delimited or fixed-width |
-| `psv` | N | Pipe-Separated Values |
-| `tab` | N | Often synonymous with TSV |
-| `tsv` | Y | Tab-Separated Values |
-| `txt` | Y | Plain text, often delimited or fixed-width |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `csv` | Y | Y | Comma-Separated Values |
+| `dat` | N | N | Generic data file, often delimited or fixed-width |
+| `fwf` | N | N | Fixed-Width Fields |
+| `psv` | N | N | Pipe-Separated Values |
+| `tab` | N | N | Often synonymous with TSV |
+| `tsv` | Y | Y | Tab-Separated Values |
+| `txt` | Y | Y | Plain text, often delimited or fixed-width |
 
 #### Semi-Structured Text
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `cfg` | N | Config-style key-value pairs |
-| `conf` | N | Config-style key-value pairs |
-| `ini` | N | Config-style key-value pairs |
-| `json` | Y | JavaScript Object Notation |
-| `ndjson` | Y | Newline-Delimited JSON |
-| `properties` | N | Java-style key-value pairs |
-| `toml` | N | Tom's Obvious Minimal Language |
-| `xml` | Y | Extensible Markup Language |
-| `yaml` | Y | YAML Ain't Markup Language |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `cfg` | N | N | Config-style key-value pairs |
+| `conf` | N | N | Config-style key-value pairs |
+| `ini` | N | N | Config-style key-value pairs |
+| `json` | Y | Y | JavaScript Object Notation |
+| `ndjson` | Y | Y | Newline-Delimited JSON |
+| `properties` | N | N | Java-style key-value pairs |
+| `toml` | N | N | Tom's Obvious Minimal Language |
+| `xml` | Y | Y | Extensible Markup Language |
+| `yaml` | Y | Y | YAML Ain't Markup Language |
 
 #### Columnar / Analytics-Friendly
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `arrow` | N | Apache Arrow IPC |
-| `feather` | Y | Apache Arrow Feather |
-| `orc` | Y | Optimized Row Columnar; common in Hadoop |
-| `parquet` | Y | Apache Parquet; common in Big Data |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `arrow` | N | N | Apache Arrow IPC |
+| `feather` | Y | Y | Apache Arrow Feather |
+| `orc` | Y | Y | Optimized Row Columnar; common in Hadoop |
+| `parquet` | Y | Y | Apache Parquet; common in Big Data |
 
 #### Binary Serialization and Interchange
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `avro` | Y | Apache Avro |
-| `bson` | N | Binary JSON; common with MongoDB exports/dumps |
-| `cbor` | N | Concise Binary Object Representation |
-| `ion` | N | Amazon Ion |
-| `msgpack` | N | MessagePack |
-| `pb` | N | Protocol Buffers (Google Protobuf) |
-| `pbf` | N | Protocolbuffer Binary Format; often for GIS data |
-| `proto` | N | Protocol Buffers schema; often in .pb / .bin |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `avro` | Y | Y | Apache Avro |
+| `bson` | N | N | Binary JSON; common with MongoDB exports/dumps |
+| `cbor` | N | N | Concise Binary Object Representation |
+| `ion` | N | N | Amazon Ion |
+| `msgpack` | N | N | MessagePack |
+| `pb` | N | N | Protocol Buffers (Google Protobuf) |
+| `pbf` | N | N | Protocolbuffer Binary Format; often for GIS data |
+| `proto` | N | N | Protocol Buffers schema; often in .pb / .bin |
 
 #### Databases and Embedded Storage
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `accdb` | N | Microsoft Access database file (newer format) |
-| `duckdb` | N | DuckDB database file |
-| `mdb` | N | Microsoft Access database file (older format) |
-| `sqlite` | N | SQLite database file |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `accdb` | N | N | Microsoft Access (newer format) |
+| `duckdb` | N | N | DuckDB |
+| `mdb` | N | N | Microsoft Access (older format) |
+| `sqlite` | N | N | SQLite |
 
 #### Spreadsheets
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `xls` | Y | Microsoft Excel (BIFF); read-only |
-| `xlsx` | Y | Microsoft Excel (Open XML) |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `numbers` | N | N | Apple Numbers |
+| `ods` | N | N | OpenDocument |
+| `wks` | N | N | Lotus 1-2-3  |
+| `xls` | Y | Y | Microsoft Excel (BIFF) |
+| `xlsm` | N | N | Microsoft Excel Macro-Enabled (Open XML) |
+| `xlsx` | Y | Y | Microsoft Excel (Open XML) |
 
-#### Data Archives
+#### Statistical / Scientific / Numeric Computing
 
-| Format | Supported | Description |
-| --- | --- | --- |
-| `gz` | Y | Gzip-compressed file |
-| `zip` | Y | ZIP archive |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `dta` | N | N | Stata |
+| `hdf5` | N | N | Hierarchical Data Format |
+| `mat` | N | N | MATLAB |
+| `nc` | N | N | NetCDF |
+| `rda` | N | N | RData workspace/object |
+| `rds` | N | N | R data |
+| `sas7bdat` | N | N | SAS data |
+| `sav` | N | N | SPSS data |
+| `sylk` | N | N | Symbolic Link |
+| `xpt` | N | N | SAS Transport |
+| `zsav` | N | N | Compressed SPSS data |
 
 #### Logs and Event Streams
 
 | Format | Supported | Description |
 | --- | --- | --- |
-| `log` | N | Generic log file |
+| `log` | N | N | Generic log file |
+
+#### Data Archives
+
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `gz` | Y | Y | Gzip-compressed file |
+| `zip` | Y | Y | ZIP archive |
+
+#### Templates
+
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
+| `hbs` | N | N | Handlebars |
+| `jinja2` | N | N | Jinja2 |
+| `mustache` | N | N | Mustache |
+| `vm` | N | N | Apache Velocity |
 
 ## Usage
 

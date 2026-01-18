@@ -123,7 +123,7 @@ class FileFormat(CoercibleStrEnum):
     RDS = 'rds'  # R data file
     SAS7BDAT = 'sas7bdat'  # SAS data file
     SAV = 'sav'  # SPSS data file
-    SYLK = 'sylk'  # Symbolic Link (SYmbolic LinK)
+    SYLK = 'sylk'  # Symbolic Link
     XPT = 'xpt'  # SAS Transport file
     ZSAV = 'zsav'  # Compressed SPSS data file
 
