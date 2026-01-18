@@ -116,7 +116,7 @@ class FileFormat(CoercibleStrEnum):
 
     # Statistical / scientific / numeric computing
     DTA = 'dta'  # Stata data file
-    H5 = 'h5'  # Hierarchical Data Format
+    HDF5 = 'hdf5'  # Hierarchical Data Format
     MAT = 'mat'  # MATLAB data file
     NC = 'nc'  # NetCDF data file
     RDA = 'rda'  # RData workspace/object bundle
@@ -174,6 +174,12 @@ class FileFormat(CoercibleStrEnum):
     ZIP = 'zip'  # ZIP archive
 
     # Domain-specific & less common
+
+    # Templates
+    HBS = 'hbs'  # Handlebars
+    JINJA2 = 'jinja2'  # Jinja2
+    MUSTACHE = 'mustache'  # Mustache
+    VM = 'vm'  # Apache Velocity
 
     # -- Class Methods -- #
 
