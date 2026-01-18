@@ -108,7 +108,7 @@ class FileFormat(CoercibleStrEnum):
 
     # Spreadsheets
     NUMBERS = 'numbers'  # Apple Numbers spreadsheet
-    ODS = 'ods'  # OpenDocument Spreadsheet
+    ODS = 'ods'  # OpenDocument spreadsheet
     WKS = 'wks'  # Lotus 1-2-3 spreadsheet
     XLS = 'xls'  # Microsoft Excel (BIFF); read-only
     XLSM = 'xlsm'  # Microsoft Excel Macro-Enabled (Open XML)
