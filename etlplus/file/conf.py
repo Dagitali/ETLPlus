@@ -5,8 +5,8 @@ Helpers for reading/writing config (CONF) files.
 
 Notes
 -----
-- A “CONF-formatted” file is a configuration file that may use various
-    syntaxes, such as INI, YAML, or custom formats.
+- A CONF file is a configuration file that may use various syntaxes, such as
+    INI, YAML, or custom formats.
 - Common cases:
     - INI-style key-value pairs with sections.
     - YAML-like structures with indentation.

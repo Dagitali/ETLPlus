@@ -1,12 +1,12 @@
 """
-:mod:`etlplus.file.props` module.
+:mod:`etlplus.file.properties` module.
 
-Helpers for reading/writing properties (PROPS) files.
+Helpers for reading/writing properties (PROPERTIES) files.
 
 Notes
 -----
-- A “PROPS-formatted” file is a properties file that typically uses
-    key-value pairs, often with a simple syntax.
+- A PROPERTIES file is a properties file that typically uses key-value pairs,
+    often with a simple syntax.
 - Common cases:
     - Java-style properties files with ``key=value`` pairs.
     - INI-style files without sections.
@@ -40,19 +40,19 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read PROPS content from ``path``.
+    Read PROPERTIES content from ``path``.
 
     Parameters
     ----------
     path : Path
-        Path to the PROPS file on disk.
+        Path to the PROPERTIES file on disk.
 
     Returns
     -------
     JSONList
-        The list of dictionaries read from the PROPS file.
+        The list of dictionaries read from the PROPERTIES file.
     """
-    return stub.read(path, format_name='PROPS')
+    return stub.read(path, format_name='PROPERTIES')
 
 
 def write(
@@ -60,19 +60,19 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to PROPS at ``path`` and return record count.
+    Write ``data`` to PROPERTIES at ``path`` and return record count.
 
     Parameters
     ----------
     path : Path
-        Path to the PROPS file on disk.
+        Path to the PROPERTIES file on disk.
     data : JSONData
-        Data to write as PROPS. Should be a list of dictionaries or a
+        Data to write as PROPERTIES. Should be a list of dictionaries or a
         single dictionary.
 
     Returns
     -------
     int
-        The number of rows written to the PROPS file.
+        The number of rows written to the PROPERTIES file.
     """
-    return stub.write(path, data, format_name='PROPS')
+    return stub.write(path, data, format_name='PROPERTIES')

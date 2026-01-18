@@ -5,8 +5,8 @@ Helpers for reading/writing config (CFG) files.
 
 Notes
 -----
-- A “CFG-formatted” file is a configuration file that may use various
-    syntaxes, such as INI, YAML, or custom formats.
+- A CFG file is a configuration file that may use various syntaxes, such as
+    INI, YAML, or custom formats.
 - Common cases:
     - INI-style key-value pairs with sections (such as in Python ecosystems,
         using ``configparser``).
