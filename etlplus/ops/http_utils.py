@@ -14,6 +14,17 @@ import requests  # type: ignore[import]
 from ..enums import HttpMethod
 from ..types import Timeout
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Constants
+    'DEFAULT_TIMEOUT',
+    # Functions
+    'resolve_request',
+]
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -27,7 +38,7 @@ def resolve_request(
     method: HttpMethod | str,
     *,
     session: Any | None = None,
-    timeout: Timeout | None = None,
+    timeout: Timeout = None,
 ) -> tuple[Callable[..., requests.Response], float, HttpMethod]:
     """
     Resolve a request callable and effective timeout for an HTTP method.
@@ -39,7 +50,7 @@ def resolve_request(
     session : Any | None, optional
         Requests-compatible session object. Defaults to module-level
         ``requests``.
-    timeout : Timeout | None, optional
+    timeout : Timeout, optional
         Timeout in seconds for the request. Uses ``DEFAULT_TIMEOUT`` when
         omitted.
 
