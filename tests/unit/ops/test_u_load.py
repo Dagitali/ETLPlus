@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_u_load` module.
+:mod:`tests.unit.ops.test_u_load` module.
 
-Unit tests for :mod:`etlplus.load`.
+Unit tests for :mod:`etlplus.ops.load`.
 
 Notes
 -----
@@ -26,12 +26,12 @@ import pytest
 
 from etlplus.enums import DataConnectorType
 from etlplus.enums import HttpMethod
-from etlplus.load import _parse_json_string
-from etlplus.load import load
-from etlplus.load import load_data
-from etlplus.load import load_to_api
-from etlplus.load import load_to_database
-from etlplus.load import load_to_file
+from etlplus.ops.load import _parse_json_string
+from etlplus.ops.load import load
+from etlplus.ops.load import load_data
+from etlplus.ops.load import load_to_api
+from etlplus.ops.load import load_to_database
+from etlplus.ops.load import load_to_file
 
 # SECTION: HELPERS ========================================================== #
 
@@ -119,7 +119,7 @@ class _StubSession:
 @pytest.mark.unit
 class TestLoad:
     """
-    Unit test suite for :func:`etlplus.load.load`.
+    Unit test suite for :func:`etlplus.ops.load.load`.
 
     Notes
     -----
@@ -267,7 +267,7 @@ class TestLoad:
 @pytest.mark.unit
 class TestLoadErrors:
     """
-    Unit test suite for ``etlplus.load`` function errors.
+    Unit test suite for ``etlplus.ops.load`` function errors.
 
     Notes
     -----
@@ -333,7 +333,7 @@ class TestLoadErrors:
 @pytest.mark.unit
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.load.load_data`.
+    Unit test suite for :func:`etlplus.ops.load.load_data`.
 
     Notes
     -----
@@ -429,7 +429,7 @@ class TestLoadData:
 @pytest.mark.unit
 class TestLoadToFile:
     """
-    Unit test suite for :func:`etlplus.load.load_to_file`.
+    Unit test suite for :func:`etlplus.ops.load.load_to_file`.
 
     Notes
     -----
@@ -572,7 +572,7 @@ class TestLoadToFile:
 
 @pytest.mark.unit
 class TestLoadToApi:
-    """Unit tests for :func:`etlplus.load.load_to_api`."""
+    """Unit tests for :func:`etlplus.ops.load.load_to_api`."""
 
     def test_load_to_api_success(self) -> None:
         """Test that payload and metadata are returned through stub session."""
@@ -599,7 +599,7 @@ class TestLoadToApi:
 
 @pytest.mark.unit
 class TestLoadToDatabase:
-    """Unit tests for :func:`etlplus.load.load_to_database`."""
+    """Unit tests for :func:`etlplus.ops.load.load_to_database`."""
 
     def test_load_to_api_requires_callable(self) -> None:
         """Missing HTTP method on custom session should raise TypeError."""
@@ -628,7 +628,7 @@ class TestLoadToDatabase:
 
 @pytest.mark.unit
 class TestParseJsonString:
-    """Unit tests for :func:`etlplus.load._parse_json_string`."""
+    """Unit tests for :func:`etlplus.ops.load._parse_json_string`."""
 
     def test_parse_invalid_root_raises(self) -> None:
         """Only dicts or lists of dicts are accepted."""
@@ -646,7 +646,8 @@ class TestParseJsonString:
 @pytest.mark.unit
 class TestLoadApiOrchestrator:
     """
-    Unit tests that ensure :func:`etlplus.load.load` delegates to API loader.
+    Unit tests that ensure :func:`etlplus.ops.load.load` delegates to API
+    loader.
     """
 
     def test_load_api_with_default_method(self) -> None:
