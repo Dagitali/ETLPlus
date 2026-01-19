@@ -455,7 +455,7 @@ class EndpointClient:
         -------
         JSONData
             Parsed JSON payload or fallback structure matching
-            :func:`etlplus.extract.extract_from_api` semantics.
+            :func:`etlplus.ops.extract.extract_from_api` semantics.
         """
         return self._request_manager.get(url, **kwargs)
 
@@ -479,7 +479,7 @@ class EndpointClient:
         -------
         JSONData
             Parsed JSON payload or fallback structure matching
-            :func:`etlplus.extract.extract_from_api` semantics.
+            :func:`etlplus.ops.extract.extract_from_api` semantics.
         """
         return self._request_manager.post(url, **kwargs)
 
@@ -506,7 +506,7 @@ class EndpointClient:
         -------
         JSONData
             Parsed JSON payload or fallback structure matching
-            :func:`etlplus.extract.extract_from_api` semantics.
+            :func:`etlplus.ops.extract.extract_from_api` semantics.
         """
         return self._request_manager.request(method, url, **kwargs)
 
