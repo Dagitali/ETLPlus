@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_u_transform` module.
+:mod:`tests.unit.ops.test_u_transform` module.
 
-Unit tests for :mod:`etlplus.transform`.
+Unit tests for :mod:`etlplus.ops.transform`.
 
 Notes
 -----
@@ -26,33 +26,33 @@ import pytest
 from etlplus.enums import AggregateName
 from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
-from etlplus.transform import _agg_avg
-from etlplus.transform import _agg_count
-from etlplus.transform import _agg_max
-from etlplus.transform import _agg_min
-from etlplus.transform import _agg_sum
-from etlplus.transform import _apply_aggregate_step
-from etlplus.transform import _apply_filter_step
-from etlplus.transform import _apply_map_step
-from etlplus.transform import _apply_select_step
-from etlplus.transform import _apply_sort_step
-from etlplus.transform import _collect_numeric_and_presence
-from etlplus.transform import _contains
-from etlplus.transform import _derive_agg_key
-from etlplus.transform import _eval_condition
-from etlplus.transform import _has
-from etlplus.transform import _is_plain_fields_list
-from etlplus.transform import _normalize_operation_keys
-from etlplus.transform import _normalize_specs
-from etlplus.transform import _resolve_aggregator
-from etlplus.transform import _resolve_operator
-from etlplus.transform import _sort_key
-from etlplus.transform import apply_aggregate
-from etlplus.transform import apply_filter
-from etlplus.transform import apply_map
-from etlplus.transform import apply_select
-from etlplus.transform import apply_sort
-from etlplus.transform import transform
+from etlplus.ops.transform import _agg_avg
+from etlplus.ops.transform import _agg_count
+from etlplus.ops.transform import _agg_max
+from etlplus.ops.transform import _agg_min
+from etlplus.ops.transform import _agg_sum
+from etlplus.ops.transform import _apply_aggregate_step
+from etlplus.ops.transform import _apply_filter_step
+from etlplus.ops.transform import _apply_map_step
+from etlplus.ops.transform import _apply_select_step
+from etlplus.ops.transform import _apply_sort_step
+from etlplus.ops.transform import _collect_numeric_and_presence
+from etlplus.ops.transform import _contains
+from etlplus.ops.transform import _derive_agg_key
+from etlplus.ops.transform import _eval_condition
+from etlplus.ops.transform import _has
+from etlplus.ops.transform import _is_plain_fields_list
+from etlplus.ops.transform import _normalize_operation_keys
+from etlplus.ops.transform import _normalize_specs
+from etlplus.ops.transform import _resolve_aggregator
+from etlplus.ops.transform import _resolve_operator
+from etlplus.ops.transform import _sort_key
+from etlplus.ops.transform import apply_aggregate
+from etlplus.ops.transform import apply_filter
+from etlplus.ops.transform import apply_map
+from etlplus.ops.transform import apply_select
+from etlplus.ops.transform import apply_sort
+from etlplus.ops.transform import transform
 
 # SECTION: HELPERS ========================================================== #
 
@@ -92,7 +92,7 @@ def rows_values_fixture() -> list[dict[str, Any]]:
 
 
 class TestApplyAggregate:
-    """Unit test suite for :func:`etlplus.transform.apply_aggregate`."""
+    """Unit test suite for :func:`etlplus.ops.transform.apply_aggregate`."""
 
     @pytest.mark.parametrize(
         ('func', 'expected_key', 'expected_value'),
@@ -140,7 +140,7 @@ class TestApplyAggregate:
 
 
 class TestApplyFilter:
-    """Unit test suite for :func:`etlplus.transform.apply_filter`."""
+    """Unit test suite for :func:`etlplus.ops.transform.apply_filter`."""
 
     def test_filter_basic_gte(self) -> None:
         """Test that filter keeps only records matching the predicate."""
@@ -282,7 +282,7 @@ class TestApplyFilter:
 
 
 class TestApplyMap:
-    """Unit test suite for :func:`etlplus.transform.apply_map`."""
+    """Unit test suite for :func:`etlplus.ops.transform.apply_map`."""
 
     def test_map_renames_fields(self) -> None:
         """Test mapping/renaming fields in each record."""
@@ -307,7 +307,7 @@ class TestApplyMap:
 
 
 class TestApplySelect:
-    """Unit test suite for :func:`etlplus.transform.apply_select`."""
+    """Unit test suite for :func:`etlplus.ops.transform.apply_select`."""
 
     def test_select_subset_of_fields(self) -> None:
         """
@@ -330,7 +330,7 @@ class TestApplySelect:
 
 
 class TestApplySort:
-    """Unit test suite for :func:`etlplus.transform.apply_sort`."""
+    """Unit test suite for :func:`etlplus.ops.transform.apply_sort`."""
 
     @pytest.mark.parametrize(
         ('reverse', 'expected_sorted_ages'),
@@ -379,7 +379,7 @@ class TestApplySort:
 
 
 class TestTransform:
-    """Unit test suite for :func:`etlplus.transform.transform`."""
+    """Unit test suite for :func:`etlplus.ops.transform.transform`."""
 
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
         """Aggregate step should be skipped when spec is not a mapping."""
@@ -522,7 +522,7 @@ class TestTransform:
 
 
 class TestTransformInternalHelpers:
-    """Unit test suite for internal helpers in :mod:`etlplus.transform`."""
+    """Unit test suite for internal helpers in :mod:`etlplus.ops.transform`."""
 
     @pytest.mark.parametrize(
         ('fn', 'nums', 'present', 'expected'),
@@ -567,7 +567,7 @@ class TestTransformInternalHelpers:
 
     def test_apply_aggregate_step(self) -> None:
         """
-        Test that :func:`etlplus.transform._apply_aggregate_step` returns a
+        Test that :func:`etlplus.ops.transform._apply_aggregate_step` returns a
         correct aggregation.
         """
         rows = [{'a': 1}, {'a': 2}]
@@ -577,8 +577,8 @@ class TestTransformInternalHelpers:
 
     def test_apply_filter_step(self) -> None:
         """
-        Test that :func:`etlplus.transform._apply_filter_step` returns correct
-        filtered rows.
+        Test that :func:`etlplus.ops.transform._apply_filter_step` returns
+        correct filtered rows.
         """
         rows = [{'a': 1}, {'a': 2}]
         spec = {'field': 'a', 'op': 'gt', 'value': 1}
@@ -587,7 +587,7 @@ class TestTransformInternalHelpers:
 
     def test_apply_map_step(self) -> None:
         """
-        Test that :func:`etlplus.transform._apply_map_step` returns correct
+        Test that :func:`etlplus.ops.transform._apply_map_step` returns correct
         mapped records.
         """
         rows = [{'a': 1, 'b': 2}]
@@ -610,8 +610,8 @@ class TestTransformInternalHelpers:
         expected: list[dict[str, int]],
     ) -> None:
         """
-        Test that :func:`etlplus.transform._apply_select_step` returns correct
-        selected fields for a given spec.
+        Test that :func:`etlplus.ops.transform._apply_select_step` returns
+        correct selected fields for a given spec.
         """
         rows = [{'a': 1, 'b': 2}]
         result = _apply_select_step(rows, spec)
@@ -632,8 +632,8 @@ class TestTransformInternalHelpers:
         expected: list[dict[str, int]],
     ) -> None:
         """
-        Test that :func:`etlplus.transform._apply_sort_step` returns correct
-        sorted records for a given spec.
+        Test that :func:`etlplus.ops.transform._apply_sort_step` returns
+        correct sorted records for a given spec.
         """
         rows = [{'a': 2}, {'a': 1}]
         result = _apply_sort_step(rows, spec)
@@ -641,7 +641,7 @@ class TestTransformInternalHelpers:
 
     def test_collect_numeric_and_presence(self) -> None:
         """
-        Test that :func:`etlplus.transform._collect_numeric_and_presence`
+        Test that :func:`etlplus.ops.transform._collect_numeric_and_presence`
         returns correct numeric values and their count.
         """
         rows = [{'a': 1}, {'a': 2}, {'b': 3}]
@@ -655,15 +655,15 @@ class TestTransformInternalHelpers:
 
     def test_contains(self) -> None:
         """
-        Test that :func:`etlplus.transform._contains` returns correct truthy
-        values.
+        Test that :func:`etlplus.ops.transform._contains` returns correct
+        truthy values.
         """
         assert _contains([1, 2, 3], 2)
         assert not _contains([1, 2, 3], 5)
 
     def test_contains_typeerror(self) -> None:
         """
-        Test that :func:`etlplus.transform._contains` handles
+        Test that :func:`etlplus.ops.transform._contains` handles
         :class:`TypeError` gracefully.
         """
 
@@ -689,15 +689,15 @@ class TestTransformInternalHelpers:
         expected: str,
     ) -> None:
         """
-        Test that :func:`etlplus.transform._derive_agg_key` derives stable keys
-        for common cases.
+        Test that :func:`etlplus.ops.transform._derive_agg_key` derives stable
+        keys for common cases.
         """
         assert _derive_agg_key(func, field, alias) == expected
 
     def test_derive_agg_key_callable(self) -> None:
         """
-        Test that :func:`etlplus.transform._derive_agg_key` handles callable
-        aggregators.
+        Test that :func:`etlplus.ops.transform._derive_agg_key` handles
+        callable aggregators.
         """
         # pylint: disable=unused-argument
 
@@ -708,7 +708,7 @@ class TestTransformInternalHelpers:
 
     def test_derive_agg_key_other(self) -> None:
         """`
-        Test that :func:`etlplus.transform._derive_agg_key` handles unknown
+        Test that :func:`etlplus.ops.transform._derive_agg_key` handles unknown
         object inputs consistently.
         """
 
@@ -729,7 +729,7 @@ class TestTransformInternalHelpers:
         should_raise: bool,
     ) -> None:
         """
-        Test that :func:`etlplus.transform._eval_condition` optionally re-
+        Test that :func:`etlplus.ops.transform._eval_condition` optionally re-
         raises operator errors.
         """
         rec = {'a': 2}
@@ -745,7 +745,7 @@ class TestTransformInternalHelpers:
 
     def test_eval_condition_truth_table(self) -> None:
         """
-        Test that :func:`etlplus.transform._eval_condition` evaluates
+        Test that :func:`etlplus.ops.transform._eval_condition` evaluates
         comparisons correctly.
         """
         rec = {'a': 2}
@@ -759,7 +759,8 @@ class TestTransformInternalHelpers:
 
     def test_has(self) -> None:
         """
-        Test that :func:`etlplus.transform._has` returns correct truthy value.
+        Test that :func:`etlplus.ops.transform._has` returns correct truthy
+        value.
         """
         assert _has(2, [1, 2, 3])
         assert not _has(5, [1, 2, 3])
@@ -797,8 +798,8 @@ class TestTransformInternalHelpers:
 
     def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
         """
-        Test that :func:`etlplus.transform._normalize_specs` coerces scalars to
-        list and keeps sequences.
+        Test that :func:`etlplus.ops.transform._normalize_specs` coerces
+        scalars to list and keeps sequences.
         """
 
         single = {'field': 'age'}
@@ -808,8 +809,8 @@ class TestTransformInternalHelpers:
 
     def test_resolve_aggregator(self) -> None:
         """
-        Test that :func:`etlplus.transform._resolve_aggregator` accepts enums,
-        strings, and callables.
+        Test that :func:`etlplus.ops.transform._resolve_aggregator` accepts
+        enums, strings, and callables.
         """
         # pylint: disable=unused-argument
 
@@ -831,8 +832,8 @@ class TestTransformInternalHelpers:
 
     def test_resolve_operator(self) -> None:
         """
-        Test that :func:`etlplus.transform._resolve_operator` accepts enums,
-        strings, and callables.
+        Test that :func:`etlplus.ops.transform._resolve_operator` accepts
+        enums, strings, and callables.
         """
         fn = _resolve_operator(OperatorName.EQ)
         assert fn(1, 1)
@@ -852,7 +853,7 @@ class TestTransformInternalHelpers:
 
     def test_sort_key(self) -> None:
         """
-        Test that :func:`etlplus.transform._sort_key` places numbers before
+        Test that :func:`etlplus.ops.transform._sort_key` places numbers before
         strings, then Nones last.
         """
         assert _sort_key(None)[0] == 2
