@@ -196,7 +196,7 @@ $ etlplus load transformed.json file final_output.csv
 ## Demo 6: Using Python API
 
 ```python
-from etlplus import extract, validate, transform, load
+from etlplus.ops import extract, validate, transform, load
 
 # Extract
 data = extract("file", "data.csv", format="csv")
