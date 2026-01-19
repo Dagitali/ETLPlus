@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_u_run` module.
+:mod:`tests.unit.ops.test_u_run` module.
 
-Unit tests for :mod:`etlplus.run`.
+Unit tests for :mod:`etlplus.ops.run`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Self
 
 import pytest
 
-run_mod = importlib.import_module('etlplus.run')
+run_mod = importlib.import_module('etlplus.ops.run')
 
 # SECTION: HELPERS ========================================================== #
 
@@ -57,7 +57,7 @@ def _base_config(
 
 
 class TestRun:
-    """Unit test suite for :func:`etlplus.run.run`."""
+    """Unit test suite for :func:`etlplus.ops.run.run`."""
 
     def test_api_source_and_target_pipeline(
         self,
