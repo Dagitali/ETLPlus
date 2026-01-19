@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.load` module.
+:mod:`etlplus.ops.load` module.
 
 Helpers to load data into files, databases, and REST APIs.
 """
@@ -14,15 +14,15 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .enums import DataConnectorType
-from .enums import HttpMethod
-from .file import File
-from .file import FileFormat
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import StrPath
-from .utils import count_records
+from ..enums import DataConnectorType
+from ..enums import HttpMethod
+from ..file import File
+from ..file import FileFormat
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..types import StrPath
+from ..utils import count_records
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
@@ -69,7 +69,7 @@ def _parse_json_string(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# -- Data Loading -- #
+# -- Helpers -- #
 
 
 def load_data(
@@ -117,96 +117,6 @@ def load_data(
     raise TypeError(
         'source must be a mapping, sequence of mappings, path, or JSON string',
     )
-
-
-# -- File Loading -- #
-
-
-def load_to_file(
-    data: JSONData,
-    file_path: StrPath,
-    file_format: FileFormat | str | None = None,
-) -> JSONDict:
-    """
-    Persist data to a local file.
-
-    Parameters
-    ----------
-    data : JSONData
-        Data to write.
-    file_path : StrPath
-        Target file path.
-    file_format : FileFormat | str | None, optional
-        Output format. If omitted (None), the format is inferred from the
-        filename extension.
-
-    Returns
-    -------
-    JSONDict
-        Result dictionary with status and record count.
-    """
-    path = Path(file_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    # If no explicit format is provided, let File infer from extension.
-    if file_format is None:
-        records = File(path).write(data)
-        ext = path.suffix.lstrip('.').lower()
-        fmt = FileFormat.coerce(ext) if ext else FileFormat.JSON
-    else:
-        fmt = FileFormat.coerce(file_format)
-        records = File(path, fmt).write(data)
-    if fmt is FileFormat.CSV and records == 0:
-        message = 'No data to write'
-    else:
-        message = f'Data loaded to {path}'
-
-    return {
-        'status': 'success',
-        'message': message,
-        'records': records,
-    }
-
-
-# -- Database Loading (Placeholder) -- #
-
-
-def load_to_database(
-    data: JSONData,
-    connection_string: str,
-) -> JSONDict:
-    """
-    Load data to a database.
-
-    Notes
-    -----
-    Placeholder implementation. To enable database loading, install and
-    configure database-specific drivers and query logic.
-
-    Parameters
-    ----------
-    data : JSONData
-        Data to load.
-    connection_string : str
-        Database connection string.
-
-    Returns
-    -------
-    JSONDict
-        Result object describing the operation.
-    """
-    records = count_records(data)
-
-    return {
-        'status': 'not_implemented',
-        'message': 'Database loading not yet implemented',
-        'connection_string': connection_string,
-        'records': records,
-        'note': 'Install database-specific drivers to enable this feature',
-    }
-
-
-# -- REST API Loading -- #
 
 
 def load_to_api(
@@ -269,6 +179,87 @@ def load_to_api(
         'response': payload,
         'records': count_records(data),
         'method': http_method.value.upper(),
+    }
+
+
+def load_to_database(
+    data: JSONData,
+    connection_string: str,
+) -> JSONDict:
+    """
+    Load data to a database.
+
+    Notes
+    -----
+    Placeholder implementation. To enable database loading, install and
+    configure database-specific drivers and query logic.
+
+    Parameters
+    ----------
+    data : JSONData
+        Data to load.
+    connection_string : str
+        Database connection string.
+
+    Returns
+    -------
+    JSONDict
+        Result object describing the operation.
+    """
+    records = count_records(data)
+
+    return {
+        'status': 'not_implemented',
+        'message': 'Database loading not yet implemented',
+        'connection_string': connection_string,
+        'records': records,
+        'note': 'Install database-specific drivers to enable this feature',
+    }
+
+
+def load_to_file(
+    data: JSONData,
+    file_path: StrPath,
+    file_format: FileFormat | str | None = None,
+) -> JSONDict:
+    """
+    Persist data to a local file.
+
+    Parameters
+    ----------
+    data : JSONData
+        Data to write.
+    file_path : StrPath
+        Target file path.
+    file_format : FileFormat | str | None, optional
+        Output format. If omitted (None), the format is inferred from the
+        filename extension.
+
+    Returns
+    -------
+    JSONDict
+        Result dictionary with status and record count.
+    """
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # If no explicit format is provided, let File infer from extension.
+    if file_format is None:
+        records = File(path).write(data)
+        ext = path.suffix.lstrip('.').lower()
+        fmt = FileFormat.coerce(ext) if ext else FileFormat.JSON
+    else:
+        fmt = FileFormat.coerce(file_format)
+        records = File(path, fmt).write(data)
+    if fmt is FileFormat.CSV and records == 0:
+        message = 'No data to write'
+    else:
+        message = f'Data loaded to {path}'
+
+    return {
+        'status': 'success',
+        'message': message,
+        'records': records,
     }
 
 
