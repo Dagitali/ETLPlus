@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.validation.utils` module.
+:mod:`etlplus.ops.utils` module.
 
-Utility helpers for conditional validation orchestration.
+Utility helpers for conditional data ops orchestration.
 
 The helpers defined here embrace a "high cohesion, low coupling" design by
 isolating normalization, configuration, and logging responsibilities. The
