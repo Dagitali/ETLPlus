@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.ops.test_u_transform` module.
+:mod:`tests.unit.ops.test_u_ops_transform` module.
 
 Unit tests for :mod:`etlplus.ops.transform`.
 
