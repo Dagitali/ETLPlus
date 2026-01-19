@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.validation` module.
+:mod:`etlplus.ops.validate` module.
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 
@@ -34,11 +34,11 @@ from typing import Final
 from typing import Literal
 from typing import TypedDict
 
+from ..types import JSONData
+from ..types import Record
+from ..types import StrAnyMap
+from ..types import StrPath
 from .load import load_data
-from .types import JSONData
-from .types import Record
-from .types import StrAnyMap
-from .types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -330,6 +330,9 @@ def _validate_record(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+# -- Helpers -- #
+
+
 def validate_field(
     value: Any,
     rules: StrAnyMap | FieldRules,
@@ -423,6 +426,9 @@ def validate_field(
             errors.append("Rule 'enum' must be a list")
 
     return {'valid': len(errors) == 0, 'errors': errors}
+
+
+# -- Orchestration -- #
 
 
 def validate(
