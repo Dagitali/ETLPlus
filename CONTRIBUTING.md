@@ -119,7 +119,7 @@ Use these guidelines to decide whether a test belongs in the unit or integration
   - Can use temporary files/directories, and stub network with fakes/mocks.
   - Examples in this repo: CLI end-to-end, pipeline smoke tests, pagination strategy, runner defaults for pagination/rate limits, target URL composition.
 
-If a test calls `etlplus.cli.main()` or `etlplus.run.run()`, it is integration by default.
+If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
 
 ### Where to put tests
 
