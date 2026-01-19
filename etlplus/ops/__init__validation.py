@@ -1,16 +1,14 @@
 """
-:mod:`etlplus.validation` package.
+:mod:`etlplus.ops.__init__validation` module.
 
-Conditional validation utilities used across the ETL pipeline.
+Compatibility wrapper for the conditional validation helper used by ETL ops.
+See :mod:`etlplus.ops` for the package overview and
+:mod:`etlplus.ops.utils` for implementation details.
 
-The package intentionally exposes a single helper, :func:`maybe_validate`, to
-keep the public API compact and predictable. Supporting logic lives in
-``etlplus.validation.utils`` where validation configuration is normalized,
-reducing the likelihood of phase/option mismatches.
 
 Examples
 --------
->>> from etlplus.validation import maybe_validate
+>>> from etlplus.ops.utils import maybe_validate
 >>> payload = {'name': 'Alice'}
 >>> rules = {'required': ['name']}
 >>> def validator(data, config):
@@ -30,7 +28,7 @@ Examples
 
 See Also
 --------
-- :mod:`etlplus.validation.utils` for implementation details and helper
+- :mod:`etlplus.ops.utils` for implementation details and helper
     utilities.
 """
 
