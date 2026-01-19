@@ -18,15 +18,16 @@ from ..config import PipelineConfig
 from ..config import load_pipeline_config
 from ..database import load_table_spec
 from ..database import render_tables
-from ..extract import extract
 from ..file import File
-from ..load import load
-from ..run import run
-from ..transform import transform
+from ..file import FileFormat
+from ..ops import extract
+from ..ops import load
+from ..ops import run
+from ..ops import transform
+from ..ops import validate
+from ..ops.validate import FieldRules
 from ..types import JSONData
 from ..types import TemplateKey
-from ..validate import FieldRules
-from ..validate import validate
 from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #
@@ -569,8 +570,17 @@ def transform_handler(
 
     data = transform(payload, cast(TransformOperations, operations_payload))
 
+    # TODO: Generalize to handle non-file targets.
     if target and target != '-':
-        File(target, file_format=target_format).write(data)
+        # Convert target to Path and target_format to FileFormat if needed
+        file_path = Path(target)
+        file_format = None
+        if target_format is not None:
+            try:
+                file_format = FileFormat(target_format)
+            except ValueError:
+                file_format = None  # or handle error as appropriate
+        File(file_path, file_format=file_format).write(data)
         print(f'Data transformed and saved to {target}')
         return 0
 
