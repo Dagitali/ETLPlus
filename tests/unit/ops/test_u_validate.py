@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_validate` module.
 
-Unit tests for :mod:`etlplus.validate`.
+Unit tests for :mod:`etlplus.ops.validate`.
 
 Notes
 -----
@@ -15,10 +15,10 @@ from typing import Any
 
 import pytest
 
-from etlplus.validate import FieldRules
-from etlplus.validate import load_data
-from etlplus.validate import validate
-from etlplus.validate import validate_field
+from etlplus.ops.validate import FieldRules
+from etlplus.ops.validate import load_data
+from etlplus.ops.validate import validate
+from etlplus.ops.validate import validate_field
 
 # SECTION: HELPERS ========================================================== #
 
@@ -32,7 +32,7 @@ pytestmark = pytest.mark.unit
 @pytest.mark.unit
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.validate.load_data`.
+    Unit test suite for :func:`etlplus.ops.validate.load_data`.
     """
 
     def test_invalid_source(self) -> None:
@@ -43,7 +43,7 @@ class TestLoadData:
 
 @pytest.mark.unit
 class TestValidateField:
-    """Unit test suite for :func:`etlplus.validate.validate_field`."""
+    """Unit test suite for :func:`etlplus.ops.validate.validate_field`."""
 
     def test_enum_rule_requires_list(self) -> None:
         """Test non-list enum rules adding an error entry."""
@@ -108,7 +108,7 @@ class TestValidateField:
 
 @pytest.mark.unit
 class TestValidate:
-    """Unit test suite for :func:`etlplus.validate.validate`."""
+    """Unit test suite for :func:`etlplus.ops.validate.validate`."""
 
     @pytest.mark.parametrize(
         'data, rules, expected_valid',
