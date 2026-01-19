@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_u_extract` module.
+:mod:`tests.unit.ops.test_u_extract` module.
 
-Unit tests for :mod:`etlplus.extract`.
+Unit tests for :mod:`etlplus.ops.extract`.
 
 Notes
 -----
@@ -21,10 +21,10 @@ from typing import Any
 
 import pytest
 
-from etlplus.extract import extract
-from etlplus.extract import extract_from_api
-from etlplus.extract import extract_from_database
-from etlplus.extract import extract_from_file
+from etlplus.ops.extract import extract
+from etlplus.ops.extract import extract_from_api
+from etlplus.ops.extract import extract_from_database
+from etlplus.ops.extract import extract_from_file
 
 # SECTION: HELPERS ========================================================== #
 
@@ -89,7 +89,7 @@ class _StubSession:
 @pytest.mark.unit
 class TestExtract:
     """
-    Unit test suite for :func:`etlplus.extract.extract`.
+    Unit test suite for :func:`etlplus.ops.extract.extract`.
 
     Notes
     -----
@@ -152,7 +152,7 @@ class TestExtract:
 @pytest.mark.unit
 class TestExtractErrors:
     """
-    Unit test suite for ``etlplus.extract`` function errors.
+    Unit test suite for ``etlplus.ops.extract`` function errors.
 
     Notes
     -----
@@ -218,7 +218,7 @@ class TestExtractErrors:
 @pytest.mark.unit
 class TestExtractFromApi:
     """
-    Unit test suite for :func:`etlplus.extract.extract_from_api`.
+    Unit test suite for :func:`etlplus.ops.extract.extract_from_api`.
 
     Notes
     -----
@@ -339,7 +339,7 @@ class TestExtractFromApi:
 @pytest.mark.unit
 class TestExtractFromDatabase:
     """
-    Unit test suite for :func:`etlplus.extract.extract_from_database`.
+    Unit test suite for :func:`etlplus.ops.extract.extract_from_database`.
 
     Notes
     -----
@@ -371,7 +371,7 @@ class TestExtractFromDatabase:
 @pytest.mark.unit
 class TestExtractFromFile:
     """
-    Unit test suite for :func:`etlplus.extract.extract_from_file`.
+    Unit test suite for :func:`etlplus.ops.extract.extract_from_file`.
 
     Notes
     -----
