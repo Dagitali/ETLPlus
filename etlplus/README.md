@@ -23,7 +23,7 @@ Back to project overview: see the top-level [README](../README.md).
 ## Quickstart
 
 ```python
-from etlplus import extract, validate, transform, load
+from etlplus.ops import extract, validate, transform, load
 
 data = extract("file", "input.csv")
 filtered = transform(data, {"filter": {"field": "age", "op": "gt", "value": 25}})
