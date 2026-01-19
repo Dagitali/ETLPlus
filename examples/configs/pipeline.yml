@@ -7,13 +7,13 @@
 # Inspired by dbt's structured config and ETLPlus' simple JSON-first APIs.
 # This file is meant as a high-level declarative spec that your orchestration
 # (Makefile task, Python runner, CI job, etc.) can read and execute via
-# etlplus.extract/validate/transform/load.
+# etlplus.ops.extract/validate/transform/load.
 #
 # Notes
 # - Source types: file | database | api
 # - File formats: json | csv | xml | yaml
 # - HTTP load methods: post | put | patch
-# - Transform step keys and shapes match etlplus.transform:
+# - Transform step keys and shapes match etlplus.ops.transform:
 #     filter: { field, op, value }
 #     map: { old_key: new_key, ... }
 #     select: [field1, field2, ...]  OR { fields: [...] }
@@ -238,7 +238,7 @@ sources:
 
 validations:
   # Validation rule sets keyed by a friendly name. Each rule set is a map of
-  # field -> rules (see etlplus.validate.FieldRules for supported keys).
+  # field -> rules (see etlplus.ops.validate.FieldRules for supported keys).
 
   customers_basic:
     CustomerId:
@@ -277,7 +277,7 @@ validations:
 
 transforms:
   # Named transformation pipelines that can be reused across jobs.
-  # Shapes follow etlplus.transform.PipelineConfig exactly.
+  # Shapes follow etlplus.ops.transform.PipelineConfig exactly.
 
   clean_customers:
     # Keep only rows that have an Email with an '@'
