@@ -39,7 +39,7 @@ script.
 
 - Authoring: see the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example
   `in/pipeline.yml` or `examples/configs/pipeline.yml`.
-- Runner internals and Python entrypoint: see `docs/run-module.md` for `etlplus.run.run`.
+- Runner internals and Python entrypoint: see `docs/run-module.md` for `etlplus.ops.run.run`.
 
 CLI examples:
 
@@ -57,7 +57,7 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 Python example:
 
 ```python
-from etlplus.run import run as run_job
+from etlplus.ops.run import run as run_job
 
 result = run_job(
     job="file_to_file_customers",
