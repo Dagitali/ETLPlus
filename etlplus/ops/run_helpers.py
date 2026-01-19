@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.run_helpers` module.
+:mod:`etlplus.ops.run_helpers` module.
 
-Helper functions and small utilities used by ``etlplus.run`` to compose API
+Helper functions and small utilities used by ``etlplus.ops.run`` to compose API
 request/load environments, pagination configs, session objects, and endpoint
 clients. Extracted to keep ``run.py`` focused on orchestration while enabling
 reuse and testability.
@@ -32,19 +32,19 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .api import ApiConfig
-from .api import EndpointClient
-from .api import EndpointConfig
-from .api import Headers
-from .api import PaginationConfig
-from .api import PaginationConfigMap
-from .api import Params
-from .api import RateLimitConfig
-from .api import RateLimitConfigMap
-from .api import RateLimiter
-from .api import RetryPolicy
-from .api import Url
-from .types import Timeout
+from ..api import ApiConfig
+from ..api import EndpointClient
+from ..api import EndpointConfig
+from ..api import Headers
+from ..api import PaginationConfig
+from ..api import PaginationConfigMap
+from ..api import Params
+from ..api import RateLimitConfig
+from ..api import RateLimitConfigMap
+from ..api import RateLimiter
+from ..api import RetryPolicy
+from ..api import Url
+from ..types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -323,7 +323,7 @@ def build_endpoint_client(
     EndpointClient
         The constructed endpoint client.
     """
-    # Allow tests to monkeypatch etlplus.run.EndpointClient and have it
+    # Allow tests to monkeypatch etlplus.ops.run.EndpointClient and have it
     # propagate here by preferring the class on the run module if present.
     try:
         from . import run as run_mod  # local import to avoid cycles
