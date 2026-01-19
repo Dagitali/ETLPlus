@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.ops.test_u_extract` module.
+:mod:`tests.unit.ops.test_u_ops_extract` module.
 
 Unit tests for :mod:`etlplus.ops.extract`.
 

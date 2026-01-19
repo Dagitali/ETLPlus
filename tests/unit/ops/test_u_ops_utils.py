@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.validation.test_u_validation_utils` module.
+:mod:`tests.unit.ops.test_u_ops_utils` module.
 
-Unit tests for :mod:`etlplus.validation.utils`.
+Unit tests for :mod:`etlplus.ops.utils`.
 
 Notes
 -----
@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.validation import maybe_validate
-from etlplus.validation.utils import ValidationResult
+from etlplus.ops.utils import ValidationResult
+from etlplus.ops.utils import maybe_validate
 
 # SECTION: HELPERS ========================================================== #
 

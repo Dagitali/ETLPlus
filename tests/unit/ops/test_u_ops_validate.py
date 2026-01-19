@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_u_validate` module.
+:mod:`tests.unit.ops.test_u_ops_validate` module.
 
 Unit tests for :mod:`etlplus.ops.validate`.
 
