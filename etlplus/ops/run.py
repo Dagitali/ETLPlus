@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.run` module.
+:mod:`etlplus.ops.run` module.
 
 A module for running ETL jobs defined in YAML configurations.
 """
@@ -16,24 +16,24 @@ from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
 
-from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfigMap
-from .api import RequestOptions
-from .api import RetryPolicy
-from .api import Url
-from .config import load_pipeline_config
-from .enums import DataConnectorType
+from ..api import EndpointClient  # noqa: F401 (re-exported for tests)
+from ..api import PaginationConfigMap
+from ..api import RequestOptions
+from ..api import RetryPolicy
+from ..api import Url
+from ..config import load_pipeline_config
+from ..enums import DataConnectorType
+from ..run_helpers import compose_api_request_env
+from ..run_helpers import compose_api_target_env
+from ..run_helpers import paginate_with_client
+from ..types import JSONDict
+from ..types import Timeout
+from ..utils import print_json
+from ..validation.utils import maybe_validate
 from .extract import extract
 from .load import load
-from .run_helpers import compose_api_request_env
-from .run_helpers import compose_api_target_env
-from .run_helpers import paginate_with_client
 from .transform import transform
-from .types import JSONDict
-from .types import Timeout
-from .utils import print_json
 from .validate import validate
-from .validation.utils import maybe_validate
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -207,7 +207,7 @@ def run(
                 and env.get('endpoint_key')
             ):
                 # Construct client using module-level EndpointClient so tests
-                # can monkeypatch this class on etlplus.run.
+                # can monkeypatch this class on etlplus.ops.run.
                 ClientClass = EndpointClient  # noqa: N806
                 client = ClientClass(
                     base_url=cast(str, env['base_url']),
