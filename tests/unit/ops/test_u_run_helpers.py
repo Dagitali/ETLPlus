@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_u_run_helpers` module.
+:mod:`tests.unit.ops.test_u_run_helpers` module.
 
 Unit tests for :mod:`etlplus.run_helpers`.
 """
@@ -12,10 +12,10 @@ from typing import cast
 
 import pytest
 
-from etlplus import run_helpers as rh
 from etlplus.api import PagePaginationConfigMap
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
+from etlplus.ops import run_helpers as rh
 
 # SECTION: HELPERS ========================================================== #
 
