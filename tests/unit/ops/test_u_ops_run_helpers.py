@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.ops.test_u_run_helpers` module.
+:mod:`tests.unit.ops.test_u_ops_run_helpers` module.
 
 Unit tests for :mod:`etlplus.ops.run_helpers`.
 """
