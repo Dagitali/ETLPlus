@@ -676,7 +676,7 @@ We split tests into two layers:
   pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
   fake clients.
 
-If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default.  Full
+If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()` it’s integration by default. Full
 criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
 
 ### Code Coverage
