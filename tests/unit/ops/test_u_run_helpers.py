@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.ops.test_u_run_helpers` module.
 
-Unit tests for :mod:`etlplus.run_helpers`.
+Unit tests for :mod:`etlplus.ops.run_helpers`.
 """
 
 from __future__ import annotations
