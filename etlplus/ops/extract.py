@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.extract` module.
+:mod:`etlplus.ops.extract` module.
 
 Helpers to extract data from files, databases, and REST APIs.
 """
@@ -12,89 +12,16 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .enums import DataConnectorType
-from .enums import HttpMethod
-from .file import File
-from .file import FileFormat
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import StrPath
+from ..enums import DataConnectorType
+from ..enums import HttpMethod
+from ..file import File
+from ..file import FileFormat
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..types import StrPath
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-# -- File Extraction -- #
-
-
-def extract_from_file(
-    file_path: StrPath,
-    file_format: FileFormat | str | None = FileFormat.JSON,
-) -> JSONData:
-    """
-    Extract (semi-)structured data from a local file.
-
-    Parameters
-    ----------
-    file_path : StrPath
-        Source file path.
-    file_format : FileFormat | str | None, optional
-        File format to parse. If ``None``, infer from the filename
-        extension. Defaults to `'json'` for backward compatibility when
-        explicitly provided.
-
-    Returns
-    -------
-    JSONData
-        Parsed data as a mapping or a list of mappings.
-    """
-    path = Path(file_path)
-
-    # If no explicit format is provided, let File infer from extension.
-    if file_format is None:
-        return File(path, None).read()
-    fmt = FileFormat.coerce(file_format)
-
-    # Let file module perform existence and format validation.
-    return File(path, fmt).read()
-
-
-# -- Database Extraction (Placeholder) -- #
-
-
-def extract_from_database(
-    connection_string: str,
-) -> JSONList:
-    """
-    Extract data from a database.
-
-    Notes
-    -----
-    Placeholder implementation. To enable database extraction, install and
-    configure database-specific drivers and query logic.
-
-    Parameters
-    ----------
-    connection_string : str
-        Database connection string.
-
-    Returns
-    -------
-    JSONList
-        Informational message payload.
-    """
-    return [
-        {
-            'message': 'Database extraction not yet implemented',
-            'connection_string': connection_string,
-            'note': (
-                'Install database-specific drivers to enable this feature'
-            ),
-        },
-    ]
-
-
-# -- REST API Extraction -- #
 
 
 def extract_from_api(
@@ -165,6 +92,70 @@ def extract_from_api(
         return {'value': payload}
 
     return {'content': response.text, 'content_type': content_type}
+
+
+def extract_from_database(
+    connection_string: str,
+) -> JSONList:
+    """
+    Extract data from a database.
+
+    Notes
+    -----
+    Placeholder implementation. To enable database extraction, install and
+    configure database-specific drivers and query logic.
+
+    Parameters
+    ----------
+    connection_string : str
+        Database connection string.
+
+    Returns
+    -------
+    JSONList
+        Informational message payload.
+    """
+    return [
+        {
+            'message': 'Database extraction not yet implemented',
+            'connection_string': connection_string,
+            'note': (
+                'Install database-specific drivers to enable this feature'
+            ),
+        },
+    ]
+
+
+def extract_from_file(
+    file_path: StrPath,
+    file_format: FileFormat | str | None = FileFormat.JSON,
+) -> JSONData:
+    """
+    Extract (semi-)structured data from a local file.
+
+    Parameters
+    ----------
+    file_path : StrPath
+        Source file path.
+    file_format : FileFormat | str | None, optional
+        File format to parse. If ``None``, infer from the filename
+        extension. Defaults to `'json'` for backward compatibility when
+        explicitly provided.
+
+    Returns
+    -------
+    JSONData
+        Parsed data as a mapping or a list of mappings.
+    """
+    path = Path(file_path)
+
+    # If no explicit format is provided, let File infer from extension.
+    if file_format is None:
+        return File(path, None).read()
+    fmt = FileFormat.coerce(file_format)
+
+    # Let file module perform existence and format validation.
+    return File(path, fmt).read()
 
 
 # -- Orchestration -- #
