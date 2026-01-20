@@ -78,6 +78,7 @@ from .config import ApiConfig
 from .config import ApiProfileConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
+from .enums import HttpMethod
 from .pagination import CursorPaginationConfigMap
 from .pagination import PagePaginationConfigMap
 from .pagination import PaginationClient
@@ -123,6 +124,7 @@ __all__ = [
     'RequestOptions',
     'RetryStrategy',
     # Enums
+    'HttpMethod',
     'PaginationType',
     # Functions
     'build_http_adapter',
