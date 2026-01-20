@@ -146,6 +146,66 @@ class SessionConfig(TypedDict, total=False):
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
+def _build_session_optional(
+    cfg: SessionConfig | None,
+) -> requests.Session | None:
+    """
+    Return a configured session when *cfg* is a mapping.
+
+    Parameters
+    ----------
+    cfg : SessionConfig | None
+        Session configuration mapping.
+
+    Returns
+    -------
+    requests.Session | None
+        Configured session or ``None``.
+    """
+    if isinstance(cfg, dict):
+        return build_session(cfg)
+    return None
+
+
+def _coalesce(*args: Any) -> Any | None:
+    """
+    Return the first non-``None`` value from *values*.
+
+    Parameters
+    ----------
+    *args : Any
+        Candidate values in descending precedence order.
+
+    Returns
+    -------
+    Any | None
+        The first non-``None`` value, or ``None`` if all are ``None``.
+    """
+    for arg in args:
+        if arg is not None:
+            return arg
+    return None
+
+
+def _copy_mapping(
+    mapping: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Return a shallow copy of *mapping* or an empty dict.
+
+    Parameters
+    ----------
+    mapping : Mapping[str, Any] | None
+        The mapping to copy.
+
+    Returns
+    -------
+    dict[str, Any]
+        A shallow copy of the mapping or an empty dict.
+    """
+    return dict(mapping) if isinstance(mapping, Mapping) else {}
+
+
 def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
@@ -256,25 +316,6 @@ def _merge_session_cfg_three(
     return cast(SessionConfig | None, (merged or None))
 
 
-def _copy_mapping(
-    mapping: Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """
-    Return a shallow copy of *mapping* or an empty dict.
-
-    Parameters
-    ----------
-    mapping : Mapping[str, Any] | None
-        The mapping to copy.
-
-    Returns
-    -------
-    dict[str, Any]
-        A shallow copy of the mapping or an empty dict.
-    """
-    return dict(mapping) if isinstance(mapping, Mapping) else {}
-
-
 def _update_mapping(
     target: dict[str, Any],
     extra: Mapping[str, Any] | None,
@@ -291,27 +332,6 @@ def _update_mapping(
     """
     if isinstance(extra, Mapping):
         target.update(extra)
-
-
-def _build_session_optional(
-    cfg: SessionConfig | None,
-) -> requests.Session | None:
-    """
-    Return a configured session when *cfg* is a mapping.
-
-    Parameters
-    ----------
-    cfg : SessionConfig | None
-        Session configuration mapping.
-
-    Returns
-    -------
-    requests.Session | None
-        Configured session or ``None``.
-    """
-    if isinstance(cfg, dict):
-        return build_session(cfg)
-    return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -393,9 +413,7 @@ def compose_api_request_env(
         RetryPolicy | None,
         getattr(source_obj, 'retry', None),
     )
-    retry_network_errors = bool(
-        getattr(source_obj, 'retry_network_errors', False),
-    )
+    retry_network_errors = getattr(source_obj, 'retry_network_errors', None)
     session_cfg = cast(
         SessionConfig | None,
         getattr(source_obj, 'session', None),
@@ -422,28 +440,28 @@ def compose_api_request_env(
         )
         _update_mapping(ep_params, params)
         params = ep_params
-        pagination = (
-            pagination
-            or ep.pagination
-            or api_cfg.effective_pagination_defaults()
+        pagination = _coalesce(
+            pagination,
+            ep.pagination,
+            api_cfg.effective_pagination_defaults(),
         )
-        rate_limit = (
-            rate_limit
-            or ep.rate_limit
-            or api_cfg.effective_rate_limit_defaults()
+        rate_limit = _coalesce(
+            rate_limit,
+            ep.rate_limit,
+            api_cfg.effective_rate_limit_defaults(),
         )
         retry = cast(
             RetryPolicy | None,
-            (
-                retry
-                or getattr(ep, 'retry', None)
-                or getattr(api_cfg, 'retry', None)
+            _coalesce(
+                retry,
+                getattr(ep, 'retry', None),
+                getattr(api_cfg, 'retry', None),
             ),
         )
-        retry_network_errors = (
-            retry_network_errors
-            or bool(getattr(ep, 'retry_network_errors', False))
-            or bool(getattr(api_cfg, 'retry_network_errors', False))
+        retry_network_errors = _coalesce(
+            retry_network_errors,
+            getattr(ep, 'retry_network_errors', None),
+            getattr(api_cfg, 'retry_network_errors', None),
         )
         use_client_endpoints = True
         client_base_url = api_cfg.base_url
@@ -500,7 +518,7 @@ def compose_api_request_env(
         'pagination': pag_cfg,
         'sleep_seconds': sleep_s,
         'retry': retry,
-        'retry_network_errors': retry_network_errors,
+        'retry_network_errors': bool(retry_network_errors),
         'session': sess_obj,
     }
 
