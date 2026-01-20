@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from functools import partial
+from types import TracebackType
 from typing import Any
 from typing import cast
 
@@ -137,7 +138,7 @@ class RequestManager:
         self,
         exc_type: type[BaseException] | None,
         exc: BaseException | None,
-        tb: Any,
+        tb: TracebackType | None,
     ) -> None:
         """
         Exit the runtime context and close owned sessions.
@@ -148,7 +149,7 @@ class RequestManager:
             Exception type if raised, else ``None``.
         exc : BaseException | None
             Exception instance if raised, else ``None``.
-        tb : Any
+        tb : TracebackType | None
             Traceback if an exception was raised, else ``None``.
         """
         if self._ctx_session is None:
@@ -275,7 +276,7 @@ class RequestManager:
 
         try:
             policy = self.retry
-            if not policy:
+            if policy is None:
                 try:
                     return fetch(url, **call_kwargs)
                 except requests.RequestException as exc:  # pragma: no cover
@@ -438,9 +439,13 @@ class RequestManager:
             if isinstance(payload, dict):
                 return cast(JSONDict, payload)
             if isinstance(payload, list):
-                if all(isinstance(item, dict) for item in payload):
-                    return cast(JSONData, payload)
-                return [{'value': item} for item in payload]
+                out: list[JSONDict] = []
+                for item in payload:
+                    if isinstance(item, dict):
+                        out.append(cast(JSONDict, item))
+                    else:
+                        out.append({'value': item})
+                return cast(JSONData, out)
             return {'value': payload}
         return {
             'content': response.text,
