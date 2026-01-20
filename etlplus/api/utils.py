@@ -544,7 +544,8 @@ def compose_api_target_env(
         dict[str, str],
         coerce_dict(
             cast(
-                Mapping[str, str] | None, getattr(target_obj, 'headers', None),
+                Mapping[str, str] | None,
+                getattr(target_obj, 'headers', None),
             ),
         ),
     )
