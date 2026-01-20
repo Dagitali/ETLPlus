@@ -16,6 +16,7 @@ from typing import cast
 import requests  # type: ignore[import]
 
 from ..types import Timeout
+from ..utils import coerce_dict
 from .config import ApiConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
@@ -187,25 +188,6 @@ def _coalesce(
         if arg is not None:
             return arg
     return None
-
-
-def _copy_mapping(
-    mapping: Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """
-    Return a shallow copy of *mapping* or an empty dict.
-
-    Parameters
-    ----------
-    mapping : Mapping[str, Any] | None
-        The mapping to copy.
-
-    Returns
-    -------
-    dict[str, Any]
-        A shallow copy of the mapping or an empty dict.
-    """
-    return dict(mapping) if isinstance(mapping, Mapping) else {}
 
 
 def _get_api_cfg_and_endpoint(
@@ -403,12 +385,12 @@ def compose_api_request_env(
         Mapping[str, Any] | None,
         getattr(source_obj, 'query_params', None),
     )
-    params: dict[str, Any] = _copy_mapping(source_params)
+    params: dict[str, Any] = coerce_dict(source_params)
     source_headers = cast(
         Mapping[str, str] | None,
         getattr(source_obj, 'headers', None),
     )
-    headers: dict[str, str] = _copy_mapping(source_headers)
+    headers: dict[str, str] = cast(dict[str, str], coerce_dict(source_headers))
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
     retry: RetryPolicy | None = cast(
@@ -437,7 +419,7 @@ def compose_api_request_env(
             session_cfg,
             force_url=True,
         )
-        ep_params: dict[str, Any] = _copy_mapping(
+        ep_params: dict[str, Any] = coerce_dict(
             cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
         )
         _update_mapping(ep_params, params)
@@ -558,8 +540,13 @@ def compose_api_target_env(
         str | None,
         ov.get('method') or getattr(target_obj, 'method', 'post'),
     )
-    headers = _copy_mapping(
-        cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
+    headers = cast(
+        dict[str, str],
+        coerce_dict(
+            cast(
+                Mapping[str, str] | None, getattr(target_obj, 'headers', None),
+            ),
+        ),
     )
     _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
     timeout: Timeout = (
