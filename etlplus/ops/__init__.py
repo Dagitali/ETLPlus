@@ -4,10 +4,12 @@
 Data operations helpers.
 
 Importing :mod:`etlplus.ops` exposes the coarse-grained helpers most users care
-about: ``extract``, ``transform``, ``load``, ``validate``, and ``run``. Each
-helper delegates to the richer modules under ``etlplus.ops.*`` while
-presenting a compact public API surface. Conditional validation orchestration
-is available via :func:`etlplus.ops.utils.maybe_validate`.
+about: ``extract``, ``transform``, ``load``, ``validate``, ``run``, and
+``run_pipeline``. Each helper delegates to the richer modules under
+``etlplus.ops.*`` while presenting a compact public API surface. Conditional
+validation orchestration is available via
+:func:`etlplus.ops.utils.maybe_validate`. The legacy compatibility module
+:mod:`etlplus.ops.__init__validation` is deprecated in favor of this package.
 
 Examples
 --------
@@ -42,6 +44,7 @@ See Also
 from .extract import extract
 from .load import load
 from .run import run
+from .run import run_pipeline
 from .transform import transform
 from .validate import validate
 
@@ -52,6 +55,7 @@ __all__ = [
     'extract',
     'load',
     'run',
+    'run_pipeline',
     'transform',
     'validate',
 ]
