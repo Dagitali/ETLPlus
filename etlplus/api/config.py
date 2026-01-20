@@ -29,13 +29,13 @@ from typing import overload
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-from ..enums import HttpMethod
 from ..types import StrAnyMap
 from ..types import StrStrMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
 from .endpoint_client import EndpointClient
+from .enums import HttpMethod
 from .pagination import PaginationConfig
 from .rate_limiting import RateLimitConfig
 
