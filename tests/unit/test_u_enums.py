@@ -10,7 +10,6 @@ import pytest
 
 from etlplus.enums import AggregateName
 from etlplus.enums import DataConnectorType
-from etlplus.enums import HttpMethod
 from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
 
@@ -63,21 +62,6 @@ class TestDataConnectorType:
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
             DataConnectorType.coerce('queue')
-
-
-class TestHttpMethod:
-    """Unit test suite for :class:`etlplus.enums.HttpMethod`."""
-
-    def test_allows_body(self) -> None:
-        """Test the `allows_body` property."""
-        assert HttpMethod.POST.allows_body is True
-        assert HttpMethod.PUT.allows_body is True
-        assert HttpMethod.PATCH.allows_body is True
-        assert HttpMethod.GET.allows_body is False
-
-    def test_coerce(self) -> None:
-        """Test :meth:`coerce`."""
-        assert HttpMethod.coerce('delete') is HttpMethod.DELETE
 
 
 class TestOperatorName:

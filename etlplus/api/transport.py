@@ -191,7 +191,19 @@ def _build_retry_value(
 def _normalize_retry_kwargs(
     retries_cfg: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Filter and normalize urllib3 ``Retry`` kwargs from a mapping."""
+    """
+    Filter and normalize urllib3 ``Retry`` kwargs from a mapping.
+
+    Parameters
+    ----------
+    retries_cfg : Mapping[str, Any]
+        Raw retry configuration mapping.
+
+    Returns
+    -------
+    dict[str, Any]
+        Filtered and normalized keyword arguments for ``Retry``.
+    """
     allowed_keys = {
         'total',
         'connect',
@@ -239,7 +251,7 @@ def _resolve_max_retries(
     """
     match retries_cfg:
         case int():
-            return retries_cfg
+            return to_maximum_int(retries_cfg, 0)
         case Mapping():
             try:
                 return _build_retry_value(retries_cfg)

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.client` module.
+:mod:`etlplus.api.pagination.client` module.
 
 Client-facing pagination driver for REST API responses.
 
