@@ -205,8 +205,6 @@ class RateLimiter:
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
         config = RateLimitConfig.from_inputs(rate_limit=cfg)
-        if config is None:
-            return cls.disabled()
 
         # RateLimiter.__post_init__ will normalize and enforce invariants.
         return cls(**config.as_mapping())
@@ -261,6 +259,4 @@ class RateLimiter:
             rate_limit=rate_limit,
             overrides=overrides,
         )
-        if config is None or not config.sleep_seconds:
-            return 0.0
-        return float(config.sleep_seconds)
+        return float(config.sleep_seconds) if config.sleep_seconds else 0.0
