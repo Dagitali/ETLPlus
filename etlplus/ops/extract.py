@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
+from ..api.utils import resolve_request
 from ..enums import DataConnectorType
 from ..enums import HttpMethod
 from ..file import File
@@ -18,7 +19,6 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
-from .http_utils import resolve_request
 
 # SECTION: FUNCTIONS ======================================================== #
 
