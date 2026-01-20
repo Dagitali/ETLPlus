@@ -315,7 +315,7 @@ class TestExtractFromApi:
 
             pass  # pylint: disable=unnecessary-pass
 
-        with pytest.raises(TypeError, match='callable"get"'):
+        with pytest.raises(TypeError, match='callable "get"'):
             extract_from_api(f'{base_url}/data', session=NoGet())
 
     def test_non_json_content_type(

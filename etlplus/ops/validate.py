@@ -279,11 +279,15 @@ def _type_matches(
     bool
         ``True`` if the value matches the expected type; ``False`` if not.
     """
-    py_type = TYPE_MAP.get(expected)
-    if py_type:
-        return isinstance(value, py_type)
+    if expected == 'number':
+        return _is_number(value)
+    if expected == 'integer':
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == 'boolean':
+        return isinstance(value, bool)
 
-    return False
+    py_type = TYPE_MAP.get(expected)
+    return isinstance(value, py_type) if py_type else False
 
 
 def _validate_record(

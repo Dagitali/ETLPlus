@@ -13,11 +13,13 @@ offloading ancillary concerns to composable helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from typing import Self
 from typing import TypedDict
+from typing import cast
 
 from ..types import StrAnyMap
 from ..utils import normalized_str
@@ -291,11 +293,17 @@ def _normalize_phase(
         Normalized validation phase. Defaults to ``"before_transform"`` when
         unspecified.
     """
-    match normalized_str(value):
-        case 'after_transform':
-            return 'after_transform'
-        case _:
-            return 'before_transform'
+    return cast(
+        ValidationPhase,
+        _normalize_choice(
+            value,
+            mapping={
+                'before_transform': 'before_transform',
+                'after_transform': 'after_transform',
+            },
+            default='before_transform',
+        ),
+    )
 
 
 def _normalize_severity(
@@ -314,7 +322,14 @@ def _normalize_severity(
     ValidationSeverity
         Normalized severity. Defaults to ``"error"`` when unspecified.
     """
-    return 'warn' if normalized_str(value) == 'warn' else 'error'
+    return cast(
+        ValidationSeverity,
+        _normalize_choice(
+            value,
+            mapping={'warn': 'warn'},
+            default='error',
+        ),
+    )
 
 
 def _normalize_window(
@@ -333,13 +348,45 @@ def _normalize_window(
     ValidationWindow
         Normalized validation window. Defaults to ``"both"`` when unspecified.
     """
-    match normalized_str(value):
-        case 'before_transform':
-            return 'before_transform'
-        case 'after_transform':
-            return 'after_transform'
-        case _:
-            return 'both'
+    return cast(
+        ValidationWindow,
+        _normalize_choice(
+            value,
+            mapping={
+                'before_transform': 'before_transform',
+                'after_transform': 'after_transform',
+                'both': 'both',
+            },
+            default='both',
+        ),
+    )
+
+
+def _normalize_choice(
+    value: str | None,
+    *,
+    mapping: Mapping[str, str],
+    default: str,
+) -> str:
+    """
+    Normalize a text value against a mapping with a default fallback.
+
+    Parameters
+    ----------
+    value : str | None
+        Input text to normalize.
+    mapping : Mapping[str, str]
+        Mapping of accepted values to normalized outputs.
+    default : str
+        Default to return when input is missing or unrecognized.
+
+    Returns
+    -------
+    str
+        Normalized value.
+    """
+    normalized = normalized_str(value)
+    return mapping.get(normalized, default)
 
 
 def _rule_name(

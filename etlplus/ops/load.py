@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests  # type: ignore[import]
-
+from ..api.utils import resolve_request
 from ..enums import DataConnectorType
 from ..enums import HttpMethod
 from ..file import File
@@ -138,31 +137,21 @@ def load_to_api(
         HTTP method to use.
     **kwargs : Any
         Extra arguments forwarded to ``requests`` (e.g., ``timeout``).
+        When omitted, ``timeout`` defaults to 10 seconds.
 
     Returns
     -------
     JSONDict
         Result dictionary including response payload or text.
-
-    Raises
-    ------
-    TypeError
-        If the session object is not valid.
     """
-    http_method = HttpMethod.coerce(method)
-
     # Apply a conservative timeout to guard against hanging requests.
     timeout = kwargs.pop('timeout', 10.0)
     session = kwargs.pop('session', None)
-    requester = session or requests
-
-    request_callable = getattr(requester, http_method.value, None)
-    if not callable(request_callable):
-        raise TypeError(
-            'Session object must supply a '
-            f'callable "{http_method.value}" method',
-        )
-
+    request_callable, timeout, http_method = resolve_request(
+        method,
+        session=session,
+        timeout=timeout,
+    )
     response = request_callable(url, json=data, timeout=timeout, **kwargs)
     response.raise_for_status()
 

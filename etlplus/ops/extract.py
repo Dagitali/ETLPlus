@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests  # type: ignore[import]
-
+from ..api.utils import resolve_request
 from ..enums import DataConnectorType
 from ..enums import HttpMethod
 from ..file import File
@@ -42,6 +41,7 @@ def extract_from_api(
         Extra arguments forwarded to the underlying ``requests`` call
         (for example, ``timeout``). To use a pre-configured
         :class:`requests.Session`, provide it via ``session``.
+        When omitted, ``timeout`` defaults to 10 seconds.
 
     Returns
     -------
@@ -54,20 +54,13 @@ def extract_from_api(
         If a provided ``session`` does not expose the required HTTP
         method (for example, ``get``).
     """
-    http_method = HttpMethod.coerce(method)
-
-    # Apply a conservative timeout to guard against hanging requests.
-    timeout = kwargs.pop('timeout', 10.0)
+    timeout = kwargs.pop('timeout', None)
     session = kwargs.pop('session', None)
-    requester = session or requests
-
-    request_callable = getattr(requester, http_method.value, None)
-    if not callable(request_callable):
-        raise TypeError(
-            'Session object must supply a callable'
-            f'"{http_method.value}" method',
-        )
-
+    request_callable, timeout, _ = resolve_request(
+        method,
+        session=session,
+        timeout=timeout,
+    )
     response = request_callable(url, timeout=timeout, **kwargs)
     response.raise_for_status()
 
