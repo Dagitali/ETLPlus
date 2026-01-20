@@ -162,14 +162,16 @@ def _build_session_optional(
     requests.Session | None
         Configured session or ``None``.
     """
-    if isinstance(cfg, dict):
-        return build_session(cfg)
+    if isinstance(cfg, Mapping):
+        return build_session(cast(SessionConfig, cfg))
     return None
 
 
-def _coalesce(*args: Any) -> Any | None:
+def _coalesce(
+    *args: Any,
+) -> Any | None:
     """
-    Return the first non-``None`` value from *values*.
+    Return the first non-``None`` value from ``args``.
 
     Parameters
     ----------
@@ -307,11 +309,11 @@ def _merge_session_cfg_three(
     api_sess = getattr(api_cfg, 'session', None)
     ep_sess = getattr(ep, 'session', None)
     merged: dict[str, Any] = {}
-    if isinstance(api_sess, dict):
+    if isinstance(api_sess, Mapping):
         merged.update(api_sess)
-    if isinstance(ep_sess, dict):
+    if isinstance(ep_sess, Mapping):
         merged.update(ep_sess)
-    if isinstance(source_session_cfg, dict):
+    if isinstance(source_session_cfg, Mapping):
         merged.update(source_session_cfg)
     return cast(SessionConfig | None, (merged or None))
 
