@@ -22,6 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+from typing import Self
 from typing import cast
 
 from ..types import JSONData
@@ -75,9 +76,9 @@ class RequestOptions:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
-        if self.params:
+        if self.params is not None:
             object.__setattr__(self, 'params', dict(self.params))
-        if self.headers:
+        if self.headers is not None:
             object.__setattr__(self, 'headers', dict(self.headers))
 
     # -- Instance Methods -- #
@@ -92,9 +93,9 @@ class RequestOptions:
             Keyword arguments for ``requests`` methods.
         """
         kw: dict[str, Any] = {}
-        if self.params:
+        if self.params is not None:
             kw['params'] = dict(self.params)
-        if self.headers:
+        if self.headers is not None:
             kw['headers'] = dict(self.headers)
         if self.timeout is not None:
             kw['timeout'] = self.timeout
@@ -106,7 +107,7 @@ class RequestOptions:
         params: Params | None | object = _UNSET,
         headers: Headers | None | object = _UNSET,
         timeout: float | None | object = _UNSET,
-    ) -> RequestOptions:
+    ) -> Self:
         """
         Return a copy with the provided fields replaced.
 
@@ -146,7 +147,7 @@ class RequestOptions:
         else:
             next_timeout = cast(float | None, timeout)
 
-        return RequestOptions(
+        return self.__class__(
             params=next_params,
             headers=next_headers,
             timeout=next_timeout,

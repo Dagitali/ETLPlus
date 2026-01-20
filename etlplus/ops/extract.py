@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
+from ..api import HttpMethod
 from ..api.utils import resolve_request
 from ..enums import DataConnectorType
-from ..enums import HttpMethod
 from ..file import File
 from ..file import FileFormat
 from ..types import JSONData

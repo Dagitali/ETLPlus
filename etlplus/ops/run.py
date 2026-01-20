@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 from ..api import EndpointClient  # noqa: F401 (re-exported for tests)
+from ..api import HttpMethod
 from ..api import PaginationConfigMap
 from ..api import RequestOptions
 from ..api import compose_api_request_env
@@ -21,7 +22,6 @@ from ..api import compose_api_target_env
 from ..api import paginate_with_client
 from ..config import load_pipeline_config
 from ..enums import DataConnectorType
-from ..enums import HttpMethod
 from ..file import FileFormat
 from ..types import JSONData
 from ..types import JSONDict

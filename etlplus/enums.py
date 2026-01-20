@@ -23,7 +23,6 @@ __all__ = [
     'AggregateName',
     'CoercibleStrEnum',
     'DataConnectorType',
-    'HttpMethod',
     'OperatorName',
     'PipelineStep',
 ]
@@ -198,37 +197,6 @@ class DataConnectorType(CoercibleStrEnum):
             'filesystem': 'file',
             'fs': 'file',
         }
-
-
-class HttpMethod(CoercibleStrEnum):
-    """Supported HTTP verbs that accept JSON payloads."""
-
-    # -- Constants -- #
-
-    CONNECT = 'connect'
-    DELETE = 'delete'
-    GET = 'get'
-    HEAD = 'head'
-    OPTIONS = 'options'
-    PATCH = 'patch'
-    POST = 'post'
-    PUT = 'put'
-    TRACE = 'trace'
-
-    # -- Getters -- #
-
-    @property
-    def allows_body(self) -> bool:
-        """
-        Whether the method typically allows a request body.
-
-        Notes
-        -----
-        - RFCs do not strictly forbid bodies on some other methods (e.g.,
-            ``DELETE``), but many servers/clients do not expect them. We mark
-            ``POST``, ``PUT``, and ``PATCH`` as True.
-        """
-        return self in {HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH}
 
 
 class OperatorName(CoercibleStrEnum):

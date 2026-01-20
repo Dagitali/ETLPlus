@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.rate_limiting.rate_limiter` module.
+:mod:`etlplus.api.rate_limiting.config` module.
 
 Rate limiting configuration primitives.
 
@@ -268,6 +268,18 @@ class RateLimitConfig(BoundsWarningsMixin):
     ) -> Self:
         """
         Normalize rate-limit config and overrides into a single instance.
+
+        Parameters
+        ----------
+        rate_limit : StrAnyMap | RateLimitConfig | None, optional
+            Base rate-limit configuration to normalize.
+        overrides : RateLimitOverrides, optional
+            Override values that take precedence over ``rate_limit``.
+
+        Returns
+        -------
+        Self
+            Normalized rate-limit configuration.
         """
         normalized = _coerce_rate_limit_map(rate_limit)
         cfg = _merge_rate_limit(normalized, overrides)

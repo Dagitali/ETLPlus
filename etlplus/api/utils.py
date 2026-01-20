@@ -15,11 +15,12 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from ..enums import HttpMethod
 from ..types import Timeout
+from ..utils import coerce_dict
 from .config import ApiConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
+from .enums import HttpMethod
 from .pagination import PaginationConfig
 from .pagination import PaginationConfigMap
 from .rate_limiting import RateLimitConfig
@@ -146,6 +147,49 @@ class SessionConfig(TypedDict, total=False):
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
+def _build_session_optional(
+    cfg: SessionConfig | None,
+) -> requests.Session | None:
+    """
+    Return a configured session when *cfg* is a mapping.
+
+    Parameters
+    ----------
+    cfg : SessionConfig | None
+        Session configuration mapping.
+
+    Returns
+    -------
+    requests.Session | None
+        Configured session or ``None``.
+    """
+    if isinstance(cfg, Mapping):
+        return build_session(cast(SessionConfig, cfg))
+    return None
+
+
+def _coalesce(
+    *args: Any,
+) -> Any | None:
+    """
+    Return the first non-``None`` value from ``args``.
+
+    Parameters
+    ----------
+    *args : Any
+        Candidate values in descending precedence order.
+
+    Returns
+    -------
+    Any | None
+        The first non-``None`` value, or ``None`` if all are ``None``.
+    """
+    for arg in args:
+        if arg is not None:
+            return arg
+    return None
+
+
 def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
@@ -247,32 +291,13 @@ def _merge_session_cfg_three(
     api_sess = getattr(api_cfg, 'session', None)
     ep_sess = getattr(ep, 'session', None)
     merged: dict[str, Any] = {}
-    if isinstance(api_sess, dict):
+    if isinstance(api_sess, Mapping):
         merged.update(api_sess)
-    if isinstance(ep_sess, dict):
+    if isinstance(ep_sess, Mapping):
         merged.update(ep_sess)
-    if isinstance(source_session_cfg, dict):
+    if isinstance(source_session_cfg, Mapping):
         merged.update(source_session_cfg)
     return cast(SessionConfig | None, (merged or None))
-
-
-def _copy_mapping(
-    mapping: Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """
-    Return a shallow copy of *mapping* or an empty dict.
-
-    Parameters
-    ----------
-    mapping : Mapping[str, Any] | None
-        The mapping to copy.
-
-    Returns
-    -------
-    dict[str, Any]
-        A shallow copy of the mapping or an empty dict.
-    """
-    return dict(mapping) if isinstance(mapping, Mapping) else {}
 
 
 def _update_mapping(
@@ -291,27 +316,6 @@ def _update_mapping(
     """
     if isinstance(extra, Mapping):
         target.update(extra)
-
-
-def _build_session_optional(
-    cfg: SessionConfig | None,
-) -> requests.Session | None:
-    """
-    Return a configured session when *cfg* is a mapping.
-
-    Parameters
-    ----------
-    cfg : SessionConfig | None
-        Session configuration mapping.
-
-    Returns
-    -------
-    requests.Session | None
-        Configured session or ``None``.
-    """
-    if isinstance(cfg, dict):
-        return build_session(cfg)
-    return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -381,21 +385,19 @@ def compose_api_request_env(
         Mapping[str, Any] | None,
         getattr(source_obj, 'query_params', None),
     )
-    params: dict[str, Any] = _copy_mapping(source_params)
+    params: dict[str, Any] = coerce_dict(source_params)
     source_headers = cast(
         Mapping[str, str] | None,
         getattr(source_obj, 'headers', None),
     )
-    headers: dict[str, str] = _copy_mapping(source_headers)
+    headers: dict[str, str] = cast(dict[str, str], coerce_dict(source_headers))
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
     retry: RetryPolicy | None = cast(
         RetryPolicy | None,
         getattr(source_obj, 'retry', None),
     )
-    retry_network_errors = bool(
-        getattr(source_obj, 'retry_network_errors', False),
-    )
+    retry_network_errors = getattr(source_obj, 'retry_network_errors', None)
     session_cfg = cast(
         SessionConfig | None,
         getattr(source_obj, 'session', None),
@@ -417,33 +419,33 @@ def compose_api_request_env(
             session_cfg,
             force_url=True,
         )
-        ep_params: dict[str, Any] = _copy_mapping(
+        ep_params: dict[str, Any] = coerce_dict(
             cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
         )
         _update_mapping(ep_params, params)
         params = ep_params
-        pagination = (
-            pagination
-            or ep.pagination
-            or api_cfg.effective_pagination_defaults()
+        pagination = _coalesce(
+            pagination,
+            ep.pagination,
+            api_cfg.effective_pagination_defaults(),
         )
-        rate_limit = (
-            rate_limit
-            or ep.rate_limit
-            or api_cfg.effective_rate_limit_defaults()
+        rate_limit = _coalesce(
+            rate_limit,
+            ep.rate_limit,
+            api_cfg.effective_rate_limit_defaults(),
         )
         retry = cast(
             RetryPolicy | None,
-            (
-                retry
-                or getattr(ep, 'retry', None)
-                or getattr(api_cfg, 'retry', None)
+            _coalesce(
+                retry,
+                getattr(ep, 'retry', None),
+                getattr(api_cfg, 'retry', None),
             ),
         )
-        retry_network_errors = (
-            retry_network_errors
-            or bool(getattr(ep, 'retry_network_errors', False))
-            or bool(getattr(api_cfg, 'retry_network_errors', False))
+        retry_network_errors = _coalesce(
+            retry_network_errors,
+            getattr(ep, 'retry_network_errors', None),
+            getattr(api_cfg, 'retry_network_errors', None),
         )
         use_client_endpoints = True
         client_base_url = api_cfg.base_url
@@ -478,8 +480,10 @@ def compose_api_request_env(
         retry = rty_ov
     if rne_ov is not None:
         retry_network_errors = bool(rne_ov)
-    if isinstance(sess_ov, dict):
-        base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
+    if isinstance(sess_ov, Mapping):
+        base_cfg: dict[str, Any] = dict(
+            cast(Mapping[str, Any], session_cfg or {}),
+        )
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
     pag_cfg: PaginationConfigMap | None = build_pagination_cfg(
@@ -500,7 +504,7 @@ def compose_api_request_env(
         'pagination': pag_cfg,
         'sleep_seconds': sleep_s,
         'retry': retry,
-        'retry_network_errors': retry_network_errors,
+        'retry_network_errors': bool(retry_network_errors),
         'session': sess_obj,
     }
 
@@ -536,8 +540,13 @@ def compose_api_target_env(
         str | None,
         ov.get('method') or getattr(target_obj, 'method', 'post'),
     )
-    headers = _copy_mapping(
-        cast(Mapping[str, str] | None, getattr(target_obj, 'headers', None)),
+    headers = cast(
+        dict[str, str],
+        coerce_dict(
+            cast(
+                Mapping[str, str] | None, getattr(target_obj, 'headers', None),
+            ),
+        ),
     )
     _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
     timeout: Timeout = (
@@ -805,12 +814,12 @@ def build_session(
     if not cfg:
         return s
     headers = cfg.get('headers')
-    if isinstance(headers, dict):
+    if isinstance(headers, Mapping):
         s.headers.update(headers)
     params = cfg.get('params')
-    if isinstance(params, dict):
+    if isinstance(params, Mapping):
         try:
-            s.params = params
+            s.params = dict(params)
         except (AttributeError, TypeError):
             pass
     auth = cfg.get('auth')
@@ -825,12 +834,12 @@ def build_session(
     if cert is not None:
         s.cert = cert  # type: ignore[assignment]
     proxies = cfg.get('proxies')
-    if isinstance(proxies, dict):
+    if isinstance(proxies, Mapping):
         s.proxies.update(proxies)
     cookies = cfg.get('cookies')
-    if isinstance(cookies, dict):
+    if isinstance(cookies, Mapping):
         try:
-            s.cookies.update(cookies)
+            s.cookies.update(cast(Mapping[str, Any], cookies))
         except (TypeError, ValueError):
             pass
     if 'trust_env' in cfg:
