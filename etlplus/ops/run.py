@@ -21,7 +21,12 @@ from ..api import compose_api_target_env
 from ..api import paginate_with_client
 from ..config import load_pipeline_config
 from ..enums import DataConnectorType
+from ..enums import HttpMethod
+from ..file import FileFormat
+from ..types import JSONData
 from ..types import JSONDict
+from ..types import PipelineConfig
+from ..types import StrPath
 from ..types import Timeout
 from ..utils import print_json
 from .extract import extract
@@ -33,13 +38,49 @@ from .validate import validate
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['run']
+__all__ = [
+    # Functions
+    'run',
+    'run_pipeline',
+]
 
 
 # SECTION: CONSTANTS ======================================================== #
 
 
 DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _resolve_validation_config(
+    job_obj: Any,
+    cfg: Any,
+) -> tuple[bool, dict[str, Any], str, str]:
+    """
+    Resolve validation settings for a job with safe defaults.
+
+    Parameters
+    ----------
+    job_obj : Any
+        Job configuration object.
+    cfg : Any
+        Pipeline configuration object with validations.
+
+    Returns
+    -------
+    tuple[bool, dict[str, Any], str, str]
+        Tuple of (enabled, rules, severity, phase).
+    """
+    val_ref = job_obj.validate
+    if val_ref is None:
+        return False, {}, 'error', 'before_transform'
+
+    rules = cfg.validations.get(val_ref.ruleset, {})
+    severity = (val_ref.severity or 'error').lower()
+    phase = (val_ref.phase or 'before_transform').lower()
+    return True, rules, severity, phase
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -174,19 +215,10 @@ def run(
             # keep explicit guard for defensive programming.
             raise ValueError(f'Unsupported source type: {stype_raw}')
 
-    # DRY: unified validation helper (pre/post transform)
-    val_ref = job_obj.validate
-    enabled_validation = val_ref is not None
-    if enabled_validation:
-        # Type narrowing for static checkers
-        assert val_ref is not None
-        rules = cfg.validations.get(val_ref.ruleset, {})
-        severity = (val_ref.severity or 'error').lower()
-        phase = (val_ref.phase or 'before_transform').lower()
-    else:
-        rules = {}
-        severity = 'error'
-        phase = 'before_transform'
+    enabled_validation, rules, severity, phase = _resolve_validation_config(
+        job_obj,
+        cfg,
+    )
 
     # Pre-transform validation (if configured).
     data = maybe_validate(
@@ -272,3 +304,90 @@ def run(
     # Return the terminal load result directly; callers (e.g., CLI) can wrap
     # it in their own envelope when needed.
     return cast(JSONDict, result)
+
+
+def run_pipeline(
+    *,
+    source_type: DataConnectorType | str | None = None,
+    source: StrPath | JSONData | None = None,
+    operations: PipelineConfig | None = None,
+    target_type: DataConnectorType | str | None = None,
+    target: StrPath | None = None,
+    file_format: FileFormat | str | None = None,
+    method: HttpMethod | str | None = None,
+    **kwargs: Any,
+) -> JSONData:
+    """
+    Run a single extract-transform-load flow without a YAML config.
+
+    Parameters
+    ----------
+    source_type : DataConnectorType | str | None, optional
+        Connector type for extraction. When ``None``, ``source`` is assumed
+        to be pre-loaded data and extraction is skipped.
+    source : StrPath | JSONData | None, optional
+        Data source for extraction or the pre-loaded payload when
+        ``source_type`` is ``None``.
+    operations : PipelineConfig | None, optional
+        Transform configuration passed to :func:`etlplus.ops.transform`.
+    target_type : DataConnectorType | str | None, optional
+        Connector type for loading. When ``None``, load is skipped and the
+        transformed data is returned.
+    target : StrPath | None, optional
+        Target for loading (file path, connection string, or API URL).
+    file_format : FileFormat | str | None, optional
+        File format for file sources/targets (forwarded to extract/load).
+    method : HttpMethod | str | None, optional
+        HTTP method for API loads (forwarded to :func:`etlplus.ops.load`).
+    **kwargs : Any
+        Extra keyword arguments forwarded to extract/load for API options
+        (headers, timeout, session, etc.).
+
+    Returns
+    -------
+    JSONData
+        Transformed data or the load result payload.
+
+    Raises
+    ------
+    TypeError
+        Raised when extracted data is not a dict or list of dicts and no
+        target is specified.
+    ValueError
+        Raised when required source/target inputs are missing.
+    """
+    if source_type is None:
+        if source is None:
+            raise ValueError('source or source_type is required')
+        data = source
+    else:
+        if source is None:
+            raise ValueError('source is required when source_type is set')
+        data = extract(
+            source_type,
+            cast(StrPath, source),
+            file_format=file_format,
+            **kwargs,
+        )
+
+    if operations:
+        data = transform(data, operations)
+
+    if target_type is None:
+        if not isinstance(data, (dict, list)):
+            raise TypeError(
+                f'Expected data to be dict or list of dicts, '
+                f'got {type(data).__name__}',
+            )
+        return data
+    if target is None:
+        raise ValueError('target is required when target_type is set')
+
+    return load(
+        data,
+        target_type,
+        target,
+        file_format=file_format,
+        method=method,
+        **kwargs,
+    )
