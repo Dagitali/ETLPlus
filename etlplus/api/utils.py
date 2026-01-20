@@ -498,8 +498,10 @@ def compose_api_request_env(
         retry = rty_ov
     if rne_ov is not None:
         retry_network_errors = bool(rne_ov)
-    if isinstance(sess_ov, dict):
-        base_cfg: dict[str, Any] = dict(cast(dict, session_cfg or {}))
+    if isinstance(sess_ov, Mapping):
+        base_cfg: dict[str, Any] = dict(
+            cast(Mapping[str, Any], session_cfg or {}),
+        )
         base_cfg.update(sess_ov)
         session_cfg = cast(SessionConfig, base_cfg)
     pag_cfg: PaginationConfigMap | None = build_pagination_cfg(
@@ -825,12 +827,12 @@ def build_session(
     if not cfg:
         return s
     headers = cfg.get('headers')
-    if isinstance(headers, dict):
+    if isinstance(headers, Mapping):
         s.headers.update(headers)
     params = cfg.get('params')
-    if isinstance(params, dict):
+    if isinstance(params, Mapping):
         try:
-            s.params = params
+            s.params = dict(params)
         except (AttributeError, TypeError):
             pass
     auth = cfg.get('auth')
@@ -845,12 +847,12 @@ def build_session(
     if cert is not None:
         s.cert = cert  # type: ignore[assignment]
     proxies = cfg.get('proxies')
-    if isinstance(proxies, dict):
+    if isinstance(proxies, Mapping):
         s.proxies.update(proxies)
     cookies = cfg.get('cookies')
-    if isinstance(cookies, dict):
+    if isinstance(cookies, Mapping):
         try:
-            s.cookies.update(cookies)
+            s.cookies.update(cast(Mapping[str, Any], cookies))
         except (TypeError, ValueError):
             pass
     if 'trust_env' in cfg:
