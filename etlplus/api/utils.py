@@ -15,11 +15,11 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from ..enums import HttpMethod
 from ..types import Timeout
 from .config import ApiConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
+from .enums import HttpMethod
 from .pagination import PaginationConfig
 from .pagination import PaginationConfigMap
 from .rate_limiting import RateLimitConfig
