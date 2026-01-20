@@ -98,6 +98,10 @@ from .types import Headers
 from .types import Params
 from .types import RequestOptions
 from .types import Url
+from .utils import compose_api_request_env
+from .utils import compose_api_target_env
+from .utils import paginate_with_client
+from .utils import resolve_request
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -122,6 +126,10 @@ __all__ = [
     'PaginationType',
     # Functions
     'build_http_adapter',
+    'compose_api_request_env',
+    'compose_api_target_env',
+    'paginate_with_client',
+    'resolve_request',
     # Type Aliases
     'CursorPaginationConfigMap',
     'Headers',
