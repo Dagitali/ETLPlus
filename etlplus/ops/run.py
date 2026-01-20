@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.run` module.
+:mod:`etlplus.ops.run` module.
 
 A module for running ETL jobs defined in YAML configurations.
 """
@@ -9,120 +9,31 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 from typing import Final
-from typing import TypedDict
 from typing import cast
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-import requests  # type: ignore[import]
-
-from .api import EndpointClient  # noqa: F401 (re-exported for tests)
-from .api import PaginationConfigMap
-from .api import RequestOptions
-from .api import RetryPolicy
-from .api import Url
-from .config import load_pipeline_config
-from .enums import DataConnectorType
+from ..api import EndpointClient  # noqa: F401 (re-exported for tests)
+from ..api import PaginationConfigMap
+from ..api import RequestOptions
+from ..api import compose_api_request_env
+from ..api import compose_api_target_env
+from ..api import paginate_with_client
+from ..config import load_pipeline_config
+from ..enums import DataConnectorType
+from ..types import JSONDict
+from ..types import Timeout
+from ..utils import print_json
 from .extract import extract
 from .load import load
-from .run_helpers import compose_api_request_env
-from .run_helpers import compose_api_target_env
-from .run_helpers import paginate_with_client
 from .transform import transform
-from .types import JSONDict
-from .types import Timeout
-from .utils import print_json
+from .utils import maybe_validate
 from .validate import validate
-from .validation.utils import maybe_validate
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['run']
-
-
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class BaseApiHttpEnv(TypedDict, total=False):
-    """
-    Common HTTP request environment for API interactions.
-
-    Fields shared by both source-side and target-side API operations.
-    """
-
-    # Request details
-    url: Url | None
-    headers: dict[str, str]
-    timeout: Timeout
-
-    # Session
-    session: requests.Session | None
-
-
-class ApiRequestEnv(BaseApiHttpEnv, total=False):
-    """
-    Composed request environment for API sources.
-
-    Returned by ``compose_api_request_env`` (run_helpers) and consumed by the
-    API extract branch. Values are fully merged with endpoint/API defaults and
-    job-level overrides, preserving the original precedence and behavior.
-    """
-
-    # Client
-    use_endpoints: bool
-    base_url: str | None
-    base_path: str | None
-    endpoints_map: dict[str, str] | None
-    endpoint_key: str | None
-
-    # Request
-    params: dict[str, Any]
-    pagination: PaginationConfigMap | None
-    sleep_seconds: float
-
-    # Reliability
-    retry: RetryPolicy | None
-    retry_network_errors: bool
-
-
-class ApiTargetEnv(BaseApiHttpEnv, total=False):
-    """
-    Composed request environment for API targets.
-
-    Returned by ``compose_api_target_env`` (run_helpers) and consumed by the
-    API load branch. Values are merged from the target object, optional
-    API/endpoint reference, and job-level overrides, preserving original
-    precedence and behavior.
-
-    Notes
-    -----
-    - Precedence for inherited values matches original logic:
-        overrides -> target -> API profile defaults.
-    - Target composition does not include pagination/rate-limit/retry since
-        loads are single-request operations; only headers/timeout/session
-        apply.
-    """
-
-    # Request
-    method: str | None
-
-
-class SessionConfig(TypedDict, total=False):
-    """
-    Minimal session configuration schema accepted by this runner.
-
-    Keys mirror common requests.Session options; all are optional.
-    """
-
-    headers: Mapping[str, Any]
-    params: Mapping[str, Any]
-    auth: Any  # (user, pass) tuple or requests-compatible auth object
-    verify: bool | str
-    cert: Any  # str or (cert, key)
-    proxies: Mapping[str, Any]
-    cookies: Mapping[str, Any]
-    trust_env: bool
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -207,7 +118,7 @@ def run(
                 and env.get('endpoint_key')
             ):
                 # Construct client using module-level EndpointClient so tests
-                # can monkeypatch this class on etlplus.run.
+                # can monkeypatch this class on etlplus.ops.run.
                 ClientClass = EndpointClient  # noqa: N806
                 client = ClientClass(
                     base_url=cast(str, env['base_url']),

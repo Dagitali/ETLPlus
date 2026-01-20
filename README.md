@@ -146,7 +146,7 @@ etlplus extract file examples/data/sample.csv \
 [Python API](#python-api):
 
 ```python
-from etlplus import extract, transform, validate, load
+from etlplus.ops import extract, transform, validate, load
 
 data = extract("file", "input.csv")
 ops = {"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}
@@ -481,7 +481,7 @@ cat examples/data/sample.json \
 Use ETLPlus as a Python library:
 
 ```python
-from etlplus import extract, validate, transform, load
+from etlplus.ops import extract, validate, transform, load
 
 # Extract data
 data = extract("file", "data.json")
@@ -676,7 +676,7 @@ We split tests into two layers:
   pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
   fake clients.
 
-If a test calls `etlplus.cli.main()` or `etlplus.run.run()` it’s integration by default.  Full
+If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()` it’s integration by default. Full
 criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
 
 ### Code Coverage

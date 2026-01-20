@@ -1,30 +1,13 @@
 """
-:mod:`etlplus.run_helpers` module.
+:mod:`etlplus.api.utils` module.
 
-Helper functions and small utilities used by ``etlplus.run`` to compose API
-request/load environments, pagination configs, session objects, and endpoint
-clients. Extracted to keep ``run.py`` focused on orchestration while enabling
-reuse and testability.
-
-Public (re-export safe) helpers:
-- build_pagination_cfg(pagination, overrides)
-- build_session(cfg)
-- compose_api_request_env(cfg, source_obj, extract_opts)
-- compose_api_target_env(cfg, target_obj, overrides)
-- build_endpoint_client(base_url, base_path, endpoints, env)
-- compute_rl_sleep_seconds(rate_limit, overrides)
-- paginate_with_client(client, endpoint_key, params, headers,
-    timeout, pagination, sleep_seconds)
-
-Notes
------
-These helpers intentionally accept permissive ``Any``/``Mapping`` inputs to
-avoid tight coupling with config dataclasses while keeping runtime flexible.
+Shared HTTP helpers for API clients that communicate with REST endpoints.
 """
 
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
 from typing import TypedDict
@@ -32,24 +15,33 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from .api import ApiConfig
-from .api import EndpointClient
-from .api import EndpointConfig
-from .api import Headers
-from .api import PaginationConfig
-from .api import PaginationConfigMap
-from .api import Params
-from .api import RateLimitConfig
-from .api import RateLimitConfigMap
-from .api import RateLimiter
-from .api import RetryPolicy
-from .api import Url
-from .types import Timeout
+from ..enums import HttpMethod
+from ..types import Timeout
+from .config import ApiConfig
+from .config import EndpointConfig
+from .endpoint_client import EndpointClient
+from .pagination import PaginationConfig
+from .pagination import PaginationConfigMap
+from .rate_limiting import RateLimitConfig
+from .rate_limiting import RateLimitConfigMap
+from .rate_limiting import RateLimiter
+from .retry_manager import RetryPolicy
+from .types import Headers
+from .types import Params
+from .types import Url
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+DEFAULT_TIMEOUT: float = 10.0
+
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Constants
+    'DEFAULT_TIMEOUT',
     # Functions
     'build_endpoint_client',
     'build_pagination_cfg',
@@ -58,6 +50,7 @@ __all__ = [
     'compose_api_target_env',
     'compute_rl_sleep_seconds',
     'paginate_with_client',
+    'resolve_request',
     # Typed Dicts
     'ApiRequestEnv',
     'ApiTargetEnv',
@@ -68,52 +61,89 @@ __all__ = [
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class ApiRequestEnv(TypedDict, total=False):
-    """API request environment configuration."""
+class BaseApiHttpEnv(TypedDict, total=False):
+    """
+    Common HTTP request environment for API interactions.
 
+    Fields shared by both source-side and target-side API operations.
+    """
+
+    # Request details
     url: Url | None
     headers: dict[str, str]
     timeout: Timeout
+
+    # Session
     session: requests.Session | None
+
+
+class ApiRequestEnv(BaseApiHttpEnv, total=False):
+    """
+    Composed HTTP request environment configuration for REST API sources.
+
+    Returned by :func:`compose_api_request_env` and consumed by the API extract
+    branch. Values are fully merged with endpoint/API defaults and job-level
+    overrides, preserving the original precedence and behavior.
+    """
+
+    # Client
     use_endpoints: bool
     base_url: str | None
     base_path: str | None
     endpoints_map: dict[str, str] | None
     endpoint_key: str | None
+
+    # Request
     params: dict[str, Any]
     pagination: PaginationConfigMap | None
     sleep_seconds: float
+
+    # Reliability
     retry: RetryPolicy | None
     retry_network_errors: bool
 
 
-class ApiTargetEnv(TypedDict, total=False):
-    """API target environment configuration."""
+class ApiTargetEnv(BaseApiHttpEnv, total=False):
+    """
+    Composed HTTP request environment configuration for REST API targets.
 
-    url: Url | None
-    headers: dict[str, str]
-    timeout: Timeout
-    session: requests.Session | None
+    Returned by :func:`compose_api_target_env` and consumed by the API load
+    branch. Values are merged from the target object, optional API/endpoint
+    reference, and job-level overrides, preserving original precedence and
+    behavior.
+
+    Notes
+    -----
+    - Precedence for inherited values matches original logic:
+        overrides -> target -> API profile defaults.
+    - Target composition does not include pagination/rate-limit/retry since
+        loads are single-request operations; only headers/timeout/session
+        apply.
+    """
+
+    # Request
     method: str | None
 
 
 class SessionConfig(TypedDict, total=False):
-    """Configuration for requests.Session."""
+    """
+    Minimal session configuration schema accepted by the
+    :class:`requests.Session` runner.
+
+    Keys mirror common :class:`requests.Session` options; all are optional.
+    """
 
     headers: Mapping[str, Any]
     params: Mapping[str, Any]
-    auth: Any
+    auth: Any  # (user, pass) tuple or requests-compatible auth object
     verify: bool | str
-    cert: Any
+    cert: Any  # str or (cert, key)
     proxies: Mapping[str, Any]
     cookies: Mapping[str, Any]
     trust_env: bool
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-# -- API Environment Composition -- #
 
 
 def _get_api_cfg_and_endpoint(
@@ -226,9 +256,6 @@ def _merge_session_cfg_three(
     return cast(SessionConfig | None, (merged or None))
 
 
-# -- Mapping Helpers -- #
-
-
 def _copy_mapping(
     mapping: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -266,9 +293,6 @@ def _update_mapping(
         target.update(extra)
 
 
-# -- Session -- #
-
-
 def _build_session_optional(
     cfg: SessionConfig | None,
 ) -> requests.Session | None:
@@ -285,16 +309,12 @@ def _build_session_optional(
     requests.Session | None
         Configured session or ``None``.
     """
-
     if isinstance(cfg, dict):
         return build_session(cfg)
     return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-# -- API Environment Composition -- #
 
 
 def build_endpoint_client(
@@ -323,15 +343,7 @@ def build_endpoint_client(
     EndpointClient
         The constructed endpoint client.
     """
-    # Allow tests to monkeypatch etlplus.run.EndpointClient and have it
-    # propagate here by preferring the class on the run module if present.
-    try:
-        from . import run as run_mod  # local import to avoid cycles
-
-        ClientClass = getattr(run_mod, 'EndpointClient', EndpointClient)
-    except (ImportError, AttributeError):  # pragma: no cover - fallback path
-        ClientClass = EndpointClient
-    return ClientClass(
+    return EndpointClient(
         base_url=base_url,
         base_path=base_path,
         endpoints=endpoints,
@@ -558,9 +570,6 @@ def compose_api_target_env(
     }
 
 
-# -- Pagination -- #
-
-
 def build_pagination_cfg(
     pagination: PaginationConfig | None,
     overrides: Mapping[str, Any] | None,
@@ -667,9 +676,6 @@ def build_pagination_cfg(
     return cast(PaginationConfigMap, cfg)
 
 
-# -- Pagination Invocation -- #
-
-
 def paginate_with_client(
     client: Any,
     endpoint_key: str,
@@ -727,9 +733,6 @@ def paginate_with_client(
     return client.paginate(endpoint_key, **kw_pag)
 
 
-# -- Rate Limit -- #
-
-
 def compute_rl_sleep_seconds(
     rate_limit: RateLimitConfig | Mapping[str, Any] | None,
     overrides: Mapping[str, Any] | None,
@@ -780,9 +783,6 @@ def compute_rl_sleep_seconds(
         rate_limit=rl_mapping,
         overrides=typed_override,
     )
-
-
-# -- Session -- #
 
 
 def build_session(
@@ -841,3 +841,45 @@ def build_session(
             pass
 
     return s
+
+
+def resolve_request(
+    method: HttpMethod | str,
+    *,
+    session: Any | None = None,
+    timeout: Timeout = None,
+) -> tuple[Callable[..., requests.Response], float, HttpMethod]:
+    """
+    Resolve a request callable and effective timeout for an HTTP method.
+
+    Parameters
+    ----------
+    method : HttpMethod | str
+        HTTP method to execute.
+    session : Any | None, optional
+        Requests-compatible session object. Defaults to module-level
+        ``requests``.
+    timeout : Timeout, optional
+        Timeout in seconds for the request. Uses ``DEFAULT_TIMEOUT`` when
+        omitted.
+
+    Returns
+    -------
+    tuple[Callable[..., requests.Response], float, HttpMethod]
+        Tuple of (callable, timeout_seconds, resolved_method).
+
+    Raises
+    ------
+    TypeError
+        If the session object does not expose the requested HTTP method.
+    """
+    http_method = HttpMethod.coerce(method)
+    request_timeout = DEFAULT_TIMEOUT if timeout is None else timeout
+    requester = session or requests
+    request_callable = getattr(requester, http_method.value, None)
+    if not callable(request_callable):
+        raise TypeError(
+            'Session object must supply a callable '
+            f'"{http_method.value}" method',
+        )
+    return request_callable, request_timeout, http_method

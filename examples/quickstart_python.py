@@ -1,12 +1,12 @@
 from collections.abc import Mapping
 from typing import cast
 
-from etlplus import extract
-from etlplus import load
-from etlplus import transform
-from etlplus import validate
+from etlplus.ops import extract
+from etlplus.ops import load
+from etlplus.ops import transform
+from etlplus.ops import validate
+from etlplus.ops.validate import FieldRules
 from etlplus.types import PipelineConfig
-from etlplus.validate import FieldRules
 
 # Extract sample data
 DATA_PATH = 'examples/data/sample.json'

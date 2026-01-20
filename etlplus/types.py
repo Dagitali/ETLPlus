@@ -193,8 +193,8 @@ type AggregateSpec = StrAnyMap
 
 # -- Pipelines-- #
 
-# Unified pipeline step spec consumed by :mod:`etlplus.transform`.
-type StepSpec = FilterSpec | MapSpec | SelectSpec | SortSpec | AggregateSpec
+# Unified pipeline step spec consumed by :mod:`etlplus.ops.transform`.
+type StepSpec = AggregateSpec | FilterSpec | MapSpec | SelectSpec | SortSpec
 
 # Collections of steps
 

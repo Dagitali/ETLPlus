@@ -69,7 +69,7 @@ def capture_load_to_api_fixture(
     """
     Capture API load calls by patching the high-level ``load`` wrapper.
 
-    We monkeypatch ``etlplus.load.load`` because the runner invokes
+    We monkeypatch ``etlplus.ops.load.load`` because the runner invokes
     ``load(data, 'api', url, method=...)`` rather than calling
     ``load_to_api`` directly. The stub detects API loads and records
     request details for assertions.
@@ -85,8 +85,8 @@ def capture_load_to_api_fixture(
         Mutable dictionary populated after a run where API load happens.
     """
     # Ensure module, not attr.
-    _load_mod = importlib.import_module('etlplus.load')
-    _run_mod = importlib.import_module('etlplus.run')
+    _load_mod = importlib.import_module('etlplus.ops.load')
+    _run_mod = importlib.import_module('etlplus.ops.run')
 
     seen: dict[str, Any] = {}
     real_load = _load_mod.load
@@ -345,7 +345,7 @@ def run_patched_fixture(
     -------
     result = run_patched(cfg, FakeClient, sleep_seconds=1.23)
     """
-    run_mod = importlib.import_module('etlplus.run')
+    run_mod = importlib.import_module('etlplus.ops.run')
 
     def _run(
         cfg: PipelineConfig,

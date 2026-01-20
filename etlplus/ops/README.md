@@ -1,4 +1,4 @@
-# etlplus.validation subpackage
+# etlplus.ops subpackage
 
 Documentation for the `etlplus.validation` subpackage: data validation utilities and helpers.
 
@@ -8,7 +8,7 @@ Documentation for the `etlplus.validation` subpackage: data validation utilities
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.validation subpackage](#etlplusvalidation-subpackage)
+- [etlplus.ops subpackage](#etlplusops-subpackage)
   - [Validation Features](#validation-features)
   - [Defining Validation Rules](#defining-validation-rules)
   - [Example: Validating Data](#example-validating-data)

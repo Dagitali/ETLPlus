@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.validation` module.
+:mod:`etlplus.ops.validate` module.
 
 Validate dicts and lists of dicts using simple, schema-like rules.
 
@@ -34,11 +34,11 @@ from typing import Final
 from typing import Literal
 from typing import TypedDict
 
+from ..types import JSONData
+from ..types import Record
+from ..types import StrAnyMap
+from ..types import StrPath
 from .load import load_data
-from .types import JSONData
-from .types import Record
-from .types import StrAnyMap
-from .types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -279,11 +279,15 @@ def _type_matches(
     bool
         ``True`` if the value matches the expected type; ``False`` if not.
     """
-    py_type = TYPE_MAP.get(expected)
-    if py_type:
-        return isinstance(value, py_type)
+    if expected == 'number':
+        return _is_number(value)
+    if expected == 'integer':
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == 'boolean':
+        return isinstance(value, bool)
 
-    return False
+    py_type = TYPE_MAP.get(expected)
+    return isinstance(value, py_type) if py_type else False
 
 
 def _validate_record(
@@ -328,6 +332,9 @@ def _validate_record(
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Helpers -- #
 
 
 def validate_field(
@@ -423,6 +430,9 @@ def validate_field(
             errors.append("Rule 'enum' must be a list")
 
     return {'valid': len(errors) == 0, 'errors': errors}
+
+
+# -- Orchestration -- #
 
 
 def validate(

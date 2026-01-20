@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.transform` module.
+:mod:`etlplus.ops.transform` module.
 
 Helpers to filter, map/rename, select, sort, aggregate, and otherwise
 transform JSON-like records (dicts and lists of dicts).
@@ -24,7 +24,7 @@ Basic pipeline with strings::
 
 Using enums for keys and functions::
 
-    from .enums import PipelineStep, OperatorName, AggregateName
+    from etlplus.enums import PipelineStep, OperatorName, AggregateName
     ops = {
         PipelineStep.FILTER: {
             'field': 'age', 'op': OperatorName.GTE, 'value': 18
@@ -44,28 +44,28 @@ from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
-from .enums import AggregateName
-from .enums import OperatorName
-from .enums import PipelineStep
+from ..enums import AggregateName
+from ..enums import OperatorName
+from ..enums import PipelineStep
+from ..types import AggregateFunc
+from ..types import AggregateSpec
+from ..types import FieldName
+from ..types import Fields
+from ..types import FilterSpec
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..types import MapSpec
+from ..types import OperatorFunc
+from ..types import PipelineConfig
+from ..types import PipelineStepName
+from ..types import SortKey
+from ..types import StepApplier
+from ..types import StepOrSteps
+from ..types import StepSpec
+from ..types import StrPath
+from ..utils import to_number
 from .load import load_data
-from .types import AggregateFunc
-from .types import AggregateSpec
-from .types import FieldName
-from .types import Fields
-from .types import FilterSpec
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import MapSpec
-from .types import OperatorFunc
-from .types import PipelineConfig
-from .types import PipelineStepName
-from .types import SortKey
-from .types import StepApplier
-from .types import StepOrSteps
-from .types import StepSpec
-from .types import StrPath
-from .utils import to_number
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -730,15 +730,16 @@ def _is_plain_fields_list(obj: Any) -> bool:
 
 
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (
+    'aggregate',
     'filter',
     'map',
     'select',
     'sort',
-    'aggregate',
 )
 
 
 _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
+    'aggregate': _apply_aggregate_step,
     'filter': _apply_filter_step,
     'map': _apply_map_step,
     'select': _apply_select_step,
@@ -746,7 +747,54 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 
-# SECTION: EXPORTS ========================================================== #
+# SECTION: FUNCTIONS ======================================================== #
+
+
+# -- Helpers -- #
+
+
+def apply_aggregate(
+    records: JSONList,
+    operation: AggregateSpec,
+) -> JSONDict:
+    """
+    Aggregate a numeric field or count presence.
+
+    Parameters
+    ----------
+    records : JSONList
+        Records to aggregate.
+    operation : AggregateSpec
+        Dict with keys ``field`` and ``func``. ``func`` is one of
+        ``'sum'``, ``'avg'``, ``'min'``, ``'max'``, or ``'count'``.
+        A callable may also be supplied for ``func``. Optionally, set
+        ``alias`` to control the output key name.
+
+    Returns
+    -------
+    JSONDict
+        A single-row result like ``{"sum_age": 42}``.
+
+    Notes
+    -----
+    Numeric operations ignore non-numeric values but count their presence
+    for ``'count'``.
+    """
+    field = operation.get('field')
+    func = operation.get('func')
+    alias = operation.get('alias')
+
+    if not field or func is None:
+        return {'error': 'Invalid aggregation operation'}
+
+    try:
+        aggregator = _resolve_aggregator(func)
+    except TypeError:
+        return {'error': f'Unknown aggregation function: {func}'}
+
+    nums, present = _collect_numeric_and_presence(records, field)
+    key_name = _derive_agg_key(func, field, alias)
+    return {key_name: aggregator(nums, present)}
 
 
 def apply_filter(
@@ -894,48 +942,7 @@ def apply_sort(
     )
 
 
-def apply_aggregate(
-    records: JSONList,
-    operation: AggregateSpec,
-) -> JSONDict:
-    """
-    Aggregate a numeric field or count presence.
-
-    Parameters
-    ----------
-    records : JSONList
-        Records to aggregate.
-    operation : AggregateSpec
-        Dict with keys ``field`` and ``func``. ``func`` is one of
-        ``'sum'``, ``'avg'``, ``'min'``, ``'max'``, or ``'count'``.
-        A callable may also be supplied for ``func``. Optionally, set
-        ``alias`` to control the output key name.
-
-    Returns
-    -------
-    JSONDict
-        A single-row result like ``{"sum_age": 42}``.
-
-    Notes
-    -----
-    Numeric operations ignore non-numeric values but count their presence
-    for ``'count'``.
-    """
-    field = operation.get('field')
-    func = operation.get('func')
-    alias = operation.get('alias')
-
-    if not field or func is None:
-        return {'error': 'Invalid aggregation operation'}
-
-    try:
-        aggregator = _resolve_aggregator(func)
-    except TypeError:
-        return {'error': f'Unknown aggregation function: {func}'}
-
-    nums, present = _collect_numeric_and_presence(records, field)
-    key_name = _derive_agg_key(func, field, alias)
-    return {key_name: aggregator(nums, present)}
+# -- Orchestration -- #
 
 
 def transform(
@@ -982,7 +989,7 @@ def transform(
 
     Using enums for keys and functions::
 
-        from .enums import PipelineStep, OperatorName, AggregateName
+        from etlplus.enums import PipelineStep, OperatorName, AggregateName
         ops = {
             PipelineStep.FILTER: {
                 'field': 'age', 'op': OperatorName.GTE, 'value': 18

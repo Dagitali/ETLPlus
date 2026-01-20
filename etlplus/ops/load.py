@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.load` module.
+:mod:`etlplus.ops.load` module.
 
 Helpers to load data into files, databases, and REST APIs.
 """
@@ -12,17 +12,16 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-import requests  # type: ignore[import]
-
-from .enums import DataConnectorType
-from .enums import HttpMethod
-from .file import File
-from .file import FileFormat
-from .types import JSONData
-from .types import JSONDict
-from .types import JSONList
-from .types import StrPath
-from .utils import count_records
+from ..api.utils import resolve_request
+from ..enums import DataConnectorType
+from ..enums import HttpMethod
+from ..file import File
+from ..file import FileFormat
+from ..types import JSONData
+from ..types import JSONDict
+from ..types import JSONList
+from ..types import StrPath
+from ..utils import count_records
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
@@ -69,7 +68,7 @@ def _parse_json_string(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# -- Data Loading -- #
+# -- Helpers -- #
 
 
 def load_data(
@@ -119,7 +118,92 @@ def load_data(
     )
 
 
-# -- File Loading -- #
+def load_to_api(
+    data: JSONData,
+    url: str,
+    method: HttpMethod | str,
+    **kwargs: Any,
+) -> JSONDict:
+    """
+    Load data to a REST API.
+
+    Parameters
+    ----------
+    data : JSONData
+        Data to send as JSON.
+    url : str
+        API endpoint URL.
+    method : HttpMethod | str
+        HTTP method to use.
+    **kwargs : Any
+        Extra arguments forwarded to ``requests`` (e.g., ``timeout``).
+        When omitted, ``timeout`` defaults to 10 seconds.
+
+    Returns
+    -------
+    JSONDict
+        Result dictionary including response payload or text.
+    """
+    # Apply a conservative timeout to guard against hanging requests.
+    timeout = kwargs.pop('timeout', 10.0)
+    session = kwargs.pop('session', None)
+    request_callable, timeout, http_method = resolve_request(
+        method,
+        session=session,
+        timeout=timeout,
+    )
+    response = request_callable(url, json=data, timeout=timeout, **kwargs)
+    response.raise_for_status()
+
+    # Try JSON first, fall back to text.
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        payload = response.text
+
+    return {
+        'status': 'success',
+        'status_code': response.status_code,
+        'message': f'Data loaded to {url}',
+        'response': payload,
+        'records': count_records(data),
+        'method': http_method.value.upper(),
+    }
+
+
+def load_to_database(
+    data: JSONData,
+    connection_string: str,
+) -> JSONDict:
+    """
+    Load data to a database.
+
+    Notes
+    -----
+    Placeholder implementation. To enable database loading, install and
+    configure database-specific drivers and query logic.
+
+    Parameters
+    ----------
+    data : JSONData
+        Data to load.
+    connection_string : str
+        Database connection string.
+
+    Returns
+    -------
+    JSONDict
+        Result object describing the operation.
+    """
+    records = count_records(data)
+
+    return {
+        'status': 'not_implemented',
+        'message': 'Database loading not yet implemented',
+        'connection_string': connection_string,
+        'records': records,
+        'note': 'Install database-specific drivers to enable this feature',
+    }
 
 
 def load_to_file(
@@ -165,110 +249,6 @@ def load_to_file(
         'status': 'success',
         'message': message,
         'records': records,
-    }
-
-
-# -- Database Loading (Placeholder) -- #
-
-
-def load_to_database(
-    data: JSONData,
-    connection_string: str,
-) -> JSONDict:
-    """
-    Load data to a database.
-
-    Notes
-    -----
-    Placeholder implementation. To enable database loading, install and
-    configure database-specific drivers and query logic.
-
-    Parameters
-    ----------
-    data : JSONData
-        Data to load.
-    connection_string : str
-        Database connection string.
-
-    Returns
-    -------
-    JSONDict
-        Result object describing the operation.
-    """
-    records = count_records(data)
-
-    return {
-        'status': 'not_implemented',
-        'message': 'Database loading not yet implemented',
-        'connection_string': connection_string,
-        'records': records,
-        'note': 'Install database-specific drivers to enable this feature',
-    }
-
-
-# -- REST API Loading -- #
-
-
-def load_to_api(
-    data: JSONData,
-    url: str,
-    method: HttpMethod | str,
-    **kwargs: Any,
-) -> JSONDict:
-    """
-    Load data to a REST API.
-
-    Parameters
-    ----------
-    data : JSONData
-        Data to send as JSON.
-    url : str
-        API endpoint URL.
-    method : HttpMethod | str
-        HTTP method to use.
-    **kwargs : Any
-        Extra arguments forwarded to ``requests`` (e.g., ``timeout``).
-
-    Returns
-    -------
-    JSONDict
-        Result dictionary including response payload or text.
-
-    Raises
-    ------
-    TypeError
-        If the session object is not valid.
-    """
-    http_method = HttpMethod.coerce(method)
-
-    # Apply a conservative timeout to guard against hanging requests.
-    timeout = kwargs.pop('timeout', 10.0)
-    session = kwargs.pop('session', None)
-    requester = session or requests
-
-    request_callable = getattr(requester, http_method.value, None)
-    if not callable(request_callable):
-        raise TypeError(
-            'Session object must supply a '
-            f'callable "{http_method.value}" method',
-        )
-
-    response = request_callable(url, json=data, timeout=timeout, **kwargs)
-    response.raise_for_status()
-
-    # Try JSON first, fall back to text.
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
-
-    return {
-        'status': 'success',
-        'status_code': response.status_code,
-        'message': f'Data loaded to {url}',
-        'response': payload,
-        'records': count_records(data),
-        'method': http_method.value.upper(),
     }
 
 

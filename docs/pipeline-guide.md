@@ -281,7 +281,7 @@ section.
 
 ## Validations
 
-Validation rule sets map field names to rules, mirroring `etlplus.validate.FieldRules`:
+Validation rule sets map field names to rules, mirroring `etlplus.ops.validate.FieldRules`:
 
 ```yaml
 validations:
@@ -297,7 +297,7 @@ validations:
 
 ## Transforms
 
-Transformation pipelines follow `etlplus.transform` shapes exactly:
+Transformation pipelines follow `etlplus.ops.transform` shapes exactly:
 
 ```yaml
 transforms:
@@ -431,14 +431,14 @@ Notes:
 - Environment-variable substitution (e.g. `${GITHUB_TOKEN}`) is applied the same way as when loading
   configs via the Python API.
 - For more details on the orchestration implementation, see
-  [Runner internals: etlplus.run](run-module.md).
+  [Runner internals: etlplus.ops.run](run-module.md).
 
-### Python: `etlplus.run.run`
+### Python: `etlplus.ops.run.run`
 
 To trigger a job programmatically, use the high-level runner function exposed by the package:
 
 ```python
-from etlplus.run import run as run_job
+from etlplus.ops.run import run as run_job
 
 result = run_job(
     job="file_to_file_customers",

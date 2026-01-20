@@ -10,7 +10,7 @@ Notes
 - Pagination logic resides on ``EndpointClient.paginate_url``; patching the
     RequestManager ``request_once`` helper suffices to intercept page fetches.
 - Some legacy paths still use module-level extractors; we patch both the
-    Typer handlers and :mod:`etlplus.extract` for safety.
+    Typer handlers and :mod:`etlplus.ops.extract` for safety.
 - ``time.sleep`` is neutralized to keep tests fast and deterministic.
 """
 
@@ -41,7 +41,7 @@ from tests.integration.conftest import FakeEndpointClientProtocol
 
 pytestmark = pytest.mark.integration
 
-extract_module = importlib.import_module('etlplus.extract')
+extract_module = importlib.import_module('etlplus.ops.extract')
 
 
 def _build_api_pipeline_yaml(
