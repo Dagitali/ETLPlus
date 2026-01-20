@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Self
 
 from ...utils import to_float
 from ...utils import to_positive_float
@@ -143,13 +144,13 @@ class RateLimiter:
     # -- Class Methods -- #
 
     @classmethod
-    def disabled(cls) -> RateLimiter:
+    def disabled(cls) -> Self:
         """
         Create a limiter that never sleeps.
 
         Returns
         -------
-        RateLimiter
+        Self
             Instance with rate limiting disabled.
         """
         return cls(sleep_seconds=0.0)
@@ -158,7 +159,7 @@ class RateLimiter:
     def fixed(
         cls,
         seconds: float,
-    ) -> RateLimiter:
+    ) -> Self:
         """
         Create a limiter with a fixed non-negative delay.
 
@@ -170,7 +171,7 @@ class RateLimiter:
 
         Returns
         -------
-        RateLimiter
+        Self
             Instance with the specified delay.
         """
         value = to_float(seconds, 0.0, minimum=0.0) or 0.0
@@ -181,7 +182,7 @@ class RateLimiter:
     def from_config(
         cls,
         cfg: RateLimitInput,
-    ) -> RateLimiter:
+    ) -> Self:
         """
         Build a :class:`RateLimiter` from a configuration mapping.
 
@@ -201,7 +202,7 @@ class RateLimiter:
 
         Returns
         -------
-        RateLimiter
+        Self
             Instance with normalized ``sleep_seconds`` and ``max_per_sec``.
         """
         config = RateLimitConfig.from_inputs(rate_limit=cfg)
