@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 from typing import Literal
 from typing import Self
@@ -47,6 +48,30 @@ type ValidationSeverity = Literal['warn', 'error']
 
 type ValidateFn = Callable[[Any, Ruleset], ValidationResult]
 type PrintFn = Callable[[Any], None]
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_PHASE_CHOICES = MappingProxyType(
+    {
+        'before_transform': 'before_transform',
+        'after_transform': 'after_transform',
+    },
+)
+_SEVERITY_CHOICES = MappingProxyType(
+    {
+        'warn': 'warn',
+        'error': 'error',
+    },
+)
+_WINDOW_CHOICES = MappingProxyType(
+    {
+        'before_transform': 'before_transform',
+        'after_transform': 'after_transform',
+        'both': 'both',
+    },
+)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -297,10 +322,7 @@ def _normalize_phase(
         ValidationPhase,
         _normalize_choice(
             value,
-            mapping={
-                'before_transform': 'before_transform',
-                'after_transform': 'after_transform',
-            },
+            mapping=_PHASE_CHOICES,
             default='before_transform',
         ),
     )
@@ -326,7 +348,7 @@ def _normalize_severity(
         ValidationSeverity,
         _normalize_choice(
             value,
-            mapping={'warn': 'warn'},
+            mapping=_SEVERITY_CHOICES,
             default='error',
         ),
     )
@@ -352,11 +374,7 @@ def _normalize_window(
         ValidationWindow,
         _normalize_choice(
             value,
-            mapping={
-                'before_transform': 'before_transform',
-                'after_transform': 'after_transform',
-                'both': 'both',
-            },
+            mapping=_WINDOW_CHOICES,
             default='both',
         ),
     )
