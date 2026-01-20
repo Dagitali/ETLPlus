@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.ops.test_u_ops_run_helpers` module.
+:mod:`tests.unit.api.test_u_api_utils` module.
 
-Unit tests for :mod:`etlplus.ops.run_helpers`.
+Unit tests for :mod:`etlplus.api.utils`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import pytest
 from etlplus.api import PagePaginationConfigMap
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
-from etlplus.ops import run_helpers as rh
+from etlplus.api import utils
 
 # SECTION: HELPERS ========================================================== #
 
@@ -87,7 +87,7 @@ class TestBuildPaginationCfg:
             'page_size': 42,
         }
 
-        cfg_map = rh.build_pagination_cfg(None, overrides)
+        cfg_map = utils.build_pagination_cfg(None, overrides)
 
         assert cfg_map == {
             'type': 'cursor',
@@ -102,7 +102,7 @@ class TestBuildPaginationCfg:
 
     def test_missing_type_returns_none(self) -> None:
         """Test that missing pagination type returns ``None``."""
-        assert rh.build_pagination_cfg(None, None) is None
+        assert utils.build_pagination_cfg(None, None) is None
 
     def test_page_config_with_overrides(self) -> None:
         """Test building page-based pagination config with overrides."""
@@ -118,7 +118,7 @@ class TestBuildPaginationCfg:
         )
         overrides = {'max_pages': 5, 'page_param': 'page'}
 
-        cfg_map = rh.build_pagination_cfg(pagination, overrides)
+        cfg_map = utils.build_pagination_cfg(pagination, overrides)
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigMap, cfg_map)
 
@@ -135,7 +135,7 @@ class TestBuildSession:
 
     def test_applies_configuration(self) -> None:
         """Test that session is built with given configuration."""
-        sess = rh.build_session(
+        sess = utils.build_session(
             {
                 'headers': {'X': '1'},
                 'params': {'debug': '1'},
@@ -188,7 +188,7 @@ class TestComposeApiRequestEnv:
             'retry_network_errors': True,
         }
 
-        env = rh.compose_api_request_env(cfg, source, overrides)
+        env = utils.compose_api_request_env(cfg, source, overrides)
 
         assert env['use_endpoints'] is True
         assert env['base_url'] == base_url
@@ -215,14 +215,14 @@ class TestComposeApiRequestEnv:
         cfg = SimpleNamespace(apis={})
         source = SimpleNamespace(api='missing', endpoint='users')
         with pytest.raises(ValueError, match='API not defined'):
-            rh.compose_api_request_env(cfg, source, None)
+            utils.compose_api_request_env(cfg, source, None)
 
     def test_missing_endpoint_raises(self) -> None:
         """Test that missing endpoint raises a ValueError."""
         cfg = SimpleNamespace(apis={'core': SimpleNamespace(endpoints={})})
         source = SimpleNamespace(api='core', endpoint='ghost')
         with pytest.raises(ValueError, match='Endpoint "ghost" not defined'):
-            rh.compose_api_request_env(cfg, source, None)
+            utils.compose_api_request_env(cfg, source, None)
 
 
 class TestComposeApiTargetEnv:
@@ -246,7 +246,7 @@ class TestComposeApiTargetEnv:
             'session': {'headers': {'Auth': 'token'}},
         }
 
-        env = rh.compose_api_target_env(cfg, target, overrides)
+        env = utils.compose_api_target_env(cfg, target, overrides)
 
         assert env['url'] == f'{base_url}/v1/users'
         assert env['method'] == 'put'
@@ -262,12 +262,14 @@ class TestComputeRlSleepSeconds:
 
     def test_defaults_when_missing(self) -> None:
         """Test that default sleep seconds is used when missing."""
-        assert rh.compute_rl_sleep_seconds(None, None) == 0.0
+        assert utils.compute_rl_sleep_seconds(None, None) == 0.0
 
     def test_override_wins(self) -> None:
         """Test that override value takes precedence."""
         base = {'sleep_seconds': 0.4, 'max_per_sec': None}
-        assert rh.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
+        assert (
+            utils.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
+        )
 
 
 class TestPaginateWithClient:
@@ -316,7 +318,7 @@ class TestPaginateWithClient:
                 'page_size': 100,
             },
         )
-        result = rh.paginate_with_client(
+        result = utils.paginate_with_client(
             client,
             'users',
             {'q': '1'},
@@ -372,7 +374,7 @@ class TestPaginateWithClient:
                 'page_size': 100,
             },
         )
-        rh.paginate_with_client(
+        utils.paginate_with_client(
             client,
             'users',
             {'q': '1'},
