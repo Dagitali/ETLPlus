@@ -18,6 +18,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
@@ -104,6 +105,33 @@ def _effective_service_defaults(
     if not isinstance(fallback_base, str):
         raise TypeError('ApiConfig requires "base_url" (str)')
     return fallback_base, fallback_headers
+
+
+def _freeze_mapping(
+    mapping: Mapping[Any, Any],
+    *,
+    key_cast: Callable[[Any], Any] | None = None,
+) -> MappingProxyType:
+    """
+    Return an immutable copy of a mapping, optionally normalizing keys.
+
+    Parameters
+    ----------
+    mapping : Mapping[Any, Any]
+        Source mapping to freeze.
+    key_cast : Callable[[Any], Any] | None, optional
+        Optional key coercion applied to each key.
+
+    Returns
+    -------
+    MappingProxyType
+        Read-only mapping proxy with normalized keys.
+    """
+    if key_cast is None:
+        data = dict(mapping)
+    else:
+        data = {key_cast(key): value for key, value in mapping.items()}
+    return MappingProxyType(data)
 
 
 def _normalize_method(
@@ -232,16 +260,8 @@ class ApiProfileConfig:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            'headers',
-            MappingProxyType(dict(self.headers)),
-        )
-        object.__setattr__(
-            self,
-            'auth',
-            MappingProxyType(dict(self.auth)),
-        )
+        object.__setattr__(self, 'headers', _freeze_mapping(self.headers))
+        object.__setattr__(self, 'auth', _freeze_mapping(self.auth))
 
     # -- Class Methods -- #
 
@@ -340,20 +360,16 @@ class ApiConfig:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            'headers',
-            MappingProxyType(dict(self.headers)),
-        )
+        object.__setattr__(self, 'headers', _freeze_mapping(self.headers))
         object.__setattr__(
             self,
             'endpoints',
-            MappingProxyType({str(k): v for k, v in self.endpoints.items()}),
+            _freeze_mapping(self.endpoints, key_cast=str),
         )
         object.__setattr__(
             self,
             'profiles',
-            MappingProxyType({str(k): v for k, v in self.profiles.items()}),
+            _freeze_mapping(self.profiles, key_cast=str),
         )
 
     # -- Internal Instance Methods -- #
@@ -545,12 +561,12 @@ class EndpointConfig:
         object.__setattr__(
             self,
             'path_params',
-            MappingProxyType(dict(self.path_params)),
+            _freeze_mapping(self.path_params),
         )
         object.__setattr__(
             self,
             'query_params',
-            MappingProxyType(dict(self.query_params)),
+            _freeze_mapping(self.query_params),
         )
 
     # -- Class Methods -- #
