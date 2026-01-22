@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.config.test_u_config_utils` module.
+:mod:`tests.unit.workflow.test_u_workflow_utils` module.
 
-Unit tests for :mod:`etlplus.config.utils`.
+Unit tests for :mod:`etlplus.workflow.utils`.
 
 Notes
 -----
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.config import utils as config_utils
+from etlplus.workflow import utils as config_utils
 
 # SECTION: HELPERS ========================================================== #
 

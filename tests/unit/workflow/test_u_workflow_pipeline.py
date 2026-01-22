@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.config.test_u_pipeline` module.
+:mod:`tests.unit.workflow.test_u_workflow_pipeline` module.
 
-Unit tests for :mod:`etlplus.config.pipeline`.
+Unit tests for :mod:`etlplus.workflow.pipeline`.
 
 Notes
 -----
@@ -19,11 +19,11 @@ from typing import Any
 
 import pytest
 
-from etlplus.config.connector import ConnectorApi
-from etlplus.config.connector import ConnectorDb
-from etlplus.config.connector import ConnectorFile
-from etlplus.config.pipeline import PipelineConfig
-from etlplus.config.pipeline import _build_connectors
+from etlplus.workflow.connector import ConnectorApi
+from etlplus.workflow.connector import ConnectorDb
+from etlplus.workflow.connector import ConnectorFile
+from etlplus.workflow.pipeline import PipelineConfig
+from etlplus.workflow.pipeline import _build_connectors
 
 # SECTION: HELPERS ========================================================== #
 
