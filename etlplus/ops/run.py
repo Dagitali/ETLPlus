@@ -20,7 +20,6 @@ from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import compose_api_target_env
 from ..api import paginate_with_client
-from ..config import load_pipeline_config
 from ..enums import DataConnectorType
 from ..file import FileFormat
 from ..types import JSONData
@@ -29,6 +28,7 @@ from ..types import PipelineConfig
 from ..types import StrPath
 from ..types import Timeout
 from ..utils import print_json
+from ..workflow import load_pipeline_config
 from .extract import extract
 from .load import load
 from .transform import transform
@@ -162,9 +162,11 @@ def run(
                 # can monkeypatch this class on etlplus.ops.run.
                 ClientClass = EndpointClient  # noqa: N806
                 client = ClientClass(
-                    base_url=cast(str, env['base_url']),
+                    base_url=cast(str, env.get('base_url')),
                     base_path=cast(str | None, env.get('base_path')),
-                    endpoints=cast(dict[str, str], env['endpoints_map']),
+                    endpoints=cast(
+                        dict[str, str], env.get('endpoints_map', {}),
+                    ),
                     retry=env.get('retry'),
                     retry_network_errors=bool(
                         env.get('retry_network_errors', False),
@@ -173,7 +175,7 @@ def run(
                 )
                 data = paginate_with_client(
                     client,
-                    cast(str, env['endpoint_key']),
+                    cast(str, env.get('endpoint_key')),
                     env.get('params'),
                     env.get('headers'),
                     env.get('timeout'),
@@ -276,12 +278,14 @@ def run(
             if not url_t:
                 raise ValueError('API target missing "url"')
             kwargs_t: dict[str, Any] = {}
-            if env_t.get('headers'):
-                kwargs_t['headers'] = cast(dict[str, str], env_t['headers'])
+            headers = env_t.get('headers')
+            if headers:
+                kwargs_t['headers'] = cast(dict[str, str], headers)
             if env_t.get('timeout') is not None:
-                kwargs_t['timeout'] = env_t['timeout']
-            if env_t.get('session') is not None:
-                kwargs_t['session'] = env_t['session']
+                kwargs_t['timeout'] = env_t.get('timeout')
+            session = env_t.get('session')
+            if session is not None:
+                kwargs_t['session'] = session
             result = load(
                 data,
                 'api',

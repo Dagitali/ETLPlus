@@ -14,8 +14,6 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
-from ..config import PipelineConfig
-from ..config import load_pipeline_config
 from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
@@ -28,6 +26,8 @@ from ..ops import validate
 from ..ops.validate import FieldRules
 from ..types import JSONData
 from ..types import TemplateKey
+from ..workflow import PipelineConfig
+from ..workflow import load_pipeline_config
 from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #
