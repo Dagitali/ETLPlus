@@ -11,18 +11,19 @@ pipelines. A "connector" is any I/O endpoint:
 
 Examples
 --------
-- Use ``ConnectorApi``/``ConnectorFile``/``ConnectorDb`` when you want the
-  concrete dataclasses.
-- Use the ``Connector`` union for typing a value that can be any connector.
-- Use ``parse_connector(obj)`` to construct a connector instance from a generic
-  mapping that includes a ``type`` key.
+- Use :class:`ConnectorApi`/:class:`ConnectorFile`/:class:`ConnectorDb` when
+    you want the concrete dataclasses.
+- Use the :class:`Connector` union for typing a value that can be any
+    connector.
+- Use :func:`parse_connector(obj)` to construct a connector instance from a
+    generic mapping that includes a *type* key.
 
 Notes
 -----
 - TypedDict shapes are editor hints; runtime parsing remains permissive
-  (from_obj accepts Mapping[str, Any]).
+    (from_obj accepts Mapping[str, Any]).
 - TypedDicts referenced in :mod:`etlplus.config.types` remain editor hints.
-  Runtime parsing stays permissive and tolerant.
+    Runtime parsing stays permissive and tolerant.
 
 See Also
 --------
@@ -59,7 +60,7 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 
 
 __all__ = [
-    # Classes
+    # Data Classes
     'ConnectorApi',
     'ConnectorDb',
     'ConnectorFile',
@@ -83,12 +84,12 @@ class ConnectorApi:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``"api"``.
+        Connector kind literal, always ``'api'``.
     url : str | None
         Direct absolute URL (when not using ``service``/``endpoint`` refs).
     method : str | None
         Optional HTTP method; typically omitted for sources (defaults to
-        GET) and used for targets (e.g., ``"post"``).
+        GET) and used for targets (e.g., ``'post'``).
     headers : dict[str, str]
         Additional request headers.
     query_params : dict[str, Any]
@@ -111,7 +112,7 @@ class ConnectorApi:
 
     # Direct form
     url: str | None = None
-    # Optional HTTP method; typically omitted for sources (defaults to GET
+    # Optional HTTP method; typically omitted for sources (defaults to GET)
     # at runtime) and used for targets (e.g., 'post', 'put').
     method: str | None = None
     headers: dict[str, str] = field(default_factory=dict)
@@ -185,7 +186,7 @@ class ConnectorDb:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``"database"``.
+        Connector kind literal, always ``'database'``.
     connection_string : str | None
         Connection string/DSN for the database.
     query : str | None
@@ -193,7 +194,7 @@ class ConnectorDb:
     table : str | None
         Target/source table name (optional).
     mode : str | None
-        Load mode hint (e.g., ``"append"``, ``"replace"``) — future use.
+        Load mode hint (e.g., ``'append'``, ``'replace'``) — future use.
     """
 
     # -- Attributes -- #
@@ -262,9 +263,9 @@ class ConnectorFile:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``"file"``.
+        Connector kind literal, always ``'file'``.
     format : str | None
-        File format (e.g., ``"json"``, ``"csv"``).
+        File format (e.g., ``'json'``, ``'csv'``).
     path : str | None
         File path or URI.
     options : dict[str, Any]
