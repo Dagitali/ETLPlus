@@ -22,11 +22,13 @@ from ..utils import cast_str_dict
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['ProfileConfig']
+__all__ = [
+    # Data Classes
+    'ProfileConfig',
+]
 
 
-# SECTION: CLASSES ========================================================== #
-
+# SECTION: DATA CLASSES ===================================================== #
 
 @dataclass(kw_only=True, slots=True)
 class ProfileConfig:
