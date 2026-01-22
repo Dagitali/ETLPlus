@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.config.connector` module.
+:mod:`etlplus.workflow.connector` module.
 
 A module defining configuration types for data source/target connectors in ETL
 pipelines. A "connector" is any I/O endpoint:
