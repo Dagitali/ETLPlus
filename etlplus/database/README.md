@@ -1,4 +1,4 @@
-# etlplus.database subpackage
+# `etlplus.database` Subpackage
 
 Documentation for the `etlplus.database` subpackage: database engine, schema, and ORM helpers.
 
@@ -9,7 +9,7 @@ Documentation for the `etlplus.database` subpackage: database engine, schema, an
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.database subpackage](#etlplusdatabase-subpackage)
+- [`etlplus.database` Subpackage](#etlplusdatabase-subpackage)
   - [Database Engine and Connections](#database-engine-and-connections)
   - [Schema and DDL Helpers](#schema-and-ddl-helpers)
   - [ORM Utilities](#orm-utilities)

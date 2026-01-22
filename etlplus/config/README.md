@@ -1,4 +1,4 @@
-# etlplus.config subpackage
+# `etlplus.config` Subpackage
 
 Documentation for the `etlplus.config` subpackage: configuration helpers for connectors, pipelines,
 jobs, and profiles.
@@ -10,7 +10,7 @@ jobs, and profiles.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.config subpackage](#etlplusconfig-subpackage)
+- [`etlplus.config` Subpackage](#etlplusconfig-subpackage)
   - [Supported Configuration Types](#supported-configuration-types)
   - [Loading and Validating Configs](#loading-and-validating-configs)
   - [Example: Loading a Pipeline Config](#example-loading-a-pipeline-config)
