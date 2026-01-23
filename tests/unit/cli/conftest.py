@@ -23,11 +23,11 @@ from typing import cast
 
 import pytest
 import typer
+from click.testing import Result
 from typer.testing import CliRunner
-from typer.testing import Result
 
 from etlplus.cli.commands import app as cli_app
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 
 # SECTION: HELPERS ======================================================== #
 
