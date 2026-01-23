@@ -30,6 +30,7 @@ __all__ = [
 
 # SECTION: DATA CLASSES ===================================================== #
 
+
 @dataclass(kw_only=True, slots=True)
 class ProfileConfig:
     """
