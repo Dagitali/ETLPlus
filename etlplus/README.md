@@ -1,4 +1,4 @@
-# etlplus package
+# `etlplus` Package
 
 The `etlplus` package provides a unified Python API and CLI for ETL operations: extraction,
 validation, transformation, and loading of data from files, APIs, and databases.

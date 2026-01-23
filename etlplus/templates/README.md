@@ -1,4 +1,4 @@
-# etlplus.templates subpackage
+# `etlplus.templates` Subpackage
 
 Documentation for the `etlplus.templates` subpackage: SQL and DDL template helpers.
 
@@ -8,7 +8,7 @@ Documentation for the `etlplus.templates` subpackage: SQL and DDL template helpe
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.templates subpackage](#etlpustemplates-subpackage)
+- [`etlplus.templates` Subpackage](#etlplus-templates-subpackage)
     - [Available Templates](#available-templates)
     - [Rendering Templates](#rendering-templates)
     - [Example: Rendering a DDL Template](#example-rendering-a-ddl-template)

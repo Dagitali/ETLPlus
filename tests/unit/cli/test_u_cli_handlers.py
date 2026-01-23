@@ -13,7 +13,7 @@ from unittest.mock import ANY
 import pytest
 
 import etlplus.cli.handlers as handlers
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 from tests.unit.cli.conftest import CaptureHandler
 from tests.unit.cli.conftest import CaptureIo
 from tests.unit.cli.conftest import assert_emit_json
@@ -669,6 +669,8 @@ class TestTransformHandler:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`transform_handler` writes data to a target file."""
+        # pylint: disable=unused-argument
+
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',

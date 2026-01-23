@@ -21,7 +21,7 @@ import pytest
 
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 # SECTION: HELPERS ========================================================== #

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.config.profile` module.
+:mod:`etlplus.workflow.profile` module.
 
 Profile model for pipeline-level defaults and environment.
 
@@ -22,10 +22,13 @@ from ..utils import cast_str_dict
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['ProfileConfig']
+__all__ = [
+    # Data Classes
+    'ProfileConfig',
+]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
@@ -53,7 +56,7 @@ class ProfileConfig:
         cls,
         obj: StrAnyMap | None,
     ) -> Self:
-        """Parse a mapping into a ``ProfileConfig`` instance.
+        """Parse a mapping into a :class:`ProfileConfig` instance.
 
         Parameters
         ----------
@@ -64,7 +67,7 @@ class ProfileConfig:
         -------
         Self
             Parsed profile configuration; non-mapping input yields a default
-            instance. All ``env`` values are coerced to strings.
+            instance. All :attr:`env` values are coerced to strings.
         """
         if not isinstance(obj, Mapping):
             return cls()

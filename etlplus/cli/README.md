@@ -1,4 +1,4 @@
-# etlplus.cli subpackage
+# `etlplus.cli` Subpackage
 
 Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPlus workflows.
 
@@ -9,7 +9,7 @@ Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPl
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.cli subpackage](#etlpluscli-subpackage)
+- [`etlplus.cli` Subpackage](#etlpluscli-subpackage)
   - [Available Commands](#available-commands)
   - [Command Options](#command-options)
   - [Example: Running a Pipeline](#example-running-a-pipeline)

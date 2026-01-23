@@ -1,4 +1,4 @@
-# etlplus.api subpackage
+# `etlplus.api` Subpackage
 
 Documentation for the `etlplus.api` subpackage: a lightweight HTTP client and helpers for paginated
 REST endpoints.
@@ -12,7 +12,7 @@ REST endpoints.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.api subpackage](#etlplusapi-subpackage)
+- [`etlplus.api` Subpackage](#etlplusapi-subpackage)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
     - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)

@@ -1,52 +1,50 @@
-# etlplus.config subpackage
+# `etlplus.config` Subpackage
 
-Documentation for the `etlplus.config` subpackage: configuration helpers for connectors, pipelines,
-jobs, and profiles.
+Documentation for the `etlplus.config` subpackage: type definitions and config shape helpers for
+ETLPlus.
 
-- Provides classes and utilities for managing ETL pipeline configuration
-- Supports YAML/JSON config loading and validation
-- Includes helpers for connectors, jobs, pipelines, and profiles
-- Exposes type definitions for config schemas
+- Exposes TypedDict-based config schemas for API profiles and endpoints
+- Provides exported type aliases for API configuration maps
+- Designed for Python 3.13 typing and editor assistance (runtime parsing lives elsewhere)
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.config subpackage](#etlplusconfig-subpackage)
-  - [Supported Configuration Types](#supported-configuration-types)
-  - [Loading and Validating Configs](#loading-and-validating-configs)
-  - [Example: Loading a Pipeline Config](#example-loading-a-pipeline-config)
+- [`etlplus.config` Subpackage](#etlplusconfig-subpackage)
+  - [Modules](#modules)
+  - [Exported Types](#exported-types)
+  - [Example: Typing an API Config](#example-typing-an-api-config)
   - [See Also](#see-also)
 
-## Supported Configuration Types
+## Modules
 
-- **Connector**: Connection details for databases, files, or APIs
-- **Job**: ETL job definitions and scheduling
-- **Pipeline**: End-to-end pipeline configuration
-- **Profile**: User or environment-specific settings
+- `etlplus.config.__init__`: package exports and high-level package notes
+- `etlplus.config.types`: TypedDict-based config schemas
 
-## Loading and Validating Configs
+## Exported Types
 
-Use the provided classes to load and validate configuration files:
+- `ApiConfigMap`: top-level API config shape
+- `ApiProfileConfigMap`: per-profile API config shape
+- `ApiProfileDefaultsMap`: defaults block within a profile
+- `EndpointMap`: endpoint config shape
 
-```python
-from etlplus.config import PipelineConfig
-
-cfg = PipelineConfig.from_yaml("pipeline.yml")
-```
-
-- Supports YAML and JSON formats
-- Validates against expected schema
-
-## Example: Loading a Pipeline Config
+## Example: Typing an API Config
 
 ```python
-from etlplus.config import PipelineConfig
+from etlplus.config import ApiConfigMap
 
-pipeline = PipelineConfig.from_yaml("configs/pipeline.yml")
-print(pipeline)
+api_cfg: ApiConfigMap = {
+    "base_url": "https://example.test",
+    "headers": {"Authorization": "Bearer token"},
+    "endpoints": {
+        "users": {
+            "path": "/users",
+            "method": "GET",
+        },
+    },
+}
 ```
 
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
 - Config type definitions in [types.py](types.py)
-- Config utilities in [utils.py](utils.py)

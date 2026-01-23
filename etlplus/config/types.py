@@ -33,7 +33,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
-from typing import Literal
 from typing import TypedDict
 
 from ..api import PaginationConfigMap
@@ -44,25 +43,16 @@ from ..types import StrAnyMap
 
 
 __all__ = [
-    # Type aliases
-    'ConnectorType',
-    # 'PaginationType',
     # TypedDicts
     'ApiProfileDefaultsMap',
     'ApiProfileConfigMap',
     'ApiConfigMap',
     'EndpointMap',
-    'ConnectorApiConfigMap',
-    'ConnectorDbConfigMap',
-    'ConnectorFileConfigMap',
 ]
 
 
 # SECTION: TYPE ALIASES ===================================================== #
 
-
-# Literal type for supported connector kinds
-type ConnectorType = Literal['api', 'database', 'file']
 
 # Literal type for supported pagination kinds
 # type PaginationType = Literal['page', 'offset', 'cursor']
@@ -127,60 +117,6 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     headers: StrAnyMap
     pagination: PaginationConfigMap | StrAnyMap
     rate_limit: RateLimitConfigMap | StrAnyMap
-
-
-class ConnectorApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by ConnectorApi.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.connector.ConnectorApi.from_obj
-    """
-
-    name: str
-    type: ConnectorType
-    url: str
-    method: str
-    headers: StrAnyMap
-    query_params: StrAnyMap
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
-    api: str
-    endpoint: str
-
-
-class ConnectorDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by ConnectorDb.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.connector.ConnectorDb.from_obj
-    """
-
-    name: str
-    type: ConnectorType
-    connection_string: str
-    query: str
-    table: str
-    mode: str
-
-
-class ConnectorFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by ConnectorFile.from_obj (all keys optional).
-
-    See Also
-    --------
-    - etlplus.config.connector.ConnectorFile.from_obj
-    """
-
-    name: str
-    type: ConnectorType
-    format: str
-    path: str
-    options: StrAnyMap
 
 
 class EndpointMap(TypedDict, total=False):

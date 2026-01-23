@@ -16,41 +16,18 @@ Notes
 
 from __future__ import annotations
 
-from .connector import Connector
-from .connector import ConnectorApi
-from .connector import ConnectorDb
-from .connector import ConnectorFile
-from .connector import parse_connector
-from .jobs import ExtractRef
-from .jobs import JobConfig
-from .jobs import LoadRef
-from .jobs import TransformRef
-from .jobs import ValidationRef
-from .pipeline import PipelineConfig
-from .pipeline import load_pipeline_config
-from .profile import ProfileConfig
-from .types import ConnectorType
+from .types import ApiConfigMap
+from .types import ApiProfileConfigMap
+from .types import ApiProfileDefaultsMap
+from .types import EndpointMap
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # Connectors
-    'Connector',
-    'ConnectorType',
-    'ConnectorApi',
-    'ConnectorDb',
-    'ConnectorFile',
-    'parse_connector',
-    # Jobs / Refs
-    'ExtractRef',
-    'JobConfig',
-    'LoadRef',
-    'TransformRef',
-    'ValidationRef',
-    # Pipeline
-    'PipelineConfig',
-    'load_pipeline_config',
-    # Profile
-    'ProfileConfig',
+    # Typed Dicts
+    'ApiConfigMap',
+    'ApiProfileConfigMap',
+    'ApiProfileDefaultsMap',
+    'EndpointMap',
 ]

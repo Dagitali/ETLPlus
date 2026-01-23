@@ -1,4 +1,4 @@
-# etlplus.file subpackage
+# `etlplus.file` Subpackage
 
 Documentation for the `etlplus.file` subpackage: unified file format support and helpers for reading
 and writing data files.
@@ -11,7 +11,7 @@ and writing data files.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.file subpackage](#etlplusfile-subpackage)
+- [`etlplus.file` Subpackage](#etlplusfile-subpackage)
   - [Supported File Formats](#supported-file-formats)
   - [Inferring File Format and Compression](#inferring-file-format-and-compression)
   - [Reading and Writing Files](#reading-and-writing-files)
