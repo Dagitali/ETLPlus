@@ -17,7 +17,7 @@ from collections.abc import Mapping
 
 import pytest
 
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 
 # SECTION: HELPERS ========================================================== #
 
