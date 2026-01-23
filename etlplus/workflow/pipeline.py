@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.config.pipeline` module.
+:mod:`etlplus.workflow.pipeline` module.
 
 Pipeline configuration model and helpers for job orchestration.
 
@@ -38,7 +38,15 @@ from .utils import deep_substitute
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['PipelineConfig', 'load_pipeline_config']
+__all__ = [
+    # Data Classes
+    'PipelineConfig',
+    # Functions
+    'load_pipeline_config',
+]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _build_jobs(
@@ -156,7 +164,7 @@ def load_pipeline_config(
     return PipelineConfig.from_yaml(path, substitute=substitute, env=env)
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)

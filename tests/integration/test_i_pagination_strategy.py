@@ -33,7 +33,7 @@ import pytest
 import etlplus.api.request_manager as rm_module
 import etlplus.cli.handlers as cli_handlers
 from etlplus.cli import main
-from etlplus.config.pipeline import PipelineConfig
+from etlplus.workflow.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
@@ -80,7 +80,7 @@ jobs:
       options:
 {indented_options}
     load:
-      target: dest
+        target: dest
 """
     ).strip()
 
@@ -106,10 +106,10 @@ class PageScenario:
         return dedent(
             f"""
             pagination:
-              type: page
-              page_param: page
-              size_param: per_page
-              page_size: {self.page_size}{max_records_line}
+                type: page
+                page_param: page
+                size_param: per_page
+                page_size: {self.page_size}{max_records_line}
             """,
         )
 
@@ -147,11 +147,11 @@ CURSOR_SCENARIOS: tuple[CursorScenario, ...] = (
         expected_ids=['a', 'b', 'c'],
         options_block="""
         pagination:
-          type: cursor
-          cursor_param: cursor
-          cursor_path: next
-          page_size: 2
-          records_path: data
+            type: cursor
+            cursor_param: cursor
+            cursor_path: next
+            page_size: 2
+            records_path: data
         """,
         batches=(
             CursorBatch(

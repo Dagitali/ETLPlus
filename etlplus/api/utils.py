@@ -892,4 +892,8 @@ def resolve_request(
             'Session object must supply a callable '
             f'"{http_method.value}" method',
         )
-    return request_callable, request_timeout, http_method
+    typed_request_callable = cast(
+        Callable[..., requests.Response],
+        request_callable,
+    )
+    return typed_request_callable, request_timeout, http_method

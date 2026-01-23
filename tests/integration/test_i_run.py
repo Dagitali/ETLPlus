@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from pytest import MonkeyPatch
 
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 
 # SECTION: HELPERS ========================================================== #
 

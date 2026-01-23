@@ -36,7 +36,7 @@ from etlplus.api import PaginationConfig
 from etlplus.api import PaginationConfigMap
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigMap
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 from tests.unit.api.test_u_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #

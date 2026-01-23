@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from etlplus.api import RateLimitConfig
-from etlplus.config import PipelineConfig
+from etlplus.workflow import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #

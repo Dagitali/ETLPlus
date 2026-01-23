@@ -1,12 +1,12 @@
 """
-:mod:`etlplus.config.jobs` module.
+:mod:`etlplus.workflow.jobs` module.
 
 Data classes modeling job orchestration references (extract, validate,
 transform, load).
 
 Notes
 -----
-- Lightweight references used inside ``PipelineConfig`` to avoid storing
+- Lightweight references used inside :class:`PipelineConfig` to avoid storing
     large nested structures.
 - All attributes are simple and optional where appropriate, keeping parsing
     tolerant.
@@ -26,6 +26,7 @@ from ..utils import maybe_mapping
 
 
 __all__ = [
+    # Data Classes
     'ExtractRef',
     'JobConfig',
     'LoadRef',
@@ -62,12 +63,13 @@ class ExtractRef:
         cls,
         obj: Any,
     ) -> Self | None:
-        """Parse a mapping into an :class:`ExtractRef` instance.
+        """
+        Parse a mapping into an :class:`ExtractRef` instance.
 
         Parameters
         ----------
         obj : Any
-            Mapping with ``source`` and optional ``options``.
+            Mapping with :attr:`source` and optional :attr:`options`.
 
         Returns
         -------
@@ -126,7 +128,8 @@ class JobConfig:
         cls,
         obj: Any,
     ) -> Self | None:
-        """Parse a mapping into a :class:`JobConfig` instance.
+        """
+        Parse a mapping into a :class:`JobConfig` instance.
 
         Parameters
         ----------
@@ -194,12 +197,13 @@ class LoadRef:
         cls,
         obj: Any,
     ) -> Self | None:
-        """Parse a mapping into a :class:`LoadRef` instance.
+        """
+        Parse a mapping into a :class:`LoadRef` instance.
 
         Parameters
         ----------
         obj : Any
-            Mapping with ``target`` and optional ``overrides``.
+            Mapping with :attr:`target` and optional :attr:`overrides`.
 
         Returns
         -------
@@ -240,12 +244,13 @@ class TransformRef:
         cls,
         obj: Any,
     ) -> Self | None:
-        """Parse a mapping into a :class:`TransformRef` instance.
+        """
+        Parse a mapping into a :class:`TransformRef` instance.
 
         Parameters
         ----------
         obj : Any
-            Mapping with ``pipeline``.
+            Mapping with :attr:`pipeline`.
 
         Returns
         -------
@@ -290,12 +295,13 @@ class ValidationRef:
         cls,
         obj: Any,
     ) -> Self | None:
-        """Parse a mapping into a :class:`ValidationRef` instance.
+        """
+        Parse a mapping into a :class:`ValidationRef` instance.
 
         Parameters
         ----------
         obj : Any
-            Mapping with ``ruleset`` plus optional metadata.
+            Mapping with :attr:`ruleset` plus optional metadata.
 
         Returns
         -------
