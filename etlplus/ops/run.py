@@ -165,7 +165,8 @@ def run(
                     base_url=cast(str, env.get('base_url')),
                     base_path=cast(str | None, env.get('base_path')),
                     endpoints=cast(
-                        dict[str, str], env.get('endpoints_map', {}),
+                        dict[str, str],
+                        env.get('endpoints_map', {}),
                     ),
                     retry=env.get('retry'),
                     retry_network_errors=bool(
