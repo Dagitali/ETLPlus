@@ -171,7 +171,6 @@ def pipeline_multi_cfg_fixture(
     PipelineConfig
         Parsed configuration with substitution enabled.
     """
-
     return pipeline_builder(MULTI_SOURCE_YAML)
 
 
