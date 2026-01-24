@@ -22,15 +22,15 @@ Notes
 -----
 - TypedDict shapes are editor hints; runtime parsing remains permissive
     (from_obj accepts Mapping[str, Any]).
-- TypedDicts referenced in :mod:`etlplus.config.types` remain editor hints.
+- TypedDicts referenced in :mod:`etlplus.workflow.types` remain editor hints.
     Runtime parsing stays permissive and tolerant.
 
 See Also
 --------
 - TypedDict shapes for editor hints (not enforced at runtime):
-    :mod:`etlplus.config.types.ConnectorApiConfigMap`,
-    :mod:`etlplus.config.types.ConnectorDbConfigMap`,
-    :mod:`etlplus.config.types.ConnectorFileConfigMap`.
+    :mod:`etlplus.workflow.types.ConnectorApiConfigMap`,
+    :mod:`etlplus.workflow.types.ConnectorDbConfigMap`,
+    :mod:`etlplus.workflow.types.ConnectorFileConfigMap`.
 """
 
 from __future__ import annotations
@@ -69,6 +69,40 @@ __all__ = [
     # Type aliases
     'Connector',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _require_name(
+    obj: StrAnyMap,
+    *,
+    kind: str,
+) -> str:
+    """
+    Extract and validate the ``name`` field from connector mappings.
+
+    Parameters
+    ----------
+    obj : StrAnyMap
+        Connector mapping with a ``name`` entry.
+    kind : str
+        Connector kind used in the error message.
+
+    Returns
+    -------
+    str
+        Valid connector name.
+
+    Raises
+    ------
+    TypeError
+        If ``name`` is missing or not a string.
+    """
+    name = obj.get('name')
+    if not isinstance(name, str):
+        raise TypeError(f'Connector{kind} requires a "name" (str)')
+    return name
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -151,15 +185,8 @@ class ConnectorApi:
         -------
         Self
             Parsed connector instance.
-
-        Raises
-        ------
-        TypeError
-            If ``name`` is missing or invalid.
         """
-        name = obj.get('name')
-        if not isinstance(name, str):
-            raise TypeError('ConnectorApi requires a "name" (str)')
+        name = _require_name(obj, kind='Api')
         headers = cast_str_dict(obj.get('headers'))
 
         return cls(
@@ -233,15 +260,8 @@ class ConnectorDb:
         -------
         Self
             Parsed connector instance.
-
-        Raises
-        ------
-        TypeError
-            If ``name`` is missing or invalid.
         """
-        name = obj.get('name')
-        if not isinstance(name, str):
-            raise TypeError('ConnectorDb requires a "name" (str)')
+        name = _require_name(obj, kind='Db')
 
         return cls(
             name=name,
@@ -307,15 +327,8 @@ class ConnectorFile:
         -------
         Self
             Parsed connector instance.
-
-        Raises
-        ------
-        TypeError
-            If ``name`` is missing or invalid.
         """
-        name = obj.get('name')
-        if not isinstance(name, str):
-            raise TypeError('ConnectorFile requires a "name" (str)')
+        name = _require_name(obj, kind='File')
 
         return cls(
             name=name,
