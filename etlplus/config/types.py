@@ -70,7 +70,7 @@ class ApiConfigMap(TypedDict, total=False):
 
     See Also
     --------
-    - etlplus.config.api.ApiConfig.from_obj: parses this mapping
+    - etlplus.api.config.ApiConfig.from_obj: parses this mapping
     """
 
     base_url: str
@@ -89,7 +89,7 @@ class ApiProfileConfigMap(TypedDict, total=False):
 
     See Also
     --------
-    - etlplus.config.api.ApiProfileConfig.from_obj: parses this mapping
+    - etlplus.api.config.ApiProfileConfig.from_obj: parses this mapping
     """
 
     base_url: str
@@ -109,8 +109,8 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
 
     See Also
     --------
-    - etlplus.config.api.ApiProfileConfig.from_obj: consumes this block
-    - etlplus.config.pagination.PaginationConfig.from_obj: parses pagination
+    - etlplus.api.config.ApiProfileConfig.from_obj: consumes this block
+    - etlplus.api.pagination.PaginationConfig.from_obj: parses pagination
     - etlplus.api.rate_limiting.RateLimitConfig.from_obj: parses rate_limit
     """
 
@@ -127,7 +127,7 @@ class EndpointMap(TypedDict, total=False):
 
     See Also
     --------
-    - etlplus.config.api.EndpointConfig.from_obj: parses this mapping
+    - etlplus.api.config.EndpointConfig.from_obj: parses this mapping
     """
 
     path: str
