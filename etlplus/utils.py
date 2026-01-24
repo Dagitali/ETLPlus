@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 from typing import TypeVar
@@ -25,6 +26,7 @@ __all__ = [
     # Mapping utilities
     'cast_str_dict',
     'coerce_dict',
+    'deep_substitute',
     'maybe_mapping',
     # Float coercion
     'to_float',
@@ -39,7 +41,8 @@ __all__ = [
     # Generic number coercion
     'to_number',
     # Text processing
-    'normalized_str',
+    'normalize_choice',
+    'normalize_str',
 ]
 
 
@@ -54,6 +57,52 @@ Num = TypeVar('Num', int, float)
 
 
 # -- Data Utilities -- #
+
+
+def deep_substitute(
+    value: Any,
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, str] | None,
+) -> Any:
+    """
+    Recursively substitute ``${VAR}`` tokens in nested structures.
+
+    Only strings are substituted; other types are returned as-is.
+
+    Parameters
+    ----------
+    value : Any
+        The value to perform substitutions on.
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, str] | None
+        Mapping of environment variables overriding ``vars_map`` values
+        (higher precedence).
+
+    Returns
+    -------
+    Any
+        New structure with substitutions applied where tokens were found.
+    """
+    substitutions = _prepare_substitutions(vars_map, env_map)
+
+    def _apply(node: Any) -> Any:
+        match node:
+            case str():
+                return _replace_tokens(node, substitutions)
+            case Mapping():
+                return {k: _apply(v) for k, v in node.items()}
+            case list() | tuple() as seq:
+                apply = [_apply(item) for item in seq]
+                return apply if isinstance(seq, list) else tuple(apply)
+            case set():
+                return {_apply(item) for item in node}
+            case frozenset():
+                return frozenset(_apply(item) for item in node)
+            case _:
+                return node
+
+    return _apply(value)
 
 
 def cast_str_dict(
@@ -372,7 +421,7 @@ def to_number(
 # -- Text Processing -- #
 
 
-def normalized_str(
+def normalize_str(
     value: str | None,
 ) -> str:
     """
@@ -390,6 +439,36 @@ def normalized_str(
         to lowercase. ``""`` when *value* is ``None``.
     """
     return (value or '').strip().lower()
+
+
+def normalize_choice(
+    value: str | None,
+    *,
+    mapping: Mapping[str, str],
+    default: str,
+    normalize: Callable[[str | None], str] = normalize_str,
+) -> str:
+    """
+    Normalize a string choice using a mapping and fallback.
+
+    Parameters
+    ----------
+    value : str | None
+        Input value to normalize.
+    mapping : Mapping[str, str]
+        Mapping of acceptable normalized inputs to output values.
+    default : str
+        Default return value when input is missing or unrecognized.
+    normalize : Callable[[str | None], str], optional
+        Normalization function applied to *value*. Defaults to
+        :func:`normalize_str`.
+
+    Returns
+    -------
+    str
+        Normalized mapped value or ``default``.
+    """
+    return mapping.get(normalize(value), default)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -423,6 +502,61 @@ def _clamp(
     if maximum is not None:
         value = min(value, maximum)
     return value
+
+
+def _prepare_substitutions(
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, Any] | None,
+) -> tuple[tuple[str, Any], ...]:
+    """
+    Merge variable and environment maps into an ordered substitutions list.
+
+    Parameters
+    ----------
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, Any] | None
+        Environment-backed values that override entries from ``vars_map``.
+
+    Returns
+    -------
+    tuple[tuple[str, Any], ...]
+        Immutable sequence of ``(name, value)`` pairs suitable for token
+        replacement.
+    """
+    if not vars_map and not env_map:
+        return ()
+    merged: dict[str, Any] = {**(vars_map or {}), **(env_map or {})}
+    return tuple(merged.items())
+
+
+def _replace_tokens(
+    text: str,
+    substitutions: Iterable[tuple[str, Any]],
+) -> str:
+    """
+    Replace ``${VAR}`` tokens in ``text`` using ``substitutions``.
+
+    Parameters
+    ----------
+    text : str
+        Input string that may contain ``${VAR}`` tokens.
+    substitutions : Iterable[tuple[str, Any]]
+        Sequence of ``(name, value)`` pairs used for token replacement.
+
+    Returns
+    -------
+    str
+        Updated text with replacements applied.
+    """
+    if not substitutions:
+        return text
+    out = text
+    for name, replacement in substitutions:
+        token = f'${{{name}}}'
+        if token in out:
+            out = out.replace(token, str(replacement))
+    return out
 
 
 def _coerce_float(
