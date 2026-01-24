@@ -22,6 +22,7 @@ Back to project overview: see the top-level [README](../../README.md).
   - [Authentication](#authentication)
   - [Errors and Rate Limiting](#errors-and-rate-limiting)
   - [Types and Transport](#types-and-transport)
+  - [Config Schemas](#config-schemas)
   - [Supporting Modules](#supporting-modules)
   - [Minimal Contract](#minimal-contract)
   - [See also](#see-also)
@@ -224,6 +225,36 @@ providers can fall back to their own defaults. If you already possess a static t
 - Transport/session: `etlplus/api/transport.py` contains the HTTP adapter helpers and
   `etlplus/api/request_manager.py` wraps `requests` sessions plus retry orchestration. Advanced
   users may consult those modules to adapt behavior.
+
+## Config Schemas
+
+`etlplus.api.types` defines TypedDict-based configuration shapes for API profiles and endpoints.
+Runtime parsing remains permissive in `etlplus.api.config`, but these types improve IDE
+autocomplete and static analysis.
+
+Exported types:
+
+- `ApiConfigMap`: top-level API config shape
+- `ApiProfileConfigMap`: per-profile API config shape
+- `ApiProfileDefaultsMap`: defaults block within a profile
+- `EndpointMap`: endpoint config shape
+
+Example:
+
+```python
+from etlplus.api import ApiConfigMap
+
+api_cfg: ApiConfigMap = {
+    "base_url": "https://example.test",
+    "headers": {"Authorization": "Bearer token"},
+    "endpoints": {
+        "users": {
+            "path": "/users",
+            "method": "GET",
+        },
+    },
+}
+```
 
 ## Supporting Modules
 
