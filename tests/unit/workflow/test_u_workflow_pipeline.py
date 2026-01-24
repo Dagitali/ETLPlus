@@ -200,7 +200,9 @@ class TestCollectParsed:
         """Test that :func:`_collect_parsed` filters malformed entries."""
         payload = {case.collection: case.entries}
         items = _collect_parsed(
-            payload, case.collection, _parse_connector_entry,
+            payload,
+            case.collection,
+            _parse_connector_entry,
         )
 
         assert len(items) == len(case.expected_types)
