@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.config.utils` module.
+:mod:`etlplus.workflow.utils` module.
 
 A module defining utility helpers for ETL pipeline configuration.
 
@@ -110,6 +110,21 @@ def _replace_tokens(
     text: str,
     substitutions: Iterable[tuple[str, Any]],
 ) -> str:
+    """
+    Replace ``${VAR}`` tokens in :attr:`text` using :attr:`substitutions`.
+
+    Parameters
+    ----------
+    text : str
+        Input string that may contain ``${VAR}`` tokens.
+    substitutions : Iterable[tuple[str, Any]]
+        Sequence of ``(name, value)`` pairs used for token replacement.
+
+    Returns
+    -------
+    str
+        Updated text with replacements applied.
+    """
     if not substitutions:
         return text
     out = text

@@ -3,11 +3,6 @@
 
 Configuration dataclasses for REST API services, profiles, and endpoints.
 
-These models used to live under :mod:`etlplus.config`, but they belong in the
-API layer because they compose runtime types such as
-:class:`etlplus.api.EndpointClient`, :class:`etlplus.api.PaginationConfig`, and
-:class:`etlplus.api.RateLimitConfig`.
-
 Notes
 -----
 - TypedDict references remain editor hints only; :meth:`from_obj` accepts

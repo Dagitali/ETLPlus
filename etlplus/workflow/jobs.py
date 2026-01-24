@@ -19,6 +19,7 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from ..types import StrAnyMap
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
 
@@ -33,6 +34,75 @@ __all__ = [
     'TransformRef',
     'ValidationRef',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _coerce_optional_str(value: Any) -> str | None:
+    """
+    Normalize optional string values, coercing non-strings when needed.
+
+    Parameters
+    ----------
+    value : Any
+        Optional value to normalize.
+
+    Returns
+    -------
+    str | None
+        ``None`` when ``value`` is ``None``; otherwise a string value.
+    """
+    if value is None:
+        return None
+    return value if isinstance(value, str) else str(value)
+
+
+def _parse_depends_on(
+    value: Any,
+) -> list[str]:
+    """
+    Normalize dependency declarations into a string list.
+
+    Parameters
+    ----------
+    value : Any
+        Input dependency specification (string or list of strings).
+
+    Returns
+    -------
+    list[str]
+        Normalized dependency list.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [entry for entry in value if isinstance(entry, str)]
+    return []
+
+
+def _require_str(
+    # data: dict[str, Any],
+    data: StrAnyMap,
+    key: str,
+) -> str | None:
+    """
+    Extract a required string field from a mapping.
+
+    Parameters
+    ----------
+    data : StrAnyMap
+        Mapping containing the target field.
+    key : str
+        Field name to extract.
+
+    Returns
+    -------
+    str | None
+        The string value when present and valid; otherwise ``None``.
+    """
+    value = data.get(key)
+    return value if isinstance(value, str) else None
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -79,8 +149,8 @@ class ExtractRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        source = data.get('source')
-        if not isinstance(source, str):
+        source = _require_str(data, 'source')
+        if source is None:
             return None
         return cls(
             source=source,
@@ -144,22 +214,13 @@ class JobConfig:
         data = maybe_mapping(obj)
         if not data:
             return None
-        name = data.get('name')
-        if not isinstance(name, str):
+        name = _require_str(data, 'name')
+        if name is None:
             return None
 
-        description = data.get('description')
-        if description is not None and not isinstance(description, str):
-            description = str(description)
+        description = _coerce_optional_str(data.get('description'))
 
-        depends_raw = data.get('depends_on')
-        depends_on: list[str] = []
-        if isinstance(depends_raw, str):
-            depends_on = [depends_raw]
-        elif isinstance(depends_raw, list):
-            for entry in depends_raw:
-                if isinstance(entry, str):
-                    depends_on.append(entry)
+        depends_on = _parse_depends_on(data.get('depends_on'))
 
         return cls(
             name=name,
@@ -213,8 +274,8 @@ class LoadRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        target = data.get('target')
-        if not isinstance(target, str):
+        target = _require_str(data, 'target')
+        if target is None:
             return None
         return cls(
             target=target,
@@ -260,8 +321,8 @@ class TransformRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        pipeline = data.get('pipeline')
-        if not isinstance(pipeline, str):
+        pipeline = _require_str(data, 'pipeline')
+        if pipeline is None:
             return None
         return cls(pipeline=pipeline)
 
@@ -311,15 +372,11 @@ class ValidationRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        ruleset = data.get('ruleset')
-        if not isinstance(ruleset, str):
+        ruleset = _require_str(data, 'ruleset')
+        if ruleset is None:
             return None
-        severity = data.get('severity')
-        if severity is not None and not isinstance(severity, str):
-            severity = str(severity)
-        phase = data.get('phase')
-        if phase is not None and not isinstance(phase, str):
-            phase = str(phase)
+        severity = _coerce_optional_str(data.get('severity'))
+        phase = _coerce_optional_str(data.get('phase'))
         return cls(
             ruleset=ruleset,
             severity=severity,

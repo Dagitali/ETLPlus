@@ -11,8 +11,10 @@ Notes
 
 See Also
 --------
-- :mod:`etlplus.api.types` for HTTP-specific aliases
+- :mod:`etlplus.api.types` for HTTP-specific aliases and data classes
 - :mod:`etlplus.config.types` for TypedDict surfaces
+- :mod:`etlplus.workflow.types` for workflow-specific aliases and TypedDict
+    surfaces
 
 Examples
 --------

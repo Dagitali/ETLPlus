@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.workflow.types` module.
 
-Type aliases and editor-only :class:`TypedDict`s for :mod:`etlplus.config`.
+Type aliases and editor-only :class:`TypedDict`s for :mod:`etlplus.workflow`.
 
 These types improve IDE autocomplete and static analysis while the runtime
 parsers remain permissive.
