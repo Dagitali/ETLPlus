@@ -7,7 +7,6 @@ The helpers defined here embrace a "high cohesion, low coupling" design by
 isolating normalization, configuration, and logging responsibilities. The
 resulting surface keeps ``maybe_validate`` focused on orchestration while
 offloading ancillary concerns to composable helpers.
-
 """
 
 from __future__ import annotations
