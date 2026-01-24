@@ -18,13 +18,11 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
 from ..utils import count_records
 from ._imports import get_yaml
+from ._io import coerce_record_payload
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -64,17 +62,7 @@ def read(
     with path.open('r', encoding='utf-8') as handle:
         loaded = get_yaml().safe_load(handle)
 
-    if isinstance(loaded, dict):
-        return cast(JSONDict, loaded)
-    if isinstance(loaded, list):
-        if all(isinstance(item, dict) for item in loaded):
-            return cast(JSONList, loaded)
-        raise TypeError(
-            'YAML array must contain only objects (dicts) when loading',
-        )
-    raise TypeError(
-        'YAML root must be an object or an array of objects when loading',
-    )
+    return coerce_record_payload(loaded, format_name='YAML')
 
 
 def write(
