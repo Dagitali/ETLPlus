@@ -755,12 +755,13 @@ Navigate to detailed documentation for each subpackage:
 
 - [etlplus.api](etlplus/api/README.md): Lightweight HTTP client and paginated REST helpers
 - [etlplus.file](etlplus/file/README.md): Unified file format support and helpers
-- [etlplus.config](etlplus/config/README.md): Configuration helpers for connectors, pipelines, jobs,
-  and profiles
+- [etlplus.config](etlplus/config/README.md): Configuration helpers
 - [etlplus.cli](etlplus/cli/README.md): Command-line interface for ETLPlus workflows
 - [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
 - [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
+- [etlplus.workflow](etlplus/workflow/README.md): Helpers for data connectors, pipelines, jobs, and
+  profiles
 
 ### Community Health
 
