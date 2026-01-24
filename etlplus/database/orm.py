@@ -201,12 +201,14 @@ def build_models(
 ) -> ModelRegistry:
     """
     Build SQLAlchemy ORM models from table specifications.
+
     Parameters
     ----------
     specs : list[TableSpec]
         List of table specifications.
     base : type[DeclarativeBase], optional
         Base class for the ORM models (default: :class:`Base`).
+
     Returns
     -------
     ModelRegistry
