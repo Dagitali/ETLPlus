@@ -16,6 +16,7 @@ Notes
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
@@ -49,29 +50,58 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _build_jobs(
+def _collect_parsed[T](
     raw: StrAnyMap,
-) -> list[JobConfig]:
+    key: str,
+    parser: Callable[[Any], T | None],
+) -> list[T]:
     """
-    Return a list of ``JobConfig`` objects parsed from the mapping.
+    Collect parsed items from ``raw[key]`` using a tolerant parser.
 
     Parameters
     ----------
     raw : StrAnyMap
         Raw pipeline mapping.
+    key : str
+        Key pointing to a list-like payload.
+    parser : Callable[[Any], T | None]
+        Parser that returns an instance or ``None`` for invalid entries.
 
     Returns
     -------
-    list[JobConfig]
-        Parsed job configurations.
+    list[T]
+        Parsed items, excluding invalid entries.
     """
-    jobs: list[JobConfig] = []
-    for job_raw in raw.get('jobs', []) or []:
-        job_cfg = JobConfig.from_obj(job_raw)
-        if job_cfg is not None:
-            jobs.append(job_cfg)
+    items: list[T] = []
+    for entry in raw.get(key, []) or []:
+        parsed = parser(entry)
+        if parsed is not None:
+            items.append(parsed)
+    return items
 
-    return jobs
+
+def _parse_connector_entry(
+    obj: Any,
+) -> Connector | None:
+    """
+    Parse a connector mapping into a concrete connector instance.
+
+    Parameters
+    ----------
+    obj : Any
+        Candidate connector mapping.
+
+    Returns
+    -------
+    Connector | None
+        Parsed connector instance or ``None`` when invalid.
+    """
+    if not (entry := maybe_mapping(obj)):
+        return None
+    try:
+        return parse_connector(entry)
+    except TypeError:
+        return None
 
 
 def _build_sources(
@@ -90,7 +120,9 @@ def _build_sources(
     list[Connector]
         Parsed source connectors.
     """
-    return _build_connectors(raw, 'sources')
+    return list(
+        _collect_parsed(raw, 'sources', _parse_connector_entry),
+    )
 
 
 def _build_targets(
@@ -109,41 +141,9 @@ def _build_targets(
     list[Connector]
         Parsed target connectors.
     """
-    return _build_connectors(raw, 'targets')
-
-
-def _build_connectors(
-    raw: StrAnyMap,
-    key: str,
-) -> list[Connector]:
-    """
-    Return parsed connectors from ``raw[key]`` using tolerant parsing.
-
-    Unknown or malformed entries are skipped to preserve permissiveness.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-    key : str
-        List-containing top-level key ("sources" or "targets").
-
-    Returns
-    -------
-    list[Connector]
-        Constructed connector instances (malformed entries skipped).
-    """
-    items: list[Connector] = []
-    for obj in raw.get(key, []) or []:
-        if not (entry := maybe_mapping(obj)):
-            continue
-        try:
-            items.append(parse_connector(entry))
-        except TypeError:
-            # Skip unsupported types or malformed entries
-            continue
-
-    return items
+    return list(
+        _collect_parsed(raw, 'targets', _parse_connector_entry),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -321,7 +321,7 @@ class PipelineConfig:
         targets = _build_targets(raw)
 
         # Jobs
-        jobs = _build_jobs(raw)
+        jobs = _collect_parsed(raw, 'jobs', JobConfig.from_obj)
 
         # Table schemas (optional, tolerant pass-through structures).
         table_schemas: list[dict[str, Any]] = []

@@ -377,9 +377,9 @@ Details:
 - Unknown or malformed entries are skipped rather than failing the whole load (keeping pipeline
   authoring permissive).
 - The connector kind is also available as a type-safe literal in code as
-  `etlplus.config.ConnectorType` (values: `"file" | "database" | "api"`).
+  `etlplus.workflow.ConnectorType` (values: `"file" | "database" | "api"`).
 
-To add new connector kinds in the future, implement a new dataclass in `etlplus.config.connector`
+To add new connector kinds in the future, implement a new dataclass in `etlplus.workflow.connector`
 and extend the internal parser to handle its `type` value.
 
 ## Jobs

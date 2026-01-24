@@ -23,7 +23,8 @@ from etlplus.workflow.connector import ConnectorApi
 from etlplus.workflow.connector import ConnectorDb
 from etlplus.workflow.connector import ConnectorFile
 from etlplus.workflow.pipeline import PipelineConfig
-from etlplus.workflow.pipeline import _build_connectors
+from etlplus.workflow.pipeline import _collect_parsed
+from etlplus.workflow.pipeline import _parse_connector_entry
 
 # SECTION: HELPERS ========================================================== #
 
@@ -177,9 +178,9 @@ def pipeline_multi_cfg_fixture(
 # SECTION: TESTS ============================================================ #
 
 
-class TestPipelineBuildConnectors:
+class TestCollectParsed:
     """
-    Unit test suite for :func:`_build_connectors`.
+    Unit test suite for :func:`_collect_parsed`.
 
     Notes
     -----
@@ -192,13 +193,15 @@ class TestPipelineBuildConnectors:
         CONNECTOR_CASES,
         ids=lambda c: c.collection,
     )
-    def test_build_connectors_filters_invalid_entries(
+    def test_collect_parsed_filters_invalid_entries(
         self,
         case: ConnectorCase,
     ) -> None:
-        """Test that :func:`_build_connectors` filters malformed entries."""
+        """Test that :func:`_collect_parsed` filters malformed entries."""
         payload = {case.collection: case.entries}
-        items = _build_connectors(payload, case.collection)
+        items = _collect_parsed(
+            payload, case.collection, _parse_connector_entry,
+        )
 
         assert len(items) == len(case.expected_types)
         assert {type(item) for item in items} == case.expected_types
