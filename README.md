@@ -755,7 +755,7 @@ Navigate to detailed documentation for each subpackage:
 
 - [etlplus.api](etlplus/api/README.md): Lightweight HTTP client and paginated REST helpers
 - [etlplus.file](etlplus/file/README.md): Unified file format support and helpers
-- [etlplus.cli](etlplus/cli/README.md): Command-line interface for ETLPlus workflows
+- [etlplus.cli](etlplus/cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
 - [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
