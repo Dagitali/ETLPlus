@@ -136,9 +136,25 @@ def load_database_url_from_config(
     return url
 
 
-def make_engine(url: str | None = None, **engine_kwargs: Any) -> Engine:
-    """Create a SQLAlchemy Engine, defaulting to env config if no URL given."""
+def make_engine(
+    url: str | None = None,
+    **engine_kwargs: Any,
+) -> Engine:
+    """
+    Create a SQLAlchemy Engine, defaulting to env config if no URL given.
 
+    Parameters
+    ----------
+    url : str | None, optional
+        Database URL/DSN string. When omitted, ``DATABASE_URL`` is used.
+    **engine_kwargs : Any
+        Extra keyword arguments forwarded to ``create_engine``.
+
+    Returns
+    -------
+    Engine
+        Configured SQLAlchemy engine instance.
+    """
     resolved_url = url or DATABASE_URL
     return create_engine(resolved_url, pool_pre_ping=True, **engine_kwargs)
 

@@ -61,6 +61,24 @@ __all__ = ['app']
 
 # SECTION: TYPE ALIASES ==================================================== #
 
+
+JobOption = Annotated[
+    str | None,
+    typer.Option(
+        '-j',
+        '--job',
+        help='Name of the job to run',
+    ),
+]
+
+JobsOption = Annotated[
+    bool,
+    typer.Option(
+        '--jobs',
+        help='List available job names and exit',
+    ),
+]
+
 OperationsOption = Annotated[
     str,
     typer.Option(
@@ -86,6 +104,23 @@ PipelineConfigOption = Annotated[
         '--config',
         metavar='PATH',
         help='Path to pipeline YAML configuration file.',
+    ),
+]
+
+PipelineOption = Annotated[
+    str | None,
+    typer.Option(
+        '-p',
+        '--pipeline',
+        help='Name of the pipeline to run',
+    ),
+]
+
+PipelinesOption = Annotated[
+    bool,
+    typer.Option(
+        '--pipelines',
+        help='List ETL pipelines',
     ),
 ]
 
@@ -193,6 +228,22 @@ SourceTypeOption = Annotated[
     ),
 ]
 
+SourcesOption = Annotated[
+    bool,
+    typer.Option(
+        '--sources',
+        help='List data sources',
+    ),
+]
+
+SummaryOption = Annotated[
+    bool,
+    typer.Option(
+        '--summary',
+        help='Show pipeline summary (name, version, sources, targets, jobs)',
+    ),
+]
+
 TargetArg = Annotated[
     str,
     typer.Argument(
@@ -224,6 +275,22 @@ TargetTypeOption = Annotated[
         help=(
             'Override the inferred target type (api, database, file, folder).'
         ),
+    ),
+]
+
+TargetsOption = Annotated[
+    bool,
+    typer.Option(
+        '--targets',
+        help='List data targets',
+    ),
+]
+
+TransformsOption = Annotated[
+    bool,
+    typer.Option(
+        '--transforms',
+        help='List data transforms',
     ),
 ]
 
@@ -341,36 +408,12 @@ def _root(
 def check_cmd(
     ctx: typer.Context,
     config: PipelineConfigOption,
-    jobs: bool = typer.Option(
-        False,
-        '--jobs',
-        help='List available job names and exit',
-    ),
-    pipelines: bool = typer.Option(
-        False,
-        '--pipelines',
-        help='List ETL pipelines',
-    ),
-    sources: bool = typer.Option(
-        False,
-        '--sources',
-        help='List data sources',
-    ),
-    summary: bool = typer.Option(
-        False,
-        '--summary',
-        help='Show pipeline summary (name, version, sources, targets, jobs)',
-    ),
-    targets: bool = typer.Option(
-        False,
-        '--targets',
-        help='List data targets',
-    ),
-    transforms: bool = typer.Option(
-        False,
-        '--transforms',
-        help='List data transforms',
-    ),
+    jobs: JobsOption = False,
+    pipelines: PipelinesOption = False,
+    sources: SourcesOption = False,
+    summary: SummaryOption = False,
+    targets: TargetsOption = False,
+    transforms: TransformsOption = False,
 ) -> int:
     """
     Inspect a pipeline configuration.
@@ -683,18 +726,8 @@ def render_cmd(
 def run_cmd(
     ctx: typer.Context,
     config: PipelineConfigOption,
-    job: str | None = typer.Option(
-        None,
-        '-j',
-        '--job',
-        help='Name of the job to run',
-    ),
-    pipeline: str | None = typer.Option(
-        None,
-        '-p',
-        '--pipeline',
-        help='Name of the pipeline to run',
-    ),
+    job: JobOption = None,
+    pipeline: PipelineOption = None,
 ) -> int:
     """
     Execute an ETL job or pipeline from a YAML configuration.

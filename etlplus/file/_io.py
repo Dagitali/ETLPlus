@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from typing import Any
 from typing import cast
 
 from ..types import JSONData
@@ -15,6 +16,44 @@ from ..types import JSONDict
 from ..types import JSONList
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_record_payload(
+    payload: Any,
+    *,
+    format_name: str,
+) -> JSONData:
+    """
+    Validate that ``payload`` is an object or list of objects.
+
+    Parameters
+    ----------
+    payload : Any
+        Parsed payload to validate.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONData
+        ``payload`` when it is a dict or a list of dicts.
+
+    Raises
+    ------
+    TypeError
+        If the payload is not a dict or list of dicts.
+    """
+    if isinstance(payload, dict):
+        return cast(JSONDict, payload)
+    if isinstance(payload, list):
+        if all(isinstance(item, dict) for item in payload):
+            return cast(JSONList, payload)
+        raise TypeError(
+            f'{format_name} array must contain only objects (dicts)',
+        )
+    raise TypeError(
+        f'{format_name} root must be an object or an array of objects',
+    )
 
 
 def normalize_records(

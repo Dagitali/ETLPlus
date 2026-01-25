@@ -20,9 +20,11 @@ Examples
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from typing import Self
+from typing import TypedDict
 from typing import cast
 
 from ..types import JSONData
@@ -40,6 +42,11 @@ __all__ = [
     'Headers',
     'Params',
     'Url',
+    # Typed Dicts
+    'ApiConfigMap',
+    'ApiProfileConfigMap',
+    'ApiProfileDefaultsMap',
+    'EndpointMap',
 ]
 
 
@@ -47,6 +54,88 @@ __all__ = [
 
 
 _UNSET = object()
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class ApiConfigMap(TypedDict, total=False):
+    """
+    Top-level API config shape parsed by ApiConfig.from_obj.
+
+    Either provide a ``base_url`` with optional ``headers`` and ``endpoints``,
+    or provide ``profiles`` with at least one profile having a ``base_url``.
+
+    See Also
+    --------
+    - :class:`etlplus.api.config.ApiConfig`
+    """
+
+    base_url: str
+    headers: StrAnyMap
+    endpoints: Mapping[str, EndpointMap | str]
+    profiles: Mapping[str, ApiProfileConfigMap]
+
+
+class ApiProfileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted for a profile entry under ApiConfigMap.profiles.
+
+    Notes
+    -----
+    ``base_url`` is required at runtime when profiles are provided.
+
+    See Also
+    --------
+    - :class:`etlplus.api.config.ApiProfileConfig`
+    """
+
+    base_url: str
+    headers: StrAnyMap
+    base_path: str
+    auth: StrAnyMap
+    defaults: ApiProfileDefaultsMap
+
+
+class ApiProfileDefaultsMap(TypedDict, total=False):
+    """
+    Defaults block available under a profile (all keys optional).
+
+    Notes
+    -----
+    Runtime expects header values to be str; typing remains permissive.
+
+    See Also
+    --------
+    - :class:`etlplus.api.config.ApiProfileConfig`
+    - :class:`etlplus.api.pagination.PaginationConfig`
+    - :class:`etlplus.api.rate_limiting.RateLimitConfig`
+    """
+
+    headers: StrAnyMap
+    pagination: Any
+    rate_limit: Any
+
+
+class EndpointMap(TypedDict, total=False):
+    """
+    Shape accepted by EndpointConfig.from_obj.
+
+    One of ``path`` or ``url`` should be provided.
+
+    See Also
+    --------
+    - :class:`etlplus.api.config.EndpointConfig`
+    """
+
+    path: str
+    url: str
+    method: str
+    path_params: StrAnyMap
+    query_params: StrAnyMap
+    body: Any
+    pagination: Any
+    rate_limit: Any
 
 
 # SECTION: DATA CLASSES ===================================================== #
