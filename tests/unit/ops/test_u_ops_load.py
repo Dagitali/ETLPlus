@@ -32,6 +32,7 @@ from etlplus.ops.load import load_data
 from etlplus.ops.load import load_to_api
 from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
+from etlplus.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
 
@@ -317,17 +318,10 @@ class TestLoadErrors:
         AssertionError
             If the expected exception is not raised.
         """
-        with pytest.raises(exc_type) as e:
+        with pytest.raises(exc_type) as exc:
             call(*args)
-        match e.value:
-            case AssertionError():
-                pass
-            case ValueError() if err_msg and err_msg in str(e.value):
-                pass
-            case _:
-                raise AssertionError(
-                    f'Expected {exc_type.__name__} with message: {err_msg}',
-                ) from e.value
+        if err_msg:
+            assert err_msg in str(exc.value)
 
 
 @pytest.mark.unit
@@ -366,15 +360,15 @@ class TestLoadData:
 
     def test_data_from_file(
         self,
-        temp_json_file: Callable[[dict[str, Any]], str],
+        temp_json_file: Callable[[JSONData], Path],
     ) -> None:
         """
         Test loading from a temporary JSON file.
 
         Parameters
         ----------
-        temp_json_file : Callable[[dict[str, Any]], str]
-            Fixture to create a temp JSON file.
+        temp_json_file : Callable[[JSONData], Path]
+            Fixture to create a temp JSON file in a pytest-managed directory.
         """
         mock_data = {'test': 'data'}
         temp_path = temp_json_file(mock_data)
