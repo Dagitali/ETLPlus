@@ -19,6 +19,7 @@ from .enums import infer_file_format_and_compression
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -65,7 +66,7 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Read GZ content from ``path`` and parse the inner payload.
+    Read GZ content from *path* and parse the inner payload.
 
     Parameters
     ----------
@@ -94,7 +95,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to GZ at ``path`` and return record count.
+    Write *data* to GZ at *path* and return record count.
 
     Parameters
     ----------
