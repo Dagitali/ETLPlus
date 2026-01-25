@@ -50,7 +50,7 @@ def _emit_context_help(
         return False
 
     with contextlib.redirect_stdout(sys.stderr):
-        ctx.get_help()
+        print(ctx.get_help())
     return True
 
 
