@@ -28,6 +28,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -40,7 +41,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read JINJA2 content from ``path``.
+    Read JINJA2 content from *path*.
 
     Parameters
     ----------
@@ -60,7 +61,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to JINJA2 file at ``path`` and return record count.
+    Write *data* to JINJA2 file at *path* and return record count.
 
     Parameters
     ----------
