@@ -28,6 +28,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -40,7 +41,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read PROPERTIES content from ``path``.
+    Read PROPERTIES content from *path*.
 
     Parameters
     ----------
@@ -60,7 +61,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to PROPERTIES at ``path`` and return record count.
+    Write *data* to PROPERTIES at *path* and return record count.
 
     Parameters
     ----------
