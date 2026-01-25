@@ -34,7 +34,7 @@ pytestmark = pytest.mark.unit
 def _make_request_callable(
     probe: RequestProbe,
 ) -> Callable[..., dict[str, Any]]:
-    """Create a request callable that records inputs into ``probe``."""
+    """Create a request callable that records inputs into *probe*."""
 
     def _request(
         _method: str,
