@@ -6,7 +6,11 @@ Unit tests for :mod:`etlplus.workflow.jobs`.
 Covers dataclass parsing, from_obj methods, and edge cases.
 """
 
+from __future__ import annotations
+
 import importlib
+from typing import Protocol
+from typing import TypeVar
 
 import pytest
 
@@ -21,29 +25,79 @@ jobs = importlib.import_module('etlplus.workflow.jobs')
 
 # SECTION: TESTS ============================================================ #
 
+T = TypeVar('T', covariant=True)
 
-# -- ExtractRef -- #
+
+class SupportsFromObj(Protocol[T]):
+    """Protocol for dataclasses exposing a ``from_obj`` constructor."""
+
+    @classmethod
+    def from_obj(cls, obj: dict[str, object] | None) -> T | None: ...
 
 
-def test_extractref_from_obj_valid():
-    """Test valid dict input yields expected :class:`ExtractRef` instance."""
-    obj = {'source': 'my_source', 'options': {'foo': 1}}
-    ref = jobs.ExtractRef.from_obj(obj)
+@pytest.mark.parametrize(
+    'ref_cls, obj, expected',
+    [
+        pytest.param(
+            jobs.ExtractRef,
+            {'source': 'my_source', 'options': {'foo': 1}},
+            {'source': 'my_source', 'options': {'foo': 1}},
+            id='extract-ref',
+        ),
+        pytest.param(
+            jobs.LoadRef,
+            {'target': 'my_target', 'overrides': {'foo': 2}},
+            {'target': 'my_target', 'overrides': {'foo': 2}},
+            id='load-ref',
+        ),
+        pytest.param(
+            jobs.TransformRef,
+            {'pipeline': 'my_pipeline'},
+            {'pipeline': 'my_pipeline'},
+            id='transform-ref',
+        ),
+        pytest.param(
+            jobs.ValidationRef,
+            {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
+            {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
+            id='validation-ref',
+        ),
+    ],
+)
+def test_ref_from_obj_valid(
+    ref_cls: type[SupportsFromObj[object]],
+    obj: dict[str, object],
+    expected: dict[str, object],
+) -> None:
+    """Test valid dict input yields the expected reference object."""
+    ref = ref_cls.from_obj(obj)
     assert ref is not None
-    assert ref.source == 'my_source'
-    assert ref.options == {'foo': 1}
+    for field, value in expected.items():
+        assert getattr(ref, field) == value
 
 
-def test_extractref_from_obj_invalid():
-    """Test invalid dict input yields None for :class:`ExtractRef`."""
-    assert jobs.ExtractRef.from_obj(None) is None
-    assert jobs.ExtractRef.from_obj({'source': 123}) is None
+@pytest.mark.parametrize(
+    'ref_cls, obj',
+    [
+        pytest.param(jobs.ExtractRef, None, id='extract-none'),
+        pytest.param(jobs.ExtractRef, {'source': 123}, id='extract-bad'),
+        pytest.param(jobs.LoadRef, {'target': 123}, id='load-bad'),
+        pytest.param(jobs.TransformRef, {'pipeline': 123}, id='transform-bad'),
+        pytest.param(jobs.ValidationRef, None, id='validation-none'),
+        pytest.param(
+            jobs.ValidationRef, {'ruleset': 123}, id='validation-bad',
+        ),
+    ],
+)
+def test_ref_from_obj_invalid(
+    ref_cls: type[SupportsFromObj[object]],
+    obj: dict[str, object] | None,
+) -> None:
+    """Test invalid dict input yields None for reference objects."""
+    assert ref_cls.from_obj(obj) is None
 
 
-# -- JobConfig -- #
-
-
-def test_jobconfig_from_obj_valid():
+def test_jobconfig_from_obj_valid() -> None:
     """Test valid dict input yields expected :class:`JobConfig` instance."""
     obj = {
         'name': 'job1',
@@ -63,69 +117,25 @@ def test_jobconfig_from_obj_valid():
     assert cfg.load is not None
 
 
-def test_jobconfig_from_obj_invalid():
+@pytest.mark.parametrize(
+    'obj',
+    [
+        pytest.param(None, id='none'),
+        pytest.param({'name': 123}, id='bad-name'),
+    ],
+)
+def test_jobconfig_from_obj_invalid(
+    obj: dict[str, object] | None,
+) -> None:
+    """Test invalid dict input yields None for :class:`JobConfig`."""
+    assert jobs.JobConfig.from_obj(obj) is None
+
+
+def test_jobconfig_description_coercion() -> None:
     """
-    Test invalid dict input yields None or partial :class:`JobConfig` instance.
+    Test that :class:`JobConfig` coerces description to a string.
     """
-    assert jobs.JobConfig.from_obj(None) is None
-    assert jobs.JobConfig.from_obj({'name': 123}) is None
     cfg = jobs.JobConfig.from_obj({'name': 'x', 'description': 5})
     assert cfg is not None
     assert cfg.name == 'x'
     assert cfg.description == '5'
-
-
-# -- LoadRef -- #
-
-
-def test_loadref_from_obj_valid():
-    """Test valid dict input yields expected :class:`LoadRef` instance."""
-    obj = {'target': 'my_target', 'overrides': {'foo': 2}}
-    ref = jobs.LoadRef.from_obj(obj)
-    assert ref is not None
-    assert ref.target == 'my_target'
-    assert ref.overrides == {'foo': 2}
-
-
-def test_loadref_from_obj_invalid():
-    """Test invalid dict input yields None for :class:`LoadRef`."""
-    assert jobs.LoadRef.from_obj({'target': 123}) is None
-
-
-# -- TransformRef -- #
-
-
-def test_transformref_from_obj_valid():
-    """Test valid dict input yields expected :class:`TransformRef` instance."""
-    obj = {'pipeline': 'my_pipeline'}
-    ref = jobs.TransformRef.from_obj(obj)
-    assert ref is not None
-    assert ref.pipeline == 'my_pipeline'
-
-
-def test_transformref_from_obj_invalid():
-    """Test invalid dict input yields None for :class:`TransformRef`."""
-    assert jobs.TransformRef.from_obj({'pipeline': 123}) is None
-
-
-# -- ValidationRef -- #
-
-
-def test_validationref_from_obj_valid():
-    """
-    Test valid dict input yields expected :class:`ValidationRef` instance.
-    """
-    obj = {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'}
-    ref = jobs.ValidationRef.from_obj(obj)
-    assert ref is not None
-    assert ref.ruleset == 'rs'
-    assert ref.severity == 'warn'
-    assert ref.phase == 'both'
-
-
-def test_validationref_from_obj_invalid():
-    """
-    Test invalid dict input yields None for :class:`ValidationRef`.
-    """
-    assert jobs.ValidationRef.from_obj(None) is None
-    assert jobs.ValidationRef.from_obj({'ruleset': 123}) is None

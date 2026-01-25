@@ -11,9 +11,9 @@ Notes
 from __future__ import annotations
 
 import csv
+import itertools
 import json
 import random
-import tempfile
 import types
 from collections.abc import Callable
 from pathlib import Path
@@ -36,6 +36,7 @@ from etlplus.api import PaginationConfig
 from etlplus.api import PaginationConfigMap
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigMap
+from etlplus.types import JSONData
 from etlplus.workflow import PipelineConfig
 from tests.unit.api.test_u_mocks import MockSession
 
@@ -774,25 +775,26 @@ def csv_writer() -> Callable[[str], None]:
 
 
 @pytest.fixture
-def temp_json_file() -> Callable[[dict[str, Any]], str]:
+def temp_json_file(
+    tmp_path: Path,
+) -> Callable[[JSONData], Path]:
     """
     Create a factory for writing a dictionary to a temporary JSON file and
     return its path.
 
     Returns
     -------
-    Callable[[dict[str, Any]], str]
-        Function that writes a dict to a temporary JSON file and returns its
+    Callable[[JSONData], Path]
+        Function that writes JSON data to a temporary JSON file and returns its
         path.
     """
+    counter = itertools.count()
 
-    def _write(data: dict[str, Any]) -> str:
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.json',
-            delete=False,
-        ) as f:
-            json.dump(data, f)
-            return f.name
+    def _write(data: JSONData, *, filename: str | None = None) -> Path:
+        """Write JSON data to a temp file and return the resulting path."""
+        name = filename or f'payload-{next(counter)}.json'
+        path = tmp_path / name
+        path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        return path
 
     return _write

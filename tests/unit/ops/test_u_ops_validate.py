@@ -9,6 +9,8 @@ Notes
 - Uses temporary files to verify load/validate convenience helpers.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,7 @@ from etlplus.ops.validate import FieldRules
 from etlplus.ops.validate import load_data
 from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
+from etlplus.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
 
@@ -177,24 +180,21 @@ class TestValidate:
 
     def test_from_file(
         self,
-        temp_json_file: Callable[[dict[str, Any]], str],
+        temp_json_file: Callable[[JSONData], Path],
     ) -> None:
         """
         Test from a JSON file path.
 
         Parameters
         ----------
-        temp_json_file : Callable[[dict[str, Any]], str]
-            Fixture to create a temporary JSON file.
+        temp_json_file : Callable[[JSONData], Path]
+            Fixture to create a temp JSON file in a pytest-managed directory.
         """
         test_data = {'name': 'John', 'age': 30}
         temp_path = temp_json_file(test_data)
-        try:
-            result = validate(temp_path)
-            assert result['valid']
-            assert result['data'] == test_data
-        finally:
-            Path(temp_path).unlink()
+        result = validate(temp_path)
+        assert result['valid']
+        assert result['data'] == test_data
 
     def test_from_json_string(self) -> None:
         """Test from a JSON string."""

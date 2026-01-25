@@ -175,6 +175,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         expected: int,
     ) -> None:
+        """Test that Typer exits map to CLI return codes."""
         setup(monkeypatch)
         assert cli_main(['extract', 'foo.csv']) == expected
 

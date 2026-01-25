@@ -202,17 +202,10 @@ class TestExtractErrors:
         AssertionError
             If the expected exception is not raised.
         """
-        with pytest.raises(exc_type) as e:
+        with pytest.raises(exc_type) as exc:
             call(*args)
-        match e.value:
-            case FileNotFoundError():
-                pass
-            case ValueError() if err_msg and err_msg in str(e.value):
-                pass
-            case _:
-                raise AssertionError(
-                    f'Expected {exc_type.__name__} with message: {err_msg}',
-                ) from e.value
+        if err_msg:
+            assert err_msg in str(exc.value)
 
 
 @pytest.mark.unit
@@ -313,7 +306,7 @@ class TestExtractFromApi:
         class NoGet:  # noqa: D401
             """Session stub without a 'GET' method."""
 
-            pass  # pylint: disable=unnecessary-pass
+            __slots__ = ()
 
         with pytest.raises(TypeError, match='callable "get"'):
             extract_from_api(f'{base_url}/data', session=NoGet())

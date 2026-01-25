@@ -26,11 +26,15 @@ pytestmark = pytest.mark.unit
 class TestAggregateName:
     """Unit test suite for :class:`etlplus.enums.AggregateName`."""
 
-    # TODO: Fix type hints to allow both int and float inputs.
-    def test_funcs(self) -> None:
-        """Test the aggregate functions."""
-        # nums = [1, 2, 3]
-        nums = [1.0, 2.0, 3.0]
+    @pytest.mark.parametrize(
+        'nums',
+        [
+            pytest.param([1, 2, 3], id='ints'),
+            pytest.param([1.0, 2.0, 3.0], id='floats'),
+        ],
+    )
+    def test_funcs(self, nums: list[int | float]) -> None:
+        """Test the aggregate functions across numeric inputs."""
         assert AggregateName.SUM.func(nums, len(nums)) == 6
         assert AggregateName.MAX.func(nums, len(nums)) == 3
         assert AggregateName.MIN.func(nums, len(nums)) == 1

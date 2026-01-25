@@ -10,12 +10,16 @@ Notes
 - Normalizes data types for accurate comparison.
 """
 
+from __future__ import annotations
+
+from operator import itemgetter
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 import pytest
 
 from etlplus.file import File
+from etlplus.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
 
@@ -24,8 +28,8 @@ pytestmark = pytest.mark.integration
 
 
 def _norm_record(
-    rec: dict[str, Any],
-) -> dict[str, Any]:
+    rec: JSONDict,
+) -> JSONDict:
     """Normalize record fields to consistent types for comparison."""
     return {
         'name': rec['name'],
@@ -56,8 +60,10 @@ def test_examples_sample_csv_json_parity_integration():
 
     expected_fields = {'name', 'email', 'age', 'status'}
 
-    csv_norm = [_norm_record(r) for r in csv_data]  # type: ignore[arg-type]
-    json_norm = [_norm_record(r) for r in json_data]  # type: ignore[arg-type]
+    csv_records = cast(list[JSONDict], csv_data)
+    json_records = cast(list[JSONDict], json_data)
+    csv_norm = [_norm_record(r) for r in csv_records]
+    json_norm = [_norm_record(r) for r in json_records]
 
     # Schema checks (CSV header + JSON object keys).
     for r in csv_norm:
@@ -65,12 +71,7 @@ def test_examples_sample_csv_json_parity_integration():
     for r in json_norm:
         assert set(r.keys()) == expected_fields
 
-    def sort_key(r: dict[str, Any]):
-        # Email unique in fixtures.
-        return (
-            r['email'],
-            r['name'],
-        )
+    sort_key = itemgetter('email', 'name')
 
     assert sorted(csv_norm, key=sort_key) == sorted(
         json_norm,
