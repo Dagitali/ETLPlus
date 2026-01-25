@@ -505,7 +505,7 @@ def run_handler(
         Name of the job to run. If not provided, runs the entire pipeline.
         Default is ``None``.
     pipeline : str | None, optional
-        Alias for ``job``. Default is ``None``.
+        Alias for *job*. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print output. Default is ``True``.
 
