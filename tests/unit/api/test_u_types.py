@@ -4,6 +4,8 @@
 Unit tests for :mod:`etlplus.api.types`.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from etlplus.api.types import FetchPageCallable
@@ -21,26 +23,34 @@ pytestmark = pytest.mark.unit
 # SECTION: TESTS ============================================================ #
 
 
-def test_request_options_as_kwargs():
-    """Test that :meth:`RequestOptions.as_kwargs` produces correct dict."""
-    opts = RequestOptions(params={'a': 1}, headers={'X': 'y'}, timeout=5.0)
-    kw = opts.as_kwargs()
-    assert kw['params'] == {'a': 1}
-    assert kw['headers'] == {'X': 'y'}
-    assert kw['timeout'] == 5.0
-
-
-def test_request_options_as_kwargs_edge_cases():
-    """Test :meth:`RequestOptions.as_kwargs` with unset and ``None`` fields."""
-    opts = RequestOptions()
-    kw = opts.as_kwargs()
-    assert not kw
-
-    opts2 = RequestOptions(params={'x': 1})
-    kw2 = opts2.as_kwargs()
-    assert kw2['params'] == {'x': 1}
-    assert 'headers' not in kw2
-    assert 'timeout' not in kw2
+@pytest.mark.parametrize(
+    'opts, expected',
+    [
+        pytest.param(
+            RequestOptions(
+                params={'a': 1},
+                headers={'X': 'y'},
+                timeout=5.0,
+            ),
+            {'params': {'a': 1}, 'headers': {'X': 'y'}, 'timeout': 5.0},
+            id='full',
+        ),
+        pytest.param(RequestOptions(), {}, id='empty'),
+        pytest.param(
+            RequestOptions(params={'x': 1}),
+            {'params': {'x': 1}},
+            id='params-only',
+        ),
+    ],
+)
+def test_request_options_as_kwargs(
+    opts: RequestOptions,
+    expected: dict[str, object],
+) -> None:
+    """
+    Test that :meth:`RequestOptions.as_kwargs` produces the expected dict.
+    """
+    assert opts.as_kwargs() == expected
 
 
 def test_request_options_defaults():
@@ -51,32 +61,44 @@ def test_request_options_defaults():
     assert opts.timeout is None
 
 
-def test_request_options_evolve():
-    """
-    Test that :meth:`RequestOptions.evolve` creates modified copies correctly.
-    """
+@pytest.mark.parametrize(
+    'kwargs, expected_params, expected_headers, expected_timeout',
+    [
+        pytest.param(
+            {'params': {'b': 2}, 'headers': None, 'timeout': None},
+            {'b': 2},
+            None,
+            None,
+            id='override-clear',
+        ),
+        pytest.param(
+            {},
+            {'a': 1},
+            {'X': 'y'},
+            5.0,
+            id='preserve',
+        ),
+        pytest.param(
+            {'params': None, 'headers': None, 'timeout': None},
+            None,
+            None,
+            None,
+            id='explicit-none',
+        ),
+    ],
+)
+def test_request_options_evolve_variants(
+    kwargs: dict[str, object],
+    expected_params: dict[str, int] | None,
+    expected_headers: dict[str, str] | None,
+    expected_timeout: float | None,
+) -> None:
+    """Test :meth:`RequestOptions.evolve` variants for preserving/clearing."""
     opts = RequestOptions(params={'a': 1}, headers={'X': 'y'}, timeout=5.0)
-    evolved = opts.evolve(params={'b': 2}, headers=None, timeout=None)
-    assert evolved.params == {'b': 2}
-    assert evolved.headers is None
-    assert evolved.timeout is None
-
-
-def test_request_options_evolve_edge_cases():
-    """Test :meth:`RequestOptions.evolve` with unset and ``None`` fields."""
-    opts = RequestOptions(params={'a': 1}, headers={'X': 'y'}, timeout=5.0)
-
-    # Evolve with _UNSET (should preserve existing).
-    evolved = opts.evolve()
-    assert evolved.params == {'a': 1}
-    assert evolved.headers == {'X': 'y'}
-    assert evolved.timeout == 5.0
-
-    # Evolve with None (should clear).
-    evolved2 = opts.evolve(params=None, headers=None, timeout=None)
-    assert evolved2.params is None
-    assert evolved2.headers is None
-    assert evolved2.timeout is None
+    evolved = opts.evolve(**kwargs)
+    assert evolved.params == expected_params
+    assert evolved.headers == expected_headers
+    assert evolved.timeout == expected_timeout
 
 
 def test_request_options_invalid_params_headers():
@@ -106,7 +128,12 @@ def test_type_aliases():
     # headers: Headers = {'Authorization': 'token'}
     # params: Params = {'q': 'search'}
 
-    def fetch(url: Url, opts: RequestOptions, page: int | None):
+    def fetch(
+        url: Url,
+        opts: RequestOptions,
+        page: int | None,
+    ) -> dict[str, list[int]]:
+        """Return a payload to satisfy the callback signature."""
         return {'data': [1, 2, 3]}
 
     cb: FetchPageCallable = fetch
@@ -128,7 +155,12 @@ def test_type_aliases_edge_cases():
     assert isinstance(params, dict)
 
     # FetchPageCallable must accept correct signature.
-    def fetch(url: Url, opts: RequestOptions, page: int | None):
+    def fetch(
+        url: Url,
+        opts: RequestOptions,
+        page: int | None,
+    ) -> dict[str, list[int]]:
+        """Return a payload to satisfy the callback signature."""
         return {'data': []}
 
     cb: FetchPageCallable = fetch
