@@ -33,6 +33,7 @@ from ._io import normalize_records
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -124,7 +125,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read AVRO content from ``path``.
+    Read AVRO content from *path*.
 
     Parameters
     ----------
@@ -147,7 +148,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to AVRO at ``path`` and return record count.
+    Write *data* to AVRO at *path* and return record count.
 
     Parameters
     ----------
