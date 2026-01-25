@@ -105,7 +105,7 @@ def json_file_factory_fixture(
     tmp_path: Path,
 ) -> JsonFactory:
     """
-    Create JSON files under ``tmp_path`` and return their paths.
+    Create JSON files under *tmp_path* and return their paths.
 
     Parameters
     ----------
