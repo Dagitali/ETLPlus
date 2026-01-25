@@ -76,7 +76,7 @@ class CoercibleStrEnum(enum.StrEnum):
     @classmethod
     def coerce(cls, value: Self | str | object) -> Self:
         """
-        Convert an enum member or string-like input to a member of ``cls``.
+        Convert an enum member or string-like input to a member of *cls*.
 
         Parameters
         ----------
