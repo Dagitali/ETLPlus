@@ -281,7 +281,7 @@ def infer_file_format_and_compression(
         A filename, extension, MIME type, or existing enum member.
     filename : object | None, optional
         A filename to consult for extension-based inference (e.g. when
-        ``value`` is ``application/octet-stream``).
+        *value* is ``application/octet-stream``).
 
     Returns
     -------
