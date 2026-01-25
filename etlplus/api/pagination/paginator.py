@@ -66,14 +66,14 @@ def _resolve_path(
     path: str | None,
 ) -> Any:
     """
-    Resolve dotted ``path`` within ``obj`` or return ``_MISSING``.
+    Resolve dotted *path* within *obj* or return ``_MISSING``.
 
     Parameters
     ----------
     obj : Any
         JSON payload from an API response.
     path : str | None
-        Dotted path to the target value within ``obj``.
+        Dotted path to the target value within *obj*.
 
     Returns
     -------
@@ -665,7 +665,7 @@ class Paginator:
         records_path : str | None
             Optional dotted path to the records within the payload.
         fallback_path : str | None
-            Secondary dotted path consulted when ``records_path`` resolves to
+            Secondary dotted path consulted when *records_path* resolves to
             ``None`` or an empty list.
 
         Returns
@@ -675,9 +675,8 @@ class Paginator:
 
         Notes
         -----
-        Supports dotted path extraction via ``records_path`` and handles
-        lists, mappings, and scalars by coercing non-dict items into
-        ``{"value": x}``.
+        Supports dotted path extraction via *records_path* and handles lists,
+        mappings, and scalars by coercing non-dict items into ``{"value": x}``.
         """
         resolver = partial(_resolve_path, x)
         data = resolver(records_path)
@@ -729,7 +728,7 @@ class Paginator:
         Returns
         -------
         PaginationType | None
-            Detected pagination type, or ``default`` if not found.
+            Detected pagination type, or *default* if not found.
         """
         if not config:
             return default
