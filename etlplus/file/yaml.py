@@ -28,6 +28,7 @@ from ._io import coerce_record_payload
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -40,7 +41,7 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Read YAML content from ``path``.
+    Read YAML content from *path*.
 
     Validates that the YAML root is a dict or a list of dicts.
 
@@ -70,7 +71,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` as YAML to ``path`` and return record count.
+    Write *data* as YAML to *path* and return record count.
 
     Parameters
     ----------
