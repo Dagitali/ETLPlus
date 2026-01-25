@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.__main__`.
 Covers CLI entrypoint and _run().
 """
 
+from __future__ import annotations
+
 import pytest
 
 from etlplus import __main__
@@ -24,9 +26,9 @@ pytestmark = pytest.mark.unit
 
 def test_run_invokes_main(
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """Test that :func:`_run` invokes :func:`main` and returns its value."""
-    called = {}
+    called: dict[str, bool] = {}
 
     def fake_main():
         called['main'] = True
@@ -39,7 +41,7 @@ def test_run_invokes_main(
 
 def test_main_guard_executes_run(
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """
     Test that the main guard executes :func:`_run` and raises
     :class:`SystemExit`.
