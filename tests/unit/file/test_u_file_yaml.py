@@ -70,10 +70,8 @@ def yaml_stub_fixture() -> Generator[_StubYaml]:
 # SECTION: TESTS ============================================================ #
 
 
-# TODO: Can File read/write YAML without PyYAML installed?
-# TODO: If not, remove this unit test suite.
 class TestYamlSupport:
-    """Unit tests exercising YAML read/write helpers without PyYAML."""
+    """Unit tests exercising YAML read/write helpers using a PyYAML stub."""
 
     def test_read_yaml_uses_stub(
         self,
