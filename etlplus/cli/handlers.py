@@ -121,9 +121,12 @@ def _check_sections(
     if targets:
         sections['targets'] = [tgt.name for tgt in cfg.targets]
     if transforms:
-        sections['transforms'] = [
-            getattr(trf, 'name', None) for trf in cfg.transforms
-        ]
+        if isinstance(cfg.transforms, Mapping):
+            sections['transforms'] = list(cfg.transforms)
+        else:
+            sections['transforms'] = [
+                getattr(trf, 'name', None) for trf in cfg.transforms
+            ]
     if not sections:
         sections['jobs'] = _pipeline_summary(cfg)['jobs']
     return sections
