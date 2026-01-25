@@ -85,7 +85,9 @@ def test_ref_from_obj_valid(
         pytest.param(jobs.TransformRef, {'pipeline': 123}, id='transform-bad'),
         pytest.param(jobs.ValidationRef, None, id='validation-none'),
         pytest.param(
-            jobs.ValidationRef, {'ruleset': 123}, id='validation-bad',
+            jobs.ValidationRef,
+            {'ruleset': 123},
+            id='validation-bad',
         ),
     ],
 )
