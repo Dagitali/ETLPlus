@@ -13,12 +13,12 @@ Back to project overview: see the top-level [README](../README.md).
 
 - [etlplus.api](api/README.md): Lightweight HTTP client and paginated REST helpers
 - [etlplus.file](file/README.md): Unified file format support and helpers
-- [etlplus.config](config/README.md): Configuration helpers for connectors, pipelines, jobs, and
-  profiles
-- [etlplus.cli](cli/README.md): Command-line interface for ETLPlus workflows
+- [etlplus.cli](cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.templates](templates/README.md): SQL and DDL template helpers
 - [etlplus.validation](validation/README.md): Data validation utilities and helpers
+- [etlplus.workflow](etlplus/workflow/README.md): Helpers for data connectors, pipelines, jobs, and
+  profiles
 
 ## Quickstart
 

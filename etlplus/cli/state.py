@@ -15,6 +15,7 @@ from typing import Final
 
 import typer
 
+from ..utils import normalize_str
 from .constants import DATA_CONNECTORS
 
 # SECTION: EXPORTS ========================================================== #
@@ -322,14 +323,10 @@ def validate_choice(
     typer.BadParameter
         If the input value is not in the set of valid choices.
     """
-    v = str(value or '').strip().lower()
-    normalized_choices = {c.lower() for c in choices}
+    v = normalize_str(str(value or ''))
+    normalized_choices = {normalize_str(c): c for c in choices}
     if v in normalized_choices:
-        # Preserve original casing from choices when possible for messages
-        for choice in choices:
-            if choice.lower() == v:
-                return choice
-        return v
+        return normalized_choices[v]
     allowed = ', '.join(sorted(choices))
     raise typer.BadParameter(
         f"Invalid {label} '{value}'. Choose from: {allowed}",

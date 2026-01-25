@@ -7,13 +7,11 @@ The helpers defined here embrace a "high cohesion, low coupling" design by
 isolating normalization, configuration, and logging responsibilities. The
 resulting surface keeps ``maybe_validate`` focused on orchestration while
 offloading ancillary concerns to composable helpers.
-
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
@@ -23,7 +21,7 @@ from typing import TypedDict
 from typing import cast
 
 from ..types import StrAnyMap
-from ..utils import normalized_str
+from ..utils import normalize_choice
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 
@@ -320,7 +318,7 @@ def _normalize_phase(
     """
     return cast(
         ValidationPhase,
-        _normalize_choice(
+        normalize_choice(
             value,
             mapping=_PHASE_CHOICES,
             default='before_transform',
@@ -346,7 +344,7 @@ def _normalize_severity(
     """
     return cast(
         ValidationSeverity,
-        _normalize_choice(
+        normalize_choice(
             value,
             mapping=_SEVERITY_CHOICES,
             default='error',
@@ -372,39 +370,12 @@ def _normalize_window(
     """
     return cast(
         ValidationWindow,
-        _normalize_choice(
+        normalize_choice(
             value,
             mapping=_WINDOW_CHOICES,
             default='both',
         ),
     )
-
-
-def _normalize_choice(
-    value: str | None,
-    *,
-    mapping: Mapping[str, str],
-    default: str,
-) -> str:
-    """
-    Normalize a text value against a mapping with a default fallback.
-
-    Parameters
-    ----------
-    value : str | None
-        Input text to normalize.
-    mapping : Mapping[str, str]
-        Mapping of accepted values to normalized outputs.
-    default : str
-        Default to return when input is missing or unrecognized.
-
-    Returns
-    -------
-    str
-        Normalized value.
-    """
-    normalized = normalized_str(value)
-    return mapping.get(normalized, default)
 
 
 def _rule_name(

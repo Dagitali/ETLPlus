@@ -121,9 +121,12 @@ def _check_sections(
     if targets:
         sections['targets'] = [tgt.name for tgt in cfg.targets]
     if transforms:
-        sections['transforms'] = [
-            getattr(trf, 'name', None) for trf in cfg.transforms
-        ]
+        if isinstance(cfg.transforms, Mapping):
+            sections['transforms'] = list(cfg.transforms)
+        else:
+            sections['transforms'] = [
+                getattr(trf, 'name', None) for trf in cfg.transforms
+            ]
     if not sections:
         sections['jobs'] = _pipeline_summary(cfg)['jobs']
     return sections
@@ -155,6 +158,29 @@ def _pipeline_summary(
         'targets': targets,
         'jobs': jobs,
     }
+
+
+def _write_file_payload(
+    payload: JSONData,
+    target: str,
+    *,
+    format_hint: str | None,
+) -> None:
+    """
+    Write a JSON-like payload to a file path using an optional format hint.
+
+    Parameters
+    ----------
+    payload : JSONData
+        The structured data to write.
+    target : str
+        File path to write to.
+    format_hint : str | None
+        Optional format hint for :class:`FileFormat`.
+    """
+    file_path = Path(target)
+    file_format = FileFormat.coerce(format_hint) if format_hint else None
+    File(file_path, file_format=file_format).write(payload)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -572,15 +598,7 @@ def transform_handler(
 
     # TODO: Generalize to handle non-file targets.
     if target and target != '-':
-        # Convert target to Path and target_format to FileFormat if needed
-        file_path = Path(target)
-        file_format = None
-        if target_format is not None:
-            try:
-                file_format = FileFormat(target_format)
-            except ValueError:
-                file_format = None  # or handle error as appropriate
-        File(file_path, file_format=file_format).write(data)
+        _write_file_payload(data, target, format_hint=target_format)
         print(f'Data transformed and saved to {target}')
         return 0
 

@@ -36,9 +36,9 @@ from .pagination import PaginationConfig
 from .rate_limiting import RateLimitConfig
 
 if TYPE_CHECKING:
-    from ..config.types import ApiConfigMap
-    from ..config.types import ApiProfileConfigMap
-    from ..config.types import EndpointMap
+    from .types import ApiConfigMap
+    from .types import ApiProfileConfigMap
+    from .types import EndpointMap
 
 
 # SECTION: EXPORTS ========================================================== #

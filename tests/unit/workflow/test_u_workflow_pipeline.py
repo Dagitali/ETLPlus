@@ -171,7 +171,6 @@ def pipeline_multi_cfg_fixture(
     PipelineConfig
         Parsed configuration with substitution enabled.
     """
-
     return pipeline_builder(MULTI_SOURCE_YAML)
 
 
@@ -200,7 +199,9 @@ class TestCollectParsed:
         """Test that :func:`_collect_parsed` filters malformed entries."""
         payload = {case.collection: case.entries}
         items = _collect_parsed(
-            payload, case.collection, _parse_connector_entry,
+            payload,
+            case.collection,
+            _parse_connector_entry,
         )
 
         assert len(items) == len(case.expected_types)
@@ -287,32 +288,32 @@ jobs: []
         path = connector_path_lookup(collection, name)
         assert path == expected_path
 
-        def test_table_schemas_are_parsed(
-            self,
-            pipeline_builder: Callable[..., PipelineConfig],
-        ) -> None:
+    def test_table_schemas_are_parsed(
+        self,
+        pipeline_builder: Callable[..., PipelineConfig],
+    ) -> None:
+        """
+        Test that table_schemas entries are preserved when loading YAML.
+        """
+        yml = (
             """
-            Test that table_schemas entries are preserved when loading YAML.
-            """
-            yml = (
-                """
 name: TablesOnly
 table_schemas:
-    - schema: dbo
-        table: Customers
-        columns:
-            - name: CustomerId
-                type: int
-                nullable: false
+  - schema: dbo
+    table: Customers
+    columns:
+      - name: CustomerId
+        type: int
+        nullable: false
 sources: []
 targets: []
 jobs: []
-                """
-            ).strip()
+            """
+        ).strip()
 
-            cfg = pipeline_builder(yml)
+        cfg = pipeline_builder(yml)
 
-            assert len(cfg.table_schemas) == 1
-            spec = cfg.table_schemas[0]
-            assert spec['table'] == 'Customers'
-            assert spec['columns'][0]['name'] == 'CustomerId'
+        assert len(cfg.table_schemas) == 1
+        spec = cfg.table_schemas[0]
+        assert spec['table'] == 'Customers'
+        assert spec['columns'][0]['name'] == 'CustomerId'

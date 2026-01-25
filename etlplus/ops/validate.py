@@ -11,8 +11,8 @@ Highlights
 ----------
 - Centralized type map and helpers for clarity and reuse.
 - Consistent error wording; field and item paths like ``[2].email``.
-- Small, focused public API with ``load_data``, ``validate_field``,
-  ``validate``.
+- Small, focused public API with :func:`load_data`, :func:`validate_field`,
+    :func:`validate`.
 
 Examples
 --------
@@ -66,7 +66,7 @@ TYPE_MAP: Final[dict[str, type | tuple[type, ...]]] = {
 }
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class FieldRules(TypedDict, total=False):
