@@ -20,6 +20,7 @@ from .enums import infer_file_format_and_compression
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -89,7 +90,7 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Read ZIP content from ``path`` and parse the inner payload(s).
+    Read ZIP content from *path* and parse the inner payload(s).
 
     Parameters
     ----------
@@ -140,7 +141,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to ZIP at ``path`` and return record count.
+    Write *data* to ZIP at *path* and return record count.
 
     Parameters
     ----------
