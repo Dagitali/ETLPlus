@@ -16,6 +16,7 @@ Notes
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import cast
@@ -53,6 +54,7 @@ from etlplus.ops.transform import apply_map
 from etlplus.ops.transform import apply_select
 from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
+from etlplus.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
 
@@ -401,7 +403,7 @@ class TestTransform:
 
     def test_from_file(
         self,
-        temp_json_file: Callable[[list[dict]], str],
+        temp_json_file: Callable[[JSONData], Path],
     ) -> None:
         """Test transforming from a JSON file."""
         temp_path = temp_json_file([{'name': 'John', 'age': 30}])
