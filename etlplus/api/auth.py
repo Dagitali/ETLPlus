@@ -136,7 +136,7 @@ def _truncate(
     limit: int = MAX_LOG_BODY,
 ) -> str:
     """
-    Return ``text`` shortened to ``limit`` characters for logging.
+    Return *text* shortened to *limit* characters for logging.
 
     Parameters
     ----------
