@@ -30,6 +30,7 @@ from ._io import normalize_records
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -42,7 +43,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read Parquet content from ``path``.
+    Read Parquet content from *path*.
 
     Parameters
     ----------
@@ -76,7 +77,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to Parquet at ``path`` and return record count.
+    Write *data* to Parquet at *path* and return record count.
 
     Parameters
     ----------
