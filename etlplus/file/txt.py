@@ -27,6 +27,7 @@ from ._io import normalize_records
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -39,7 +40,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read TXT content from ``path``.
+    Read TXT content from *path*.
 
     Parameters
     ----------
@@ -66,7 +67,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to TXT at ``path`` and return record count.
+    Write *data* to TXT at *path* and return record count.
 
     Parameters
     ----------
@@ -83,7 +84,7 @@ def write(
     Raises
     ------
     TypeError
-        If any item in ``data`` is not a dictionary or if any dictionary
+        If any item in *data* is not a dictionary or if any dictionary
         does not contain a ``'text'`` key.
     """
     rows = normalize_records(data, 'TXT')

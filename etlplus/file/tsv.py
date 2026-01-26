@@ -30,6 +30,7 @@ from ._io import write_delimited
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -42,7 +43,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read TSV content from ``path``.
+    Read TSV content from *path*.
 
     Parameters
     ----------
@@ -62,7 +63,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to TSV at ``path`` and return record count.
+    Write *data* to TSV at *path* and return record count.
 
     Parameters
     ----------

@@ -12,6 +12,7 @@ from typing import Any
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
+# Optional Python module support (lazy-loaded to avoid hard dependency)
 _MODULE_CACHE: dict[str, Any] = {}
 
 

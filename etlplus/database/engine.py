@@ -87,7 +87,7 @@ def load_database_url_from_config(
     Extract a database URL/DSN from a YAML/JSON config file.
 
     The loader is schema-tolerant: it looks for a top-level "databases" map
-    and then for a named entry (``name``). Each entry may contain either a
+    and then for a named entry (*name*). Each entry may contain either a
     ``connection_string``/``url``/``dsn`` or a nested ``default`` block with
     those fields.
 

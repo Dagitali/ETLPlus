@@ -30,7 +30,7 @@ def _build_wheel(
     out_dir: Path,
 ) -> Path:
     """
-    Build a wheel into ``out_dir`` and return its path.
+    Build a wheel into *out_dir* and return its path.
 
     Requires the 'build' package.
 

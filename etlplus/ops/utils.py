@@ -205,14 +205,14 @@ def maybe_validate(
     Returns
     -------
     Any
-        ``payload`` when validation is skipped or when severity is ``"warn"``
+        *payload* when validation is skipped or when severity is ``"warn"``
         and the validation fails. Returns the validator ``data`` payload when
         validation succeeds.
 
     Raises
     ------
     ValueError
-        Raised when validation fails and ``severity`` is ``"error"``.
+        Raised when validation fails and *severity* is ``"error"``.
 
     Examples
     --------

@@ -61,10 +61,12 @@ _UNSET = object()
 
 class ApiConfigMap(TypedDict, total=False):
     """
-    Top-level API config shape parsed by ApiConfig.from_obj.
+    Top-level API config shape parsed by
+    :meth:`etlplus.api.config.ApiConfig.from_obj`.
 
-    Either provide a ``base_url`` with optional ``headers`` and ``endpoints``,
-    or provide ``profiles`` with at least one profile having a ``base_url``.
+    Either provide a :attr:`base_url` with optional :attr:`headers` and
+    :attr:`endpoints`, or provide :attr:`profiles` with at least one profile
+    having a :attr:`base_url`.
 
     See Also
     --------
@@ -79,11 +81,14 @@ class ApiConfigMap(TypedDict, total=False):
 
 class ApiProfileConfigMap(TypedDict, total=False):
     """
-    Shape accepted for a profile entry under ApiConfigMap.profiles.
+    Shape accepted for a profile entry under
+    :meth:`etlplus.api.config.ApiConfig.from_obj`.
 
     Notes
     -----
-    ``base_url`` is required at runtime when profiles are provided.
+    - :attr:`base_url` is required at runtime when :attr:`profiles` key/value
+        pairs are provided.
+    - :meth:`etlplus.api.config.ApiProfileConfig.from_obj` parses this mapping.
 
     See Also
     --------
@@ -103,7 +108,12 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
 
     Notes
     -----
-    Runtime expects header values to be str; typing remains permissive.
+    - Runtime expects header values to be ``str``; typing remains permissive.
+    - :meth:`etlplus.api.config.ApiProfileConfig.from_obj` consumes this block.
+    - :meth:`etlplus.api.pagination.PaginationConfig.from_obj` parses
+        :attr:`pagination`.
+    - :meth:`etlplus.api.rate_limiting.RateLimitConfig.from_obj` parses
+        :attr:`rate_limit`.
 
     See Also
     --------
@@ -113,15 +123,15 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     """
 
     headers: StrAnyMap
-    pagination: Any
-    rate_limit: Any
+    pagination: StrAnyMap  # PaginationConfigMap | StrAnyMap
+    rate_limit: StrAnyMap  # RateLimitConfigMap | StrAnyMap
 
 
 class EndpointMap(TypedDict, total=False):
     """
-    Shape accepted by EndpointConfig.from_obj.
+    Shape accepted by :meth:`etlplus.api.config.EndpointConfig.from_obj`.
 
-    One of ``path`` or ``url`` should be provided.
+    One of :attr:`path` or :attr:`url` should be provided.
 
     See Also
     --------
@@ -134,8 +144,8 @@ class EndpointMap(TypedDict, total=False):
     path_params: StrAnyMap
     query_params: StrAnyMap
     body: Any
-    pagination: Any
-    rate_limit: Any
+    pagination: StrAnyMap  # PaginationConfigMap | StrAnyMap
+    rate_limit: StrAnyMap  # RateLimitConfigMap | StrAnyMap
 
 
 # SECTION: DATA CLASSES ===================================================== #

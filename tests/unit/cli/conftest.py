@@ -100,14 +100,14 @@ def assert_mapping_contains(
     expected: Mapping[str, object],
 ) -> None:
     """
-    Assert that ``actual`` contains the ``expected`` key/value pairs.
+    Assert that *actual* contains the *expected* key/value pairs.
 
     Parameters
     ----------
     actual : Mapping[str, object]
         Mapping returned by the handler capture fixture.
     expected : Mapping[str, object]
-        Expected key/value pairs that must be present in ``actual``.
+        Expected key/value pairs that must be present in *actual*.
     """
     for key, value in expected.items():
         assert actual[key] == value

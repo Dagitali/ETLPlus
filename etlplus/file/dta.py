@@ -27,6 +27,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -39,7 +40,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read DTA content from ``path``.
+    Read DTA content from *path*.
 
     Parameters
     ----------
@@ -59,7 +60,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to DTA file at ``path`` and return record count.
+    Write *data* to DTA file at *path* and return record count.
 
     Parameters
     ----------

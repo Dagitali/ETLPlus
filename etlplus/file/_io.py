@@ -24,7 +24,7 @@ def coerce_record_payload(
     format_name: str,
 ) -> JSONData:
     """
-    Validate that ``payload`` is an object or list of objects.
+    Validate that *payload* is an object or list of objects.
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ def coerce_record_payload(
     Returns
     -------
     JSONData
-        ``payload`` when it is a dict or a list of dicts.
+        *payload* when it is a dict or a list of dicts.
 
     Raises
     ------
@@ -89,9 +89,13 @@ def normalize_records(
     return [cast(JSONDict, data)]
 
 
-def read_delimited(path: Path, *, delimiter: str) -> JSONList:
+def read_delimited(
+    path: Path,
+    *,
+    delimiter: str,
+) -> JSONList:
     """
-    Read delimited content from ``path``.
+    Read delimited content from *path*.
 
     Parameters
     ----------
@@ -118,9 +122,14 @@ def read_delimited(path: Path, *, delimiter: str) -> JSONList:
     return rows
 
 
-def write_delimited(path: Path, data: JSONData, *, delimiter: str) -> int:
+def write_delimited(
+    path: Path,
+    data: JSONData,
+    *,
+    delimiter: str,
+) -> int:
     """
-    Write ``data`` to a delimited file and return record count.
+    Write *data* to a delimited file and return record count.
 
     Parameters
     ----------

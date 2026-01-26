@@ -76,8 +76,8 @@ def deep_substitute(
     vars_map : StrAnyMap | None
         Mapping of variable names to replacement values (lower precedence).
     env_map : Mapping[str, str] | None
-        Mapping of environment variables overriding ``vars_map`` values
-        (higher precedence).
+        Mapping of environment variables overriding *vars_map* values (higher
+        precedence).
 
     Returns
     -------
@@ -130,7 +130,7 @@ def coerce_dict(
     value: Any,
 ) -> dict[str, Any]:
     """
-    Return a ``dict`` copy when ``value`` is mapping-like.
+    Return a ``dict`` copy when *value* is mapping-like.
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ def coerce_dict(
     Returns
     -------
     dict[str, Any]
-        Shallow copy of ``value`` converted to a standard ``dict``.
+        Shallow copy of *value* converted to a standard ``dict``.
     """
     return dict(value) if isinstance(value, Mapping) else {}
 
@@ -170,7 +170,7 @@ def maybe_mapping(
     value: Any,
 ) -> StrAnyMap | None:
     """
-    Return ``value`` when it is mapping-like; otherwise ``None``.
+    Return *value* when it is mapping-like; otherwise ``None``.
 
     Parameters
     ----------
@@ -189,7 +189,7 @@ def print_json(
     obj: Any,
 ) -> None:
     """
-    Pretty-print ``obj`` as UTF-8 JSON without ASCII escaping.
+    Pretty-print *obj* as UTF-8 JSON without ASCII escaping.
 
     Parameters
     ----------
@@ -214,12 +214,12 @@ def to_float(
     maximum: float | None = None,
 ) -> float | None:
     """
-    Coerce ``value`` to a float with optional fallback and bounds.
+    Coerce *value* to a float with optional fallback and bounds.
 
     Notes
     -----
     For strings, leading/trailing whitespace is ignored. Returns ``None``
-    when coercion fails and no ``default`` is provided.
+    when coercion fails and no *default* is provided.
     """
     return _normalize_number(
         _coerce_float,
@@ -235,7 +235,7 @@ def to_maximum_float(
     default: float,
 ) -> float:
     """
-    Return the greater of ``default`` and ``value`` after float coercion.
+    Return the greater of *default* and *value* after float coercion.
 
     Parameters
     ----------
@@ -247,7 +247,7 @@ def to_maximum_float(
     Returns
     -------
     float
-        ``default`` if coercion fails; else ``max(coerced, default)``.
+        *default* if coercion fails; else ``max(coerced, default)``.
     """
     result = to_float(value, default)
     return max(_value_or_default(result, default), default)
@@ -258,7 +258,7 @@ def to_minimum_float(
     default: float,
 ) -> float:
     """
-    Return the lesser of ``default`` and ``value`` after float coercion.
+    Return the lesser of *default* and *value* after float coercion.
 
     Parameters
     ----------
@@ -270,7 +270,7 @@ def to_minimum_float(
     Returns
     -------
     float
-        ``default`` if coercion fails; else ``min(coerced, default)``.
+        *default* if coercion fails; else ``min(coerced, default)``.
     """
     result = to_float(value, default)
     return min(_value_or_default(result, default), default)
@@ -306,12 +306,12 @@ def to_int(
     maximum: int | None = None,
 ) -> int | None:
     """
-    Coerce ``value`` to an integer with optional fallback and bounds.
+    Coerce *value* to an integer with optional fallback and bounds.
 
     Notes
     -----
     For strings, leading/trailing whitespace is ignored. Returns ``None``
-    when coercion fails and no ``default`` is provided.
+    when coercion fails and no *default* is provided.
     """
     return _normalize_number(
         _coerce_int,
@@ -327,7 +327,7 @@ def to_maximum_int(
     default: int,
 ) -> int:
     """
-    Return the greater of ``default`` and ``value`` after integer coercion.
+    Return the greater of *default* and *value* after integer coercion.
 
     Parameters
     ----------
@@ -339,7 +339,7 @@ def to_maximum_int(
     Returns
     -------
     int
-        ``default`` if coercion fails; else ``max(coerced, default)``.
+        *default* if coercion fails; else ``max(coerced, default)``.
     """
     result = to_int(value, default)
     return max(_value_or_default(result, default), default)
@@ -350,7 +350,7 @@ def to_minimum_int(
     default: int,
 ) -> int:
     """
-    Return the lesser of ``default`` and ``value`` after integer coercion.
+    Return the lesser of *default* and *value* after integer coercion.
 
     Parameters
     ----------
@@ -362,7 +362,7 @@ def to_minimum_int(
     Returns
     -------
     int
-        ``default`` if coercion fails; else ``min(coerced, default)``.
+        *default* if coercion fails; else ``min(coerced, default)``.
     """
     result = to_int(value, default)
     return min(_value_or_default(result, default), default)
@@ -375,21 +375,21 @@ def to_positive_int(
     minimum: int = 1,
 ) -> int:
     """
-    Return a positive integer, falling back to ``minimum`` when needed.
+    Return a positive integer, falling back to *minimum* when needed.
 
     Parameters
     ----------
     value : Any
         Candidate input coerced with :func:`to_int`.
     default : int
-        Fallback value when coercion fails; clamped by ``minimum``.
+        Fallback value when coercion fails; clamped by *minimum*.
     minimum : int
         Inclusive lower bound for the result. Defaults to ``1``.
 
     Returns
     -------
     int
-        Positive integer respecting ``minimum``.
+        Positive integer respecting *minimum*.
     """
     result = to_int(value, default, minimum=minimum)
     return _value_or_default(result, minimum)
@@ -402,7 +402,7 @@ def to_number(
     value: object,
 ) -> float | None:
     """
-    Coerce ``value`` to a ``float`` using the internal float coercer.
+    Coerce *value* to a ``float`` using the internal float coercer.
 
     Parameters
     ----------
@@ -466,7 +466,7 @@ def normalize_choice(
     Returns
     -------
     str
-        Normalized mapped value or ``default``.
+        Normalized mapped value or *default*.
     """
     return mapping.get(normalize(value), default)
 
@@ -480,7 +480,7 @@ def _clamp(
     maximum: Num | None,
 ) -> Num:
     """
-    Return ``value`` constrained to the interval ``[minimum, maximum]``.
+    Return *value* constrained to the interval ``[minimum, maximum]``.
 
     Parameters
     ----------
@@ -516,7 +516,7 @@ def _prepare_substitutions(
     vars_map : StrAnyMap | None
         Mapping of variable names to replacement values (lower precedence).
     env_map : Mapping[str, Any] | None
-        Environment-backed values that override entries from ``vars_map``.
+        Environment-backed values that override entries from *vars_map*.
 
     Returns
     -------
@@ -535,7 +535,7 @@ def _replace_tokens(
     substitutions: Iterable[tuple[str, Any]],
 ) -> str:
     """
-    Replace ``${VAR}`` tokens in ``text`` using ``substitutions``.
+    Replace ``${VAR}`` tokens in *text* using *substitutions*.
 
     Parameters
     ----------
@@ -636,7 +636,7 @@ def _integral_from_float(
     candidate: float | None,
 ) -> int | None:
     """
-    Return ``int(candidate)`` when ``candidate`` is integral.
+    Return ``int(candidate)`` when *candidate* is integral.
 
     Parameters
     ----------
@@ -646,7 +646,7 @@ def _integral_from_float(
     Returns
     -------
     int | None
-        Integer form of ``candidate``; else ``None`` if not integral.
+        Integer form of *candidate*; else ``None`` if not integral.
     """
     if candidate is None or not candidate.is_integer():
         return None
@@ -662,7 +662,7 @@ def _normalize_number(
     maximum: Num | None = None,
 ) -> Num | None:
     """
-    Coerce ``value`` with ``coercer`` and optionally clamp it.
+    Coerce *value* with *coercer* and optionally clamp it.
 
     Parameters
     ----------
@@ -695,7 +695,7 @@ def _validate_bounds(
     maximum: Num | None,
 ) -> tuple[Num | None, Num | None]:
     """
-    Ensure ``minimum`` does not exceed ``maximum``.
+    Ensure *minimum* does not exceed *maximum*.
 
     Parameters
     ----------
@@ -724,7 +724,7 @@ def _value_or_default(
     default: Num,
 ) -> Num:
     """
-    Return ``value`` if not ``None``; else ``default``.
+    Return *value* if not ``None``; else *default*.
 
     Parameters
     ----------
@@ -736,6 +736,6 @@ def _value_or_default(
     Returns
     -------
     Num
-        ``value`` or ``default``.
+        *value* or *default*.
     """
     return default if value is None else value

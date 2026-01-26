@@ -235,7 +235,7 @@ class RateLimiter:
             Base rate-limit configuration. May contain ``"sleep_seconds"`` or
             ``"max_per_sec"``.
         overrides : RateLimitOverrides, optional
-            Optional overrides with the same keys as ``rate_limit``.
+            Optional overrides with the same keys as *rate_limit*.
 
         Returns
         -------

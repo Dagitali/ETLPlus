@@ -278,7 +278,7 @@ class RetryManager:
         **kwargs: Any,
     ) -> JSONData:
         """
-        Execute ``func`` with exponential-backoff retries.
+        Execute *func* with exponential-backoff retries.
 
         Parameters
         ----------
@@ -287,7 +287,7 @@ class RetryManager:
         url : str
             URL for the API request.
         **kwargs : Any
-            Additional keyword arguments to pass to ``func``
+            Additional keyword arguments to pass to *func*
 
         Returns
         -------

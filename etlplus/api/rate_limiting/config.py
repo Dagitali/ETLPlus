@@ -84,14 +84,14 @@ def _merge_rate_limit(
     overrides: RateLimitOverrides = None,
 ) -> dict[str, Any]:
     """
-    Merge ``rate_limit`` and ``overrides`` honoring override precedence.
+    Merge *rate_limit* and *overrides* honoring override precedence.
 
     Parameters
     ----------
     rate_limit : StrAnyMap | None
         Base rate-limit configuration.
     overrides : RateLimitOverrides, optional
-        Override configuration with precedence over ``rate_limit``.
+        Override configuration with precedence over *rate_limit*.
 
     Returns
     -------
@@ -274,7 +274,7 @@ class RateLimitConfig(BoundsWarningsMixin):
         rate_limit : StrAnyMap | RateLimitConfig | None, optional
             Base rate-limit configuration to normalize.
         overrides : RateLimitOverrides, optional
-            Override values that take precedence over ``rate_limit``.
+            Override values that take precedence over *rate_limit*.
 
         Returns
         -------
@@ -330,7 +330,7 @@ class RateLimitConfig(BoundsWarningsMixin):
         Returns
         -------
         Self | None
-            Parsed instance, or ``None`` if ``obj`` isn't a mapping.
+            Parsed instance, or ``None`` if *obj* isn't a mapping.
         """
         if obj is None:
             return None

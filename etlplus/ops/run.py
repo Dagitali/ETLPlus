@@ -94,7 +94,7 @@ def run(
     Run a pipeline job defined in a YAML configuration.
 
     By default it reads the configuration from ``in/pipeline.yml``, but callers
-    can provide an explicit ``config_path`` to override this.
+    can provide an explicit *config_path* to override this.
 
     Parameters
     ----------
@@ -328,11 +328,11 @@ def run_pipeline(
     Parameters
     ----------
     source_type : DataConnectorType | str | None, optional
-        Connector type for extraction. When ``None``, ``source`` is assumed
+        Connector type for extraction. When ``None``, *source* is assumed
         to be pre-loaded data and extraction is skipped.
     source : StrPath | JSONData | None, optional
         Data source for extraction or the pre-loaded payload when
-        ``source_type`` is ``None``.
+        *source_type* is ``None``.
     operations : PipelineConfig | None, optional
         Transform configuration passed to :func:`etlplus.ops.transform`.
     target_type : DataConnectorType | str | None, optional

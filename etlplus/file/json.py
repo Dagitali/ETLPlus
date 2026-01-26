@@ -29,6 +29,7 @@ from ._io import coerce_record_payload
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -41,7 +42,7 @@ def read(
     path: Path,
 ) -> JSONData:
     """
-    Read JSON content from ``path``.
+    Read JSON content from *path*.
 
     Validates that the JSON root is a dict or a list of dicts.
 
@@ -71,7 +72,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` as formatted JSON to ``path``.
+    Write *data* as formatted JSON to *path*.
 
     Parameters
     ----------

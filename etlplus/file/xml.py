@@ -29,6 +29,7 @@ from ..utils import count_records
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -137,7 +138,7 @@ def read(
     path: Path,
 ) -> JSONDict:
     """
-    Read XML content from ``path``.
+    Read XML content from *path*.
 
     Parameters
     ----------
@@ -155,9 +156,14 @@ def read(
     return {root.tag: _element_to_dict(root)}
 
 
-def write(path: Path, data: JSONData, *, root_tag: str) -> int:
+def write(
+    path: Path,
+    data: JSONData,
+    *,
+    root_tag: str,
+) -> int:
     """
-    Write ``data`` to XML at ``path`` and return record count.
+    Write *data* to XML at *path* and return record count.
 
     Parameters
     ----------

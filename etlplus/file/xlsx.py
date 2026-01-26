@@ -18,6 +18,7 @@ from ._io import normalize_records
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -30,7 +31,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read XLSX content from ``path``.
+    Read XLSX content from *path*.
 
     Parameters
     ----------
@@ -63,7 +64,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to XLSX at ``path`` and return record count.
+    Write *data* to XLSX at *path* and return record count.
 
     Parameters
     ----------

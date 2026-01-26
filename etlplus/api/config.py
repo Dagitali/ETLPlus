@@ -68,7 +68,7 @@ def _effective_service_defaults(
     fallback_headers: dict[str, str],
 ) -> tuple[str, dict[str, str]]:
     """
-    Return ``(base_url, headers)`` using ``profiles`` when present.
+    Return ``(base_url, headers)`` using *profiles* when present.
 
     Parameters
     ----------
@@ -87,7 +87,7 @@ def _effective_service_defaults(
     Raises
     ------
     TypeError
-        If no profiles are defined and ``fallback_base`` is not a string.
+        If no profiles are defined and *fallback_base* is not a string.
     """
     if profiles:
         name = 'default' if 'default' in profiles else next(iter(profiles))
