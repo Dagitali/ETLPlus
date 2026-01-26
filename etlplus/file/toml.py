@@ -28,6 +28,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -40,7 +41,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read TOML content from ``path``.
+    Read TOML content from *path*.
 
     Parameters
     ----------
@@ -60,7 +61,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to TOML at ``path`` and return record count.
+    Write *data* to TOML at *path* and return record count.
 
     Parameters
     ----------

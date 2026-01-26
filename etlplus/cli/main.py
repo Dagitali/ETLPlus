@@ -44,7 +44,7 @@ def _emit_context_help(
     Returns
     -------
     bool
-        ``True`` when help was emitted, ``False`` when ``ctx`` was ``None``.
+        ``True`` when help was emitted, ``False`` when *ctx* was ``None``.
     """
     if ctx is None:
         return False

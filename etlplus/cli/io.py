@@ -71,7 +71,7 @@ def emit_or_write(
     success_message: str,
 ) -> None:
     """
-    Emit JSON or persist to disk based on ``output_path``.
+    Emit JSON or persist to disk based on *output_path*.
 
     Parameters
     ----------
@@ -122,7 +122,7 @@ def materialize_file_payload(
     format_explicit: bool,
 ) -> JSONData | object:
     """
-    Return structured payloads when ``source`` references a file.
+    Return structured payloads when *source* references a file.
 
     Parameters
     ----------

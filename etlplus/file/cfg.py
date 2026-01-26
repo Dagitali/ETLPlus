@@ -29,6 +29,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -41,7 +42,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read CFG content from ``path``.
+    Read CFG content from *path*.
 
     Parameters
     ----------
@@ -61,7 +62,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to CFG file at ``path`` and return record count.
+    Write *data* to CFG file at *path* and return record count.
 
     Parameters
     ----------

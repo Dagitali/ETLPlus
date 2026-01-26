@@ -17,6 +17,7 @@ from ._imports import get_pandas
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -29,7 +30,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read XLS content from ``path``.
+    Read XLS content from *path*.
 
     Parameters
     ----------
@@ -62,7 +63,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to XLS at ``path`` and return record count.
+    Write *data* to XLS at *path* and return record count.
 
     Notes
     -----

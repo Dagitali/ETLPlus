@@ -759,8 +759,8 @@ class EndpointClient:
         Raises
         ------
         KeyError
-            If ``endpoint_key`` is unknown or a required placeholder in the
-            path has no corresponding entry in ``path_parameters``.
+            If *endpoint_key* is unknown or a required placeholder in the path
+            has no corresponding entry in *path_parameters*.
         ValueError
             If the path template is invalid.
 
@@ -836,7 +836,7 @@ class EndpointClient:
         """
         Sleep for the specified seconds if positive.
 
-        The optional ``sleeper`` is useful for tests (e.g., pass
+        The optional *sleeper* is useful for tests (e.g., pass
         ``lambda s: None``). Defaults to using time.sleep when not provided.
 
         Parameters
@@ -870,7 +870,7 @@ class EndpointClient:
         rate_limit : RateLimitConfigMap | None
             Client-wide rate limit configuration.
         overrides : RateLimitOverrides, optional
-            Per-call overrides that take precedence over ``rate_limit``.
+            Per-call overrides that take precedence over *rate_limit*.
 
         Returns
         -------

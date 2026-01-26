@@ -51,7 +51,7 @@ def _coerce_optional_str(value: Any) -> str | None:
     Returns
     -------
     str | None
-        ``None`` when ``value`` is ``None``; otherwise a string value.
+        ``None`` when *value* is ``None``; otherwise a string value.
     """
     if value is None:
         return None

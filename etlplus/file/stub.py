@@ -15,6 +15,7 @@ from ..types import JSONList
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]

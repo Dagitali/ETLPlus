@@ -22,7 +22,10 @@ from .enums import infer_file_format_and_compression
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['File']
+__all__ = [
+    # Classes
+    'File',
+]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -30,7 +33,7 @@ __all__ = ['File']
 
 def _accepts_root_tag(handler: object) -> bool:
     """
-    Return True when ``handler`` supports a ``root_tag`` argument.
+    Return True when *handler* supports a ``root_tag`` argument.
 
     Parameters
     ----------
@@ -57,7 +60,7 @@ def _accepts_root_tag(handler: object) -> bool:
 @cache
 def _module_for_format(file_format: FileFormat) -> ModuleType:
     """
-    Import and return the module for ``file_format``.
+    Import and return the module for *file_format*.
 
     Parameters
     ----------
@@ -112,8 +115,8 @@ class File:
         """
         Auto-detect and set the file format on initialization.
 
-        If no explicit ``file_format`` is provided, attempt to infer it from
-        the file path's extension and update :attr:`file_format`. If the
+        If no explicit :attr:`file_format` is provided, attempt to infer it
+        from the file path's extension and update :attr:`file_format`. If the
         extension is unknown, the attribute is left as ``None`` and will be
         validated later by :meth:`_ensure_format`.
         """
@@ -262,7 +265,7 @@ class File:
 
     def read(self) -> JSONData:
         """
-        Read structured data from :attr:`path` using :attr:`file_format`.
+        Read structured data from :attr:path` using :attr:`file_format`.
 
         Returns
         -------
@@ -291,7 +294,7 @@ class File:
         root_tag: str = xml.DEFAULT_XML_ROOT,
     ) -> int:
         """
-        Write ``data`` to :attr:`path` using :attr:`file_format`.
+        Write *data* to *path* using :attr:`file_format`.
 
         Parameters
         ----------
@@ -299,7 +302,7 @@ class File:
             Data to write to the file.
         root_tag : str, optional
             Root tag name to use when writing XML files. Defaults to
-            ``'root'``.
+            ``xml.DEFAULT_XML_ROOT``.
 
         Returns
         -------

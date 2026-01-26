@@ -110,7 +110,7 @@ def _agg_count(
     present: int,
 ) -> int:
     """
-    Return the provided presence count ``present``.
+    Return the provided presence count *present*.
 
     Parameters
     ----------
@@ -120,7 +120,7 @@ def _agg_count(
     Returns
     -------
     int
-        The provided presence count ``present``.
+        The provided presence count *present*.
     """
     return present
 

@@ -233,7 +233,7 @@ def render_table_sql(
     template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
-        Path to a custom template file (overrides ``template``).
+        Path to a custom template file (overrides *template*).
 
     Returns
     -------
@@ -264,7 +264,7 @@ def render_tables(
     template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
     template_path : str | None, optional
-        Path to a custom template file (overrides ``template``).
+        Path to a custom template file (overrides *template*).
 
     Returns
     -------

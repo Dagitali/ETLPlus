@@ -172,7 +172,7 @@ def _coalesce(
     *args: Any,
 ) -> Any | None:
     """
-    Return the first non-``None`` value from ``args``.
+    Return the first non-``None`` value from *args*.
 
     Parameters
     ----------

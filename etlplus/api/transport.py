@@ -309,7 +309,7 @@ def build_session_with_adapters(
     adapters_cfg: Sequence[HTTPAdapterMountConfig],
 ) -> requests.Session:
     """
-    Mount adapters described by ``adapters_cfg`` onto a new session.
+    Mount adapters described by *adapters_cfg* onto a new session.
 
     Ignores invalid adapter configurations so that a usable session is always
     returned.

@@ -160,7 +160,7 @@ def _stub_request_manager(
     Raises
     ------
     ValueError
-        If ``responses`` is empty.
+        If *responses* is empty.
     """
     # pylint: disable=unused-argument
 

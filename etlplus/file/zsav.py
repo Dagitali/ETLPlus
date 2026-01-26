@@ -27,6 +27,7 @@ from . import stub
 
 
 __all__ = [
+    # Functions
     'read',
     'write',
 ]
@@ -39,7 +40,7 @@ def read(
     path: Path,
 ) -> JSONList:
     """
-    Read ZSAV content from ``path``.
+    Read ZSAV content from *path*.
 
     Parameters
     ----------
@@ -59,7 +60,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write ``data`` to ZSAV file at ``path`` and return record count.
+    Write *data* to ZSAV file at *path* and return record count.
 
     Parameters
     ----------
