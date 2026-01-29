@@ -25,7 +25,7 @@ from typing import cast
 import pytest
 
 from etlplus.api import HttpMethod
-from etlplus.enums import DataConnectorType
+from etlplus.connectors import DataConnectorType
 from etlplus.ops.load import _parse_json_string
 from etlplus.ops.load import load
 from etlplus.ops.load import load_data
