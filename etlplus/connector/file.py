@@ -15,6 +15,7 @@ from typing import overload
 
 from ..types import StrAnyMap
 from ..utils import coerce_dict
+from .core import ConnectorProtocol
 from .enums import DataConnectorType
 from .utils import _require_name
 
@@ -34,7 +35,7 @@ __all__ = [
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorFile:
+class ConnectorFile(ConnectorProtocol):
     """
     Configuration for a file-based data connector.
 
