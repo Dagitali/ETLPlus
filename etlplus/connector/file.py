@@ -114,7 +114,6 @@ class ConnectorFile(ConnectorBase):
 
         return cls(
             name=name,
-            type=DataConnectorType.FILE,
             format=obj.get('format'),
             path=obj.get('path'),
             options=coerce_dict(obj.get('options')),
