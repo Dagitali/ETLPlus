@@ -12,6 +12,7 @@ from typing import Self
 from typing import overload
 
 from ..types import StrAnyMap
+from .core import ConnectorProtocol
 from .enums import DataConnectorType
 from .utils import _require_name
 
@@ -31,7 +32,7 @@ __all__ = [
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorDb:
+class ConnectorDb(ConnectorProtocol):
     """
     Configuration for a database-based data connector.
 
