@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.workflow.test_u_workflow_connector` module.
+:mod:`tests.unit.connectors.test_u_connectors_connector` module.
 
-Unit tests for :mod:`etlplus.workflow.connector`.
+Unit tests for :mod:`etlplus.connectors.connector`.
 
 Notes
 -----
@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.workflow.connector import ConnectorApi
-from etlplus.workflow.connector import ConnectorDb
-from etlplus.workflow.connector import ConnectorFile
-from etlplus.workflow.connector import parse_connector
+from etlplus.connectors import ConnectorApi
+from etlplus.connectors import ConnectorDb
+from etlplus.connectors import ConnectorFile
+from etlplus.connectors import parse_connector
 
 # SECTION: HELPERS ========================================================== #
 
