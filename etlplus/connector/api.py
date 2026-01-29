@@ -150,7 +150,6 @@ class ConnectorApi(ConnectorBase):
 
         return cls(
             name=name,
-            type=DataConnectorType.API,
             url=obj.get('url'),
             method=obj.get('method'),
             headers=headers,
