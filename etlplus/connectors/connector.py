@@ -153,7 +153,7 @@ class ConnectorApi:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``'api'``.
+        Connector kind, always ``'api'``.
     url : str | None
         Direct absolute URL (when not using ``service``/``endpoint`` refs).
     method : str | None
@@ -177,7 +177,7 @@ class ConnectorApi:
     # -- Attributes -- #
 
     name: str
-    type: ConnectorType = 'api'
+    type: ConnectorType = DataConnectorType.API
 
     # Direct form
     url: str | None = None
@@ -226,7 +226,7 @@ class ConnectorApi:
 
         return cls(
             name=name,
-            type='api',
+            type=DataConnectorType.API,
             url=obj.get('url'),
             method=obj.get('method'),
             headers=headers,
@@ -248,7 +248,7 @@ class ConnectorDb:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``'database'``.
+        Connector kind, always ``'database'``.
     connection_string : str | None
         Connection string/DSN for the database.
     query : str | None
@@ -262,7 +262,7 @@ class ConnectorDb:
     # -- Attributes -- #
 
     name: str
-    type: ConnectorType = 'database'
+    type: ConnectorType = DataConnectorType.DATABASE
     connection_string: str | None = None
     query: str | None = None
     table: str | None = None
@@ -300,7 +300,7 @@ class ConnectorDb:
 
         return cls(
             name=name,
-            type='database',
+            type=DataConnectorType.DATABASE,
             connection_string=obj.get('connection_string'),
             query=obj.get('query'),
             table=obj.get('table'),
@@ -318,7 +318,7 @@ class ConnectorFile:
     name : str
         Unique connector name.
     type : ConnectorType
-        Connector kind literal, always ``'file'``.
+        Connector kind, always ``'file'``.
     format : str | None
         File format (e.g., ``'json'``, ``'csv'``).
     path : str | None
@@ -330,7 +330,7 @@ class ConnectorFile:
     # -- Attributes -- #
 
     name: str
-    type: ConnectorType = 'file'
+    type: ConnectorType = DataConnectorType.FILE
     format: str | None = None
     path: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
@@ -367,7 +367,7 @@ class ConnectorFile:
 
         return cls(
             name=name,
-            type='file',
+            type=DataConnectorType.FILE,
             format=obj.get('format'),
             path=obj.get('path'),
             options=coerce_dict(obj.get('options')),
@@ -390,7 +390,21 @@ def parse_connector(obj: Mapping[str, Any]) -> Connector:
     -------
     Connector
         Concrete connector instance.
+
+    Raises
+    ------
+    TypeError
+        If ``type`` is missing/unsupported or if ``obj`` is not a mapping.
+
+    Notes
+    -----
+    Delegates to the tolerant ``from_obj`` constructors for each connector
+    kind. Connector types are normalized via
+    :class:`etlplus.connectors.enums.DataConnectorType`, so common aliases
+    (e.g., ``'db'`` or ``'http'``) are accepted.
     """
+    if not isinstance(obj, Mapping):
+        raise TypeError('Connector configuration must be a mapping.')
     match _coerce_connector_type(obj):
         case DataConnectorType.FILE:
             return ConnectorFile.from_obj(obj)
