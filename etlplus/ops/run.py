@@ -20,7 +20,7 @@ from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import compose_api_target_env
 from ..api import paginate_with_client
-from ..connectors import DataConnectorType
+from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..types import JSONData
 from ..types import JSONDict
