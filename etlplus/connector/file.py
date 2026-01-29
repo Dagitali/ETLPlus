@@ -8,20 +8,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import TYPE_CHECKING
 from typing import Any
 from typing import Self
+from typing import TypedDict
 from typing import overload
 
 from ..types import StrAnyMap
 from ..utils import coerce_dict
 from .core import ConnectorProtocol
 from .enums import DataConnectorType
+from .types import ConnectorType
 from .utils import _require_name
-
-if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .types import ConnectorFileConfigMap
-    from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -29,6 +26,25 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 __all__ = [
     'ConnectorFile',
 ]
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class ConnectorFileConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by :meth:`ConnectorFile.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.connector.file.ConnectorFile.from_obj`
+    """
+
+    name: str
+    type: ConnectorType
+    format: str
+    path: str
+    options: StrAnyMap
 
 
 # SECTION: DATA CLASSES ===================================================== #
