@@ -25,7 +25,6 @@ from ..utils import maybe_mapping
 from .core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType
-from .utils import _require_name
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -138,7 +137,7 @@ class ConnectorApi(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = _require_name(obj, kind='Api')
+        name = cls._require_name(obj, kind='Api')
         headers = cast_str_dict(maybe_mapping(obj.get('headers')))
 
         return cls(
