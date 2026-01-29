@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from ..connectors import DataConnectorType
+from ..connector import DataConnectorType
 from ..file import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
