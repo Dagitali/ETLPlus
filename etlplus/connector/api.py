@@ -8,24 +8,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import TYPE_CHECKING
 from typing import Any
 from typing import Self
+from typing import TypedDict
 from typing import overload
 
 from ..api import PaginationConfig
+from ..api import PaginationConfigMap
 from ..api import RateLimitConfig
+from ..api import RateLimitConfigMap
 from ..types import StrAnyMap
+from ..types import StrStrMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
 from .core import ConnectorProtocol
 from .enums import DataConnectorType
+from .types import ConnectorType
 from .utils import _require_name
-
-if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .types import ConnectorApiConfigMap
-    from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,6 +33,30 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 __all__ = [
     'ConnectorApi',
 ]
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class ConnectorApiConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by :meth:`ConnectorApi.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.connector.api.ConnectorApi.from_obj`
+    """
+
+    name: str
+    type: ConnectorType
+    url: str
+    method: str
+    headers: StrStrMap
+    query_params: StrAnyMap
+    pagination: PaginationConfigMap
+    rate_limit: RateLimitConfigMap
+    api: str
+    endpoint: str
 
 
 # SECTION: DATA CLASSES ===================================================== #
