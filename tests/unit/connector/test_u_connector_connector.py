@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.connectors.test_u_connectors_connector` module.
 
-Unit tests for :mod:`etlplus.connectors.connector`.
+Unit tests for :mod:`etlplus.connector.connector`.
 
 Notes
 -----
@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.connectors import ConnectorApi
-from etlplus.connectors import ConnectorDb
-from etlplus.connectors import ConnectorFile
-from etlplus.connectors import parse_connector
+from etlplus.connector import ConnectorApi
+from etlplus.connector import ConnectorDb
+from etlplus.connector import ConnectorFile
+from etlplus.connector import parse_connector
 
 # SECTION: HELPERS ========================================================== #
 
