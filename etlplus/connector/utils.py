@@ -7,18 +7,13 @@ Shared connector parsing helpers.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
 from typing import Any
 
-from ..types import StrAnyMap
+from .api import ConnectorApi
+from .connector import Connector
+from .database import ConnectorDb
 from .enums import DataConnectorType
-
-if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .api import ConnectorApi
-    from .database import ConnectorDb
-    from .file import ConnectorFile
-
-    type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+from .file import ConnectorFile
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -65,37 +60,6 @@ def _coerce_connector_type(
         ) from exc
 
 
-def _require_name(
-    obj: StrAnyMap,
-    *,
-    kind: str,
-) -> str:
-    """
-    Extract and validate the ``name`` field from connector mappings.
-
-    Parameters
-    ----------
-    obj : StrAnyMap
-        Connector mapping with a ``name`` entry.
-    kind : str
-        Connector kind used in the error message.
-
-    Returns
-    -------
-    str
-        Valid connector name.
-
-    Raises
-    ------
-    TypeError
-        If ``name`` is missing or not a string.
-    """
-    name = obj.get('name')
-    if not isinstance(name, str):
-        raise TypeError(f'Connector{kind} requires a "name" (str)')
-    return name
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -131,14 +95,8 @@ def parse_connector(
         raise TypeError('Connector configuration must be a mapping.')
     match _coerce_connector_type(obj):
         case DataConnectorType.FILE:
-            from .file import ConnectorFile
-
             return ConnectorFile.from_obj(obj)
         case DataConnectorType.DATABASE:
-            from .database import ConnectorDb
-
             return ConnectorDb.from_obj(obj)
         case DataConnectorType.API:
-            from .api import ConnectorApi
-
             return ConnectorApi.from_obj(obj)
