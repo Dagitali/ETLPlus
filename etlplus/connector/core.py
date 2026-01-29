@@ -6,6 +6,9 @@ Protocols for connector implementations.
 
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Protocol
 from typing import Self
 from typing import runtime_checkable
@@ -17,6 +20,7 @@ from .types import ConnectorType
 
 
 __all__ = [
+    'ConnectorBase',
     'ConnectorProtocol',
 ]
 
@@ -59,3 +63,41 @@ class ConnectorProtocol(Protocol):
         Self
             Parsed connector instance.
         """
+
+
+# SECTION: ABSTRACT BASE DATA CLASSES ======================================= #
+
+
+@dataclass(kw_only=True, slots=True)
+class ConnectorBase(ABC):
+    """
+    Abstract base class for connector implementations.
+
+    Attributes
+    ----------
+    name : str
+        Unique connector name.
+    type : ConnectorType
+        Connector kind.
+    """
+
+    name: str
+    type: ConnectorType
+
+    @classmethod
+    @abstractmethod
+    def from_obj(cls, obj: StrAnyMap) -> Self:
+        """
+        Parse a mapping into a connector instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed connector instance.
+        """
+        ...

@@ -10,20 +10,17 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Self
-from typing import TypedDict
 from typing import overload
 
 from ..api import PaginationConfig
-from ..api import PaginationConfigMap
 from ..api import RateLimitConfig
-from ..api import RateLimitConfigMap
 from ..types import StrAnyMap
-from ..types import StrStrMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
-from .core import ConnectorProtocol
+from .core import ConnectorBase
 from .enums import DataConnectorType
+from .types import ConnectorApiConfigMap
 from .types import ConnectorType
 from .utils import _require_name
 
@@ -35,42 +32,16 @@ __all__ = [
 ]
 
 
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class ConnectorApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorApi.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.api.ConnectorApi.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    url: str
-    method: str
-    headers: StrStrMap
-    query_params: StrAnyMap
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
-    api: str
-    endpoint: str
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorApi(ConnectorProtocol):
+class ConnectorApi(ConnectorBase):
     """
     Configuration for an API-based data connector.
 
     Attributes
     ----------
-    name : str
-        Unique connector name.
     type : ConnectorType
         Connector kind, always ``'api'``.
     url : str | None
@@ -95,7 +66,6 @@ class ConnectorApi(ConnectorProtocol):
 
     # -- Attributes -- #
 
-    name: str
     type: ConnectorType = DataConnectorType.API
 
     # Direct form

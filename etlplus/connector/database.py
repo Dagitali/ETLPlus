@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Self
-from typing import TypedDict
 from typing import overload
 
 from ..types import StrAnyMap
-from .core import ConnectorProtocol
+from .core import ConnectorBase
 from .enums import DataConnectorType
+from .types import ConnectorDbConfigMap
 from .types import ConnectorType
 from .utils import _require_name
 
@@ -25,31 +25,11 @@ __all__ = [
 ]
 
 
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class ConnectorDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorDb.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.database.ConnectorDb.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    connection_string: str
-    query: str
-    table: str
-    mode: str
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorDb(ConnectorProtocol):
+class ConnectorDb(ConnectorBase):
     """
     Configuration for a database-based data connector.
 
@@ -71,7 +51,6 @@ class ConnectorDb(ConnectorProtocol):
 
     # -- Attributes -- #
 
-    name: str
     type: ConnectorType = DataConnectorType.DATABASE
     connection_string: str | None = None
     query: str | None = None

@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Self
-from typing import TypedDict
 from typing import overload
 
 from ..types import StrAnyMap
 from ..utils import coerce_dict
-from .core import ConnectorProtocol
+from .core import ConnectorBase
 from .enums import DataConnectorType
+from .types import ConnectorFileConfigMap
 from .types import ConnectorType
 from .utils import _require_name
 
@@ -28,30 +28,11 @@ __all__ = [
 ]
 
 
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class ConnectorFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorFile.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.file.ConnectorFile.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    format: str
-    path: str
-    options: StrAnyMap
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorFile(ConnectorProtocol):
+class ConnectorFile(ConnectorBase):
     """
     Configuration for a file-based data connector.
 
@@ -71,7 +52,6 @@ class ConnectorFile(ConnectorProtocol):
 
     # -- Attributes -- #
 
-    name: str
     type: ConnectorType = DataConnectorType.FILE
     format: str | None = None
     path: str | None = None
