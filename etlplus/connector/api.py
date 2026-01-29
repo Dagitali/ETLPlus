@@ -19,6 +19,7 @@ from ..types import StrAnyMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
+from .core import ConnectorProtocol
 from .enums import DataConnectorType
 from .utils import _require_name
 
@@ -38,7 +39,7 @@ __all__ = [
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorApi:
+class ConnectorApi(ConnectorProtocol):
     """
     Configuration for an API-based data connector.
 
