@@ -32,12 +32,7 @@ Examples
 from __future__ import annotations
 
 from typing import Literal
-from typing import TypedDict
 
-from ..api import PaginationConfigMap
-from ..api import RateLimitConfigMap
-from ..types import StrAnyMap
-from ..types import StrStrMap
 from .enums import DataConnectorType
 
 # SECTION: EXPORTS  ========================================================= #
@@ -46,10 +41,6 @@ from .enums import DataConnectorType
 __all__ = [
     # Type Aliases
     'ConnectorType',
-    # Typed Dicts
-    'ConnectorApiConfigMap',
-    'ConnectorDbConfigMap',
-    'ConnectorFileConfigMap',
 ]
 
 
@@ -58,60 +49,3 @@ __all__ = [
 
 # Literal type for supported connector kinds (strings or enum members)
 type ConnectorType = DataConnectorType | Literal['api', 'database', 'file']
-
-
-# SECTION: TYPED DICTS ====================================================== #
-
-
-class ConnectorApiConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorApi.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.api.ConnectorApi.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    url: str
-    method: str
-    headers: StrStrMap
-    query_params: StrAnyMap
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
-    api: str
-    endpoint: str
-
-
-class ConnectorDbConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorDb.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.database.ConnectorDb.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    connection_string: str
-    query: str
-    table: str
-    mode: str
-
-
-class ConnectorFileConfigMap(TypedDict, total=False):
-    """
-    Shape accepted by :meth:`ConnectorFile.from_obj` (all keys optional).
-
-    See Also
-    --------
-    - :meth:`etlplus.connector.file.ConnectorFile.from_obj`
-    """
-
-    name: str
-    type: ConnectorType
-    format: str
-    path: str
-    options: StrAnyMap
