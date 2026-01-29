@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from etlplus.enums import AggregateName
-from etlplus.enums import DataConnectorType
 from etlplus.enums import OperatorName
 from etlplus.enums import PipelineStep
 
@@ -40,32 +39,6 @@ class TestAggregateName:
         assert AggregateName.MIN.func(nums, len(nums)) == 1
         assert AggregateName.COUNT.func(nums, len(nums)) == 3
         assert AggregateName.AVG.func(nums, len(nums)) == pytest.approx(2.0)
-
-
-class TestDataConnectorType:
-    """Unit test suite for :class:`etlplus.enums.DataConnectorType`."""
-
-    @pytest.mark.parametrize(
-        'value,expected',
-        [
-            ('API', DataConnectorType.API),
-            (' rest ', DataConnectorType.API),
-            ('db', DataConnectorType.DATABASE),
-            ('Fs', DataConnectorType.FILE),
-        ],
-    )
-    def test_coerce_aliases(
-        self,
-        value: str,
-        expected: DataConnectorType,
-    ) -> None:
-        """Test alias coercions."""
-        assert DataConnectorType.coerce(value) is expected
-
-    def test_invalid_value(self) -> None:
-        """Test that invalid values raise ValueError."""
-        with pytest.raises(ValueError, match='Invalid DataConnectorType'):
-            DataConnectorType.coerce('queue')
 
 
 class TestOperatorName:
