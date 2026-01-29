@@ -48,6 +48,8 @@ from ..api import RateLimitConfig
 from ..types import StrAnyMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
+from ..utils import maybe_mapping
+from .enums import DataConnectorType
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
     from .types import ConnectorApiConfigMap
@@ -72,6 +74,39 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _coerce_connector_type(
+    obj: Mapping[str, Any],
+) -> DataConnectorType:
+    """
+    Normalize and validate the connector ``type`` field.
+
+    Parameters
+    ----------
+    obj : Mapping[str, Any]
+        Mapping with a ``type`` entry.
+
+    Returns
+    -------
+    DataConnectorType
+        Normalized connector type enum.
+
+    Raises
+    ------
+    TypeError
+        If ``type`` is missing or unsupported.
+    """
+    if 'type' not in obj:
+        raise TypeError('Connector requires a "type"')
+    try:
+        return DataConnectorType.coerce(obj.get('type'))
+    except ValueError as exc:
+        allowed = ', '.join(DataConnectorType.choices())
+        raise TypeError(
+            f'Unsupported connector type: {obj.get("type")!r}. '
+            f'Expected one of {allowed}.',
+        ) from exc
 
 
 def _require_name(
@@ -187,7 +222,7 @@ class ConnectorApi:
             Parsed connector instance.
         """
         name = _require_name(obj, kind='Api')
-        headers = cast_str_dict(obj.get('headers'))
+        headers = cast_str_dict(maybe_mapping(obj.get('headers')))
 
         return cls(
             name=name,
@@ -355,29 +390,14 @@ def parse_connector(obj: Mapping[str, Any]) -> Connector:
     -------
     Connector
         Concrete connector instance.
-
-    Raises
-    ------
-    TypeError
-        If ``type`` is unsupported or missing.
-
-    Notes
-    -----
-    Delegates to the tolerant ``from_obj`` constructors for each connector
-    kind.
     """
-    match str(obj.get('type', '')).casefold():
-        case 'file':
+    match _coerce_connector_type(obj):
+        case DataConnectorType.FILE:
             return ConnectorFile.from_obj(obj)
-        case 'database':
+        case DataConnectorType.DATABASE:
             return ConnectorDb.from_obj(obj)
-        case 'api':
+        case DataConnectorType.API:
             return ConnectorApi.from_obj(obj)
-        case _:
-            raise TypeError(
-                'Unsupported connector type; '
-                'expected one of {file, database, api}',
-            )
 
 
 # SECTION: TYPED ALIASES (post-class definitions) ========================= #
