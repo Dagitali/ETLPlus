@@ -2,6 +2,14 @@
 :mod:`etlplus.connector.database` module.
 
 Database connector configuration dataclass.
+
+Notes
+-----
+- TypedDicts in this module are intentionally ``total=False`` and are not
+    enforced at runtime.
+- :meth:`*.from_obj` constructors accept :class:`Mapping[str, Any]` and perform
+    tolerant parsing and light casting. This keeps the runtime permissive while
+    improving autocomplete and static analysis for contributors.
 """
 
 from __future__ import annotations
