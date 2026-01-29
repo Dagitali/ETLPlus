@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from ..types import StrAnyMap
-from .core import ConnectorBase
 from .enums import DataConnectorType
 
 if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
@@ -102,7 +101,7 @@ def _require_name(
 
 def parse_connector(
     obj: Mapping[str, Any],
-) -> ConnectorBase:
+) -> Connector:
     """
     Dispatch to a concrete connector constructor based on ``type``.
 
@@ -113,7 +112,7 @@ def parse_connector(
 
     Returns
     -------
-    ConnectorBase
+    Connector
         Concrete connector instance.
 
     Raises

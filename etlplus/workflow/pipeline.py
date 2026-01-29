@@ -25,8 +25,8 @@ from typing import Any
 from typing import Self
 
 from ..api import ApiConfig
-from ..connectors import Connector
-from ..connectors import parse_connector
+from ..connector import Connector
+from ..connector import parse_connector
 from ..file import File
 from ..file import FileFormat
 from ..types import StrAnyMap
