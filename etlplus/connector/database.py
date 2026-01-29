@@ -7,18 +7,15 @@ Database connector configuration dataclass.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 from typing import Self
+from typing import TypedDict
 from typing import overload
 
 from ..types import StrAnyMap
 from .core import ConnectorProtocol
 from .enums import DataConnectorType
+from .types import ConnectorType
 from .utils import _require_name
-
-if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .types import ConnectorDbConfigMap
-    from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -26,6 +23,26 @@ if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
 __all__ = [
     'ConnectorDb',
 ]
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class ConnectorDbConfigMap(TypedDict, total=False):
+    """
+    Shape accepted by :meth:`ConnectorDb.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.connector.database.ConnectorDb.from_obj`
+    """
+
+    name: str
+    type: ConnectorType
+    connection_string: str
+    query: str
+    table: str
+    mode: str
 
 
 # SECTION: DATA CLASSES ===================================================== #
