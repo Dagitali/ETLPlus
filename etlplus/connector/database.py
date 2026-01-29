@@ -15,7 +15,6 @@ from ..types import StrAnyMap
 from .core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType
-from .utils import _require_name
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -104,7 +103,7 @@ class ConnectorDb(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = _require_name(obj, kind='Db')
+        name = cls._require_name(obj, kind='Db')
 
         return cls(
             name=name,
