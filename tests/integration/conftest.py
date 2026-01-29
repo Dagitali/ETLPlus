@@ -25,8 +25,8 @@ from etlplus.api import EndpointConfig
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimiter
-from etlplus.workflow import ConnectorApi
-from etlplus.workflow import ConnectorFile
+from etlplus.connectors import ConnectorApi
+from etlplus.connectors import ConnectorFile
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
