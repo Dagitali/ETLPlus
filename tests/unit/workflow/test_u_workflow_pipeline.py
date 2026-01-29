@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from etlplus.workflow.connector import ConnectorApi
-from etlplus.workflow.connector import ConnectorDb
-from etlplus.workflow.connector import ConnectorFile
+from etlplus.connectors import ConnectorApi
+from etlplus.connectors import ConnectorDb
+from etlplus.connectors import ConnectorFile
 from etlplus.workflow.pipeline import PipelineConfig
 from etlplus.workflow.pipeline import _collect_parsed
 from etlplus.workflow.pipeline import _parse_connector_entry
