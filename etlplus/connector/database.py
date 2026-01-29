@@ -115,7 +115,6 @@ class ConnectorDb(ConnectorBase):
 
         return cls(
             name=name,
-            type=DataConnectorType.DATABASE,
             connection_string=obj.get('connection_string'),
             query=obj.get('query'),
             table=obj.get('table'),
