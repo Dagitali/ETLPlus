@@ -14,7 +14,7 @@ from typing import cast
 
 from ..api import HttpMethod
 from ..api.utils import resolve_request
-from ..connectors import DataConnectorType
+from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
 from ..types import JSONData
