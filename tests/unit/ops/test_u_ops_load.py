@@ -25,7 +25,7 @@ from typing import cast
 import pytest
 
 from etlplus.api import HttpMethod
-from etlplus.connectors import DataConnectorType
+from etlplus.connector import DataConnectorType
 from etlplus.ops.load import _parse_json_string
 from etlplus.ops.load import load
 from etlplus.ops.load import load_data
@@ -312,11 +312,6 @@ class TestLoadErrors:
             Arguments to pass to the function.
         err_msg : str | None
             Expected error message substring, if applicable.
-
-        Raises
-        ------
-        AssertionError
-            If the expected exception is not raised.
         """
         with pytest.raises(exc_type) as exc:
             call(*args)
