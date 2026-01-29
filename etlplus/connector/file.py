@@ -18,7 +18,6 @@ from ..utils import coerce_dict
 from .core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType
-from .utils import _require_name
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -103,7 +102,7 @@ class ConnectorFile(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = _require_name(obj, kind='File')
+        name = cls._require_name(obj, kind='File')
 
         return cls(
             name=name,
