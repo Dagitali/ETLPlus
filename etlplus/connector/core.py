@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.connector.core` module.
 
-Protocols for connector implementations.
+Protocols and base classes for connector implementations.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class ConnectorProtocol(Protocol):
 
 
 @dataclass(kw_only=True, slots=True)
-class ConnectorBase(ABC):
+class ConnectorBase(ABC, ConnectorProtocol):
     """
     Abstract base class for connector implementations.
 
@@ -100,4 +100,3 @@ class ConnectorBase(ABC):
         Self
             Parsed connector instance.
         """
-        ...
