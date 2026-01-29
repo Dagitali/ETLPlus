@@ -9,18 +9,11 @@ from __future__ import annotations
 from .api import ConnectorApi
 from .database import ConnectorDb
 from .file import ConnectorFile
-from .utils import parse_connector
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # Data Classes
-    'ConnectorApi',
-    'ConnectorDb',
-    'ConnectorFile',
-    # Functions
-    'parse_connector',
     # Type aliases
     'Connector',
 ]
