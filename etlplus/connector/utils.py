@@ -7,19 +7,14 @@ Shared connector parsing helpers.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
 from typing import Any
 
 from ..types import StrAnyMap
+from .api import ConnectorApi
 from .core import ConnectorProtocol
+from .database import ConnectorDb
 from .enums import DataConnectorType
-
-if TYPE_CHECKING:  # Editor-only typing hints to avoid runtime imports
-    from .api import ConnectorApi
-    from .database import ConnectorDb
-    from .file import ConnectorFile
-
-    type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+from .file import ConnectorFile
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,12 +23,6 @@ __all__ = [
     # Functions
     'parse_connector',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# type Connector = ConnectorApi | ConnectorDb | ConnectorFile
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -138,14 +127,8 @@ def parse_connector(
         raise TypeError('Connector configuration must be a mapping.')
     match _coerce_connector_type(obj):
         case DataConnectorType.FILE:
-            from .file import ConnectorFile
-
             return ConnectorFile.from_obj(obj)
         case DataConnectorType.DATABASE:
-            from .database import ConnectorDb
-
             return ConnectorDb.from_obj(obj)
         case DataConnectorType.API:
-            from .api import ConnectorApi
-
             return ConnectorApi.from_obj(obj)
