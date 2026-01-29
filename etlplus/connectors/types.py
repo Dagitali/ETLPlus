@@ -37,6 +37,8 @@ from typing import TypedDict
 from ..api import PaginationConfigMap
 from ..api import RateLimitConfigMap
 from ..types import StrAnyMap
+from ..types import StrStrMap
+from .enums import DataConnectorType
 
 # SECTION: EXPORTS  ========================================================= #
 
@@ -54,8 +56,8 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-# Literal type for supported connector kinds
-type ConnectorType = Literal['api', 'database', 'file']
+# Literal type for supported connector kinds (strings or enum members)
+type ConnectorType = DataConnectorType | Literal['api', 'database', 'file']
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -74,7 +76,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     type: ConnectorType
     url: str
     method: str
-    headers: StrAnyMap
+    headers: StrStrMap
     query_params: StrAnyMap
     pagination: PaginationConfigMap
     rate_limit: RateLimitConfigMap
