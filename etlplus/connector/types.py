@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.connectors.types` module.
+:mod:`etlplus.connector.types` module.
 
-Type aliases and editor-only :class:`TypedDict`s for :mod:`etlplus.connectors`.
+Type aliases and editor-only :class:`TypedDict`s for :mod:`etlplus.connector`.
 
 These types improve IDE autocomplete and static analysis while the runtime
 parsers remain permissive.
@@ -16,7 +16,7 @@ Notes
 
 Examples
 --------
->>> from etlplus.connectors import Connector
+>>> from etlplus.connector import Connector
 >>> src: Connector = {
 >>>     "type": "file",
 >>>     "path": "/data/input.csv",
@@ -69,7 +69,7 @@ class ConnectorApiConfigMap(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connectors.connector.ConnectorApi.from_obj`
+    - :meth:`etlplus.connector.api.ConnectorApi.from_obj`
     """
 
     name: str
@@ -90,7 +90,7 @@ class ConnectorDbConfigMap(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connectors.connector.ConnectorDb.from_obj`
+    - :meth:`etlplus.connector.database.ConnectorDb.from_obj`
     """
 
     name: str
@@ -107,7 +107,7 @@ class ConnectorFileConfigMap(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connectors.connector.ConnectorFile.from_obj`
+    - :meth:`etlplus.connector.file.ConnectorFile.from_obj`
     """
 
     name: str
