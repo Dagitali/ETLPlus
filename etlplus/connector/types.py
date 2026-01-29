@@ -1,18 +1,7 @@
 """
 :mod:`etlplus.connector.types` module.
 
-Type aliases and editor-only :class:`TypedDict`s for :mod:`etlplus.connector`.
-
-These types improve IDE autocomplete and static analysis while the runtime
-parsers remain permissive.
-
-Notes
------
-- TypedDicts in this module are intentionally ``total=False`` and are not
-    enforced at runtime.
-- :meth:`*.from_obj` constructors accept :class:`Mapping[str, Any]` and perform
-    tolerant parsing and light casting. This keeps the runtime permissive while
-    improving autocomplete and static analysis for contributors.
+Connector type aliases for :mod:`etlplus.connector`.
 
 Examples
 --------
