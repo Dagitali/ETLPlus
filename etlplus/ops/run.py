@@ -54,6 +54,42 @@ DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _index_connectors(
+    connectors: list[Any],
+    *,
+    label: str,
+) -> dict[str, Any]:
+    """
+    Index connectors by name with a helpful error on duplicates.
+
+    Parameters
+    ----------
+    connectors : list[Any]
+        Connector objects to index.
+    label : str
+        Label used in error messages (e.g., ``"source"``).
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of connector names to connector objects.
+
+    Raises
+    ------
+    ValueError
+        If duplicate connector names are found.
+    """
+    indexed: dict[str, Any] = {}
+    for connector in connectors:
+        name = getattr(connector, 'name', None)
+        if not isinstance(name, str) or not name:
+            continue
+        if name in indexed:
+            raise ValueError(f'Duplicate {label} connector name: {name}')
+        indexed[name] = connector
+    return indexed
+
+
 def _resolve_validation_config(
     job_obj: Any,
     cfg: Any,
@@ -122,8 +158,8 @@ def run(
         raise ValueError(f'Job not found: {job}')
 
     # Index sources/targets by name
-    sources_by_name = {getattr(s, 'name', None): s for s in cfg.sources}
-    targets_by_name = {getattr(t, 'name', None): t for t in cfg.targets}
+    sources_by_name = _index_connectors(cfg.sources, label='source')
+    targets_by_name = _index_connectors(cfg.targets, label='target')
 
     # Extract.
     if not job_obj.extract:
