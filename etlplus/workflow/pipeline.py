@@ -50,6 +50,29 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _build_connectors(
+    raw: StrAnyMap,
+    *,
+    key: str,
+) -> list[Connector]:
+    """
+    Parse connector entries from a list under ``raw[key]``.
+
+    Parameters
+    ----------
+    raw : StrAnyMap
+        Raw pipeline mapping.
+    key : str
+        Key pointing to connector entries (e.g., ``"sources"``).
+
+    Returns
+    -------
+    list[Connector]
+        Parsed connector instances.
+    """
+    return list(_collect_parsed(raw, key, _parse_connector_entry))
+
+
 def _collect_parsed[T](
     raw: StrAnyMap,
     key: str,
@@ -102,67 +125,6 @@ def _parse_connector_entry(
         return parse_connector(entry)
     except TypeError:
         return None
-
-
-def _build_sources(
-    raw: StrAnyMap,
-) -> list[Connector]:
-    """
-    Return a list of source connectors parsed from the mapping.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-
-    Returns
-    -------
-    list[Connector]
-        Parsed source connectors.
-    """
-    return _build_connectors(raw, key='sources')
-
-
-def _build_targets(
-    raw: StrAnyMap,
-) -> list[Connector]:
-    """
-    Return a list of target connectors parsed from the mapping.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-
-    Returns
-    -------
-    list[Connector]
-        Parsed target connectors.
-    """
-    return _build_connectors(raw, key='targets')
-
-
-def _build_connectors(
-    raw: StrAnyMap,
-    *,
-    key: str,
-) -> list[Connector]:
-    """
-    Parse connector entries from a list under ``raw[key]``.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-    key : str
-        Key pointing to connector entries (e.g., ``"sources"``).
-
-    Returns
-    -------
-    list[Connector]
-        Parsed connector instances.
-    """
-    return list(_collect_parsed(raw, key, _parse_connector_entry))
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -330,14 +292,14 @@ class PipelineConfig:
         file_systems = coerce_dict(raw.get('file_systems'))
 
         # Sources
-        sources = _build_sources(raw)
+        sources = _build_connectors(raw, key='sources')
 
         # Validations/Transforms
         validations = coerce_dict(raw.get('validations'))
         transforms = coerce_dict(raw.get('transforms'))
 
         # Targets
-        targets = _build_targets(raw)
+        targets = _build_connectors(raw, key='targets')
 
         # Jobs
         jobs = _collect_parsed(raw, 'jobs', JobConfig.from_obj)
