@@ -60,6 +60,31 @@ def _coerce_connector_type(
         ) from exc
 
 
+def _load_connector(
+    kind: DataConnectorType,
+) -> type[Connector]:
+    """
+    Resolve the connector class for the requested kind.
+
+    Parameters
+    ----------
+    kind : DataConnectorType
+        Connector kind enum.
+
+    Returns
+    -------
+    type[Connector]
+        Connector class corresponding to *kind*.
+    """
+    match kind:
+        case DataConnectorType.API:
+            return ConnectorApi
+        case DataConnectorType.DATABASE:
+            return ConnectorDb
+        case DataConnectorType.FILE:
+            return ConnectorFile
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -93,10 +118,5 @@ def parse_connector(
     """
     if not isinstance(obj, Mapping):
         raise TypeError('Connector configuration must be a mapping.')
-    match _coerce_connector_type(obj):
-        case DataConnectorType.FILE:
-            return ConnectorFile.from_obj(obj)
-        case DataConnectorType.DATABASE:
-            return ConnectorDb.from_obj(obj)
-        case DataConnectorType.API:
-            return ConnectorApi.from_obj(obj)
+    connector_cls = _load_connector(_coerce_connector_type(obj))
+    return connector_cls.from_obj(obj)
