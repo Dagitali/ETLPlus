@@ -206,15 +206,12 @@ def _normalize_specs(
     """
     if config is None:
         return []
-    if isinstance(config, Sequence) and not isinstance(
-        config,
-        (str, bytes, bytearray),
-    ):
+    if _is_sequence_not_text(config):
         # Already a sequence of step specs; normalize to a list.
-        return list(config)  # type: ignore[list-item]
+        return list(cast(Sequence[StepSpec], config))
 
     # Single spec
-    return [config]
+    return [cast(StepSpec, config)]
 
 
 def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
@@ -702,7 +699,31 @@ def _apply_sort_step(
 # -- Helpers -- #
 
 
-def _is_plain_fields_list(obj: Any) -> bool:
+def _is_sequence_not_text(
+    obj: Any,
+) -> bool:
+    """
+    Return ``True`` for non-text sequences.
+
+    Parameters
+    ----------
+    obj : Any
+        The object to check.
+
+    Returns
+    -------
+    bool
+        ``True`` when *obj* is a non-text sequence.
+    """
+    return isinstance(obj, Sequence) and not isinstance(
+        obj,
+        (str, bytes, bytearray),
+    )
+
+
+def _is_plain_fields_list(
+    obj: Any,
+) -> bool:
     """
     Return True if obj is a non-text sequence of non-mapping items.
 
@@ -719,10 +740,8 @@ def _is_plain_fields_list(obj: Any) -> bool:
         True if obj is a non-text sequence of non-mapping items, False
         otherwise.
     """
-    return (
-        isinstance(obj, Sequence)
-        and not isinstance(obj, (str, bytes, bytearray))
-        and not any(isinstance(x, Mapping) for x in obj)
+    return _is_sequence_not_text(obj) and not any(
+        isinstance(x, Mapping) for x in obj
     )
 
 

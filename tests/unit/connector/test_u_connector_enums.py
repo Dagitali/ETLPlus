@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_u_connectors_enums` module.
+:mod:`tests.unit.test_u_connector_enums` module.
 
 Unit tests for :mod:`etlplus.connector.enums` coercion helpers and behaviors.
 """

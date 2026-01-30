@@ -6,31 +6,23 @@ A module for running ETL jobs defined in YAML configurations.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 from typing import Final
 from typing import cast
-from urllib.parse import urlsplit
-from urllib.parse import urlunsplit
 
-from ..api import EndpointClient  # noqa: F401 (re-exported for tests)
 from ..api import HttpMethod
-from ..api import PaginationConfigMap
-from ..api import RequestOptions
-from ..api import compose_api_request_env
-from ..api import compose_api_target_env
-from ..api import paginate_with_client
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import PipelineConfig
 from ..types import StrPath
-from ..types import Timeout
 from ..utils import print_json
 from ..workflow import load_pipeline_config
 from .extract import extract
+from .extract import extract_from_api_source
 from .load import load
+from .load import load_to_api_target
 from .transform import transform
 from .utils import maybe_validate
 from .validate import validate
@@ -52,6 +44,75 @@ DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _index_connectors(
+    connectors: list[Any],
+    *,
+    label: str,
+) -> dict[str, Any]:
+    """
+    Index connectors by name with a helpful error on duplicates.
+
+    Parameters
+    ----------
+    connectors : list[Any]
+        Connector objects to index.
+    label : str
+        Label used in error messages (e.g., ``"source"``).
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of connector names to connector objects.
+
+    Raises
+    ------
+    ValueError
+        If duplicate connector names are found.
+    """
+    indexed: dict[str, Any] = {}
+    for connector in connectors:
+        name = getattr(connector, 'name', None)
+        if not isinstance(name, str) or not name:
+            continue
+        if name in indexed:
+            raise ValueError(f'Duplicate {label} connector name: {name}')
+        indexed[name] = connector
+    return indexed
+
+
+def _require_named_connector(
+    connectors: dict[str, Any],
+    name: str,
+    *,
+    label: str,
+) -> Any:
+    """
+    Return a connector by name or raise a helpful error.
+
+    Parameters
+    ----------
+    connectors : dict[str, Any]
+        Mapping of connector names to connector objects.
+    name : str
+        Connector name to retrieve.
+    label : str
+        Label used in error messages (e.g., ``"source"``).
+
+    Returns
+    -------
+    Any
+        Connector object.
+
+    Raises
+    ------
+    ValueError
+        If the connector name is not found.
+    """
+    if name not in connectors:
+        raise ValueError(f'Unknown {label}: {name}')
+    return connectors[name]
 
 
 def _resolve_validation_config(
@@ -122,16 +183,18 @@ def run(
         raise ValueError(f'Job not found: {job}')
 
     # Index sources/targets by name
-    sources_by_name = {getattr(s, 'name', None): s for s in cfg.sources}
-    targets_by_name = {getattr(t, 'name', None): t for t in cfg.targets}
+    sources_by_name = _index_connectors(cfg.sources, label='source')
+    targets_by_name = _index_connectors(cfg.targets, label='target')
 
     # Extract.
     if not job_obj.extract:
         raise ValueError('Job missing "extract" section')
     source_name = job_obj.extract.source
-    if source_name not in sources_by_name:
-        raise ValueError(f'Unknown source: {source_name}')
-    source_obj = sources_by_name[source_name]
+    source_obj = _require_named_connector(
+        sources_by_name,
+        source_name,
+        label='source',
+    )
     ex_opts: dict[str, Any] = job_obj.extract.options or {}
 
     data: Any
@@ -151,68 +214,7 @@ def run(
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
         case DataConnectorType.API:
-            env = compose_api_request_env(cfg, source_obj, ex_opts)
-            if (
-                env.get('use_endpoints')
-                and env.get('base_url')
-                and env.get('endpoints_map')
-                and env.get('endpoint_key')
-            ):
-                # Construct client using module-level EndpointClient so tests
-                # can monkeypatch this class on etlplus.ops.run.
-                ClientClass = EndpointClient  # noqa: N806
-                client = ClientClass(
-                    base_url=cast(str, env.get('base_url')),
-                    base_path=cast(str | None, env.get('base_path')),
-                    endpoints=cast(
-                        dict[str, str],
-                        env.get('endpoints_map', {}),
-                    ),
-                    retry=env.get('retry'),
-                    retry_network_errors=bool(
-                        env.get('retry_network_errors', False),
-                    ),
-                    session=env.get('session'),
-                )
-                data = paginate_with_client(
-                    client,
-                    cast(str, env.get('endpoint_key')),
-                    env.get('params'),
-                    env.get('headers'),
-                    env.get('timeout'),
-                    env.get('pagination'),
-                    cast(float | None, env.get('sleep_seconds')),
-                )
-            else:
-                url = env.get('url')
-                if not url:
-                    raise ValueError('API source missing URL')
-                parts = urlsplit(cast(str, url))
-                base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-                ClientClass = EndpointClient  # noqa: N806
-                client = ClientClass(
-                    base_url=base,
-                    base_path=None,
-                    endpoints={},
-                    retry=env.get('retry'),
-                    retry_network_errors=bool(
-                        env.get('retry_network_errors', False),
-                    ),
-                    session=env.get('session'),
-                )
-
-                request_options = RequestOptions(
-                    params=cast(Mapping[str, Any] | None, env.get('params')),
-                    headers=cast(Mapping[str, str] | None, env.get('headers')),
-                    timeout=cast(Timeout | None, env.get('timeout')),
-                )
-
-                data = client.paginate_url(
-                    cast(str, url),
-                    cast(PaginationConfigMap | None, env.get('pagination')),
-                    request=request_options,
-                    sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
-                )
+            data = extract_from_api_source(cfg, source_obj, ex_opts)
         case _:
             # :meth:`coerce` already raises for invalid connector types, but
             # keep explicit guard for defensive programming.
@@ -256,9 +258,11 @@ def run(
     if not job_obj.load:
         raise ValueError('Job missing "load" section')
     target_name = job_obj.load.target
-    if target_name not in targets_by_name:
-        raise ValueError(f'Unknown target: {target_name}')
-    target_obj = targets_by_name[target_name]
+    target_obj = _require_named_connector(
+        targets_by_name,
+        target_name,
+        label='target',
+    )
     overrides = job_obj.load.overrides or {}
 
     ttype_raw = getattr(target_obj, 'type', None)
@@ -274,26 +278,7 @@ def run(
                 raise ValueError('File target missing "path"')
             result = load(data, 'file', path, file_format=fmt)
         case DataConnectorType.API:
-            env_t = compose_api_target_env(cfg, target_obj, overrides)
-            url_t = env_t.get('url')
-            if not url_t:
-                raise ValueError('API target missing "url"')
-            kwargs_t: dict[str, Any] = {}
-            headers = env_t.get('headers')
-            if headers:
-                kwargs_t['headers'] = cast(dict[str, str], headers)
-            if env_t.get('timeout') is not None:
-                kwargs_t['timeout'] = env_t.get('timeout')
-            session = env_t.get('session')
-            if session is not None:
-                kwargs_t['session'] = session
-            result = load(
-                data,
-                'api',
-                cast(str, url_t),
-                method=cast(str | Any, env_t.get('method') or 'post'),
-                **kwargs_t,
-            )
+            result = load_to_api_target(cfg, target_obj, overrides, data)
         case DataConnectorType.DATABASE:
             conn = overrides.get('connection_string') or getattr(
                 target_obj,

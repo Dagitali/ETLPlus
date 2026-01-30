@@ -18,6 +18,7 @@ from typing import Self
 
 from ..types import StrAnyMap
 from ..utils import cast_str_dict
+from ..utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -56,7 +57,8 @@ class ProfileConfig:
         cls,
         obj: StrAnyMap | None,
     ) -> Self:
-        """Parse a mapping into a :class:`ProfileConfig` instance.
+        """
+        Parse a mapping into a :class:`ProfileConfig` instance.
 
         Parameters
         ----------
@@ -73,7 +75,7 @@ class ProfileConfig:
             return cls()
 
         # Coerce all env values to strings using shared helper.
-        env = cast_str_dict(obj.get('env'))
+        env = cast_str_dict(maybe_mapping(obj.get('env')))
 
         return cls(
             default_target=obj.get('default_target'),
