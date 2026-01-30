@@ -15,6 +15,7 @@ from typing import cast
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
+from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
@@ -111,15 +112,35 @@ def _load_to_api_env(
     extra_kwargs = env.get('request_kwargs')
     if isinstance(extra_kwargs, Mapping):
         kwargs.update(extra_kwargs)
-    return cast(
-        JSONDict,
-        load_to_api(
-            data,
-            cast(str, url),
-            method=cast(HttpMethod | str, method),
-            **kwargs,
-        ),
+    timeout = kwargs.pop('timeout', 10.0)
+    session = kwargs.pop('session', None)
+    request_callable, timeout, http_method = resolve_request(
+        method,
+        session=session,
+        timeout=timeout,
     )
+    response = request_callable(
+        cast(str, url),
+        json=data,
+        timeout=timeout,
+        **kwargs,
+    )
+    response.raise_for_status()
+
+    # Try JSON first, fall back to text.
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        payload = response.text
+
+    return {
+        'status': 'success',
+        'status_code': response.status_code,
+        'message': f'Data loaded to {url}',
+        'response': payload,
+        'records': count_records(data),
+        'method': http_method.value.upper(),
+    }
 
 
 def _parse_json_string(
