@@ -39,6 +39,37 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
+def _load_data_from_str(
+    source: str,
+) -> JSONData:
+    """
+    Load JSON data from a string or file path.
+
+    Parameters
+    ----------
+    source : str
+        Input string representing a file path or JSON payload.
+
+    Returns
+    -------
+    JSONData
+        Parsed JSON payload.
+    """
+    # Special case: '-' means read JSON from STDIN (Unix convention).
+    if source == '-':
+        raw = sys.stdin.read()
+        return _parse_json_string(raw)
+
+    candidate = Path(source)
+    if candidate.exists():
+        try:
+            return File(candidate, FileFormat.JSON).read()
+        except (OSError, json.JSONDecodeError, ValueError):
+            # Fall back to treating the string as raw JSON content.
+            pass
+    return _parse_json_string(source)
+
+
 def _parse_json_string(
     raw: str,
 ) -> JSONData:
@@ -113,18 +144,7 @@ def load_data(
         return File(source, FileFormat.JSON).read()
 
     if isinstance(source, str):
-        # Special case: '-' means read JSON from STDIN (Unix convention).
-        if source == '-':
-            raw = sys.stdin.read()
-            return _parse_json_string(raw)
-        candidate = Path(source)
-        if candidate.exists():
-            try:
-                return File(candidate, FileFormat.JSON).read()
-            except (OSError, json.JSONDecodeError, ValueError):
-                # Fall back to treating the string as raw JSON content.
-                pass
-        return _parse_json_string(source)
+        return _load_data_from_str(source)
 
     raise TypeError(
         'source must be a mapping, sequence of mappings, path, or JSON string',
