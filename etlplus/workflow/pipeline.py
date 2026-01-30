@@ -50,9 +50,33 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _collect_parsed[T](
+def _build_connectors(
     raw: StrAnyMap,
+    *,
     key: str,
+) -> list[Connector]:
+    """
+    Parse connector entries from a list under ``raw[key]``.
+
+    Parameters
+    ----------
+    raw : StrAnyMap
+        Raw pipeline mapping.
+    key : str
+        Key pointing to connector entries (e.g., ``"sources"``).
+
+    Returns
+    -------
+    list[Connector]
+        Parsed connector instances.
+    """
+    return list(
+        _collect_parsed(raw.get(key, []) or [], _parse_connector_entry),
+    )
+
+
+def _collect_parsed[T](
+    items: Any,
     parser: Callable[[Any], T | None],
 ) -> list[T]:
     """
@@ -60,10 +84,8 @@ def _collect_parsed[T](
 
     Parameters
     ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-    key : str
-        Key pointing to a list-like payload.
+    items : Any
+        List-like payload to parse.
     parser : Callable[[Any], T | None]
         Parser that returns an instance or ``None`` for invalid entries.
 
@@ -72,12 +94,12 @@ def _collect_parsed[T](
     list[T]
         Parsed items, excluding invalid entries.
     """
-    items: list[T] = []
-    for entry in raw.get(key, []) or []:
+    parsed_items: list[T] = []
+    for entry in items or []:
         parsed = parser(entry)
         if parsed is not None:
-            items.append(parsed)
-    return items
+            parsed_items.append(parsed)
+    return parsed_items
 
 
 def _parse_connector_entry(
@@ -102,48 +124,6 @@ def _parse_connector_entry(
         return parse_connector(entry)
     except TypeError:
         return None
-
-
-def _build_sources(
-    raw: StrAnyMap,
-) -> list[Connector]:
-    """
-    Return a list of source connectors parsed from the mapping.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-
-    Returns
-    -------
-    list[Connector]
-        Parsed source connectors.
-    """
-    return list(
-        _collect_parsed(raw, 'sources', _parse_connector_entry),
-    )
-
-
-def _build_targets(
-    raw: StrAnyMap,
-) -> list[Connector]:
-    """
-    Return a list of target connectors parsed from the mapping.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-
-    Returns
-    -------
-    list[Connector]
-        Parsed target connectors.
-    """
-    return list(
-        _collect_parsed(raw, 'targets', _parse_connector_entry),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -311,17 +291,20 @@ class PipelineConfig:
         file_systems = coerce_dict(raw.get('file_systems'))
 
         # Sources
-        sources = _build_sources(raw)
+        sources = _build_connectors(raw, key='sources')
 
         # Validations/Transforms
         validations = coerce_dict(raw.get('validations'))
         transforms = coerce_dict(raw.get('transforms'))
 
         # Targets
-        targets = _build_targets(raw)
+        targets = _build_connectors(raw, key='targets')
 
         # Jobs
-        jobs = _collect_parsed(raw, 'jobs', JobConfig.from_obj)
+        jobs: list[JobConfig] = _collect_parsed(
+            raw.get('jobs', []) or [],
+            JobConfig.from_obj,
+        )
 
         # Table schemas (optional, tolerant pass-through structures).
         table_schemas: list[dict[str, Any]] = []

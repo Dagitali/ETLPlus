@@ -47,6 +47,28 @@ class DagError(ValueError):
         return self.message
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _ready(
+    indegree: dict[str, int],
+) -> list[str]:
+    """
+    Return a sorted list of nodes with zero indegree.
+
+    Parameters
+    ----------
+    indegree : dict[str, int]
+        Mapping of node name to indegree.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of node names ready to process.
+    """
+    return sorted(name for name, deg in indegree.items() if deg == 0)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -88,7 +110,7 @@ def topological_sort_jobs(
                 edges[dep].add(job.name)
                 indegree[job.name] += 1
 
-    queue = deque(sorted(name for name, deg in indegree.items() if deg == 0))
+    queue = deque(_ready(indegree))
     ordered: list[str] = []
 
     while queue:

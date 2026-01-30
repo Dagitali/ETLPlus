@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..api import HttpMethod
+from ..api import compose_api_target_env
 from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
@@ -37,6 +39,108 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _load_data_from_str(
+    source: str,
+) -> JSONData:
+    """
+    Load JSON data from a string or file path.
+
+    Parameters
+    ----------
+    source : str
+        Input string representing a file path or JSON payload.
+
+    Returns
+    -------
+    JSONData
+        Parsed JSON payload.
+    """
+    # Special case: '-' means read JSON from STDIN (Unix convention).
+    if source == '-':
+        raw = sys.stdin.read()
+        return _parse_json_string(raw)
+
+    candidate = Path(source)
+    if candidate.exists():
+        try:
+            return File(candidate, FileFormat.JSON).read()
+        except (OSError, json.JSONDecodeError, ValueError):
+            # Fall back to treating the string as raw JSON content.
+            pass
+    return _parse_json_string(source)
+
+
+def _load_to_api_env(
+    data: JSONData,
+    env: Mapping[str, Any],
+) -> JSONDict:
+    """
+    Load data to an API target using a normalized environment.
+
+    Parameters
+    ----------
+    data : JSONData
+        Payload to load.
+    env : Mapping[str, Any]
+        Normalized request environment.
+
+    Returns
+    -------
+    JSONDict
+        Load result payload.
+
+    Raises
+    ------
+    ValueError
+        If required parameters are missing.
+    """
+    url = env.get('url')
+    if not url:
+        raise ValueError('API target missing "url"')
+    method = env.get('method') or 'post'
+    kwargs: dict[str, Any] = {}
+    headers = env.get('headers')
+    if headers:
+        kwargs['headers'] = cast(dict[str, str], headers)
+    if env.get('timeout') is not None:
+        kwargs['timeout'] = env.get('timeout')
+    session = env.get('session')
+    if session is not None:
+        kwargs['session'] = session
+    extra_kwargs = env.get('request_kwargs')
+    if isinstance(extra_kwargs, Mapping):
+        kwargs.update(extra_kwargs)
+    timeout = kwargs.pop('timeout', 10.0)
+    session = kwargs.pop('session', None)
+    request_callable, timeout, http_method = resolve_request(
+        method,
+        session=session,
+        timeout=timeout,
+    )
+    response = request_callable(
+        cast(str, url),
+        json=data,
+        timeout=timeout,
+        **kwargs,
+    )
+    response.raise_for_status()
+
+    # Try JSON first, fall back to text.
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        payload = response.text
+
+    return {
+        'status': 'success',
+        'status_code': response.status_code,
+        'message': f'Data loaded to {url}',
+        'response': payload,
+        'records': count_records(data),
+        'method': http_method.value.upper(),
+    }
 
 
 def _parse_json_string(
@@ -113,18 +217,7 @@ def load_data(
         return File(source, FileFormat.JSON).read()
 
     if isinstance(source, str):
-        # Special case: '-' means read JSON from STDIN (Unix convention).
-        if source == '-':
-            raw = sys.stdin.read()
-            return _parse_json_string(raw)
-        candidate = Path(source)
-        if candidate.exists():
-            try:
-                return File(candidate, FileFormat.JSON).read()
-            except (OSError, json.JSONDecodeError, ValueError):
-                # Fall back to treating the string as raw JSON content.
-                pass
-        return _parse_json_string(source)
+        return _load_data_from_str(source)
 
     raise TypeError(
         'source must be a mapping, sequence of mappings, path, or JSON string',
@@ -158,30 +251,43 @@ def load_to_api(
         Result dictionary including response payload or text.
     """
     # Apply a conservative timeout to guard against hanging requests.
-    timeout = kwargs.pop('timeout', 10.0)
-    session = kwargs.pop('session', None)
-    request_callable, timeout, http_method = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
-    )
-    response = request_callable(url, json=data, timeout=timeout, **kwargs)
-    response.raise_for_status()
-
-    # Try JSON first, fall back to text.
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
-
-    return {
-        'status': 'success',
-        'status_code': response.status_code,
-        'message': f'Data loaded to {url}',
-        'response': payload,
-        'records': count_records(data),
-        'method': http_method.value.upper(),
+    env = {
+        'url': url,
+        'method': method,
+        'timeout': kwargs.pop('timeout', 10.0),
+        'session': kwargs.pop('session', None),
+        'request_kwargs': kwargs,
     }
+    return _load_to_api_env(data, env)
+
+
+def load_to_api_target(
+    cfg: Any,
+    target_obj: Any,
+    overrides: dict[str, Any],
+    data: JSONData,
+) -> JSONDict:
+    """
+    Load data to an API target connector.
+
+    Parameters
+    ----------
+    cfg : Any
+        Pipeline configuration.
+    target_obj : Any
+        Connector configuration.
+    overrides : dict[str, Any]
+        Load-time overrides.
+    data : JSONData
+        Payload to load.
+
+    Returns
+    -------
+    JSONDict
+        Load result.
+    """
+    env = compose_api_target_env(cfg, target_obj, overrides)
+    return _load_to_api_env(data, env)
 
 
 def load_to_database(

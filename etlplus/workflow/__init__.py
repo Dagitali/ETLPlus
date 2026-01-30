@@ -14,6 +14,7 @@ from .jobs import TransformRef
 from .jobs import ValidationRef
 from .pipeline import PipelineConfig
 from .pipeline import load_pipeline_config
+from .profile import ProfileConfig
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -24,6 +25,7 @@ __all__ = [
     'JobConfig',
     'LoadRef',
     'PipelineConfig',
+    'ProfileConfig',
     'TransformRef',
     'ValidationRef',
     # Functions

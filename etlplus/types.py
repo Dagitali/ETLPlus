@@ -12,8 +12,7 @@ Notes
 See Also
 --------
 - :mod:`etlplus.api.types` for HTTP-specific aliases and data classes
-- :mod:`etlplus.connector.types` for connector-specific aliases and TypedDict
-    surfaces
+- :mod:`etlplus.connector.types` for connector-specific aliases
 
 Examples
 --------
@@ -81,6 +80,8 @@ __all__ = [
     # Type Aliases (Networking / Runtime)
     'Sleeper',
     'Timeout',
+    # Type Aliases (Templates)
+    'TemplateKey',
 ]
 
 
