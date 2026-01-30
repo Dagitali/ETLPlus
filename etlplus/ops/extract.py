@@ -283,11 +283,6 @@ def extract_from_api_source(
     -------
     JSONData
         Extracted payload.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
     env = compose_api_request_env(cfg, source_obj, overrides)
     return _extract_from_api_env(env, use_client=True)
