@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
-from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
@@ -69,6 +69,57 @@ def _load_data_from_str(
             # Fall back to treating the string as raw JSON content.
             pass
     return _parse_json_string(source)
+
+
+def _load_to_api_env(
+    data: JSONData,
+    env: Mapping[str, Any],
+) -> JSONDict:
+    """
+    Load data to an API target using a normalized environment.
+
+    Parameters
+    ----------
+    data : JSONData
+        Payload to load.
+    env : Mapping[str, Any]
+        Normalized request environment.
+
+    Returns
+    -------
+    JSONDict
+        Load result payload.
+
+    Raises
+    ------
+    ValueError
+        If required parameters are missing.
+    """
+    url = env.get('url')
+    if not url:
+        raise ValueError('API target missing "url"')
+    method = env.get('method') or 'post'
+    kwargs: dict[str, Any] = {}
+    headers = env.get('headers')
+    if headers:
+        kwargs['headers'] = cast(dict[str, str], headers)
+    if env.get('timeout') is not None:
+        kwargs['timeout'] = env.get('timeout')
+    session = env.get('session')
+    if session is not None:
+        kwargs['session'] = session
+    extra_kwargs = env.get('request_kwargs')
+    if isinstance(extra_kwargs, Mapping):
+        kwargs.update(extra_kwargs)
+    return cast(
+        JSONDict,
+        load_to_api(
+            data,
+            cast(str, url),
+            method=cast(HttpMethod | str, method),
+            **kwargs,
+        ),
+    )
 
 
 def _parse_json_string(
@@ -179,30 +230,14 @@ def load_to_api(
         Result dictionary including response payload or text.
     """
     # Apply a conservative timeout to guard against hanging requests.
-    timeout = kwargs.pop('timeout', 10.0)
-    session = kwargs.pop('session', None)
-    request_callable, timeout, http_method = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
-    )
-    response = request_callable(url, json=data, timeout=timeout, **kwargs)
-    response.raise_for_status()
-
-    # Try JSON first, fall back to text.
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
-
-    return {
-        'status': 'success',
-        'status_code': response.status_code,
-        'message': f'Data loaded to {url}',
-        'response': payload,
-        'records': count_records(data),
-        'method': http_method.value.upper(),
+    env = {
+        'url': url,
+        'method': method,
+        'timeout': kwargs.pop('timeout', 10.0),
+        'session': kwargs.pop('session', None),
+        'request_kwargs': kwargs,
     }
+    return _load_to_api_env(data, env)
 
 
 def load_to_api_target(
@@ -229,34 +264,9 @@ def load_to_api_target(
     -------
     JSONDict
         Load result.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
-    env_t = compose_api_target_env(cfg, target_obj, overrides)
-    url_t = env_t.get('url')
-    if not url_t:
-        raise ValueError('API target missing "url"')
-    kwargs_t: dict[str, Any] = {}
-    headers = env_t.get('headers')
-    if headers:
-        kwargs_t['headers'] = cast(dict[str, str], headers)
-    if env_t.get('timeout') is not None:
-        kwargs_t['timeout'] = env_t.get('timeout')
-    session = env_t.get('session')
-    if session is not None:
-        kwargs_t['session'] = session
-    return cast(
-        JSONDict,
-        load_to_api(
-            data,
-            cast(str, url_t),
-            method=cast(str | Any, env_t.get('method') or 'post'),
-            **kwargs_t,
-        ),
-    )
+    env = compose_api_target_env(cfg, target_obj, overrides)
+    return _load_to_api_env(data, env)
 
 
 def load_to_database(
