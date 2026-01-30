@@ -87,45 +87,6 @@ def _build_client(
     )
 
 
-def _parse_api_response(
-    response: Any,
-) -> JSONData:
-    """
-    Parse API responses into a consistent JSON payload.
-
-    Parameters
-    ----------
-    response : Any
-        HTTP response object exposing ``headers``, ``json()``, and ``text``.
-
-    Returns
-    -------
-    JSONData
-        Parsed JSON payload, or a fallback object with raw text.
-    """
-    content_type = response.headers.get('content-type', '').lower()
-    if 'application/json' in content_type:
-        try:
-            payload: Any = response.json()
-        except ValueError:
-            # Malformed JSON despite content-type; fall back to text
-            return {
-                'content': response.text,
-                'content_type': content_type,
-            }
-        if isinstance(payload, dict):
-            return cast(JSONDict, payload)
-        if isinstance(payload, list):
-            if all(isinstance(x, dict) for x in payload):
-                return cast(JSONList, payload)
-            # Coerce non-dict array items into objects for consistency
-            return [{'value': x} for x in payload]
-        # Fallback: wrap scalar JSON
-        return {'value': payload}
-
-    return {'content': response.text, 'content_type': content_type}
-
-
 def _extract_from_api_env(
     env: Mapping[str, Any],
     *,
@@ -222,6 +183,45 @@ def _extract_from_api_env(
     return _parse_api_response(response)
 
 
+def _parse_api_response(
+    response: Any,
+) -> JSONData:
+    """
+    Parse API responses into a consistent JSON payload.
+
+    Parameters
+    ----------
+    response : Any
+        HTTP response object exposing ``headers``, ``json()``, and ``text``.
+
+    Returns
+    -------
+    JSONData
+        Parsed JSON payload, or a fallback object with raw text.
+    """
+    content_type = response.headers.get('content-type', '').lower()
+    if 'application/json' in content_type:
+        try:
+            payload: Any = response.json()
+        except ValueError:
+            # Malformed JSON despite content-type; fall back to text
+            return {
+                'content': response.text,
+                'content_type': content_type,
+            }
+        if isinstance(payload, dict):
+            return cast(JSONDict, payload)
+        if isinstance(payload, list):
+            if all(isinstance(x, dict) for x in payload):
+                return cast(JSONList, payload)
+            # Coerce non-dict array items into objects for consistency
+            return [{'value': x} for x in payload]
+        # Fallback: wrap scalar JSON
+        return {'value': payload}
+
+    return {'content': response.text, 'content_type': content_type}
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -250,13 +250,11 @@ def extract_from_api(
     JSONData
         Parsed JSON payload, or a fallback object with raw text.
     """
-    timeout = kwargs.pop('timeout', None)
-    session = kwargs.pop('session', None)
     env = {
         'url': url,
         'method': method,
-        'timeout': timeout,
-        'session': session,
+        'timeout': kwargs.pop('timeout', None),
+        'session': kwargs.pop('session', None),
         'request_kwargs': kwargs,
     }
     return _extract_from_api_env(env, use_client=False)
