@@ -89,26 +89,24 @@ def capture_load_to_api_fixture(
 
     seen: dict[str, Any] = {}
 
-    def _fake_load_to_api(
+    def _fake_load_to_api_env(
         data: Any,
-        url: str,
-        method: str,
-        **kwargs: Any,
+        env: dict[str, Any],
     ) -> dict[str, Any]:
-        seen['url'] = url
-        seen['method'] = method
-        seen['headers'] = kwargs.get('headers')
-        seen['timeout'] = kwargs.get('timeout')
-        seen['session'] = kwargs.get('session')
+        seen['url'] = env.get('url')
+        seen['method'] = env.get('method')
+        seen['headers'] = env.get('headers')
+        seen['timeout'] = env.get('timeout')
+        seen['session'] = env.get('session')
 
         # Return a minimal success envelope similar to real load_to_api.
         return {
             'status': 'ok',
-            'url': url,
+            'url': env.get('url'),
             'count': len(data) if isinstance(data, list) else 0,
         }
 
-    monkeypatch.setattr(_load_mod, 'load_to_api', _fake_load_to_api)
+    monkeypatch.setattr(_load_mod, '_load_to_api_env', _fake_load_to_api_env)
 
     return seen
 
