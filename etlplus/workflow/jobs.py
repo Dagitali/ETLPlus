@@ -14,6 +14,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -76,7 +77,10 @@ def _parse_depends_on(
     """
     if isinstance(value, str):
         return [value]
-    if isinstance(value, list):
+    if isinstance(value, Sequence) and not isinstance(
+        value,
+        (str, bytes, bytearray),
+    ):
         return [entry for entry in value if isinstance(entry, str)]
     return []
 
