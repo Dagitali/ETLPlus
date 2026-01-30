@@ -165,24 +165,22 @@ class TestRun:
 
         load_calls: list[tuple] = []
 
-        def _capture_load_to_api(
+        def _capture_load_env(
             data: Any,
-            url: str,
-            method: str,
-            **kwargs: Any,
+            env: dict[str, Any],
         ) -> dict[str, bool]:
-            load_calls.append((data, url, method, kwargs))
+            load_calls.append((data, env))
             return {'ok': True}
 
-        monkeypatch.setattr(load_mod, 'load_to_api', _capture_load_to_api)
+        monkeypatch.setattr(load_mod, '_load_to_api_env', _capture_load_env)
 
         result = run_mod.run('api_job')
 
         assert DummyClient.instances
         assert paginate_calls[0]['endpoint_key'] == 'users'
         assert paginate_calls[0]['params'] == {'limit': 5}
-        assert load_calls[0][1] == 'https://sink.example.com'
-        assert load_calls[0][2] == 'put'
+        assert load_calls[0][1]['url'] == 'https://sink.example.com'
+        assert load_calls[0][1]['method'] == 'put'
         assert result == {'ok': True}
 
     def test_file_source_missing_path_raises(
