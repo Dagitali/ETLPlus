@@ -82,7 +82,6 @@ def _parse_depends_on(
 
 
 def _require_str(
-    # data: dict[str, Any],
     data: StrAnyMap,
     key: str,
 ) -> str | None:
@@ -149,13 +148,9 @@ class ExtractRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        source = _require_str(data, 'source')
-        if source is None:
+        if (source := _require_str(data, 'source')) is None:
             return None
-        return cls(
-            source=source,
-            options=coerce_dict(data.get('options')),
-        )
+        return cls(source=source, options=coerce_dict(data.get('options')))
 
 
 @dataclass(kw_only=True, slots=True)
@@ -214,18 +209,13 @@ class JobConfig:
         data = maybe_mapping(obj)
         if not data:
             return None
-        name = _require_str(data, 'name')
-        if name is None:
+        if (name := _require_str(data, 'name')) is None:
             return None
-
-        description = _coerce_optional_str(data.get('description'))
-
-        depends_on = _parse_depends_on(data.get('depends_on'))
 
         return cls(
             name=name,
-            description=description,
-            depends_on=depends_on,
+            description=_coerce_optional_str(data.get('description')),
+            depends_on=_parse_depends_on(data.get('depends_on')),
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             transform=TransformRef.from_obj(data.get('transform')),
@@ -274,8 +264,7 @@ class LoadRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        target = _require_str(data, 'target')
-        if target is None:
+        if (target := _require_str(data, 'target')) is None:
             return None
         return cls(
             target=target,
@@ -321,8 +310,7 @@ class TransformRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        pipeline = _require_str(data, 'pipeline')
-        if pipeline is None:
+        if (pipeline := _require_str(data, 'pipeline')) is None:
             return None
         return cls(pipeline=pipeline)
 
@@ -372,13 +360,10 @@ class ValidationRef:
         data = maybe_mapping(obj)
         if not data:
             return None
-        ruleset = _require_str(data, 'ruleset')
-        if ruleset is None:
+        if (ruleset := _require_str(data, 'ruleset')) is None:
             return None
-        severity = _coerce_optional_str(data.get('severity'))
-        phase = _coerce_optional_str(data.get('phase'))
         return cls(
             ruleset=ruleset,
-            severity=severity,
-            phase=phase,
+            severity=_coerce_optional_str(data.get('severity')),
+            phase=_coerce_optional_str(data.get('phase')),
         )
