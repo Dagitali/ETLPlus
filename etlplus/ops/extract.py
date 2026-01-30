@@ -266,7 +266,7 @@ def extract_from_api_source(
     overrides: dict[str, Any],
 ) -> JSONData:
     """
-    Extract data from an API source connector.
+    Extract data from a REST API source connector.
 
     Parameters
     ----------
