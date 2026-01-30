@@ -16,6 +16,8 @@ from typing import Self
 import pytest
 
 run_mod = importlib.import_module('etlplus.ops.run')
+extract_mod = importlib.import_module('etlplus.ops.extract')
+load_mod = importlib.import_module('etlplus.ops.load')
 
 # SECTION: HELPERS ========================================================== #
 
@@ -94,7 +96,7 @@ class TestRun:
             'session': 'session-token',
         }
         monkeypatch.setattr(
-            run_mod,
+            extract_mod,
             'compose_api_request_env',
             lambda cfg_obj, source_obj, opts: req_env,
         )
@@ -108,7 +110,7 @@ class TestRun:
                 self.kwargs = kwargs
                 DummyClient.instances.append(self)
 
-        monkeypatch.setattr(run_mod, 'EndpointClient', DummyClient)
+        monkeypatch.setattr(extract_mod, 'EndpointClient', DummyClient)
 
         paginate_calls: list[dict[str, Any]] = []
 
@@ -134,7 +136,11 @@ class TestRun:
             )
             return [{'id': 1}]
 
-        monkeypatch.setattr(run_mod, 'paginate_with_client', _capture_paginate)
+        monkeypatch.setattr(
+            extract_mod,
+            'paginate_with_client',
+            _capture_paginate,
+        )
 
         monkeypatch.setattr(
             run_mod,
@@ -152,32 +158,31 @@ class TestRun:
             'session': 'target-session',
         }
         monkeypatch.setattr(
-            run_mod,
+            load_mod,
             'compose_api_target_env',
             lambda cfg_obj, target_obj, overrides: target_env,
         )
 
         load_calls: list[tuple] = []
 
-        def _capture_load(
+        def _capture_load_to_api(
             data: Any,
-            connector: str,
             url: str,
+            method: str,
             **kwargs: Any,
         ) -> dict[str, bool]:
-            load_calls.append((data, connector, url, kwargs))
+            load_calls.append((data, url, method, kwargs))
             return {'ok': True}
 
-        monkeypatch.setattr(run_mod, 'load', _capture_load)
+        monkeypatch.setattr(load_mod, 'load_to_api', _capture_load_to_api)
 
         result = run_mod.run('api_job')
 
         assert DummyClient.instances
         assert paginate_calls[0]['endpoint_key'] == 'users'
         assert paginate_calls[0]['params'] == {'limit': 5}
-        assert load_calls[0][1] == 'api'
-        assert load_calls[0][2] == 'https://sink.example.com'
-        assert load_calls[0][3]['method'] == 'put'
+        assert load_calls[0][1] == 'https://sink.example.com'
+        assert load_calls[0][2] == 'put'
         assert result == {'ok': True}
 
     def test_file_source_missing_path_raises(
