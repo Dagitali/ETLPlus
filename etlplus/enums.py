@@ -22,7 +22,6 @@ __all__ = [
     # Enums
     'AggregateName',
     'CoercibleStrEnum',
-    'DataConnectorType',
     'OperatorName',
     'PipelineStep',
 ]
@@ -166,37 +165,6 @@ class AggregateName(CoercibleStrEnum):
 
         # AVG
         return lambda xs, n: (fmean(xs) if xs else 0.0)
-
-
-class DataConnectorType(CoercibleStrEnum):
-    """Supported data connector types."""
-
-    # -- Constants -- #
-
-    API = 'api'
-    DATABASE = 'database'
-    FILE = 'file'
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def aliases(cls) -> StrStrMap:
-        """
-        Return a mapping of common aliases for each enum member.
-
-        Returns
-        -------
-        StrStrMap
-            A mapping of alias names to their corresponding enum member names.
-        """
-        return {
-            'http': 'api',
-            'https': 'api',
-            'rest': 'api',
-            'db': 'database',
-            'filesystem': 'file',
-            'fs': 'file',
-        }
 
 
 class OperatorName(CoercibleStrEnum):
