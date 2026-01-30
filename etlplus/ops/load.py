@@ -13,6 +13,7 @@ from typing import Any
 from typing import cast
 
 from ..api import HttpMethod
+from ..api import compose_api_target_env
 from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
@@ -202,6 +203,60 @@ def load_to_api(
         'records': count_records(data),
         'method': http_method.value.upper(),
     }
+
+
+def load_to_api_target(
+    cfg: Any,
+    target_obj: Any,
+    overrides: dict[str, Any],
+    data: JSONData,
+) -> JSONDict:
+    """
+    Load data to an API target connector.
+
+    Parameters
+    ----------
+    cfg : Any
+        Pipeline configuration.
+    target_obj : Any
+        Connector configuration.
+    overrides : dict[str, Any]
+        Load-time overrides.
+    data : JSONData
+        Payload to load.
+
+    Returns
+    -------
+    JSONDict
+        Load result.
+
+    Raises
+    ------
+    ValueError
+        If required parameters are missing.
+    """
+    env_t = compose_api_target_env(cfg, target_obj, overrides)
+    url_t = env_t.get('url')
+    if not url_t:
+        raise ValueError('API target missing "url"')
+    kwargs_t: dict[str, Any] = {}
+    headers = env_t.get('headers')
+    if headers:
+        kwargs_t['headers'] = cast(dict[str, str], headers)
+    if env_t.get('timeout') is not None:
+        kwargs_t['timeout'] = env_t.get('timeout')
+    session = env_t.get('session')
+    if session is not None:
+        kwargs_t['session'] = session
+    return cast(
+        JSONDict,
+        load_to_api(
+            data,
+            cast(str, url_t),
+            method=cast(str | Any, env_t.get('method') or 'post'),
+            **kwargs_t,
+        ),
+    )
 
 
 def load_to_database(
