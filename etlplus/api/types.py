@@ -53,7 +53,31 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-_UNSET = object()
+_UNSET: object = object()
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _to_dict(
+    value: Mapping[str, Any] | object | None,
+) -> dict[str, Any] | None:
+    """
+    Return a defensive ``dict`` copy for mapping inputs.
+
+    Parameters
+    ----------
+    value : Mapping[str, Any] | object | None
+        Mapping to copy, or ``None``.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        New ``dict`` instance or ``None`` when the input is ``None``.
+    """
+    if value is None:
+        return None
+    return cast(dict[str, Any], value)
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -176,9 +200,9 @@ class RequestOptions:
 
     def __post_init__(self) -> None:
         if self.params is not None:
-            object.__setattr__(self, 'params', dict(self.params))
+            object.__setattr__(self, 'params', _to_dict(self.params))
         if self.headers is not None:
-            object.__setattr__(self, 'headers', dict(self.headers))
+            object.__setattr__(self, 'headers', _to_dict(self.headers))
 
     # -- Instance Methods -- #
 
@@ -224,23 +248,20 @@ class RequestOptions:
 
         Returns
         -------
-        RequestOptions
+        Self
             New snapshot reflecting the provided overrides.
         """
         if params is _UNSET:
             next_params = self.params
-        elif params is None:
-            next_params = None
         else:
-            next_params = cast(dict, params)
+            # next_params = _to_dict(params) if params is not None else None
+            next_params = _to_dict(params)
 
         if headers is _UNSET:
             next_headers = self.headers
-        elif headers is None:
-            next_headers = None
         else:
-            next_headers = cast(dict, headers)
-
+            # next_headers = _to_dict(headers) if headers is not None else None
+            next_headers = _to_dict(headers)
         if timeout is _UNSET:
             next_timeout = self.timeout
         else:
