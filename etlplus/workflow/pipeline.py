@@ -70,12 +70,13 @@ def _build_connectors(
     list[Connector]
         Parsed connector instances.
     """
-    return list(_collect_parsed(raw, key, _parse_connector_entry))
+    return list(
+        _collect_parsed(raw.get(key, []) or [], _parse_connector_entry),
+    )
 
 
 def _collect_parsed[T](
-    raw: StrAnyMap,
-    key: str,
+    items: Any,
     parser: Callable[[Any], T | None],
 ) -> list[T]:
     """
@@ -83,10 +84,8 @@ def _collect_parsed[T](
 
     Parameters
     ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-    key : str
-        Key pointing to a list-like payload.
+    items : Any
+        List-like payload to parse.
     parser : Callable[[Any], T | None]
         Parser that returns an instance or ``None`` for invalid entries.
 
@@ -95,12 +94,12 @@ def _collect_parsed[T](
     list[T]
         Parsed items, excluding invalid entries.
     """
-    items: list[T] = []
-    for entry in raw.get(key, []) or []:
+    parsed_items: list[T] = []
+    for entry in items or []:
         parsed = parser(entry)
         if parsed is not None:
-            items.append(parsed)
-    return items
+            parsed_items.append(parsed)
+    return parsed_items
 
 
 def _parse_connector_entry(
@@ -302,7 +301,10 @@ class PipelineConfig:
         targets = _build_connectors(raw, key='targets')
 
         # Jobs
-        jobs = _collect_parsed(raw, 'jobs', JobConfig.from_obj)
+        jobs: list[JobConfig] = _collect_parsed(
+            raw.get('jobs', []) or [],
+            JobConfig.from_obj,
+        )
 
         # Table schemas (optional, tolerant pass-through structures).
         table_schemas: list[dict[str, Any]] = []
