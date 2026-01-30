@@ -86,35 +86,29 @@ def capture_load_to_api_fixture(
     """
     # Ensure module, not attr.
     _load_mod = importlib.import_module('etlplus.ops.load')
-    _run_mod = importlib.import_module('etlplus.ops.run')
 
     seen: dict[str, Any] = {}
-    real_load = _load_mod.load
 
-    def _fake_load(
+    def _fake_load_to_api(
         data: Any,
-        target_type: str,
-        target: str,
+        url: str,
+        method: str,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        if target_type == 'api':
-            seen['url'] = target
-            seen['method'] = kwargs.get('method') or 'post'
-            seen['headers'] = kwargs.get('headers')
-            seen['timeout'] = kwargs.get('timeout')
-            seen['session'] = kwargs.get('session')
+        seen['url'] = url
+        seen['method'] = method
+        seen['headers'] = kwargs.get('headers')
+        seen['timeout'] = kwargs.get('timeout')
+        seen['session'] = kwargs.get('session')
 
-            # Return a minimal success envelope similar to real load_to_api.
-            return {
-                'status': 'ok',
-                'url': target,
-                'count': len(data) if isinstance(data, list) else 0,
-            }
+        # Return a minimal success envelope similar to real load_to_api.
+        return {
+            'status': 'ok',
+            'url': url,
+            'count': len(data) if isinstance(data, list) else 0,
+        }
 
-        return real_load(data, target_type, target, **kwargs)
-
-    monkeypatch.setattr(_load_mod, 'load', _fake_load)
-    monkeypatch.setattr(_run_mod, 'load', _fake_load)
+    monkeypatch.setattr(_load_mod, 'load_to_api', _fake_load_to_api)
 
     return seen
 
@@ -346,6 +340,7 @@ def run_patched_fixture(
     result = run_patched(cfg, FakeClient, sleep_seconds=1.23)
     """
     run_mod = importlib.import_module('etlplus.ops.run')
+    extract_mod = importlib.import_module('etlplus.ops.extract')
 
     def _run(
         cfg: PipelineConfig,
@@ -361,7 +356,11 @@ def run_patched_fixture(
             'load_pipeline_config',
             lambda *_a, **_k: cfg,
         )
-        monkeypatch.setattr(run_mod, 'EndpointClient', endpoint_client_cls)
+        monkeypatch.setattr(
+            extract_mod,
+            'EndpointClient',
+            endpoint_client_cls,
+        )
 
         # Optionally force the resolved rate-limit delay to a constant.
         if sleep_seconds is not None:
