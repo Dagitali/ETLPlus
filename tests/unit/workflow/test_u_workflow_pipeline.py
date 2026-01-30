@@ -199,8 +199,7 @@ class TestCollectParsed:
         """Test that :func:`_collect_parsed` filters malformed entries."""
         payload = {case.collection: case.entries}
         items = _collect_parsed(
-            payload,
-            case.collection,
+            payload.get(case.collection, []),
             _parse_connector_entry,
         )
 
