@@ -120,9 +120,7 @@ def _build_sources(
     list[Connector]
         Parsed source connectors.
     """
-    return list(
-        _collect_parsed(raw, 'sources', _parse_connector_entry),
-    )
+    return _build_connectors(raw, key='sources')
 
 
 def _build_targets(
@@ -141,9 +139,30 @@ def _build_targets(
     list[Connector]
         Parsed target connectors.
     """
-    return list(
-        _collect_parsed(raw, 'targets', _parse_connector_entry),
-    )
+    return _build_connectors(raw, key='targets')
+
+
+def _build_connectors(
+    raw: StrAnyMap,
+    *,
+    key: str,
+) -> list[Connector]:
+    """
+    Parse connector entries from a list under ``raw[key]``.
+
+    Parameters
+    ----------
+    raw : StrAnyMap
+        Raw pipeline mapping.
+    key : str
+        Key pointing to connector entries (e.g., ``"sources"``).
+
+    Returns
+    -------
+    list[Connector]
+        Parsed connector instances.
+    """
+    return list(_collect_parsed(raw, key, _parse_connector_entry))
 
 
 # SECTION: FUNCTIONS ======================================================== #
