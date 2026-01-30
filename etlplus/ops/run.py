@@ -6,31 +6,23 @@ A module for running ETL jobs defined in YAML configurations.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 from typing import Final
 from typing import cast
-from urllib.parse import urlsplit
-from urllib.parse import urlunsplit
 
-from ..api import EndpointClient  # noqa: F401 (re-exported for tests)
 from ..api import HttpMethod
-from ..api import PaginationConfigMap
-from ..api import RequestOptions
-from ..api import compose_api_request_env
-from ..api import compose_api_target_env
-from ..api import paginate_with_client
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import PipelineConfig
 from ..types import StrPath
-from ..types import Timeout
 from ..utils import print_json
 from ..workflow import load_pipeline_config
 from .extract import extract
+from .extract import extract_from_api_source
 from .load import load
+from .load import load_to_api_target
 from .transform import transform
 from .utils import maybe_validate
 from .validate import validate
@@ -152,173 +144,6 @@ def _resolve_validation_config(
     return True, rules, severity, phase
 
 
-def _build_client(
-    *,
-    base_url: str,
-    base_path: str | None,
-    endpoints: dict[str, str],
-    retry: Any,
-    retry_network_errors: bool,
-    session: Any,
-) -> EndpointClient:
-    """
-    Construct an API client with shared defaults.
-
-    Parameters
-    ----------
-    base_url : str
-        API base URL.
-    base_path : str | None
-        Base path to prepend for endpoints.
-    endpoints : dict[str, str]
-        Endpoint name to path mappings.
-    retry : Any
-        Retry policy configuration.
-    retry_network_errors : bool
-        Whether to retry on network errors.
-    session : Any
-        Optional requests session.
-
-    Returns
-    -------
-    EndpointClient
-        Configured endpoint client instance.
-    """
-    ClientClass = EndpointClient  # noqa: N806
-    return ClientClass(
-        base_url=base_url,
-        base_path=base_path,
-        endpoints=endpoints,
-        retry=retry,
-        retry_network_errors=retry_network_errors,
-        session=session,
-    )
-
-
-def _extract_from_api_source(
-    cfg: Any,
-    source_obj: Any,
-    overrides: dict[str, Any],
-) -> JSONData:
-    """
-    Extract data from an API source connector.
-
-    Parameters
-    ----------
-    cfg : Any
-        Pipeline configuration.
-    source_obj : Any
-        Connector configuration.
-    overrides : dict[str, Any]
-        Extract-time overrides.
-
-    Returns
-    -------
-    JSONData
-        Extracted payload.
-    """
-    env = compose_api_request_env(cfg, source_obj, overrides)
-    if (
-        env.get('use_endpoints')
-        and env.get('base_url')
-        and env.get('endpoints_map')
-        and env.get('endpoint_key')
-    ):
-        client = _build_client(
-            base_url=cast(str, env.get('base_url')),
-            base_path=cast(str | None, env.get('base_path')),
-            endpoints=cast(dict[str, str], env.get('endpoints_map', {})),
-            retry=env.get('retry'),
-            retry_network_errors=bool(env.get('retry_network_errors', False)),
-            session=env.get('session'),
-        )
-        return paginate_with_client(
-            client,
-            cast(str, env.get('endpoint_key')),
-            env.get('params'),
-            env.get('headers'),
-            env.get('timeout'),
-            env.get('pagination'),
-            cast(float | None, env.get('sleep_seconds')),
-        )
-
-    url = env.get('url')
-    if not url:
-        raise ValueError('API source missing URL')
-    parts = urlsplit(cast(str, url))
-    base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-    client = _build_client(
-        base_url=base,
-        base_path=None,
-        endpoints={},
-        retry=env.get('retry'),
-        retry_network_errors=bool(env.get('retry_network_errors', False)),
-        session=env.get('session'),
-    )
-    request_options = RequestOptions(
-        params=cast(Mapping[str, Any] | None, env.get('params')),
-        headers=cast(Mapping[str, str] | None, env.get('headers')),
-        timeout=cast(Timeout | None, env.get('timeout')),
-    )
-
-    return client.paginate_url(
-        cast(str, url),
-        cast(PaginationConfigMap | None, env.get('pagination')),
-        request=request_options,
-        sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
-    )
-
-
-def _load_to_api_target(
-    cfg: Any,
-    target_obj: Any,
-    overrides: dict[str, Any],
-    data: JSONData,
-) -> JSONDict:
-    """
-    Load data to an API target connector.
-
-    Parameters
-    ----------
-    cfg : Any
-        Pipeline configuration.
-    target_obj : Any
-        Connector configuration.
-    overrides : dict[str, Any]
-        Load-time overrides.
-    data : JSONData
-        Payload to load.
-
-    Returns
-    -------
-    JSONDict
-        Load result.
-    """
-    env_t = compose_api_target_env(cfg, target_obj, overrides)
-    url_t = env_t.get('url')
-    if not url_t:
-        raise ValueError('API target missing "url"')
-    kwargs_t: dict[str, Any] = {}
-    headers = env_t.get('headers')
-    if headers:
-        kwargs_t['headers'] = cast(dict[str, str], headers)
-    if env_t.get('timeout') is not None:
-        kwargs_t['timeout'] = env_t.get('timeout')
-    session = env_t.get('session')
-    if session is not None:
-        kwargs_t['session'] = session
-    return cast(
-        JSONDict,
-        load(
-            data,
-            'api',
-            cast(str, url_t),
-            method=cast(str | Any, env_t.get('method') or 'post'),
-            **kwargs_t,
-        ),
-    )
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -389,7 +214,7 @@ def run(
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
         case DataConnectorType.API:
-            data = _extract_from_api_source(cfg, source_obj, ex_opts)
+            data = extract_from_api_source(cfg, source_obj, ex_opts)
         case _:
             # :meth:`coerce` already raises for invalid connector types, but
             # keep explicit guard for defensive programming.
@@ -453,7 +278,7 @@ def run(
                 raise ValueError('File target missing "path"')
             result = load(data, 'file', path, file_format=fmt)
         case DataConnectorType.API:
-            result = _load_to_api_target(cfg, target_obj, overrides, data)
+            result = load_to_api_target(cfg, target_obj, overrides, data)
         case DataConnectorType.DATABASE:
             conn = overrides.get('connection_string') or getattr(
                 target_obj,
