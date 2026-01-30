@@ -90,6 +90,39 @@ def _index_connectors(
     return indexed
 
 
+def _require_named_connector(
+    connectors: dict[str, Any],
+    name: str,
+    *,
+    label: str,
+) -> Any:
+    """
+    Return a connector by name or raise a helpful error.
+
+    Parameters
+    ----------
+    connectors : dict[str, Any]
+        Mapping of connector names to connector objects.
+    name : str
+        Connector name to retrieve.
+    label : str
+        Label used in error messages (e.g., ``"source"``).
+
+    Returns
+    -------
+    Any
+        Connector object.
+
+    Raises
+    ------
+    ValueError
+        If the connector name is not found.
+    """
+    if name not in connectors:
+        raise ValueError(f'Unknown {label}: {name}')
+    return connectors[name]
+
+
 def _resolve_validation_config(
     job_obj: Any,
     cfg: Any,
@@ -165,9 +198,11 @@ def run(
     if not job_obj.extract:
         raise ValueError('Job missing "extract" section')
     source_name = job_obj.extract.source
-    if source_name not in sources_by_name:
-        raise ValueError(f'Unknown source: {source_name}')
-    source_obj = sources_by_name[source_name]
+    source_obj = _require_named_connector(
+        sources_by_name,
+        source_name,
+        label='source',
+    )
     ex_opts: dict[str, Any] = job_obj.extract.options or {}
 
     data: Any
@@ -292,9 +327,11 @@ def run(
     if not job_obj.load:
         raise ValueError('Job missing "load" section')
     target_name = job_obj.load.target
-    if target_name not in targets_by_name:
-        raise ValueError(f'Unknown target: {target_name}')
-    target_obj = targets_by_name[target_name]
+    target_obj = _require_named_connector(
+        targets_by_name,
+        target_name,
+        label='target',
+    )
     overrides = job_obj.load.overrides or {}
 
     ttype_raw = getattr(target_obj, 'type', None)
