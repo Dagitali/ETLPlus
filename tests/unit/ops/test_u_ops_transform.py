@@ -24,9 +24,9 @@ from typing import cast
 import pytest
 
 # from etlplus.ops import transform as tx
-from etlplus.enums import AggregateName
-from etlplus.enums import OperatorName
-from etlplus.enums import PipelineStep
+from etlplus.ops.enums import AggregateName
+from etlplus.ops.enums import OperatorName
+from etlplus.ops.enums import PipelineStep
 from etlplus.ops.transform import _agg_avg
 from etlplus.ops.transform import _agg_count
 from etlplus.ops.transform import _agg_max
