@@ -1,16 +1,16 @@
 """
-:mod:`tests.unit.test_u_enums` module.
+:mod:`tests.unit.test_u_ops_enums` module.
 
-Unit tests for :mod:`etlplus.enums` coercion helpers and behaviors.
+Unit tests for :mod:`etlplus.ops.enums` coercion helpers and behaviors.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.enums import AggregateName
-from etlplus.enums import OperatorName
-from etlplus.enums import PipelineStep
+from etlplus.ops.enums import AggregateName
+from etlplus.ops.enums import OperatorName
+from etlplus.ops.enums import PipelineStep
 
 # SECTION: HELPERS ========================================================== #
 
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.unit
 
 @pytest.mark.unit
 class TestAggregateName:
-    """Unit test suite for :class:`etlplus.enums.AggregateName`."""
+    """Unit test suite for :class:`etlplus.ops.enums.AggregateName`."""
 
     @pytest.mark.parametrize(
         'nums',
@@ -42,7 +42,7 @@ class TestAggregateName:
 
 
 class TestOperatorName:
-    """Unit test suite for :class:`etlplus.enums.OperatorName`."""
+    """Unit test suite for :class:`etlplus.ops.enums.OperatorName`."""
 
     def test_funcs(self) -> None:
         """Test the operator functions."""
@@ -55,7 +55,7 @@ class TestOperatorName:
 
 
 class TestPipelineStep:
-    """Unit test suite for :class:`etlplus.enums.PipelineStep`."""
+    """Unit test suite for :class:`etlplus.ops.enums.PipelineStep`."""
 
     def test_order(self) -> None:
         """Test the order values."""

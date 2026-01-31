@@ -44,28 +44,28 @@ from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
-from ..enums import AggregateName
-from ..enums import OperatorName
-from ..enums import PipelineStep
-from ..types import AggregateFunc
-from ..types import AggregateSpec
-from ..types import FieldName
-from ..types import Fields
-from ..types import FilterSpec
+from ..ops.types import PipelineConfig
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import MapSpec
-from ..types import OperatorFunc
-from ..types import PipelineConfig
-from ..types import PipelineStepName
-from ..types import SortKey
-from ..types import StepApplier
-from ..types import StepOrSteps
-from ..types import StepSpec
 from ..types import StrPath
 from ..utils import to_number
+from .enums import AggregateName
+from .enums import OperatorName
+from .enums import PipelineStep
 from .load import load_data
+from .types import AggregateFunc
+from .types import AggregateSpec
+from .types import FieldName
+from .types import Fields
+from .types import FilterSpec
+from .types import MapSpec
+from .types import OperatorFunc
+from .types import PipelineStepName
+from .types import SortKey
+from .types import StepApplier
+from .types import StepOrSteps
+from .types import StepSpec
 
 # SECTION: EXPORTS ========================================================== #
 

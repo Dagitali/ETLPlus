@@ -7,7 +7,7 @@ A few self-contained examples to get you started quickly.
 Run a tiny ETL in Python using the sample data shipped in this repo.
 
 ```bash
-python examples/quickstart_python.py
+python examples/quickstart.py
 ```
 
 What it does:
