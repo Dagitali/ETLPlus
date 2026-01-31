@@ -13,9 +13,9 @@ from typing import cast
 from ..api import HttpMethod
 from ..connector import DataConnectorType
 from ..file import FileFormat
+from ..ops.types import PipelineConfig
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import PipelineConfig
 from ..types import StrPath
 from ..utils import print_json
 from ..workflow import load_pipeline_config

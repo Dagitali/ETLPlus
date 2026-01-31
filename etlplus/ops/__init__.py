@@ -52,6 +52,7 @@ from .validate import validate
 
 
 __all__ = [
+    # Functions
     'extract',
     'load',
     'run',
