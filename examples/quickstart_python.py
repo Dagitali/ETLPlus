@@ -5,8 +5,8 @@ from etlplus.ops import extract
 from etlplus.ops import load
 from etlplus.ops import transform
 from etlplus.ops import validate
+from etlplus.ops.types import PipelineConfig
 from etlplus.ops.validate import FieldRules
-from etlplus.types import PipelineConfig
 
 # Extract sample data
 DATA_PATH = 'examples/data/sample.json'
