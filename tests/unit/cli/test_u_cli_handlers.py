@@ -90,7 +90,7 @@ class TestCheckHandler:
         """
         recorded: dict[str, object] = {}
 
-        def fake_load_config(
+        def fake_from_yaml(
             path: str,
             substitute: bool,
         ) -> Config:
@@ -98,9 +98,9 @@ class TestCheckHandler:
             return dummy_cfg
 
         monkeypatch.setattr(
-            handlers,
-            'load_config',
-            fake_load_config,
+            handlers.Config,
+            'from_yaml',
+            fake_from_yaml,
         )
         monkeypatch.setattr(
             handlers,
@@ -119,8 +119,8 @@ class TestCheckHandler:
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
         monkeypatch.setattr(
-            handlers,
-            'load_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
         monkeypatch.setattr(
@@ -545,8 +545,8 @@ class TestRunHandler:
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
         monkeypatch.setattr(
-            handlers,
-            'load_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
 
@@ -582,8 +582,8 @@ class TestRunHandler:
         Test that :func:`run_handler` executes a named job and emits status.
         """
         monkeypatch.setattr(
-            handlers,
-            'load_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
         run_calls: dict[str, object] = {}
