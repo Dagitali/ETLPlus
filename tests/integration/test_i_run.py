@@ -58,7 +58,7 @@ def test_target_service_endpoint_uses_base_path(
         endpoint_path=endpoint_path,
         headers={'Content-Type': 'application/json'},
     )
-    monkeypatch.setattr(run_mod, 'load_config', lambda *_a, **_k: cfg)
+    monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
 
     result = run_mod.run('send')
 
