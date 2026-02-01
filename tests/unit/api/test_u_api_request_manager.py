@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_request_manager` module.
+:mod:`tests.unit.api.test_u_api_request_manager` module.
 
 Unit tests for :class:`etlplus.api.request_manager.RequestManager`.
 

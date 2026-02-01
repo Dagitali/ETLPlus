@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_u_enums` module.
+:mod:`tests.unit.test_u_api_enums` module.
 
 Unit tests for :mod:`etlplus.enums` coercion helpers and behaviors.
 """

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_endpoint_client` module.
+:mod:`tests.unit.api.test_u_api_endpoint_client` module.
 
 Unit tests for :mod:`etlplus.api.endpoint_client`.
 
@@ -32,7 +32,7 @@ from etlplus.api import PaginationType
 from etlplus.api import RequestOptions
 from etlplus.api import RetryPolicyDict
 from etlplus.api import errors as api_errors
-from tests.unit.api.test_u_mocks import MockSession
+from tests.unit.api.test_u_api_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #
 

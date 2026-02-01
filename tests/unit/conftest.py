@@ -38,7 +38,7 @@ from etlplus.api import PaginationConfigDict
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigDict
 from etlplus.types import JSONData
-from tests.unit.api.test_u_mocks import MockSession
+from tests.unit.api.test_u_api_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #
 

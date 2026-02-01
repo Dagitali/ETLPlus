@@ -1,17 +1,17 @@
 """
-:mod:`tests.unit.api.test_u_transport` module.
+:mod:`tests.unit.api.test_u_api_transport` module.
 
 Unit tests for :mod:`etlplus.api.transport`.
 
 Notes
 -----
-- Validates mountability on a ``requests.Session``.
+- Validates mountability on a :class:`requests.Session`.
 - Exercises integer and mapping forms of ``max_retries``.
 - Ensures list/set inputs for retry fields are preserved.
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_transport.py
+>>> pytest tests/unit/api/test_u_api_transport.py
 """
 
 from __future__ import annotations

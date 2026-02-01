@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_rate_limiter` module.
+:mod:`tests.unit.api.test_u_api_rate_limiter` module.
 
 Unit tests for :class:`etlplus.api.rate_limiting.RateLimiter`.
 
@@ -11,7 +11,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_rate_limiter.py
+>>> pytest tests/unit/api/test_u_api_rate_limiter.py
 """
 
 from __future__ import annotations
