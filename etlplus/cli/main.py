@@ -4,7 +4,7 @@
 Entry point helpers for the Typer-powered ``etlplus`` CLI.
 
 This module exposes :func:`main` for the console script as well as
-:func:`create_parser` for callers that still need an ``argparse`` parser.
+:func:`create_parser`, which is kept for compatibility but now raises.
 """
 
 from __future__ import annotations
