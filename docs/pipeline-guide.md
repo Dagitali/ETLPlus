@@ -497,8 +497,8 @@ For the HTTP client and pagination API, see `etlplus/api/README.md`.
 
 ## Design notes: Mapping inputs, dict outputs
 
-ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `PipelineConfig.from_dict`) accept
-`Mapping[str, Any]` rather than `dict[str, Any]` for inputs. Why?
+ETLPlus config constructors (e.g., `ApiConfig.from_obj`, `Config.from_dict`) accept `Mapping[str,
+Any]` rather than `dict[str, Any]` for inputs. Why?
 
 - Flexibility: callers can pass any mapping-like object (e.g., YAML loaders that return custom
   mappings) without copying into a `dict` first.
