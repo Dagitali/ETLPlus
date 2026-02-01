@@ -76,7 +76,7 @@ class TestRun:
 
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
 
@@ -199,7 +199,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='File source missing "path"'):
@@ -228,7 +228,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(
@@ -262,7 +262,7 @@ class TestRun:
 
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
 
@@ -353,7 +353,7 @@ class TestRun:
         """Test that requesting a missing job raises :class:`ValueError`."""
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
 
@@ -388,7 +388,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)load'):
@@ -415,7 +415,7 @@ class TestRun:
         )
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='extract'):
@@ -458,7 +458,7 @@ class TestRun:
 
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
 
@@ -511,7 +511,7 @@ class TestRun:
         )
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='Unknown source'):
@@ -541,7 +541,7 @@ class TestRun:
         )
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)target'):
@@ -566,7 +566,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
@@ -598,7 +598,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
