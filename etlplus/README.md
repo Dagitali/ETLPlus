@@ -16,8 +16,8 @@ Back to project overview: see the top-level [README](../README.md).
 - [etlplus.cli](cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.templates](templates/README.md): SQL and DDL template helpers
-- [etlplus.validation](validation/README.md): Data validation utilities and helpers
-- [etlplus.workflow](etlplus/workflow/README.md): Helpers for data connectors, pipelines, jobs, and
+- [etlplus.ops](ops/README.md): Extract/validate/transform/load primitives
+- [etlplus.workflow](workflow/README.md): Helpers for data connectors, pipelines, jobs, and
   profiles
 
 ## Quickstart
@@ -36,7 +36,7 @@ load(filtered, "file", "output.json", file_format="json")
 Use the provided classes to load and validate configuration files:
 
 ```python
-from etlplus.workflow import Config
+from etlplus import Config
 
 cfg = Config.from_yaml("pipeline.yml")
 ```
@@ -47,7 +47,7 @@ cfg = Config.from_yaml("pipeline.yml")
 ## Example: Loading a Pipeline Config
 
 ```python
-from etlplus.workflow import Config
+from etlplus import Config
 
 config = Config.from_yaml("configs/pipeline.yml")
 print(config)

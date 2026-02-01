@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.sqlite` module.
 
-Helpers for reading/writing SQLite database (SQLITE) files.
+Stub helpers for reading/writing SQLite database (SQLITE) files (not
+implemented yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.xpt` module.
 
-Helpers for reading/writing SAS Transport (XPT) files.
+Stub helpers for reading/writing SAS Transport (XPT) files (not implemented
+yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.hbs` module.
 
-Helpers for reading/writing Handlebars (HBS) template files.
+Stub helpers for reading/writing Handlebars (HBS) template files (not
+implemented yet).
 
 Notes
 -----

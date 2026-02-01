@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.cfg` module.
 
-Helpers for reading/writing config (CFG) files.
+Stub helpers for reading/writing config (CFG) files (not implemented yet).
 
 Notes
 -----

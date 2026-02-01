@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.arrow` module.
 
-Helpers for reading/writing Apache Arrow (ARROW) files.
+Stub helpers for reading/writing Apache Arrow (ARROW) files (not implemented
+yet).
 
 Notes
 -----

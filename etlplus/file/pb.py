@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.pb` module.
 
-Helpers for reading/writing Protocol Buffer (PB) files.
+Stub helpers for reading/writing Protocol Buffer (PB) files (not implemented
+yet).
 
 Notes
 -----

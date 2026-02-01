@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.dat` module.
 
-Helpers for reading/writing data (DAT) files.
+Stub helpers for reading/writing data (DAT) files (not implemented yet).
 
 Notes
 -----

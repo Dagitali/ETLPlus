@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.ods` module.
 
-Helpers for reading/writing OpenDocument (ODS) spreadsheet files.
+Stub helpers for reading/writing OpenDocument (ODS) spreadsheet files (not
+implemented yet).
 
 Notes
 -----

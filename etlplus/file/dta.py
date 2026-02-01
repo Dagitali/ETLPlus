@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.dta` module.
 
-Helpers for reading/writing Stata (DTA) data files.
+Stub helpers for reading/writing Stata (DTA) data files (not implemented yet).
 
 Notes
 -----
