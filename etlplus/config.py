@@ -42,8 +42,6 @@ from .workflow.profile import ProfileConfig
 __all__ = [
     # Data Classes
     'Config',
-    # Functions
-    'load_config',
 ]
 
 
@@ -124,24 +122,6 @@ def _parse_connector_entry(
         return parse_connector(entry)
     except TypeError:
         return None
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def load_config(
-    path: Path | str,
-    *,
-    substitute: bool = False,
-    env: Mapping[str, str] | None = None,
-) -> Config:
-    """
-    Load a YAML-formatted configuration file into a ``Config`` instance.
-
-    Delegates to ``Config.from_yaml`` for construction and optional
-    variable substitution.
-    """
-    return Config.from_yaml(path, substitute=substitute, env=env)
 
 
 # SECTION: DATA CLASSES ===================================================== #
