@@ -32,10 +32,10 @@ etlplus 0.3.4
 
 ```bash
 $ etlplus --help
-usage: etlplus [-h] [--version] {extract,validate,transform,load} ...
+Usage: etlplus [OPTIONS] COMMAND [ARGS]...
 
 ETLPlus - A Swiss Army knife for enabling simple ETL operations
-...
+# (Output abbreviated; run `etlplus --help` for the full command list.)
 ```
 
 ## Demo 1: Extract Data from Different Sources
@@ -43,7 +43,7 @@ ETLPlus - A Swiss Army knife for enabling simple ETL operations
 ### Extract from JSON
 ```bash
 $ echo '{"name": "John", "age": 30}' > sample.json
-$ etlplus extract file sample.json
+$ etlplus extract sample.json
 {
   "name": "John",
   "age": 30
@@ -111,8 +111,8 @@ $ etlplus transform --operations '{
 
 ### Sort Data
 ```bash
-$ etlplus transform -\
-  -operations '{"sort": {"field": "score", "reverse": true}}' \
+$ etlplus transform \
+  --operations '{"sort": {"field": "score", "reverse": true}}' \
   '[{"name": "Charlie", "score": 85}, {"name": "Alice", "score": 95}, {"name": "Bob", "score": 90}]'
 ```
 
@@ -133,9 +133,8 @@ $ etlplus transform --operations '{"aggregate": {"field": "sales", "func": "sum"
 
 ### Load to JSON File
 ```bash
-$ etlplus load \
-  '{"name": "John", "status": "active"}' \
-  output.json --target-type file
+$ echo '{"name": "John", "status": "active"}' \
+  | etlplus load output.json --target-type file
 {
   "status": "success",
   "message": "Data loaded to output.json",
@@ -145,12 +144,12 @@ $ etlplus load \
 
 ### Load to CSV File
 ```bash
-$ etlplus load \
-  '[
-    {"name": "John", "email": "john@example.com"},
-    {"name": "Jane", "email": "jane@example.com"}
-  ]' \
-  users.csv --target-type file
+$ cat << 'JSON' | etlplus load users.csv --target-type file
+[
+  {"name": "John", "email": "john@example.com"},
+  {"name": "Jane", "email": "jane@example.com"}
+]
+JSON
 {
   "status": "success",
   "message": "Data loaded to users.csv",
@@ -190,7 +189,7 @@ $ etlplus validate \
   transformed.json
 
 # Step 4: Load
-$ etlplus load transformed.json file final_output.csv
+$ cat transformed.json | etlplus load final_output.csv
 ```
 
 ## Demo 6: Using Python API
@@ -199,7 +198,7 @@ $ etlplus load transformed.json file final_output.csv
 from etlplus.ops import extract, validate, transform, load
 
 # Extract
-data = extract("file", "data.csv", format="csv")
+data = extract("file", "data.csv", file_format="csv")
 
 # Validate
 validation_result = validate(data, {
@@ -214,7 +213,7 @@ if validation_result["valid"]:
     })
 
     # Load
-    load(transformed, "file", "output.json", format="json")
+    load(transformed, "file", "output.json", file_format="json")
     print("ETL pipeline completed successfully!")
 else:
     print(f"Validation errors: {validation_result['errors']}")

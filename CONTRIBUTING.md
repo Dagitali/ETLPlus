@@ -54,8 +54,8 @@ but using the stubs can provide a nicer editing experience.
 
 We optimize for a great editor experience and a permissive runtime:
 
-- TypedDicts in `etlplus/config/types.py` are editor/type-checking hints.  They are intentionally
-  `total=False` (all keys optional) and are not enforced at runtime.
+- TypedDicts in `etlplus/*/types.py` (for example `etlplus/api/types.py`) are editor/type-checking
+  hints. They are intentionally `total=False` (all keys optional) and are not enforced at runtime.
 - Constructors named `*.from_obj` accept `Mapping[str, Any]` and perform tolerant parsing and light
   casting.  This keeps runtime permissive while improving autocomplete and static analysis.
 - Prefer `Mapping[str, Any]` for inputs and plain `dict[...]` for internal state/returns.  Avoid
@@ -111,7 +111,7 @@ Use these guidelines to decide whether a test belongs in the unit or integration
 - Unit tests (put under `tests/unit/`):
   - Exercise a single function or class in isolation (no orchestration across modules).
   - No real file system or network I/O. Use in-memory data and stubs.
-  - Examples in this repo: `etlplus.cli.create_parser`, small helpers in `etlplus.utils`, validation and transform functions.
+  - Examples in this repo: small helpers in `etlplus.utils`, validation and transform functions.
   - Fast and deterministic; rely on `monkeypatch` to stub collaborators.
 
 - Integration tests (put under `tests/integration/`):
