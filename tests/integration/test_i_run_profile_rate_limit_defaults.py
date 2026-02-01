@@ -21,8 +21,8 @@ from typing import Any
 
 import pytest
 
+from etlplus import Config
 from etlplus.api import RateLimitConfig
-from etlplus.workflow import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
@@ -58,7 +58,7 @@ class TestRunProfileRateLimitDefaults:
     )
     def test_profile_rate_limit_sleep_propagation(
         self,
-        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        pipeline_cfg_factory: Callable[..., Config],
         fake_endpoint_client: tuple[
             type[FakeEndpointClientProtocol],
             list[FakeEndpointClientProtocol],

@@ -133,5 +133,5 @@ If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integrati
 - CLI tests: monkeypatch `sys.argv` and call `etlplus.cli.main()`; capture output with `capsys`.
 - File I/O: use `tmp_path` / `TemporaryDirectory()`; never write to the repo tree.
 - API flows: stub `EndpointClient` or transport layer via `monkeypatch` to avoid real HTTP.
-- Runner tests: monkeypatch `load_pipeline_config` to inject an in-memory `PipelineConfig`.
+- Runner tests: monkeypatch `load_config` to inject an in-memory `Config`.
 - Keep tests small and focused; prefer one behavior per test with clear assertions.

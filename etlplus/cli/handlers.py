@@ -14,6 +14,7 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
+from .. import Config
 from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
@@ -26,8 +27,6 @@ from ..ops import validate
 from ..ops.validate import FieldRules
 from ..types import JSONData
 from ..types import TemplateKey
-from ..workflow import PipelineConfig
-from ..workflow import load_pipeline_config
 from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #
@@ -73,14 +72,14 @@ def _collect_table_specs(
         specs.append(dict(load_table_spec(Path(spec_path))))
 
     if config_path:
-        cfg = load_pipeline_config(config_path, substitute=True)
+        cfg = Config.from_yaml(config_path, substitute=True)
         specs.extend(getattr(cfg, 'table_schemas', []))
 
     return specs
 
 
 def _check_sections(
-    cfg: PipelineConfig,
+    cfg: Config,
     *,
     jobs: bool,
     pipelines: bool,
@@ -93,7 +92,7 @@ def _check_sections(
 
     Parameters
     ----------
-    cfg : PipelineConfig
+    cfg : Config
         The loaded pipeline configuration.
     jobs : bool
         Whether to include job metadata.
@@ -133,14 +132,14 @@ def _check_sections(
 
 
 def _pipeline_summary(
-    cfg: PipelineConfig,
+    cfg: Config,
 ) -> dict[str, Any]:
     """
     Return a human-friendly snapshot of a pipeline config.
 
     Parameters
     ----------
-    cfg : PipelineConfig
+    cfg : Config
         The loaded pipeline configuration.
 
     Returns
@@ -229,7 +228,7 @@ def check_handler(
         Zero on success.
 
     """
-    cfg = load_pipeline_config(config, substitute=substitute)
+    cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
         cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
@@ -514,7 +513,7 @@ def run_handler(
     int
         Zero on success.
     """
-    cfg = load_pipeline_config(config, substitute=True)
+    cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
     if job_name:

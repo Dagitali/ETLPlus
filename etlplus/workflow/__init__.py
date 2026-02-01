@@ -12,8 +12,6 @@ from .jobs import JobConfig
 from .jobs import LoadRef
 from .jobs import TransformRef
 from .jobs import ValidationRef
-from .pipeline import PipelineConfig
-from .pipeline import load_pipeline_config
 from .profile import ProfileConfig
 
 # SECTION: EXPORTS ========================================================== #
@@ -24,11 +22,9 @@ __all__ = [
     'ExtractRef',
     'JobConfig',
     'LoadRef',
-    'PipelineConfig',
     'ProfileConfig',
     'TransformRef',
     'ValidationRef',
     # Functions
-    'load_pipeline_config',
     'topological_sort_jobs',
 ]

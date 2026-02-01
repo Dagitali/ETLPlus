@@ -31,6 +31,28 @@ assert validate(filtered, {"age": {"type": "number", "min": 0}})["valid"]
 load(filtered, "file", "output.json", file_format="json")
 ```
 
+## Loading and Validating Configs
+
+Use the provided classes to load and validate configuration files:
+
+```python
+from etlplus.workflow import Config
+
+cfg = Config.from_yaml("pipeline.yml")
+```
+
+- Supports YAML and JSON formats
+- Validates against expected schema
+
+## Example: Loading a Pipeline Config
+
+```python
+from etlplus.workflow import Config
+
+config = Config.from_yaml("configs/pipeline.yml")
+print(config)
+```
+
 ## See Also
 
 - [Top-level project README](../README.md)

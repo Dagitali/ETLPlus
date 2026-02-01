@@ -75,8 +75,8 @@ class TestRun:
         )
 
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
 
@@ -198,8 +198,8 @@ class TestRun:
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='File source missing "path"'):
@@ -227,8 +227,8 @@ class TestRun:
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(
@@ -261,8 +261,8 @@ class TestRun:
         )
 
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
 
@@ -352,8 +352,8 @@ class TestRun:
     ) -> None:
         """Test that requesting a missing job raises :class:`ValueError`."""
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
 
@@ -387,8 +387,8 @@ class TestRun:
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)load'):
@@ -414,8 +414,8 @@ class TestRun:
             validations={},
         )
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='extract'):
@@ -457,8 +457,8 @@ class TestRun:
         cfg.validations = {'rules': {}}
 
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
 
@@ -510,8 +510,8 @@ class TestRun:
             validations={},
         )
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match='Unknown source'):
@@ -540,8 +540,8 @@ class TestRun:
             validations={},
         )
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)target'):
@@ -565,8 +565,8 @@ class TestRun:
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
@@ -597,8 +597,8 @@ class TestRun:
         )
         cfg = _base_config(job, src, tgt)
         monkeypatch.setattr(
-            run_mod,
-            'load_pipeline_config',
+            run_mod.Config,
+            'from_yaml',
             lambda path, substitute=True: cfg,
         )
         with pytest.raises(ValueError, match=r'(?i)unsupported'):

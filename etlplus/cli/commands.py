@@ -62,6 +62,16 @@ __all__ = ['app']
 # SECTION: TYPE ALIASES ==================================================== #
 
 
+ConfigOption = Annotated[
+    str,
+    typer.Option(
+        ...,
+        '--config',
+        metavar='PATH',
+        help='Path to YAML-formatted configuration file.',
+    ),
+]
+
 JobOption = Annotated[
     str | None,
     typer.Option(
@@ -94,16 +104,6 @@ OutputOption = Annotated[
         '-o',
         metavar='PATH',
         help='Write output to file PATH (default: STDOUT).',
-    ),
-]
-
-PipelineConfigOption = Annotated[
-    str,
-    typer.Option(
-        ...,
-        '--config',
-        metavar='PATH',
-        help='Path to pipeline YAML configuration file.',
     ),
 ]
 
@@ -407,7 +407,7 @@ def _root(
 @app.command('check')
 def check_cmd(
     ctx: typer.Context,
-    config: PipelineConfigOption,
+    config: ConfigOption,
     jobs: JobsOption = False,
     pipelines: PipelinesOption = False,
     sources: SourcesOption = False,
@@ -422,20 +422,20 @@ def check_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    config : PipelineConfigOption
+    config : ConfigOption
         Path to pipeline YAML configuration file.
-    jobs : bool, optional
+    jobs : JobsOption, optional
         List available job names and exit. Default is ``False``.
-    pipelines : bool, optional
+    pipelines : PipelinesOption, optional
         List ETL pipelines. Default is ``False``.
-    sources : bool, optional
+    sources : SourcesOption, optional
         List data sources. Default is ``False``.
-    summary : bool, optional
+    summary : SummaryOption, optional
         Show pipeline summary (name, version, sources, targets, jobs). Default
         is ``False``.
-    targets : bool, optional
+    targets : TargetsOption, optional
         List data targets. Default is ``False``.
-    transforms : bool, optional
+    transforms : TransformsOption, optional
         List data transforms. Default is ``False``.
 
     Returns
@@ -725,7 +725,7 @@ def render_cmd(
 @app.command('run')
 def run_cmd(
     ctx: typer.Context,
-    config: PipelineConfigOption,
+    config: ConfigOption,
     job: JobOption = None,
     pipeline: PipelineOption = None,
 ) -> int:
@@ -736,11 +736,11 @@ def run_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    config : PipelineConfigOption
+    config : ConfigOption
         Path to pipeline YAML configuration file.
-    job : str | None, optional
+    job : JobOption, optional
         Name of the job to run. Default is ``None``.
-    pipeline : str | None, optional
+    pipeline : PipelineOption, optional
         Name of the pipeline to run. Default is ``None``.
 
     Returns

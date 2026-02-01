@@ -32,8 +32,8 @@ import pytest
 
 import etlplus.api.request_manager as rm_module
 import etlplus.cli.handlers as cli_handlers
+from etlplus import Config
 from etlplus.cli import main
-from etlplus.workflow.pipeline import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
 # SECTION: HELPERS ========================================================== #
@@ -527,7 +527,7 @@ class TestPaginationStrategies:
     def test_pagination_edge_cases(
         self,
         scenario: PaginationEdgeCase,
-        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        pipeline_cfg_factory: Callable[..., Config],
         fake_endpoint_client: tuple[
             type[FakeEndpointClientProtocol],
             list[FakeEndpointClientProtocol],

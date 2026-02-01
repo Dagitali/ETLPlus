@@ -16,7 +16,8 @@ See Also
 
 Examples
 --------
->>> from etlplus.types import JSONDict, PipelineConfig
+>>> from etlplus.types import JSONDict
+>>> from etlplus.ops.types import PipelineConfig
 >>> payload: JSONDict = {'id': 1, 'name': 'Ada'}
 >>> isinstance(payload, dict)
 True
