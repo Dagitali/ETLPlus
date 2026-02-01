@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_types` module.
+:mod:`tests.unit.api.test_u_api_types` module.
 
 Unit tests for :mod:`etlplus.api.types`.
 """
