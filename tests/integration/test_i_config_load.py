@@ -7,7 +7,7 @@ variable substitution enabled.
 
 Notes
 -----
-- Uses ``PipelineConfig.from_yaml`` on the repo's example config.
+- Uses ``Config.from_yaml`` on the repo's example config.
 - Asserts basic API modeling and presence of expected endpoints.
 """
 
@@ -17,7 +17,7 @@ from collections.abc import Mapping
 
 import pytest
 
-from etlplus.workflow import PipelineConfig
+from etlplus import Config
 
 # SECTION: HELPERS ========================================================== #
 
@@ -28,8 +28,8 @@ pytestmark = pytest.mark.integration
 # SECTION: TESTS ============================================================ #
 
 
-class TestPipelineYamlLoad:
-    """Integration test suite for pipeline YAML loading."""
+class TestConfigLoad:
+    """Integration test suite for configuration loading."""
 
     @pytest.mark.parametrize('substitute', [False, True])
     def test_load_repo_pipeline_yaml(
@@ -37,16 +37,16 @@ class TestPipelineYamlLoad:
         substitute: bool,
     ) -> None:
         """
-        Test loading the repository pipeline YAML with optional environment
-        variable substitution.
+        Test loading the configuration file with optional environment variable
+        substitution.
         """
 
-        # Ensure the repository pipeline YAML parses under current models.
-        cfg = PipelineConfig.from_yaml(
+        # Ensure the configuration file parses under current models.
+        cfg = Config.from_yaml(
             'examples/configs/pipeline.yml',
             substitute=substitute,
         )
-        assert isinstance(cfg, PipelineConfig)
+        assert isinstance(cfg, Config)
 
         # Basic sanity checks on REST API modeling.
         assert 'github' in cfg.apis

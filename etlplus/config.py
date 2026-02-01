@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.workflow.pipeline` module.
+:mod:`etlplus.config` module.
 
-Pipeline configuration model and helpers for job orchestration.
+Configuration model and helpers for job pipeline orchestration.
 
 Notes
 -----
@@ -24,26 +24,24 @@ from pathlib import Path
 from typing import Any
 from typing import Self
 
-from ..api import ApiConfig
-from ..connector import Connector
-from ..connector import parse_connector
-from ..file import File
-from ..file import FileFormat
-from ..types import StrAnyMap
-from ..utils import coerce_dict
-from ..utils import deep_substitute
-from ..utils import maybe_mapping
-from .jobs import JobConfig
-from .profile import ProfileConfig
+from .api import ApiConfig
+from .connector import Connector
+from .connector import parse_connector
+from .file import File
+from .file import FileFormat
+from .types import StrAnyMap
+from .utils import coerce_dict
+from .utils import deep_substitute
+from .utils import maybe_mapping
+from .workflow.jobs import JobConfig
+from .workflow.profile import ProfileConfig
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Data Classes
-    'PipelineConfig',
-    # Functions
-    'load_pipeline_config',
+    'Config',
 ]
 
 
@@ -126,29 +124,11 @@ def _parse_connector_entry(
         return None
 
 
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def load_pipeline_config(
-    path: Path | str,
-    *,
-    substitute: bool = False,
-    env: Mapping[str, str] | None = None,
-) -> PipelineConfig:
-    """
-    Load a pipeline YAML file into a ``PipelineConfig`` instance.
-
-    Delegates to ``PipelineConfig.from_yaml`` for construction and optional
-    variable substitution.
-    """
-    return PipelineConfig.from_yaml(path, substitute=substitute, env=env)
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
-class PipelineConfig:
+class Config:
     """
     Configuration for the data processing pipeline.
 
@@ -211,7 +191,7 @@ class PipelineConfig:
         env: Mapping[str, str] | None = None,
     ) -> Self:
         """
-        Parse a YAML file into a ``PipelineConfig`` instance.
+        Parse a YAML file into a ``Config`` instance.
 
         Parameters
         ----------
@@ -259,7 +239,7 @@ class PipelineConfig:
         raw: StrAnyMap,
     ) -> Self:
         """
-        Parse a mapping into a ``PipelineConfig`` instance.
+        Parse a mapping into a ``Config`` instance.
 
         Parameters
         ----------

@@ -13,7 +13,7 @@ from unittest.mock import ANY
 import pytest
 
 import etlplus.cli.handlers as handlers
-from etlplus.workflow import PipelineConfig
+from etlplus import Config
 from tests.unit.cli.conftest import CaptureHandler
 from tests.unit.cli.conftest import CaptureIo
 from tests.unit.cli.conftest import assert_emit_json
@@ -31,7 +31,7 @@ pytestmark = pytest.mark.unit
 class TestCliHandlersInternalHelpers:
     """Unit tests for internal CLI helpers in :mod:`etlplus.cli.handlers`."""
 
-    def test_check_sections_all(self, dummy_cfg: PipelineConfig) -> None:
+    def test_check_sections_all(self, dummy_cfg: Config) -> None:
         """
         Test that :func:`_check_sections` includes all requested sections."""
         # pylint: disable=protected-access
@@ -45,7 +45,7 @@ class TestCliHandlersInternalHelpers:
         )
         assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
 
-    def test_check_sections_default(self, dummy_cfg: PipelineConfig) -> None:
+    def test_check_sections_default(self, dummy_cfg: Config) -> None:
         """
         Test that :func:`_check_sections` defaults to jobs when no flags are
         set.
@@ -61,7 +61,7 @@ class TestCliHandlersInternalHelpers:
         )
         assert 'jobs' in result
 
-    def test_pipeline_summary(self, dummy_cfg: PipelineConfig) -> None:
+    def test_pipeline_summary(self, dummy_cfg: Config) -> None:
         """
         Test that :func:`_pipeline_summary` returns a mapping for a pipeline
         config.
@@ -81,7 +81,7 @@ class TestCheckHandler:
     def test_passes_substitute_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        dummy_cfg: PipelineConfig,
+        dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
         """
@@ -90,17 +90,17 @@ class TestCheckHandler:
         """
         recorded: dict[str, object] = {}
 
-        def fake_load_pipeline_config(
+        def fake_from_yaml(
             path: str,
             substitute: bool,
-        ) -> PipelineConfig:
+        ) -> Config:
             recorded['params'] = (path, substitute)
             return dummy_cfg
 
         monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
-            fake_load_pipeline_config,
+            handlers.Config,
+            'from_yaml',
+            fake_from_yaml,
         )
         monkeypatch.setattr(
             handlers,
@@ -114,13 +114,13 @@ class TestCheckHandler:
     def test_prints_sections(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        dummy_cfg: PipelineConfig,
+        dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
         monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
         monkeypatch.setattr(
@@ -540,13 +540,13 @@ class TestRunHandler:
     def test_emits_pipeline_summary_without_job(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        dummy_cfg: PipelineConfig,
+        dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
         monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
 
@@ -575,15 +575,15 @@ class TestRunHandler:
     def test_runs_job_and_emits_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        dummy_cfg: PipelineConfig,
+        dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
         """
         Test that :func:`run_handler` executes a named job and emits status.
         """
         monkeypatch.setattr(
-            handlers,
-            'load_pipeline_config',
+            handlers.Config,
+            'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
         run_calls: dict[str, object] = {}

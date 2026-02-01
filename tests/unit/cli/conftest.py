@@ -26,8 +26,8 @@ import typer
 from click.testing import Result
 from typer.testing import CliRunner
 
+from etlplus import Config
 from etlplus.cli.commands import app as cli_app
-from etlplus.workflow import PipelineConfig
 
 # SECTION: HELPERS ======================================================== #
 
@@ -215,9 +215,9 @@ def csv_text_fixture() -> str:
 
 
 @pytest.fixture(name='dummy_cfg')
-def dummy_cfg_fixture() -> PipelineConfig:
+def dummy_cfg_fixture() -> Config:
     """Return a minimal dummy pipeline config."""
-    return cast(PipelineConfig, DummyCfg())
+    return cast(Config, DummyCfg())
 
 
 @pytest.fixture(name='invoke_cli')
