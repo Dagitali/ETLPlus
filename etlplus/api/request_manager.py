@@ -28,7 +28,7 @@ from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .retry_manager import RetryInput
 from .retry_manager import RetryManager
-from .transport import HTTPAdapterMountConfig
+from .transport import HTTPAdapterMountConfigDict
 from .transport import build_session_with_adapters
 
 # SECTION: TYPE ALIASES ==================================================== #
@@ -68,7 +68,7 @@ class RequestManager:
         ``None``.
     retry_cap : float, optional
         Maximum backoff cap in seconds. Default is 30.0.
-    session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
+    session_adapters : Sequence[HTTPAdapterMountConfigDict] | None, optional
         Adapter mount configurations used when lazily building a session via
         :func:`etlplus.api.transport.build_session_with_adapters`.
 
@@ -86,7 +86,7 @@ class RequestManager:
         Optional factory for creating sessions.
     retry_cap : float
         Maximum backoff cap in seconds for :class:`RetryManager` sleeps.
-    session_adapters : Sequence[HTTPAdapterMountConfig] | None
+    session_adapters : Sequence[HTTPAdapterMountConfigDict] | None
         Adapter mount configurations used when lazily building a session.
     """
 
@@ -98,7 +98,7 @@ class RequestManager:
     session: requests.Session | None = None
     session_factory: Callable[[], requests.Session] | None = None
     retry_cap: float = 30.0
-    session_adapters: Sequence[HTTPAdapterMountConfig] | None = None
+    session_adapters: Sequence[HTTPAdapterMountConfigDict] | None = None
 
     def __post_init__(self) -> None:
         if self.session_adapters:

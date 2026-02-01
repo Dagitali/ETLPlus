@@ -25,7 +25,7 @@ from typing import Self
 from ...utils import to_float
 from ...utils import to_positive_float
 from .config import RateLimitConfig
-from .config import RateLimitConfigMap
+from .config import RateLimitConfigDict
 from .config import RateLimitInput
 from .config import RateLimitOverrides
 
@@ -38,7 +38,7 @@ __all__ = [
     # Data Classes
     'RateLimitConfig',
     # Typed Dicts
-    'RateLimitConfigMap',
+    'RateLimitConfigDict',
 ]
 
 

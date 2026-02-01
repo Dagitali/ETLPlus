@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.ops.utils import ValidationResult
+from etlplus.ops.utils import ValidationResultDict
 from etlplus.ops.utils import maybe_validate
 
 # SECTION: HELPERS ========================================================== #
@@ -36,9 +36,9 @@ def test_both_window_runs_for_after_phase() -> None:
     """
     calls = {'count': 0}
 
-    def validator(payload, _rules) -> ValidationResult:
+    def validator(payload, _rules) -> ValidationResultDict:
         calls['count'] += 1
-        return ValidationResult(valid=True, data=payload)
+        return ValidationResultDict(valid=True, data=payload)
 
     payload = {'ok': True}
     result = maybe_validate(
@@ -63,8 +63,8 @@ def test_error_severity_raises_value_error() -> None:
     """
     printer_calls: list[dict[str, object]] = []
 
-    def validator(_payload, _rules) -> ValidationResult:
-        return ValidationResult(valid=False, errors=['boom'])
+    def validator(_payload, _rules) -> ValidationResultDict:
+        return ValidationResultDict(valid=False, errors=['boom'])
 
     payload = {'ok': True}
     with pytest.raises(ValueError):
@@ -88,9 +88,9 @@ def test_skip_when_disabled() -> None:
     """
     calls = {'count': 0}
 
-    def validator(payload, _rules) -> ValidationResult:
+    def validator(payload, _rules) -> ValidationResultDict:
         calls['count'] += 1
-        return ValidationResult(valid=True, data=payload)
+        return ValidationResultDict(valid=True, data=payload)
 
     payload = {'ok': True}
     result = maybe_validate(
@@ -114,9 +114,9 @@ def test_skip_when_rules_missing() -> None:
     """
     calls = {'count': 0}
 
-    def validator(payload, _rules) -> ValidationResult:
+    def validator(payload, _rules) -> ValidationResultDict:
         calls['count'] += 1
-        return ValidationResult(valid=True, data=payload)
+        return ValidationResultDict(valid=True, data=payload)
 
     payload = {'ok': True}
     result = maybe_validate(
@@ -139,8 +139,8 @@ def test_success_returns_result_data() -> None:
     Test that validation returns the mutated data when validation succeeds.
     """
 
-    def validator(_payload, _rules) -> ValidationResult:
-        return ValidationResult(valid=True, data={'mutated': True})
+    def validator(_payload, _rules) -> ValidationResultDict:
+        return ValidationResultDict(valid=True, data={'mutated': True})
 
     payload = {'ok': True}
     result = maybe_validate(
@@ -164,8 +164,8 @@ def test_warn_severity_logs_without_raising() -> None:
     """
     printer_calls: list[dict[str, object]] = []
 
-    def validator(_payload, _rules) -> ValidationResult:
-        return ValidationResult(valid=False, errors=['boom'])
+    def validator(_payload, _rules) -> ValidationResultDict:
+        return ValidationResultDict(valid=False, errors=['boom'])
 
     payload = {'ok': True}
     result = maybe_validate(

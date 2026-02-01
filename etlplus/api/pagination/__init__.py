@@ -20,10 +20,10 @@ Notes
 from __future__ import annotations
 
 from .client import PaginationClient
-from .config import CursorPaginationConfigMap
-from .config import PagePaginationConfigMap
+from .config import CursorPaginationConfigDict
+from .config import PagePaginationConfigDict
 from .config import PaginationConfig
-from .config import PaginationConfigMap
+from .config import PaginationConfigDict
 from .config import PaginationInput
 from .config import PaginationType
 from .paginator import Paginator
@@ -40,8 +40,8 @@ __all__ = [
     # Enums
     'PaginationType',
     # Type Aliases
-    'CursorPaginationConfigMap',
-    'PagePaginationConfigMap',
+    'CursorPaginationConfigDict',
+    'PagePaginationConfigDict',
     'PaginationInput',
-    'PaginationConfigMap',
+    'PaginationConfigDict',
 ]

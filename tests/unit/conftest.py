@@ -29,14 +29,14 @@ import etlplus.api.rate_limiting.rate_limiter as rl_module
 from etlplus import Config
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
-from etlplus.api import CursorPaginationConfigMap
+from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
 from etlplus.api import EndpointConfig
-from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationConfig
-from etlplus.api import PaginationConfigMap
+from etlplus.api import PaginationConfigDict
 from etlplus.api import RateLimitConfig
-from etlplus.api import RateLimitConfigMap
+from etlplus.api import RateLimitConfigDict
 from etlplus.types import JSONData
 from tests.unit.api.test_u_mocks import MockSession
 
@@ -47,7 +47,7 @@ from tests.unit.api.test_u_mocks import MockSession
 pytestmark = pytest.mark.unit
 
 
-class _CursorKw(TypedDict, total=False):
+class _CursorKwDict(TypedDict, total=False):
     cursor_param: str
     cursor_path: str
     page_size: int | str
@@ -57,7 +57,7 @@ class _CursorKw(TypedDict, total=False):
     max_records: int
 
 
-class _PageKw(TypedDict, total=False):
+class _PageKwDict(TypedDict, total=False):
     page_param: str
     size_param: str
     start_page: int
@@ -198,39 +198,39 @@ def client_factory(
 
 
 @pytest.fixture
-def cursor_cfg() -> Callable[..., CursorPaginationConfigMap]:
+def cursor_cfg() -> Callable[..., CursorPaginationConfigDict]:
     """
     Create a factory for building immutable cursor pagination config objects.
 
     Returns
     -------
-    Callable[..., CursorPaginationConfigMap]
-        Function that builds :class:`CursorPaginationConfigMap` instances.
+    Callable[..., CursorPaginationConfigDict]
+        Function that builds :class:`CursorPaginationConfigDict` instances.
     """
 
-    def _make(**kwargs: Unpack[_CursorKw]) -> CursorPaginationConfigMap:
+    def _make(**kwargs: Unpack[_CursorKwDict]) -> CursorPaginationConfigDict:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
-        return cast(CursorPaginationConfigMap, _freeze(base))
+        return cast(CursorPaginationConfigDict, _freeze(base))
 
     return _make
 
 
 @pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfigMap]:
+def offset_cfg() -> Callable[..., PagePaginationConfigDict]:
     """
     Create a factory for building immutable offset pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfigMap]
-        Function that builds PagePaginationConfigMap instances.
+    Callable[..., PagePaginationConfigDict]
+        Function that builds PagePaginationConfigDict instances.
     """
 
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
+    def _make(**kwargs: Unpack[_PageKwDict]) -> PagePaginationConfigDict:
         base: dict[str, Any] = {'type': 'offset'}
         base.update(kwargs)
-        return cast(PagePaginationConfigMap, _freeze(base))
+        return cast(PagePaginationConfigDict, _freeze(base))
 
     return _make
 
@@ -405,20 +405,20 @@ def mock_session() -> MockSession:
 
 
 @pytest.fixture
-def page_cfg() -> Callable[..., PagePaginationConfigMap]:
+def page_cfg() -> Callable[..., PagePaginationConfigDict]:
     """
     Create a factory to build immutable page-number pagination config objects.
 
     Returns
     -------
-    Callable[..., PagePaginationConfigMap]
-        Function that builds :class:`PagePaginationConfigMap` instances.
+    Callable[..., PagePaginationConfigDict]
+        Function that builds :class:`PagePaginationConfigDict` instances.
     """
 
-    def _make(**kwargs: Unpack[_PageKw]) -> PagePaginationConfigMap:
+    def _make(**kwargs: Unpack[_PageKwDict]) -> PagePaginationConfigDict:
         base: dict[str, Any] = {'type': 'page'}
         base.update(kwargs)
-        return cast(PagePaginationConfigMap, _freeze(base))
+        return cast(PagePaginationConfigDict, _freeze(base))
 
     return _make
 
@@ -609,7 +609,7 @@ def pagination_from_obj_factory() -> Callable[
         Function that builds :class:`PaginationConfig` instances from mapping.
     """
 
-    def _make(obj: PaginationConfigMap) -> PaginationConfig:  # noqa: ANN401
+    def _make(obj: PaginationConfigDict) -> PaginationConfig:  # noqa: ANN401
         return PaginationConfig.from_obj(obj)
 
     return _make
@@ -698,7 +698,7 @@ def rate_limit_config_factory() -> Callable[..., RateLimitConfig]:
 
 @pytest.fixture
 def rate_limit_from_obj_factory() -> Callable[
-    [RateLimitConfigMap],
+    [RateLimitConfigDict],
     RateLimitConfig,
 ]:
     """
@@ -706,11 +706,11 @@ def rate_limit_from_obj_factory() -> Callable[
 
     Returns
     -------
-    Callable[[RateLimitConfigMap], RateLimitConfig]
+    Callable[[RateLimitConfigDict], RateLimitConfig]
         Function that builds :class:`RateLimitConfig` from mapping.
     """
 
-    def _make(obj: RateLimitConfigMap) -> RateLimitConfig:
+    def _make(obj: RateLimitConfigDict) -> RateLimitConfig:
         return RateLimitConfig.from_obj(obj)
 
     return _make

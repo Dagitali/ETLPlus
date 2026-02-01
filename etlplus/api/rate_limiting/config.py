@@ -41,7 +41,7 @@ __all__ = [
     # Type Aliases
     'RateLimitOverrides',
     # Typed Dicts
-    'RateLimitConfigMap',
+    'RateLimitConfigDict',
 ]
 
 
@@ -50,9 +50,9 @@ __all__ = [
 
 def _coerce_rate_limit_map(
     rate_limit: StrAnyMap | RateLimitConfig | None,
-) -> RateLimitConfigMap | None:
+) -> RateLimitConfigDict | None:
     """
-    Normalize user inputs into a :class:`RateLimitConfigMap`.
+    Normalize user inputs into a :class:`RateLimitConfigDict`.
 
     This helper is the single entry point for converting loosely-typed
     configuration into the canonical mapping consumed by downstream
@@ -65,7 +65,7 @@ def _coerce_rate_limit_map(
 
     Returns
     -------
-    RateLimitConfigMap | None
+    RateLimitConfigDict | None
         Normalized mapping, or ``None`` if input couldn't be parsed.
     """
     if rate_limit is None:
@@ -133,7 +133,7 @@ def _normalized_rate_values(
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RateLimitConfigMap(TypedDict, total=False):
+class RateLimitConfigDict(TypedDict, total=False):
     """
     Configuration mapping for HTTP request rate limits.
 
@@ -149,7 +149,7 @@ class RateLimitConfigMap(TypedDict, total=False):
 
     Examples
     --------
-    >>> rl: RateLimitConfigMap = {'max_per_sec': 4}
+    >>> rl: RateLimitConfigDict = {'max_per_sec': 4}
     ... # sleep ~= 0.25s between calls
     """
 
@@ -197,9 +197,9 @@ class RateLimitConfig(BoundsWarningsMixin):
 
     # -- Instance Methods -- #
 
-    def as_mapping(self) -> RateLimitConfigMap:
+    def as_mapping(self) -> RateLimitConfigDict:
         """Return a normalized mapping consumable by rate-limit helpers."""
-        cfg: RateLimitConfigMap = {}
+        cfg: RateLimitConfigDict = {}
         if (sleep := to_float(self.sleep_seconds)) is not None:
             cfg['sleep_seconds'] = sleep
         if (rate := to_float(self.max_per_sec)) is not None:
@@ -309,7 +309,7 @@ class RateLimitConfig(BoundsWarningsMixin):
     @overload
     def from_obj(
         cls,
-        obj: RateLimitConfigMap,
+        obj: RateLimitConfigDict,
     ) -> Self: ...
 
     @classmethod
@@ -352,4 +352,4 @@ class RateLimitConfig(BoundsWarningsMixin):
 type RateLimitInput = StrAnyMap | RateLimitConfig | None
 
 # Optional mapping of rate-limit fields to override values.
-type RateLimitOverrides = RateLimitConfigMap | None
+type RateLimitOverrides = RateLimitConfigDict | None
