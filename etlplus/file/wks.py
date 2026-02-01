@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.wks` module.
 
-Helpers for reading/writing Lotus 1-2-3 (WKS) spreadsheet files.
+Stub helpers for reading/writing Lotus 1-2-3 (WKS) spreadsheet files (not
+implemented yet).
 
 Notes
 -----

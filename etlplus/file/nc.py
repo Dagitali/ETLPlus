@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.nc` module.
 
-Helpers for reading/writing NetCDF (NC) data files.
+Stub helpers for reading/writing NetCDF (NC) data files (not implemented yet).
 
 Notes
 -----

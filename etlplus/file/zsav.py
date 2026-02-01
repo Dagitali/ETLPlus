@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.zsav` module.
 
-Helpers for reading/writing compressed SPSS (ZSAV) data files.
+Stub helpers for reading/writing compressed SPSS (ZSAV) data files (not
+implemented yet).
 
 Notes
 -----

@@ -1,8 +1,8 @@
 """
 :mod:`etlplus.file.xlsm` module.
 
-Helpers for reading/writing Microsoft Excel Macro-Enabled (XLSM) spreadsheet
-files.
+Stub helpers for reading/writing Microsoft Excel Macro-Enabled (XLSM)
+spreadsheet files (not implemented yet).
 
 Notes
 -----

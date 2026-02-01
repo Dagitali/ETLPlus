@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.numbers` module.
 
-Helpers for reading/writing Apple Numbers (NUMBERS) spreadsheet files.
+Stub helpers for reading/writing Apple Numbers (NUMBERS) spreadsheet files (not
+implemented yet).
 
 Notes
 -----

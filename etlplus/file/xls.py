@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.xls` module.
 
-Helpers for reading/writing Excel XLS files.
+Helpers for reading Excel XLS files (write is not supported).
 """
 
 from __future__ import annotations

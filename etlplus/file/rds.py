@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.rds` module.
 
-Helpers for reading/writing R (RDS) data files.
+Stub helpers for reading/writing R (RDS) data files (not implemented yet).
 
 Notes
 -----

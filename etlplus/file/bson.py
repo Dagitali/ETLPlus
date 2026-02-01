@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.bson` module.
 
-Helpers for reading/writing Binary JSON (BSON) files.
+Stub helpers for reading/writing Binary JSON (BSON) files (not implemented
+yet).
 
 Notes
 -----

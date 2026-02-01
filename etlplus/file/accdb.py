@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.accdb` module.
 
-Helpers for reading/writing newer Microsoft Access database (ACCDB) files.
+Stub helpers for reading/writing newer Microsoft Access database (ACCDB) files
+(not implemented yet).
 
 Notes
 -----

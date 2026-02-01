@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.log` module.
 
-Helpers for reading/writing generic log (LOG) files.
+Stub helpers for reading/writing generic log (LOG) files (not implemented yet).
 
 Notes
 -----

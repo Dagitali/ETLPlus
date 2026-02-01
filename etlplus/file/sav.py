@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.sav` module.
 
-Helpers for reading/writing SPSS (SAV) data files.
+Stub helpers for reading/writing SPSS (SAV) data files (not implemented yet).
 
 Notes
 -----

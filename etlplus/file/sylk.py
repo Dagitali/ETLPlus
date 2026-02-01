@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.sylk` module.
 
-Helpers for reading/writing Symbolic Link (SYLK) data files.
+Stub helpers for reading/writing Symbolic Link (SYLK) data files (not
+implemented yet).
 
 Notes
 -----

@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.mat` module.
 
-Helpers for reading/writing MATLAB (MAT) data files.
+Stub helpers for reading/writing MATLAB (MAT) data files (not implemented yet).
 
 Notes
 -----

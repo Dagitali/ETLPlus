@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.sas7bdat` module.
 
-Helpers for reading/writing SAS (SAS7BDAT) data files.
+Stub helpers for reading/writing SAS (SAS7BDAT) data files (not implemented
+yet).
 
 Notes
 -----

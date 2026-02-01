@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.properties` module.
 
-Helpers for reading/writing properties (PROPERTIES) files.
+Stub helpers for reading/writing properties (PROPERTIES) files (not implemented
+yet).
 
 Notes
 -----

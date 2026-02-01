@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.psv` module.
 
-Helpers for reading/writing Pipe-Separated Values (PSV) files.
+Stub helpers for reading/writing Pipe-Separated Values (PSV) files (not
+implemented yet).
 
 Notes
 -----

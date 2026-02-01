@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.pbf` module.
 
-Helpers for reading/writing Protocolbuffer Binary Format (PBF) files.
+Stub helpers for reading/writing Protocolbuffer Binary Format (PBF) files (not
+implemented yet).
 
 Notes
 -----

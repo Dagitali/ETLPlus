@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.mustache` module.
 
-Helpers for reading/writing Mustache (MUSTACHE) template files.
+Stub helpers for reading/writing Mustache (MUSTACHE) template files (not
+implemented yet).
 
 Notes
 -----
