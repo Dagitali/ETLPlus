@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_rate_limit_config` module.
+:mod:`tests.unit.api.test_u_api_rate_limit_config` module.
 
 Unit tests for :class:`etlplus.api.rate_limiting.RateLimitConfig`.
 
