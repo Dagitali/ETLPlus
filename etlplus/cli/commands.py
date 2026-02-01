@@ -424,18 +424,18 @@ def check_cmd(
         The Typer context.
     config : ConfigOption
         Path to pipeline YAML configuration file.
-    jobs : bool, optional
+    jobs : JobsOption, optional
         List available job names and exit. Default is ``False``.
-    pipelines : bool, optional
+    pipelines : PipelinesOption, optional
         List ETL pipelines. Default is ``False``.
-    sources : bool, optional
+    sources : SourcesOption, optional
         List data sources. Default is ``False``.
-    summary : bool, optional
+    summary : SummaryOption, optional
         Show pipeline summary (name, version, sources, targets, jobs). Default
         is ``False``.
-    targets : bool, optional
+    targets : TargetsOption, optional
         List data targets. Default is ``False``.
-    transforms : bool, optional
+    transforms : TransformsOption, optional
         List data transforms. Default is ``False``.
 
     Returns
@@ -738,9 +738,9 @@ def run_cmd(
         The Typer context.
     config : ConfigOption
         Path to pipeline YAML configuration file.
-    job : str | None, optional
+    job : JobOption, optional
         Name of the job to run. Default is ``None``.
-    pipeline : str | None, optional
+    pipeline : PipelineOption, optional
         Name of the pipeline to run. Default is ``None``.
 
     Returns
