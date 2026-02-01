@@ -1,12 +1,12 @@
 """
-`:mod:`tests.unit.api.test_u_mocks` module.
+`:mod:`tests.unit.api.test_u_api_mocks` module.
 
 Reusable mocked objects for API client unit tests.
 
 Notes
 -----
-- Provides ``MockResponse`` with a simplified ``json`` implementation.
-- Provides ``MockSession`` capturing ``get`` calls and close state.
+- Provides :class:`MockResponse` with a simplified ``json`` implementation.
+- Provides :class:`MockSession` capturing ``get`` calls and close state.
 """
 
 from __future__ import annotations

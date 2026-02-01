@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.api.test_u_retry_manager` module.
+:mod:`tests.unit.api.test_u_api_retry_manager` module.
 
 Unit tests for :mod:`etlplus.api.retry_manager` helpers.
 """

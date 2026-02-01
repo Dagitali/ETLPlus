@@ -11,7 +11,7 @@ Notes
 
 Examples
 --------
->>> pytest tests/unit/api/test_u_auth.py
+>>> pytest tests/unit/api/test_u_api_auth.py
 """
 
 from __future__ import annotations
