@@ -3,7 +3,7 @@
 Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPlus workflows.
 
 - Provides a CLI for running ETL pipelines, jobs, and utilities
-- Supports commands for running, validating, and inspecting pipelines
+- Supports commands for extracting, transforming, validating data, and running pipelines
 - Includes options for configuration, state, and output control
 - Exposes handlers for custom command integration
 
@@ -17,20 +17,22 @@ Back to project overview: see the top-level [README](../../README.md).
 
 ## Available Commands
 
+- **check**: Inspect pipeline configuration (jobs, sources, targets)
+- **extract**: Extract data from files/APIs/databases
+- **transform**: Transform records
+- **load**: Load data to files/APIs/databases
+- **render**: Render SQL DDL from table specs
+- **validate**: Validate data against rules
 - **run**: Execute a pipeline or job
-- **validate**: Validate pipeline or config files
-- **inspect**: Show pipeline/job details
 
 ## Command Options
 
-- `--config`: Path to config file
-- `--state`: Path to state file
-- `--output`: Output file or format
+Use `etlplus <command> --help` for the exact options supported by each command.
 
 ## Example: Running a Pipeline
 
 ```bash
-etlplus run --config configs/pipeline.yml --output results.json
+etlplus run --config configs/pipeline.yml --job file_to_file_customers
 ```
 
 ## See Also

@@ -18,8 +18,8 @@ Back to project overview: see the top-level [README](../../README.md).
 
 ## Database Engine and Connections
 
-- Manage connections to supported databases
-- Configure engines for different backends
+- Build SQLAlchemy engines with `make_engine`
+- Load connection strings from pipeline configs
 
 ## Schema and DDL Helpers
 
@@ -31,14 +31,14 @@ Back to project overview: see the top-level [README](../../README.md).
 - Map rows to Python objects
 - Simple CRUD helpers for tabular data
 
-## Example: Creating a Table
+## Example: Rendering DDL From a Spec
 
 ```python
-from etlplus.database import Schema, Engine
+from etlplus.database import load_table_spec, render_table_sql
 
-engine = Engine.connect("sqlite:///example.db")
-schema = Schema.from_dict({"name": "users", "columns": [ ... ]})
-engine.create_table(schema)
+spec = load_table_spec("schemas/users.yml")
+sql = render_table_sql(spec, template="ddl")
+print(sql)
 ```
 
 ## See Also

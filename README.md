@@ -91,7 +91,7 @@ ETLPlus supports Python 3.13 and above.
 
 - **Extract** data from multiple sources:
   - Files (CSV, JSON, XML, YAML)
-  - Databases (connection string support)
+  - Databases (connection string support; extract is a placeholder today)
   - REST APIs (GET)
 
 - **Validate** data with flexible rules:
@@ -111,7 +111,7 @@ ETLPlus supports Python 3.13 and above.
 
 - **Load** data to multiple targets:
   - Files (CSV, JSON, XML, YAML)
-  - Databases (connection string support)
+  - Databases (connection string support; load is a placeholder today)
   - REST APIs (PATCH, POST, PUT)
 
 ## Installation
@@ -138,7 +138,7 @@ etlplus --help
 etlplus --version
 
 # One-liner: extract CSV, filter, select, and write JSON
-etlplus extract file examples/data/sample.csv \
+etlplus extract examples/data/sample.csv \
   | etlplus transform --operations '{"filter": {"field": "age", "op": "gt", "value": 25}, "select": ["name", "email"]}' \
   - temp/sample_output.json
 ```
@@ -168,8 +168,9 @@ include GET for extract and PATCH/POST/PUT for load.
 
 ### Databases (`database`)
 
-Database connectors use connection strings for extraction and loading, and
-DDL can be rendered from table specs for migrations or schema checks.
+Database connectors use connection strings for extraction and loading, and DDL can be rendered from
+table specs for migrations or schema checks. Database extract/load operations are currently
+placeholders; plan to integrate a database client in your runner.
 
 ### Files (`file`)
 
@@ -248,7 +249,7 @@ Recognized file formats are listed in the tables below. Support for reading to o
 | `numbers` | N | N | Apple Numbers |
 | `ods` | N | N | OpenDocument |
 | `wks` | N | N | Lotus 1-2-3  |
-| `xls` | Y | Y | Microsoft Excel (BIFF) |
+| `xls` | Y | N | Microsoft Excel (BIFF; read-only) |
 | `xlsm` | N | N | Microsoft Excel Macro-Enabled (Open XML) |
 | `xlsx` | Y | Y | Microsoft Excel (Open XML) |
 
@@ -270,8 +271,8 @@ Recognized file formats are listed in the tables below. Support for reading to o
 
 #### Logs and Event Streams
 
-| Format | Supported | Description |
-| --- | --- | --- |
+| Format | Read | Write | Description |
+| --- | --- | --- | --- |
 | `log` | N | N | Generic log file |
 
 #### Data Archives
@@ -304,13 +305,15 @@ etlplus --help
 etlplus --version
 ```
 
-The CLI is implemented with Typer (Click-based). There is no argparse compatibility layer, so rely
-on the documented commands/flags and run `etlplus <command> --help` for current options.
+The CLI is implemented with Typer (Click-based). The legacy argparse parser has been removed
+(`create_parser` now raises), so rely on the documented commands/flags and run `etlplus <command>
+--help` for current options.
 
 **Example error messages:**
 
 - If you omit a required argument: `Error: Missing required argument 'SOURCE'.`
-- If you place an option before its argument: `Error: Option '--source-format' must follow the 'SOURCE' argument.`
+- If you place an option before its argument: `Error: Option '--source-format' must follow the
+  'SOURCE' argument.`
 
 #### Argument Order and Required Options
 
@@ -374,27 +377,27 @@ specific parser.
 
 Extract from JSON file:
 ```bash
-etlplus extract file examples/data/sample.json
+etlplus extract examples/data/sample.json
 ```
 
 Extract from CSV file:
 ```bash
-etlplus extract file examples/data/sample.csv
+etlplus extract examples/data/sample.csv
 ```
 
 Extract from XML file:
 ```bash
-etlplus extract file examples/data/sample.xml
+etlplus extract examples/data/sample.xml
 ```
 
 Extract from REST API:
 ```bash
-etlplus extract api https://api.example.com/data
+etlplus extract https://api.example.com/data
 ```
 
 Save extracted data to file:
 ```bash
-etlplus extract file examples/data/sample.csv > temp/sample_output.json
+etlplus extract examples/data/sample.csv > temp/sample_output.json
 ```
 
 #### Validate Data
@@ -460,13 +463,13 @@ etlplus transform \
 
 Load to JSON file:
 ```bash
-etlplus extract file examples/data/sample.json \
+etlplus extract examples/data/sample.json \
   | etlplus load temp/sample_output.json --target-type file
 ```
 
 Load to CSV file:
 ```bash
-etlplus extract file examples/data/sample.csv \
+etlplus extract examples/data/sample.csv \
   | etlplus load temp/sample_output.csv --target-type file
 ```
 
@@ -503,13 +506,13 @@ operations = {
 transformed = transform(data, operations)
 
 # Load data
-load(transformed, "file", "temp/sample_output.json", format="json")
+load(transformed, "file", "temp/sample_output.json", file_format="json")
 ```
 
 For YAML-driven pipelines executed end-to-end (extract → validate → transform → load), see:
 
 - Authoring: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
-- Runner API and internals: [`docs/run-module.md`](docs/run-module.md)
+- Runner API and internals: see `etlplus.ops.run` docstrings and `docs/pipeline-guide.md`.
 
 CLI quick reference for pipelines:
 
@@ -526,7 +529,7 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 
 ```bash
 # 1. Extract from CSV
-etlplus extract file examples/data/sample.csv > temp/sample_extracted.json
+etlplus extract examples/data/sample.csv > temp/sample_extracted.json
 
 # 2. Transform (filter and select fields)
 etlplus transform \
@@ -561,7 +564,7 @@ etlplus load output.bin --target-type file --target-format csv < data.json
 
 # Leave the flags off when extensions already match the desired format
 etlplus extract data.csv --source-type file
-etlplus load data.json --target-type file  < data.json
+etlplus load output.json --target-type file < data.json
 ```
 
 ## Transformation Operations
@@ -656,8 +659,9 @@ Looking for the HTTP client and pagination helpers?  See the dedicated docs in
 
 Curious how the pipeline runner composes API requests, pagination, and load calls?
 
-- Runner overview and helpers: [`docs/run-module.md`](docs/run-module.md)
-- Unified "connector" vocabulary (API/File/DB): `etlplus/config/connector.py`
+- Runner overview and helpers: see `etlplus.ops.run` docstrings and
+  [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
+- Unified "connector" vocabulary (API/File/DB): `etlplus/connector`
   - API/file targets reuse the same shapes as sources; API targets typically set a `method`.
 
 ### Running Tests
@@ -671,7 +675,7 @@ pytest tests/ -v
 We split tests into two layers:
 
 - **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch
-  (e.g.  `etlplus.cli.create_parser`, transform + validate helpers).
+  (e.g. small helpers in `etlplus.utils`, transform + validate helpers).
 - **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`,
   pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
   fake clients.
@@ -758,7 +762,7 @@ Navigate to detailed documentation for each subpackage:
 - [etlplus.cli](etlplus/cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](etlplus/database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
-- [etlplus.validation](etlplus/validation/README.md): Data validation utilities and helpers
+- [etlplus.ops](etlplus/ops/README.md): Extract/validate/transform/load primitives
 - [etlplus.workflow](etlplus/workflow/README.md): Helpers for data connectors, pipelines, jobs, and
   profiles
 
@@ -774,7 +778,7 @@ Navigate to detailed documentation for each subpackage:
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
 - Examples: [`examples/README.md`](examples/README.md)
 - Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
-- Runner internals: [`docs/run-module.md`](docs/run-module.md)
+- Runner internals: see `etlplus.ops.run` docstrings and [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
 - Typing philosophy: [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 - Demo and walkthrough: [`DEMO.md`](DEMO.md)

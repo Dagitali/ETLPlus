@@ -1,10 +1,11 @@
 # `etlplus.templates` Subpackage
 
-Documentation for the `etlplus.templates` subpackage: SQL and DDL template helpers.
+Documentation for the `etlplus.templates` subpackage: bundled SQL/DDL templates used by the database
+helpers.
 
 - Provides Jinja2 templates for DDL and view generation
-- Supports templated SQL for multiple database backends
-- Includes helpers for rendering templates with schema metadata
+- Used by `etlplus.database.render_table_sql` and related helpers
+- Exposed as plain template files you can reuse with your own Jinja2 setup
 
 Back to project overview: see the top-level [README](../../README.md).
 
@@ -21,21 +22,22 @@ Back to project overview: see the top-level [README](../../README.md).
 
 ## Rendering Templates
 
-Use the helpers to render templates with your schema or table metadata:
+ETLPlus does not currently expose a `render_template` helper in this package. Use the database
+helpers instead:
 
 ```python
-from etlplus.templates import render_template
+from etlplus.database import render_table_sql, load_table_spec
 
-sql = render_template("ddl.sql.j2", schema=my_schema)
+spec = load_table_spec("schemas/users.yml")
+sql = render_table_sql(spec, template="ddl")
 ```
 
 ## Example: Rendering a DDL Template
 
 ```python
-from etlplus.templates import render_template
+from etlplus.database import render_tables_to_string
 
-schema = {"name": "users", "columns": [ ... ]}
-sql = render_template("ddl.sql.j2", schema=schema)
+sql = render_tables_to_string(["schemas/users.yml"], template="ddl")
 print(sql)
 ```
 

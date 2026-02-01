@@ -39,7 +39,8 @@ script.
 
 - Authoring: see the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example
   `in/pipeline.yml` or `examples/configs/pipeline.yml`.
-- Runner internals and Python entrypoint: see `docs/run-module.md` for `etlplus.ops.run.run`.
+- Runner internals and Python entrypoint: see `etlplus.ops.run` docstrings and
+  `docs/pipeline-guide.md`.
 
 CLI examples:
 

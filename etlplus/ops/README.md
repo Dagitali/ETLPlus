@@ -1,14 +1,16 @@
-# etlplus.ops subpackage
+# `etlplus.ops` Subpackage
 
-Documentation for the `etlplus.validation` subpackage: data validation utilities and helpers.
+Documentation for the `etlplus.ops` subpackage: core ETL primitives used by the CLI and pipeline
+runner.
 
-- Provides flexible data validation for ETL pipelines
-- Supports type checking, required fields, and custom rules
-- Includes utilities for rule definition and validation logic
+- Extract data from files, APIs, and databases (database extract is a placeholder today)
+- Validate JSON-like data with schema-style rules
+- Transform records (filter, map, select, sort, aggregate)
+- Load data into files and APIs (database load is a placeholder today)
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [etlplus.ops subpackage](#etlplusops-subpackage)
+- [`etlplus.ops` Subpackage](#etlplusops-subpackage)
   - [Validation Features](#validation-features)
   - [Defining Validation Rules](#defining-validation-rules)
   - [Example: Validating Data](#example-validating-data)
@@ -19,7 +21,6 @@ Back to project overview: see the top-level [README](../../README.md).
 - Type checking (string, number, boolean, etc.)
 - Required/optional fields
 - Enum and pattern validation
-- Custom rule support
 
 ## Defining Validation Rules
 
@@ -35,7 +36,7 @@ rules = {
 ## Example: Validating Data
 
 ```python
-from etlplus.validation import validate
+from etlplus.ops import validate
 
 result = validate({"name": "Alice", "age": 30}, rules)
 if result["valid"]:
@@ -47,4 +48,4 @@ else:
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Validation utilities in [utils.py](utils.py)
+- Validation utilities in [validate.py](validate.py)
