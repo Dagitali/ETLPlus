@@ -6,8 +6,6 @@ transform, load).
 
 Notes
 -----
-- Lightweight references used inside :class:`PipelineConfig` to avoid storing
-    large nested structures.
 - All attributes are simple and optional where appropriate, keeping parsing
     tolerant.
 """
