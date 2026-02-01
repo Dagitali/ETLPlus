@@ -11,7 +11,7 @@ from typing import Final
 from typing import cast
 
 from ..api import HttpMethod
-from ..config import load_config
+from ..config import Config
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..ops.types import PipelineConfig
@@ -176,7 +176,7 @@ def run(
         If the job is not found or if there are configuration issues.
     """
     cfg_path = config_path or DEFAULT_CONFIG_PATH
-    cfg = load_config(cfg_path, substitute=True)
+    cfg = Config.from_yaml(cfg_path, substitute=True)
 
     # Lookup job by name
     if not (job_obj := next((j for j in cfg.jobs if j.name == job), None)):
