@@ -14,7 +14,7 @@ email, or any other method with the owners of this repository before making a ch
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
   - [Testing](#testing)
-    - [Unit vs. Integration](#unit-vs-integration)
+    - [Unit vs. Smoke vs. Integration](#unit-vs-smoke-vs-integration)
     - [Where to put tests](#where-to-put-tests)
     - [Common patterns](#common-patterns)
 
@@ -104,9 +104,9 @@ class ExampleConfig:
 
 ## Testing
 
-### Unit vs. Integration
+### Unit vs. Smoke vs. Integration
 
-Use these guidelines to decide whether a test belongs in the unit or integration suite:
+Use these guidelines to decide whether a test belongs in the unit, smoke, or integration suite:
 
 - Unit tests (put under `tests/unit/`):
   - Exercise a single function or class in isolation (no orchestration across modules).
@@ -117,13 +117,19 @@ Use these guidelines to decide whether a test belongs in the unit or integration
 - Integration tests (put under `tests/integration/`):
   - Exercise end-to-end flows across modules and boundaries (CLI `main()`, `run()` pipeline orchestration, file connectors, API client pagination wiring).
   - Can use temporary files/directories, and stub network with fakes/mocks.
-  - Examples in this repo: CLI end-to-end, pipeline smoke tests, pagination strategy, runner defaults for pagination/rate limits, target URL composition.
+  - Examples in this repo: CLI end-to-end, pagination strategy, runner defaults for pagination/rate limits, target URL composition.
+
+- Smoke tests (put under `tests/smoke/`):
+  - Minimal end-to-end checks for core flows; very fast and stable.
+  - May touch temporary files but avoid external network calls.
+  - Examples in this repo: pipeline smoke tests.
 
 If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
 
 ### Where to put tests
 
 - Unit tests live in `tests/unit/` and should import and test specific functions/classes directly.
+- Smoke tests live in `tests/smoke/` and should focus on minimal end-to-end CLI/pipeline checks.
 - Integration tests live in `tests/integration/` and may simulate real usage using CLI argv, temporary files, and fake clients.
 - The `tests/integration/conftest.py` applies `@pytest.mark.integration` to all tests in that folder. You don’t need to add the marker per test.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
