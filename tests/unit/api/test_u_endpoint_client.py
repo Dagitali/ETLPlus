@@ -1411,7 +1411,8 @@ class TestRetryLogic:
             base_url=base_url,
             endpoints={},
             retry=cast(
-                RetryPolicyDict, retry_cfg(max_attempts=4, backoff=0.5),
+                RetryPolicyDict,
+                retry_cfg(max_attempts=4, backoff=0.5),
             ),
             retry_network_errors=True,
         )
