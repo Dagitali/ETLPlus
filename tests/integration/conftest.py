@@ -350,8 +350,8 @@ def run_patched_fixture(
 
         # Patch config loader and EndpointClient.
         monkeypatch.setattr(
-            run_mod,
-            'load_config',
+            run_mod.Config,
+            'from_yaml',
             lambda *_a, **_k: cfg,
         )
         monkeypatch.setattr(
