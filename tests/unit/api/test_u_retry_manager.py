@@ -12,7 +12,7 @@ import pytest
 import requests  # type: ignore[import]
 
 from etlplus.api.retry_manager import RetryManager
-from etlplus.api.retry_manager import RetryPolicy
+from etlplus.api.retry_manager import RetryPolicyDict
 from etlplus.api.retry_manager import RetryStrategy
 
 # SECTION: HELPERS ========================================================== #
@@ -38,7 +38,7 @@ class TestRetryStrategy:
         """Provided policy values should be normalized and honored."""
         strategy = RetryStrategy.from_policy(
             cast(
-                RetryPolicy,
+                RetryPolicyDict,
                 {
                     'max_attempts': 5,
                     'backoff': 0.1,

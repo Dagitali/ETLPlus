@@ -25,12 +25,12 @@ import requests  # type: ignore[import]
 
 import etlplus.api.endpoint_client as ec_module
 import etlplus.api.request_manager as rm_module
-from etlplus.api import CursorPaginationConfigMap
+from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
-from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType
 from etlplus.api import RequestOptions
-from etlplus.api import RetryPolicy
+from etlplus.api import RetryPolicyDict
 from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_mocks import MockSession
 
@@ -41,7 +41,7 @@ pytestmark = pytest.mark.unit
 
 EXAMPLE_BASE_URL = 'https://example.test'
 
-type CursorConfigFactory = Callable[..., CursorPaginationConfigMap]
+type CursorConfigFactory = Callable[..., CursorPaginationConfigDict]
 type StubRequestManager = Callable[
     [Sequence[dict[str, Any]]],
     list[dict[str, Any]],
@@ -649,7 +649,7 @@ class TestRequestOptionIntegration:
 
         def fake_from_config(
             cls: type[EndpointClient],
-            config: CursorPaginationConfigMap | PagePaginationConfigMap,
+            config: CursorPaginationConfigDict | PagePaginationConfigDict,
             *,
             fetch: Callable[..., Any],
             rate_limiter: Any,
@@ -682,8 +682,8 @@ class TestRequestOptionIntegration:
             rate_limit={'max_per_sec': 2},
         )
 
-        # pg: PagePaginationConfigMap = {'type': 'page'}
-        pg: PagePaginationConfigMap = {'type': PaginationType.PAGE}
+        # pg: PagePaginationConfigDict = {'type': 'page'}
+        pg: PagePaginationConfigDict = {'type': PaginationType.PAGE}
 
         out = list(
             client.paginate_url_iter(
@@ -876,7 +876,7 @@ class TestOffsetPagination:
             endpoints={},
         )
         cfg = cast(
-            PagePaginationConfigMap,
+            PagePaginationConfigDict,
             {
                 'type': 'offset',
                 'page_param': 'offset',
@@ -904,7 +904,7 @@ class TestPagePagination:
 
     def test_stops_on_short_final_batch(
         self,
-        page_cfg: Callable[..., PagePaginationConfigMap],
+        page_cfg: Callable[..., PagePaginationConfigDict],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
     ) -> None:
@@ -913,7 +913,7 @@ class TestPagePagination:
 
         Parameters
         ----------
-        page_cfg : Callable[..., PagePaginationConfigMap]
+        page_cfg : Callable[..., PagePaginationConfigDict]
             Factory for page pagination config.
         patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
             Helper that patches the request helper.
@@ -945,7 +945,7 @@ class TestPagePagination:
 
     def test_max_records_cap(
         self,
-        page_cfg: Callable[..., PagePaginationConfigMap],
+        page_cfg: Callable[..., PagePaginationConfigDict],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
     ) -> None:
@@ -954,7 +954,7 @@ class TestPagePagination:
 
         Parameters
         ----------
-        page_cfg : Callable[..., PagePaginationConfigMap]
+        page_cfg : Callable[..., PagePaginationConfigDict]
             Factory for page pagination config.
         patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
             Helper that patches the request helper for fixed responses.
@@ -987,7 +987,7 @@ class TestPagePagination:
 
     def test_page_size_normalization(
         self,
-        page_cfg: Callable[..., PagePaginationConfigMap],
+        page_cfg: Callable[..., PagePaginationConfigDict],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
     ) -> None:
@@ -996,7 +996,7 @@ class TestPagePagination:
 
         Parameters
         ----------
-        page_cfg : Callable[..., PagePaginationConfigMap]
+        page_cfg : Callable[..., PagePaginationConfigDict]
             Factory for page pagination config.
         patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
             Helper that patches request execution.
@@ -1032,7 +1032,7 @@ class TestPagePagination:
     def test_error_includes_page_number(
         self,
         base_url: str,
-        page_cfg: Callable[..., PagePaginationConfigMap],
+        page_cfg: Callable[..., PagePaginationConfigDict],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
     ) -> None:
@@ -1043,7 +1043,7 @@ class TestPagePagination:
         ----------
         base_url : str
             Common base URL used across tests.
-        page_cfg : Callable[..., PagePaginationConfigMap]
+        page_cfg : Callable[..., PagePaginationConfigDict]
             Factory for page pagination config.
         patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
             Helper that patches the request helper.
@@ -1196,7 +1196,7 @@ class TestRateLimitPrecedence:
             client.paginate_iter(
                 'list',
                 pagination=cast(
-                    PagePaginationConfigMap,
+                    PagePaginationConfigDict,
                     {
                         'type': 'page',
                         'page_size': 2,
@@ -1257,7 +1257,7 @@ class TestRetryLogic:
             base_url=base_url,
             endpoints={'x': '/x'},
             retry=cast(
-                RetryPolicy,
+                RetryPolicyDict,
                 retry_cfg(max_attempts=2, backoff=0.0, retry_on=[503]),
             ),
         )
@@ -1343,7 +1343,7 @@ class TestRetryLogic:
             base_url=base_url,
             endpoints={},
             retry=cast(
-                RetryPolicy,
+                RetryPolicyDict,
                 retry_cfg(max_attempts=4, backoff=0.5, retry_on=[503]),
             ),
         )
@@ -1410,7 +1410,9 @@ class TestRetryLogic:
         client = client_factory(
             base_url=base_url,
             endpoints={},
-            retry=cast(RetryPolicy, retry_cfg(max_attempts=4, backoff=0.5)),
+            retry=cast(
+                RetryPolicyDict, retry_cfg(max_attempts=4, backoff=0.5),
+            ),
             retry_network_errors=True,
         )
         out = client.paginate_url(f'{base_url}/items', None)

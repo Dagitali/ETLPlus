@@ -781,7 +781,7 @@ class TestValidateHandler:
             == 0
         )
         assert (
-            'Validation failed, no data to save for out.json'
+            'ValidationDict failed, no data to save for out.json'
             in capsys.readouterr().err
         )
 
@@ -827,7 +827,7 @@ class TestValidateHandler:
         assert write_calls['params'] == (
             {'id': 1},
             'out.json',
-            'Validation result saved to',
+            'ValidationDict result saved to',
         )
 
 
