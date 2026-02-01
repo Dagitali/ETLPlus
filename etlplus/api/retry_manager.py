@@ -47,7 +47,7 @@ __all__ = [
     'RetryStrategy',
     'RetryManager',
     # Typed Dicts
-    'RetryPolicy',
+    'RetryPolicyDict',
     # Type Aliases
     'RetryInput',
 ]
@@ -69,7 +69,7 @@ DEFAULT_RETRY_STATUS_CODES: Final[frozenset[int]] = frozenset(
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class RetryPolicy(TypedDict, total=False):
+class RetryPolicyDict(TypedDict, total=False):
     """
     Optional retry policy for HTTP requests.
 
@@ -100,7 +100,7 @@ class RetryPolicy(TypedDict, total=False):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type RetryInput = RetryPolicy | None
+type RetryInput = RetryPolicyDict | None
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -108,7 +108,7 @@ type RetryInput = RetryPolicy | None
 
 @dataclass(frozen=True, slots=True)
 class RetryStrategy:
-    """Normalized retry settings derived from a :class:`RetryPolicy`."""
+    """Normalized retry settings derived from a :class:`RetryPolicyDict`."""
 
     # -- Attributes -- #
 
@@ -171,7 +171,7 @@ class RetryManager:
         Default HTTP status codes considered retryable.
     DEFAULT_CAP : ClassVar[float]
         Default maximum sleep seconds for jittered backoff.
-    policy : RetryPolicy
+    policy : RetryPolicyDict
         Retry policy configuration.
     retry_network_errors : bool
         Whether to retry on network errors (timeouts, connection errors).
@@ -191,7 +191,7 @@ class RetryManager:
 
     # -- Instance Attributes-- #
 
-    policy: RetryPolicy
+    policy: RetryPolicyDict
     retry_network_errors: bool = False
     cap: float = DEFAULT_CAP
     sleeper: Sleeper = time.sleep

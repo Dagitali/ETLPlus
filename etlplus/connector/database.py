@@ -29,14 +29,14 @@ from .types import ConnectorType
 
 __all__ = [
     'ConnectorDb',
-    'ConnectorDbConfigMap',
+    'ConnectorDbConfigDict',
 ]
 
 
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class ConnectorDbConfigMap(TypedDict, total=False):
+class ConnectorDbConfigDict(TypedDict, total=False):
     """
     Shape accepted by :meth:`ConnectorDb.from_obj` (all keys optional).
 
@@ -87,7 +87,7 @@ class ConnectorDb(ConnectorBase):
 
     @classmethod
     @overload
-    def from_obj(cls, obj: ConnectorDbConfigMap) -> Self: ...
+    def from_obj(cls, obj: ConnectorDbConfigDict) -> Self: ...
 
     @classmethod
     @overload

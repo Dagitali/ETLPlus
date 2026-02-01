@@ -15,7 +15,7 @@ from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
 from ..api import HttpMethod
-from ..api import PaginationConfigMap
+from ..api import PaginationConfigDict
 from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import paginate_with_client
@@ -160,7 +160,7 @@ def _extract_from_api_env(
 
         return client.paginate_url(
             cast(str, url),
-            cast(PaginationConfigMap | None, env.get('pagination')),
+            cast(PaginationConfigDict | None, env.get('pagination')),
             request=request_options,
             sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
         )

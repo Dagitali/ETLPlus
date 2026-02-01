@@ -8,7 +8,7 @@ by :mod:`etlplus.api.pagination`. It exposes:
 
 - :class:`PaginationType` – enumeration of supported pagination modes.
 - :class:`PaginationConfig` – normalized configuration container.
-- ``*PaginationConfigMap`` TypedDicts – loose, user-facing config mappings.
+- ``*PaginationConfigDict`` TypedDicts – loose, user-facing config mappings.
 
 Notes
 -----
@@ -44,11 +44,11 @@ __all__ = [
     # Enums
     'PaginationType',
     # Type Aliases
-    'PaginationConfigMap',
+    'PaginationConfigDict',
     'PaginationInput',
     # Typed Dicts
-    'CursorPaginationConfigMap',
-    'PagePaginationConfigMap',
+    'CursorPaginationConfigDict',
+    'PagePaginationConfigDict',
 ]
 
 
@@ -74,7 +74,7 @@ class PaginationType(CoercibleStrEnum):
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class CursorPaginationConfigMap(TypedDict, total=False):
+class CursorPaginationConfigDict(TypedDict, total=False):
     """
     Configuration mapping for cursor-based REST API response pagination.
 
@@ -131,7 +131,7 @@ class CursorPaginationConfigMap(TypedDict, total=False):
     limit_param: str
 
 
-class PagePaginationConfigMap(TypedDict, total=False):
+class PagePaginationConfigDict(TypedDict, total=False):
     """
     Configuration mapping for page-based and offset-based REST API response
     pagination.
@@ -379,7 +379,7 @@ class PaginationConfig(BoundsWarningsMixin):
     @overload
     def from_obj(
         cls,
-        obj: PaginationConfigMap,
+        obj: PaginationConfigDict,
     ) -> Self: ...
 
     @classmethod
@@ -429,12 +429,14 @@ class PaginationConfig(BoundsWarningsMixin):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type PaginationConfigMap = PagePaginationConfigMap | CursorPaginationConfigMap
+type PaginationConfigDict = (
+    PagePaginationConfigDict | CursorPaginationConfigDict
+)
 
 # External callers may pass either a raw mapping-shaped config or an already
 # constructed PaginationConfig instance, or omit pagination entirely. Accept a
 # loose mapping here to reflect the runtime behavior while still providing
 # stronger TypedDict hints for common shapes.
 type PaginationInput = (
-    PaginationConfigMap | PaginationConfig | StrAnyMap | None
+    PaginationConfigDict | PaginationConfig | StrAnyMap | None
 )

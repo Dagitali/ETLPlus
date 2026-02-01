@@ -19,7 +19,7 @@ Notes
 from __future__ import annotations
 
 from .config import RateLimitConfig
-from .config import RateLimitConfigMap
+from .config import RateLimitConfigDict
 from .config import RateLimitOverrides
 from .rate_limiter import RateLimiter
 
@@ -34,5 +34,5 @@ __all__ = [
     # Type Aliases
     'RateLimitOverrides',
     # Type Dicts
-    'RateLimitConfigMap',
+    'RateLimitConfigDict',
 ]

@@ -24,7 +24,7 @@ from ..ops import load
 from ..ops import run
 from ..ops import transform
 from ..ops import validate
-from ..ops.validate import FieldRules
+from ..ops.validate import FieldRulesDict
 from ..types import JSONData
 from ..types import TemplateKey
 from . import io as cli_io
@@ -661,7 +661,7 @@ def validate_handler(
     if not isinstance(rules_payload, dict):
         raise ValueError('rules must resolve to a mapping of field rules')
 
-    field_rules = cast(Mapping[str, FieldRules], rules_payload)
+    field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
     result = validate(payload, field_rules)
 
     if target and target != '-':
@@ -670,11 +670,11 @@ def validate_handler(
             cli_io.write_json_output(
                 validated_data,
                 target,
-                success_message='Validation result saved to',
+                success_message='ValidationDict result saved to',
             )
         else:
             print(
-                f'Validation failed, no data to save for {target}',
+                f'ValidationDict failed, no data to save for {target}',
                 file=sys.stderr,
             )
     else:

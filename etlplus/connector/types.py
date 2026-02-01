@@ -14,8 +14,8 @@ Examples
 >>>     "type": "database",
 >>>     "connection_string": "postgresql://user:pass@localhost/db",
 >>> }
->>> from etlplus.api import RetryPolicy
->>> rp: RetryPolicy = {"max_attempts": 3, "backoff": 0.5}
+>>> from etlplus.api import RetryPolicyDict
+>>> rp: RetryPolicyDict = {"max_attempts": 3, "backoff": 0.5}
 """
 
 from __future__ import annotations
