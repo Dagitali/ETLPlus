@@ -1,8 +1,8 @@
 # Documentation Notes
 
 ## CLI Parser Status
-- The CLI is now Typer/Click-only. The historical `argparse` parser and `create_parser` entrypoint
-  are deprecated and no longer supported for new integrations.
+- The CLI is Typer/Click-only. The historical `argparse` parser has been removed; `create_parser`
+  now raises to force migration.
 - Downstream tools should invoke the Typer app exported at `etlplus.cli.commands.app` (e.g., `python
   -m etlplus` or `etlplus ...`).
 - Handler functions still accept keyword arguments; the legacy namespace shim is temporary and will

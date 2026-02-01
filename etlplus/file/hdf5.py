@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.hdf5` module.
 
-Helpers for reading/writing Hierarchical Data Format (HDF5) files.
+Stub helpers for reading/writing Hierarchical Data Format (HDF5) files (not
+implemented yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.vm` module.
 
-Helpers for reading/writing Apache Velocity (VM) template files.
+Stub helpers for reading/writing Apache Velocity (VM) template files (not
+implemented yet).
 
 Notes
 -----

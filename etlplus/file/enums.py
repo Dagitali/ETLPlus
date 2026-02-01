@@ -57,7 +57,7 @@ class CompressionFormat(CoercibleStrEnum):
 
 
 class FileFormat(CoercibleStrEnum):
-    """Supported file formats for extraction."""
+    """Defined file formats (read/write support varies by format)."""
 
     # -- Constants -- #
 

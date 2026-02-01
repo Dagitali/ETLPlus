@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.cbor` module.
 
-Helpers for reading/writing Concise Binary Object Representation (CBOR) files.
+Stub helpers for reading/writing Concise Binary Object Representation (CBOR)
+files (not implemented yet).
 
 Notes
 -----

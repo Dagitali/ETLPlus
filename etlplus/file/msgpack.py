@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.msgpack` module.
 
-Helpers for reading/writing MessagePack (MSGPACK) files.
+Stub helpers for reading/writing MessagePack (MSGPACK) files (not implemented
+yet).
 
 Notes
 -----

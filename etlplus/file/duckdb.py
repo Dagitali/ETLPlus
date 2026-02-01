@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.duckdb` module.
 
-Helpers for reading/writing DuckDB database (DUCKDB) files.
+Stub helpers for reading/writing DuckDB database (DUCKDB) files (not
+implemented yet).
 
 Notes
 -----

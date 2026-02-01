@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.api.enums` module.
 
-File-specific REST API-aligned enums and helpers.
+REST API-aligned enums and helpers.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ __all__ = [
 
 
 class HttpMethod(CoercibleStrEnum):
-    """Supported HTTP verbs that accept JSON payloads."""
+    """Supported HTTP verbs with a helper for request-body allowance."""
 
     # -- Constants -- #
 

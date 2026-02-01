@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.fwf` module.
 
-Helpers for reading/writing Fixed-Width Fields (FWF) files.
+Stub helpers for reading/writing Fixed-Width Fields (FWF) files (not
+implemented yet).
 
 Notes
 -----

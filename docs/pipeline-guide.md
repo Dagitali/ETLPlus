@@ -7,8 +7,9 @@ ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative de
 runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
 `validate`, `transform`, and `load`.
 
-CLI note: ETLPlus uses Typer for command parsing and does not ship an argparse shim. Use the
-documented `etlplus` commands and flags (check `etlplus --help`) when wiring your runner.
+CLI note: ETLPlus uses Typer for command parsing. The legacy argparse parser has been removed
+(`create_parser` now raises). Use the documented `etlplus` commands and flags (check `etlplus
+--help`) when wiring your runner.
 
 ## Running a pipeline from YAML (CLI)
 
@@ -270,10 +271,9 @@ up or slowed down.
 Format override note:
 
 When extracting from file sources, ETLPlus still infers the format from the filename extension
-(`.csv`, `.json`, `.xml`, `.yaml`). However, `--source-format` and `--target-format` now override
-that inference for both Typer- and argparse-based CLIs. This means you can safely point at files
-without/extensions or with misleading suffixes and force the desired parser or writer without having
-to rename the file first.
+(`.csv`, `.json`, `.xml`, `.yaml`). However, `--source-format` and `--target-format` override that
+inference in the Typer CLI. This means you can safely point at files without extensions or with
+misleading suffixes and force the desired parser or writer without renaming the file first.
 
 Note: When using a service + endpoint in a source, URL composition (including `base_path`) is
 handled automatically. See “Runner behavior with base_path (sources and targets)” in the APIs
@@ -430,8 +430,7 @@ Notes:
 - These commands read the same YAML schema described in this guide.
 - Environment-variable substitution (e.g. `${GITHUB_TOKEN}`) is applied the same way as when loading
   configs via the Python API.
-- For more details on the orchestration implementation, see
-  [Runner internals: etlplus.ops.run](run-module.md).
+- For more details on the orchestration implementation, see the `etlplus.ops.run` docstrings.
 
 ### Python: `etlplus.ops.run.run`
 

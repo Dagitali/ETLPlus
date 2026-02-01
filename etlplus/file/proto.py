@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.proto` module.
 
-Helpers for reading/writing Protocol Buffers schema (PROTO) files.
+Stub helpers for reading/writing Protocol Buffers schema (PROTO) files (not
+implemented yet).
 
 Notes
 -----

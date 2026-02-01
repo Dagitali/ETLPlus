@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.ini` module.
 
-Helpers for reading/writing initialization (INI) files.
+Stub helpers for reading/writing initialization (INI) files (not implemented
+yet).
 
 Notes
 -----

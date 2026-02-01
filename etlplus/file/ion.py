@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.ion` module.
 
-Helpers for reading/writing Amazon Ion (ION) files.
+Stub helpers for reading/writing Amazon Ion (ION) files (not implemented yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.tab` module.
 
-Helpers for reading/writing "tab"-formatted (TAB) files.
+Stub helpers for reading/writing "tab"-formatted (TAB) files (not implemented
+yet).
 
 Notes
 -----

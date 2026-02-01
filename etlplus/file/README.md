@@ -4,7 +4,7 @@ Documentation for the `etlplus.file` subpackage: unified file format support and
 and writing data files.
 
 - Provides a consistent interface for reading and writing files in various formats
-- Supports all formats defined in `FileFormat` (see below)
+- Defines many formats in `FileFormat`; read/write support varies by format
 - Includes helpers for inferring file format and compression from filenames, extensions, or MIME
   types
 - Exposes a `File` class with instance methods for reading and writing data
@@ -23,7 +23,8 @@ Back to project overview: see the top-level [README](../../README.md).
 
 ## Supported File Formats
 
-The following formats are defined in `FileFormat` and supported for reading and writing:
+The following formats are implemented for reading/writing (unless noted). For the full support
+matrix across all `FileFormat` values, see the top-level [README](../../README.md).
 
 | Format    | Description                                 |
 |-----------|---------------------------------------------|
@@ -37,13 +38,14 @@ The following formats are defined in `FileFormat` and supported for reading and 
 | parquet   | Apache Parquet columnar format              |
 | tsv       | Tab-separated values text files             |
 | txt       | Plain text files                            |
-| xls       | Microsoft Excel (legacy .xls)               |
+| xls       | Microsoft Excel (legacy .xls; read-only)    |
 | xlsx      | Microsoft Excel (modern .xlsx)              |
 | zip       | ZIP-compressed files (see Compression)      |
 | xml       | XML files                                   |
 | yaml      | YAML files                                  |
 
-Compression formats (gz, zip) are also supported as wrappers for other formats.
+Compression formats (gz, zip) are also supported as wrappers for other formats. Formats not listed
+here are currently stubbed and will raise `NotImplementedError` on read/write.
 
 ## Inferring File Format and Compression
 
@@ -77,7 +79,7 @@ f.write(data)
 ```
 
 - The `write()` method serializes and writes data in the appropriate format.
-- Supports all formats listed above.
+- Supports the implemented formats listed above.
 
 ## File Instance Methods
 

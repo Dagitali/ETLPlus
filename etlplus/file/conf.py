@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.conf` module.
 
-Helpers for reading/writing config (CONF) files.
+Stub helpers for reading/writing config (CONF) files (not implemented yet).
 
 Notes
 -----

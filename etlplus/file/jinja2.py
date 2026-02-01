@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.jinja2` module.
 
-Helpers for reading/writing compressed Jinja2 (JINJA2) template files.
+Stub helpers for reading/writing compressed Jinja2 (JINJA2) template files (not
+implemented yet).
 
 Notes
 -----

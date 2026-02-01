@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.rda` module.
 
-Helpers for reading/writing RData workspace/object bundle (RDA) files.
+Stub helpers for reading/writing RData workspace/object bundle (RDA) files (not
+implemented yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.toml` module.
 
-Helpers for reading/writing Tom's Obvious Minimal Language (TOML) files.
+Stub helpers for reading/writing Tom's Obvious Minimal Language (TOML) files
+(not implemented yet).
 
 Notes
 -----

@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.file.mdb` module.
 
-Helpers for reading/writing newer Microsoft Access database (MDB) files.
+Stub helpers for reading/writing newer Microsoft Access database (MDB) files
+(not implemented yet).
 
 Notes
 -----
