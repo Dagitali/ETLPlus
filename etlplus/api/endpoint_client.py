@@ -11,8 +11,8 @@ Notes
 -----
 - Retry-related types live in :mod:`etlplus.api.retry_manager`.
 - Pagination requires a ``PaginationConfig``; see
-    :class:`PagePaginationConfigMap` and :class:`CursorPaginationConfigMap` for
-    the accepted shapes.
+    :class:`PagePaginationConfigDict` and :class:`CursorPaginationConfigDict`
+    for the accepted shapes.
 
 Examples
 --------
@@ -65,14 +65,14 @@ from .errors import PaginationError
 from .pagination import PaginationClient
 from .pagination import PaginationInput
 from .pagination import Paginator
-from .rate_limiting import RateLimitConfigMap
+from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
 from .rate_limiting import RateLimitOverrides
 from .request_manager import RequestManager
 from .retry_manager import RetryManager
-from .retry_manager import RetryPolicy
+from .retry_manager import RetryPolicyDict
 from .retry_manager import RetryStrategy
-from .transport import HTTPAdapterMountConfig
+from .transport import HTTPAdapterMountConfigDict
 from .types import RequestOptions
 from .types import Url
 
@@ -101,13 +101,13 @@ class EndpointClient:
     base_path : str | None, optional
         Optional base path prefix (``/v2``) prepended to all endpoint
         paths when building URLs.
-    retry : RetryPolicy | None, optional
+    retry : RetryPolicyDict | None, optional
         Optional retry policy. When provided, failed requests matching
         ``retry_on`` statuses are retried with full jitter.
     retry_network_errors : bool, optional
         When ``True``, also retry on network errors (timeouts, connection
         resets). Defaults to ``False``.
-    rate_limit : RateLimitConfigMap | None, optional
+    rate_limit : RateLimitConfigDict | None, optional
         Optional client-wide rate limit used to derive an inter-request
         delay when an explicit ``sleep_seconds`` isn't supplied.
     session : requests.Session | None, optional
@@ -115,7 +115,7 @@ class EndpointClient:
     session_factory : Callable[[], requests.Session] | None, optional
         Factory used to lazily create a session. Ignored if ``session`` is
         provided.
-    session_adapters : Sequence[HTTPAdapterMountConfig] | None, optional
+    session_adapters : Sequence[HTTPAdapterMountConfigDict] | None, optional
         Adapter mount configuration(s) used to build a session lazily when
         neither ``session`` nor ``session_factory`` is supplied.
 
@@ -128,17 +128,17 @@ class EndpointClient:
         (``MappingProxyType``).
     base_path : str | None
         Optional base path prefix appended after ``base_url``.
-    retry : RetryPolicy | None
+    retry : RetryPolicyDict | None
         Retry policy reference (may be ``None``).
     retry_network_errors : bool
         Whether network errors are retried in addition to HTTP statuses.
-    rate_limit : RateLimitConfigMap | None
+    rate_limit : RateLimitConfigDict | None
         Client-wide rate limit configuration (may be ``None``).
     session : requests.Session | None
         Explicit HTTP session used for requests when provided.
     session_factory : Callable[[], requests.Session] | None
         Lazily invoked factory producing a session when needed.
-    session_adapters : Sequence[HTTPAdapterMountConfig] | None
+    session_adapters : Sequence[HTTPAdapterMountConfigDict] | None
         Adapter mount configuration(s) for connection pooling / retries.
     DEFAULT_PAGE_PARAM : ClassVar[str]
         Default page parameter name.
@@ -212,10 +212,10 @@ class EndpointClient:
     base_path: str | None = None
 
     # Optional retry configuration (constructor parameter; object is frozen)
-    retry: RetryPolicy | None = None
+    retry: RetryPolicyDict | None = None
     retry_network_errors: bool = False
     # Optional client-wide rate limit configuration
-    rate_limit: RateLimitConfigMap | None = None
+    rate_limit: RateLimitConfigDict | None = None
 
     # Optional HTTP session or factory
     session: requests.Session | None = None
@@ -225,7 +225,7 @@ class EndpointClient:
     # and connection pooling. If provided and neither `session` nor
     # `session_factory` is supplied, a factory is synthesized to create a
     # Session and mount the configured adapters lazily.
-    session_adapters: Sequence[HTTPAdapterMountConfig] | None = None
+    session_adapters: Sequence[HTTPAdapterMountConfigDict] | None = None
 
     # Internal: context-managed session and ownership flag.
     _request_manager: RequestManager = field(
@@ -857,7 +857,7 @@ class EndpointClient:
     @staticmethod
     def _resolve_sleep_seconds(
         explicit: float,
-        rate_limit: RateLimitConfigMap | None,
+        rate_limit: RateLimitConfigDict | None,
         overrides: RateLimitOverrides = None,
     ) -> float:
         """
@@ -867,7 +867,7 @@ class EndpointClient:
         ----------
         explicit : float
             Explicit sleep seconds provided by the caller.
-        rate_limit : RateLimitConfigMap | None
+        rate_limit : RateLimitConfigDict | None
             Client-wide rate limit configuration.
         overrides : RateLimitOverrides, optional
             Per-call overrides that take precedence over *rate_limit*.

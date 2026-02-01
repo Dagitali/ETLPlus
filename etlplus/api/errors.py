@@ -30,7 +30,7 @@ from typing import Any
 import requests  # type: ignore[import]
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .retry_manager import RetryPolicy
+    from .retry_manager import RetryPolicyDict
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -57,7 +57,7 @@ class ApiRequestError(requests.RequestException):
         Number of attempts performed (defaults to ``1``).
     retried : bool, optional
         Whether any retry attempts were made.
-    retry_policy : RetryPolicy | None, optional
+    retry_policy : RetryPolicyDict | None, optional
         The retry policy in effect, if any.
     cause : Exception | None, optional
         Original underlying exception.
@@ -72,7 +72,7 @@ class ApiRequestError(requests.RequestException):
         Number of attempts performed.
     retried : bool
         Whether any retry attempts were made.
-    retry_policy : RetryPolicy | None
+    retry_policy : RetryPolicyDict | None
         The retry policy in effect, if any.
     cause : Exception | None
         Original underlying exception.
@@ -97,7 +97,7 @@ class ApiRequestError(requests.RequestException):
     status: int | None = None
     attempts: int = 1
     retried: bool = False
-    retry_policy: RetryPolicy | None = None
+    retry_policy: RetryPolicyDict | None = None
     cause: Exception | None = None
 
     # -- Magic Methods (Object Representation) -- #

@@ -21,7 +21,7 @@ from typing import cast
 
 import pytest
 
-from etlplus.api.rate_limiting import RateLimitConfigMap
+from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
 
 # SECTION: HELPERS ========================================================== #
@@ -87,8 +87,8 @@ class TestResolveSleepSeconds:
     )
     def test_invalid_values(
         self,
-        rate_limit: RateLimitConfigMap | None,
-        config: RateLimitConfigMap | dict[str, Any] | None,
+        rate_limit: RateLimitConfigDict | None,
+        config: RateLimitConfigDict | dict[str, Any] | None,
         expected_sleep: float,
     ) -> None:
         """
@@ -97,14 +97,14 @@ class TestResolveSleepSeconds:
 
         Parameters
         ----------
-        rate_limit : RateLimitConfigMap | None
+        rate_limit : RateLimitConfigDict | None
             The rate limit configuration.
-        config : RateLimitConfigMap | dict[str, Any] | None
+        config : RateLimitConfigDict | dict[str, Any] | None
             The override configuration.
         expected_sleep : float
             The expected sleep seconds value.
         """
-        overrides = cast(RateLimitConfigMap | None, config)
+        overrides = cast(RateLimitConfigDict | None, config)
         assert (
             RateLimiter.resolve_sleep_seconds(
                 rate_limit=rate_limit,

@@ -7,15 +7,15 @@ Connector configuration types and enums.
 from __future__ import annotations
 
 from .api import ConnectorApi
-from .api import ConnectorApiConfigMap
+from .api import ConnectorApiConfigDict
 from .connector import Connector
 from .core import ConnectorBase
 from .core import ConnectorProtocol
 from .database import ConnectorDb
-from .database import ConnectorDbConfigMap
+from .database import ConnectorDbConfigDict
 from .enums import DataConnectorType
 from .file import ConnectorFile
-from .file import ConnectorFileConfigMap
+from .file import ConnectorFileConfigDict
 from .types import ConnectorType
 from .utils import parse_connector
 
@@ -37,7 +37,7 @@ __all__ = [
     'ConnectorProtocol',
     'ConnectorType',
     # Typed Dicts
-    'ConnectorApiConfigMap',
-    'ConnectorDbConfigMap',
-    'ConnectorFileConfigMap',
+    'ConnectorApiConfigDict',
+    'ConnectorDbConfigDict',
+    'ConnectorFileConfigDict',
 ]

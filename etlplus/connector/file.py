@@ -32,14 +32,14 @@ from .types import ConnectorType
 
 __all__ = [
     'ConnectorFile',
-    'ConnectorFileConfigMap',
+    'ConnectorFileConfigDict',
 ]
 
 
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class ConnectorFileConfigMap(TypedDict, total=False):
+class ConnectorFileConfigDict(TypedDict, total=False):
     """
     Shape accepted by :meth:`ConnectorFile.from_obj` (all keys optional).
 
@@ -86,7 +86,7 @@ class ConnectorFile(ConnectorBase):
 
     @classmethod
     @overload
-    def from_obj(cls, obj: ConnectorFileConfigMap) -> Self: ...
+    def from_obj(cls, obj: ConnectorFileConfigDict) -> Self: ...
 
     @classmethod
     @overload

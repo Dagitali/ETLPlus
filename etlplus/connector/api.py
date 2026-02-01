@@ -22,9 +22,9 @@ from typing import TypedDict
 from typing import overload
 
 from ..api import PaginationConfig
-from ..api import PaginationConfigMap
+from ..api import PaginationConfigDict
 from ..api import RateLimitConfig
-from ..api import RateLimitConfigMap
+from ..api import RateLimitConfigDict
 from ..types import StrAnyMap
 from ..types import StrStrMap
 from ..utils import cast_str_dict
@@ -39,14 +39,14 @@ from .types import ConnectorType
 
 __all__ = [
     'ConnectorApi',
-    'ConnectorApiConfigMap',
+    'ConnectorApiConfigDict',
 ]
 
 
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class ConnectorApiConfigMap(TypedDict, total=False):
+class ConnectorApiConfigDict(TypedDict, total=False):
     """
     Shape accepted by :meth:`ConnectorApi.from_obj` (all keys optional).
 
@@ -61,8 +61,8 @@ class ConnectorApiConfigMap(TypedDict, total=False):
     method: str
     headers: StrStrMap
     query_params: StrAnyMap
-    pagination: PaginationConfigMap
-    rate_limit: RateLimitConfigMap
+    pagination: PaginationConfigDict
+    rate_limit: RateLimitConfigDict
     api: str
     endpoint: str
 
@@ -121,7 +121,7 @@ class ConnectorApi(ConnectorBase):
 
     @classmethod
     @overload
-    def from_obj(cls, obj: ConnectorApiConfigMap) -> Self: ...
+    def from_obj(cls, obj: ConnectorApiConfigDict) -> Self: ...
 
     @classmethod
     @overload

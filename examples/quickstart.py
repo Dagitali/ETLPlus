@@ -11,7 +11,7 @@ from etlplus.ops import load
 from etlplus.ops import transform
 from etlplus.ops import validate
 from etlplus.ops.types import PipelineConfig
-from etlplus.ops.validate import FieldRules
+from etlplus.ops.validate import FieldRulesDict
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -46,7 +46,7 @@ def main() -> None:
 
     # Validate the transformed data.
     rules = cast(
-        Mapping[str, FieldRules],
+        Mapping[str, FieldRulesDict],
         {
             'name': {'type': 'string', 'required': True},
             'email': {'type': 'string', 'required': True},
@@ -54,7 +54,7 @@ def main() -> None:
     )
     result = validate(transformed, rules)
     if not result.get('valid', False):
-        print('Validation failed:\n', result)
+        print('ValidationDict failed:\n', result)
         return
 
     # Load to JSON file

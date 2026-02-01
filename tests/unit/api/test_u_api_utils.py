@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-from etlplus.api import PagePaginationConfigMap
+from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from etlplus.api import utils
@@ -120,7 +120,7 @@ class TestBuildPaginationCfg:
 
         cfg_map = utils.build_pagination_cfg(pagination, overrides)
         assert cfg_map is not None
-        page_cfg = cast(PagePaginationConfigMap, cfg_map)
+        page_cfg = cast(PagePaginationConfigDict, cfg_map)
 
         assert page_cfg['type'] == 'page'
         assert page_cfg['records_path'] == 'records'
@@ -203,7 +203,7 @@ class TestComposeApiRequestEnv:
         assert env['headers']['X-Test'] == '1'
         assert env['timeout'] == 7.5
         assert env['pagination'] is not None
-        pagination_cfg = cast(PagePaginationConfigMap, env['pagination'])
+        pagination_cfg = cast(PagePaginationConfigDict, env['pagination'])
         assert pagination_cfg['type'] == 'page'
         assert env['sleep_seconds'] == 0.05
         assert env['retry'] == {'max_attempts': 4}
@@ -309,7 +309,7 @@ class TestPaginateWithClient:
 
         client = Client()
         page_cfg = cast(
-            PagePaginationConfigMap,
+            PagePaginationConfigDict,
             {
                 'type': 'page',
                 'page_param': 'page',
@@ -365,7 +365,7 @@ class TestPaginateWithClient:
 
         client = Client()
         page_cfg = cast(
-            PagePaginationConfigMap,
+            PagePaginationConfigDict,
             {
                 'type': 'page',
                 'page_param': 'page',

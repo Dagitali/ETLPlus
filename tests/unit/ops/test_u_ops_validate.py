@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from etlplus.ops.validate import FieldRules
+from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import load_data
 from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
@@ -101,7 +101,7 @@ class TestValidateField:
         value : Any
             Value to validate.
         rule : dict[str, Any]
-            Validation rule.
+            ValidationDict rule.
         expected_valid : bool
             Expected validity result.
         """
@@ -171,7 +171,7 @@ class TestValidate:
         data : Any
             Data to validate.
         rules : dict[str, Any]
-            Validation rules.
+            ValidationDict rules.
         expected_valid : bool
             Expected validity result.
         """
@@ -211,7 +211,7 @@ class TestValidate:
         """Test lists containing non-dicts recording item-level errors."""
 
         payload: list[Any] = [{'name': 'Ada'}, 'bad']
-        rules: dict[str, FieldRules] = {'name': {'type': 'string'}}
+        rules: dict[str, FieldRulesDict] = {'name': {'type': 'string'}}
         result = validate(payload, rules)
         assert result['valid'] is False
         assert '[1]' in result['field_errors']
@@ -226,7 +226,7 @@ class TestValidate:
     def test_validate_handles_load_errors(self) -> None:
         """Test invalid sources reporting errors via the errors collection."""
 
-        rules: dict[str, FieldRules] = {'name': {'required': True}}
+        rules: dict[str, FieldRulesDict] = {'name': {'required': True}}
         result = validate('not json', rules)
         assert result['valid'] is False
         assert result['data'] is None

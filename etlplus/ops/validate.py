@@ -44,9 +44,9 @@ from .load import load_data
 
 
 __all__ = [
-    'FieldRules',
-    'FieldValidation',
-    'Validation',
+    'FieldRulesDict',
+    'FieldValidationDict',
+    'ValidationDict',
     'validate_field',
     'validate',
 ]
@@ -69,7 +69,7 @@ TYPE_MAP: Final[dict[str, type | tuple[type, ...]]] = {
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class FieldRules(TypedDict, total=False):
+class FieldRulesDict(TypedDict, total=False):
     """
     Validation rules for a single field.
 
@@ -93,7 +93,7 @@ class FieldRules(TypedDict, total=False):
     enum: list[Any]
 
 
-class FieldValidation(TypedDict):
+class FieldValidationDict(TypedDict):
     """
     Validation result for a single field.
 
@@ -109,7 +109,7 @@ class FieldValidation(TypedDict):
     errors: list[str]
 
 
-class Validation(TypedDict):
+class ValidationDict(TypedDict):
     """
     Validation result for a complete data structure.
 
@@ -134,7 +134,7 @@ class Validation(TypedDict):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-type RulesMap = Mapping[str, FieldRules]
+type RulesMap = Mapping[str, FieldRulesDict]
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -339,8 +339,8 @@ def _validate_record(
 
 def validate_field(
     value: Any,
-    rules: StrAnyMap | FieldRules,
-) -> FieldValidation:
+    rules: StrAnyMap | FieldRulesDict,
+) -> FieldValidationDict:
     """
     Validate a single value against field rules.
 
@@ -348,14 +348,14 @@ def validate_field(
     ----------
     value : Any
         The value to validate. ``None`` is treated as missing.
-    rules : StrAnyMap | FieldRules
+    rules : StrAnyMap | FieldRulesDict
         Rule dictionary. Supported keys include ``required``, ``type``,
         ``min``, ``max``, ``minLength``, ``maxLength``, ``pattern``, and
         ``enum``.
 
     Returns
     -------
-    FieldValidation
+    FieldValidationDict
         Result with ``valid`` and a list of ``errors``.
 
     Notes
@@ -438,7 +438,7 @@ def validate_field(
 def validate(
     source: StrPath | JSONData,
     rules: RulesMap | None = None,
-) -> Validation:
+) -> ValidationDict:
     """
     Validate data against rules.
 
@@ -452,7 +452,7 @@ def validate(
 
     Returns
     -------
-    Validation
+    ValidationDict
         Structured result with keys ``valid``, ``errors``, ``field_errors``,
         and ``data``. If loading fails, ``data`` is ``None`` and an error is
         reported in ``errors``.

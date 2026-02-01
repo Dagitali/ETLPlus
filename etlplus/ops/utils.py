@@ -26,7 +26,7 @@ from ..utils import normalize_choice
 # SECTION: TYPED DICTIONARIES =============================================== #
 
 
-class ValidationResult(TypedDict, total=False):
+class ValidationResultDict(TypedDict, total=False):
     """Shape returned by ``validate_fn`` callables."""
 
     valid: bool
@@ -44,7 +44,7 @@ type ValidationPhase = Literal['before_transform', 'after_transform']
 type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
 type ValidationSeverity = Literal['warn', 'error']
 
-type ValidateFn = Callable[[Any, Ruleset], ValidationResult]
+type ValidateFn = Callable[[Any, Ruleset], ValidationResultDict]
 type PrintFn = Callable[[Any], None]
 
 
@@ -198,7 +198,7 @@ def maybe_validate(
         Failure severity (``"warn"`` or ``"error"``).
     validate_fn : ValidateFn
         Engine that performs validation and returns a
-        :class:`ValidationResult` instance.
+        :class:`ValidationResultDict` instance.
     print_json_fn : PrintFn
         Structured logger invoked when validation fails.
 
@@ -270,7 +270,7 @@ def _log_failure(
     phase: ValidationPhase,
     window: ValidationWindow,
     ruleset_name: str | None,
-    result: ValidationResult,
+    result: ValidationResultDict,
 ) -> None:
     """
     Emit a structured message describing the failed validation.
@@ -285,7 +285,7 @@ def _log_failure(
         Configured validation window.
     ruleset_name : str | None
         Name of the validation ruleset.
-    result : ValidationResult
+    result : ValidationResultDict
         Result of the failed validation.
     """
     printer(

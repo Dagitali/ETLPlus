@@ -79,21 +79,21 @@ from .config import ApiProfileConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient
 from .enums import HttpMethod
-from .pagination import CursorPaginationConfigMap
-from .pagination import PagePaginationConfigMap
+from .pagination import CursorPaginationConfigDict
+from .pagination import PagePaginationConfigDict
 from .pagination import PaginationClient
 from .pagination import PaginationConfig
-from .pagination import PaginationConfigMap
+from .pagination import PaginationConfigDict
 from .pagination import PaginationType
 from .pagination import Paginator
 from .rate_limiting import RateLimitConfig
-from .rate_limiting import RateLimitConfigMap
+from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
 from .retry_manager import RetryManager
-from .retry_manager import RetryPolicy
+from .retry_manager import RetryPolicyDict
 from .retry_manager import RetryStrategy
-from .transport import HTTPAdapterMountConfig
-from .transport import HTTPAdapterRetryConfig
+from .transport import HTTPAdapterMountConfigDict
+from .transport import HTTPAdapterRetryConfigDict
 from .transport import build_http_adapter
 from .types import Headers
 from .types import Params
@@ -133,14 +133,14 @@ __all__ = [
     'paginate_with_client',
     'resolve_request',
     # Type Aliases
-    'CursorPaginationConfigMap',
+    'CursorPaginationConfigDict',
     'Headers',
-    'HTTPAdapterMountConfig',
-    'HTTPAdapterRetryConfig',
-    'PagePaginationConfigMap',
-    'PaginationConfigMap',
+    'HTTPAdapterMountConfigDict',
+    'HTTPAdapterRetryConfigDict',
+    'PagePaginationConfigDict',
+    'PaginationConfigDict',
     'Params',
-    'RateLimitConfigMap',
-    'RetryPolicy',
+    'RateLimitConfigDict',
+    'RetryPolicyDict',
     'Url',
 ]

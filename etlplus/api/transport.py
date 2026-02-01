@@ -41,8 +41,8 @@ from ..utils import to_positive_int
 
 __all__ = [
     # Classes
-    'HTTPAdapterMountConfig',
-    'HTTPAdapterRetryConfig',
+    'HTTPAdapterMountConfigDict',
+    'HTTPAdapterRetryConfigDict',
     # Functions
     'build_http_adapter',
     'build_session_with_adapters',
@@ -52,7 +52,7 @@ __all__ = [
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class HTTPAdapterRetryConfig(TypedDict, total=False):
+class HTTPAdapterRetryConfigDict(TypedDict, total=False):
     """
     Retry configuration for urllib3 ``Retry``.
 
@@ -89,7 +89,7 @@ class HTTPAdapterRetryConfig(TypedDict, total=False):
 
     Examples
     --------
-    >>> retry_cfg: HTTPAdapterRetryConfig = {
+    >>> retry_cfg: HTTPAdapterRetryConfigDict = {
     ...     'total': 5,
     ...     'backoff_factor': 0.5,
     ...     'status_forcelist': [429, 503],
@@ -111,7 +111,7 @@ class HTTPAdapterRetryConfig(TypedDict, total=False):
     respect_retry_after_header: bool
 
 
-class HTTPAdapterMountConfig(TypedDict, total=False):
+class HTTPAdapterMountConfigDict(TypedDict, total=False):
     """
     Configuration mapping for mounting an ``HTTPAdapter`` on a ``Session``.
 
@@ -132,13 +132,13 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     pool_block : bool
         Whether the pool should block for connections instead of creating new
         ones.
-    max_retries : int | HTTPAdapterRetryConfig
+    max_retries : int | HTTPAdapterRetryConfigDict
         Retry configuration passed to ``HTTPAdapter`` (int) or converted to
         ``Retry``.
 
     Examples
     --------
-    >>> adapter_cfg: HTTPAdapterMountConfig = {
+    >>> adapter_cfg: HTTPAdapterMountConfigDict = {
     ...     'prefix': 'https://',
     ...     'pool_connections': 10,
     ...     'pool_maxsize': 10,
@@ -156,7 +156,7 @@ class HTTPAdapterMountConfig(TypedDict, total=False):
     pool_connections: int
     pool_maxsize: int
     pool_block: bool
-    max_retries: int | HTTPAdapterRetryConfig
+    max_retries: int | HTTPAdapterRetryConfigDict
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -306,7 +306,7 @@ def build_http_adapter(
 
 
 def build_session_with_adapters(
-    adapters_cfg: Sequence[HTTPAdapterMountConfig],
+    adapters_cfg: Sequence[HTTPAdapterMountConfigDict],
 ) -> requests.Session:
     """
     Mount adapters described by *adapters_cfg* onto a new session.
@@ -316,7 +316,7 @@ def build_session_with_adapters(
 
     Parameters
     ----------
-    adapters_cfg : Sequence[HTTPAdapterMountConfig]
+    adapters_cfg : Sequence[HTTPAdapterMountConfigDict]
         Configuration mappings describing the adapter prefix, pooling
         values, and retry policy for each mounted adapter.
 

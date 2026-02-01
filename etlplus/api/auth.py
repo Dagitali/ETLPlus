@@ -76,11 +76,14 @@ FORM_HEADERS = MappingProxyType(
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class _TokenResponse(TypedDict):
+class _TokenResponseDict(TypedDict):
     """Minimal shape of an OAuth token response body."""
 
     access_token: str
     expires_in: int | float
+
+
+# SECTION: PROTOCOLS ======================================================== #
 
 
 class _TokenHttpClient(Protocol):
@@ -284,7 +287,7 @@ class EndpointCredentialsBearer(AuthBase):
     def _parse_token_response(
         self,
         resp: Response,
-    ) -> _TokenResponse:
+    ) -> _TokenResponseDict:
         """
         Validate the JSON token response and return a typed mapping.
 
@@ -295,7 +298,7 @@ class EndpointCredentialsBearer(AuthBase):
 
         Returns
         -------
-        _TokenResponse
+        _TokenResponseDict
             Parsed token response mapping.
 
         Raises
@@ -335,15 +338,15 @@ class EndpointCredentialsBearer(AuthBase):
         except (TypeError, ValueError):
             ttl = float(DEFAULT_TOKEN_TTL)
 
-        return _TokenResponse(access_token=token, expires_in=ttl)
+        return _TokenResponseDict(access_token=token, expires_in=ttl)
 
-    def _request_token(self) -> _TokenResponse:
+    def _request_token(self) -> _TokenResponseDict:
         """
         Execute the OAuth2 token request and parse the response.
 
         Returns
         -------
-        _TokenResponse
+        _TokenResponseDict
             Parsed token response mapping.
 
         Raises
