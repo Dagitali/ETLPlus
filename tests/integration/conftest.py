@@ -19,6 +19,7 @@ from typing import Protocol
 
 import pytest
 
+from etlplus import Config
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import EndpointConfig
@@ -30,7 +31,6 @@ from etlplus.connector import ConnectorFile
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
-from etlplus.workflow import PipelineConfig
 
 # SECTION: HELPERS ========================================================== #
 
@@ -173,7 +173,7 @@ def fake_endpoint_client_fixture() -> tuple[
 def file_to_api_pipeline_factory_fixture(
     tmp_path: pathlib.Path,
     base_url: str,
-) -> Callable[..., PipelineConfig]:
+) -> Callable[..., Config]:
     """Build a pipeline wiring a JSON file source to an API target."""
 
     def _make(
@@ -187,7 +187,7 @@ def file_to_api_pipeline_factory_fixture(
         headers: dict[str, str] | None = None,
         job_name: str = 'send',
         target_name: str = 'ingest_out',
-    ) -> PipelineConfig:
+    ) -> Config:
         source_path = tmp_path / f'{job_name}_input.json'
         effective_payload = payload if payload is not None else {'ok': True}
         text = (
@@ -226,7 +226,7 @@ def file_to_api_pipeline_factory_fixture(
             headers=headers or {},
         )
 
-        return PipelineConfig(
+        return Config(
             apis={'svc': api},
             sources=[src],
             targets=[tgt],
@@ -246,9 +246,9 @@ def file_to_api_pipeline_factory_fixture(
 def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,
     base_url: str,
-) -> Callable[..., PipelineConfig]:
+) -> Callable[..., Config]:
     """
-    Factory to build a minimal PipelineConfig for runner tests.
+    Factory to build a minimal Config for runner tests.
 
     Accepts optional pagination and rate limit defaults at the API profile
     level. Creates a single job named 'job' with a source that references
@@ -263,8 +263,8 @@ def pipeline_cfg_factory_fixture(
 
     Returns
     -------
-    Callable[..., PipelineConfig]
-        Factory function to create :class:`PipelineConfig` instances.
+    Callable[..., Config]
+        Factory function to create :class:`Config` instances.
     """
 
     def _make(
@@ -272,7 +272,7 @@ def pipeline_cfg_factory_fixture(
         pagination_defaults: PaginationConfig | None = None,
         rate_limit_defaults: RateLimitConfig | None = None,
         extract_options: dict[str, Any] | None = None,
-    ) -> PipelineConfig:
+    ) -> Config:
         prof = ApiProfileConfig(
             base_url=base_url,
             headers={},
@@ -306,7 +306,7 @@ def pipeline_cfg_factory_fixture(
                 raise ValueError(msg)
             job.extract.options = extract_options
 
-        return PipelineConfig(
+        return Config(
             apis={'svc': api},
             sources=[src],
             targets=[tgt],
@@ -341,7 +341,7 @@ def run_patched_fixture(
     extract_mod = importlib.import_module('etlplus.ops.extract')
 
     def _run(
-        cfg: PipelineConfig,
+        cfg: Config,
         endpoint_client_cls: type,
         *,
         sleep_seconds: float | None = None,
@@ -351,7 +351,7 @@ def run_patched_fixture(
         # Patch config loader and EndpointClient.
         monkeypatch.setattr(
             run_mod,
-            'load_pipeline_config',
+            'load_config',
             lambda *_a, **_k: cfg,
         )
         monkeypatch.setattr(

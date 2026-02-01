@@ -26,6 +26,7 @@ import pytest
 import requests  # type: ignore[import]
 
 import etlplus.api.rate_limiting.rate_limiter as rl_module
+from etlplus import Config
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import CursorPaginationConfigMap
@@ -37,7 +38,6 @@ from etlplus.api import PaginationConfigMap
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigMap
 from etlplus.types import JSONData
-from etlplus.workflow import PipelineConfig
 from tests.unit.api.test_u_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #
@@ -636,14 +636,14 @@ def pipeline_yaml_factory() -> Callable[[str, Path], Path]:
 
 
 @pytest.fixture
-def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
+def pipeline_from_yaml_factory() -> Callable[..., Config]:
     """
-    Create a factory to build :class:`PipelineConfig` from a YAML file path.
+    Create a factory to build :class:`Config` from a YAML file path.
 
     Returns
     -------
-    Callable[..., PipelineConfig]
-        Function that builds :class:`PipelineConfig` from a YAML file.
+    Callable[..., Config]
+        Function that builds :class:`Config` from a YAML file.
     """
 
     def _make(
@@ -651,8 +651,8 @@ def pipeline_from_yaml_factory() -> Callable[..., PipelineConfig]:
         *,
         substitute: bool = True,
         env: dict[str, str] | None = None,
-    ) -> PipelineConfig:
-        return PipelineConfig.from_yaml(
+    ) -> Config:
+        return Config.from_yaml(
             path,
             substitute=substitute,
             env=env or {},
@@ -781,6 +781,11 @@ def temp_json_file(
     """
     Create a factory for writing a dictionary to a temporary JSON file and
     return its path.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory managed by pytest.
 
     Returns
     -------
