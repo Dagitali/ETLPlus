@@ -43,10 +43,10 @@ __all__ = [
     'Params',
     'Url',
     # Typed Dicts
-    'ApiConfigMap',
-    'ApiProfileConfigMap',
-    'ApiProfileDefaultsMap',
-    'EndpointMap',
+    'ApiConfigDict',
+    'ApiProfileConfigDict',
+    'ApiProfileDefaultsDict',
+    'EndpointConfigDict',
 ]
 
 
@@ -83,7 +83,7 @@ def _to_dict(
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class ApiConfigMap(TypedDict, total=False):
+class ApiConfigDict(TypedDict, total=False):
     """
     Top-level API config shape parsed by
     :meth:`etlplus.api.config.ApiConfig.from_obj`.
@@ -99,11 +99,11 @@ class ApiConfigMap(TypedDict, total=False):
 
     base_url: str
     headers: StrAnyMap
-    endpoints: Mapping[str, EndpointMap | str]
-    profiles: Mapping[str, ApiProfileConfigMap]
+    endpoints: Mapping[str, EndpointConfigDict | str]
+    profiles: Mapping[str, ApiProfileConfigDict]
 
 
-class ApiProfileConfigMap(TypedDict, total=False):
+class ApiProfileConfigDict(TypedDict, total=False):
     """
     Shape accepted for a profile entry under
     :meth:`etlplus.api.config.ApiConfig.from_obj`.
@@ -123,10 +123,10 @@ class ApiProfileConfigMap(TypedDict, total=False):
     headers: StrAnyMap
     base_path: str
     auth: StrAnyMap
-    defaults: ApiProfileDefaultsMap
+    defaults: ApiProfileDefaultsDict
 
 
-class ApiProfileDefaultsMap(TypedDict, total=False):
+class ApiProfileDefaultsDict(TypedDict, total=False):
     """
     Defaults block available under a profile (all keys optional).
 
@@ -147,11 +147,11 @@ class ApiProfileDefaultsMap(TypedDict, total=False):
     """
 
     headers: StrAnyMap
-    pagination: StrAnyMap  # PaginationConfigMap | StrAnyMap
-    rate_limit: StrAnyMap  # RateLimitConfigMap | StrAnyMap
+    pagination: StrAnyMap  # PaginationConfigDict | StrAnyMap
+    rate_limit: StrAnyMap  # RateLimitConfigDict | StrAnyMap
 
 
-class EndpointMap(TypedDict, total=False):
+class EndpointConfigDict(TypedDict, total=False):
     """
     Shape accepted by :meth:`etlplus.api.config.EndpointConfig.from_obj`.
 
@@ -168,8 +168,8 @@ class EndpointMap(TypedDict, total=False):
     path_params: StrAnyMap
     query_params: StrAnyMap
     body: Any
-    pagination: StrAnyMap  # PaginationConfigMap | StrAnyMap
-    rate_limit: StrAnyMap  # RateLimitConfigMap | StrAnyMap
+    pagination: StrAnyMap  # PaginationConfigDict | StrAnyMap
+    rate_limit: StrAnyMap  # RateLimitConfigDict | StrAnyMap
 
 
 # SECTION: DATA CLASSES ===================================================== #

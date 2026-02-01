@@ -36,9 +36,9 @@ from .pagination import PaginationConfig
 from .rate_limiting import RateLimitConfig
 
 if TYPE_CHECKING:
-    from .types import ApiConfigMap
-    from .types import ApiProfileConfigMap
-    from .types import EndpointMap
+    from .types import ApiConfigDict
+    from .types import ApiProfileConfigDict
+    from .types import EndpointConfigDict
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -264,7 +264,7 @@ class ApiProfileConfig:
     @overload
     def from_obj(
         cls,
-        obj: ApiProfileConfigMap,
+        obj: ApiProfileConfigDict,
     ) -> Self: ...
 
     @classmethod
@@ -460,7 +460,7 @@ class ApiConfig:
     @overload
     def from_obj(
         cls,
-        obj: ApiConfigMap,
+        obj: ApiConfigDict,
     ) -> Self: ...
 
     @classmethod
@@ -577,7 +577,7 @@ class EndpointConfig:
     @overload
     def from_obj(
         cls,
-        obj: EndpointMap,
+        obj: EndpointConfigDict,
     ) -> Self: ...
 
     @classmethod
