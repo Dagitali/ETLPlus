@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
+from etlplus import Config
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
-from etlplus.workflow import PipelineConfig
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 # SECTION: HELPERS ========================================================== #
@@ -38,7 +38,7 @@ class TestRunProfilePaginationDefaults:
 
     def test_job_level_pagination_overrides_profile_defaults(
         self,
-        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        pipeline_cfg_factory: Callable[..., Config],
         fake_endpoint_client: tuple[type[Client], list[Client]],
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:
@@ -78,7 +78,7 @@ class TestRunProfilePaginationDefaults:
 
     def test_profile_pagination_defaults_applied(
         self,
-        pipeline_cfg_factory: Callable[..., PipelineConfig],
+        pipeline_cfg_factory: Callable[..., Config],
         fake_endpoint_client: tuple[type[Client], list[Client]],
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:
