@@ -15,7 +15,6 @@ from typing import Literal
 from typing import cast
 
 from .. import Config
-from .. import load_config
 from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
@@ -73,7 +72,7 @@ def _collect_table_specs(
         specs.append(dict(load_table_spec(Path(spec_path))))
 
     if config_path:
-        cfg = load_config(config_path, substitute=True)
+        cfg = Config.from_yaml(config_path, substitute=True)
         specs.extend(getattr(cfg, 'table_schemas', []))
 
     return specs
@@ -229,7 +228,7 @@ def check_handler(
         Zero on success.
 
     """
-    cfg = load_config(config, substitute=substitute)
+    cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
         cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
@@ -514,7 +513,7 @@ def run_handler(
     int
         Zero on success.
     """
-    cfg = load_config(config, substitute=True)
+    cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
     if job_name:
