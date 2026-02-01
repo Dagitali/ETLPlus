@@ -1,9 +1,8 @@
 """
-:mod:`tests.integration.test_i_pipeline_smoke` module.
+:mod:`tests.smoke.test_s_pipeline` module.
 
-Pipeline smoke integration test suite exercising a minimal file→file job via
-the CLI (using the deprecated-free path). Parametrized to verify both empty
-and non-empty inputs.
+Smoke test suite exercising a minimal file→file job via the CLI. Parametrized
+to verify both empty and non-empty inputs.
 
 Notes
 -----
@@ -28,14 +27,14 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: HELPERS ========================================================== #
 
 
-pytestmark = pytest.mark.integration
+pytestmark = pytest.mark.smoke
 
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestPipelineSmoke:
-    """Integration test suite for file→file job via CLI."""
+class TestPipeline:
+    """Smoke test suite for file→file job via CLI."""
 
     @pytest.mark.parametrize(
         'data_in',

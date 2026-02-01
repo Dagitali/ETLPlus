@@ -672,10 +672,12 @@ pytest tests/ -v
 
 #### Test Layers
 
-We split tests into two layers:
+We split tests into three layers:
 
 - **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch
   (e.g. small helpers in `etlplus.utils`, transform + validate helpers).
+- **Smoke (`tests/smoke/`)**: minimal end-to-end checks for core flows; may touch temp files but
+  avoids external network calls.
 - **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`,
   pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
   fake clients.
