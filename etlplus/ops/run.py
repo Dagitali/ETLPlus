@@ -11,6 +11,7 @@ from typing import Final
 from typing import cast
 
 from ..api import HttpMethod
+from ..config import load_config
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..ops.types import PipelineConfig
@@ -18,7 +19,6 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ..utils import print_json
-from ..workflow import load_pipeline_config
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load
@@ -176,7 +176,7 @@ def run(
         If the job is not found or if there are configuration issues.
     """
     cfg_path = config_path or DEFAULT_CONFIG_PATH
-    cfg = load_pipeline_config(cfg_path, substitute=True)
+    cfg = load_config(cfg_path, substitute=True)
 
     # Lookup job by name
     if not (job_obj := next((j for j in cfg.jobs if j.name == job), None)):
