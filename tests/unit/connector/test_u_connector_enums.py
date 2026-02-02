@@ -10,7 +10,7 @@ import pytest
 
 from etlplus.connector.enums import DataConnectorType
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
