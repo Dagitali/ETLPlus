@@ -25,7 +25,6 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiting.rate_limiter as rl_module
 from etlplus import Config
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
@@ -40,7 +39,14 @@ from etlplus.api import RateLimitConfigDict
 from etlplus.types import JSONData
 from tests.unit.api.test_u_api_mocks import MockSession
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
+# SECTION: TYPES ============================================================ #
 
 
 # Directory-level marker for unit tests.
@@ -65,6 +71,9 @@ class _PageKwDict(TypedDict, total=False):
     records_path: str
     max_pages: int
     max_records: int
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _freeze(
@@ -124,41 +133,6 @@ def api_profile_defaults_factory() -> Callable[..., dict[str, Any]]:
         return out
 
     return _make
-
-
-@pytest.fixture
-def capture_sleeps(
-    monkeypatch: pytest.MonkeyPatch,
-) -> list[float]:
-    """
-    Capture sleep durations from retry/backoff logic.
-
-    Patches :class:`RateLimiter` so tests can assert jitter/backoff behavior
-    without actually waiting.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    list[float]
-        List of sleep durations applied during test execution.
-    """
-    values: list[float] = []
-
-    def _enforce(self: rl_module.RateLimiter) -> None:  # noqa: D401
-        values.append(self.sleep_seconds)
-
-    monkeypatch.setattr(
-        rl_module.RateLimiter,
-        'enforce',
-        _enforce,
-        raising=False,
-    )
-
-    return values
 
 
 @pytest.fixture
