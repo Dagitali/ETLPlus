@@ -16,7 +16,7 @@ import pytest
 import etlplus.cli.io as _io
 from etlplus.file import FileFormat
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit

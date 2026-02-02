@@ -17,10 +17,14 @@ import etlplus.cli.handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
 from tests.unit.cli.conftest import StubCommand
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
+
 
 PROG_NAME: Final[str] = 'etlplus'
 

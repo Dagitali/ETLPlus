@@ -19,7 +19,7 @@ from tests.unit.cli.conftest import CaptureIo
 from tests.unit.cli.conftest import assert_emit_json
 from tests.unit.cli.conftest import assert_emit_or_write
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
