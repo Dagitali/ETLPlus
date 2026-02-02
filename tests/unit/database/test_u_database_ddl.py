@@ -14,7 +14,7 @@ import pytest
 
 from etlplus.database import ddl
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit

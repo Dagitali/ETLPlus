@@ -19,10 +19,14 @@ from etlplus.database.schema import ColumnSpec
 from etlplus.database.schema import IdentitySpec
 from etlplus.database.schema import TableSpec
 
-# SECTIONS: HELPERS ========================================================= #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+# SECTIONS: HELPERS ========================================================= #
+
 
 PayloadFactory = Callable[[dict[str, object]], object]
 
