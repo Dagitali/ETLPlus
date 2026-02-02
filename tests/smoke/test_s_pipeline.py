@@ -13,13 +13,13 @@ Notes
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonOutputParser
     from tests.smoke.conftest import PipelineConfigFactory
 
 # SECTION: HELPERS ========================================================== #
@@ -37,6 +37,7 @@ class TestPipeline:
     def test_file_to_file(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
         pipeline_config_factory: PipelineConfigFactory,
         sample_records: list[dict[str, object]],
     ) -> None:
@@ -55,7 +56,7 @@ class TestPipeline:
         assert err == ''
         assert code == 0
 
-        payload = json.loads(out)
+        payload = parse_json_output(out)
 
         # CLI should have printed a JSON object with status ok.
         assert payload.get('status') == 'ok'
@@ -65,5 +66,5 @@ class TestPipeline:
         # Output file should exist and match input data.
         assert cfg.output_path.exists()
         with cfg.output_path.open('r', encoding='utf-8') as f:
-            out_data = json.load(f)
+            out_data = parse_json_output(f.read())
         assert out_data == sample_records
