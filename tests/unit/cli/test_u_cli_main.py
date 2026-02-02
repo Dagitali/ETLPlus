@@ -17,10 +17,15 @@ import etlplus.cli.handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
 from tests.unit.cli.conftest import StubCommand
 
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
 # SECTION: HELPERS ========================================================== #
 
-
-pytestmark = pytest.mark.unit
 
 PROG_NAME: Final[str] = 'etlplus'
 

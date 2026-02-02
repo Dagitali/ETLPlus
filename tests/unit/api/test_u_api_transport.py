@@ -22,10 +22,12 @@ import requests  # type: ignore[import]
 from etlplus.api.transport import build_http_adapter
 from etlplus.api.transport import build_session_with_adapters
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
 
 # SECTION: TESTS ============================================================ #
 

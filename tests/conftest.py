@@ -9,7 +9,6 @@ Notes
     inline.
 - Supplies JSON file factories that rely on ``tmp_path`` for automatic
     cleanup.
-- Keeps docstrings NumPy-formatted to satisfy numpydoc linting.
 """
 
 from __future__ import annotations
@@ -26,32 +25,7 @@ from requests import PreparedRequest  # type: ignore[import]
 
 from etlplus.cli import main
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _coerce_cli_args(
-    cli_args: tuple[str | Sequence[str], ...],
-) -> tuple[str, ...]:
-    """
-    Normalize CLI arguments into a ``tuple[str, ...]``.
-
-    Parameters
-    ----------
-    cli_args : tuple[str | Sequence[str], ...]
-        Arguments provided to ``cli_runner``/``cli_invoke``.
-
-    Returns
-    -------
-    tuple[str, ...]
-        Normalized argument tuple safe to concatenate with ``sys.argv``.
-    """
-    if (
-        len(cli_args) == 1
-        and isinstance(cli_args[0], Sequence)
-        and not isinstance(cli_args[0], (str, bytes))
-    ):
-        return tuple(str(part) for part in cli_args[0])
-    return tuple(str(part) for part in cli_args)
+# SECTION: TYPES ============================================================ #
 
 
 class CliInvoke(Protocol):
@@ -81,6 +55,18 @@ class JsonFactory(Protocol):
     ) -> Path: ...
 
 
+class JsonOutputParser(Protocol):
+    """Protocol for JSON parsing helpers."""
+
+    def __call__(self, output: str | Path) -> Any: ...
+
+
+class JsonFileParser(Protocol):
+    """Protocol for JSON file parsing helpers."""
+
+    def __call__(self, path: Path) -> Any: ...
+
+
 class RequestFactory(Protocol):
     """Protocol describing prepared-request factories."""
 
@@ -88,6 +74,66 @@ class RequestFactory(Protocol):
         self,
         url: str | None = None,
     ) -> PreparedRequest: ...
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_cli_args(
+    cli_args: tuple[str | Sequence[str], ...],
+) -> tuple[str, ...]:
+    """
+    Normalize CLI arguments into a ``tuple[str, ...]``.
+
+    Parameters
+    ----------
+    cli_args : tuple[str | Sequence[str], ...]
+        Arguments provided to CLI helpers.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Normalized argument tuple safe to concatenate with ``sys.argv``.
+    """
+    if (
+        len(cli_args) == 1
+        and isinstance(cli_args[0], Sequence)
+        and not isinstance(cli_args[0], (str, bytes))
+    ):
+        return tuple(str(part) for part in cli_args[0])
+    return tuple(str(part) for part in cli_args)
+
+
+def parse_json(
+    output: str | Path,
+) -> Any:
+    """
+    Parse JSON from a string or file path.
+
+    Parameters
+    ----------
+    output : str | Path
+        JSON string or file path.
+
+    Returns
+    -------
+    Any
+        Parsed JSON payload.
+
+    Raises
+    ------
+    AssertionError
+        If the payload is not valid JSON.
+    """
+    raw = (
+        output.read_text(encoding='utf-8')
+        if isinstance(output, Path)
+        else output
+    )
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(f'Expected JSON output, got: {raw!r}') from exc
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -143,6 +189,118 @@ def json_file_factory_fixture(
     return _create
 
 
+@pytest.fixture(
+    name='sample_records',
+    params=[
+        pytest.param(
+            [
+                {'id': 1, 'name': 'Alice'},
+                {'id': 2, 'name': 'Bob'},
+            ],
+            id='two-records',
+        ),
+        pytest.param(
+            [
+                {'id': 99, 'name': 'Grace'},
+            ],
+            id='single-record',
+        ),
+    ],
+)
+def sample_records_fixture(
+    request: pytest.FixtureRequest,
+) -> list[dict[str, Any]]:
+    """
+    Return representative record payloads for tests.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest fixture request carrying the parametrized payload.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        The sample record payload.
+    """
+    return list(request.param)
+
+
+@pytest.fixture(name='sample_records_json')
+def sample_records_json_fixture(
+    sample_records: list[dict[str, Any]],
+) -> str:
+    """Return sample records serialized as JSON."""
+    return json.dumps(sample_records)
+
+
+@pytest.fixture(name='json_payload_file')
+def json_payload_file_fixture(
+    json_file_factory: JsonFactory,
+    sample_records: list[dict[str, Any]],
+) -> Path:
+    """Persist ``sample_records`` as JSON and return the file path."""
+    return json_file_factory(sample_records, filename='records.json')
+
+
+@pytest.fixture(name='rules_json')
+def rules_json_fixture() -> str:
+    """Return simple validation rules as a JSON string."""
+    rules = {
+        'id': {'type': 'integer', 'min': 0},
+        'name': {'type': 'string', 'minLength': 1},
+    }
+    return json.dumps(rules)
+
+
+@pytest.fixture(name='operations_json')
+def operations_json_fixture() -> str:
+    """Return a basic transform operation payload as JSON."""
+    return json.dumps({'select': ['id']})
+
+
+@pytest.fixture(name='parse_json_output')
+def parse_json_output_fixture() -> JsonOutputParser:
+    """
+    Parse JSON output emitted to stdout.
+
+    Returns
+    -------
+    JsonOutputParser
+        Callable that parses JSON strings and raises AssertionError on
+        malformed output.
+    """
+
+    def _parse(output: str | Path) -> Any:
+        return parse_json(output)
+
+    return _parse
+
+
+@pytest.fixture(name='parse_json_file')
+def parse_json_file_fixture(
+    parse_json_output: JsonOutputParser,
+) -> JsonFileParser:
+    """
+    Parse JSON content from a file path.
+
+    Parameters
+    ----------
+    parse_json_output : JsonOutputParser
+        Shared JSON parsing helper.
+
+    Returns
+    -------
+    JsonFileParser
+        Callable that parses JSON from a file path.
+    """
+
+    def _parse(path: Path) -> Any:
+        return parse_json_output(path)
+
+    return _parse
+
+
 @pytest.fixture(name='cli_runner')
 def cli_runner_fixture(
     monkeypatch: pytest.MonkeyPatch,
@@ -168,7 +326,7 @@ def cli_runner_fixture(
     """
 
     def _run(*cli_args: str | Sequence[str]) -> int:
-        args = _coerce_cli_args(cli_args)
+        args = coerce_cli_args(cli_args)
         monkeypatch.setattr(sys, 'argv', ['etlplus', *args])
         return main()
 

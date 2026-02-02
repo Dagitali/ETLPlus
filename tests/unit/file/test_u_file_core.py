@@ -23,10 +23,14 @@ from etlplus.file import FileFormat
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]

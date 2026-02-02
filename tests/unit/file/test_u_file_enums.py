@@ -16,10 +16,14 @@ from etlplus.file import CompressionFormat
 from etlplus.file import FileFormat
 from etlplus.file import infer_file_format_and_compression
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 type InferCase = tuple[

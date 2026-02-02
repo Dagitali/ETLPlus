@@ -17,10 +17,14 @@ from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from etlplus.api import utils
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 class _ApiCfg:

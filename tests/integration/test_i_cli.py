@@ -15,7 +15,6 @@ Notes
 from __future__ import annotations
 
 import io
-import json
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -25,11 +24,13 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFactory
+    from tests.conftest import JsonOutputParser
 
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
 
 
@@ -170,6 +171,7 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
     ) -> None:
         """Explicit ``--source-format`` overrides file extension inference."""
         source = tmp_path / 'records.txt'
@@ -179,7 +181,7 @@ class TestCliEndToEnd:
         )
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert payload[0] == {'a': '1', 'b': '2'}
 
     def test_load_target_format_override(
@@ -208,6 +210,7 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
     ) -> None:
         """``validate`` accepts CSV files lacking extensions via flag."""
         source = tmp_path / 'dataset.data'
@@ -217,20 +220,21 @@ class TestCliEndToEnd:
         )
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert payload['valid'] is True
 
     def test_main_extract_file(
         self,
         json_file_factory: JsonFactory,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
     ) -> None:
         """Test that ``extract file`` prints the serialized payload."""
         payload = {'name': 'John', 'age': 30}
         source = json_file_factory(payload, filename='input.json')
         code, out, _err = cli_invoke(('extract', str(source)))
         assert code == 0
-        assert json.loads(out) == payload
+        assert parse_json_output(out) == payload
 
     def test_main_error_handling(
         self,
@@ -273,6 +277,7 @@ class TestCliEndToEnd:
     def test_main_transform_data(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
     ) -> None:
         """
         Test that running :func:`main` with the ``transform`` command works.
@@ -283,12 +288,13 @@ class TestCliEndToEnd:
             ('transform', json_data, '--operations', operations),
         )
         assert code == 0
-        output = json.loads(out)
+        output = parse_json_output(out)
         assert len(output) == 1 and 'age' not in output[0]
 
     def test_main_validate_data(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
     ) -> None:
         """
         Test that running :func:`main` with the ``validate`` command works.
@@ -296,4 +302,4 @@ class TestCliEndToEnd:
         json_data = '{"name": "John", "age": 30}'
         code, out, _err = cli_invoke(('validate', json_data))
         assert code == 0
-        assert json.loads(out)['valid'] is True
+        assert parse_json_output(out)['valid'] is True

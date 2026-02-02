@@ -18,9 +18,10 @@ from tests.unit.cli.conftest import CaptureHandler
 from tests.unit.cli.conftest import InvokeCli
 from tests.unit.cli.conftest import assert_mapping_contains
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

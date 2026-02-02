@@ -21,10 +21,14 @@ import pytest
 from etlplus.file import File
 from etlplus.types import JSONDict
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _norm_record(

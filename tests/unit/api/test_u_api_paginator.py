@@ -33,10 +33,12 @@ from etlplus.api.pagination import PaginationType
 from etlplus.api.pagination import Paginator
 from etlplus.api.rate_limiting import RateLimitConfigDict
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
 
 # SECTION: HELPERS ========================================================== #
 

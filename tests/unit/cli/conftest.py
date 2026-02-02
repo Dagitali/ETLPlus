@@ -29,7 +29,14 @@ from typer.testing import CliRunner
 from etlplus import Config
 from etlplus.cli.commands import app as cli_app
 
-# SECTION: HELPERS ======================================================== #
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
+# SECTION: TYPES ============================================================ #
 
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
@@ -38,6 +45,9 @@ type CaptureHandler = Callable[[object, str], dict[str, object]]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
 type InvokeCli = Callable[..., Result]
 type StubCommand = Callable[[Callable[..., object]], None]
+
+
+# SECTION: ASSERTIONS ======================================================= #
 
 
 def assert_emit_json(
@@ -113,6 +123,30 @@ def assert_mapping_contains(
         assert actual[key] == value
 
 
+# SECTION: HELPERS ========================================================= #
+
+
+def _record_calls(
+    monkeypatch: pytest.MonkeyPatch,
+    module: object,
+    *names: str,
+) -> CaptureIo:
+    calls: CaptureIo = {name: [] for name in names}
+
+    for name in names:
+
+        def _record(
+            *args: object,
+            _name: str = name,
+            **kwargs: object,
+        ) -> None:
+            calls[_name].append((args, kwargs))
+
+        monkeypatch.setattr(module, name, _record)
+
+    return calls
+
+
 @dataclass(frozen=True, slots=True)
 class DummyCfg:
     """Minimal stand-in pipeline config for CLI helper tests."""
@@ -185,27 +219,13 @@ def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     """
     import etlplus.cli.io as _io
 
-    calls: CaptureIo = {
-        'emit_or_write': [],
-        'emit_json': [],
-        'print_json': [],
-    }
-    monkeypatch.setattr(
+    return _record_calls(
+        monkeypatch,
         _io,
         'emit_or_write',
-        lambda *a, **k: calls['emit_or_write'].append((a, k)),
-    )
-    monkeypatch.setattr(
-        _io,
         'emit_json',
-        lambda *a, **k: calls['emit_json'].append((a, k)),
-    )
-    monkeypatch.setattr(
-        _io,
         'print_json',
-        lambda *a, **k: calls['print_json'].append((a, k)),
     )
-    return calls
 
 
 @pytest.fixture(name='csv_text')

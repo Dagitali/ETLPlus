@@ -56,10 +56,14 @@ from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
 from etlplus.types import JSONData
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']

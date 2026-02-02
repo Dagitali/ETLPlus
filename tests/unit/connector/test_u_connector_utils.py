@@ -17,10 +17,12 @@ from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import parse_connector
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
 
 # SECTION: TESTS ============================================================ #
 

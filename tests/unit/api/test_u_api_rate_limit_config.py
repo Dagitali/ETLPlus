@@ -18,10 +18,12 @@ import pytest
 
 from etlplus.api import RateLimitConfig
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
 
 # SECTION: TESTS ============================================================ #
 
