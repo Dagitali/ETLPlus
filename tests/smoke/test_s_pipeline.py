@@ -34,25 +34,14 @@ pytestmark = pytest.mark.smoke
 class TestPipeline:
     """Smoke test suite for file→file job via CLI."""
 
-    @pytest.mark.parametrize(
-        'data_in',
-        [
-            [],
-            [
-                {'id': 1, 'name': 'Alice'},
-                {'id': 2, 'name': 'Bob'},
-            ],
-        ],
-        ids=['empty', 'two-records'],
-    )
     def test_file_to_file(
         self,
         cli_invoke: CliInvoke,
         pipeline_config_factory: PipelineConfigFactory,
-        data_in: list[object] | list[dict[str, int | str]],
+        sample_records: list[dict[str, object]],
     ) -> None:
         """Test file→file jobs via CLI for multiple input datasets."""
-        cfg = pipeline_config_factory(data_in)
+        cfg = pipeline_config_factory(sample_records)
 
         code, out, err = cli_invoke(
             (
@@ -77,4 +66,4 @@ class TestPipeline:
         assert cfg.output_path.exists()
         with cfg.output_path.open('r', encoding='utf-8') as f:
             out_data = json.load(f)
-        assert out_data == data_in
+        assert out_data == sample_records
