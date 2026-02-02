@@ -136,7 +136,9 @@ def _record_calls(
     for name in names:
 
         def _record(
-            *args: object, _name: str = name, **kwargs: object,
+            *args: object,
+            _name: str = name,
+            **kwargs: object,
         ) -> None:
             calls[_name].append((args, kwargs))
 
