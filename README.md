@@ -305,9 +305,8 @@ etlplus --help
 etlplus --version
 ```
 
-The CLI is implemented with Typer (Click-based). The legacy argparse parser has been removed
-(`create_parser` now raises), so rely on the documented commands/flags and run `etlplus <command>
---help` for current options.
+The CLI is implemented with Typer (Click-based). The legacy argparse parser has been removed, so
+rely on the documented commands/flags and run `etlplus <command> --help` for current options.
 
 **Example error messages:**
 
