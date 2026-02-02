@@ -9,7 +9,6 @@ Notes
     inline.
 - Supplies JSON file factories that rely on ``tmp_path`` for automatic
     cleanup.
-- Keeps docstrings NumPy-formatted to satisfy numpydoc linting.
 """
 
 from __future__ import annotations
@@ -26,32 +25,7 @@ from requests import PreparedRequest  # type: ignore[import]
 
 from etlplus.cli import main
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _coerce_cli_args(
-    cli_args: tuple[str | Sequence[str], ...],
-) -> tuple[str, ...]:
-    """
-    Normalize CLI arguments into a ``tuple[str, ...]``.
-
-    Parameters
-    ----------
-    cli_args : tuple[str | Sequence[str], ...]
-        Arguments provided to ``cli_runner``/``cli_invoke``.
-
-    Returns
-    -------
-    tuple[str, ...]
-        Normalized argument tuple safe to concatenate with ``sys.argv``.
-    """
-    if (
-        len(cli_args) == 1
-        and isinstance(cli_args[0], Sequence)
-        and not isinstance(cli_args[0], (str, bytes))
-    ):
-        return tuple(str(part) for part in cli_args[0])
-    return tuple(str(part) for part in cli_args)
+# SECTION: TYPES ============================================================ #
 
 
 class CliInvoke(Protocol):
@@ -100,6 +74,66 @@ class RequestFactory(Protocol):
         self,
         url: str | None = None,
     ) -> PreparedRequest: ...
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_cli_args(
+    cli_args: tuple[str | Sequence[str], ...],
+) -> tuple[str, ...]:
+    """
+    Normalize CLI arguments into a ``tuple[str, ...]``.
+
+    Parameters
+    ----------
+    cli_args : tuple[str | Sequence[str], ...]
+        Arguments provided to CLI helpers.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Normalized argument tuple safe to concatenate with ``sys.argv``.
+    """
+    if (
+        len(cli_args) == 1
+        and isinstance(cli_args[0], Sequence)
+        and not isinstance(cli_args[0], (str, bytes))
+    ):
+        return tuple(str(part) for part in cli_args[0])
+    return tuple(str(part) for part in cli_args)
+
+
+def parse_json(
+    output: str | Path,
+) -> Any:
+    """
+    Parse JSON from a string or file path.
+
+    Parameters
+    ----------
+    output : str | Path
+        JSON string or file path.
+
+    Returns
+    -------
+    Any
+        Parsed JSON payload.
+
+    Raises
+    ------
+    AssertionError
+        If the payload is not valid JSON.
+    """
+    raw = (
+        output.read_text(encoding='utf-8')
+        if isinstance(output, Path)
+        else output
+    )
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(f'Expected JSON output, got: {raw!r}') from exc
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -238,17 +272,7 @@ def parse_json_output_fixture() -> JsonOutputParser:
     """
 
     def _parse(output: str | Path) -> Any:
-        raw = (
-            output.read_text(encoding='utf-8')
-            if isinstance(output, Path)
-            else output
-        )
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise AssertionError(
-                f'Expected JSON output, got: {raw!r}',
-            ) from exc
+        return parse_json(output)
 
     return _parse
 
@@ -302,7 +326,7 @@ def cli_runner_fixture(
     """
 
     def _run(*cli_args: str | Sequence[str]) -> int:
-        args = _coerce_cli_args(cli_args)
+        args = coerce_cli_args(cli_args)
         monkeypatch.setattr(sys, 'argv', ['etlplus', *args])
         return main()
 
