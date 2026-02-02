@@ -40,10 +40,15 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
 
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for integration tests.
+pytestmark = pytest.mark.integration
+
+
 # SECTION: HELPERS ========================================================== #
 
-
-pytestmark = pytest.mark.integration
 
 extract_module = importlib.import_module('etlplus.ops.extract')
 
@@ -215,6 +220,10 @@ def _run_pipeline_and_collect(
     ----------
     capsys : pytest.CaptureFixture[str]
         Pytest capture fixture for CLI STDOUT.
+    parse_json_output : JsonOutputParser
+        Helper that parses JSON from CLI output.
+    parse_json_file : JsonFileParser
+        Helper that parses JSON from a file path.
     out_path : Path
         File path where the pipeline writes JSON results.
     pipeline_cli_runner : Callable[..., str]
@@ -372,6 +381,10 @@ class TestPaginationStrategies:
             Capture fixture for CLI STDOUT/stderr.
         pipeline_cli_runner : Callable[..., str]
             Helper that materializes and executes the pipeline configuration.
+        parse_json_output : JsonOutputParser
+            Helper that parses JSON from CLI output.
+        parse_json_file : JsonFileParser
+            Helper that parses JSON from a file path.
         """
 
         out_path = tmp_path / f'{scenario.name}.json'
