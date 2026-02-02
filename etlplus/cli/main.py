@@ -3,15 +3,13 @@
 
 Entry point helpers for the Typer-powered ``etlplus`` CLI.
 
-This module exposes :func:`main` for the console script as well as
-:func:`create_parser`, which is kept for compatibility but now raises.
+This module exposes :func:`main` for the console script.
 """
 
 from __future__ import annotations
 
 import contextlib
 import sys
-import warnings
 
 import click
 import typer
@@ -119,25 +117,6 @@ def _is_unknown_command_error(
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def create_parser() -> object:
-    """
-    Deprecated legacy entrypoint.
-
-    The argparse-based parser has been removed. Use the Typer-powered
-    ``etlplus`` CLI instead (``etlplus.cli.commands.app``).
-    """
-    warnings.warn(
-        'create_parser is deprecated and no longer returns an argparse '
-        'parser. Use the Typer CLI entrypoint instead.',
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    raise RuntimeError(
-        'The legacy argparse parser has been removed. Invoke the Typer-based '
-        'CLI via `etlplus` or import `etlplus.cli.commands.app`.',
-    )
 
 
 def main(
