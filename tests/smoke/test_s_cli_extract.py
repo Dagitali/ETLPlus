@@ -6,7 +6,6 @@ Smoke test suite for the ``etlplus extract`` CLI command.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -15,6 +14,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonOutputParser
 
 
 # SECTION: HELPERS ========================================================== #
@@ -32,6 +32,7 @@ class TestCliExtract:
     def test_extract_json_file(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
         json_payload_file: Path,
         sample_records: list[dict[str, Any]],
     ) -> None:
@@ -39,5 +40,5 @@ class TestCliExtract:
         code, out, err = cli_invoke(('extract', str(json_payload_file)))
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert payload == sample_records

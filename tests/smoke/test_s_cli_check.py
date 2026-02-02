@@ -6,7 +6,6 @@ Smoke test suite for the ``etlplus check`` CLI command.
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -14,6 +13,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonOutputParser
     from tests.smoke.conftest import PipelineConfigFactory
 
 
@@ -26,6 +26,7 @@ class TestCliCheck:
     def test_jobs_lists_job(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
         pipeline_config_factory: PipelineConfigFactory,
         sample_records: list[dict[str, Any]],
     ) -> None:
@@ -36,5 +37,5 @@ class TestCliCheck:
         )
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert cfg.job_name in payload.get('jobs', [])

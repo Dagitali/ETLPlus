@@ -7,7 +7,6 @@ Smoke test suite for the ``etlplus load`` CLI command.
 from __future__ import annotations
 
 import io
-import json
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,6 +16,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonOutputParser
 
 
 # SECTION: HELPERS ========================================================== #
@@ -34,6 +34,7 @@ class TestCliLoad:
     def test_load_stdin_to_file(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         tmp_path: Path,
@@ -47,7 +48,7 @@ class TestCliLoad:
         )
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert payload.get('status') == 'success'
         assert out_path.exists()
-        assert json.loads(out_path.read_text()) == sample_records
+        assert parse_json_output(out_path.read_text()) == sample_records

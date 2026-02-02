@@ -7,7 +7,6 @@ Smoke test suite for the ``etlplus validate`` CLI command.
 from __future__ import annotations
 
 import io
-import json
 import sys
 from typing import TYPE_CHECKING
 
@@ -15,6 +14,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonOutputParser
 
 
 # SECTION: HELPERS ========================================================== #
@@ -32,6 +32,7 @@ class TestCliValidate:
     def test_stdin_payload(
         self,
         cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
         rules_json: str,
         sample_records_json: str,
         monkeypatch: pytest.MonkeyPatch,
@@ -41,5 +42,5 @@ class TestCliValidate:
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
         assert code == 0
         assert err.strip() == ''
-        payload = json.loads(out)
+        payload = parse_json_output(out)
         assert payload['valid'] is True
