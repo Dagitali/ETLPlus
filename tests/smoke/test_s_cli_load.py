@@ -16,6 +16,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonFileParser
     from tests.smoke.conftest import JsonOutputParser
 
 
@@ -35,6 +36,7 @@ class TestCliLoad:
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
+        parse_json_file: JsonFileParser,
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         tmp_path: Path,
@@ -51,4 +53,4 @@ class TestCliLoad:
         payload = parse_json_output(out)
         assert payload.get('status') == 'success'
         assert out_path.exists()
-        assert parse_json_output(out_path.read_text()) == sample_records
+        assert parse_json_file(out_path) == sample_records
