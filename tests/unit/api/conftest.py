@@ -19,7 +19,7 @@ import pytest
 import etlplus.api.rate_limiting.rate_limiter as rl_module
 import etlplus.api.retry_manager as rm_module
 
-# SECTION: MARKERS ========================================================= #
+# SECTION: MARKERS ========================================================== #
 
 
 # Directory-level marker for unit tests.
