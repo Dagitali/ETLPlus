@@ -24,22 +24,13 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 @dataclass(slots=True)
-class PipelineConfigFixture:
+class PipelineConfig:
     """Container for generated pipeline configuration paths."""
 
     config_path: Path
     source_path: Path
     output_path: Path
     job_name: str
-
-
-class PipelineConfigFactory(Protocol):
-    """Protocol for pipeline config factory fixtures."""
-
-    def __call__(
-        self,
-        data: list[dict[str, Any]] | list[Any],
-    ) -> PipelineConfigFixture: ...
 
 
 @dataclass(slots=True)
@@ -58,6 +49,21 @@ class TableSpec:
     spec_path: Path
     schema_name: str
     table_name: str
+
+
+class JsonOutputParser(Protocol):
+    """Protocol for stdout JSON parsing helpers."""
+
+    def __call__(self, output: str) -> Any: ...
+
+
+class PipelineConfigFactory(Protocol):
+    """Protocol for pipeline config factory fixtures."""
+
+    def __call__(
+        self,
+        data: list[dict[str, Any]] | list[Any],
+    ) -> PipelineConfig: ...
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -133,6 +139,29 @@ def operations_json_fixture() -> str:
     return json.dumps({'select': ['id']})
 
 
+@pytest.fixture(name='parse_json_output')
+def parse_json_output_fixture() -> JsonOutputParser:
+    """
+    Parse JSON output emitted to stdout.
+
+    Returns
+    -------
+    JsonOutputParser
+        Callable that parses JSON strings and raises AssertionError on
+        malformed output.
+    """
+
+    def _parse(output: str) -> Any:
+        try:
+            return json.loads(output)
+        except json.JSONDecodeError as exc:
+            raise AssertionError(
+                f'Expected JSON output, got: {output!r}',
+            ) from exc
+
+    return _parse
+
+
 @pytest.fixture(name='pipeline_config_factory')
 def pipeline_config_factory_fixture(
     tmp_path: Path,
@@ -157,7 +186,7 @@ def pipeline_config_factory_fixture(
 
     def _build(
         data: list[dict[str, Any]] | list[Any],
-    ) -> PipelineConfigFixture:
+    ) -> PipelineConfig:
         idx = next(counter)
         source_path = json_file_factory(data, filename=f'input_{idx}.json')
         output_path = tmp_path / f'output_{idx}.json'
@@ -185,7 +214,7 @@ def pipeline_config_factory_fixture(
         ).strip()
         cfg_path = tmp_path / f'pipeline_{idx}.yml'
         cfg_path.write_text(pipeline_yaml, encoding='utf-8')
-        return PipelineConfigFixture(
+        return PipelineConfig(
             config_path=cfg_path,
             source_path=source_path,
             output_path=output_path,
