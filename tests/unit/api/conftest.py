@@ -102,6 +102,23 @@ def jitter(
 
     Returns a callable that, when invoked with a list of floats, seeds the
     sequence of values returned by :func:`random.uniform`.
+
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    Callable[[list[float]], list[float]]
+        Function that sets the sequence of jitter values for
+        ``RetryManager.random.uniform``.
+
+    Examples
+    --------
+    >>> vals = jitter([0.1, 0.2])
+    ... # Now retry jitter will use 0.1, then 0.2 for uniform(a, b)
     """
     values: list[float] = []
 
