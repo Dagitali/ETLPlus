@@ -1,7 +1,7 @@
 """
 :mod:`tests` package.
 
-Test suites for the ETLPlus package.
+Test suites for the :mod:`etlplus` package.
 
 Notes
 -----
