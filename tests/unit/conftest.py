@@ -13,7 +13,6 @@ from __future__ import annotations
 import csv
 import itertools
 import json
-import random
 import types
 from collections.abc import Callable
 from pathlib import Path
@@ -310,37 +309,6 @@ def extract_stub_factory() -> Callable[..., Any]:
             )
 
     return _make
-
-
-@pytest.fixture
-def jitter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[list[float]], list[float]]:
-    """
-    Set retry jitter sequence deterministically.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    Callable[[list[float]], list[float]]
-        Function that sets the sequence of jitter values for random.uniform.
-
-    Examples
-    --------
-    >>> vals = jitter([0.1, 0.2])
-    ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
-    """
-
-    def _set(values: list[float]) -> list[float]:
-        seq = iter(values)
-        monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
-        return values
-
-    return _set
 
 
 @pytest.fixture
