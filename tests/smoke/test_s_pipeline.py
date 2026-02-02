@@ -19,6 +19,7 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
+    from tests.smoke.conftest import JsonFileParser
     from tests.smoke.conftest import JsonOutputParser
     from tests.smoke.conftest import PipelineConfigFactory
 
@@ -38,6 +39,7 @@ class TestPipeline:
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
+        parse_json_file: JsonFileParser,
         pipeline_config_factory: PipelineConfigFactory,
         sample_records: list[dict[str, object]],
     ) -> None:
@@ -65,6 +67,5 @@ class TestPipeline:
 
         # Output file should exist and match input data.
         assert cfg.output_path.exists()
-        with cfg.output_path.open('r', encoding='utf-8') as f:
-            out_data = parse_json_output(f.read())
+        out_data = parse_json_file(cfg.output_path)
         assert out_data == sample_records
