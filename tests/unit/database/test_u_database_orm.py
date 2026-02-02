@@ -31,9 +31,10 @@ from etlplus.database.orm import load_and_build_models
 from etlplus.database.orm import resolve_type
 from etlplus.database.schema import TableSpec
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

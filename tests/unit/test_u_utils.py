@@ -29,9 +29,10 @@ from etlplus.utils import to_number
 from etlplus.utils import to_positive_float
 from etlplus.utils import to_positive_int
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

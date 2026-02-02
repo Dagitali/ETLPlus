@@ -26,10 +26,14 @@ from etlplus.ops.extract import extract_from_api
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 class _StubResponse:

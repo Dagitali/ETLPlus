@@ -13,20 +13,20 @@ Notes
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.conftest import JsonFactory
+    from tests.conftest import JsonFileParser
+    from tests.conftest import JsonOutputParser
+    from tests.smoke.conftest import PipelineConfigFactory
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for smoke tests.
 pytestmark = pytest.mark.smoke
 
 
@@ -36,66 +36,30 @@ pytestmark = pytest.mark.smoke
 class TestPipeline:
     """Smoke test suite for file→file job via CLI."""
 
-    @pytest.mark.parametrize(
-        'data_in',
-        [
-            [],
-            [
-                {'id': 1, 'name': 'Alice'},
-                {'id': 2, 'name': 'Bob'},
-            ],
-        ],
-        ids=['empty', 'two-records'],
-    )
     def test_file_to_file(
         self,
-        tmp_path: Path,
-        json_file_factory: JsonFactory,
         cli_invoke: CliInvoke,
-        data_in: list[object] | list[dict[str, int | str]],
+        parse_json_output: JsonOutputParser,
+        parse_json_file: JsonFileParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
     ) -> None:
         """Test file→file jobs via CLI for multiple input datasets."""
-        source_path = json_file_factory(data_in, filename='input.json')
-        output_path = tmp_path / 'output.json'
-
-        # Minimal pipeline config (file -> file).
-        pipeline_yaml = dedent(
-            f"""
-            name: Smoke Test
-            sources:
-              - name: src
-                type: file
-                format: json
-                path: "{source_path}"
-            targets:
-              - name: dest
-                type: file
-                format: json
-                path: "{output_path}"
-            jobs:
-              - name: file_to_file_smoke
-                extract:
-                  source: src
-                load:
-                  target: dest
-            """,
-        ).strip()
-        cfg_path = tmp_path / 'pipeline.yml'
-        cfg_path.write_text(pipeline_yaml, encoding='utf-8')
+        cfg = pipeline_config_factory(sample_records)
 
         code, out, err = cli_invoke(
             (
                 'run',
                 '--config',
-                str(cfg_path),
+                str(cfg.config_path),
                 '--job',
-                'file_to_file_smoke',
+                cfg.job_name,
             ),
         )
         assert err == ''
         assert code == 0
 
-        payload = json.loads(out)
+        payload = parse_json_output(out)
 
         # CLI should have printed a JSON object with status ok.
         assert payload.get('status') == 'ok'
@@ -103,7 +67,6 @@ class TestPipeline:
         assert payload['result'].get('status') == 'success'
 
         # Output file should exist and match input data.
-        assert output_path.exists()
-        with output_path.open('r', encoding='utf-8') as f:
-            out_data = json.load(f)
-        assert out_data == data_in
+        assert cfg.output_path.exists()
+        out_data = parse_json_file(cfg.output_path)
+        assert out_data == sample_records

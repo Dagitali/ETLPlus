@@ -23,9 +23,10 @@ from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
 from etlplus.types import JSONData
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

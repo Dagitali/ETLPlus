@@ -16,10 +16,14 @@ from types import ModuleType
 
 import pytest
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _reload_version_module() -> ModuleType:

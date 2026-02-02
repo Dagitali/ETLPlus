@@ -14,25 +14,30 @@ from typing import TypeVar
 
 import pytest
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
 
 
+# SECTION: HELPERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
 jobs = importlib.import_module('etlplus.workflow.jobs')
 
 
 # SECTION: TESTS ============================================================ #
 
-T = TypeVar('T', covariant=True)
+T_co = TypeVar('T_co', covariant=True)
 
 
-class SupportsFromObj(Protocol[T]):
+class SupportsFromObj(Protocol[T_co]):
     """Protocol for dataclasses exposing a ``from_obj`` constructor."""
 
     @classmethod
-    def from_obj(cls, obj: dict[str, object] | None) -> T | None: ...
+    def from_obj(cls, obj: dict[str, object] | None) -> T_co | None:
+        """Construct an instance from a dict or return None on failure."""
 
 
 @pytest.mark.parametrize(

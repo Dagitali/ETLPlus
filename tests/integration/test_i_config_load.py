@@ -19,9 +19,10 @@ import pytest
 
 from etlplus import Config
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
 
 

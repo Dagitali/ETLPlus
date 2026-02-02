@@ -15,11 +15,16 @@ import pytest
 
 from etlplus.database.engine import load_database_url_from_config
 
-# SECTIONS: HELPERS ========================================================= #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
 
+
+# SECTIONS: HELPERS ========================================================= #
+
+
+# Directory-level marker for unit tests.
 engine_mod = importlib.import_module('etlplus.database.engine')
 
 

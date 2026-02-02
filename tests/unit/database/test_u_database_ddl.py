@@ -14,9 +14,10 @@ import pytest
 
 from etlplus.database import ddl
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

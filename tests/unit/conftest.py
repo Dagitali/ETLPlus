@@ -13,7 +13,6 @@ from __future__ import annotations
 import csv
 import itertools
 import json
-import random
 import types
 from collections.abc import Callable
 from pathlib import Path
@@ -25,7 +24,6 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiting.rate_limiter as rl_module
 from etlplus import Config
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
@@ -40,7 +38,14 @@ from etlplus.api import RateLimitConfigDict
 from etlplus.types import JSONData
 from tests.unit.api.test_u_api_mocks import MockSession
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
+# SECTION: TYPES ============================================================ #
 
 
 # Directory-level marker for unit tests.
@@ -65,6 +70,9 @@ class _PageKwDict(TypedDict, total=False):
     records_path: str
     max_pages: int
     max_records: int
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _freeze(
@@ -127,41 +135,6 @@ def api_profile_defaults_factory() -> Callable[..., dict[str, Any]]:
 
 
 @pytest.fixture
-def capture_sleeps(
-    monkeypatch: pytest.MonkeyPatch,
-) -> list[float]:
-    """
-    Capture sleep durations from retry/backoff logic.
-
-    Patches :class:`RateLimiter` so tests can assert jitter/backoff behavior
-    without actually waiting.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    list[float]
-        List of sleep durations applied during test execution.
-    """
-    values: list[float] = []
-
-    def _enforce(self: rl_module.RateLimiter) -> None:  # noqa: D401
-        values.append(self.sleep_seconds)
-
-    monkeypatch.setattr(
-        rl_module.RateLimiter,
-        'enforce',
-        _enforce,
-        raising=False,
-    )
-
-    return values
-
-
-@pytest.fixture
 def client_factory(
     base_url: str,
 ) -> Callable[..., EndpointClient]:
@@ -212,25 +185,6 @@ def cursor_cfg() -> Callable[..., CursorPaginationConfigDict]:
         base: dict[str, Any] = {'type': 'cursor'}
         base.update(kwargs)
         return cast(CursorPaginationConfigDict, _freeze(base))
-
-    return _make
-
-
-@pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfigDict]:
-    """
-    Create a factory for building immutable offset pagination config objects.
-
-    Returns
-    -------
-    Callable[..., PagePaginationConfigDict]
-        Function that builds PagePaginationConfigDict instances.
-    """
-
-    def _make(**kwargs: Unpack[_PageKwDict]) -> PagePaginationConfigDict:
-        base: dict[str, Any] = {'type': 'offset'}
-        base.update(kwargs)
-        return cast(PagePaginationConfigDict, _freeze(base))
 
     return _make
 
@@ -358,37 +312,6 @@ def extract_stub_factory() -> Callable[..., Any]:
 
 
 @pytest.fixture
-def jitter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[list[float]], list[float]]:
-    """
-    Set retry jitter sequence deterministically.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    Callable[[list[float]], list[float]]
-        Function that sets the sequence of jitter values for random.uniform.
-
-    Examples
-    --------
-    >>> vals = jitter([0.1, 0.2])
-    ... # Now client jitter will use 0.1, then 0.2 for random.uniform(a, b)
-    """
-
-    def _set(values: list[float]) -> list[float]:
-        seq = iter(values)
-        monkeypatch.setattr(random, 'uniform', lambda a, b: next(seq))
-        return values
-
-    return _set
-
-
-@pytest.fixture
 def mock_session() -> MockSession:
     """
     Provide a fresh :class:`MockSession` per test.
@@ -504,7 +427,6 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
 @pytest.fixture(name='api_obj_factory')
 def api_obj_factory_fixture(
     base_url: str,
-    sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
     """
     Create a factory for building API configuration dicts for
@@ -514,9 +436,6 @@ def api_obj_factory_fixture(
     ----------
     base_url : str
         Common base URL used across config tests.
-    sample_endpoints_ : dict[str, dict[str, Any]]
-        Common endpoints mapping for config tests.
-
     Returns
     -------
     Callable[..., dict[str, Any]]
@@ -527,6 +446,11 @@ def api_obj_factory_fixture(
     >>> obj = api_obj_factory(base_path='/v1', headers={'X': '1'})
     ... cfg = ApiConfig.from_obj(obj)
     """
+    default_endpoints = {
+        'users': {'path': '/users'},
+        'list': {'path': '/items'},
+        'ping': {'path': '/ping'},
+    }
 
     def _make(
         *,
@@ -536,7 +460,7 @@ def api_obj_factory_fixture(
         endpoints: dict[str, dict[str, Any]] | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        eps = endpoints or sample_endpoints_
+        eps = endpoints or default_endpoints
         if use_profiles:
             prof: dict[str, Any] = {
                 'default': {'base_url': base_url},
@@ -714,36 +638,6 @@ def rate_limit_from_obj_factory() -> Callable[
         return RateLimitConfig.from_obj(obj)
 
     return _make
-
-
-@pytest.fixture(name='sample_endpoints_')
-def sample_endpoints_fixture() -> dict[str, dict[str, Any]]:
-    """
-    Return a common endpoints mapping for config tests.
-
-    Returns
-    -------
-    dict[str, dict[str, Any]]
-        Dictionary of endpoint mappings.
-    """
-    return {
-        'users': {'path': '/users'},
-        'list': {'path': '/items'},
-        'ping': {'path': '/ping'},
-    }
-
-
-@pytest.fixture
-def sample_headers() -> dict[str, str]:
-    """
-    Return a common headers mapping for config tests.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary of common headers.
-    """
-    return {'Accept': 'application/json'}
 
 
 # SECTION: FIXTURES (FILES) ================================================= #

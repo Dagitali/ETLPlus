@@ -18,109 +18,15 @@ import pytest
 
 import etlplus.api.rate_limiting.rate_limiter as rl_module
 import etlplus.api.retry_manager as rm_module
-from etlplus.api import EndpointClient
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 
 # SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture
-def client(
-    base_url: str,
-) -> EndpointClient:
-    """
-    Construct an :class:`EndpointClient` with retry enabled.
-
-    Parameters
-    ----------
-    base_url : str
-        Common base URL used across tests.
-
-    Returns
-    -------
-    EndpointClient
-        Client instance pointing at a dummy base URL and endpoint map.
-    """
-    return EndpointClient(
-        base_url=base_url,
-        base_path='v1',
-        endpoints={'dummy': '/dummy'},
-        retry_network_errors=True,
-    )
-
-
-@pytest.fixture
-def rest_client_custom(
-    request: pytest.FixtureRequest,
-) -> EndpointClient:
-    """
-    Parameterized EndpointClient fixture for custom config.
-
-    Parameters
-    ----------
-    request : pytest.FixtureRequest
-        Pytest request fixture for accessing parameterization.
-
-    Returns
-    -------
-    EndpointClient
-        Configured EndpointClient instance.
-    """
-    params = getattr(request, 'param', None) or {}
-
-    return EndpointClient(**params)
-
-
-@pytest.fixture
-def rest_client_default(
-    base_url: str,
-) -> EndpointClient:
-    """
-    Default EndpointClient with no endpoints.
-
-    Parameters
-    ----------
-    base_url : str
-        Common base URL used across tests.
-
-    Returns
-    -------
-    EndpointClient
-        Configured EndpointClient instance.
-    """
-    return EndpointClient(
-        base_url=base_url,
-        endpoints={},
-    )
-
-
-@pytest.fixture
-def rest_client_with_endpoints(
-    base_url: str,
-) -> EndpointClient:
-    """
-    EndpointClient with sample endpoints for API tests.
-
-    Parameters
-    ----------
-    base_url : str
-        Common base URL used across tests.
-
-    Returns
-    -------
-    EndpointClient
-        Configured EndpointClient instance.
-    """
-    return EndpointClient(
-        base_url=base_url,
-        base_path='v1',
-        endpoints={'list': '/items', 'x': '/x'},
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -141,9 +47,6 @@ def patch_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
         'sleep',
         lambda _seconds: None,
     )
-
-
-# Additional fixtures for retry/jitter testing wired to RetryManager.sleeper.
 
 
 @pytest.fixture
@@ -199,6 +102,23 @@ def jitter(
 
     Returns a callable that, when invoked with a list of floats, seeds the
     sequence of values returned by :func:`random.uniform`.
+
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    Callable[[list[float]], list[float]]
+        Function that sets the sequence of jitter values for
+        ``RetryManager.random.uniform``.
+
+    Examples
+    --------
+    >>> vals = jitter([0.1, 0.2])
+    ... # Now retry jitter will use 0.1, then 0.2 for uniform(a, b)
     """
     values: list[float] = []
 

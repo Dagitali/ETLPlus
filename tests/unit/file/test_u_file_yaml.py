@@ -20,10 +20,14 @@ import etlplus.file._imports as import_helpers
 from etlplus.file import File
 from etlplus.file import FileFormat
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 _YAML_CACHE = import_helpers._MODULE_CACHE  # pylint: disable=protected-access

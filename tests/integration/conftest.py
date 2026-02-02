@@ -32,17 +32,14 @@ from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
 
-# SECTION: HELPERS ========================================================== #
-
-
-pytestmark = pytest.mark.integration
-
-
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 # Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
+
+
+# SECTION: TYPES ============================================================ #
 
 
 # Protocol describing the fake endpoint client shape for type checking.

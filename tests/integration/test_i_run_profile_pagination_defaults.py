@@ -24,9 +24,10 @@ from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
 
 

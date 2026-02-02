@@ -22,10 +22,14 @@ from pytest import MonkeyPatch
 
 from etlplus import Config
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 run_mod = importlib.import_module('etlplus.ops.run')
