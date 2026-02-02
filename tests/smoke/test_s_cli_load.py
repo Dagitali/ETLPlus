@@ -16,8 +16,8 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.smoke.conftest import JsonFileParser
-    from tests.smoke.conftest import JsonOutputParser
+    from tests.conftest import JsonFileParser
+    from tests.conftest import JsonOutputParser
 
 
 # SECTION: HELPERS ========================================================== #
