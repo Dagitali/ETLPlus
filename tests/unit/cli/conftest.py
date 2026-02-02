@@ -29,7 +29,14 @@ from typer.testing import CliRunner
 from etlplus import Config
 from etlplus.cli.commands import app as cli_app
 
-# SECTION: HELPERS ======================================================== #
+# SECTION: MARKERS ========================================================= #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
+# SECTION: TYPES ========================================================== #
 
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
@@ -38,6 +45,9 @@ type CaptureHandler = Callable[[object, str], dict[str, object]]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
 type InvokeCli = Callable[..., Result]
 type StubCommand = Callable[[Callable[..., object]], None]
+
+
+# SECTION: ASSERTIONS ====================================================== #
 
 
 def assert_emit_json(
