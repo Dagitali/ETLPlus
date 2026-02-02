@@ -51,10 +51,16 @@ class TableSpec:
     table_name: str
 
 
-class JsonOutputParser(Protocol):
-    """Protocol for stdout JSON parsing helpers."""
+class JsonFileParser(Protocol):
+    """Protocol for JSON file parsing helpers."""
 
-    def __call__(self, output: str) -> Any: ...
+    def __call__(self, path: Path) -> Any: ...
+
+
+class JsonOutputParser(Protocol):
+    """Protocol for JSON parsing helpers."""
+
+    def __call__(self, output: str | Path) -> Any: ...
 
 
 class PipelineConfigFactory(Protocol):
@@ -139,6 +145,30 @@ def operations_json_fixture() -> str:
     return json.dumps({'select': ['id']})
 
 
+@pytest.fixture(name='parse_json_file')
+def parse_json_file_fixture(
+    parse_json_output: JsonOutputParser,
+) -> JsonFileParser:
+    """
+    Parse JSON content from a file path.
+
+    Parameters
+    ----------
+    parse_json_output : JsonOutputParser
+        Shared JSON parsing helper.
+
+    Returns
+    -------
+    JsonFileParser
+        Callable that parses JSON from a file path.
+    """
+
+    def _parse(path: Path) -> Any:
+        return parse_json_output(path)
+
+    return _parse
+
+
 @pytest.fixture(name='parse_json_output')
 def parse_json_output_fixture() -> JsonOutputParser:
     """
@@ -151,12 +181,17 @@ def parse_json_output_fixture() -> JsonOutputParser:
         malformed output.
     """
 
-    def _parse(output: str) -> Any:
+    def _parse(output: str | Path) -> Any:
+        raw = (
+            output.read_text(encoding='utf-8')
+            if isinstance(output, Path)
+            else output
+        )
         try:
-            return json.loads(output)
+            return json.loads(raw)
         except json.JSONDecodeError as exc:
             raise AssertionError(
-                f'Expected JSON output, got: {output!r}',
+                f'Expected JSON output, got: {raw!r}',
             ) from exc
 
     return _parse
