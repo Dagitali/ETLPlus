@@ -3,15 +3,39 @@
 This guide explains how to author an ETLPlus pipeline YAML, using the example at `in/pipeline.yml`
 as a reference.
 
+- [Pipeline Authoring Guide](#pipeline-authoring-guide)
+  - [Overview](#overview)
+  - [Running a Pipeline from YAML (CLI)](#running-a-pipeline-from-yaml-cli)
+  - [Top-Level Structure](#top-level-structure)
+  - [APIs](#apis)
+    - [Profiles, base\_path, and auth](#profiles-base_path-and-auth)
+    - [Runner behavior with `base_path` (sources and targets)](#runner-behavior-with-base_path-sources-and-targets)
+  - [Databases](#databases)
+  - [File Systems](#file-systems)
+  - [Sources](#sources)
+  - [Validations](#validations)
+  - [Transforms](#transforms)
+  - [Targets](#targets)
+  - [Connector Parsing and Extension](#connector-parsing-and-extension)
+  - [Jobs](#jobs)
+  - [Running Pipelines (CLI and Python)](#running-pipelines-cli-and-python)
+    - [CLI: `etlplus check` (Inspect) and `etlplus run` (Execute)](#cli-etlplus-check-inspect-and-etlplus-run-execute)
+    - [Python: `etlplus.ops.run.run`](#python-etlplusopsrunrun)
+  - [Tips](#tips)
+  - [Design notes: Mapping inputs, dict outputs](#design-notes-mapping-inputs-dict-outputs)
+    - [Merge Semantics (Python 3.13)](#merge-semantics-python-313)
+    - [Extending Config Shapes](#extending-config-shapes)
+
+## Overview
+
 ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative description that your
 runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
 `validate`, `transform`, and `load`.
 
-CLI note: ETLPlus uses Typer for command parsing. The legacy argparse parser has been removed
-(`create_parser` now raises). Use the documented `etlplus` commands and flags (check `etlplus
---help`) when wiring your runner.
+CLI note: ETLPlus uses Typer for command parsing. The legacy argparse parser has been removed. Use
+the documented `etlplus` commands and flags (check `etlplus --help`) when wiring your runner.
 
-## Running a pipeline from YAML (CLI)
+## Running a Pipeline from YAML (CLI)
 
 Use the built-in `etlplus run` command to execute jobs defined in a pipeline YAML. The command reads
 your config, resolves vars and env placeholders, then runs the requested job:
@@ -30,7 +54,7 @@ etlplus run --config examples/configs/pipeline.yml --job api_to_file_github_repo
 For scripted usage inside a larger Python project, prefer importing the Python API directly (e.g.,
 `extract`, `transform`, `validate`, `load`) instead of invoking the CLI subprocess.
 
-## Top-level structure
+## Top-Level Structure
 
 A pipeline file typically includes:
 
@@ -205,7 +229,7 @@ databases:
 Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
 orchestration that calls into DB clients.
 
-## File systems
+## File Systems
 
 Point to local/cloud locations and logical folders:
 
@@ -362,7 +386,7 @@ targets:
       Content-Type: application/json
 ```
 
-## Connector parsing and extension
+## Connector Parsing and Extension
 
 Under the hood, source and target entries are parsed via a single tolerant constructor that looks at
 the `type` field and builds a concrete connector dataclass:
@@ -405,12 +429,12 @@ Notes:
 - `depends_on` is optional and can be a string or list of job names.
 - Jobs without dependencies run first when ordered as a DAG.
 
-## Running pipelines (CLI and Python)
+## Running Pipelines (CLI and Python)
 
 Once you have a pipeline YAML, you can run jobs either from the
 command line or directly from Python.
 
-### CLI: `etlplus check` (inspect) and `etlplus run` (execute)
+### CLI: `etlplus check` (Inspect) and `etlplus run` (Execute)
 
 List jobs or show a summary from a pipeline file:
 
@@ -508,7 +532,7 @@ Any]` rather than `dict[str, Any]` for inputs. Why?
 
 Practically, you can pass a plain `dict` everywhere and it will work.
 
-### Merge semantics (Python 3.13)
+### Merge Semantics (Python 3.13)
 
 We use the dict union operator for clarity:
 
@@ -521,7 +545,7 @@ Header precedence (lowest → highest):
 2. `profiles.<name>.headers`
 3. API top-level `headers`
 
-### Extending config shapes
+### Extending Config Shapes
 
 When adding new config objects or fields:
 
