@@ -12,7 +12,7 @@ from etlplus.ops.enums import AggregateName
 from etlplus.ops.enums import OperatorName
 from etlplus.ops.enums import PipelineStep
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit

@@ -17,6 +17,12 @@ import pytest
 from etlplus.ops.utils import ValidationResultDict
 from etlplus.ops.utils import maybe_validate
 
+# SECTION: MARKERS ========================================================== #
+
+
+pytestmark = pytest.mark.unit
+
+
 # SECTION: HELPERS ========================================================== #
 
 

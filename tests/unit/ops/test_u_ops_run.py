@@ -19,10 +19,13 @@ run_mod = importlib.import_module('etlplus.ops.run')
 extract_mod = importlib.import_module('etlplus.ops.extract')
 load_mod = importlib.import_module('etlplus.ops.load')
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _make_job(
