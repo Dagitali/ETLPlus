@@ -17,7 +17,6 @@ Notes
 from __future__ import annotations
 
 import importlib
-import json
 import sys
 import time
 from collections.abc import Callable
@@ -26,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from textwrap import indent
+from typing import TYPE_CHECKING
 from typing import Any
 
 import pytest
@@ -35,6 +35,10 @@ import etlplus.cli.handlers as cli_handlers
 from etlplus import Config
 from etlplus.cli import main
 from tests.integration.conftest import FakeEndpointClientProtocol
+
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests.conftest import JsonFileParser
+    from tests.conftest import JsonOutputParser
 
 # SECTION: HELPERS ========================================================== #
 
@@ -197,6 +201,8 @@ class PaginationEdgeCase:
 def _run_pipeline_and_collect(
     *,
     capsys: pytest.CaptureFixture[str],
+    parse_json_output: JsonOutputParser,
+    parse_json_file: JsonFileParser,
     out_path: Path,
     pipeline_cli_runner: Callable[..., str],
     pipeline_yaml: str,
@@ -232,9 +238,9 @@ def _run_pipeline_and_collect(
         extract_func=extract_func,
     )
 
-    payload = json.loads(capsys.readouterr().out)
+    payload = parse_json_output(capsys.readouterr().out)
     assert payload.get('status') == 'ok'
-    return json.loads(out_path.read_text(encoding='utf-8'))
+    return parse_json_file(out_path)
 
 
 def _write_pipeline(
@@ -350,6 +356,8 @@ class TestPaginationStrategies:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         pipeline_cli_runner: Callable[..., str],
+        parse_json_output: JsonOutputParser,
+        parse_json_file: JsonFileParser,
     ) -> None:
         """
         Test cursor-based pagination scenarios end-to-end via the CLI.
@@ -398,6 +406,8 @@ class TestPaginationStrategies:
 
         data = _run_pipeline_and_collect(
             capsys=capsys,
+            parse_json_output=parse_json_output,
+            parse_json_file=parse_json_file,
             out_path=out_path,
             pipeline_cli_runner=pipeline_cli_runner,
             pipeline_yaml=pipeline_yaml,
@@ -431,6 +441,8 @@ class TestPaginationStrategies:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         pipeline_cli_runner: Callable[..., str],
+        parse_json_output: JsonOutputParser,
+        parse_json_file: JsonFileParser,
     ) -> None:
         """Test page/offset pagination end-to-end via CLI."""
         out_path = tmp_path / f'{scenario.name}.json'
@@ -467,6 +479,8 @@ class TestPaginationStrategies:
 
         data = _run_pipeline_and_collect(
             capsys=capsys,
+            parse_json_output=parse_json_output,
+            parse_json_file=parse_json_file,
             out_path=out_path,
             pipeline_cli_runner=pipeline_cli_runner,
             pipeline_yaml=pipeline_yaml,
