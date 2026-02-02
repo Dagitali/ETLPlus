@@ -16,7 +16,14 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.smoke.conftest import TableSpec
 
 
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for smoke tests.
 pytestmark = pytest.mark.smoke
+
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestCliRender:

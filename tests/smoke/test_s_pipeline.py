@@ -23,9 +23,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonOutputParser
     from tests.smoke.conftest import PipelineConfigFactory
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for smoke tests.
 pytestmark = pytest.mark.smoke
 
 
