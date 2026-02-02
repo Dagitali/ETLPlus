@@ -25,6 +25,7 @@ from etlplus.api.transport import build_session_with_adapters
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

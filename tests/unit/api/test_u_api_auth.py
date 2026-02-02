@@ -31,6 +31,7 @@ from tests.conftest import RequestFactory
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

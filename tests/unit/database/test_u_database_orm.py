@@ -34,6 +34,7 @@ from etlplus.database.schema import TableSpec
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

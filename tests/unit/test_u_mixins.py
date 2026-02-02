@@ -10,8 +10,10 @@ import pytest
 
 from etlplus.mixins import BoundsWarningsMixin
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
+
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

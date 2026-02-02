@@ -19,6 +19,7 @@ from etlplus.file import infer_file_format_and_compression
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

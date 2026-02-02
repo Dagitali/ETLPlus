@@ -24,6 +24,7 @@ pytestmark = pytest.mark.unit
 # SECTIONS: HELPERS ========================================================= #
 
 
+# Directory-level marker for unit tests.
 engine_mod = importlib.import_module('etlplus.database.engine')
 
 

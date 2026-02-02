@@ -20,6 +20,7 @@ from tests.unit.cli.conftest import StubCommand
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

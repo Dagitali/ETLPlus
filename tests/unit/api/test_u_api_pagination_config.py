@@ -21,6 +21,7 @@ from etlplus.api import PaginationConfig
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 

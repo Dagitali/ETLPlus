@@ -26,6 +26,7 @@ from etlplus.types import JSONDict
 # SECTION: MARKERS ========================================================== #
 
 
+# Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
 
 
