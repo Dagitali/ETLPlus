@@ -191,25 +191,6 @@ def cursor_cfg() -> Callable[..., CursorPaginationConfigDict]:
 
 
 @pytest.fixture
-def offset_cfg() -> Callable[..., PagePaginationConfigDict]:
-    """
-    Create a factory for building immutable offset pagination config objects.
-
-    Returns
-    -------
-    Callable[..., PagePaginationConfigDict]
-        Function that builds PagePaginationConfigDict instances.
-    """
-
-    def _make(**kwargs: Unpack[_PageKwDict]) -> PagePaginationConfigDict:
-        base: dict[str, Any] = {'type': 'offset'}
-        base.update(kwargs)
-        return cast(PagePaginationConfigDict, _freeze(base))
-
-    return _make
-
-
-@pytest.fixture
 def request_once_stub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, Any]:
@@ -478,7 +459,6 @@ def api_config_factory() -> Callable[[dict[str, Any]], ApiConfig]:
 @pytest.fixture(name='api_obj_factory')
 def api_obj_factory_fixture(
     base_url: str,
-    sample_endpoints_: dict[str, dict[str, Any]],
 ) -> Callable[..., dict[str, Any]]:
     """
     Create a factory for building API configuration dicts for
@@ -488,9 +468,6 @@ def api_obj_factory_fixture(
     ----------
     base_url : str
         Common base URL used across config tests.
-    sample_endpoints_ : dict[str, dict[str, Any]]
-        Common endpoints mapping for config tests.
-
     Returns
     -------
     Callable[..., dict[str, Any]]
@@ -501,6 +478,11 @@ def api_obj_factory_fixture(
     >>> obj = api_obj_factory(base_path='/v1', headers={'X': '1'})
     ... cfg = ApiConfig.from_obj(obj)
     """
+    default_endpoints = {
+        'users': {'path': '/users'},
+        'list': {'path': '/items'},
+        'ping': {'path': '/ping'},
+    }
 
     def _make(
         *,
@@ -510,7 +492,7 @@ def api_obj_factory_fixture(
         endpoints: dict[str, dict[str, Any]] | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        eps = endpoints or sample_endpoints_
+        eps = endpoints or default_endpoints
         if use_profiles:
             prof: dict[str, Any] = {
                 'default': {'base_url': base_url},
@@ -688,36 +670,6 @@ def rate_limit_from_obj_factory() -> Callable[
         return RateLimitConfig.from_obj(obj)
 
     return _make
-
-
-@pytest.fixture(name='sample_endpoints_')
-def sample_endpoints_fixture() -> dict[str, dict[str, Any]]:
-    """
-    Return a common endpoints mapping for config tests.
-
-    Returns
-    -------
-    dict[str, dict[str, Any]]
-        Dictionary of endpoint mappings.
-    """
-    return {
-        'users': {'path': '/users'},
-        'list': {'path': '/items'},
-        'ping': {'path': '/ping'},
-    }
-
-
-@pytest.fixture
-def sample_headers() -> dict[str, str]:
-    """
-    Return a common headers mapping for config tests.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary of common headers.
-    """
-    return {'Accept': 'application/json'}
 
 
 # SECTION: FIXTURES (FILES) ================================================= #

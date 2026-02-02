@@ -123,6 +123,28 @@ def assert_mapping_contains(
         assert actual[key] == value
 
 
+# SECTION: HELPERS ========================================================= #
+
+
+def _record_calls(
+    monkeypatch: pytest.MonkeyPatch,
+    module: object,
+    *names: str,
+) -> CaptureIo:
+    calls: CaptureIo = {name: [] for name in names}
+
+    for name in names:
+
+        def _record(
+            *args: object, _name: str = name, **kwargs: object,
+        ) -> None:
+            calls[_name].append((args, kwargs))
+
+        monkeypatch.setattr(module, name, _record)
+
+    return calls
+
+
 @dataclass(frozen=True, slots=True)
 class DummyCfg:
     """Minimal stand-in pipeline config for CLI helper tests."""
@@ -195,27 +217,13 @@ def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     """
     import etlplus.cli.io as _io
 
-    calls: CaptureIo = {
-        'emit_or_write': [],
-        'emit_json': [],
-        'print_json': [],
-    }
-    monkeypatch.setattr(
+    return _record_calls(
+        monkeypatch,
         _io,
         'emit_or_write',
-        lambda *a, **k: calls['emit_or_write'].append((a, k)),
-    )
-    monkeypatch.setattr(
-        _io,
         'emit_json',
-        lambda *a, **k: calls['emit_json'].append((a, k)),
-    )
-    monkeypatch.setattr(
-        _io,
         'print_json',
-        lambda *a, **k: calls['print_json'].append((a, k)),
     )
-    return calls
 
 
 @pytest.fixture(name='csv_text')
