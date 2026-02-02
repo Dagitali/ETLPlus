@@ -24,10 +24,11 @@ import pytest
 from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
 
 # SECTION: FIXTURES ======================================================== #
 

@@ -34,10 +34,14 @@ from etlplus.api import RetryPolicyDict
 from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_api_mocks import MockSession
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
+
 
 EXAMPLE_BASE_URL = 'https://example.test'
 

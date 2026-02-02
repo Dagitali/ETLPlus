@@ -25,10 +25,13 @@ import pytest
 
 from etlplus.api.request_manager import RequestManager
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _make_request_callable(

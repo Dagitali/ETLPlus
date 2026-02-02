@@ -14,7 +14,7 @@ from etlplus.api.types import Params
 from etlplus.api.types import RequestOptions
 from etlplus.api.types import Url
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit

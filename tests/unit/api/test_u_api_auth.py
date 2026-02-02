@@ -28,13 +28,13 @@ from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
 from tests.conftest import RequestFactory
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
 
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: TYPES ============================================================ #
 
 
 class _NonJsonResponse:

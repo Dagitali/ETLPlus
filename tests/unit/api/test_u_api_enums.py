@@ -10,7 +10,7 @@ import pytest
 
 from etlplus.api import HttpMethod
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit

@@ -18,10 +18,11 @@ import pytest
 
 from etlplus.api import PaginationConfig
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: MARKERS ========================================================== #
 
 
 pytestmark = pytest.mark.unit
+
 
 # SECTION: TESTS ============================================================ #
 
