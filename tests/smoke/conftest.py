@@ -43,12 +43,21 @@ class PipelineConfigFactory(Protocol):
 
 
 @dataclass(slots=True)
-class TableSpecFixture:
+class PipelineSchema:
+    """Container for generated pipeline configs with table_schemas."""
+
+    config_path: Path
+    schema_name: str
+    table_name: str
+
+
+@dataclass(slots=True)
+class TableSpec:
     """Container for generated table spec paths."""
 
     spec_path: Path
-    table_name: str
     schema_name: str
+    table_name: str
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -186,10 +195,55 @@ def pipeline_config_factory_fixture(
     return _build
 
 
+@pytest.fixture(name='pipeline_table_schemas_config')
+def pipeline_table_schemas_config_fixture(
+    tmp_path: Path,
+) -> PipelineSchema:
+    """
+    Create a pipeline YAML containing ``table_schemas`` for render smoke tests.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory managed by pytest.
+
+    Returns
+    -------
+    PipelineSchema
+        Bundle containing the pipeline path and table identifiers.
+    """
+    schema_name = 'dbo'
+    table_name = 'SmokePipelineUsers'
+    pipeline_yaml = dedent(
+        f"""
+        name: Smoke Render Pipeline
+        table_schemas:
+          - schema: {schema_name}
+            table: {table_name}
+            columns:
+              - name: id
+                type: int
+                nullable: false
+              - name: name
+                type: nvarchar(100)
+                nullable: false
+            primary_key:
+              columns: [id]
+        """,
+    ).strip()
+    cfg_path = tmp_path / 'pipeline_table_schemas.yml'
+    cfg_path.write_text(pipeline_yaml, encoding='utf-8')
+    return PipelineSchema(
+        config_path=cfg_path,
+        schema_name=schema_name,
+        table_name=table_name,
+    )
+
+
 @pytest.fixture(name='table_spec')
 def table_spec_fixture(
     tmp_path: Path,
-) -> TableSpecFixture:
+) -> TableSpec:
     """
     Create a minimal table spec JSON file for render smoke tests.
 
@@ -200,7 +254,7 @@ def table_spec_fixture(
 
     Returns
     -------
-    TableSpecFixture
+    TableSpec
         Bundle containing the spec file path and identifiers.
     """
     schema_name = 'dbo'
@@ -216,8 +270,8 @@ def table_spec_fixture(
     }
     spec_path = tmp_path / 'table_spec.json'
     spec_path.write_text(json.dumps(spec, indent=2), encoding='utf-8')
-    return TableSpecFixture(
+    return TableSpec(
         spec_path=spec_path,
-        table_name=table_name,
         schema_name=schema_name,
+        table_name=table_name,
     )
