@@ -20,7 +20,14 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
 
-# SECTION: HELPERS ========================================================= #
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for smoke tests.
+pytestmark = pytest.mark.smoke
+
+
+# SECTION: TYPES ============================================================ #
 
 
 @dataclass(slots=True)
