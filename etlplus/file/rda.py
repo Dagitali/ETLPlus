@@ -23,8 +23,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,18 +41,8 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _get_pyreadr() -> Any:
-    """Return the pyreadr module, importing it on first use."""
-    return get_optional_module(
-        'pyreadr',
-        error_message=(
-            'RDA support requires optional dependency "pyreadr".\n'
-            'Install with: pip install pyreadr'
-        ),
-    )
-
-
 def _coerce_r_object(value: Any, pandas: Any) -> JSONData:
+    """Normalize a pyreadr object into JSON-friendly data."""
     if isinstance(value, pandas.DataFrame):
         return value.to_dict(orient='records')
     if isinstance(value, dict):
@@ -82,7 +73,7 @@ def read(
     JSONData
         The structured data read from the RDA file.
     """
-    pyreadr = _get_pyreadr()
+    pyreadr = get_dependency('pyreadr', format_name='RDA')
     pandas = get_pandas('RDA')
     result = pyreadr.read_r(str(path))
     if not result:
@@ -120,21 +111,12 @@ def write(
     ------
     ImportError
         If "pyreadr" is not installed with write support.
-    TypeError
-        If *data* is not a dictionary or list of dictionaries.
     """
-    pyreadr = _get_pyreadr()
+    pyreadr = get_dependency('pyreadr', format_name='RDA')
     pandas = get_pandas('RDA')
-
-    if isinstance(data, list):
-        records = normalize_records(data, 'RDA')
-        frame = pandas.DataFrame.from_records(records)
-        count = len(records)
-    elif isinstance(data, dict):
-        frame = pandas.DataFrame.from_records([data])
-        count = 1
-    else:
-        raise TypeError('RDA payloads must be a dict or list of dicts')
+    records = normalize_records(data, 'RDA')
+    frame = pandas.DataFrame.from_records(records)
+    count = len(records)
 
     writer = getattr(pyreadr, 'write_rdata', None) or getattr(
         pyreadr,
@@ -146,7 +128,7 @@ def write(
             'RDA write support requires "pyreadr" with write_rdata().',
         )
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     try:
         writer(str(path), frame, df_name='data')
     except TypeError:
