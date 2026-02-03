@@ -18,14 +18,20 @@ Notes
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any
-
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ..types import StrPath
+from ._imports import get_dependency
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._sql import DEFAULT_TABLE
+from ._sql import DUCKDB_DIALECT
+from ._sql import coerce_sql_value
+from ._sql import collect_column_values
+from ._sql import infer_column_type
+from ._sql import quote_identifier
+from ._sql import resolve_table
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -37,115 +43,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
-
-DEFAULT_TABLE = 'data'
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_sql_value(
-    value: Any,
-) -> Any:
-    """
-    Normalize values into DuckDB-compatible types.
-
-    Parameters
-    ----------
-    value : Any
-        The value to normalize.
-
-    Returns
-    -------
-    Any
-        The normalized value.
-    """
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    return json.dumps(value, ensure_ascii=True)
-
-
-def _get_duckdb() -> Any:
-    """
-    Return the duckdb module, importing it on first use.
-
-    Returns
-    -------
-    Any
-        The duckdb module.
-    """
-    return get_optional_module(
-        'duckdb',
-        error_message=(
-            'DUCKDB support requires optional dependency "duckdb".\n'
-            'Install with: pip install duckdb'
-        ),
-    )
-
-
-def _infer_column_type(values: list[Any]) -> str:
-    """Infer a basic DuckDB column type from sample values."""
-    seen_bool = False
-    seen_int = False
-    seen_float = False
-    seen_other = False
-    for value in values:
-        if value is None:
-            continue
-        if isinstance(value, bool):
-            seen_bool = True
-        elif isinstance(value, int):
-            seen_int = True
-        elif isinstance(value, float):
-            seen_float = True
-        else:
-            seen_other = True
-            break
-    if seen_other:
-        return 'VARCHAR'
-    if seen_float:
-        return 'DOUBLE'
-    if seen_int:
-        return 'BIGINT'
-    if seen_bool:
-        return 'BOOLEAN'
-    return 'VARCHAR'
-
-
-def _quote_identifier(value: str) -> str:
-    """Return a safely quoted SQL identifier."""
-    escaped = value.replace('"', '""')
-    return f'"{escaped}"'
-
-
-def _resolve_table(tables: list[str]) -> str | None:
-    """Pick a table name for read operations."""
-    if not tables:
-        return None
-    if DEFAULT_TABLE in tables:
-        return DEFAULT_TABLE
-    if len(tables) == 1:
-        return tables[0]
-    raise ValueError(
-        'Multiple tables found in DuckDB file; expected "data" or a '
-        'single table',
-    )
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read DUCKDB content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DUCKDB file on disk.
 
     Returns
@@ -153,20 +62,21 @@ def read(
     JSONList
         The list of dictionaries read from the DUCKDB file.
     """
-    duckdb = _get_duckdb()
+    path = coerce_path(path)
+    duckdb = get_dependency('duckdb', format_name='DUCKDB')
     conn = duckdb.connect(str(path))
     try:
         tables = [row[0] for row in conn.execute('SHOW TABLES').fetchall()]
-        table = _resolve_table(tables)
+        table = resolve_table(tables, engine_name='DuckDB')
         if table is None:
             return []
-        query = f'SELECT * FROM {_quote_identifier(table)}'
+        query = f'SELECT * FROM {quote_identifier(table)}'
         cursor = conn.execute(query)
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description or []]
         if not columns:
             info = conn.execute(
-                f'PRAGMA table_info({_quote_identifier(table)})',
+                f'PRAGMA table_info({quote_identifier(table)})',
             ).fetchall()
             columns = [row[1] for row in info]
         return [dict(zip(columns, row, strict=True)) for row in rows]
@@ -175,7 +85,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -183,7 +93,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DUCKDB file on disk.
     data : JSONData
         Data to write as DUCKDB. Should be a list of dictionaries or a
@@ -194,38 +104,35 @@ def write(
     int
         The number of rows written to the DUCKDB file.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'DUCKDB')
     if not records:
         return 0
 
-    columns = sorted({key for row in records for key in row})
+    columns, column_values = collect_column_values(records)
     if not columns:
         return 0
 
-    column_values: dict[str, list[Any]] = {col: [] for col in columns}
-    for row in records:
-        for column in columns:
-            column_values[column].append(row.get(column))
-
     column_defs = ', '.join(
-        f'{_quote_identifier(column)} {_infer_column_type(values)}'
+        f'{quote_identifier(column)} '
+        f'{infer_column_type(values, DUCKDB_DIALECT)}'
         for column, values in column_values.items()
     )
-    table_ident = _quote_identifier(DEFAULT_TABLE)
-    insert_columns = ', '.join(_quote_identifier(column) for column in columns)
+    table_ident = quote_identifier(DEFAULT_TABLE)
+    insert_columns = ', '.join(quote_identifier(column) for column in columns)
     placeholders = ', '.join('?' for _ in columns)
     insert_sql = (
         f'INSERT INTO {table_ident} ({insert_columns}) VALUES ({placeholders})'
     )
 
-    duckdb = _get_duckdb()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    duckdb = get_dependency('duckdb', format_name='DUCKDB')
+    ensure_parent_dir(path)
     conn = duckdb.connect(str(path))
     try:
         conn.execute(f'DROP TABLE IF EXISTS {table_ident}')
         conn.execute(f'CREATE TABLE {table_ident} ({column_defs})')
         rows = [
-            tuple(_coerce_sql_value(row.get(column)) for column in columns)
+            tuple(coerce_sql_value(row.get(column)) for column in columns)
             for row in records
         ]
         conn.executemany(insert_sql, rows)

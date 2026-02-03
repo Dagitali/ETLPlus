@@ -18,12 +18,14 @@ Notes
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import StrPath
 from ..utils import count_records
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -124,10 +126,7 @@ def _element_to_dict(
             result[tag] = child_data
 
     for key, value in element.attrib.items():
-        if key in result:
-            result[f'@{key}'] = value
-        else:
-            result[key] = value
+        result[f'@{key}'] = value
     return result
 
 
@@ -135,14 +134,14 @@ def _element_to_dict(
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONDict:
     """
     Read XML content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XML file on disk.
 
     Returns
@@ -150,6 +149,7 @@ def read(
     JSONDict
         Nested dictionary representation of the XML file.
     """
+    path = coerce_path(path)
     tree = ET.parse(path)
     root = tree.getroot()
 
@@ -157,7 +157,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
     *,
     root_tag: str,
@@ -167,7 +167,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XML file on disk.
     data : JSONData
         Data to write as XML.
@@ -179,6 +179,7 @@ def write(
     int
         The number of records written to the XML file.
     """
+    path = coerce_path(path)
     if isinstance(data, dict) and len(data) == 1:
         root_name, payload = next(iter(data.items()))
         root_element = _dict_to_element(str(root_name), payload)
@@ -186,6 +187,7 @@ def write(
         root_element = _dict_to_element(root_tag, data)
 
     tree = ET.ElementTree(root_element)
+    ensure_parent_dir(path)
     tree.write(path, encoding='utf-8', xml_declaration=True)
 
     return count_records(data)

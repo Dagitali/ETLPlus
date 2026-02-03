@@ -17,12 +17,13 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
+from ..types import StrPath
 from ..utils import count_records
 from ._imports import get_yaml
+from ._io import coerce_path
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,7 +39,7 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read YAML content from *path*.
@@ -47,19 +48,15 @@ def read(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the YAML file on disk.
 
     Returns
     -------
     JSONData
         The structured data read from the YAML file.
-
-    Raises
-    ------
-    TypeError
-        If the YAML root is not an object or an array of objects.
     """
+    path = coerce_path(path)
     with path.open('r', encoding='utf-8') as handle:
         loaded = get_yaml().safe_load(handle)
 
@@ -67,7 +64,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -75,7 +72,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the YAML file on disk.
     data : JSONData
         Data to write as YAML.
@@ -85,6 +82,8 @@ def write(
     int
         The number of records written.
     """
+    path = coerce_path(path)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         get_yaml().safe_dump(
             data,

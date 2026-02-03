@@ -19,11 +19,13 @@ Notes
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from ..types import JSONData
+from ..types import StrPath
 from ..utils import count_records
+from ._io import coerce_path
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,7 +41,7 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read JSON content from *path*.
@@ -48,19 +50,15 @@ def read(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the JSON file on disk.
 
     Returns
     -------
     JSONData
         The structured data read from the JSON file.
-
-    Raises
-    ------
-    TypeError
-        If the JSON root is not an object or an array of objects.
     """
+    path = coerce_path(path)
     with path.open('r', encoding='utf-8') as handle:
         loaded = json.load(handle)
 
@@ -68,7 +66,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -76,7 +74,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the JSON file on disk.
     data : JSONData
         Data to serialize as JSON.
@@ -86,7 +84,8 @@ def write(
     int
         The number of records written to the JSON file.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = coerce_path(path)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         json.dump(
             data,

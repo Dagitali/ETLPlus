@@ -18,12 +18,15 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,39 +43,30 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read ORC content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ORC file on disk.
 
     Returns
     -------
     JSONList
         The list of dictionaries read from the ORC file.
-
-    Raises
-    ------
-    ImportError
-        When optional dependency "pyarrow" is missing.
     """
+    path = coerce_path(path)
+    get_dependency('pyarrow', format_name='ORC')
     pandas = get_pandas('ORC')
-    try:
-        frame = pandas.read_orc(path)
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'ORC support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow',
-        ) from e
+    frame = pandas.read_orc(path)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -80,7 +74,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ORC file on disk.
     data : JSONData
         Data to write.
@@ -89,24 +83,15 @@ def write(
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    ImportError
-        When optional dependency "pyarrow" is missing.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'ORC')
     if not records:
         return 0
 
+    get_dependency('pyarrow', format_name='ORC')
     pandas = get_pandas('ORC')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_orc(path, index=False)
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'ORC support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow',
-        ) from e
+    frame.to_orc(path, index=False)
     return len(records)

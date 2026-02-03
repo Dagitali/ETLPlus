@@ -6,12 +6,13 @@ Helpers for reading Excel XLS files (write is not supported).
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from ._imports import get_pandas
+from ._io import coerce_path
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -27,14 +28,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read XLS content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XLS file on disk.
 
     Returns
@@ -47,6 +48,7 @@ def read(
     ImportError
         If the optional dependency "xlrd" is not installed.
     """
+    path = coerce_path(path)
     pandas = get_pandas('XLS')
     try:
         frame = pandas.read_excel(path, engine='xlrd')
@@ -59,7 +61,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -71,7 +73,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XLS file on disk.
     data : JSONData
         Data to write.
@@ -86,4 +88,5 @@ def write(
     RuntimeError
         If XLS writing is attempted.
     """
+    path = coerce_path(path)
     raise RuntimeError('XLS write is not supported; use XLSX instead')

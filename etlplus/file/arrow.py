@@ -18,13 +18,14 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ..types import StrPath
+from ._imports import get_dependency
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -37,32 +38,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_pyarrow() -> Any:
-    """Return the pyarrow module, importing it on first use."""
-    return get_optional_module(
-        'pyarrow',
-        error_message=(
-            'ARROW support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow'
-        ),
-    )
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read ARROW content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the Apache Arrow file on disk.
 
     Returns
@@ -70,7 +57,8 @@ def read(
     JSONList
         The list of dictionaries read from the Apache Arrow file.
     """
-    pyarrow = _get_pyarrow()
+    path = coerce_path(path)
+    pyarrow = get_dependency('pyarrow', format_name='ARROW')
     with pyarrow.memory_map(str(path), 'r') as source:
         reader = pyarrow.ipc.open_file(source)
         table = reader.read_all()
@@ -78,7 +66,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -86,7 +74,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ARROW file on disk.
     data : JSONData
         Data to write as ARROW. Should be a list of dictionaries or a
@@ -97,13 +85,14 @@ def write(
     int
         The number of rows written to the ARROW file.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'ARROW')
     if not records:
         return 0
 
-    pyarrow = _get_pyarrow()
+    pyarrow = get_dependency('pyarrow', format_name='ARROW')
     table = pyarrow.Table.from_pylist(records)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with pyarrow.OSFile(str(path), 'wb') as sink:
         with pyarrow.ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
