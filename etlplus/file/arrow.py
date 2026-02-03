@@ -19,12 +19,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ._imports import get_dependency
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,20 +35,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_pyarrow() -> Any:
-    """Return the pyarrow module, importing it on first use."""
-    return get_optional_module(
-        'pyarrow',
-        error_message=(
-            'ARROW support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow'
-        ),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -70,7 +56,7 @@ def read(
     JSONList
         The list of dictionaries read from the Apache Arrow file.
     """
-    pyarrow = _get_pyarrow()
+    pyarrow = get_dependency('pyarrow', format_name='ARROW')
     with pyarrow.memory_map(str(path), 'r') as source:
         reader = pyarrow.ipc.open_file(source)
         table = reader.read_all()
@@ -101,9 +87,9 @@ def write(
     if not records:
         return 0
 
-    pyarrow = _get_pyarrow()
+    pyarrow = get_dependency('pyarrow', format_name='ARROW')
     table = pyarrow.Table.from_pylist(records)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with pyarrow.OSFile(str(path), 'wb') as sink:
         with pyarrow.ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
