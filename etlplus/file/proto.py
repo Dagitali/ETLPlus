@@ -71,6 +71,11 @@ def write(
     -------
     int
         The number of records written to the PROTO file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is not a dictionary or is missing a ``schema`` string.
     """
     if isinstance(data, list):
         raise TypeError('PROTO payloads must be a dict')
