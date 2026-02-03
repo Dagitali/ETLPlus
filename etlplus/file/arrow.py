@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.arrow` module.
 
-Stub helpers for reading/writing Apache Arrow (ARROW) files (not implemented
-yet).
+Helpers for reading/writing Apache Arrow (ARROW) files.
 
 Notes
 -----
@@ -20,10 +19,13 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._imports import get_optional_module
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,6 +35,20 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _get_pyarrow() -> Any:
+    """Return the pyarrow module, importing it on first use."""
+    return get_optional_module(
+        'pyarrow',
+        error_message=(
+            'ARROW support requires optional dependency "pyarrow".\n'
+            'Install with: pip install pyarrow'
+        ),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -54,7 +70,11 @@ def read(
     JSONList
         The list of dictionaries read from the Apache Arrow file.
     """
-    return stub.read(path, format_name='ARROW')
+    pyarrow = _get_pyarrow()
+    with pyarrow.memory_map(str(path), 'r') as source:
+        reader = pyarrow.ipc.open_file(source)
+        table = reader.read_all()
+    return cast(JSONList, table.to_pylist())
 
 
 def write(
@@ -77,4 +97,14 @@ def write(
     int
         The number of rows written to the ARROW file.
     """
-    return stub.write(path, data, format_name='ARROW')
+    records = normalize_records(data, 'ARROW')
+    if not records:
+        return 0
+
+    pyarrow = _get_pyarrow()
+    table = pyarrow.Table.from_pylist(records)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with pyarrow.OSFile(str(path), 'wb') as sink:
+        with pyarrow.ipc.new_file(sink, table.schema) as writer:
+            writer.write_table(table)
+    return len(records)
