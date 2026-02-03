@@ -78,4 +78,4 @@ def write(
     int
         The number of rows written to the TSV file.
     """
-    return write_delimited(path, data, delimiter='\t')
+    return write_delimited(path, data, delimiter='\t', format_name='TSV')
