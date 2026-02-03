@@ -25,7 +25,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ._imports import get_fastavro
+from ._imports import get_dependency
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 
@@ -137,7 +137,7 @@ def read(
     JSONList
         The list of dictionaries read from the AVRO file.
     """
-    fastavro = get_fastavro()
+    fastavro = get_dependency('fastavro', format_name='AVRO')
     with path.open('rb') as handle:
         reader = fastavro.reader(handle)
         return [cast(JSONDict, record) for record in reader]
@@ -166,7 +166,7 @@ def write(
     if not records:
         return 0
 
-    fastavro = get_fastavro()
+    fastavro = get_dependency('fastavro', format_name='AVRO')
     schema = _infer_schema(records)
     parsed_schema = fastavro.parse_schema(schema)
 
