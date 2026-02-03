@@ -22,6 +22,7 @@ _MODULE_CACHE: dict[str, Any] = {}
 def _error_message(
     module_name: str,
     format_name: str,
+    pip_name: str | None = None,
 ) -> str:
     """
     Build an import error message for an optional dependency.
@@ -32,16 +33,19 @@ def _error_message(
         Module name to look up.
     format_name : str
         Human-readable format name for templated messages.
+    pip_name : str | None, optional
+        Package name to suggest for installation. Defaults to *module_name*.
 
     Returns
     -------
     str
         Formatted error message.
     """
+    install_name = pip_name or module_name
     return (
         f'{format_name} support requires '
-        f'optional dependency "{module_name}".\n'
-        f'Install with: pip install {module_name}'
+        f'optional dependency "{install_name}".\n'
+        f'Install with: pip install {install_name}'
     )
 
 
@@ -84,19 +88,36 @@ def get_optional_module(
     return module
 
 
-def get_fastavro() -> Any:
+def get_dependency(
+    module_name: str,
+    *,
+    format_name: str,
+    pip_name: str | None = None,
+) -> Any:
     """
-    Return the fastavro module, importing it on first use.
+    Return an optional dependency module with a standardized error message.
 
-    Raises an informative ImportError if the optional dependency is missing.
+    Parameters
+    ----------
+    module_name : str
+        Name of the module to import.
+    format_name : str
+        Human-readable format name for error messages.
+    pip_name : str | None, optional
+        Package name to suggest for installation (defaults to *module_name*).
 
-    Notes
-    -----
-    Prefer :func:`get_optional_module` for new call sites.
+    Returns
+    -------
+    Any
+        The imported module.
     """
     return get_optional_module(
-        'fastavro',
-        error_message=_error_message('fastavro', format_name='AVRO'),
+        module_name,
+        error_message=_error_message(
+            module_name,
+            format_name=format_name,
+            pip_name=pip_name,
+        ),
     )
 
 
@@ -118,12 +139,9 @@ def get_pandas(
 
     Notes
     -----
-    Prefer :func:`get_optional_module` for new call sites.
+    Prefer :func:`get_dependency` for new call sites.
     """
-    return get_optional_module(
-        'pandas',
-        error_message=_error_message('pandas', format_name=format_name),
-    )
+    return get_dependency('pandas', format_name=format_name)
 
 
 def get_yaml() -> Any:
@@ -134,9 +152,6 @@ def get_yaml() -> Any:
 
     Notes
     -----
-    Prefer :func:`get_optional_module` for new call sites.
+    Prefer :func:`get_dependency` for new call sites.
     """
-    return get_optional_module(
-        'yaml',
-        error_message=_error_message('PyYAML', format_name='YAML'),
-    )
+    return get_dependency('yaml', format_name='YAML', pip_name='PyYAML')

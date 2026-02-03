@@ -265,7 +265,7 @@ class File:
 
     def read(self) -> JSONData:
         """
-        Read structured data from :attr:path` using :attr:`file_format`.
+        Read structured data from :attr:`path` using :attr:`file_format`.
 
         Returns
         -------

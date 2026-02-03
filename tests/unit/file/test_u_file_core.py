@@ -623,21 +623,19 @@ class TestFile:
             f.read()
         assert 'Cannot infer file format' in str(e.value)
 
-    def test_write_csv_filters_non_dicts(
+    def test_write_csv_rejects_non_dicts(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Test non-dict entries being ignored when writing CSV rows.
+        Test non-dict entries raising a TypeError when writing CSV rows.
         """
         path = tmp_path / 'data.csv'
         invalid_entry = cast(dict[str, object], 'invalid')
-        count = File(path, FileFormat.CSV).write(
-            [{'name': 'John'}, invalid_entry],
-        )
-
-        assert count == 1
-        assert 'name' in path.read_text(encoding='utf-8')
+        with pytest.raises(TypeError, match='CSV payloads'):
+            File(path, FileFormat.CSV).write(
+                [{'name': 'John'}, invalid_entry],
+            )
 
     def test_write_json_returns_record_count(
         self,

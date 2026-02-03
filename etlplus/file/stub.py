@@ -6,10 +6,10 @@ Helpers for reading/writing stubbed files.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
+from ._io import coerce_path
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -25,7 +25,7 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
     format_name: str = 'Stubbed',
 ) -> JSONList:
     """
@@ -33,7 +33,7 @@ def read(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the stubbed file on disk.
     format_name : str
         Human-readable format name.
@@ -48,12 +48,13 @@ def read(
     NotImplementedError
         Always, since this is a stub implementation.
     """
+    path = coerce_path(path)
     _ = path
     raise NotImplementedError(f'{format_name} read is not implemented yet')
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
     format_name: str = 'Stubbed',
 ) -> int:
@@ -62,7 +63,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the stubbed file on disk.
     data : JSONData
         Data to write as stubbed file. Should be a list of dictionaries or a
@@ -80,6 +81,7 @@ def write(
     NotImplementedError
         Always, since this is a stub implementation.
     """
+    path = coerce_path(path)
     _ = path
     _ = data
     raise NotImplementedError(f'{format_name} write is not implemented yet')

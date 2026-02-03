@@ -11,6 +11,9 @@ import tempfile
 from pathlib import Path
 
 from ..types import JSONData
+from ..types import StrPath
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from .enums import CompressionFormat
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
@@ -29,14 +32,14 @@ __all__ = [
 
 
 def _resolve_format(
-    path: Path,
+    path: StrPath,
 ) -> FileFormat:
     """
     Resolve the inner file format from a .gz filename.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the GZ file on disk.
 
     Returns
@@ -63,14 +66,14 @@ def _resolve_format(
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read GZ content from *path* and parse the inner payload.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the GZ file on disk.
 
     Returns
@@ -78,6 +81,7 @@ def read(
     JSONData
         Parsed payload.
     """
+    path = coerce_path(path)
     fmt = _resolve_format(path)
     with gzip.open(path, 'rb') as handle:
         payload = handle.read()
@@ -91,7 +95,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -99,7 +103,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the GZ file on disk.
     data : JSONData
         Data to write.
@@ -109,6 +113,7 @@ def write(
     int
         Number of records written.
     """
+    path = coerce_path(path)
     fmt = _resolve_format(path)
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
@@ -117,7 +122,7 @@ def write(
         count = File(tmp_path, fmt).write(data)
         payload = tmp_path.read_bytes()
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with gzip.open(path, 'wb') as handle:
         handle.write(payload)
 

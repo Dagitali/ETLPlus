@@ -18,14 +18,15 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ..types import StrPath
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,18 +42,24 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _get_xarray() -> Any:
-    """Return the xarray module, importing it on first use."""
-    return get_optional_module(
-        'xarray',
-        error_message=(
-            'NC support requires optional dependency "xarray".\n'
-            'Install with: pip install xarray'
-        ),
-    )
+def _raise_engine_error(
+    err: ImportError,
+) -> None:
+    """
+    Raise a consistent ImportError for missing NetCDF engine support.
 
+    Parameters
+    ----------
+    err : ImportError
+        The original ImportError raised when trying to use NetCDF support
+        without the required dependency.
 
-def _raise_engine_error(err: ImportError) -> None:
+    Raises
+    ------
+    ImportError
+        Consistent ImportError indicating that NetCDF support requires
+        optional dependencies.
+    """
     raise ImportError(
         'NC support requires optional dependency "netCDF4" or "h5netcdf".\n'
         'Install with: pip install netCDF4',
@@ -63,14 +70,14 @@ def _raise_engine_error(err: ImportError) -> None:
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read NC content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the NC file on disk.
 
     Returns
@@ -78,7 +85,8 @@ def read(
     JSONList
         The list of dictionaries read from the NC file.
     """
-    xarray = _get_xarray()
+    path = coerce_path(path)
+    xarray = get_dependency('xarray', format_name='NC')
     try:
         dataset = xarray.open_dataset(path)
     except ImportError as err:  # pragma: no cover
@@ -93,7 +101,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -101,7 +109,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the NC file on disk.
     data : JSONData
         Data to write as NC file. Should be a list of dictionaries or a
@@ -112,15 +120,16 @@ def write(
     int
         The number of rows written to the NC file.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'NC')
     if not records:
         return 0
 
-    xarray = _get_xarray()
+    xarray = get_dependency('xarray', format_name='NC')
     pandas = get_pandas('NC')
     frame = pandas.DataFrame.from_records(records)
     dataset = xarray.Dataset.from_dataframe(frame)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     try:
         dataset.to_netcdf(path)
     except ImportError as err:  # pragma: no cover

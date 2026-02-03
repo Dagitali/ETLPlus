@@ -20,11 +20,14 @@ Notes
 from __future__ import annotations
 
 import configparser
-from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import StrPath
+from ._io import coerce_path
+from ._io import ensure_parent_dir
+from ._io import require_dict_payload
+from ._io import stringify_value
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -36,28 +39,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _stringify(value: Any) -> str:
-    """Normalize INI values into strings."""
-    if value is None:
-        return ''
-    return str(value)
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read INI content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the INI file on disk.
 
     Returns
@@ -65,6 +58,7 @@ def read(
     JSONData
         The structured data read from the INI file.
     """
+    path = coerce_path(path)
     parser = configparser.ConfigParser()
     parser.read(path, encoding='utf-8')
 
@@ -81,7 +75,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -89,7 +83,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the INI file on disk.
     data : JSONData
         Data to write as INI. Should be a dictionary.
@@ -104,17 +98,16 @@ def write(
     TypeError
         If *data* is not a dictionary.
     """
-    if isinstance(data, list):
-        raise TypeError('INI payloads must be a dict')
-    if not isinstance(data, dict):
-        raise TypeError('INI payloads must be a dict')
+    path = coerce_path(path)
+    payload = require_dict_payload(data, format_name='INI')
 
     parser = configparser.ConfigParser()
-    for section, values in data.items():
+    for section, values in payload.items():
         if section == 'DEFAULT':
             if isinstance(values, dict):
                 parser['DEFAULT'] = {
-                    key: _stringify(value) for key, value in values.items()
+                    key: stringify_value(value)
+                    for key, value in values.items()
                 }
             else:
                 raise TypeError('INI DEFAULT section must be a dict')
@@ -122,10 +115,10 @@ def write(
         if not isinstance(values, dict):
             raise TypeError('INI sections must map to dicts')
         parser[section] = {
-            key: _stringify(value) for key, value in values.items()
+            key: stringify_value(value) for key, value in values.items()
         }
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8', newline='') as handle:
         parser.write(handle)
     return 1

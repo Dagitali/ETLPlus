@@ -18,12 +18,15 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,39 +43,30 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read DTA content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DTA file on disk.
 
     Returns
     -------
     JSONList
         The list of dictionaries read from the DTA file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for DTA support are missing.
     """
+    path = coerce_path(path)
+    get_dependency('pyreadstat', format_name='DTA')
     pandas = get_pandas('DTA')
-    try:
-        frame = pandas.read_stata(path)
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'DTA support may require optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat',
-        ) from err
+    frame = pandas.read_stata(path)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -80,7 +74,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DTA file on disk.
     data : JSONData
         Data to write as DTA file. Should be a list of dictionaries or a single
@@ -90,24 +84,15 @@ def write(
     -------
     int
         The number of rows written to the DTA file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for DTA support are missing.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'DTA')
     if not records:
         return 0
 
+    get_dependency('pyreadstat', format_name='DTA')
     pandas = get_pandas('DTA')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_stata(path, write_index=False)
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'DTA support may require optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat',
-        ) from err
+    frame.to_stata(path, write_index=False)
     return len(records)

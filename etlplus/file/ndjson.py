@@ -18,13 +18,15 @@ Notes
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..types import StrPath
 from ..utils import count_records
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,14 +43,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read NDJSON content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the NDJSON file on disk.
 
     Returns
@@ -61,6 +63,7 @@ def read(
     TypeError
         If any line in the NDJSON file is not a JSON object (dict).
     """
+    path = coerce_path(path)
     rows: JSONList = []
     with path.open('r', encoding='utf-8') as handle:
         for idx, line in enumerate(handle, start=1):
@@ -77,7 +80,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -85,7 +88,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the NDJSON file on disk.
     data : JSONData
         Data to write.
@@ -95,12 +98,13 @@ def write(
     int
         Number of records written.
     """
+    path = coerce_path(path)
     rows = normalize_records(data, 'NDJSON')
 
     if not rows:
         return 0
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False))

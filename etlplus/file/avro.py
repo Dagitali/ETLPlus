@@ -18,15 +18,16 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from typing import cast
-
-from etlplus.file._imports import get_fastavro
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..types import StrPath
+from ._imports import get_dependency
+from ._io import coerce_path
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -122,14 +123,14 @@ def _merge_types(types: list[str]) -> str | list[str]:
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read AVRO content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the AVRO file on disk.
 
     Returns
@@ -137,14 +138,15 @@ def read(
     JSONList
         The list of dictionaries read from the AVRO file.
     """
-    fastavro = get_fastavro()
+    path = coerce_path(path)
+    fastavro = get_dependency('fastavro', format_name='AVRO')
     with path.open('rb') as handle:
         reader = fastavro.reader(handle)
         return [cast(JSONDict, record) for record in reader]
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -152,7 +154,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the AVRO file on disk.
     data : JSONData
         Data to write.
@@ -162,15 +164,16 @@ def write(
     int
         Number of records written.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'AVRO')
     if not records:
         return 0
 
-    fastavro = get_fastavro()
+    fastavro = get_dependency('fastavro', format_name='AVRO')
     schema = _infer_schema(records)
     parsed_schema = fastavro.parse_schema(schema)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('wb') as handle:
         fastavro.writer(handle, parsed_schema, records)
 

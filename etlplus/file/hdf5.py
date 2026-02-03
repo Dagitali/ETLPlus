@@ -19,13 +19,14 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from . import stub
 from ._imports import get_pandas
+from ._io import coerce_path
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -46,7 +47,23 @@ DEFAULT_KEY = 'data'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _raise_tables_error(err: ImportError) -> None:
+def _raise_tables_error(
+    err: ImportError,
+) -> None:
+    """
+    Raise a consistent ImportError for missing PyTables support.
+
+    Parameters
+    ----------
+    err : ImportError
+        The original ImportError raised when trying to use HDF5 support without
+        the required dependency.
+
+    Raises
+    ------
+    ImportError
+        Consistent ImportError indicating that PyTables is required.
+    """
     raise ImportError(
         'HDF5 support requires optional dependency "tables".\n'
         'Install with: pip install tables',
@@ -57,21 +74,28 @@ def _raise_tables_error(err: ImportError) -> None:
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read HDF5 content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the HDF5 file on disk.
 
     Returns
     -------
     JSONList
         The list of dictionaries read from the HDF5 file.
+
+    Raises
+    ------
+    ValueError
+        If multiple datasets are found in the HDF5 file without a clear key to
+        use.
     """
+    path = coerce_path(path)
     pandas = get_pandas('HDF5')
     try:
         store = pandas.HDFStore(path)
@@ -96,7 +120,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -104,7 +128,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the HDF5 file on disk.
     data : JSONData
         Data to write as HDF5 file. Should be a list of dictionaries or a
@@ -115,4 +139,5 @@ def write(
     int
         The number of rows written to the HDF5 file.
     """
+    path = coerce_path(path)
     return stub.write(path, data, format_name='HDF5')
