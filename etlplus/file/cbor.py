@@ -19,11 +19,11 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -34,20 +34,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_cbor() -> Any:
-    """Return the cbor2 module, importing it on first use."""
-    return get_optional_module(
-        'cbor2',
-        error_message=(
-            'CBOR support requires optional dependency "cbor2".\n'
-            'Install with: pip install cbor2'
-        ),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -69,7 +55,7 @@ def read(
     JSONData
         The structured data read from the CBOR file.
     """
-    cbor2 = _get_cbor()
+    cbor2 = get_dependency('cbor2', format_name='CBOR')
     with path.open('rb') as handle:
         payload = cbor2.loads(handle.read())
     return coerce_record_payload(payload, format_name='CBOR')
@@ -95,10 +81,10 @@ def write(
     int
         The number of rows written to the CBOR file.
     """
-    cbor2 = _get_cbor()
+    cbor2 = get_dependency('cbor2', format_name='CBOR')
     records = normalize_records(data, 'CBOR')
     payload: JSONData = records if isinstance(data, list) else records[0]
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('wb') as handle:
         handle.write(cbor2.dumps(payload))
     return len(records)
