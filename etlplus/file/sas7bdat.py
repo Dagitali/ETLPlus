@@ -17,14 +17,15 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from . import stub
 from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import coerce_path
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,14 +41,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read SAS7BDAT content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the SAS7BDAT file on disk.
 
     Returns
@@ -55,6 +56,7 @@ def read(
     JSONList
         The list of dictionaries read from the SAS7BDAT file.
     """
+    path = coerce_path(path)
     get_dependency('pyreadstat', format_name='SAS7BDAT')
     pandas = get_pandas('SAS7BDAT')
     try:
@@ -65,7 +67,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -73,7 +75,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the SAS7BDAT file on disk.
     data : JSONData
         Data to write as SAS7BDAT file. Should be a list of dictionaries or a
@@ -84,4 +86,5 @@ def write(
     int
         The number of rows written to the SAS7BDAT file.
     """
+    path = coerce_path(path)
     return stub.write(path, data, format_name='SAS7BDAT')

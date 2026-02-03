@@ -16,11 +16,11 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from ..utils import count_records
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 
@@ -38,14 +38,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read TXT content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the TXT file on disk.
 
     Returns
@@ -53,6 +53,7 @@ def read(
     JSONList
         The list of dictionaries read from the TXT file.
     """
+    path = coerce_path(path)
     rows: JSONList = []
     with path.open('r', encoding='utf-8') as handle:
         for line in handle:
@@ -64,7 +65,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -72,7 +73,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the TXT file on disk.
     data : JSONData
         Data to write. Expects ``{'text': '...'} `` or a list of those.
@@ -88,6 +89,7 @@ def write(
         If any item in *data* is not a dictionary or if any dictionary
         does not contain a ``'text'`` key.
     """
+    path = coerce_path(path)
     rows = normalize_records(data, 'TXT')
 
     if not rows:

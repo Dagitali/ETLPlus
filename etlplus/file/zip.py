@@ -12,6 +12,8 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from .enums import CompressionFormat
 from .enums import FileFormat
@@ -88,14 +90,14 @@ def _extract_payload(
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read ZIP content from *path* and parse the inner payload(s).
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ZIP file on disk.
 
     Returns
@@ -108,6 +110,7 @@ def read(
     ValueError
         If the ZIP archive is empty.
     """
+    path = coerce_path(path)
     with zipfile.ZipFile(path, 'r') as archive:
         entries = [entry for entry in archive.infolist() if not entry.is_dir()]
         if not entries:
@@ -138,7 +141,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -146,7 +149,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ZIP file on disk.
     data : JSONData
         Data to write.
@@ -156,6 +159,7 @@ def write(
     int
         Number of records written.
     """
+    path = coerce_path(path)
     fmt = _resolve_format(path.name)
     inner_name = Path(path.name).with_suffix('').name
 

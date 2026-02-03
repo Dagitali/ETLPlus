@@ -18,10 +18,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
+from ..types import StrPath
 from ._imports import get_dependency
+from ._io import coerce_path
 from ._io import coerce_record_payload
 from ._io import ensure_parent_dir
 from ._io import normalize_records
@@ -40,14 +40,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read MsgPack content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the MsgPack file on disk.
 
     Returns
@@ -55,6 +55,7 @@ def read(
     JSONData
         The structured data read from the MsgPack file.
     """
+    path = coerce_path(path)
     msgpack = get_dependency('msgpack', format_name='MSGPACK')
     with path.open('rb') as handle:
         payload = msgpack.unpackb(handle.read(), raw=False)
@@ -62,7 +63,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -70,7 +71,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the MsgPack file on disk.
     data : JSONData
         Data to write as MsgPack. Should be a list of dictionaries or a
@@ -81,6 +82,7 @@ def write(
     int
         The number of rows written to the MsgPack file.
     """
+    path = coerce_path(path)
     msgpack = get_dependency('msgpack', format_name='MSGPACK')
     records = normalize_records(data, 'MSGPACK')
     payload: JSONData = records if isinstance(data, list) else records[0]

@@ -19,12 +19,13 @@ Notes
 from __future__ import annotations
 
 import csv
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import write_delimited
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,14 +42,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read DAT content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DAT file on disk.
 
     Returns
@@ -56,6 +57,7 @@ def read(
     JSONList
         The list of dictionaries read from the DAT file.
     """
+    path = coerce_path(path)
     with path.open('r', encoding='utf-8', newline='') as handle:
         sample = handle.read(4096)
         handle.seek(0)
@@ -95,7 +97,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -103,7 +105,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the DAT file on disk.
     data : JSONData
         Data to write as DAT file. Should be a list of dictionaries or a
@@ -114,4 +116,5 @@ def write(
     int
         The number of rows written to the DAT file.
     """
+    path = coerce_path(path)
     return write_delimited(path, data, delimiter=',', format_name='DAT')

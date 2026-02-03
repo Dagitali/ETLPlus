@@ -19,12 +19,13 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from ._imports import get_pandas
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 
@@ -42,14 +43,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read XLSM content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XLSM file on disk.
 
     Returns
@@ -62,6 +63,7 @@ def read(
     ImportError
         If optional dependencies for XLSM support are missing.
     """
+    path = coerce_path(path)
     pandas = get_pandas('XLSM')
     try:
         frame = pandas.read_excel(path)
@@ -74,7 +76,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -82,7 +84,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the XLSM file on disk.
     data : JSONData
         Data to write as XLSM file. Should be a list of dictionaries or a
@@ -98,6 +100,7 @@ def write(
     ImportError
         If optional dependencies for XLSM support are missing.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'XLSM')
     if not records:
         return 0

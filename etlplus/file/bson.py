@@ -17,13 +17,14 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from ._imports import get_dependency
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 
@@ -106,14 +107,14 @@ def _encode_doc(
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read BSON content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the BSON file on disk.
 
     Returns
@@ -121,6 +122,7 @@ def read(
     JSONList
         The list of dictionaries read from the BSON file.
     """
+    path = coerce_path(path)
     bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
     with path.open('rb') as handle:
         payload = handle.read()
@@ -129,7 +131,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -137,7 +139,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the BSON file on disk.
     data : JSONData
         Data to write as BSON. Should be a list of dictionaries or a
@@ -148,6 +150,7 @@ def write(
     int
         The number of rows written to the BSON file.
     """
+    path = coerce_path(path)
     bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
     records = normalize_records(data, 'BSON')
     if not records:

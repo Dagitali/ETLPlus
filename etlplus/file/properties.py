@@ -18,10 +18,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import stringify_value
@@ -40,14 +40,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read PROPERTIES content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the PROPERTIES file on disk.
 
     Returns
@@ -55,6 +55,7 @@ def read(
     JSONData
         The structured data read from the PROPERTIES file.
     """
+    path = coerce_path(path)
     payload: JSONDict = {}
     for line in path.read_text(encoding='utf-8').splitlines():
         stripped = line.strip()
@@ -77,7 +78,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -85,7 +86,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the PROPERTIES file on disk.
     data : JSONData
         Data to write as PROPERTIES. Should be a dictionary.
@@ -95,6 +96,7 @@ def write(
     int
         The number of records written to the PROPERTIES file.
     """
+    path = coerce_path(path)
     payload = require_dict_payload(data, format_name='PROPERTIES')
 
     ensure_parent_dir(path)

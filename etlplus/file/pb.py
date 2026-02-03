@@ -16,9 +16,10 @@ Notes
 from __future__ import annotations
 
 import base64
-from pathlib import Path
 
 from ..types import JSONData
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import require_str_key
@@ -37,14 +38,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read PB content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the PB file on disk.
 
     Returns
@@ -52,13 +53,14 @@ def read(
     JSONData
         The structured data read from the PB file.
     """
+    path = coerce_path(path)
     payload = path.read_bytes()
     encoded = base64.b64encode(payload).decode('ascii')
     return {'payload_base64': encoded}
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -66,7 +68,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the PB file on disk.
     data : JSONData
         Data to write as PB. Should be a dictionary with ``payload_base64``.
@@ -76,6 +78,7 @@ def write(
     int
         The number of records written to the PB file.
     """
+    path = coerce_path(path)
     payload = require_dict_payload(data, format_name='PB')
     payload_base64 = require_str_key(
         payload,

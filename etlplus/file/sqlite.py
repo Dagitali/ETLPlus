@@ -19,10 +19,11 @@ Notes
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._sql import DEFAULT_TABLE
@@ -47,14 +48,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read SQLITE content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the SQLITE file on disk.
 
     Returns
@@ -62,6 +63,7 @@ def read(
     JSONList
         The list of dictionaries read from the SQLITE file.
     """
+    path = coerce_path(path)
     conn = sqlite3.connect(str(path))
     try:
         conn.row_factory = sqlite3.Row
@@ -82,7 +84,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -90,7 +92,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the SQLITE file on disk.
     data : JSONData
         Data to write as SQLITE. Should be a list of dictionaries or a
@@ -101,6 +103,7 @@ def write(
     int
         The number of rows written to the SQLITE file.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'SQLITE')
     if not records:
         return 0

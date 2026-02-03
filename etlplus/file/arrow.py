@@ -18,12 +18,13 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
 from ._imports import get_dependency
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 
@@ -41,14 +42,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read ARROW content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the Apache Arrow file on disk.
 
     Returns
@@ -56,6 +57,7 @@ def read(
     JSONList
         The list of dictionaries read from the Apache Arrow file.
     """
+    path = coerce_path(path)
     pyarrow = get_dependency('pyarrow', format_name='ARROW')
     with pyarrow.memory_map(str(path), 'r') as source:
         reader = pyarrow.ipc.open_file(source)
@@ -64,7 +66,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -72,7 +74,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the ARROW file on disk.
     data : JSONData
         Data to write as ARROW. Should be a list of dictionaries or a
@@ -83,6 +85,7 @@ def write(
     int
         The number of rows written to the ARROW file.
     """
+    path = coerce_path(path)
     records = normalize_records(data, 'ARROW')
     if not records:
         return 0

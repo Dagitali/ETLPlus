@@ -19,10 +19,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
+from ..types import StrPath
+from ._io import coerce_path
 from ._io import read_delimited
 from ._io import write_delimited
 
@@ -40,14 +40,14 @@ __all__ = [
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONList:
     """
     Read TSV content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the TSV file on disk.
 
     Returns
@@ -59,7 +59,7 @@ def read(
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -67,7 +67,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the TSV file on disk.
     data : JSONData
         Data to write as TSV. Should be a list of dictionaries or a
@@ -78,4 +78,5 @@ def write(
     int
         The number of rows written to the TSV file.
     """
+    path = coerce_path(path)
     return write_delimited(path, data, delimiter='\t', format_name='TSV')

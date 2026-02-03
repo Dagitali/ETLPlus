@@ -18,15 +18,15 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ..types import JSONData
 from ..types import JSONDict
+from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._r import coerce_r_object
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,34 +38,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_r_object(value: Any, pandas: Any) -> JSONData:
-    """Normalize a pyreadr object into JSON-friendly data."""
-    if isinstance(value, pandas.DataFrame):
-        return value.to_dict(orient='records')
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, list) and all(
-        isinstance(item, dict) for item in value
-    ):
-        return value
-    return {'value': value}
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def read(
-    path: Path,
+    path: StrPath,
 ) -> JSONData:
     """
     Read RDA content from *path*.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the RDA file on disk.
 
     Returns
@@ -73,6 +57,7 @@ def read(
     JSONData
         The structured data read from the RDA file.
     """
+    path = coerce_path(path)
     pyreadr = get_dependency('pyreadr', format_name='RDA')
     pandas = get_pandas('RDA')
     result = pyreadr.read_r(str(path))
@@ -80,15 +65,15 @@ def read(
         return []
     if len(result) == 1:
         value = next(iter(result.values()))
-        return _coerce_r_object(value, pandas)
+        return coerce_r_object(value, pandas)
     payload: JSONDict = {}
     for key, value in result.items():
-        payload[str(key)] = _coerce_r_object(value, pandas)
+        payload[str(key)] = coerce_r_object(value, pandas)
     return payload
 
 
 def write(
-    path: Path,
+    path: StrPath,
     data: JSONData,
 ) -> int:
     """
@@ -96,7 +81,7 @@ def write(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the RDA file on disk.
     data : JSONData
         Data to write as RDA file. Should be a list of dictionaries or a
@@ -112,6 +97,7 @@ def write(
     ImportError
         If "pyreadr" is not installed with write support.
     """
+    path = coerce_path(path)
     pyreadr = get_dependency('pyreadr', format_name='RDA')
     pandas = get_pandas('RDA')
     records = normalize_records(data, 'RDA')
