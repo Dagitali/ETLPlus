@@ -23,7 +23,8 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ._imports import get_dependency
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -39,7 +40,30 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _decode_all(bson_module: Any, payload: bytes) -> list[dict[str, Any]]:
+def _decode_all(
+    bson_module: Any,
+    payload: bytes,
+) -> list[dict[str, Any]]:
+    """
+    Decode all BSON documents from raw payload bytes.
+
+    Parameters
+    ----------
+    bson_module : Any
+        The imported BSON module to use for decoding.
+    payload : bytes
+        Raw bytes read from the BSON file.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of decoded BSON documents as dictionaries.
+
+    Raises
+    ------
+    AttributeError
+        If the bson module lacks the required :meth:`decode_all()` method.
+    """
     if hasattr(bson_module, 'decode_all'):
         return bson_module.decode_all(payload)
     if hasattr(bson_module, 'BSON'):
@@ -47,23 +71,35 @@ def _decode_all(bson_module: Any, payload: bytes) -> list[dict[str, Any]]:
     raise AttributeError('bson module lacks decode_all()')
 
 
-def _encode_doc(bson_module: Any, doc: dict[str, Any]) -> bytes:
+def _encode_doc(
+    bson_module: Any,
+    doc: dict[str, Any],
+) -> bytes:
+    """
+    Encode a single BSON document to bytes.
+
+    Parameters
+    ----------
+    bson_module : Any
+        The imported BSON module to use for encoding.
+    doc : dict[str, Any]
+        The BSON document to encode.
+
+    Returns
+    -------
+    bytes
+        The encoded BSON document as bytes.
+
+    Raises
+    ------
+    AttributeError
+        If the bson module lacks the required :meth:`encode()` method.
+    """
     if hasattr(bson_module, 'encode'):
         return bson_module.encode(doc)
     if hasattr(bson_module, 'BSON'):
         return bson_module.BSON.encode(doc)
     raise AttributeError('bson module lacks encode()')
-
-
-def _get_bson() -> Any:
-    """Return the bson module, importing it on first use."""
-    return get_optional_module(
-        'bson',
-        error_message=(
-            'BSON support requires optional dependency "pymongo".\n'
-            'Install with: pip install pymongo'
-        ),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -85,7 +121,7 @@ def read(
     JSONList
         The list of dictionaries read from the BSON file.
     """
-    bson = _get_bson()
+    bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
     with path.open('rb') as handle:
         payload = handle.read()
     docs = _decode_all(bson, payload)
@@ -112,12 +148,12 @@ def write(
     int
         The number of rows written to the BSON file.
     """
-    bson = _get_bson()
+    bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
     records = normalize_records(data, 'BSON')
     if not records:
         return 0
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('wb') as handle:
         for record in records:
             handle.write(_encode_doc(bson, record))
