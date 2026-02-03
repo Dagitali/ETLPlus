@@ -121,19 +121,6 @@ def get_dependency(
     )
 
 
-def get_fastavro() -> Any:
-    """
-    Return the fastavro module, importing it on first use.
-
-    Raises an informative ImportError if the optional dependency is missing.
-
-    Notes
-    -----
-    Prefer :func:`get_dependency` for new call sites.
-    """
-    return get_dependency('fastavro', format_name='AVRO')
-
-
 def get_pandas(
     format_name: str,
 ) -> Any:
