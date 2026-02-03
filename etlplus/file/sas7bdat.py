@@ -18,13 +18,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from . import stub
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._imports import get_pandas
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,27 +34,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================ #
-
-
-def _get_pyreadstat() -> Any:
-    """Return the pyreadstat module, importing it on first use."""
-    return get_optional_module(
-        'pyreadstat',
-        error_message=(
-            'SAS7BDAT support requires optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat'
-        ),
-    )
-
-
-def _raise_readstat_error(err: ImportError) -> None:
-    raise ImportError(
-        'SAS7BDAT support requires optional dependency "pyreadstat".\n'
-        'Install with: pip install pyreadstat',
-    ) from err
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -77,13 +55,12 @@ def read(
     JSONList
         The list of dictionaries read from the SAS7BDAT file.
     """
+    get_dependency('pyreadstat', format_name='SAS7BDAT')
     pandas = get_pandas('SAS7BDAT')
     try:
         frame = pandas.read_sas(path, format='sas7bdat')
     except TypeError:
         frame = pandas.read_sas(path)
-    except ImportError as err:  # pragma: no cover
-        _raise_readstat_error(err)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
