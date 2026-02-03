@@ -1,8 +1,8 @@
 """
 :mod:`etlplus.file.hdf5` module.
 
-Stub helpers for reading/writing Hierarchical Data Format (HDF5) files (not
-implemented yet).
+Helpers for reading Hierarchical Data Format (HDF5) files. Stub helpers for
+writing such files (not implemented yet).
 
 Notes
 -----
@@ -20,10 +20,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from . import stub
+from ._imports import get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,6 +35,22 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+DEFAULT_KEY = 'data'
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_tables_error(err: ImportError) -> None:
+    raise ImportError(
+        'HDF5 support requires optional dependency "tables".\n'
+        'Install with: pip install tables',
+    ) from err
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -54,7 +72,27 @@ def read(
     JSONList
         The list of dictionaries read from the HDF5 file.
     """
-    return stub.read(path, format_name='HDF5')
+    pandas = get_pandas('HDF5')
+    try:
+        store = pandas.HDFStore(path)
+    except ImportError as err:  # pragma: no cover
+        _raise_tables_error(err)
+
+    with store:
+        keys = [key.lstrip('/') for key in store.keys()]
+        if not keys:
+            return []
+        if DEFAULT_KEY in keys:
+            key = DEFAULT_KEY
+        elif len(keys) == 1:
+            key = keys[0]
+        else:
+            raise ValueError(
+                'Multiple datasets found in HDF5 file; expected "data" or '
+                'a single dataset',
+            )
+        frame = store.get(key)
+    return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
