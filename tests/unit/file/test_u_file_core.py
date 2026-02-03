@@ -381,6 +381,40 @@ class TestFile:
             f.read()
         assert 'compressed file' in str(e.value)
 
+    def test_duckdb_read_fails_with_multiple_tables(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test DuckDB reader rejects multiple table databases.
+        """
+        duckdb = pytest.importorskip('duckdb')
+        path = tmp_path / 'multi.duckdb'
+        conn = duckdb.connect(str(path))
+        try:
+            conn.execute('CREATE TABLE one (id INTEGER)')
+            conn.execute('CREATE TABLE two (id INTEGER)')
+        finally:
+            conn.close()
+
+        with pytest.raises(ValueError, match='Multiple tables'):
+            File(path, FileFormat.DUCKDB).read()
+
+    def test_gz_round_trip_json(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test JSON round-trip inside a gzip archive.
+        """
+        path = tmp_path / 'data.json.gz'
+        payload = [{'name': 'Ada'}]
+
+        File(path, FileFormat.GZ).write(payload)
+        result = File(path, FileFormat.GZ).read()
+
+        assert result == payload
+
     @pytest.mark.parametrize(
         'filename,expected_format',
         [
@@ -518,6 +552,25 @@ class TestFile:
         if file_format is FileFormat.XLS:
             result = normalize_numeric_records(result)
         assert result == expected
+
+    def test_sqlite_read_fails_with_multiple_tables(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test SQLite reader rejects multiple table databases.
+        """
+        path = tmp_path / 'multi.sqlite'
+        conn = sqlite3.connect(path)
+        try:
+            conn.execute('CREATE TABLE one (id INTEGER)')
+            conn.execute('CREATE TABLE two (id INTEGER)')
+            conn.commit()
+        finally:
+            conn.close()
+
+        with pytest.raises(ValueError, match='Multiple tables'):
+            File(path, FileFormat.SQLITE).read()
 
     def test_strpath_support_for_module_helpers(
         self,
@@ -702,56 +755,3 @@ class TestFile:
         result = File(path, FileFormat.ZIP).read()
 
         assert result == {'a.json': {'a': 1}, 'b.json': {'b': 2}}
-
-    def test_gz_round_trip_json(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test JSON round-trip inside a gzip archive.
-        """
-        path = tmp_path / 'data.json.gz'
-        payload = [{'name': 'Ada'}]
-
-        File(path, FileFormat.GZ).write(payload)
-        result = File(path, FileFormat.GZ).read()
-
-        assert result == payload
-
-    def test_sqlite_read_fails_with_multiple_tables(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test SQLite reader rejects multiple table databases.
-        """
-        path = tmp_path / 'multi.sqlite'
-        conn = sqlite3.connect(path)
-        try:
-            conn.execute('CREATE TABLE one (id INTEGER)')
-            conn.execute('CREATE TABLE two (id INTEGER)')
-            conn.commit()
-        finally:
-            conn.close()
-
-        with pytest.raises(ValueError, match='Multiple tables'):
-            File(path, FileFormat.SQLITE).read()
-
-    def test_duckdb_read_fails_with_multiple_tables(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test DuckDB reader rejects multiple table databases.
-        """
-        duckdb = pytest.importorskip('duckdb')
-        path = tmp_path / 'multi.duckdb'
-        conn = duckdb.connect(str(path))
-        try:
-            conn.execute('CREATE TABLE one (id INTEGER)')
-            conn.execute('CREATE TABLE two (id INTEGER)')
-        finally:
-            conn.close()
-
-        with pytest.raises(ValueError, match='Multiple tables'):
-            File(path, FileFormat.DUCKDB).read()
