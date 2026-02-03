@@ -25,6 +25,7 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -100,7 +101,7 @@ def write(
     if not rows:
         return 0
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False))
