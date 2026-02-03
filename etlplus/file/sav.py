@@ -1,27 +1,31 @@
 """
 :mod:`etlplus.file.sav` module.
 
-Stub helpers for reading/writing SPSS (SAV) data files (not implemented yet).
+Helpers for reading/writing SPSS (SAV) files.
 
 Notes
 -----
-- A SAV file is a binary file format used by SPSS to store datasets, including
-    variables, labels, and data types.
+- A SAV file is a dataset created by SPSS.
 - Common cases:
-    - Reading data for analysis in Python.
-    - Writing processed data back to SPSS format.
+    - Survey and market research datasets.
+    - Statistical analysis workflows.
+    - Exchange with SPSS and compatible tools.
 - Rule of thumb:
-    - If you need to work with SPSS data files, use this module for reading
+    - If the file follows the SAV specification, use this module for reading
         and writing.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._imports import get_optional_module
+from ._imports import get_pandas
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -31,6 +35,20 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTION ================================================ #
+
+
+def _get_pyreadstat() -> Any:
+    """Return the pyreadstat module, importing it on first use."""
+    return get_optional_module(
+        'pyreadstat',
+        error_message=(
+            'SAV support requires optional dependency "pyreadstat".\n'
+            'Install with: pip install pyreadstat'
+        ),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -52,7 +70,9 @@ def read(
     JSONList
         The list of dictionaries read from the SAV file.
     """
-    return stub.read(path, format_name='SAV')
+    pyreadstat = _get_pyreadstat()
+    frame, _meta = pyreadstat.read_sav(str(path))
+    return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
@@ -60,14 +80,14 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to SAV file at *path* and return record count.
+    Write *data* to SAV at *path* and return record count.
 
     Parameters
     ----------
     path : Path
         Path to the SAV file on disk.
     data : JSONData
-        Data to write as SAV file. Should be a list of dictionaries or a
+        Data to write as SAV. Should be a list of dictionaries or a
         single dictionary.
 
     Returns
@@ -75,4 +95,13 @@ def write(
     int
         The number of rows written to the SAV file.
     """
-    return stub.write(path, data, format_name='SAV')
+    records = normalize_records(data, 'SAV')
+    if not records:
+        return 0
+
+    pyreadstat = _get_pyreadstat()
+    pandas = get_pandas('SAV')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pandas.DataFrame.from_records(records)
+    pyreadstat.write_sav(frame, str(path))
+    return len(records)

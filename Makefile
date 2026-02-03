@@ -172,6 +172,11 @@ dist: ## Build sdist and wheel into ./dist using pyproject.toml
 	@$(PYTHON) -m twine check dist/*
 	@$(call ECHO_OK,"Built and validated distribution artifacts in ./dist")
 
+.PHONY: file
+file: venv ## Install package + file extras
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[file]
+	@$(call ECHO_OK,"Installed etlplus + file extras")
+
 .PHONY: fix
 fix: ## Auto-fix with ruff
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)

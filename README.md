@@ -126,6 +126,12 @@ For development:
 pip install -e ".[dev]"
 ```
 
+For full file-format support (optional extras):
+
+```bash
+pip install -e ".[file]"
+```
+
 ## Quickstart
 
 Get up and running in under a minute.
@@ -190,10 +196,10 @@ Recognized file formats are listed in the tables below. Support for reading to o
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
 | `csv` | Y | Y | Comma-Separated Values |
-| `dat` | N | N | Generic data file, often delimited or fixed-width |
-| `fwf` | N | N | Fixed-Width Fields |
-| `psv` | N | N | Pipe-Separated Values |
-| `tab` | N | N | Often synonymous with TSV |
+| `dat` | Y | Y | Generic data file, often delimited or fixed-width |
+| `fwf` | Y | Y | Fixed-Width Fields |
+| `psv` | Y | Y | Pipe-Separated Values |
+| `tab` | Y | Y | Often synonymous with TSV |
 | `tsv` | Y | Y | Tab-Separated Values |
 | `txt` | Y | Y | Plain text, often delimited or fixed-width |
 
@@ -203,11 +209,11 @@ Recognized file formats are listed in the tables below. Support for reading to o
 | --- | --- | --- | --- |
 | `cfg` | N | N | Config-style key-value pairs |
 | `conf` | N | N | Config-style key-value pairs |
-| `ini` | N | N | Config-style key-value pairs |
+| `ini` | Y | Y | Config-style key-value pairs |
 | `json` | Y | Y | JavaScript Object Notation |
 | `ndjson` | Y | Y | Newline-Delimited JSON |
-| `properties` | N | N | Java-style key-value pairs |
-| `toml` | N | N | Tom's Obvious Minimal Language |
+| `properties` | Y | Y | Java-style key-value pairs |
+| `toml` | Y | Y | Tom's Obvious Minimal Language |
 | `xml` | Y | Y | Extensible Markup Language |
 | `yaml` | Y | Y | YAML Ain't Markup Language |
 
@@ -215,7 +221,7 @@ Recognized file formats are listed in the tables below. Support for reading to o
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
-| `arrow` | N | N | Apache Arrow IPC |
+| `arrow` | Y | Y | Apache Arrow IPC |
 | `feather` | Y | Y | Apache Arrow Feather |
 | `orc` | Y | Y | Optimized Row Columnar; common in Hadoop |
 | `parquet` | Y | Y | Apache Parquet; common in Big Data |
@@ -225,48 +231,48 @@ Recognized file formats are listed in the tables below. Support for reading to o
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
 | `avro` | Y | Y | Apache Avro |
-| `bson` | N | N | Binary JSON; common with MongoDB exports/dumps |
-| `cbor` | N | N | Concise Binary Object Representation |
+| `bson` | Y | Y | Binary JSON; common with MongoDB exports/dumps |
+| `cbor` | Y | Y | Concise Binary Object Representation |
 | `ion` | N | N | Amazon Ion |
-| `msgpack` | N | N | MessagePack |
-| `pb` | N | N | Protocol Buffers (Google Protobuf) |
+| `msgpack` | Y | Y | MessagePack |
+| `pb` | Y | Y | Protocol Buffers (Google Protobuf) |
 | `pbf` | N | N | Protocolbuffer Binary Format; often for GIS data |
-| `proto` | N | N | Protocol Buffers schema; often in .pb / .bin |
+| `proto` | Y | Y | Protocol Buffers schema; often in .pb / .bin |
 
 #### Databases and Embedded Storage
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
 | `accdb` | N | N | Microsoft Access (newer format) |
-| `duckdb` | N | N | DuckDB |
+| `duckdb` | Y | Y | DuckDB |
 | `mdb` | N | N | Microsoft Access (older format) |
-| `sqlite` | N | N | SQLite |
+| `sqlite` | Y | Y | SQLite |
 
 #### Spreadsheets
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
 | `numbers` | N | N | Apple Numbers |
-| `ods` | N | N | OpenDocument |
+| `ods` | Y | Y | OpenDocument |
 | `wks` | N | N | Lotus 1-2-3  |
 | `xls` | Y | N | Microsoft Excel (BIFF; read-only) |
-| `xlsm` | N | N | Microsoft Excel Macro-Enabled (Open XML) |
+| `xlsm` | Y | Y | Microsoft Excel Macro-Enabled (Open XML) |
 | `xlsx` | Y | Y | Microsoft Excel (Open XML) |
 
 #### Statistical / Scientific / Numeric Computing
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
-| `dta` | N | N | Stata |
-| `hdf5` | N | N | Hierarchical Data Format |
+| `dta` | Y | Y | Stata |
+| `hdf5` | Y | N | Hierarchical Data Format |
 | `mat` | N | N | MATLAB |
-| `nc` | N | N | NetCDF |
-| `rda` | N | N | RData workspace/object |
-| `rds` | N | N | R data |
-| `sas7bdat` | N | N | SAS data |
-| `sav` | N | N | SPSS data |
+| `nc` | Y | Y | NetCDF |
+| `rda` | Y | Y | RData workspace/object |
+| `rds` | Y | Y | R data |
+| `sas7bdat` | Y | N | SAS data |
+| `sav` | Y | Y | SPSS data |
 | `sylk` | N | N | Symbolic Link |
-| `xpt` | N | N | SAS Transport |
+| `xpt` | Y | Y | SAS Transport |
 | `zsav` | N | N | Compressed SPSS data |
 
 #### Logs and Event Streams

@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.psv` module.
 
-Stub helpers for reading/writing Pipe-Separated Values (PSV) files (not
-implemented yet).
+Helpers for reading/writing Pipe-Separated Values (PSV) files.
 
 Notes
 -----
@@ -24,7 +23,8 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._io import read_delimited
+from ._io import write_delimited
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -55,7 +55,7 @@ def read(
     JSONList
         The list of dictionaries read from the PSV file.
     """
-    return stub.read(path, format_name='PSV')
+    return read_delimited(path, delimiter='|')
 
 
 def write(
@@ -78,4 +78,4 @@ def write(
     int
         The number of rows written to the PSV file.
     """
-    return stub.write(path, data, format_name='PSV')
+    return write_delimited(path, data, delimiter='|')

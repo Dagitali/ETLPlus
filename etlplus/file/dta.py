@@ -1,27 +1,30 @@
 """
 :mod:`etlplus.file.dta` module.
 
-Stub helpers for reading/writing Stata (DTA) data files (not implemented yet).
+Helpers for reading/writing Stata (DTA) files.
 
 Notes
 -----
-- Stata DTA files are binary files used by Stata statistical software that
-    store datasets with variables, labels, and data types.
+- A DTA file is a proprietary binary format created by Stata to store datasets
+    with variables, labels, and data types.
 - Common cases:
-    - Reading data for analysis in Python.
-    - Writing processed data back to Stata format.
+    - Statistical analysis workflows.
+    - Data sharing in research environments.
+    - Interchange between Stata and other analytics tools.
 - Rule of thumb:
-    - If you need to work with Stata data files, use this module for reading
+    - If the file follows the DTA specification, use this module for reading
         and writing.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._imports import get_pandas
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -51,8 +54,21 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the DTA file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for DTA support are missing.
     """
-    return stub.read(path, format_name='DTA')
+    pandas = get_pandas('DTA')
+    try:
+        frame = pandas.read_stata(path)
+    except ImportError as err:  # pragma: no cover
+        raise ImportError(
+            'DTA support may require optional dependency "pyreadstat".\n'
+            'Install with: pip install pyreadstat',
+        ) from err
+    return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
@@ -67,12 +83,31 @@ def write(
     path : Path
         Path to the DTA file on disk.
     data : JSONData
-        Data to write as DTA file. Should be a list of dictionaries or a
-        single dictionary.
+        Data to write as DTA file. Should be a list of dictionaries or a single
+        dictionary.
 
     Returns
     -------
     int
         The number of rows written to the DTA file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for DTA support are missing.
     """
-    return stub.write(path, data, format_name='DTA')
+    records = normalize_records(data, 'DTA')
+    if not records:
+        return 0
+
+    pandas = get_pandas('DTA')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pandas.DataFrame.from_records(records)
+    try:
+        frame.to_stata(path, write_index=False)
+    except ImportError as err:  # pragma: no cover
+        raise ImportError(
+            'DTA support may require optional dependency "pyreadstat".\n'
+            'Install with: pip install pyreadstat',
+        ) from err
+    return len(records)

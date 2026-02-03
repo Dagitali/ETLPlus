@@ -19,6 +19,9 @@ select = [
   "I",   # isort
   "UP",  # pyupgrade
 ]
+extend-select = [
+  "E203",  # Enforce autopep8 slice spacing (no space before ':')
+]
 ignore = [
   # Allow module-level variable use for caches/helpers, if needed
 ]
