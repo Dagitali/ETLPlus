@@ -56,6 +56,20 @@ def coerce_record_payload(
     )
 
 
+def ensure_parent_dir(
+    path: Path,
+) -> None:
+    """
+    Ensure the parent directory for *path* exists.
+
+    Parameters
+    ----------
+    path : Path
+        Target path to ensure the parent directory for.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+
 def normalize_records(
     data: JSONData,
     format_name: str,
@@ -78,7 +92,7 @@ def normalize_records(
     Raises
     ------
     TypeError
-        If a list payload contains non-dict items.
+        If the payload is not a dict or a list of dicts.
     """
     if isinstance(data, list):
         if not all(isinstance(item, dict) for item in data):
@@ -86,7 +100,11 @@ def normalize_records(
                 f'{format_name} payloads must contain only objects (dicts)',
             )
         return cast(JSONList, data)
-    return [cast(JSONDict, data)]
+    if isinstance(data, dict):
+        return [cast(JSONDict, data)]
+    raise TypeError(
+        f'{format_name} payloads must be an object or an array of objects',
+    )
 
 
 def read_delimited(
@@ -122,11 +140,97 @@ def read_delimited(
     return rows
 
 
+def require_dict_payload(
+    data: JSONData,
+    *,
+    format_name: str,
+) -> JSONDict:
+    """
+    Validate that *data* is a dictionary payload.
+
+    Parameters
+    ----------
+    data : JSONData
+        Input payload to validate.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONDict
+        Validated dictionary payload.
+
+    Raises
+    ------
+    TypeError
+        If the payload is not a dictionary.
+    """
+    if isinstance(data, list) or not isinstance(data, dict):
+        raise TypeError(f'{format_name} payloads must be a dict')
+    return cast(JSONDict, data)
+
+
+def require_str_key(
+    payload: JSONDict,
+    *,
+    format_name: str,
+    key: str,
+) -> str:
+    """
+    Require a string value for *key* in *payload*.
+
+    Parameters
+    ----------
+    payload : JSONDict
+        Dictionary payload to inspect.
+    format_name : str
+        Human-readable format name for error messages.
+    key : str
+        Key to extract.
+
+    Returns
+    -------
+    str
+        The string value for *key*.
+
+    Raises
+    ------
+    TypeError
+        If the key is missing or not a string.
+    """
+    value = payload.get(key)
+    if not isinstance(value, str):
+        raise TypeError(
+            f'{format_name} payloads must include a "{key}" string',
+        )
+    return value
+
+
+def stringify_value(value: Any) -> str:
+    """
+    Normalize configuration-like values into strings.
+
+    Parameters
+    ----------
+    value : Any
+        Value to normalize.
+
+    Returns
+    -------
+    str
+        Stringified value (``''`` for ``None``).
+    """
+    if value is None:
+        return ''
+    return str(value)
+
+
 def write_delimited(
     path: Path,
     data: JSONData,
     *,
     delimiter: str,
+    format_name: str = 'Delimited',
 ) -> int:
     """
     Write *data* to a delimited file and return record count.
@@ -139,23 +243,19 @@ def write_delimited(
         Data to write as delimited rows.
     delimiter : str
         Delimiter character for writing.
+    format_name : str, optional
+        Human-readable format name for error messages. Defaults to
+        ``'Delimited'``.
 
     Returns
     -------
     int
         The number of rows written.
     """
-    rows: list[JSONDict]
-    if isinstance(data, list):
-        rows = [row for row in data if isinstance(row, dict)]
-    else:
-        rows = [data]
-
-    if not rows:
-        return 0
+    rows = normalize_records(data, format_name)
 
     fieldnames = sorted({key for row in rows for key in row})
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8', newline='') as handle:
         writer = csv.DictWriter(
             handle,
