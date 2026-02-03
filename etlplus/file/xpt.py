@@ -19,13 +19,13 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -36,27 +36,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================ #
-
-
-def _get_pyreadstat() -> Any:
-    """Return the pyreadstat module, importing it on first use."""
-    return get_optional_module(
-        'pyreadstat',
-        error_message=(
-            'XPT support requires optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat'
-        ),
-    )
-
-
-def _raise_readstat_error(err: ImportError) -> None:
-    raise ImportError(
-        'XPT support requires optional dependency "pyreadstat".\n'
-        'Install with: pip install pyreadstat',
-    ) from err
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -79,7 +58,7 @@ def read(
         The list of dictionaries read from the XPT file.
     """
     pandas = get_pandas('XPT')
-    pyreadstat = _get_pyreadstat()
+    pyreadstat = get_dependency('pyreadstat', format_name='XPT')
     reader = getattr(pyreadstat, 'read_xport', None)
     if reader is not None:
         frame, _meta = reader(str(path))
@@ -88,8 +67,6 @@ def read(
         frame = pandas.read_sas(path, format='xport')
     except TypeError:
         frame = pandas.read_sas(path)
-    except ImportError as err:  # pragma: no cover
-        _raise_readstat_error(err)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
@@ -123,14 +100,14 @@ def write(
         return 0
 
     pandas = get_pandas('XPT')
-    pyreadstat = _get_pyreadstat()
+    pyreadstat = get_dependency('pyreadstat', format_name='XPT')
     writer = getattr(pyreadstat, 'write_xport', None)
     if writer is None:
         raise ImportError(
             'XPT write support requires "pyreadstat" with write_xport().',
         )
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
     writer(frame, str(path))
     return len(records)
