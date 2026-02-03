@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.ods` module.
 
-Stub helpers for reading/writing OpenDocument (ODS) spreadsheet files (not
-implemented yet).
+Helpers for reading/writing OpenDocument (ODS) spreadsheet files.
 
 Notes
 -----
@@ -21,10 +20,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._imports import get_pandas
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -54,8 +55,21 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the ODS file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for ODS support are missing.
     """
-    return stub.read(path, format_name='ODS')
+    pandas = get_pandas('ODS')
+    try:
+        frame = pandas.read_excel(path, engine='odf')
+    except ImportError as err:  # pragma: no cover
+        raise ImportError(
+            'ODS support requires optional dependency "odfpy".\n'
+            'Install with: pip install odfpy',
+        ) from err
+    return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
@@ -70,12 +84,31 @@ def write(
     path : Path
         Path to the ODS file on disk.
     data : JSONData
-        Data to write as ODS file. Should be a list of dictionaries or a
+        Data to write as ODS. Should be a list of dictionaries or a
         single dictionary.
 
     Returns
     -------
     int
         The number of rows written to the ODS file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for ODS support are missing.
     """
-    return stub.write(path, data, format_name='ODS')
+    records = normalize_records(data, 'ODS')
+    if not records:
+        return 0
+
+    pandas = get_pandas('ODS')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pandas.DataFrame.from_records(records)
+    try:
+        frame.to_excel(path, index=False, engine='odf')
+    except ImportError as err:  # pragma: no cover
+        raise ImportError(
+            'ODS support requires optional dependency "odfpy".\n'
+            'Install with: pip install odfpy',
+        ) from err
+    return len(records)
