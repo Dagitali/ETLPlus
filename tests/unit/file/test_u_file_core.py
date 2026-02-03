@@ -299,6 +299,32 @@ FORMAT_CASES: list[FormatCase] = [
     ),
 ]
 
+STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
+    # Permanent stub as formality
+    (FileFormat.STUB, 'data.stub'),
+    # Temporary stubs until implemented
+    (FileFormat.ACCDB, 'data.accdb'),
+    (FileFormat.CFG, 'data.cfg'),
+    (FileFormat.CONF, 'data.conf'),
+    (FileFormat.ION, 'data.ion'),
+    (FileFormat.JINJA2, 'data.jinja2'),
+    (FileFormat.LOG, 'data.log'),
+    (FileFormat.MAT, 'data.mat'),
+    (FileFormat.MDB, 'data.mdb'),
+    # (FileFormat.MDF, 'data.mdf'),
+    (FileFormat.MUSTACHE, 'data.mustache'),
+    (FileFormat.PBF, 'data.pbf'),
+    # (FileFormat.RAW, 'data.raw'),
+    # (FileFormat.RTF, 'data.rtf'),
+    # (FileFormat.SDF, 'data.sdf'),
+    # (FileFormat.SLV, 'data.slv'),
+    (FileFormat.SYLK, 'data.sylk'),
+    # (FileFormat.VCF, 'data.vcf'),
+    (FileFormat.VM, 'data.vm'),
+    # (FileFormat.WSV, 'data.wsv'),
+    (FileFormat.ZSAV, 'data.zsav'),
+)
+
 
 def _coerce_numeric_value(
     value: object,
@@ -352,9 +378,16 @@ def _normalize_xml_payload(
 
 
 def _require_modules(
-    modules: tuple[str, ...],
+    *modules: str,
 ) -> None:
-    """Skip the test when optional dependencies are missing."""
+    """
+    Skip the test when optional dependencies are missing.
+
+    Parameters
+    ----------
+    *modules : str
+        Module names to verify via ``pytest.importorskip``.
+    """
     for module in modules:
         pytest.importorskip(module)
 
@@ -365,31 +398,7 @@ def _require_modules(
 @pytest.fixture(name='stubbed_formats')
 def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
     """Return a list of stubbed file formats for testing."""
-    return [
-        # Permanent stub as formality
-        (FileFormat.STUB, 'data.stub'),
-        # Temporary stubs until implemented
-        (FileFormat.ACCDB, 'data.accdb'),
-        (FileFormat.CFG, 'data.cfg'),
-        (FileFormat.CONF, 'data.conf'),
-        (FileFormat.ION, 'data.ion'),
-        (FileFormat.JINJA2, 'data.jinja2'),
-        (FileFormat.LOG, 'data.log'),
-        (FileFormat.MAT, 'data.mat'),
-        (FileFormat.MDB, 'data.mdb'),
-        # (FileFormat.MDF, 'data.mdf'),
-        (FileFormat.MUSTACHE, 'data.mustache'),
-        (FileFormat.PBF, 'data.pbf'),
-        # (FileFormat.RAW, 'data.raw'),
-        # (FileFormat.RTF, 'data.rtf'),
-        # (FileFormat.SDF, 'data.sdf'),
-        # (FileFormat.SLV, 'data.slv'),
-        (FileFormat.SYLK, 'data.sylk'),
-        # (FileFormat.VCF, 'data.vcf'),
-        (FileFormat.VM, 'data.vm'),
-        # (FileFormat.WSV, 'data.wsv'),
-        (FileFormat.ZSAV, 'data.zsav'),
-    ]
+    return list(STUBBED_FORMATS)
 
 
 # SECTION: TESTS ============================================================ #
@@ -541,7 +550,7 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        _require_modules(requires)
+        _require_modules(*requires)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
