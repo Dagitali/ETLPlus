@@ -24,6 +24,7 @@ from pathlib import Path
 from ..types import JSONData
 from ..utils import count_records
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -55,11 +56,6 @@ def read(
     -------
     JSONData
         The structured data read from the JSON file.
-
-    Raises
-    ------
-    TypeError
-        If the JSON root is not an object or an array of objects.
     """
     with path.open('r', encoding='utf-8') as handle:
         loaded = json.load(handle)
@@ -86,7 +82,7 @@ def write(
     int
         The number of records written to the JSON file.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         json.dump(
             data,
