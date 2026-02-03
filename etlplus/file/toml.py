@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.toml` module.
 
-Stub helpers for reading/writing Tom's Obvious Minimal Language (TOML) files
-(not implemented yet).
+Helpers for reading/writing Tom's Obvious Minimal Language (TOML) files.
 
 Notes
 -----
@@ -19,11 +18,14 @@ Notes
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 from ..types import JSONData
-from ..types import JSONList
-from . import stub
+from ..types import JSONDict
+from ._imports import get_optional_module
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +42,7 @@ __all__ = [
 
 def read(
     path: Path,
-) -> JSONList:
+) -> JSONData:
     """
     Read TOML content from *path*.
 
@@ -51,10 +53,18 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the TOML file.
+    JSONData
+        The structured data read from the TOML file.
+
+    Raises
+    ------
+    TypeError
+        If the TOML root is not a table (dictionary).
     """
-    return stub.read(path, format_name='TOML')
+    payload = tomllib.loads(path.read_text(encoding='utf-8'))
+    if isinstance(payload, dict):
+        return payload
+    raise TypeError('TOML root must be a table (dict)')
 
 
 def write(
@@ -69,12 +79,44 @@ def write(
     path : Path
         Path to the TOML file on disk.
     data : JSONData
-        Data to write as TOML. Should be a list of dictionaries or a
-        single dictionary.
+        Data to write as TOML. Should be a dictionary.
 
     Returns
     -------
     int
-        The number of rows written to the TOML file.
+        The number of records written to the TOML file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is not a dictionary.
     """
-    return stub.write(path, data, format_name='TOML')
+    if isinstance(data, list):
+        raise TypeError('TOML payloads must be a dict')
+    if not isinstance(data, dict):
+        raise TypeError('TOML payloads must be a dict')
+
+    toml_writer: Any
+    try:
+        toml_writer = get_optional_module(
+            'tomli_w',
+            error_message=(
+                'TOML write support requires optional dependency "tomli_w".\n'
+                'Install with: pip install tomli-w'
+            ),
+        )
+        content = toml_writer.dumps(cast(JSONDict, data))
+    except ImportError:
+        toml = get_optional_module(
+            'toml',
+            error_message=(
+                'TOML write support requires optional dependency "tomli_w" '
+                'or "toml".\n'
+                'Install with: pip install tomli-w'
+            ),
+        )
+        content = toml.dumps(cast(JSONDict, data))
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding='utf-8')
+    return 1
