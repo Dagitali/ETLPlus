@@ -23,6 +23,7 @@ from ..types import JSONData
 from ..utils import count_records
 from ._imports import get_yaml
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -54,11 +55,6 @@ def read(
     -------
     JSONData
         The structured data read from the YAML file.
-
-    Raises
-    ------
-    TypeError
-        If the YAML root is not an object or an array of objects.
     """
     with path.open('r', encoding='utf-8') as handle:
         loaded = get_yaml().safe_load(handle)
@@ -85,6 +81,7 @@ def write(
     int
         The number of records written.
     """
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8') as handle:
         get_yaml().safe_dump(
             data,
