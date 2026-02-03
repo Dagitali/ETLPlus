@@ -63,7 +63,10 @@ jobs:
           ruff version
           ruff check .
           # ruff format --check .
-          autopep8 --diff --exit-code .
+          files="$(git ls-files '*.py')"
+          if [ -n "$files" ]; then
+            autopep8 --diff --exit-code --max-line-length=79 $files
+          fi
 
   test:
     runs-on: ubuntu-latest
