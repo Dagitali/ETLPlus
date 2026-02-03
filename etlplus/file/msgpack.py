@@ -19,11 +19,11 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._io import coerce_record_payload
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -34,20 +34,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _get_msgpack() -> Any:
-    """Return the msgpack module, importing it on first use."""
-    return get_optional_module(
-        'msgpack',
-        error_message=(
-            'MSGPACK support requires optional dependency "msgpack".\n'
-            'Install with: pip install msgpack'
-        ),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -69,7 +55,7 @@ def read(
     JSONData
         The structured data read from the MsgPack file.
     """
-    msgpack = _get_msgpack()
+    msgpack = get_dependency('msgpack', format_name='MSGPACK')
     with path.open('rb') as handle:
         payload = msgpack.unpackb(handle.read(), raw=False)
     return coerce_record_payload(payload, format_name='MSGPACK')
@@ -95,10 +81,10 @@ def write(
     int
         The number of rows written to the MsgPack file.
     """
-    msgpack = _get_msgpack()
+    msgpack = get_dependency('msgpack', format_name='MSGPACK')
     records = normalize_records(data, 'MSGPACK')
     payload: JSONData = records if isinstance(data, list) else records[0]
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('wb') as handle:
         handle.write(msgpack.packb(payload, use_bin_type=True))
     return len(records)
