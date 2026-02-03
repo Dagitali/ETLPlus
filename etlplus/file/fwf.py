@@ -18,13 +18,14 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import stringify_value
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -88,23 +89,21 @@ def write(
     if not fieldnames:
         return 0
 
-    def stringify(value: Any) -> str:
-        if value is None:
-            return ''
-        return str(value)
-
     widths: dict[str, int] = {name: len(name) for name in fieldnames}
     for row in records:
         for name in fieldnames:
-            widths[name] = max(widths[name], len(stringify(row.get(name))))
+            widths[name] = max(
+                widths[name],
+                len(stringify_value(row.get(name))),
+            )
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8', newline='') as handle:
         header = ' '.join(name.ljust(widths[name]) for name in fieldnames)
         handle.write(header + '\n')
         for row in records:
             line = ' '.join(
-                stringify(row.get(name)).ljust(widths[name])
+                stringify_value(row.get(name)).ljust(widths[name])
                 for name in fieldnames
             )
             handle.write(line + '\n')
