@@ -72,6 +72,19 @@ setup(
             'pydocstyle>=6.3.0',
             'pydoclint>=0.8.1',
         ],
+        'file': [
+            'pymongo>=4.9.1',
+            'cbor2>=5.6.4',
+            'duckdb>=1.1.0',
+            'msgpack>=1.0.8',
+            'netCDF4>=1.7.2',
+            'odfpy>=1.4.1',
+            'pyreadr>=0.5.2',
+            'pyreadstat>=1.3.3',
+            # 'tables>=3.10.2',
+            'tomli-w>=1.2.0',
+            'xarray>=2024.9.0',
+        ],
     },
     entry_points={
         'console_scripts': [
