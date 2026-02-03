@@ -11,17 +11,24 @@ Notes
 
 from __future__ import annotations
 
-import math
-import numbers
+import sqlite3
+import zipfile
+from os import PathLike
 from pathlib import Path
+from pathlib import PurePath
 from typing import cast
 
 import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.file import csv as csv_file
+from etlplus.file import json as json_file
+from etlplus.file import xml as xml_file
 from etlplus.types import JSONData
-from etlplus.types import JSONDict
+from tests.unit.file.conftest import normalize_numeric_records
+from tests.unit.file.conftest import normalize_xml_payload
+from tests.unit.file.conftest import require_optional_modules
 
 # SECTION: MARKERS ========================================================== #
 
@@ -326,70 +333,14 @@ STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
 )
 
 
-def _coerce_numeric_value(
-    value: object,
-) -> object:
-    """Coerce numeric scalars into stable Python numeric types."""
-    if isinstance(value, numbers.Real):
-        try:
-            numeric = float(value)
-            if math.isnan(numeric):
-                return None
-        except (TypeError, ValueError):
-            return value
-        if numeric.is_integer():
-            return int(numeric)
-        return float(numeric)
-    return value
+class _DummyPath(PathLike[str]):
+    """Simple PathLike wrapper for StrPath tests."""
 
+    def __init__(self, path: str) -> None:
+        self._path = path
 
-def _normalize_numeric_records(
-    records: JSONData,
-) -> JSONData:
-    """Normalize numeric record values (e.g., floats to ints when integral)."""
-    if isinstance(records, list):
-        normalized: list[JSONDict] = []
-        for row in records:
-            if not isinstance(row, dict):
-                normalized.append(row)
-                continue
-            cleaned: JSONDict = {}
-            for key, value in row.items():
-                cleaned[key] = _coerce_numeric_value(value)
-            normalized.append(cleaned)
-        return normalized
-    return records
-
-
-def _normalize_xml_payload(
-    payload: JSONData,
-) -> JSONData:
-    """Normalize XML payloads to list-based item structures when possible."""
-    if not isinstance(payload, dict):
-        return payload
-    root = payload.get('root')
-    if not isinstance(root, dict):
-        return payload
-    items = root.get('items')
-    if isinstance(items, dict):
-        root = {**root, 'items': [items]}
-        return {**payload, 'root': root}
-    return payload
-
-
-def _require_modules(
-    *modules: str,
-) -> None:
-    """
-    Skip the test when optional dependencies are missing.
-
-    Parameters
-    ----------
-    *modules : str
-        Module names to verify via ``pytest.importorskip``.
-    """
-    for module in modules:
-        pytest.importorskip(module)
+    def __fspath__(self) -> str:
+        return self._path
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -550,7 +501,7 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        _require_modules(*requires)
+        require_optional_modules(*requires)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
@@ -562,10 +513,10 @@ class TestFile:
             raise
 
         if file_format is FileFormat.XML:
-            result = _normalize_xml_payload(result)
-            expected = _normalize_xml_payload(expected)
+            result = normalize_xml_payload(result)
+            expected = normalize_xml_payload(expected)
         if file_format is FileFormat.XLS:
-            result = _normalize_numeric_records(result)
+            result = normalize_numeric_records(result)
         assert result == expected
 
     def test_stub_formats_raise_on_read(
@@ -663,6 +614,32 @@ class TestFile:
         assert json_content
         assert json_content.count('\n') >= 2
 
+    def test_strpath_support_for_module_helpers(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test module helpers accept ``StrPath`` inputs.
+
+        Uses ``str`` and ``PathLike`` inputs to validate normalization.
+        """
+        csv_path = tmp_path / 'data.csv'
+        json_path = tmp_path / 'data.json'
+        xml_path = tmp_path / 'data.xml'
+
+        csv_file.write(str(csv_path), [{'name': 'Ada'}])
+        assert csv_file.read(str(csv_path)) == [{'name': 'Ada'}]
+
+        json_file.write(_DummyPath(str(json_path)), {'name': 'Ada'})
+        assert json_file.read(_DummyPath(str(json_path))) == {'name': 'Ada'}
+
+        xml_file.write(
+            PurePath(xml_path),
+            {'root': {'text': 'hello'}},
+            root_tag='root',
+        )
+        assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
+
     def test_xls_write_not_supported(
         self,
         tmp_path: Path,
@@ -689,3 +666,92 @@ class TestFile:
         text = path.read_text(encoding='utf-8')
         assert text.startswith('<?xml')
         assert '<records>' in text
+
+    def test_xml_round_trip_with_attributes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test XML read/write preserves attribute fields.
+        """
+        path = tmp_path / 'attrs.xml'
+        payload: JSONData = {
+            'root': {
+                '@id': '42',
+                'item': {'@lang': 'en', 'text': 'Hello'},
+            },
+        }
+
+        File(path, FileFormat.XML).write(payload)
+        result = File(path, FileFormat.XML).read()
+
+        assert result == payload
+
+    def test_zip_multi_file_read(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test ZIP files with multiple entries return a dict payload.
+        """
+        path = tmp_path / 'bundle.zip'
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('a.json', '{"a": 1}')
+            archive.writestr('b.json', '{"b": 2}')
+
+        result = File(path, FileFormat.ZIP).read()
+
+        assert result == {'a.json': {'a': 1}, 'b.json': {'b': 2}}
+
+    def test_gz_round_trip_json(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test JSON round-trip inside a gzip archive.
+        """
+        path = tmp_path / 'data.json.gz'
+        payload = [{'name': 'Ada'}]
+
+        File(path, FileFormat.GZ).write(payload)
+        result = File(path, FileFormat.GZ).read()
+
+        assert result == payload
+
+    def test_sqlite_read_fails_with_multiple_tables(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test SQLite reader rejects multiple table databases.
+        """
+        path = tmp_path / 'multi.sqlite'
+        conn = sqlite3.connect(path)
+        try:
+            conn.execute('CREATE TABLE one (id INTEGER)')
+            conn.execute('CREATE TABLE two (id INTEGER)')
+            conn.commit()
+        finally:
+            conn.close()
+
+        with pytest.raises(ValueError, match='Multiple tables'):
+            File(path, FileFormat.SQLITE).read()
+
+    def test_duckdb_read_fails_with_multiple_tables(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test DuckDB reader rejects multiple table databases.
+        """
+        duckdb = pytest.importorskip('duckdb')
+        path = tmp_path / 'multi.duckdb'
+        conn = duckdb.connect(str(path))
+        try:
+            conn.execute('CREATE TABLE one (id INTEGER)')
+            conn.execute('CREATE TABLE two (id INTEGER)')
+        finally:
+            conn.close()
+
+        with pytest.raises(ValueError, match='Multiple tables'):
+            File(path, FileFormat.DUCKDB).read()
