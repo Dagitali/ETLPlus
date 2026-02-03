@@ -14,8 +14,28 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..types import StrPath
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_path(
+    path: StrPath,
+) -> Path:
+    """
+    Coerce path-like inputs into :class:`~pathlib.Path`.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path-like input to normalize.
+
+    Returns
+    -------
+    Path
+        Normalized :class:`~pathlib.Path` instance.
+    """
+    return path if isinstance(path, Path) else Path(path)
 
 
 def coerce_record_payload(
@@ -57,16 +77,17 @@ def coerce_record_payload(
 
 
 def ensure_parent_dir(
-    path: Path,
+    path: StrPath,
 ) -> None:
     """
     Ensure the parent directory for *path* exists.
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Target path to ensure the parent directory for.
     """
+    path = coerce_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -108,7 +129,7 @@ def normalize_records(
 
 
 def read_delimited(
-    path: Path,
+    path: StrPath,
     *,
     delimiter: str,
 ) -> JSONList:
@@ -117,7 +138,7 @@ def read_delimited(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the delimited file on disk.
     delimiter : str
         Delimiter character for parsing.
@@ -127,6 +148,7 @@ def read_delimited(
     JSONList
         The list of dictionaries read from the delimited file.
     """
+    path = coerce_path(path)
     with path.open('r', encoding='utf-8', newline='') as handle:
         reader: csv.DictReader[str] = csv.DictReader(
             handle,
@@ -226,7 +248,7 @@ def stringify_value(value: Any) -> str:
 
 
 def write_delimited(
-    path: Path,
+    path: StrPath,
     data: JSONData,
     *,
     delimiter: str,
@@ -237,7 +259,7 @@ def write_delimited(
 
     Parameters
     ----------
-    path : Path
+    path : StrPath
         Path to the delimited file on disk.
     data : JSONData
         Data to write as delimited rows.
@@ -252,6 +274,7 @@ def write_delimited(
     int
         The number of rows written.
     """
+    path = coerce_path(path)
     rows = normalize_records(data, format_name)
 
     fieldnames = sorted({key for row in rows for key in row})
