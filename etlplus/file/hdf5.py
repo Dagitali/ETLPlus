@@ -46,7 +46,23 @@ DEFAULT_KEY = 'data'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _raise_tables_error(err: ImportError) -> None:
+def _raise_tables_error(
+    err: ImportError,
+) -> None:
+    """
+    Raise a consistent ImportError for missing PyTables support.
+
+    Parameters
+    ----------
+    err : ImportError
+        The original ImportError raised when trying to use HDF5 support without
+        the required dependency.
+
+    Raises
+    ------
+    ImportError
+        Consistent ImportError indicating that PyTables is required.
+    """
     raise ImportError(
         'HDF5 support requires optional dependency "tables".\n'
         'Install with: pip install tables',
@@ -71,6 +87,12 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the HDF5 file.
+
+    Raises
+    ------
+    ValueError
+        If multiple datasets are found in the HDF5 file without a clear key to
+        use.
     """
     pandas = get_pandas('HDF5')
     try:
