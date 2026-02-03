@@ -11,6 +11,7 @@ import tempfile
 from pathlib import Path
 
 from ..types import JSONData
+from ._io import ensure_parent_dir
 from .enums import CompressionFormat
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
@@ -117,7 +118,7 @@ def write(
         count = File(tmp_path, fmt).write(data)
         payload = tmp_path.read_bytes()
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with gzip.open(path, 'wb') as handle:
         handle.write(payload)
 
