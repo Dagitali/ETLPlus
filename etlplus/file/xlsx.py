@@ -12,6 +12,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -88,7 +89,7 @@ def write(
         return 0
 
     pandas = get_pandas('XLSX')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
     try:
         frame.to_excel(path, index=False)
