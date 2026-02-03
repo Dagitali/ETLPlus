@@ -1,29 +1,24 @@
 """
 :mod:`etlplus.file.pb` module.
 
-Stub helpers for reading/writing Protocol Buffer (PB) files (not implemented
-yet).
+Helpers for reading/writing Protocol Buffers binary (PB) files.
 
 Notes
 -----
-- PB (a.k.a. Protobuff) is a binary serialization format developed by Google
-    for structured data.
+- A PB file contains Protocol Buffers (Protobuff) binary-encoded messages.
 - Common cases:
-    - Data interchange between services.
-    - Efficient storage of structured data.
-    - Communication in distributed systems.
+    - Serialized payloads emitted by services or SDKs.
+    - Binary payload dumps for debugging or transport.
 - Rule of thumb:
-    - If the file follows the Protocol Buffer specification, use this module
-        for reading and writing.
+    - Use this module when you need to store or transport raw protobuf bytes.
 """
 
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import JSONList
-from . import stub
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +35,7 @@ __all__ = [
 
 def read(
     path: Path,
-) -> JSONList:
+) -> JSONData:
     """
     Read PB content from *path*.
 
@@ -51,10 +46,12 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the PB file.
+    JSONData
+        The structured data read from the PB file.
     """
-    return stub.read(path, format_name='PB')
+    payload = path.read_bytes()
+    encoded = base64.b64encode(payload).decode('ascii')
+    return {'payload_base64': encoded}
 
 
 def write(
@@ -69,12 +66,23 @@ def write(
     path : Path
         Path to the PB file on disk.
     data : JSONData
-        Data to write as PB. Should be a list of dictionaries or a
-        single dictionary.
+        Data to write as PB. Should be a dictionary with ``payload_base64``.
 
     Returns
     -------
     int
-        The number of rows written to the PB file.
+        The number of records written to the PB file.
     """
-    return stub.write(path, data, format_name='PB')
+    if isinstance(data, list):
+        raise TypeError('PB payloads must be a dict')
+    if not isinstance(data, dict):
+        raise TypeError('PB payloads must be a dict')
+
+    payload_base64 = data.get('payload_base64')
+    if not isinstance(payload_base64, str):
+        raise TypeError('PB payloads must include a "payload_base64" string')
+
+    payload = base64.b64decode(payload_base64.encode('ascii'))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    return 1
