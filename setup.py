@@ -63,6 +63,7 @@ setup(
     ],
     extras_require={
         'dev': [
+            'autopep8>=2.3.2',
             'PyYAML>=6.0.3',
             'pytest>=8.4.2',
             'pytest-cov>=7.0.0',

@@ -42,6 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 # Development-only tools (install with: pip install -e .[dev])
 dev = [
+  "autopep8>=2.3.2",
   "black>=25.9.0",
   "build>=1.2.2",
   "flake8>=7.3.0",

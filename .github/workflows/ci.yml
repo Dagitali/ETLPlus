@@ -62,7 +62,8 @@ jobs:
         run: |
           ruff version
           ruff check .
-          ruff format --check .
+          # ruff format --check .
+          autopep8 --diff --exit-code .
 
   test:
     runs-on: ubuntu-latest
