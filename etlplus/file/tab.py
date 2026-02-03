@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.tab` module.
 
-Stub helpers for reading/writing "tab"-formatted (TAB) files (not implemented
-yet).
+Helpers for reading/writing "tab"-formatted (TAB) files.
 
 Notes
 -----
@@ -15,9 +14,8 @@ Notes
     - Header/metadata lines or multi-line records that break TSV assumptions.
     - Not actually tab-delimited despite the name.
 - Rule of thumb:
-    - If the file is truly tab-delimited, use :mod:`etlplus.file.tsv`.
+    - This implementation treats TAB as tab-delimited text.
     - If the file has fixed-width fields, use :mod:`etlplus.file.fwf`.
-    - Otherwise, use :mod:`etlplus.file.tab` (i.e., this module).
 """
 
 from __future__ import annotations
@@ -26,7 +24,8 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._io import read_delimited
+from ._io import write_delimited
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -57,7 +56,7 @@ def read(
     JSONList
         The list of dictionaries read from the TAB file.
     """
-    return stub.read(path, format_name='TAB')
+    return read_delimited(path, delimiter='\t')
 
 
 def write(
@@ -80,4 +79,4 @@ def write(
     int
         The number of rows written to the TAB file.
     """
-    return stub.write(path, data, format_name='TAB')
+    return write_delimited(path, data, delimiter='\t')
