@@ -23,7 +23,9 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -54,20 +56,10 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the DTA file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for DTA support are missing.
     """
+    get_dependency('pyreadstat', format_name='DTA')
     pandas = get_pandas('DTA')
-    try:
-        frame = pandas.read_stata(path)
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'DTA support may require optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat',
-        ) from err
+    frame = pandas.read_stata(path)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
@@ -90,24 +82,14 @@ def write(
     -------
     int
         The number of rows written to the DTA file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for DTA support are missing.
     """
     records = normalize_records(data, 'DTA')
     if not records:
         return 0
 
+    get_dependency('pyreadstat', format_name='DTA')
     pandas = get_pandas('DTA')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_stata(path, write_index=False)
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'DTA support may require optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat',
-        ) from err
+    frame.to_stata(path, write_index=False)
     return len(records)
