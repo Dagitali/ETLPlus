@@ -19,6 +19,9 @@ import base64
 from pathlib import Path
 
 from ..types import JSONData
+from ._io import ensure_parent_dir
+from ._io import require_dict_payload
+from ._io import require_str_key
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -72,22 +75,15 @@ def write(
     -------
     int
         The number of records written to the PB file.
-
-    Raises
-    ------
-    TypeError
-        If *data* is not a dictionary or missing ``payload_base64``.
     """
-    if isinstance(data, list):
-        raise TypeError('PB payloads must be a dict')
-    if not isinstance(data, dict):
-        raise TypeError('PB payloads must be a dict')
+    payload = require_dict_payload(data, format_name='PB')
+    payload_base64 = require_str_key(
+        payload,
+        format_name='PB',
+        key='payload_base64',
+    )
 
-    payload_base64 = data.get('payload_base64')
-    if not isinstance(payload_base64, str):
-        raise TypeError('PB payloads must include a "payload_base64" string')
-
-    payload = base64.b64decode(payload_base64.encode('ascii'))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    decoded = base64.b64decode(payload_base64.encode('ascii'))
+    ensure_parent_dir(path)
+    path.write_bytes(decoded)
     return 1
