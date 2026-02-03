@@ -6,7 +6,7 @@ Unit tests for :mod:`etlplus.file.yaml`.
 Notes
 -----
 - Uses ``tmp_path`` for filesystem isolation.
-- Exercises JSON detection and defers errors for unknown extensions.
+- Exercises YAML read/write helpers with a stubbed PyYAML module.
 """
 
 from __future__ import annotations
