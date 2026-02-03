@@ -1,7 +1,12 @@
 """
 :mod:`tests.smoke.conftest` module.
 
-Shared fixtures for smoke tests.
+Define shared fixtures and helpers for pytest-based smoke tests of
+:mod:`etlplus`.
+
+Notes
+-----
+- Fixtures are designed for reuse and DRY test setup.
 """
 
 from __future__ import annotations
