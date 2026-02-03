@@ -18,13 +18,13 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,20 +35,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTION ================================================ #
-
-
-def _get_pyreadstat() -> Any:
-    """Return the pyreadstat module, importing it on first use."""
-    return get_optional_module(
-        'pyreadstat',
-        error_message=(
-            'SAV support requires optional dependency "pyreadstat".\n'
-            'Install with: pip install pyreadstat'
-        ),
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -70,7 +56,7 @@ def read(
     JSONList
         The list of dictionaries read from the SAV file.
     """
-    pyreadstat = _get_pyreadstat()
+    pyreadstat = get_dependency('pyreadstat', format_name='SAV')
     frame, _meta = pyreadstat.read_sav(str(path))
     return cast(JSONList, frame.to_dict(orient='records'))
 
@@ -99,9 +85,9 @@ def write(
     if not records:
         return 0
 
-    pyreadstat = _get_pyreadstat()
+    pyreadstat = get_dependency('pyreadstat', format_name='SAV')
     pandas = get_pandas('SAV')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
     pyreadstat.write_sav(frame, str(path))
     return len(records)
