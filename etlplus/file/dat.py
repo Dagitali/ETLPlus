@@ -114,4 +114,4 @@ def write(
     int
         The number of rows written to the DAT file.
     """
-    return write_delimited(path, data, delimiter=',')
+    return write_delimited(path, data, delimiter=',', format_name='DAT')
