@@ -19,6 +19,7 @@ select = [
   "I",   # isort
   "UP",  # pyupgrade
 ]
+preview = true
 extend-select = [
   "E203",  # Enforce autopep8 slice spacing (no space before ':')
 ]
