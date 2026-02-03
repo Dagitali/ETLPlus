@@ -23,7 +23,9 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ._imports import get_dependency
 from ._imports import get_pandas
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
@@ -54,20 +56,10 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the Feather file.
-
-    Raises
-    ------
-    ImportError
-        When optional dependency "pyarrow" is missing.
     """
+    get_dependency('pyarrow', format_name='Feather')
     pandas = get_pandas('Feather')
-    try:
-        frame = pandas.read_feather(path)
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'Feather support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow',
-        ) from e
+    frame = pandas.read_feather(path)
     return cast(JSONList, frame.to_dict(orient='records'))
 
 
@@ -89,24 +81,14 @@ def write(
     -------
     int
         Number of records written.
-
-    Raises
-    ------
-    ImportError
-        When optional dependency "pyarrow" is missing.
     """
     records = normalize_records(data, 'Feather')
     if not records:
         return 0
 
+    get_dependency('pyarrow', format_name='Feather')
     pandas = get_pandas('Feather')
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_feather(path)
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'Feather support requires optional dependency "pyarrow".\n'
-            'Install with: pip install pyarrow',
-        ) from e
+    frame.to_feather(path)
     return len(records)
