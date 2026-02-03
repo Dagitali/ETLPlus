@@ -80,14 +80,14 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CBOR at *path* and return record count.
+    Write *data* to CBOR file at *path* and return record count.
 
     Parameters
     ----------
     path : Path
         Path to the CBOR file on disk.
     data : JSONData
-        Data to write as CBOR. Should be a list of dictionaries or a
+        Data to write as CBOR file. Should be a list of dictionaries or a
         single dictionary.
 
     Returns
