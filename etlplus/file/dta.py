@@ -5,8 +5,8 @@ Helpers for reading/writing Stata (DTA) files.
 
 Notes
 -----
-- A DTA file is a dataset created by Stata for use with its statistical
-    software.
+- A DTA file is a proprietary binary format created by Stata to store datasets
+    with variables, labels, and data types.
 - Common cases:
     - Statistical analysis workflows.
     - Data sharing in research environments.
