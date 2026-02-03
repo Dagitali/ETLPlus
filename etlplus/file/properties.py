@@ -19,10 +19,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
+from ._io import ensure_parent_dir
+from ._io import require_dict_payload
+from ._io import stringify_value
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -32,16 +34,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _stringify(value: Any) -> str:
-    """Normalize properties values into strings."""
-    if value is None:
-        return ''
-    return str(value)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -102,19 +94,11 @@ def write(
     -------
     int
         The number of records written to the PROPERTIES file.
-
-    Raises
-    ------
-    TypeError
-        If *data* is not a dictionary.
     """
-    if isinstance(data, list):
-        raise TypeError('PROPERTIES payloads must be a dict')
-    if not isinstance(data, dict):
-        raise TypeError('PROPERTIES payloads must be a dict')
+    payload = require_dict_payload(data, format_name='PROPERTIES')
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     with path.open('w', encoding='utf-8', newline='') as handle:
-        for key in sorted(data.keys()):
-            handle.write(f'{key}={_stringify(data[key])}\n')
+        for key in sorted(payload.keys()):
+            handle.write(f'{key}={stringify_value(payload[key])}\n')
     return 1
