@@ -1,13 +1,13 @@
 """
 :mod:`tests.unit.api.conftest` module.
 
-Configures pytest-based unit tests for and provides shared fixtures for
+Define shared fixtures and helpers for pytest-based unit tests of
 :mod:`etlplus.api`.
 
 Notes
 -----
-- Fixtures are designed for reuse and DRY test setup across API-focused
-    unit tests.
+- Fixtures are designed for reuse and DRY test setup across API-focused unit
+    tests.
 """
 
 from __future__ import annotations

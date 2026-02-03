@@ -1,7 +1,8 @@
 """
 :mod:`tests.integration.conftest` module.
 
-Configures pytest-based integration tests and provides shared fixtures.
+Define shared fixtures and helpers for pytest-based integration tests of
+:mod:`etlplus`.
 
 Notes
 -----

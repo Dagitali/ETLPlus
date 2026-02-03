@@ -1,7 +1,8 @@
 """
 :mod:`tests.unit.conftest` module.
 
-Configures pytest-based unit tests and provides shared fixtures.
+Define shared fixtures and helpers for pytest-based unit tests of
+:mod:`etlplus`.
 
 Notes
 -----
