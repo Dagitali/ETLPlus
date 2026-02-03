@@ -125,10 +125,7 @@ def _element_to_dict(
             result[tag] = child_data
 
     for key, value in element.attrib.items():
-        if key in result:
-            result[f'@{key}'] = value
-        else:
-            result[key] = value
+        result[f'@{key}'] = value
     return result
 
 
