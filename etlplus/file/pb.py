@@ -5,7 +5,7 @@ Helpers for reading/writing Protocol Buffers binary (PB) files.
 
 Notes
 -----
-- A PB file contains Protocol Buffers (Protobuff) binary-encoded messages.
+- A PB file contains Protocol Buffers (Protobuf) binary-encoded messages.
 - Common cases:
     - Serialized payloads emitted by services or SDKs.
     - Binary payload dumps for debugging or transport.
