@@ -20,6 +20,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
+from ._io import ensure_parent_dir
+from ._io import require_dict_payload
+from ._io import require_str_key
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -71,21 +74,10 @@ def write(
     -------
     int
         The number of records written to the PROTO file.
-
-    Raises
-    ------
-    TypeError
-        If *data* is not a dictionary or is missing a ``schema`` string.
     """
-    if isinstance(data, list):
-        raise TypeError('PROTO payloads must be a dict')
-    if not isinstance(data, dict):
-        raise TypeError('PROTO payloads must be a dict')
+    payload = require_dict_payload(data, format_name='PROTO')
+    schema = require_str_key(payload, format_name='PROTO', key='schema')
 
-    schema = data.get('schema')
-    if not isinstance(schema, str):
-        raise TypeError('PROTO payloads must include a "schema" string')
-
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     path.write_text(schema, encoding='utf-8')
     return 1
