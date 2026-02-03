@@ -72,6 +72,11 @@ def write(
     -------
     int
         The number of records written to the PB file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is not a dictionary or missing ``payload_base64``.
     """
     if isinstance(data, list):
         raise TypeError('PB payloads must be a dict')
