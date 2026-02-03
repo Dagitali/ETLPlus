@@ -9,6 +9,12 @@ and writing data files.
   types
 - Exposes a `File` class with instance methods for reading and writing data
 
+Some formats require optional dependencies. Install with:
+
+```bash
+pip install -e ".[file]"
+```
+
 Back to project overview: see the top-level [README](../../README.md).
 
 - [`etlplus.file` Subpackage](#etlplusfile-subpackage)
@@ -29,20 +35,47 @@ matrix across all `FileFormat` values, see the top-level [README](../../README.m
 | Format    | Description                                 |
 |-----------|---------------------------------------------|
 | avro      | Apache Avro binary serialization            |
+| arrow     | Apache Arrow IPC                            |
+| bson      | Binary JSON (BSON)                          |
+| cbor      | Concise Binary Object Representation        |
 | csv       | Comma-separated values text files           |
+| dat       | Generic data files (delimited)              |
+| dta       | Stata datasets                              |
+| duckdb    | DuckDB database file                        |
 | feather   | Apache Arrow Feather columnar format        |
+| fwf       | Fixed-width formatted text files            |
 | gz        | Gzip-compressed files (see Compression)     |
+| hdf5      | Hierarchical Data Format                    |
+| ini       | INI config files                            |
 | json      | Standard JSON files                         |
+| msgpack   | MessagePack binary serialization            |
+| nc        | NetCDF datasets                             |
 | ndjson    | Newline-delimited JSON (JSON Lines)         |
+| ods       | OpenDocument spreadsheets                   |
 | orc       | Apache ORC columnar format                  |
 | parquet   | Apache Parquet columnar format              |
+| pb        | Protocol Buffers binary                     |
+| properties | Java-style properties                     |
+| proto     | Protocol Buffers schema                     |
+| psv       | Pipe-separated values text files            |
+| rda       | RData workspace bundles                     |
+| rds       | RDS datasets                                |
+| sas7bdat  | SAS datasets                                |
+| sav       | SPSS datasets                               |
+| sqlite    | SQLite database file                        |
+| tab       | Tab-delimited text files                    |
+| toml      | TOML config files                           |
 | tsv       | Tab-separated values text files             |
 | txt       | Plain text files                            |
 | xls       | Microsoft Excel (legacy .xls; read-only)    |
+| xlsm      | Microsoft Excel Macro-Enabled (XLSM)        |
 | xlsx      | Microsoft Excel (modern .xlsx)              |
+| xpt       | SAS transport files                         |
 | zip       | ZIP-compressed files (see Compression)      |
 | xml       | XML files                                   |
 | yaml      | YAML files                                  |
+
+Note: HDF5 support is read-only; writing is currently disabled.
 
 Compression formats (gz, zip) are also supported as wrappers for other formats. Formats not listed
 here are currently stubbed and will raise `NotImplementedError` on read/write.

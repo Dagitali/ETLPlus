@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.proto` module.
 
-Stub helpers for reading/writing Protocol Buffers schema (PROTO) files (not
-implemented yet).
+Helpers for reading/writing Protocol Buffers schema (PROTO) files.
 
 Notes
 -----
@@ -21,8 +20,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import JSONList
-from . import stub
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,7 +36,7 @@ __all__ = [
 
 def read(
     path: Path,
-) -> JSONList:
+) -> JSONData:
     """
     Read PROTO content from *path*.
 
@@ -50,10 +47,10 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the PROTO file.
+    JSONData
+        The structured data read from the PROTO file.
     """
-    return stub.read(path, format_name='PROTO')
+    return {'schema': path.read_text(encoding='utf-8')}
 
 
 def write(
@@ -68,12 +65,27 @@ def write(
     path : Path
         Path to the PROTO file on disk.
     data : JSONData
-        Data to write as PROTO. Should be a list of dictionaries or a
-        single dictionary.
+        Data to write as PROTO. Should be a dictionary with ``schema``.
 
     Returns
     -------
     int
-        The number of rows written to the PROTO file.
+        The number of records written to the PROTO file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is not a dictionary or is missing a ``schema`` string.
     """
-    return stub.write(path, data, format_name='PROTO')
+    if isinstance(data, list):
+        raise TypeError('PROTO payloads must be a dict')
+    if not isinstance(data, dict):
+        raise TypeError('PROTO payloads must be a dict')
+
+    schema = data.get('schema')
+    if not isinstance(schema, str):
+        raise TypeError('PROTO payloads must include a "schema" string')
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(schema, encoding='utf-8')
+    return 1

@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.file.ini` module.
 
-Stub helpers for reading/writing initialization (INI) files (not implemented
-yet).
+Helpers for reading/writing initialization (INI) files.
 
 Notes
 -----
@@ -20,11 +19,12 @@ Notes
 
 from __future__ import annotations
 
+import configparser
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
-from ..types import JSONList
-from . import stub
+from ..types import JSONDict
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -36,12 +36,22 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _stringify(value: Any) -> str:
+    """Normalize INI values into strings."""
+    if value is None:
+        return ''
+    return str(value)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def read(
     path: Path,
-) -> JSONList:
+) -> JSONData:
     """
     Read INI content from *path*.
 
@@ -52,10 +62,22 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the INI file.
+    JSONData
+        The structured data read from the INI file.
     """
-    return stub.read(path, format_name='INI')
+    parser = configparser.ConfigParser()
+    parser.read(path, encoding='utf-8')
+
+    payload: JSONDict = {}
+    if parser.defaults():
+        payload['DEFAULT'] = dict(parser.defaults())
+    defaults = dict(parser.defaults())
+    for section in parser.sections():
+        raw_section = dict(parser.items(section))
+        for key in defaults:
+            raw_section.pop(key, None)
+        payload[section] = raw_section
+    return payload
 
 
 def write(
@@ -70,12 +92,40 @@ def write(
     path : Path
         Path to the INI file on disk.
     data : JSONData
-        Data to write as INI. Should be a list of dictionaries or a
-        single dictionary.
+        Data to write as INI. Should be a dictionary.
 
     Returns
     -------
     int
-        The number of rows written to the INI file.
+        The number of records written to the INI file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is not a dictionary.
     """
-    return stub.write(path, data, format_name='INI')
+    if isinstance(data, list):
+        raise TypeError('INI payloads must be a dict')
+    if not isinstance(data, dict):
+        raise TypeError('INI payloads must be a dict')
+
+    parser = configparser.ConfigParser()
+    for section, values in data.items():
+        if section == 'DEFAULT':
+            if isinstance(values, dict):
+                parser['DEFAULT'] = {
+                    key: _stringify(value) for key, value in values.items()
+                }
+            else:
+                raise TypeError('INI DEFAULT section must be a dict')
+            continue
+        if not isinstance(values, dict):
+            raise TypeError('INI sections must map to dicts')
+        parser[section] = {
+            key: _stringify(value) for key, value in values.items()
+        }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w', encoding='utf-8', newline='') as handle:
+        parser.write(handle)
+    return 1

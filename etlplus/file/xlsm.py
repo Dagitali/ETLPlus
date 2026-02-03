@@ -1,8 +1,8 @@
 """
 :mod:`etlplus.file.xlsm` module.
 
-Stub helpers for reading/writing Microsoft Excel Macro-Enabled (XLSM)
-spreadsheet files (not implemented yet).
+Helpers for reading/writing Microsoft Excel Macro-Enabled (XLSM)
+spreadsheet files.
 
 Notes
 -----
@@ -20,10 +20,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from . import stub
+from ._imports import get_pandas
+from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -53,8 +55,21 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the XLSM file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for XLSM support are missing.
     """
-    return stub.read(path, format_name='XLSM')
+    pandas = get_pandas('XLSM')
+    try:
+        frame = pandas.read_excel(path)
+    except ImportError as e:  # pragma: no cover
+        raise ImportError(
+            'XLSM support requires optional dependency "openpyxl".\n'
+            'Install with: pip install openpyxl',
+        ) from e
+    return cast(JSONList, frame.to_dict(orient='records'))
 
 
 def write(
@@ -76,5 +91,24 @@ def write(
     -------
     int
         The number of rows written to the XLSM file.
+
+    Raises
+    ------
+    ImportError
+        If optional dependencies for XLSM support are missing.
     """
-    return stub.write(path, data, format_name='XLSM')
+    records = normalize_records(data, 'XLSM')
+    if not records:
+        return 0
+
+    pandas = get_pandas('XLSM')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pandas.DataFrame.from_records(records)
+    try:
+        frame.to_excel(path, index=False)
+    except ImportError as e:  # pragma: no cover
+        raise ImportError(
+            'XLSM support requires optional dependency "openpyxl".\n'
+            'Install with: pip install openpyxl',
+        ) from e
+    return len(records)
