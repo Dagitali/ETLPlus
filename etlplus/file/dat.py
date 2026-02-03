@@ -5,8 +5,8 @@ Helpers for reading/writing data (DAT) files.
 
 Notes
 -----
-- A “DAT-formatted” file is a generic data file that may use various
-    delimiters or fixed-width formats.
+- A DAT file is a generic data file that may use various delimiters or fixed-
+    width formats.
 - Common cases:
     - Delimited text files (e.g., CSV, TSV).
     - Fixed-width formatted files.
