@@ -24,6 +24,7 @@ from typing import Any
 from ..types import JSONData
 from ..types import JSONDict
 from ..utils import count_records
+from ._io import ensure_parent_dir
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -186,6 +187,7 @@ def write(
         root_element = _dict_to_element(root_tag, data)
 
     tree = ET.ElementTree(root_element)
+    ensure_parent_dir(path)
     tree.write(path, encoding='utf-8', xml_declaration=True)
 
     return count_records(data)
