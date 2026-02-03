@@ -519,6 +519,32 @@ class TestFile:
             result = normalize_numeric_records(result)
         assert result == expected
 
+    def test_strpath_support_for_module_helpers(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test module helpers accept ``StrPath`` inputs.
+
+        Uses ``str`` and ``PathLike`` inputs to validate normalization.
+        """
+        csv_path = tmp_path / 'data.csv'
+        json_path = tmp_path / 'data.json'
+        xml_path = tmp_path / 'data.xml'
+
+        csv_file.write(str(csv_path), [{'name': 'Ada'}])
+        assert csv_file.read(str(csv_path)) == [{'name': 'Ada'}]
+
+        json_file.write(_DummyPath(str(json_path)), {'name': 'Ada'})
+        assert json_file.read(_DummyPath(str(json_path))) == {'name': 'Ada'}
+
+        xml_file.write(
+            PurePath(xml_path),
+            {'root': {'text': 'hello'}},
+            root_tag='root',
+        )
+        assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
+
     def test_stub_formats_raise_on_read(
         self,
         tmp_path: Path,
@@ -613,32 +639,6 @@ class TestFile:
         json_content = path.read_text(encoding='utf-8')
         assert json_content
         assert json_content.count('\n') >= 2
-
-    def test_strpath_support_for_module_helpers(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test module helpers accept ``StrPath`` inputs.
-
-        Uses ``str`` and ``PathLike`` inputs to validate normalization.
-        """
-        csv_path = tmp_path / 'data.csv'
-        json_path = tmp_path / 'data.json'
-        xml_path = tmp_path / 'data.xml'
-
-        csv_file.write(str(csv_path), [{'name': 'Ada'}])
-        assert csv_file.read(str(csv_path)) == [{'name': 'Ada'}]
-
-        json_file.write(_DummyPath(str(json_path)), {'name': 'Ada'})
-        assert json_file.read(_DummyPath(str(json_path))) == {'name': 'Ada'}
-
-        xml_file.write(
-            PurePath(xml_path),
-            {'root': {'text': 'hello'}},
-            root_tag='root',
-        )
-        assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
 
     def test_xls_write_not_supported(
         self,
