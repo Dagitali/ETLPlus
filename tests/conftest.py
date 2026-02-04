@@ -190,6 +190,34 @@ def json_file_factory_fixture(
 
 
 @pytest.fixture(
+    name='sample_record',
+    params=[
+        pytest.param(
+            {'id': 99, 'name': 'Grace'},
+            id='single-record',
+        ),
+    ],
+)
+def sample_record_fixture(
+    request: pytest.FixtureRequest,
+) -> dict[str, Any]:
+    """
+    Return a representative record payload for tests.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest fixture request carrying the parametrized payload.
+
+    Returns
+    -------
+    dict[str, Any]
+        The sample record payload.
+    """
+    return request.param
+
+
+@pytest.fixture(
     name='sample_records',
     params=[
         pytest.param(
