@@ -1,7 +1,7 @@
 """
 :mod:`tests.smoke.test_s_cli_transform` module.
 
-Smoke test suite for the ``etlplus transform`` CLI command.
+Smoke tests for the ``etlplus transform`` CLI command.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliTransform:
-    """Smoke test suite for the ``etlplus transform`` CLI command."""
+    """Smoke tests for the ``etlplus transform`` CLI command."""
 
     def test_stdin_select(
         self,

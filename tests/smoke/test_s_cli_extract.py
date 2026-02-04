@@ -1,7 +1,7 @@
 """
 :mod:`tests.smoke.test_s_cli_extract` module.
 
-Smoke test suite for the ``etlplus extract`` CLI command.
+Smoke tests for the ``etlplus extract`` CLI command.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliExtract:
-    """Smoke test suite for the ``etlplus extract`` CLI command."""
+    """Smoke tests for the ``etlplus extract`` CLI command."""
 
     def test_extract_json_file(
         self,

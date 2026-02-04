@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestPipeline:
-    """Smoke test suite for file→file job via CLI."""
+    """Smoke tests for file→file job via CLI."""
 
     def test_file_to_file(
         self,

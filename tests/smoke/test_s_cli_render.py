@@ -1,7 +1,7 @@
 """
 :mod:`tests.smoke.test_s_cli_render` module.
 
-Smoke test suite for the ``etlplus render`` CLI command.
+Smoke tests for the ``etlplus render`` CLI command.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliRender:
-    """Smoke test suite for the ``etlplus render`` CLI command."""
+    """Smoke tests for the ``etlplus render`` CLI command."""
 
     def test_config_emits_sql(
         self,
