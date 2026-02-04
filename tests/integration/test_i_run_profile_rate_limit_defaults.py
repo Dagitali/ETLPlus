@@ -29,7 +29,7 @@ from tests.integration.conftest import FakeEndpointClientProtocol
 
 
 class TestRunProfileRateLimitDefaults:
-    """Integration test suite for profile-level rate limit defaults."""
+    """Integration tests for profile-level rate limit defaults."""
 
     @pytest.mark.parametrize(
         'rate_cfg,forced_sleep,expected_sleep',

@@ -338,7 +338,7 @@ def pipeline_cli_runner_fixture(
 
 
 class TestPaginationStrategies:
-    """Integration test suite for pagination strategies."""
+    """Integration tests for pagination strategies."""
 
     @pytest.fixture(autouse=True)
     def _no_sleep(self, monkeypatch: pytest.MonkeyPatch) -> None:

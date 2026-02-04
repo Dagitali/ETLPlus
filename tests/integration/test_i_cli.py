@@ -30,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliEndToEnd:
-    """Integration test suite for :mod:`etlplus.cli`."""
+    """Integration tests for :mod:`etlplus.cli`."""
 
     @pytest.mark.parametrize(
         'args,should_pass',
