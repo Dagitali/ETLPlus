@@ -121,7 +121,7 @@ def simple_spec_fixture() -> TableSpec:
 
 
 class TestHelpers:
-    """Unit test suite for helper utilities in :mod:`orm`."""
+    """Unit tests for helper utilities in :mod:`orm`."""
 
     @pytest.mark.parametrize(
         'type_decl, expected_type, expected_attr',

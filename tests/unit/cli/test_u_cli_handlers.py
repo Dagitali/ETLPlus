@@ -14,7 +14,6 @@ import pytest
 
 import etlplus.cli.handlers as handlers
 from etlplus import Config
-from tests.unit.cli.conftest import CaptureHandler
 from tests.unit.cli.conftest import CaptureIo
 from tests.unit.cli.conftest import assert_emit_json
 from tests.unit.cli.conftest import assert_emit_or_write
@@ -23,7 +22,7 @@ from tests.unit.cli.conftest import assert_emit_or_write
 
 
 class TestCliHandlersInternalHelpers:
-    """Unit tests for internal CLI helpers in :mod:`etlplus.cli.handlers`."""
+    """Unit tests for internal CLI helpers in :mod:`handlers`."""
 
     def test_check_sections_all(self, dummy_cfg: Config) -> None:
         """
@@ -70,7 +69,7 @@ class TestCliHandlersInternalHelpers:
 
 
 class TestCheckHandler:
-    """Unit test suite for :func:`check_handler`."""
+    """Unit tests for :func:`check_handler`."""
 
     def test_passes_substitute_flag(
         self,
@@ -127,7 +126,7 @@ class TestCheckHandler:
 
 
 class TestExtractHandler:
-    """Unit test suite for :func:`extract_handler`."""
+    """Unit tests for :func:`extract_handler`."""
 
     def test_calls_extract_for_non_file_sources(
         self,
@@ -290,7 +289,7 @@ class TestExtractHandler:
 
 
 class TestLoadHandler:
-    """Unit test suite for :func:`load_handler`."""
+    """Unit tests for :func:`load_handler`."""
 
     def test_file_target_streams_payload(
         self,
@@ -477,7 +476,7 @@ class TestLoadHandler:
 
 
 class TestRenderHandler:
-    """Unit test suite for :func:`render_handler`."""
+    """Unit tests for :func:`render_handler`."""
 
     def test_errors_without_specs(
         self,
@@ -529,7 +528,7 @@ class TestRenderHandler:
 
 
 class TestRunHandler:
-    """Unit test suite for :func:`run_handler`."""
+    """Unit tests for :func:`run_handler`."""
 
     def test_emits_pipeline_summary_without_job(
         self,
@@ -605,7 +604,7 @@ class TestRunHandler:
 
 
 class TestTransformHandler:
-    """Unit test suite for :func:`transform_handler`."""
+    """Unit tests for :func:`transform_handler`."""
 
     def test_emits_result_without_target(
         self,
@@ -708,7 +707,7 @@ class TestTransformHandler:
 
 
 class TestValidateHandler:
-    """Unit test suite for :func:`validate_handler`."""
+    """Unit tests for :func:`validate_handler`."""
 
     def test_emits_result_without_target(
         self,
@@ -823,58 +822,3 @@ class TestValidateHandler:
             'out.json',
             'ValidationDict result saved to',
         )
-
-
-@pytest.mark.parametrize(
-    ('kwargs', 'expected_keys'),
-    (
-        pytest.param(
-            {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
-            ['config', 'job', 'pretty'],
-            id='run-handler-smoke',
-        ),
-        pytest.param(
-            {
-                'source': 'data.json',
-                'operations': '{"select": ["id"]}',
-                'pretty': True,
-            },
-            ['source', 'operations', 'pretty'],
-            id='transform-handler-smoke',
-        ),
-        pytest.param(
-            {
-                'source': 'data.json',
-                'rules': '{"required": ["id"]}',
-                'pretty': True,
-            },
-            ['source', 'rules', 'pretty'],
-            id='validate-handler-smoke',
-        ),
-    ),
-)
-def test_handler_smoke(
-    capture_handler: CaptureHandler,
-    kwargs: dict[str, str | bool],
-    expected_keys: list[str],
-) -> None:
-    """
-    Smoke test CLI handlers to ensure they accept kwargs and call underlying
-    logic.
-    """
-    # Map handler by keys
-    if 'job' in kwargs:
-        module, attr = handlers, 'run_handler'
-    elif 'operations' in kwargs:
-        module, attr = handlers, 'transform_handler'
-    elif 'rules' in kwargs:
-        module, attr = handlers, 'validate_handler'
-    else:
-        pytest.skip('Unknown handler')
-        # Ensure function exits after skip to avoid unbound variable usage.
-        return
-    calls = capture_handler(module, attr)
-    result = getattr(module, attr)(**kwargs)
-    assert result == 0
-    for key in expected_keys:
-        assert key in calls

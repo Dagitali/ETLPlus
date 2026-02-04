@@ -271,7 +271,7 @@ class TestCliVersionFlag:
 
 
 class TestInferResourceType:
-    """Unit test suite for :func:`infer_resource_type`."""
+    """Unit tests for :func:`infer_resource_type`."""
 
     def test_file_path(self, tmp_path: Path) -> None:
         """
@@ -310,7 +310,7 @@ class TestInferResourceType:
 
 
 class TestOptionalChoice:
-    """Unit test suite for :func:`optional_choice`."""
+    """Unit tests for :func:`optional_choice`."""
 
     @pytest.mark.parametrize(
         ('choice', 'expected'),

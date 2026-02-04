@@ -259,7 +259,7 @@ def patch_request_once_fixture(
 
 
 class TestContextManager:
-    """Unit test suite for :class:`EndpointClient`."""
+    """Unit tests for :class:`EndpointClient`."""
 
     def test_closes_factory_session(
         self,
@@ -371,7 +371,7 @@ class TestContextManager:
 
 
 class TestCursorPagination:
-    """Unit test suite for :class:`EndpointClient`."""
+    """Unit tests for :class:`EndpointClient`."""
 
     @pytest.mark.parametrize(
         'raw_page_size,expected_limit',
@@ -766,7 +766,7 @@ class TestRequestOptionIntegration:
 
 
 class TestErrors:
-    """Unit test suite for :class:`ApiAuthError`."""
+    """Unit tests for :class:`ApiAuthError`."""
 
     def test_auth_error_wrapping_on_single_attempt(
         self,
@@ -818,7 +818,7 @@ class TestErrors:
 
 class TestOffsetPagination:
     """
-    Unit test suite for offset pagination in :class:`EndpointClient`.
+    Unit tests for offset pagination in :class:`EndpointClient`.
 
     Tests offset-based pagination logic, including correct offset stepping,
     limit handling, and record truncation.
@@ -888,7 +888,7 @@ class TestOffsetPagination:
 
 class TestPagePagination:
     """
-    Unit test suite for page-based pagination in :class:`EndpointClient`.
+    Unit tests for page-based pagination in :class:`EndpointClient`.
 
     Tests page-based pagination logic, including batch handling, page size
     normalization, error propagation, and query parameter merging.
@@ -1126,7 +1126,7 @@ class TestPagePagination:
 
 class TestRateLimitPrecedence:
     """
-    Unit test suite for rate limit precedence in :class:`EndpointClient`.
+    Unit tests for rate limit precedence in :class:`EndpointClient`.
 
     Tests explicit sleep_seconds override, rate_limit config precedence, and
     correct sleep duration application during pagination.
@@ -1205,7 +1205,7 @@ class TestRateLimitPrecedence:
 
 class TestRetryLogic:
     """
-    Unit test suite for retry logic in :class:`EndpointClient`.
+    Unit tests for retry logic in :class:`EndpointClient`.
 
     This suite covers:
     - Retry behavior for request errors
@@ -1418,7 +1418,7 @@ class TestRetryLogic:
 
 class TestUrlComposition:
     """
-    Unit test suite for URL composition in :class:`EndpointClient`.
+    Unit tests for URL composition in :class:`EndpointClient`.
 
     This suite covers:
     - Base path variants and endpoint joining

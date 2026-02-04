@@ -20,7 +20,7 @@ from etlplus.file import FileFormat
 
 
 class TestEmitJson:
-    """Unit test suite for :func:`emit_json`."""
+    """Unit tests for :func:`emit_json`."""
 
     def test_compact_prints_minified(
         self,
@@ -45,7 +45,7 @@ class TestEmitJson:
 
 
 class TestInferPayloadFormat:
-    """Unit test suite for :func:`infer_payload_format`."""
+    """Unit tests for :func:`infer_payload_format`."""
 
     def test_inferring_payload_format(self) -> None:
         """Test inferring JSON vs CSV using the first significant byte."""
@@ -54,7 +54,7 @@ class TestInferPayloadFormat:
 
 
 class TestMaterializeFilePayload:
-    """Unit test suite for :func:`materialize_file_payload`."""
+    """Unit tests for :func:`materialize_file_payload`."""
 
     def test_ignoring_hint_without_flag(
         self,
@@ -214,7 +214,7 @@ class TestMaterializeFilePayload:
 
 
 class TestParseTextPayload:
-    """Unit test suite for :func:`parse_text_payload`."""
+    """Unit tests for :func:`parse_text_payload`."""
 
     @pytest.mark.parametrize(
         ('payload', 'fmt', 'expected'),
@@ -251,7 +251,7 @@ class TestParseTextPayload:
 
 
 class TestReadCsvRows:
-    """Unit test suite for :func:`read_csv_rows`."""
+    """Unit tests for :func:`read_csv_rows`."""
 
     def test_reading_csv_rows(
         self,
@@ -270,7 +270,7 @@ class TestReadCsvRows:
 
 
 class TestReadStdinText:
-    """Unit test suite for :func:`read_stdin_text`."""
+    """Unit tests for :func:`read_stdin_text`."""
 
     def test_reading_stdin_text(
         self,
@@ -287,7 +287,7 @@ class TestReadStdinText:
 
 
 class TestWriteJsonOutput:
-    """Unit test suite for :func:`write_json_output`."""
+    """Unit tests for :func:`write_json_output`."""
 
     def test_writing_to_file(
         self,

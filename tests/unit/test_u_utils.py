@@ -50,7 +50,7 @@ def vars_map_nested_fixture() -> dict[str, int]:
 
 
 class TestDeepSubstitute:
-    """Unit test suite for :func:`etlplus.utils.deep_substitute`."""
+    """Unit tests for :func:`etlplus.utils.deep_substitute`."""
 
     def test_basic_substitution(self, vars_map_basic: dict[str, str]) -> None:
         """Test substituting tokens across nested mappings and sequences."""
@@ -139,7 +139,7 @@ class TestDeepSubstitute:
 
 class TestUtils:
     """
-    Unit test suite for ``etlplus.utils``.
+    Unit tests for :mod:`etlplus.utils`.
 
     Notes
     -----

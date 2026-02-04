@@ -16,7 +16,7 @@ from etlplus.ops.enums import PipelineStep
 
 
 class TestAggregateName:
-    """Unit test suite for :class:`etlplus.ops.enums.AggregateName`."""
+    """Unit tests for :class:`etlplus.ops.enums.AggregateName`."""
 
     @pytest.mark.parametrize(
         'nums',
@@ -35,7 +35,7 @@ class TestAggregateName:
 
 
 class TestOperatorName:
-    """Unit test suite for :class:`etlplus.ops.enums.OperatorName`."""
+    """Unit tests for :class:`etlplus.ops.enums.OperatorName`."""
 
     def test_funcs(self) -> None:
         """Test the operator functions."""
@@ -48,7 +48,7 @@ class TestOperatorName:
 
 
 class TestPipelineStep:
-    """Unit test suite for :class:`etlplus.ops.enums.PipelineStep`."""
+    """Unit tests for :class:`etlplus.ops.enums.PipelineStep`."""
 
     def test_order(self) -> None:
         """Test the order values."""

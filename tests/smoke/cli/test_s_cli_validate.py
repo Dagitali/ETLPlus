@@ -1,7 +1,7 @@
 """
 :mod:`tests.smoke.test_s_cli_validate` module.
 
-Smoke test suite for the ``etlplus validate`` CLI command.
+Smoke tests for the ``etlplus validate`` CLI command.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliValidate:
-    """Smoke test suite for the ``etlplus validate`` CLI command."""
+    """Smoke tests for the ``etlplus validate`` CLI command."""
 
     def test_stdin_payload(
         self,

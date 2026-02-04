@@ -116,7 +116,7 @@ class _StubSession:
 
 class TestLoad:
     """
-    Unit test suite for :func:`etlplus.ops.load.load`.
+    Unit tests for :func:`etlplus.ops.load.load`.
 
     Notes
     -----
@@ -263,7 +263,7 @@ class TestLoad:
 
 class TestLoadErrors:
     """
-    Unit test suite for ``etlplus.ops.load`` function errors.
+    Unit tests for :mod:`etlplus.ops.load` function errors.
 
     Notes
     -----
@@ -316,7 +316,7 @@ class TestLoadErrors:
 
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.ops.load.load_data`.
+    Unit tests for :func:`etlplus.ops.load.load_data`.
 
     Notes
     -----
@@ -411,7 +411,7 @@ class TestLoadData:
 
 class TestLoadToFile:
     """
-    Unit test suite for :func:`etlplus.ops.load.load_to_file`.
+    Unit tests for :func:`etlplus.ops.load.load_to_file`.
 
     Notes
     -----

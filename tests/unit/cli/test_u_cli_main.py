@@ -27,7 +27,7 @@ PROG_NAME: Final[str] = 'etlplus'
 
 
 class TestMain:
-    """Unit test suite for :func:`etlplus.cli.main`."""
+    """Unit tests for :func:`etlplus.cli.main`."""
 
     def test_command_return_value_is_passthrough(
         self,

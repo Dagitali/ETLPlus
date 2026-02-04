@@ -27,7 +27,7 @@ engine_mod = importlib.import_module('etlplus.database.engine')
 
 class TestLoadDatabaseUrlFromConfig:
     """
-    Unit test suite for :func:`load_database_url_from_config`.
+    Unit tests for :func:`load_database_url_from_config`.
 
     Notes
     -----
@@ -117,7 +117,7 @@ class TestLoadDatabaseUrlFromConfig:
 
 
 class TestMakeEngine:
-    """Unit test suite for :func:`make_engine` and module defaults."""
+    """Unit tests for :func:`make_engine` and module defaults."""
 
     @pytest.fixture()
     def capture_create_engine(

@@ -26,7 +26,7 @@ from tests.integration.conftest import FakeEndpointClientProtocol as Client
 
 
 class TestRunProfilePaginationDefaults:
-    """Integration test suite for profile-level pagination defaults."""
+    """Integration tests for profile-level pagination defaults."""
 
     def test_job_level_pagination_overrides_profile_defaults(
         self,

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import itertools
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
@@ -63,6 +64,13 @@ class TableSpec:
     table_name: str
 
 
+class FileModule(Protocol):
+    """Protocol for file format modules exposing ``read``/``write`` helpers."""
+
+    read: Callable[..., Any]
+    write: Callable[..., Any]
+
+
 class PipelineConfigFactory(Protocol):
     """Protocol for pipeline config factory fixtures."""
 
@@ -72,7 +80,41 @@ class PipelineConfigFactory(Protocol):
     ) -> PipelineConfig: ...
 
 
+type CaptureHandler = Callable[[object, str], dict[str, object]]
+
+
 # SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='capture_handler')
+def capture_handler_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> CaptureHandler:
+    """
+    Patch a handler function and capture the kwargs it receives.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    CaptureHandler
+        Callable that records handler keyword arguments.
+    """
+
+    def _capture(module: object, attr: str) -> dict[str, object]:
+        calls: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            calls.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(module, attr, _stub)
+        return calls
+
+    return _capture
 
 
 @pytest.fixture(name='pipeline_config_factory')
@@ -217,3 +259,48 @@ def table_spec_fixture(
         schema_name=schema_name,
         table_name=table_name,
     )
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def run_file_smoke(
+    module: FileModule,
+    path: Path,
+    payload: object,
+    *,
+    write_kwargs: dict[str, object] | None = None,
+    expect_write_error: type[Exception] | None = None,
+    error_match: str | None = None,
+) -> None:
+    """
+    Run a minimal read/write smoke cycle for file modules.
+
+    Parameters
+    ----------
+    module : FileModule
+        File module exposing ``read``/``write`` functions.
+    path : Path
+        Target path for the test file.
+    payload : object
+        Payload passed to ``write``.
+    write_kwargs : dict[str, object] | None, optional
+        Keyword arguments forwarded to ``write``.
+    expect_write_error : type[Exception] | None, optional
+        Expected exception type for write failures.
+    error_match : str | None, optional
+        Regex message to assert when ``expect_write_error`` is provided.
+    """
+    write_kwargs = write_kwargs or {}
+    try:
+        if expect_write_error is not None:
+            match = error_match or ''
+            with pytest.raises(expect_write_error, match=match):
+                module.write(path, payload, **write_kwargs)
+            return
+        written = module.write(path, payload, **write_kwargs)
+        assert written
+        result = module.read(path)
+        assert result
+    except ImportError as exc:
+        pytest.skip(str(exc))

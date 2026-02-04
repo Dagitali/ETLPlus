@@ -57,7 +57,7 @@ def _base_config(
 
 
 class TestRun:
-    """Unit test suite for :func:`etlplus.ops.run.run`."""
+    """Unit tests for :func:`etlplus.ops.run.run`."""
 
     def test_api_source_and_target_pipeline(
         self,
