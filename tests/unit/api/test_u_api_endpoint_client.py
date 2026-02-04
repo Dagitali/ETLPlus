@@ -34,13 +34,6 @@ from etlplus.api import RetryPolicyDict
 from etlplus.api import errors as api_errors
 from tests.unit.api.test_u_api_mocks import MockSession
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 
@@ -265,7 +258,6 @@ def patch_request_once_fixture(
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestContextManager:
     """Unit test suite for :class:`EndpointClient`."""
 
@@ -378,7 +370,6 @@ class TestContextManager:
         assert request_once_stub['urls'] == [f'{base_url}/items']
 
 
-@pytest.mark.unit
 class TestCursorPagination:
     """Unit test suite for :class:`EndpointClient`."""
 
@@ -432,7 +423,6 @@ class TestCursorPagination:
         assert params.get('limit') == expected_limit
 
 
-@pytest.mark.unit
 class TestRequestOptionIntegration:
     """Tests covering RequestOptions propagation across helpers."""
 
@@ -775,7 +765,6 @@ class TestRequestOptionIntegration:
         assert attempts['n'] == 2
 
 
-@pytest.mark.unit
 class TestErrors:
     """Unit test suite for :class:`ApiAuthError`."""
 
@@ -827,7 +816,6 @@ class TestErrors:
         assert err.retry_policy is None
 
 
-@pytest.mark.unit
 class TestOffsetPagination:
     """
     Unit test suite for offset pagination in :class:`EndpointClient`.
@@ -898,7 +886,6 @@ class TestOffsetPagination:
         assert [r['i'] for r in cast(list[dict[str, int]], data)] == [0, 1, 2]
 
 
-@pytest.mark.unit
 class TestPagePagination:
     """
     Unit test suite for page-based pagination in :class:`EndpointClient`.
@@ -1137,7 +1124,6 @@ class TestPagePagination:
         assert out == {'foo': 'bar'}
 
 
-@pytest.mark.unit
 class TestRateLimitPrecedence:
     """
     Unit test suite for rate limit precedence in :class:`EndpointClient`.
@@ -1217,7 +1203,6 @@ class TestRateLimitPrecedence:
         assert capture_sleeps == [pytest.approx(0.05), pytest.approx(0.05)]
 
 
-@pytest.mark.unit
 class TestRetryLogic:
     """
     Unit test suite for retry logic in :class:`EndpointClient`.
@@ -1431,7 +1416,6 @@ class TestRetryLogic:
         assert attempts['n'] == 3
 
 
-@pytest.mark.unit
 class TestUrlComposition:
     """
     Unit test suite for URL composition in :class:`EndpointClient`.

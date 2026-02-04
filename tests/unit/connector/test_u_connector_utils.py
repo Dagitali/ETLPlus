@@ -17,17 +17,9 @@ from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import parse_connector
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestParseConnector:
     """
     Unit test suite for :func:`parse_connector`.

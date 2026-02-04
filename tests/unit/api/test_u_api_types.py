@@ -14,13 +14,6 @@ from etlplus.api.types import Params
 from etlplus.api.types import RequestOptions
 from etlplus.api.types import Url
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 

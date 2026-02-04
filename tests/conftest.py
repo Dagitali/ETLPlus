@@ -1,11 +1,11 @@
 """
 :mod:`tests.conftest` module.
 
-Global pytest fixtures shared across unit, integration, and end-to-end tests.
+Define shared fixtures and helpers for pytest-based tests of :mod:`etlplus`.
 
 Notes
 -----
-- Provides CLI helpers so tests no longer need to monkeypatch ``sys.argv``
+- Provides CLI helpers so tests no longer need to monkeypatch :mod:`sys.argv`
     inline.
 - Supplies JSON file factories that rely on ``tmp_path`` for automatic
     cleanup.
@@ -93,7 +93,7 @@ def coerce_cli_args(
     Returns
     -------
     tuple[str, ...]
-        Normalized argument tuple safe to concatenate with ``sys.argv``.
+        Normalized argument tuple safe to concatenate with :mod:`sys.argv`.
     """
     if (
         len(cli_args) == 1
@@ -306,12 +306,12 @@ def cli_runner_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> CliRunner:
     """
-    Invoke ``etlplus`` CLI commands with isolated ``sys.argv`` state.
+    Invoke ``etlplus`` CLI commands with isolated :mod:`sys.argv` state.
 
     Parameters
     ----------
     monkeypatch : pytest.MonkeyPatch
-        Built-in pytest fixture used to patch ``sys.argv``.
+        Built-in pytest fixture used to patch :mod:`sys.argv`.
 
     Returns
     -------

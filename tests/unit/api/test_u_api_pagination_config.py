@@ -18,17 +18,9 @@ import pytest
 
 from etlplus.api import PaginationConfig
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestPaginationConfig:
     """
     Unit test suite for :class:`PaginationConfig`.

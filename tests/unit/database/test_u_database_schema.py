@@ -19,13 +19,6 @@ from etlplus.database.schema import ColumnSpec
 from etlplus.database.schema import IdentitySpec
 from etlplus.database.schema import TableSpec
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTIONS: HELPERS ========================================================= #
 
 

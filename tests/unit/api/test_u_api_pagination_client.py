@@ -14,22 +14,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from etlplus.api.pagination import PaginationClient
 from etlplus.api.pagination import PaginationType
 from etlplus.api.types import RequestOptions
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestPaginationClient:
     """Unit tests targeting ``PaginationClient`` detection behavior."""
 

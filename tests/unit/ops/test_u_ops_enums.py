@@ -12,17 +12,9 @@ from etlplus.ops.enums import AggregateName
 from etlplus.ops.enums import OperatorName
 from etlplus.ops.enums import PipelineStep
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestAggregateName:
     """Unit test suite for :class:`etlplus.ops.enums.AggregateName`."""
 

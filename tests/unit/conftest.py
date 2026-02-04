@@ -49,10 +49,6 @@ pytestmark = pytest.mark.unit
 # SECTION: TYPES ============================================================ #
 
 
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 class _CursorKwDict(TypedDict, total=False):
     cursor_param: str
     cursor_path: str

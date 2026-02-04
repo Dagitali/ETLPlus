@@ -20,13 +20,6 @@ import etlplus.file._imports as import_helpers
 from etlplus.file import File
 from etlplus.file import FileFormat
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 

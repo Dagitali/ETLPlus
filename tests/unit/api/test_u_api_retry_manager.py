@@ -15,13 +15,6 @@ from etlplus.api.retry_manager import RetryManager
 from etlplus.api.retry_manager import RetryPolicyDict
 from etlplus.api.retry_manager import RetryStrategy
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
