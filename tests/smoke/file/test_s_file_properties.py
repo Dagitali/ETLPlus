@@ -32,6 +32,8 @@ class TestProperties:
         ----------
         tmp_path : Path
             Pytest temporary directory.
+        sample_record : dict[str, object]
+            Sample record payload.
         """
         path = tmp_path / 'data.properties'
         payload = {k: str(v) for k, v in sample_record.items()}

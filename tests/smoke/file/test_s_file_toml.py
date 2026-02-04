@@ -32,6 +32,8 @@ class TestToml:
         ----------
         tmp_path : Path
             Pytest temporary directory.
+        sample_record : dict[str, object]
+            Sample record payload.
         """
         path = tmp_path / 'data.toml'
         payload = sample_record
