@@ -30,13 +30,6 @@ from tests.unit.file.conftest import normalize_numeric_records
 from tests.unit.file.conftest import normalize_xml_payload
 from tests.unit.file.conftest import require_optional_modules
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 

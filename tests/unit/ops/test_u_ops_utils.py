@@ -17,13 +17,6 @@ import pytest
 from etlplus.ops.utils import ValidationResultDict
 from etlplus.ops.utils import maybe_validate
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 

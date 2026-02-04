@@ -18,17 +18,9 @@ import pytest
 
 from etlplus.api import RateLimitConfig
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestRateLimitConfig:
     """
     Unit test suite for :class:`RateLimitConfig`.

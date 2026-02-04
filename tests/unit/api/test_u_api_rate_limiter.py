@@ -24,13 +24,6 @@ import pytest
 from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: FIXTURES ======================================================== #
 
 
@@ -53,7 +46,6 @@ def fixed_limiter_fixture() -> RateLimiter:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestResolveSleepSeconds:
     """
     Unit test suite for :meth:`RateLimiter.resolve_sleep_seconds`.
@@ -153,7 +145,6 @@ class TestResolveSleepSeconds:
         ) == pytest.approx(0.2)
 
 
-@pytest.mark.unit
 class TestRateLimiterBasics:
     """
     Unit test suite for basic behavior of :class:`RateLimiter`.
@@ -256,7 +247,6 @@ class TestRateLimiterBasics:
         assert bool(limiter) is expected_enabled
 
 
-@pytest.mark.unit
 class TestRateLimiterFromConfig:
     """
     Unit test suite for :meth:`RateLimiter.from_config` construction.
@@ -303,7 +293,6 @@ class TestRateLimiterFromConfig:
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
 
 
-@pytest.mark.unit
 class TestRateLimiterEnforce:
     """
     Unit test suite for :meth:`RateLimiter.enforce` behavior, covering enabled

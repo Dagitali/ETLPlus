@@ -34,13 +34,6 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.types import JSONData
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 
@@ -121,7 +114,6 @@ class _StubSession:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestLoad:
     """
     Unit test suite for :func:`etlplus.ops.load.load`.
@@ -269,7 +261,6 @@ class TestLoad:
         assert err_msg in str(e.value)
 
 
-@pytest.mark.unit
 class TestLoadErrors:
     """
     Unit test suite for ``etlplus.ops.load`` function errors.
@@ -323,7 +314,6 @@ class TestLoadErrors:
             assert err_msg in str(exc.value)
 
 
-@pytest.mark.unit
 class TestLoadData:
     """
     Unit test suite for :func:`etlplus.ops.load.load_data`.
@@ -419,7 +409,6 @@ class TestLoadData:
             load_data('not a valid json string')
 
 
-@pytest.mark.unit
 class TestLoadToFile:
     """
     Unit test suite for :func:`etlplus.ops.load.load_to_file`.
@@ -563,7 +552,6 @@ class TestLoadToFile:
         assert loaded_data == mock_data
 
 
-@pytest.mark.unit
 class TestLoadToApi:
     """Unit tests for :func:`etlplus.ops.load.load_to_api`."""
 
@@ -590,7 +578,6 @@ class TestLoadToApi:
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
 
-@pytest.mark.unit
 class TestLoadToDatabase:
     """Unit tests for :func:`etlplus.ops.load.load_to_database`."""
 
@@ -619,7 +606,6 @@ class TestLoadToDatabase:
         assert 'sqlite' in result['connection_string']
 
 
-@pytest.mark.unit
 class TestParseJsonString:
     """Unit tests for :func:`etlplus.ops.load._parse_json_string`."""
 
@@ -636,7 +622,6 @@ class TestParseJsonString:
             _parse_json_string('[{"ok": 1}, 3]')
 
 
-@pytest.mark.unit
 class TestLoadApiOrchestrator:
     """
     Unit tests that ensure :func:`etlplus.ops.load.load` delegates to API
