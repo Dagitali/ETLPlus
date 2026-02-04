@@ -64,6 +64,13 @@ class TableSpec:
     table_name: str
 
 
+class FileModule(Protocol):
+    """Protocol for file format modules exposing ``read``/``write`` helpers."""
+
+    read: Callable[..., Any]
+    write: Callable[..., Any]
+
+
 class PipelineConfigFactory(Protocol):
     """Protocol for pipeline config factory fixtures."""
 
@@ -252,3 +259,48 @@ def table_spec_fixture(
         schema_name=schema_name,
         table_name=table_name,
     )
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def run_file_smoke(
+    module: FileModule,
+    path: Path,
+    payload: object,
+    *,
+    write_kwargs: dict[str, object] | None = None,
+    expect_write_error: type[Exception] | None = None,
+    error_match: str | None = None,
+) -> None:
+    """
+    Run a minimal read/write smoke cycle for file modules.
+
+    Parameters
+    ----------
+    module : FileModule
+        File module exposing ``read``/``write`` functions.
+    path : Path
+        Target path for the test file.
+    payload : object
+        Payload passed to ``write``.
+    write_kwargs : dict[str, object] | None, optional
+        Keyword arguments forwarded to ``write``.
+    expect_write_error : type[Exception] | None, optional
+        Expected exception type for write failures.
+    error_match : str | None, optional
+        Regex message to assert when ``expect_write_error`` is provided.
+    """
+    write_kwargs = write_kwargs or {}
+    try:
+        if expect_write_error is not None:
+            match = error_match or ''
+            with pytest.raises(expect_write_error, match=match):
+                module.write(path, payload, **write_kwargs)
+            return
+        written = module.write(path, payload, **write_kwargs)
+        assert written
+        result = module.read(path)
+        assert result
+    except ImportError as exc:
+        pytest.skip(str(exc))
