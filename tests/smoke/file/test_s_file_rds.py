@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from etlplus.file import rds as mod
+from tests.smoke.conftest import run_file_smoke
 
 # SECTION: TESTS ============================================================ #
 
@@ -28,14 +27,14 @@ class TestRds:
         """
         Test that :func:`read`/:func:`write` can be invoked with minimal
         payloads.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Pytest temporary directory.
+        sample_records : list[dict[str, object]]
+            Sample record payload.
         """
         path = tmp_path / 'data.rds'
         payload = sample_records
-
-        try:
-            written = mod.write(path, payload)
-            assert written
-            result = mod.read(path)
-            assert result
-        except ImportError as e:
-            pytest.skip(str(e))
+        run_file_smoke(mod, path, payload)

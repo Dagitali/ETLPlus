@@ -65,12 +65,10 @@ class TableSpec:
 
 
 class FileModule(Protocol):
-    """Protocol for file modules exposing read/write helpers."""
+    """Protocol for file format modules exposing ``read``/``write`` helpers."""
 
-    def write(
-        self, path: Path, payload: object, **kwargs: object,
-    ) -> object: ...
-    def read(self, path: Path, **kwargs: object) -> object: ...
+    read: Callable[..., Any]
+    write: Callable[..., Any]
 
 
 class PipelineConfigFactory(Protocol):
@@ -82,7 +80,7 @@ class PipelineConfigFactory(Protocol):
     ) -> PipelineConfig: ...
 
 
-type CaptureHandler = Callable[[FileModule, str], dict[str, object]]
+type CaptureHandler = Callable[[object, str], dict[str, object]]
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -106,7 +104,7 @@ def capture_handler_fixture(
         Callable that records handler keyword arguments.
     """
 
-    def _capture(module: FileModule, attr: str) -> dict[str, object]:
+    def _capture(module: object, attr: str) -> dict[str, object]:
         calls: dict[str, object] = {}
 
         def _stub(**kwargs: object) -> int:
