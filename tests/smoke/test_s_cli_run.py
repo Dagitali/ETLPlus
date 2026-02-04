@@ -1,5 +1,5 @@
 """
-:mod:`tests.smoke.test_s_pipeline` module.
+:mod:`tests.smoke.test_s_cli_run` module.
 
 Smoke test suite exercising a minimal file→file job via the CLI. Parametrized
 to verify both empty and non-empty inputs.
@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: TESTS ============================================================ #
 
 
-class TestPipeline:
+class TestRun:
     """Smoke tests for file→file job via CLI."""
 
     def test_file_to_file(
