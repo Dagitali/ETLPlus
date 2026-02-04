@@ -16,17 +16,8 @@ from operator import itemgetter
 from pathlib import Path
 from typing import cast
 
-import pytest
-
 from etlplus.file import File
 from etlplus.types import JSONDict
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
-
 
 # SECTION: HELPERS ========================================================== #
 
