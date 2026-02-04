@@ -113,7 +113,7 @@ class FakePageClient(EndpointClient):
 
 
 class TestPaginator:
-    """Unit test suite for :class:`Paginator`."""
+    """Unit tests for :class:`Paginator`."""
 
     def test_coalesce_records_uses_fallback_path(self) -> None:
         """

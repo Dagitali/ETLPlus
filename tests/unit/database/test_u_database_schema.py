@@ -70,7 +70,7 @@ def sample_spec_fixture() -> dict[str, object]:
 
 class TestLoadTableSpecs:
     """
-    Unit test suite for :func:`etlplus.database.schema.load_table_specs`.
+    Unit tests for :func:`load_table_specs`.
 
     Notes
     -----
@@ -157,7 +157,7 @@ class TestLoadTableSpecs:
 
 
 class TestModels:
-    """Unit test suite for Pydantic models in :mod:`schema`."""
+    """Unit tests for Pydantic models in :mod:`schema`."""
 
     def test_column_spec_forbids_extra_fields(self) -> None:
         """Test that extra fields are rejected due to ``extra='forbid'``."""

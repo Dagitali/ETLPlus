@@ -48,7 +48,7 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 class TestResolveSleepSeconds:
     """
-    Unit test suite for :meth:`RateLimiter.resolve_sleep_seconds`.
+    Unit tests for :meth:`RateLimiter.resolve_sleep_seconds`.
 
     Notes
     -----
@@ -147,7 +147,7 @@ class TestResolveSleepSeconds:
 
 class TestRateLimiterBasics:
     """
-    Unit test suite for basic behavior of :class:`RateLimiter`.
+    Unit tests for basic behavior of :class:`RateLimiter`.
 
     Notes
     -----
@@ -249,7 +249,7 @@ class TestRateLimiterBasics:
 
 class TestRateLimiterFromConfig:
     """
-    Unit test suite for :meth:`RateLimiter.from_config` construction.
+    Unit tests for :meth:`RateLimiter.from_config` construction.
 
     Notes
     -----
@@ -295,7 +295,7 @@ class TestRateLimiterFromConfig:
 
 class TestRateLimiterEnforce:
     """
-    Unit test suite for :meth:`RateLimiter.enforce` behavior, covering enabled
+    Unit tests for :meth:`RateLimiter.enforce` behavior, covering enabled
     and disabled states.
     """
 

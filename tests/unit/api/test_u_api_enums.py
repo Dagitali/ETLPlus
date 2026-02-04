@@ -12,7 +12,7 @@ from etlplus.api import HttpMethod
 
 
 class TestHttpMethod:
-    """Unit test suite for :class:`etlplus.enums.HttpMethod`."""
+    """Unit tests for :class:`HttpMethod`."""
 
     def test_allows_body(self) -> None:
         """Test the `allows_body` property."""

@@ -91,7 +91,7 @@ def rows_values_fixture() -> list[dict[str, Any]]:
 
 
 class TestApplyAggregate:
-    """Unit test suite for :func:`etlplus.ops.transform.apply_aggregate`."""
+    """Unit tests for :func:`etlplus.ops.transform.apply_aggregate`."""
 
     @pytest.mark.parametrize(
         ('func', 'expected_key', 'expected_value'),
@@ -139,7 +139,7 @@ class TestApplyAggregate:
 
 
 class TestApplyFilter:
-    """Unit test suite for :func:`etlplus.ops.transform.apply_filter`."""
+    """Unit tests for :func:`etlplus.ops.transform.apply_filter`."""
 
     def test_filter_basic_gte(self) -> None:
         """Test that filter keeps only records matching the predicate."""
@@ -281,7 +281,7 @@ class TestApplyFilter:
 
 
 class TestApplyMap:
-    """Unit test suite for :func:`etlplus.ops.transform.apply_map`."""
+    """Unit tests for :func:`etlplus.ops.transform.apply_map`."""
 
     def test_map_renames_fields(self) -> None:
         """Test mapping/renaming fields in each record."""
@@ -306,7 +306,7 @@ class TestApplyMap:
 
 
 class TestApplySelect:
-    """Unit test suite for :func:`etlplus.ops.transform.apply_select`."""
+    """Unit tests for :func:`etlplus.ops.transform.apply_select`."""
 
     def test_select_subset_of_fields(self) -> None:
         """
@@ -329,7 +329,7 @@ class TestApplySelect:
 
 
 class TestApplySort:
-    """Unit test suite for :func:`etlplus.ops.transform.apply_sort`."""
+    """Unit tests for :func:`etlplus.ops.transform.apply_sort`."""
 
     @pytest.mark.parametrize(
         ('reverse', 'expected_sorted_ages'),
@@ -378,7 +378,7 @@ class TestApplySort:
 
 
 class TestTransform:
-    """Unit test suite for :func:`etlplus.ops.transform.transform`."""
+    """Unit tests for :func:`etlplus.ops.transform.transform`."""
 
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
         """Aggregate step should be skipped when spec is not a mapping."""
@@ -521,7 +521,7 @@ class TestTransform:
 
 
 class TestTransformInternalHelpers:
-    """Unit test suite for internal helpers in :mod:`etlplus.ops.transform`."""
+    """Unit tests for internal helpers in :mod:`etlplus.ops.transform`."""
 
     @pytest.mark.parametrize(
         ('fn', 'nums', 'present', 'expected'),

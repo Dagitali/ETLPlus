@@ -158,7 +158,7 @@ def request_factory_fixture(
 
 class TestEndpointCredentialsBearer:
     """
-    Unit test suite for :class:`EndpointCredentialsBearer`.
+    Unit tests for :class:`EndpointCredentialsBearer`.
 
     Notes
     -----

@@ -1,7 +1,7 @@
 """
 :mod:`tests.smoke.test_s_cli_check` module.
 
-Smoke test suite for the ``etlplus check`` CLI command.
+Smoke tests for the ``etlplus check`` CLI command.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 class TestCliCheck:
-    """Smoke test suite for the ``etlplus check`` CLI command."""
+    """Smoke tests for the ``etlplus check`` CLI command."""
 
     def test_jobs_lists_job(
         self,

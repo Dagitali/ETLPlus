@@ -73,7 +73,7 @@ class _Endpoint:
 
 
 class TestBuildPaginationCfg:
-    """Unit test suite for ``build_pagination_cfg()``."""
+    """Unit tests for :func:`build_pagination_cfg`."""
 
     def test_cursor_config_without_base(self) -> None:
         """Test building cursor-based pagination config without base config."""
@@ -128,7 +128,7 @@ class TestBuildPaginationCfg:
 
 
 class TestBuildSession:
-    """Unit test suite for :func:`build_session`."""
+    """Unit tests for :func:`build_session`."""
 
     def test_applies_configuration(self) -> None:
         """Test that session is built with given configuration."""
@@ -155,7 +155,7 @@ class TestBuildSession:
 
 
 class TestComposeApiRequestEnv:
-    """Unit test suite for :func:`compose_api_request_env`."""
+    """Unit tests for :func:`compose_api_request_env`."""
 
     def test_merges_endpoint_defaults_and_overrides(
         self,
@@ -223,7 +223,7 @@ class TestComposeApiRequestEnv:
 
 
 class TestComposeApiTargetEnv:
-    """Unit test suite for :func:`compose_api_target_env`."""
+    """Unit tests for :func:`compose_api_target_env`."""
 
     def test_inherits_api_defaults_when_url_missing(
         self,
@@ -255,7 +255,7 @@ class TestComposeApiTargetEnv:
 
 
 class TestComputeRlSleepSeconds:
-    """Unit test suite for :func:`compute_rl_sleep_seconds`."""
+    """Unit tests for :func:`compute_rl_sleep_seconds`."""
 
     def test_defaults_when_missing(self) -> None:
         """Test that default sleep seconds is used when missing."""
@@ -270,7 +270,7 @@ class TestComputeRlSleepSeconds:
 
 
 class TestPaginateWithClient:
-    """Unit test suite for :func:`paginate_with_client`."""
+    """Unit tests for :func:`paginate_with_client`."""
 
     def test_standard_signature(self) -> None:
         """Test pagination with standard client method signature."""

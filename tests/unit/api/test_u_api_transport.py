@@ -27,7 +27,7 @@ from etlplus.api.transport import build_session_with_adapters
 
 class TestBuildHttpAdapter:
     """
-    Unit test suite for :func:`build_http_adapter`.
+    Unit tests for :func:`build_http_adapter`.
 
     Notes
     -----

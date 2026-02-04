@@ -28,7 +28,7 @@ from etlplus.types import JSONData
 
 class TestLoadData:
     """
-    Unit test suite for :func:`etlplus.ops.validate.load_data`.
+    Unit tests for :func:`etlplus.ops.validate.load_data`.
     """
 
     def test_invalid_source(self) -> None:
@@ -38,7 +38,7 @@ class TestLoadData:
 
 
 class TestValidateField:
-    """Unit test suite for :func:`etlplus.ops.validate.validate_field`."""
+    """Unit tests for :func:`etlplus.ops.validate.validate_field`."""
 
     def test_enum_rule_requires_list(self) -> None:
         """Test non-list enum rules adding an error entry."""
@@ -102,7 +102,7 @@ class TestValidateField:
 
 
 class TestValidate:
-    """Unit test suite for :func:`etlplus.ops.validate.validate`."""
+    """Unit tests for :func:`etlplus.ops.validate.validate`."""
 
     @pytest.mark.parametrize(
         'data, rules, expected_valid',

@@ -28,7 +28,7 @@ from etlplus.api import RateLimitConfig
 
 class TestApiConfig:
     """
-    Unit test suite for :class:`ApiConfig`.
+    Unit tests for :class:`ApiConfig`.
 
     Notes
     -----
@@ -359,7 +359,7 @@ class TestApiConfig:
 
 class TestApiProfileConfig:
     """
-    Unit test suite for :class:`ApiProfileConfig`.
+    Unit tests for :class:`ApiProfileConfig`.
 
     Notes
     -----
@@ -536,7 +536,7 @@ class TestApiProfileConfig:
 
 class TestEndpointConfig:
     """
-    Unit test suite for :class:`EndpointConfig`.
+    Unit tests for :class:`EndpointConfig`.
 
     Notes
     -----

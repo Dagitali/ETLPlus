@@ -23,7 +23,7 @@ from etlplus.api import RateLimitConfig
 
 class TestRateLimitConfig:
     """
-    Unit test suite for :class:`RateLimitConfig`.
+    Unit tests for :class:`RateLimitConfig`.
 
     Notes
     -----

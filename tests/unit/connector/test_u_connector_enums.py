@@ -15,7 +15,7 @@ from etlplus.connector.enums import DataConnectorType
 
 class TestDataConnectorType:
     """
-    Unit test suite for :class:`etlplus.connector.enums.DataConnectorType`.
+    Unit tests for :class:`etlplus.connector.enums.DataConnectorType`.
     """
 
     @pytest.mark.parametrize(

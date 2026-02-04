@@ -85,7 +85,7 @@ class _StubSession:
 
 class TestExtract:
     """
-    Unit test suite for :func:`etlplus.ops.extract.extract`.
+    Unit tests for :func:`etlplus.ops.extract.extract`.
 
     Notes
     -----
@@ -147,7 +147,7 @@ class TestExtract:
 
 class TestExtractErrors:
     """
-    Unit test suite for ``etlplus.ops.extract`` function errors.
+    Unit tests for :mod:`etlplus.ops.extract` function errors.
 
     Notes
     -----
@@ -200,7 +200,7 @@ class TestExtractErrors:
 
 class TestExtractFromApi:
     """
-    Unit test suite for :func:`etlplus.ops.extract.extract_from_api`.
+    Unit tests for :func:`etlplus.ops.extract.extract_from_api`.
 
     Notes
     -----
@@ -320,7 +320,7 @@ class TestExtractFromApi:
 
 class TestExtractFromDatabase:
     """
-    Unit test suite for :func:`etlplus.ops.extract.extract_from_database`.
+    Unit tests for :func:`etlplus.ops.extract.extract_from_database`.
 
     Notes
     -----
@@ -351,7 +351,7 @@ class TestExtractFromDatabase:
 
 class TestExtractFromFile:
     """
-    Unit test suite for :func:`etlplus.ops.extract.extract_from_file`.
+    Unit tests for :func:`etlplus.ops.extract.extract_from_file`.
 
     Notes
     -----

@@ -350,7 +350,7 @@ def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
 
 class TestFile:
     """
-    Unit test suite for :class:`etlplus.file.File`.
+    Unit tests for :class:`etlplus.file.File`.
 
     Notes
     -----

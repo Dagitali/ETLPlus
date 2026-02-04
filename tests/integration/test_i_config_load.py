@@ -23,7 +23,7 @@ from etlplus import Config
 
 
 class TestConfigLoad:
-    """Integration test suite for configuration loading."""
+    """Integration tests for configuration loading."""
 
     @pytest.mark.parametrize('substitute', [False, True])
     def test_load_repo_pipeline_yaml(
