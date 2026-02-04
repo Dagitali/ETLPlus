@@ -8,20 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.smoke.conftest import PipelineSchema
     from tests.smoke.conftest import TableSpec
-
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for smoke tests.
-pytestmark = pytest.mark.smoke
-
 
 # SECTION: TESTS ============================================================ #
 

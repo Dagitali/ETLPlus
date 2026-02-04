@@ -17,14 +17,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
 
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for smoke tests.
-pytestmark = pytest.mark.smoke
-
-
 # SECTION: TESTS ============================================================ #
 
 
