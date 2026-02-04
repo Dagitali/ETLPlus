@@ -28,13 +28,6 @@ from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
 from tests.conftest import RequestFactory
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TYPES ============================================================ #
 
 
@@ -163,7 +156,6 @@ def request_factory_fixture(
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestEndpointCredentialsBearer:
     """
     Unit test suite for :class:`EndpointCredentialsBearer`.

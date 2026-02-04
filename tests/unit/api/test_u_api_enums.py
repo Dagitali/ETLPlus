@@ -6,16 +6,7 @@ Unit tests for :mod:`etlplus.enums` coercion helpers and behaviors.
 
 from __future__ import annotations
 
-import pytest
-
 from etlplus.api import HttpMethod
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
 
 # SECTION: TESTS ============================================================ #
 

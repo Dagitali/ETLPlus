@@ -40,13 +40,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
-
-
 # SECTION: HELPERS ========================================================== #
 
 

@@ -22,13 +22,6 @@ from pytest import MonkeyPatch
 
 from etlplus import Config
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
-
-
 # SECTION: HELPERS ========================================================== #
 
 

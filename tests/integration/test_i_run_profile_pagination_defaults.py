@@ -17,19 +17,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-import pytest
-
 from etlplus import Config
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from tests.integration.conftest import FakeEndpointClientProtocol as Client
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
-
 
 # SECTION: TESTS ============================================================ #
 

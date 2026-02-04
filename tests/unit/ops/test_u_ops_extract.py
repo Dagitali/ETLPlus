@@ -26,13 +26,6 @@ from etlplus.ops.extract import extract_from_api
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 
@@ -90,7 +83,6 @@ class _StubSession:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestExtract:
     """
     Unit test suite for :func:`etlplus.ops.extract.extract`.
@@ -153,7 +145,6 @@ class TestExtract:
         assert result == expected_extracts
 
 
-@pytest.mark.unit
 class TestExtractErrors:
     """
     Unit test suite for ``etlplus.ops.extract`` function errors.
@@ -207,7 +198,6 @@ class TestExtractErrors:
             assert err_msg in str(exc.value)
 
 
-@pytest.mark.unit
 class TestExtractFromApi:
     """
     Unit test suite for :func:`etlplus.ops.extract.extract_from_api`.
@@ -328,7 +318,6 @@ class TestExtractFromApi:
         }
 
 
-@pytest.mark.unit
 class TestExtractFromDatabase:
     """
     Unit test suite for :func:`etlplus.ops.extract.extract_from_database`.
@@ -360,7 +349,6 @@ class TestExtractFromDatabase:
         assert 'Install database-specific drivers' in payload['note']
 
 
-@pytest.mark.unit
 class TestExtractFromFile:
     """
     Unit test suite for :func:`etlplus.ops.extract.extract_from_file`.

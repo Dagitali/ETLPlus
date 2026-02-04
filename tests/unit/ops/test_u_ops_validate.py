@@ -23,17 +23,9 @@ from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
 from etlplus.types import JSONData
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestLoadData:
     """
     Unit test suite for :func:`etlplus.ops.validate.load_data`.
@@ -45,7 +37,6 @@ class TestLoadData:
             load_data('not a valid json string')
 
 
-@pytest.mark.unit
 class TestValidateField:
     """Unit test suite for :func:`etlplus.ops.validate.validate_field`."""
 
@@ -110,7 +101,6 @@ class TestValidateField:
         assert result['valid'] is expected_valid
 
 
-@pytest.mark.unit
 class TestValidate:
     """Unit test suite for :func:`etlplus.ops.validate.validate`."""
 

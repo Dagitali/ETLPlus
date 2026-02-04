@@ -33,13 +33,6 @@ from etlplus.api.pagination import PaginationType
 from etlplus.api.pagination import Paginator
 from etlplus.api.rate_limiting import RateLimitConfigDict
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: HELPERS ========================================================== #
 
 
@@ -119,7 +112,6 @@ class FakePageClient(EndpointClient):
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestPaginator:
     """Unit test suite for :class:`Paginator`."""
 

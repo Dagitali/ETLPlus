@@ -19,13 +19,6 @@ from tests.unit.cli.conftest import CaptureIo
 from tests.unit.cli.conftest import assert_emit_json
 from tests.unit.cli.conftest import assert_emit_or_write
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 

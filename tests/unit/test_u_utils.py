@@ -29,13 +29,6 @@ from etlplus.utils import to_number
 from etlplus.utils import to_positive_float
 from etlplus.utils import to_positive_int
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -144,7 +137,6 @@ class TestDeepSubstitute:
         assert result == 'Hello ${MISSING}'
 
 
-@pytest.mark.unit
 class TestUtils:
     """
     Unit test suite for ``etlplus.utils``.

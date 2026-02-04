@@ -15,12 +15,6 @@ import pytest
 
 from etlplus.database.engine import load_database_url_from_config
 
-# SECTION: MARKERS ========================================================== #
-
-
-pytestmark = pytest.mark.unit
-
-
 # SECTIONS: HELPERS ========================================================= #
 
 

@@ -25,13 +25,6 @@ from etlplus import Config
 from etlplus.api import RateLimitConfig
 from tests.integration.conftest import FakeEndpointClientProtocol
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
-
-
 # SECTION: TESTS ============================================================ #
 
 

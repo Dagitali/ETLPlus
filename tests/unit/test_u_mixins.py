@@ -6,21 +6,11 @@ Unit tests for :mod:`etlplus.mixins` helpers.
 
 from __future__ import annotations
 
-import pytest
-
 from etlplus.mixins import BoundsWarningsMixin
-
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
 
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.unit
 class TestBoundsWarningsMixin:
     """Unit tests for :class:`BoundsWarningsMixin`."""
 

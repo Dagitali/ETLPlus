@@ -16,13 +16,6 @@ import pytest
 import etlplus.cli.io as _io
 from etlplus.file import FileFormat
 
-# SECTION: MARKERS ========================================================== #
-
-
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
-
-
 # SECTION: TESTS ============================================================ #
 
 

@@ -15,8 +15,9 @@ email, or any other method with the owners of this repository before making a ch
   - [Typing Philosophy](#typing-philosophy)
   - [Testing](#testing)
     - [Unit vs. Smoke vs. Integration](#unit-vs-smoke-vs-integration)
-    - [Where to put tests](#where-to-put-tests)
-    - [Common patterns](#common-patterns)
+    - [Configuring Tests](#configuring-tests)
+    - [Running Tests](#running-tests)
+    - [Common Patterns](#common-patterns)
 
 ## Merge Request Process
 
@@ -109,32 +110,59 @@ class ExampleConfig:
 Use these guidelines to decide whether a test belongs in the unit, smoke, or integration suite:
 
 - Unit tests (put under `tests/unit/`):
-  - Exercise a single function or class in isolation (no orchestration across modules).
-  - No real file system or network I/O. Use in-memory data and stubs.
-  - Examples in this repo: small helpers in `etlplus.utils`, validation and transform functions.
+  - Exercise a single function or class directly in isolation (no orchestration across modules).
+  - Avoid real file system or network I/O; use `tmp_path` for local files and stubs/mocks for external calls.
   - Fast and deterministic; rely on `monkeypatch` to stub collaborators.
-
-- Integration tests (put under `tests/integration/`):
-  - Exercise end-to-end flows across modules and boundaries (CLI `main()`, `run()` pipeline orchestration, file connectors, API client pagination wiring).
-  - Can use temporary files/directories, and stub network with fakes/mocks.
-  - Examples in this repo: CLI end-to-end, pagination strategy, runner defaults for pagination/rate limits, target URL composition.
+  - Examples in this repo:
+    - Small helpers in `etlplus.utils`
+    - Validation and transform functions.
 
 - Smoke tests (put under `tests/smoke/`):
   - Minimal end-to-end checks for core flows; very fast and stable.
   - May touch temporary files but avoid external network calls.
-  - Examples in this repo: pipeline smoke tests.
+  - Examples in this repo:
+    - End-to-end CLI/pipeline checks
+
+- Integration tests (put under `tests/integration/`):
+  - Exercise end-to-end flows across modules and boundaries.
+  - Can use CLI argv, temporary files/directories, and stub network with fakes/mocks.
+  - Examples in this repo:
+    - CLI `main()` end-to-end
+    - `run()` pipeline orchestration
+    - File connectors
+    - API client pagination wiring/strategy
+    - Runner defaults for pagination/rate limits
+    - Target URL composition.
 
 If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
 
-### Where to put tests
+### Test Configuration
 
-- Unit tests live in `tests/unit/` and should import and test specific functions/classes directly.
-- Smoke tests live in `tests/smoke/` and should focus on minimal end-to-end CLI/pipeline checks.
-- Integration tests live in `tests/integration/` and may simulate real usage using CLI argv, temporary files, and fake clients.
-- The `tests/integration/conftest.py` applies `@pytest.mark.integration` to all tests in that folder. You don’t need to add the marker per test.
+- Each test folder should include a `conftest.py`. At minimum, it should define the folder-wide marker:
+  - `pytestmark = pytest.mark.unit` for `tests/unit/`
+  - `pytestmark = pytest.mark.smoke` for `tests/smoke/`
+  - `pytestmark = pytest.mark.integration` for `tests/integration/`
+- You don’t need to add the same marker per test or per test module.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
+- For optional dependencies, prefer `pytest.importorskip("module")` so tests skip cleanly when the extra isn’t installed.
 
-### Common patterns
+### Running Tests
+
+Common commands:
+
+- Run everything:
+  - `pytest`
+- Run a specific suite:
+  - `pytest -m unit`
+  - `pytest -m smoke`
+  - `pytest -m integration`
+- Run a specific file or test:
+  - `pytest tests/unit/file/test_u_file_core.py`
+  - `pytest tests/unit/file/test_u_file_core.py::TestFile::test_round_trip_by_format`
+- Run by keyword:
+  - `pytest -k "round_trip"`
+
+### Common Patterns
 
 - CLI tests: monkeypatch `sys.argv` and call `etlplus.cli.main()`; capture output with `capsys`.
 - File I/O: use `tmp_path` / `TemporaryDirectory()`; never write to the repo tree.
