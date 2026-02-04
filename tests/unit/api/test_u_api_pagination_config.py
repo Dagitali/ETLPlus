@@ -23,7 +23,7 @@ from etlplus.api import PaginationConfig
 
 class TestPaginationConfig:
     """
-    Unit test suite for :class:`PaginationConfig`.
+    Unit tests for :class:`PaginationConfig`.
 
     Notes
     -----

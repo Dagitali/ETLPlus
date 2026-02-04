@@ -55,7 +55,7 @@ def fixture_sample_spec() -> dict[str, object]:
 
 
 class TestLoadTableSpec:
-    """Unit test suite for :func:`load_table_spec`."""
+    """Unit tests for :func:`load_table_spec`."""
 
     def test_missing_yaml_dependency(
         self,
@@ -133,7 +133,7 @@ class TestLoadTableSpec:
 
 
 class TestRenderTableSql:
-    """Unit test suite for :func:`render_table_sql`."""
+    """Unit tests for :func:`render_table_sql`."""
 
     def test_custom_template_path(
         self,
@@ -204,7 +204,7 @@ class TestRenderTableSql:
 
 class TestRenderTablesToString:
     """
-    Unit test suite for :func:`render_tables_to_string`.
+    Unit tests for :func:`render_tables_to_string`.
     """
 
     def test_custom_template(
@@ -256,7 +256,7 @@ class TestRenderTablesToString:
 
 
 class TestTemplate:
-    """Unit test suite for ``TEMPLATE``."""
+    """Unit tests for ``TEMPLATE``."""
 
     def test_builtin_keys_exposure(self) -> None:
         """Test that TEMPLATES constant includes expected built-in keys."""

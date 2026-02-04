@@ -48,7 +48,7 @@ INFER_CASES: list[InferCase] = [
 
 
 class TestFileFormat:
-    """Unit test suite for :class:`etlplus.enums.FileFormat`."""
+    """Unit tests for :class:`etlplus.enums.FileFormat`."""
 
     @pytest.mark.parametrize(
         'value,expected',
@@ -77,7 +77,7 @@ class TestFileFormat:
 
 
 class TestInferFileFormatAndCompression:
-    """Unit test suite for :func:`infer_file_format_and_compression`."""
+    """Unit tests for :func:`infer_file_format_and_compression`."""
 
     @pytest.mark.parametrize(
         'value,filename,expected_format,expected_compression',

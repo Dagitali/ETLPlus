@@ -22,7 +22,7 @@ from etlplus.connector import parse_connector
 
 class TestParseConnector:
     """
-    Unit test suite for :func:`parse_connector`.
+    Unit tests for :func:`parse_connector`.
 
     Notes
     -----
