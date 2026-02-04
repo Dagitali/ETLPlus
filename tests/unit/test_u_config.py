@@ -176,7 +176,7 @@ def pipeline_multi_cfg_fixture(
 
 class TestCollectParsed:
     """
-    Unit test suite for :func:`_collect_parsed`.
+    Unit tests for :func:`_collect_parsed`.
 
     Notes
     -----
@@ -206,7 +206,7 @@ class TestCollectParsed:
 
 class TestConfig:
     """
-    Unit test suite for :class:`Config`.
+    Unit tests for :class:`Config`.
     """
 
     def test_from_yaml_includes_profile_env_in_substitution(
