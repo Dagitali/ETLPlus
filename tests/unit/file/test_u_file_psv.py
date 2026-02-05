@@ -15,8 +15,8 @@ from etlplus.file import psv as mod
 # SECTION: TESTS ============================================================ #
 
 
-class TestPsvDelegation:
-    """Unit tests for PSV read/write delegation."""
+class TestPsvRead:
+    """Unit tests for :func:`etlplus.file.psv.read`."""
 
     def test_read_uses_pipe_delimiter(
         self,
@@ -30,7 +30,9 @@ class TestPsvDelegation:
         calls: dict[str, object] = {}
 
         def _read_delimited(
-            path: object, *, delimiter: str,
+            path: object,
+            *,
+            delimiter: str,
         ) -> list[dict[str, object]]:
             calls['path'] = path
             calls['delimiter'] = delimiter
@@ -42,6 +44,10 @@ class TestPsvDelegation:
 
         assert result == [{'ok': True}]
         assert calls['delimiter'] == '|'
+
+
+class TestPsvWrite:
+    """Unit tests for :func:`etlplus.file.psv.write`."""
 
     def test_write_uses_pipe_delimiter(
         self,
