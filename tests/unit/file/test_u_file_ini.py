@@ -58,7 +58,8 @@ class TestIniWrite:
         path = tmp_path / 'config.ini'
 
         with pytest.raises(
-            TypeError, match='INI DEFAULT section must be a dict',
+            TypeError,
+            match='INI DEFAULT section must be a dict',
         ):
             mod.write(path, {'DEFAULT': 'nope'})
 
