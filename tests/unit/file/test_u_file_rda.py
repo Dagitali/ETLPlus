@@ -41,7 +41,7 @@ class _Frame:
 
 
 class _PandasStub:
-    """Stub for pandas module."""
+    """Stub for :mod:`pandas` module."""
 
     DataFrame = _Frame
 
@@ -51,7 +51,10 @@ class _PyreadrStub:
 
     # pylint: disable=unused-argument
 
-    def __init__(self, result: dict[str, object]) -> None:
+    def __init__(
+        self,
+        result: dict[str, object],
+    ) -> None:
         self._result = result
         self.writes: list[tuple[str, object, dict[str, object]]] = []
 
@@ -154,12 +157,12 @@ class TestRdaWrite:
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """Test that writing raises an error when no writer is available."""
+        """
+        Test that :func:`write` raises an error when no writer is available.
+        """
         class _NoWriter:  # noqa: D401
             def read_r(self, path: str) -> dict[str, object]:  # noqa: ARG002
-                """
-                Simulate reading an R data file by returning an empty mapping.
-                """
+                """Simulate missing writer by only providing a reader."""
                 return {}
 
         optional_module_stub({'pyreadr': _NoWriter(), 'pandas': _PandasStub()})
