@@ -27,6 +27,7 @@ class TestXlsRead:
         Test that :func:`read` raises an informative error when the required
         dependency is missing.
         """
+
         class _FailPandas:
             """Stub pandas module that fails to import Excel reader."""
 
