@@ -52,7 +52,8 @@ class _CsvSniffer(Protocol):
     """Protocol for objects providing ``csv.Sniffer``-compatible methods."""
 
     def has_header(
-        self, sample: str,
+        self,
+        sample: str,
     ) -> bool: ...
 
     def sniff(
