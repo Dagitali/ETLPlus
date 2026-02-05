@@ -82,6 +82,7 @@ class TestParquetRead:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that import errors are wrapped with a helpful message."""
+
         class _FailPandas:
             """
             Stub for :mod:`pandas` module that fails on :meth:`read_parquet`.
@@ -135,6 +136,7 @@ class TestParquetWrite:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that import errors are wrapped with a helpful message."""
+
         class _FailFrame:
             """Stub for frame that fails on :meth:`to_parquet`."""
 
