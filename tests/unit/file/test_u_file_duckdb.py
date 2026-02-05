@@ -98,7 +98,7 @@ class TestDuckdbRead:
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """ Test that :func:`read` uses description columns when available."""
+        """Test that :func:`read` uses description columns when available."""
         conn = _Connection(
             tables=['data'],
             rows=[(1, 'Ada')],
@@ -133,7 +133,8 @@ class TestDuckdbRead:
         optional_module_stub({'duckdb': _DuckdbStub(conn)})
 
         with pytest.raises(
-            ValueError, match='Multiple tables found in DuckDB',
+            ValueError,
+            match='Multiple tables found in DuckDB',
         ):
             mod.read(tmp_path / 'data.duckdb')
 
