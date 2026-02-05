@@ -25,9 +25,8 @@ class TestNdjsonRead:
         self,
         tmp_path: Path,
     ) -> None:
-        """T
-        est that :func:`read` skips blank lines and lines with only
-        whitespace.
+        """
+        Test that :func:`read` skips blank lines and whitespace-only lines.
         """
         path = tmp_path / 'data.ndjson'
         path.write_text(
