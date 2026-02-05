@@ -68,7 +68,8 @@ class _BsonModuleWithClass:
     """Stub exposing ``BSON`` class only."""
 
     def __init__(self) -> None:
-        self.BSON = _BsonClassStub()  # pylint: disable=invalid-name
+        # pylint: disable=invalid-name
+        self.BSON = _BsonClassStub()
 
 
 # SECTION: TESTS ============================================================ #
