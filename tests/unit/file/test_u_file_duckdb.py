@@ -91,7 +91,7 @@ class _DuckdbStub:
 
 
 class TestDuckdbRead:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.duckdb.read`."""
 
     def test_read_uses_description_columns(
         self,
@@ -157,7 +157,7 @@ class TestDuckdbRead:
 
 
 class TestDuckdbWrite:
-    """Unit tests for :func:`write`."""
+    """Unit tests for :func:`etlplus.file.duckdb.write`."""
 
     def test_write_returns_zero_for_empty_payload(
         self,

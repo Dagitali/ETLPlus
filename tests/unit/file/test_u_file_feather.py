@@ -79,7 +79,7 @@ class _PyarrowStub:
 
 
 class TestFeatherRead:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.feather.read`."""
 
     def test_read_missing_pyarrow_raises(
         self,
@@ -111,7 +111,7 @@ class TestFeatherRead:
 
 
 class TestFeatherWrite:
-    """Unit tests for :func:`write`."""
+    """Unit tests for :func:`etlplus.file.feather.write`."""
 
     def test_write_missing_pyarrow_raises(
         self,

@@ -48,7 +48,7 @@ class _PandasStub:
 
 
 class TestFwfRead:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.fwf.read`."""
 
     def test_read_uses_pandas(
         self,
@@ -67,7 +67,7 @@ class TestFwfRead:
 
 
 class TestFwfWrite:
-    """Unit tests for :func:`write`."""
+    """Unit tests for :func:`etlplus.file.fwf.write`."""
 
     def test_write_empty_payload_returns_zero(
         self,

@@ -138,8 +138,8 @@ class TestBsonHelpers:
             mod._encode_doc(object(), {'id': 1})
 
 
-class TestBsonReadWrite:
-    """Unit tests for :func:`etlplus.file.bson.read` and ``write``."""
+class TestBsonRead:
+    """Unit tests for :func:`etlplus.file.bson.read`."""
 
     def test_read_uses_bson_module(
         self,
@@ -176,6 +176,10 @@ class TestBsonReadWrite:
 
         assert result == [{'decoded': True}]
         assert stub.BSON.decoded == [b'payload']
+
+
+class TestBsonWrite:
+    """Unit tests for :func:`etlplus.file.bson.write`."""
 
     def test_write_uses_bson_module(
         self,

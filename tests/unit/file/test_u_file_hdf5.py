@@ -83,7 +83,7 @@ class _PandasStub:
 
 
 class TestHdf5Read:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.hdf5.read`."""
 
     def test_read_raises_when_tables_missing(
         self,
@@ -147,7 +147,7 @@ class TestHdf5Read:
 
 
 class TestHdf5Write:
-    """Unit tests for :func:`write`."""
+    """Unit tests for :func:`etlplus.file.hdf5.write`."""
 
     def test_write_is_stubbed(
         self,

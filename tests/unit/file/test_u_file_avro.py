@@ -56,7 +56,7 @@ class _FastAvroStub:
 
 
 class TestAvroHelpers:
-    """Unit tests for :mod:`avro` helpers."""
+    """Unit tests for :mod:`etlplus.file.avro` helpers."""
 
     # pylint: disable=protected-access
 
@@ -133,7 +133,7 @@ class TestAvroHelpers:
 
 
 class TestAvroRead:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.avro.read`."""
 
     def test_read(
         self,
@@ -155,7 +155,7 @@ class TestAvroRead:
 
 
 class TestAvroWrite:
-    """Unit tests for :func:`write`."""
+    """Unit tests for :func:`etlplus.file.avro.write`."""
 
     def test_write(
         self,

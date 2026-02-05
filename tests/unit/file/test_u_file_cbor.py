@@ -44,7 +44,7 @@ class _CborStub:
 
 
 class TestCborRead:
-    """Unit tests for :func:`read`."""
+    """Unit tests for :func:`etlplus.file.cbor.read`."""
 
     def test_read_uses_cbor2(
         self,

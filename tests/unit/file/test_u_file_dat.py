@@ -83,7 +83,7 @@ class _StubSniffer:
 
 
 class TestDatSniff:
-    """Unit tests for :func:`etlplus.file.dat._sniff`."""
+    """Unit tests for :func:`_sniff`."""
 
     # pylint: disable=protected-access
 
