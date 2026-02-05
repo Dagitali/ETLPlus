@@ -85,6 +85,7 @@ class TestXlsxRead:
         """
         Test that :func:`read` wraps :class:`ImportError` from :mod:`pandas`.
         """
+
         class _FailPandas:
             """Simulate failure when reading an Excel file."""
 
@@ -155,6 +156,7 @@ class TestXlsxWrite:
                 Simulate :class:`pandas.DataFrame` with :meth:`from_records`
                 method.
                 """
+
                 @staticmethod
                 def from_records(
                     records: list[dict[str, object]],
