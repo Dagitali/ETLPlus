@@ -19,7 +19,7 @@ import pytest
 
 from etlplus.file import dat as mod
 
-# SECTION: TESTS ============================================================ #
+# SECTION: HELPERS ========================================================== #
 
 
 def _make_dialect(delimiter: str) -> csv.Dialect:
