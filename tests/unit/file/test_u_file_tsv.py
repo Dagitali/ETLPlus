@@ -15,8 +15,8 @@ from etlplus.file import tsv as mod
 # SECTION: TESTS ============================================================ #
 
 
-class TestTsvDelegation:
-    """Unit tests for TSV read/write delegation."""
+class TestTsvRead:
+    """Unit tests for :func:`etlplus.file.tsv.read`."""
 
     def test_read_uses_tab_delimiter(
         self,
@@ -27,7 +27,9 @@ class TestTsvDelegation:
         calls: dict[str, object] = {}
 
         def _read_delimited(
-            path: object, *, delimiter: str,
+            path: object,
+            *,
+            delimiter: str,
         ) -> list[dict[str, object]]:
             calls['path'] = path
             calls['delimiter'] = delimiter
@@ -39,6 +41,10 @@ class TestTsvDelegation:
 
         assert result == [{'ok': True}]
         assert calls['delimiter'] == '\t'
+
+
+class TestTsvWrite:
+    """Unit tests for :func:`etlplus.file.tsv.write`."""
 
     def test_write_uses_tab_delimiter(
         self,
