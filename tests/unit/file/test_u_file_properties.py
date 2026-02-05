@@ -57,9 +57,7 @@ class TestPropertiesWrite:
         self,
         tmp_path: Path,
     ) -> None:
-        """T
-        Test that :func:`write` sorts keys alphabetically in the output file.
-        """
+        """Test that :func:`write` sorts keys alphabetically in output."""
         path = tmp_path / 'config.properties'
         payload = {'b': 2, 'a': 1}
 
