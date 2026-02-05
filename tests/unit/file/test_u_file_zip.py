@@ -82,7 +82,7 @@ class TestZipRead:
         """
         Test that reading a ZIP archive with unexpected compression raises an
         error.
-    """
+        """
         path = tmp_path / 'nested.zip'
         _write_zip(path, {'data.csv.gz': b'ignored'})
 
