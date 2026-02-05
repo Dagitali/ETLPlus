@@ -44,7 +44,8 @@ class TestSqliteRead:
             conn.close()
 
         with pytest.raises(
-            ValueError, match='Multiple tables found in SQLite',
+            ValueError,
+            match='Multiple tables found in SQLite',
         ):
             mod.read(path)
 
