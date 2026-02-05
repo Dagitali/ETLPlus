@@ -42,7 +42,7 @@ class _Frame:
         index: bool,
         engine: str,
     ) -> None:
-        """ Simulate writing to an Excel file by recording the call."""
+        """Simulate writing to an Excel file by recording the call."""
         self.to_excel_calls.append(
             {'path': path, 'index': index, 'engine': engine},
         )
@@ -86,6 +86,7 @@ class TestOdsRead:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :func:`read` wraps import errors from :mod:`pandas`."""
+
         class _FailPandas:
             """
             Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
@@ -136,6 +137,7 @@ class TestOdsWrite:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :func:`write` wraps import errors from :mod:`pandas`."""
+
         class _FailFrame:
             """
             Stub for a :class:`pandas.DataFrame` that fails on
