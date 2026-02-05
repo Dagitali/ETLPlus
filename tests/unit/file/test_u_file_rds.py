@@ -136,6 +136,7 @@ class TestRdsWrite:
         """
         Test that :func:`write` raises an error when no writer is available.
         """
+
         class _NoWriter:  # noqa: D401
             def read_r(self, path: str) -> dict[str, object]:  # noqa: ARG002
                 """Simulate missing writer by only providing a reader."""
