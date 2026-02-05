@@ -185,6 +185,7 @@ class TestNcRead:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that reading raises an engine error."""
+
         def _open_dataset(_: Path) -> _Dataset:
             raise ImportError('engine missing')
 
