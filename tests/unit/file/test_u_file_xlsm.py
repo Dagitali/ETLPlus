@@ -39,7 +39,7 @@ class _Frame:
         *,
         index: bool,
     ) -> None:
-        """ Simulate writing to an Excel file by recording the call."""
+        """Simulate writing to an Excel file by recording the call."""
         self.to_excel_calls.append({'path': path, 'index': index})
 
 
@@ -92,6 +92,7 @@ class TestXlsmRead:
         """
         Test that :func:`read` wraps :class:`ImportError` from :mod:`pandas`.
         """
+
         class _FailPandas:
             """
             Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
@@ -137,6 +138,7 @@ class TestXlsmWrite:
         """
         Test that :func:`write` wraps :class:`ImportError` from :mod:`pandas`.
         """
+
         class _FailFrame:
             """Stub for frame that fails on :meth:`to_excel`."""
 
