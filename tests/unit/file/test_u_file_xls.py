@@ -43,9 +43,9 @@ class TestXlsRead:
 class TestXlsWrite:
     """Unit tests for :func:`etlplus.file.xls.write`."""
 
-    def test_write_is_not_supported(self, tmp_path: Path) -> None:
+    def test_write_not_supported(self, tmp_path: Path) -> None:
         """
         Test that :func:`write` raises an error indicating lack of support.
         """
-        with pytest.raises(RuntimeError, match='XLS write is not supported'):
+        with pytest.raises(RuntimeError, match='read-only'):
             mod.write(tmp_path / 'data.xls', [{'id': 1}])
