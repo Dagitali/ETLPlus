@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 import csv
+from pathlib import Path
 from typing import Protocol
 from typing import cast
 
@@ -27,12 +28,19 @@ from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import normalize_records
 from ._io import write_delimited
+from .base import DelimitedTextFileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'DatFile',
     # Functions
     'read',
     'write',
@@ -113,6 +121,203 @@ def _sniff(
     return dialect, has_header
 
 
+# SECTION: CLASSES ========================================================== #
+
+
+class DatFile(DelimitedTextFileHandlerABC):
+    """
+    Handler implementation for DAT files.
+
+    DAT files are often delimited text, but the delimiter may vary between
+    commas, tabs, pipes, semicolons, or other dialect variants.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.DAT
+    delimiter = ','
+
+    # -- Instance Methods -- #
+
+    def sniff(
+        self,
+        sample: str,
+        *,
+        sniffer: _CsvSniffer | None = None,
+        delimiters: str = _DEFAULT_DELIMITERS,
+    ) -> tuple[csv.Dialect, bool]:
+        """
+        Infer dialect/header for DAT payloads.
+
+        Parameters
+        ----------
+        sample : str
+            Initial bytes decoded as text from the DAT file.
+        sniffer : _CsvSniffer | None, optional
+            Optional custom sniffer implementation.
+        delimiters : str, optional
+            Candidate delimiters used during sniffing.
+
+        Returns
+        -------
+        tuple[csv.Dialect, bool]
+            Inferred dialect and whether the file has a header row.
+        """
+        return _sniff(sample, sniffer=sniffer, delimiters=delimiters)
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read DAT content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DAT file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the DAT file.
+        """
+        return self.read_rows(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to DAT file at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DAT file on disk.
+        data : JSONData
+            Data to write as DAT file.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the DAT file.
+        """
+        rows = normalize_records(data, 'DAT')
+        return self.write_rows(path, rows, options=options)
+
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read DAT rows from *path*, sniffing dialect and header.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DAT file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters. Extra keys supported:
+            - ``delimiters``: candidate delimiters string
+            - ``sniffer``: custom sniffer object for deterministic behavior
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the DAT file.
+        """
+        delimiters = _DEFAULT_DELIMITERS
+        sniffer: _CsvSniffer | None = None
+        if options is not None:
+            delimiters = str(options.extras.get('delimiters', delimiters))
+            extra_sniffer = options.extras.get('sniffer')
+            if extra_sniffer is not None:
+                sniffer = cast(_CsvSniffer, extra_sniffer)
+
+        with path.open('r', encoding='utf-8', newline='') as handle:
+            sample = handle.read(4096)
+            handle.seek(0)
+            dialect, has_header = self.sniff(
+                sample,
+                sniffer=sniffer,
+                delimiters=delimiters,
+            )
+            reader = csv.reader(handle, dialect)
+            rows = [
+                row for row in reader if any(field.strip() for field in row)
+            ]
+            if not rows:
+                return []
+
+            if has_header:
+                header = rows[0]
+                data_rows = rows[1:]
+            else:
+                header = [f'col_{i + 1}' for i in range(len(rows[0]))]
+                data_rows = rows
+
+        records: JSONList = []
+        for row in data_rows:
+            record: JSONDict = {}
+            for index, name in enumerate(header):
+                record[name] = row[index] if index < len(row) else None
+            records.append(record)
+        return records
+
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write DAT rows to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DAT file on disk.
+        rows : JSONList
+            Rows to write.
+        options : WriteOptions | None, optional
+            Optional write parameters. Extra key ``delimiter`` can override
+            :attr:`delimiter`.
+
+        Returns
+        -------
+        int
+            The number of rows written to the DAT file.
+        """
+        delimiter = self.delimiter
+        if options is not None:
+            delimiter = str(options.extras.get('delimiter', delimiter))
+        return write_delimited(
+            path,
+            rows,
+            delimiter=delimiter,
+            format_name='DAT',
+        )
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_DAT_HANDLER = DatFile()
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -132,31 +337,7 @@ def read(
     JSONList
         The list of dictionaries read from the DAT file.
     """
-    path = coerce_path(path)
-    with path.open('r', encoding='utf-8', newline='') as handle:
-        sample = handle.read(4096)
-        handle.seek(0)
-        dialect, has_header = _sniff(sample)
-
-        reader = csv.reader(handle, dialect)
-        rows = [row for row in reader if any(field.strip() for field in row)]
-        if not rows:
-            return []
-
-        if has_header:
-            header = rows[0]
-            data_rows = rows[1:]
-        else:
-            header = [f'col_{i + 1}' for i in range(len(rows[0]))]
-            data_rows = rows
-
-    records: JSONList = []
-    for row in data_rows:
-        record: JSONDict = {}
-        for index, name in enumerate(header):
-            record[name] = row[index] if index < len(row) else None
-        records.append(record)
-    return records
+    return _DAT_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -179,5 +360,4 @@ def write(
     int
         The number of rows written to the DAT file.
     """
-    path = coerce_path(path)
-    return write_delimited(path, data, delimiter=',', format_name='DAT')
+    return _DAT_HANDLER.write(coerce_path(path), data)
