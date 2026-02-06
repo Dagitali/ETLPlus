@@ -18,6 +18,7 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
@@ -28,11 +29,17 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from .base import FileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'NcFile',
     # Functions
     'read',
     'write',
@@ -69,6 +76,97 @@ def _raise_engine_error(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+class NcFile(FileHandlerABC):
+    """
+    Handler implementation for NC files.
+    """
+
+    format = FileFormat.NC
+    category = 'scientific_dataset'
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read NC content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the NC file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the NC file.
+        """
+        _ = options
+        xarray = get_dependency('xarray', format_name='NC')
+        try:
+            dataset = xarray.open_dataset(path)
+        except ImportError as err:  # pragma: no cover
+            _raise_engine_error(err)
+        with dataset:
+            frame = dataset.to_dataframe().reset_index()
+        if 'index' in frame.columns:
+            values = list(frame['index'])
+            if values == list(range(len(values))):
+                frame = frame.drop(columns=['index'])
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to NC file at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the NC file on disk.
+        data : JSONData
+            Data to write as NC file. Should be a list of dictionaries or a
+            single dictionary.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the NC file.
+        """
+        _ = options
+        records = normalize_records(data, 'NC')
+        if not records:
+            return 0
+
+        xarray = get_dependency('xarray', format_name='NC')
+        pandas = get_pandas('NC')
+        frame = pandas.DataFrame.from_records(records)
+        dataset = xarray.Dataset.from_dataframe(frame)
+        ensure_parent_dir(path)
+        try:
+            dataset.to_netcdf(path)
+        except ImportError as err:  # pragma: no cover
+            _raise_engine_error(err)
+        return len(records)
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_NC_HANDLER = NcFile()
+
+
 def read(
     path: StrPath,
 ) -> JSONList:
@@ -85,19 +183,7 @@ def read(
     JSONList
         The list of dictionaries read from the NC file.
     """
-    path = coerce_path(path)
-    xarray = get_dependency('xarray', format_name='NC')
-    try:
-        dataset = xarray.open_dataset(path)
-    except ImportError as err:  # pragma: no cover
-        _raise_engine_error(err)
-    with dataset:
-        frame = dataset.to_dataframe().reset_index()
-    if 'index' in frame.columns:
-        values = list(frame['index'])
-        if values == list(range(len(values))):
-            frame = frame.drop(columns=['index'])
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _NC_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -120,18 +206,4 @@ def write(
     int
         The number of rows written to the NC file.
     """
-    path = coerce_path(path)
-    records = normalize_records(data, 'NC')
-    if not records:
-        return 0
-
-    xarray = get_dependency('xarray', format_name='NC')
-    pandas = get_pandas('NC')
-    frame = pandas.DataFrame.from_records(records)
-    dataset = xarray.Dataset.from_dataframe(frame)
-    ensure_parent_dir(path)
-    try:
-        dataset.to_netcdf(path)
-    except ImportError as err:  # pragma: no cover
-        _raise_engine_error(err)
-    return len(records)
+    return _NC_HANDLER.write(coerce_path(path), data)
