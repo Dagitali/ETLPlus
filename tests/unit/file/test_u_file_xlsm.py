@@ -95,6 +95,13 @@ class TestXlsmWrite:
             {'path': path, 'index': False},
         ]
 
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing an empty payload returns zero."""
+        assert mod.write(tmp_path / 'data.xlsm', []) == 0
+
     def test_write_wraps_import_error(
         self,
         tmp_path: Path,
@@ -132,8 +139,8 @@ class TestXlsmWrite:
                     records: list[dict[str, object]],
                 ) -> _FailFrame:  # noqa: ARG002
                     """
-                    Simulate :class:`pandas.DataFrame` with from_records method
-                    that fails.
+                    Simulate :class:`pandas.DataFrame` with
+                    :meth:`from_records` method that fails.
                     """
                     return _FailFrame()
 
@@ -141,10 +148,3 @@ class TestXlsmWrite:
 
         with pytest.raises(ImportError, match='openpyxl'):
             mod.write(tmp_path / 'data.xlsm', [{'id': 1}])
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing an empty payload returns zero."""
-        assert mod.write(tmp_path / 'data.xlsm', []) == 0

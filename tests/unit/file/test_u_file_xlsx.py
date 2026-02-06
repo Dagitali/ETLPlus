@@ -8,66 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
 from etlplus.file import xlsx as mod
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub for Excel helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = records
-        self.to_excel_calls: list[dict[str, object]] = []
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting to a dictionary with a specific orientation."""
-        return list(self._records)
-
-    def to_excel(
-        self,
-        path: Path,
-        *,
-        index: bool,
-    ) -> None:
-        """Simulate writing to an Excel file by recording the call."""
-        self.to_excel_calls.append({'path': path, 'index': index})
-
-
-class _PandasStub:
-    """Stub for pandas module."""
-
-    def __init__(self, frame: _Frame) -> None:
-        self._frame = frame
-        self.read_calls: list[dict[str, object]] = []
-
-    def read_excel(
-        self,
-        path: Path,
-    ) -> _Frame:
-        """Simulate reading an Excel file by recording the call."""
-        self.read_calls.append({'path': path})
-        return self._frame
-
-    class DataFrame:  # noqa: D106
-        """Simulate pandas.DataFrame with from_records method."""
-
-        @staticmethod
-        def from_records(
-            records: list[dict[str, object]],
-        ) -> _Frame:
-            """Simulate :class:`pandas.DataFrame` with from_records method."""
-            return _Frame(records)
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -76,6 +22,23 @@ class TestXlsxRead:
     """Unit tests for :func:`etlplus.file.xlsx.read`."""
 
     # pylint: disable=unused-argument
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test that :func:`read` returns the records from the Excel file."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+
+        result = mod.read(tmp_path / 'data.xlsx')
+
+        assert result == [{'id': 1}]
+        assert pandas.read_calls
 
     def test_read_wraps_import_error(
         self,
@@ -92,7 +55,7 @@ class TestXlsxRead:
             def read_excel(
                 self,
                 path: Path,
-            ) -> _Frame:  # noqa: ARG002
+            ) -> object:  # noqa: ARG002
                 """Simulate failure when reading an Excel file."""
                 raise ImportError('missing')
 
@@ -101,26 +64,39 @@ class TestXlsxRead:
         with pytest.raises(ImportError, match='openpyxl'):
             mod.read(tmp_path / 'data.xlsx')
 
-    def test_read_returns_records(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that :func:`read` returns the records from the Excel file."""
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame)
-        optional_module_stub({'pandas': pandas})
-
-        result = mod.read(tmp_path / 'data.xlsx')
-
-        assert result == [{'id': 1}]
-        assert pandas.read_calls
-
 
 class TestXlsxWrite:
     """Unit tests for :func:`etlplus.file.xlsx.write`."""
 
     # pylint: disable=unused-argument
+
+    def test_write_calls_to_excel(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test that :func:`write` calls :meth:`to_excel` on the frame."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+        path = tmp_path / 'data.xlsx'
+
+        written = mod.write(path, [{'id': 1}])
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        assert pandas.last_frame.to_excel_calls == [
+            {'path': path, 'index': False},
+        ]
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing an empty payload returns zero."""
+        assert mod.write(tmp_path / 'data.xlsx', []) == 0
 
     def test_write_wraps_import_error(
         self,
@@ -171,10 +147,3 @@ class TestXlsxWrite:
 
         with pytest.raises(ImportError, match='openpyxl'):
             mod.write(tmp_path / 'data.xlsx', [{'id': 1}])
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing an empty payload returns zero."""
-        assert mod.write(tmp_path / 'data.xlsx', []) == 0
