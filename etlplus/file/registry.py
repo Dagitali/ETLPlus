@@ -38,6 +38,7 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.CBOR: 'etlplus.file.cbor:CborFile',
     FileFormat.CSV: 'etlplus.file.csv:CsvFile',
     FileFormat.DAT: 'etlplus.file.dat:DatFile',
+    FileFormat.GZ: 'etlplus.file.gz:GzFile',
     FileFormat.HDF5: 'etlplus.file.hdf5:Hdf5File',
     FileFormat.INI: 'etlplus.file.ini:IniFile',
     FileFormat.JSON: 'etlplus.file.json:JsonFile',
@@ -53,6 +54,7 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.XML: 'etlplus.file.xml:XmlFile',
     FileFormat.XLS: 'etlplus.file.xls:XlsFile',
     FileFormat.YAML: 'etlplus.file.yaml:YamlFile',
+    FileFormat.ZIP: 'etlplus.file.zip:ZipFile',
 }
 
 
