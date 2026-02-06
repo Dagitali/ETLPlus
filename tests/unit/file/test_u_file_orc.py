@@ -8,62 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 from etlplus.file import orc as mod
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub for ORC helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = records
-        self.to_orc_calls: list[dict[str, object]] = []
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting to a dictionary with a specific orientation."""
-        return list(self._records)
-
-    def to_orc(
-        self,
-        path: Path,
-        *,
-        index: bool,
-    ) -> None:
-        """Simulate writing to an ORC file by recording the call."""
-        self.to_orc_calls.append({'path': path, 'index': index})
-
-
-class _PandasStub:
-    """Stub for pandas module."""
-
-    def __init__(self, frame: _Frame) -> None:
-        self._frame = frame
-        self.read_calls: list[dict[str, object]] = []
-        self.last_frame: _Frame | None = None
-
-        def _from_records(records: list[dict[str, object]]) -> _Frame:
-            frame = _Frame(records)
-            self.last_frame = frame
-            return frame
-
-        self.DataFrame = type(  # type: ignore[assignment]
-            'DataFrame',
-            (),
-            {'from_records': staticmethod(_from_records)},
-        )
-
-    def read_orc(self, path: Path) -> _Frame:
-        """Simulate reading an ORC file by recording the call."""
-        self.read_calls.append({'path': path})
-        return self._frame
 
 
 class _PyarrowStub:
@@ -80,12 +30,14 @@ class TestOrcRead:
         self,
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
     ) -> None:
         """
         Test that :func:`read` uses the :mod:`pandas` module to read the file.
         """
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame)
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
         optional_module_stub({'pyarrow': _PyarrowStub(), 'pandas': pandas})
 
         result = mod.read(tmp_path / 'data.orc')
@@ -101,13 +53,15 @@ class TestOrcWrite:
         self,
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
     ) -> None:
         """
         Test that :func:`write` calls :meth:`to_orc` on the
         :class:`pandas.DataFrame`.
         """
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame)
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
         optional_module_stub({'pyarrow': _PyarrowStub(), 'pandas': pandas})
         path = tmp_path / 'data.orc'
 
