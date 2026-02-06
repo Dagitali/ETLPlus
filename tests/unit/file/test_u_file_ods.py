@@ -25,26 +25,14 @@ class TestOdsRead:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
     ) -> None:
         """Test that :func:`read` wraps import errors from :mod:`pandas`."""
-
-        class _FailPandas:
-            """
-            Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
-            """
-
-            def read_excel(
-                self,
-                path: Path,
-                *,
-                engine: str,
-            ) -> object:  # noqa: ARG002
-                """
-                Simulate reading an Excel file by raising :class:`ImportError`.
-                """
-                raise ImportError('missing')
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
 
         with pytest.raises(ImportError, match='odfpy'):
             mod.read(tmp_path / 'data.ods')
@@ -99,50 +87,14 @@ class TestOdsWrite:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
     ) -> None:
         """Test that :func:`write` wraps import errors from :mod:`pandas`."""
-
-        class _FailFrame:
-            """
-            Stub for a :class:`pandas.DataFrame` that fails on
-            :meth:`to_excel`.
-            """
-
-            def to_excel(
-                self,
-                path: Path,
-                *,
-                index: bool,
-                engine: str,
-            ) -> None:  # noqa: ARG002
-                """
-                Simulate writing to an Excel file by raising
-                :class:`ImportError`.
-                """
-                raise ImportError('missing')
-
-        class _FailPandas:
-            """
-            Stub for :mod:`pandas` module that fails on :meth:`from_records`.
-            """
-
-            class DataFrame:  # noqa: D106
-                """
-                Simulate :class:`pandas.DataFrame` with from_records method
-                that fails.
-                """
-
-                @staticmethod
-                def from_records(
-                    records: list[dict[str, object]],
-                ) -> _FailFrame:  # noqa: ARG002
-                    """
-                    Simulate creating a DataFrame from records by returning a
-                    failing frame.
-                    """
-                    return _FailFrame()
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
 
         with pytest.raises(ImportError, match='odfpy'):
             mod.write(tmp_path / 'data.ods', [{'id': 1}])
