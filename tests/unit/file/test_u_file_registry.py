@@ -14,9 +14,18 @@ import pytest
 
 from etlplus.file import FileFormat
 from etlplus.file import registry as mod
+from etlplus.file.arrow import ArrowFile
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.file.duckdb import DuckdbFile
+from etlplus.file.feather import FeatherFile
 from etlplus.file.json import JsonFile
+from etlplus.file.ods import OdsFile
+from etlplus.file.orc import OrcFile
+from etlplus.file.parquet import ParquetFile
+from etlplus.file.sqlite import SqliteFile
+from etlplus.file.xlsm import XlsmFile
+from etlplus.file.xlsx import XlsxFile
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -45,11 +54,30 @@ def clear_registry_caches() -> Iterator[None]:
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
 
-    def test_get_handler_class_uses_mapped_class(self) -> None:
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_class'),
+        [
+            (FileFormat.ARROW, ArrowFile),
+            (FileFormat.DUCKDB, DuckdbFile),
+            (FileFormat.FEATHER, FeatherFile),
+            (FileFormat.JSON, JsonFile),
+            (FileFormat.ODS, OdsFile),
+            (FileFormat.ORC, OrcFile),
+            (FileFormat.PARQUET, ParquetFile),
+            (FileFormat.SQLITE, SqliteFile),
+            (FileFormat.XLSM, XlsmFile),
+            (FileFormat.XLSX, XlsxFile),
+        ],
+    )
+    def test_get_handler_class_uses_mapped_class(
+        self,
+        file_format: FileFormat,
+        expected_class: type[FileHandlerABC],
+    ) -> None:
         """Test mapped formats resolving to their concrete handler classes."""
-        handler_class = mod.get_handler_class(FileFormat.JSON)
+        handler_class = mod.get_handler_class(file_format)
 
-        assert handler_class is JsonFile
+        assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
