@@ -1,11 +1,7 @@
 """
-:mod:`tests.unit.test_u_file_enums` module.
+:mod:`tests.unit.file.test_u_file_enums` module.
 
 Unit tests for :mod:`etlplus.file.enums`.
-
-Notes
------
-- Exercises format/compression inference rules and coercion helpers.
 """
 
 from __future__ import annotations

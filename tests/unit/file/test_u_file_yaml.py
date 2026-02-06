@@ -1,104 +1,96 @@
 """
-:mod:`tests.unit.test_u_file_yaml` module.
+:mod:`tests.unit.file.test_u_file_yaml` module.
 
 Unit tests for :mod:`etlplus.file.yaml`.
-
-Notes
------
-- Uses ``tmp_path`` for filesystem isolation.
-- Exercises YAML read/write helpers with a stubbed PyYAML module.
 """
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-import pytest
-
-import etlplus.file._imports as import_helpers
-from etlplus.file import File
-from etlplus.file import FileFormat
+from etlplus.file import yaml as mod
 
 # SECTION: HELPERS ========================================================== #
 
 
-_YAML_CACHE = import_helpers._MODULE_CACHE  # pylint: disable=protected-access
-
-
 class _StubYaml:
-    """Minimal PyYAML substitute to avoid optional dependency in tests."""
+    """Minimal PyYAML substitute."""
 
-    def __init__(self) -> None:
+    def __init__(self, loaded: object | None = None) -> None:
+        self._loaded = loaded if loaded is not None else {'loaded': 'value'}
+        self.load_calls = 0
         self.dump_calls: list[dict[str, object]] = []
 
-    def safe_load(
-        self,
-        handle: object,
-    ) -> dict[str, str]:
-        """Stub for PyYAML's ``safe_load`` function."""
-        text = ''
-        if hasattr(handle, 'read'):  # type: ignore[call-arg]
-            text = handle.read()
-        return {'loaded': str(text).strip()}
+    def safe_load(self, handle: Any) -> object:
+        """Return configured loaded data."""
+        self.load_calls += 1
+        _ = handle.read()
+        return self._loaded
 
     def safe_dump(
         self,
         data: object,
-        handle: object,
+        handle: Any,
         **kwargs: object,
     ) -> None:
-        """Stub for PyYAML's ``safe_dump`` function."""
+        """Capture write calls and emit deterministic file content."""
         self.dump_calls.append({'data': data, 'kwargs': kwargs})
-        if hasattr(handle, 'write'):
-            handle.write('yaml')  # type: ignore[call-arg]
-
-
-@pytest.fixture(name='yaml_stub')
-def yaml_stub_fixture() -> Generator[_StubYaml]:
-    """Install a stub PyYAML module for YAML tests."""
-    stub = _StubYaml()
-    _YAML_CACHE.clear()
-    _YAML_CACHE['yaml'] = stub
-    yield stub
-    _YAML_CACHE.clear()
+        handle.write('yaml')
 
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestYamlSupport:
-    """Unit tests exercising YAML read/write helpers using a PyYAML stub."""
+class TestYamlRead:
+    """Unit tests for :func:`etlplus.file.yaml.read`."""
 
-    def test_read_yaml_uses_stub(
+    def test_read_uses_yaml_module(
         self,
         tmp_path: Path,
-        yaml_stub: _StubYaml,
+        optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """
-        Test reading YAML should invoke stub ``safe_load``.
+        Test that :func:`read` uses the :mod:`yaml` module when available.
         """
-        assert _YAML_CACHE['yaml'] is yaml_stub
         path = tmp_path / 'data.yaml'
-        path.write_text('name: etl', encoding='utf-8')
+        path.write_text('name: etl\n', encoding='utf-8')
+        yaml_stub = _StubYaml({'name': 'etl'})
+        optional_module_stub({'yaml': yaml_stub})
 
-        result = File(path, FileFormat.YAML).read()
+        result = mod.read(path)
 
-        assert result == {'loaded': 'name: etl'}
+        assert result == {'name': 'etl'}
+        assert yaml_stub.load_calls == 1
 
-    def test_write_yaml_uses_stub(
+
+class TestYamlWrite:
+    """Unit tests for :func:`etlplus.file.yaml.write`."""
+
+    def test_write_uses_yaml_module_and_options(
         self,
         tmp_path: Path,
-        yaml_stub: _StubYaml,
+        optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """
-        Test writing YAML should invoke stub ``safe_dump``.
+        Test that :func:`write` uses the :mod:`yaml` module when available.
         """
         path = tmp_path / 'data.yaml'
         payload = [{'name': 'etl'}]
+        yaml_stub = _StubYaml()
+        optional_module_stub({'yaml': yaml_stub})
 
-        written = File(path, FileFormat.YAML).write(payload)
+        written = mod.write(path, payload)
 
         assert written == 1
-        assert yaml_stub.dump_calls
-        assert yaml_stub.dump_calls[0]['data'] == payload
+        assert yaml_stub.dump_calls == [
+            {
+                'data': payload,
+                'kwargs': {
+                    'sort_keys': False,
+                    'allow_unicode': True,
+                    'default_flow_style': False,
+                },
+            },
+        ]

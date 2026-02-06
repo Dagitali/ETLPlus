@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 import csv
+from typing import Protocol
 from typing import cast
 
 from ..types import JSONData
@@ -36,6 +37,80 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_DEFAULT_DELIMITERS = ',\t|;'
+
+
+# SECTION: INTERNAL PROTOCOLS =============================================== #
+
+
+class _CsvSniffer(Protocol):
+    """Protocol for objects providing ``csv.Sniffer``-compatible methods."""
+
+    def has_header(
+        self,
+        sample: str,
+    ) -> bool: ...
+
+    def sniff(
+        self,
+        sample: str,
+        delimiters: str | None = None,
+    ) -> csv.Dialect: ...
+
+
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _sniff(
+    sample: str,
+    *,
+    sniffer: _CsvSniffer | None = None,
+    delimiters: str = _DEFAULT_DELIMITERS,
+) -> tuple[csv.Dialect, bool]:
+    """
+    Infer CSV dialect and header presence from an input sample.
+
+    Parameters
+    ----------
+    sample : str
+        Initial bytes decoded as text from the file (e.g., first 4 KiB).
+    sniffer : _CsvSniffer | None, optional
+        Sniffer instance used to infer the dialect/header. When omitted, a
+        default :class:`csv.Sniffer` instance is created.
+    delimiters : str, optional
+        Candidate delimiter characters passed to :meth:`csv.Sniffer.sniff`.
+
+    Returns
+    -------
+    tuple[csv.Dialect, bool]
+        ``(dialect, has_header)`` where *dialect* is the inferred CSV dialect
+        and *has_header* indicates whether the first non-empty row is likely a
+        header row.
+
+    Notes
+    -----
+    - If dialect inference fails, the Excel dialect is used as a fallback.
+    - If header detection fails, the function defaults to ``True`` so the
+        first row is treated as a header.
+    """
+    sniffer_instance = sniffer or csv.Sniffer()
+    try:
+        dialect = cast(
+            csv.Dialect,
+            sniffer_instance.sniff(sample, delimiters=delimiters),
+        )
+    except csv.Error:
+        dialect = cast(csv.Dialect, csv.get_dialect('excel'))
+    try:
+        has_header = sniffer_instance.has_header(sample)
+    except csv.Error:
+        has_header = True
+    return dialect, has_header
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -61,19 +136,7 @@ def read(
     with path.open('r', encoding='utf-8', newline='') as handle:
         sample = handle.read(4096)
         handle.seek(0)
-        sniffer = csv.Sniffer()
-        dialect: csv.Dialect
-        try:
-            dialect = cast(
-                csv.Dialect,
-                sniffer.sniff(sample, delimiters=',\t|;'),
-            )
-        except csv.Error:
-            dialect = cast(csv.Dialect, csv.get_dialect('excel'))
-        try:
-            has_header = sniffer.has_header(sample)
-        except csv.Error:
-            has_header = True
+        dialect, has_header = _sniff(sample)
 
         reader = csv.reader(handle, dialect)
         rows = [row for row in reader if any(field.strip() for field in row)]
