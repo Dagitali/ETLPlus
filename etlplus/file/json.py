@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from ..types import JSONData
 from ..types import StrPath
@@ -26,15 +27,152 @@ from ..utils import count_records
 from ._io import coerce_path
 from ._io import coerce_record_payload
 from ._io import ensure_parent_dir
+from .base import ReadOptions
+from .base import SemiStructuredTextFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'JsonFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class JsonFile(SemiStructuredTextFileHandlerABC):
+    """
+    Handler implementation for JSON files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.JSON
+
+    # -- Instance Methods -- #
+
+    def dumps(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize *data* to JSON text.
+
+        Parameters
+        ----------
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        str
+            Serialized JSON text.
+        """
+        _ = options
+        return json.dumps(data, indent=2, ensure_ascii=False)
+
+    def loads(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse JSON *text* into structured records.
+
+        Parameters
+        ----------
+        text : str
+            JSON payload as text.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload.
+        """
+        _ = options
+        return coerce_record_payload(json.loads(text), format_name='JSON')
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read JSON content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the JSON file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the JSON file.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        with path.open('r', encoding=encoding) as handle:
+            loaded = json.load(handle)
+        return coerce_record_payload(loaded, format_name='JSON')
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* as formatted JSON to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the JSON file on disk.
+        data : JSONData
+            Data to serialize as JSON.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of records written to the JSON file.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        ensure_parent_dir(path)
+        with path.open('w', encoding=encoding) as handle:
+            json.dump(
+                data,
+                handle,
+                indent=2,
+                ensure_ascii=False,
+            )
+            handle.write('\n')
+        return count_records(data)
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_JSON_HANDLER = JsonFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -58,11 +196,7 @@ def read(
     JSONData
         The structured data read from the JSON file.
     """
-    path = coerce_path(path)
-    with path.open('r', encoding='utf-8') as handle:
-        loaded = json.load(handle)
-
-    return coerce_record_payload(loaded, format_name='JSON')
+    return _JSON_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -84,15 +218,4 @@ def write(
     int
         The number of records written to the JSON file.
     """
-    path = coerce_path(path)
-    ensure_parent_dir(path)
-    with path.open('w', encoding='utf-8') as handle:
-        json.dump(
-            data,
-            handle,
-            indent=2,
-            ensure_ascii=False,
-        )
-        handle.write('\n')
-
-    return count_records(data)
+    return _JSON_HANDLER.write(coerce_path(path), data)
