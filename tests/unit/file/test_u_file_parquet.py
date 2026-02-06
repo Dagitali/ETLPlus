@@ -44,22 +44,14 @@ class TestParquetRead:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
     ) -> None:
         """Test that import errors are wrapped with a helpful message."""
-
-        class _FailPandas:
-            """
-            Stub for :mod:`pandas` module that fails on :meth:`read_parquet`.
-            """
-
-            def read_parquet(
-                self,
-                path: Path,
-            ) -> object:  # noqa: ARG002
-                """Simulate failure when reading a Parquet file."""
-                raise ImportError('missing')
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_parquet'),
+        )
 
         with pytest.raises(ImportError, match='pyarrow'):
             mod.read(tmp_path / 'data.parquet')
@@ -102,44 +94,14 @@ class TestParquetWrite:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
     ) -> None:
         """Test that import errors are wrapped with a helpful message."""
-
-        class _FailFrame:
-            """Stub for frame that fails on :meth:`to_parquet`."""
-
-            def to_parquet(
-                self,
-                path: Path,
-                *,
-                index: bool,
-            ) -> None:  # noqa: ARG002
-                """Simulate failure when writing to a Parquet file."""
-                raise ImportError('missing')
-
-        class _FailPandas:
-            """
-            Stub for :mod:`pandas` module that fails when creating a
-            :class:`DataFrame`.
-            """
-
-            class DataFrame:  # noqa: D106
-                """
-                Stub for :class:`pandas.DataFrame` that fails on
-                :meth:`from_records`.
-                """
-
-                @staticmethod
-                def from_records(
-                    records: list[dict[str, object]],
-                ) -> _FailFrame:  # noqa: ARG002
-                    """
-                    Simulate creating a DataFrame from records by returning a
-                    failing frame.
-                    """
-                    return _FailFrame()
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
 
         with pytest.raises(ImportError, match='pyarrow'):
             mod.write(tmp_path / 'data.parquet', [{'id': 1}])
