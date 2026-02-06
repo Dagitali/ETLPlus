@@ -17,21 +17,153 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..types import JSONData
 from ..types import StrPath
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import require_str_key
+from .base import BinarySerializationFileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'ProtoFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class ProtoFile(BinarySerializationFileHandlerABC):
+    """
+    Handler implementation for Protocol Buffers schema files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.PROTO
+
+    # -- Instance Methods -- #
+
+    def dumps_bytes(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> bytes:
+        """
+        Serialize schema dictionary payload into bytes.
+
+        Parameters
+        ----------
+        data : JSONData
+            Payload dictionary with ``schema`` key.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        bytes
+            Encoded schema bytes.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        payload = require_dict_payload(data, format_name='PROTO')
+        schema = require_str_key(payload, format_name='PROTO', key='schema')
+        return schema.encode(encoding)
+
+    def loads_bytes(
+        self,
+        payload: bytes,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse PROTO bytes into schema dictionary payload.
+
+        Parameters
+        ----------
+        payload : bytes
+            Raw schema bytes.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Payload dictionary with ``schema`` key.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        return {'schema': payload.decode(encoding)}
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read PROTO content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the PROTO file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the PROTO file.
+        """
+        _ = options
+        return self.loads_bytes(path.read_bytes())
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to PROTO at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the PROTO file on disk.
+        data : JSONData
+            Data to write as PROTO. Should be a dictionary with ``schema``.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of records written to the PROTO file.
+        """
+        payload = self.dumps_bytes(data, options=options)
+        ensure_parent_dir(path)
+        path.write_bytes(payload)
+        return 1
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_PROTO_HANDLER = ProtoFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -53,8 +185,7 @@ def read(
     JSONData
         The structured data read from the PROTO file.
     """
-    path = coerce_path(path)
-    return {'schema': path.read_text(encoding='utf-8')}
+    return _PROTO_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -76,10 +207,4 @@ def write(
     int
         The number of records written to the PROTO file.
     """
-    path = coerce_path(path)
-    payload = require_dict_payload(data, format_name='PROTO')
-    schema = require_str_key(payload, format_name='PROTO', key='schema')
-
-    ensure_parent_dir(path)
-    path.write_text(schema, encoding='utf-8')
-    return 1
+    return _PROTO_HANDLER.write(coerce_path(path), data)
