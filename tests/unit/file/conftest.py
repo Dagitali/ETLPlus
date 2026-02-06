@@ -17,6 +17,7 @@ import numbers
 from collections.abc import Callable
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -52,6 +53,84 @@ def _coerce_numeric_value(
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def make_import_error_reader_module(
+    method_name: str,
+) -> object:
+    """
+    Build a module-like object whose reader method raises ImportError.
+
+    Parameters
+    ----------
+    method_name : str
+        Reader method name to define (for example, ``"read_excel"``).
+
+    Returns
+    -------
+    object
+        Module-like object with one failing reader method.
+    """
+
+    class _FailModule:
+        """Module stub exposing one reader that always raises ImportError."""
+
+        def __getattribute__(self, name: str) -> Any:
+            if name != method_name:
+                return super().__getattribute__(name)
+
+            def _fail_reader(
+                *args: object,
+                **kwargs: object,
+            ) -> object:  # noqa: ARG001
+                raise ImportError('missing')
+
+            return _fail_reader
+
+    return _FailModule()
+
+
+def make_import_error_writer_module() -> object:
+    """
+    Build a pandas-like module whose DataFrame writes raise ImportError.
+
+    Returns
+    -------
+    object
+        Module-like object with ``DataFrame.from_records`` that returns a
+        failing frame.
+    """
+
+    class _FailFrame:
+        """Frame stub whose write-like attributes raise ImportError."""
+
+        def __getattr__(self, name: str) -> object:
+            if not name.startswith('to_'):
+                raise AttributeError(name)
+
+            def _fail_writer(
+                *args: object,
+                **kwargs: object,
+            ) -> None:  # noqa: ARG001
+                raise ImportError('missing')
+
+            return _fail_writer
+
+    class _FailModule:
+        """Module stub exposing failing ``DataFrame.from_records``."""
+
+        # pylint: disable=unused-argument
+
+        class DataFrame:  # noqa: D106
+            """Minimal DataFrame namespace for write-path tests."""
+
+            @staticmethod
+            def from_records(
+                records: list[dict[str, object]],
+            ) -> _FailFrame:  # noqa: ARG002
+                return _FailFrame()
+
+    return _FailModule()
 
 
 def normalize_numeric_records(
@@ -373,20 +452,30 @@ class RecordsFrameStub:
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(name='make_records_frame')
-def make_records_frame_fixture() -> Callable[
-    [list[dict[str, object]]],
-    RecordsFrameStub,
-]:
+@pytest.fixture(name='make_import_error_reader')
+def make_import_error_reader_fixture() -> Callable[[str], object]:
     """
-    Build :class:`RecordsFrameStub` instances for tests.
+    Build module-like objects with one failing reader method.
 
     Returns
     -------
-    Callable[[list[dict[str, object]]], RecordsFrameStub]
-        Frame factory.
+    Callable[[str], object]
+        Factory that maps a method name to a failing module-like object.
     """
-    return RecordsFrameStub
+    return make_import_error_reader_module
+
+
+@pytest.fixture(name='make_import_error_writer')
+def make_import_error_writer_fixture() -> Callable[[], object]:
+    """
+    Build pandas-like module objects with failing write paths.
+
+    Returns
+    -------
+    Callable[[], object]
+        Factory returning a failing module-like object.
+    """
+    return make_import_error_writer_module
 
 
 @pytest.fixture(name='make_pandas_stub')
@@ -403,6 +492,22 @@ def make_pandas_stub_fixture() -> Callable[
         pandas module stub factory.
     """
     return PandasModuleStub
+
+
+@pytest.fixture(name='make_records_frame')
+def make_records_frame_fixture() -> Callable[
+    [list[dict[str, object]]],
+    RecordsFrameStub,
+]:
+    """
+    Build :class:`RecordsFrameStub` instances for tests.
+
+    Returns
+    -------
+    Callable[[list[dict[str, object]]], RecordsFrameStub]
+        Frame factory.
+    """
+    return RecordsFrameStub
 
 
 @pytest.fixture(name='optional_module_stub')
