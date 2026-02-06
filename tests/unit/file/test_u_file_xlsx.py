@@ -109,8 +109,7 @@ class TestXlsxWrite:
 
         class _FailFrame:
             """
-            Simulate a :class:`pandas.DataFrame` that fails when calling
-            :func:`to_excel`.
+            Stub for :class:`pandas.DataFrame` that fails on :meth:`to_excel`.
             """
 
             def to_excel(
@@ -124,13 +123,13 @@ class TestXlsxWrite:
 
         class _FailPandas:
             """
-            Simulate :mod:`pandas` module that fails on :meth:`read_excel`.
+            Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
             """
 
             class DataFrame:  # noqa: D106
                 """
-                Simulate :class:`pandas.DataFrame` with :meth:`from_records`
-                method.
+                Stub for :class:`pandas.DataFrame` that fails on
+                :meth:`to_excel`.
                 """
 
                 @staticmethod
@@ -139,7 +138,7 @@ class TestXlsxWrite:
                 ) -> _FailFrame:  # noqa: ARG002
                     """
                     Simulate :class:`pandas.DataFrame` with
-                    :meth:`from_records` method.
+                    :meth:`from_records` method that fails.
                     """
                     return _FailFrame()
 

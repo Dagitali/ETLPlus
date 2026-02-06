@@ -51,7 +51,8 @@ class TestXlsmRead:
 
         class _FailPandas:
             """
-            Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
+            Stub for :mod:`pandas` module that fails creating a
+            :class:`DataFrame`.
             """
 
             def read_excel(self, path: Path) -> object:  # noqa: ARG002
@@ -112,7 +113,9 @@ class TestXlsmWrite:
         """
 
         class _FailFrame:
-            """Stub for frame that fails on :meth:`to_excel`."""
+            """
+            Stub for :class:`pandas.DataFrame` that fails on :meth:`to_excel`.
+            """
 
             def to_excel(
                 self,
