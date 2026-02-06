@@ -19,11 +19,13 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.duckdb import DuckdbFile
 from etlplus.file.feather import FeatherFile
+from etlplus.file.fwf import FwfFile
 from etlplus.file.json import JsonFile
 from etlplus.file.ods import OdsFile
 from etlplus.file.orc import OrcFile
 from etlplus.file.parquet import ParquetFile
 from etlplus.file.sqlite import SqliteFile
+from etlplus.file.txt import TxtFile
 from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
 
@@ -60,11 +62,13 @@ class TestRegistryMappedResolution:
             (FileFormat.ARROW, ArrowFile),
             (FileFormat.DUCKDB, DuckdbFile),
             (FileFormat.FEATHER, FeatherFile),
+            (FileFormat.FWF, FwfFile),
             (FileFormat.JSON, JsonFile),
             (FileFormat.ODS, OdsFile),
             (FileFormat.ORC, OrcFile),
             (FileFormat.PARQUET, ParquetFile),
             (FileFormat.SQLITE, SqliteFile),
+            (FileFormat.TXT, TxtFile),
             (FileFormat.XLSM, XlsmFile),
             (FileFormat.XLSX, XlsxFile),
         ],
