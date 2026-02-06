@@ -117,8 +117,7 @@ def _coerce_handler_class(
         )
     if not issubclass(symbol, FileHandlerABC):
         raise ValueError(
-            f'Handler for {file_format.value!r} must inherit '
-            'FileHandlerABC',
+            f'Handler for {file_format.value!r} must inherit FileHandlerABC',
         )
     return cast(type[FileHandlerABC], symbol)
 
