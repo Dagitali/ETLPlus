@@ -1,12 +1,7 @@
 """
-:mod:`tests.unit.test_u_file_core` module.
+:mod:`tests.unit.file.test_u_file_core` module.
 
 Unit tests for :mod:`etlplus.file.core`.
-
-Notes
------
-- Uses ``tmp_path`` for filesystem isolation.
-- Exercises JSON detection and defers errors for unknown extensions.
 """
 
 from __future__ import annotations
