@@ -17,17 +17,27 @@ from etlplus.file import registry as mod
 from etlplus.file.arrow import ArrowFile
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.file.dta import DtaFile
 from etlplus.file.duckdb import DuckdbFile
 from etlplus.file.feather import FeatherFile
 from etlplus.file.fwf import FwfFile
 from etlplus.file.json import JsonFile
+from etlplus.file.mat import MatFile
+from etlplus.file.nc import NcFile
 from etlplus.file.ods import OdsFile
 from etlplus.file.orc import OrcFile
 from etlplus.file.parquet import ParquetFile
+from etlplus.file.rda import RdaFile
+from etlplus.file.rds import RdsFile
+from etlplus.file.sas7bdat import Sas7bdatFile
+from etlplus.file.sav import SavFile
 from etlplus.file.sqlite import SqliteFile
+from etlplus.file.sylk import SylkFile
 from etlplus.file.txt import TxtFile
 from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
+from etlplus.file.xpt import XptFile
+from etlplus.file.zsav import ZsavFile
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -60,17 +70,27 @@ class TestRegistryMappedResolution:
         ('file_format', 'expected_class'),
         [
             (FileFormat.ARROW, ArrowFile),
+            (FileFormat.DTA, DtaFile),
             (FileFormat.DUCKDB, DuckdbFile),
             (FileFormat.FEATHER, FeatherFile),
             (FileFormat.FWF, FwfFile),
             (FileFormat.JSON, JsonFile),
+            (FileFormat.MAT, MatFile),
+            (FileFormat.NC, NcFile),
             (FileFormat.ODS, OdsFile),
             (FileFormat.ORC, OrcFile),
             (FileFormat.PARQUET, ParquetFile),
+            (FileFormat.RDA, RdaFile),
+            (FileFormat.RDS, RdsFile),
+            (FileFormat.SAS7BDAT, Sas7bdatFile),
+            (FileFormat.SAV, SavFile),
             (FileFormat.SQLITE, SqliteFile),
+            (FileFormat.SYLK, SylkFile),
             (FileFormat.TXT, TxtFile),
             (FileFormat.XLSM, XlsmFile),
             (FileFormat.XLSX, XlsxFile),
+            (FileFormat.XPT, XptFile),
+            (FileFormat.ZSAV, ZsavFile),
         ],
     )
     def test_get_handler_class_uses_mapped_class(
