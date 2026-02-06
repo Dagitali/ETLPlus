@@ -44,22 +44,16 @@ class TestXlsxRead:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
     ) -> None:
         """
         Test that :func:`read` wraps :class:`ImportError` from :mod:`pandas`.
         """
-
-        class _FailPandas:
-            """Simulate failure when reading an Excel file."""
-
-            def read_excel(
-                self,
-                path: Path,
-            ) -> object:  # noqa: ARG002
-                """Simulate failure when reading an Excel file."""
-                raise ImportError('missing')
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
 
         with pytest.raises(ImportError, match='openpyxl'):
             mod.read(tmp_path / 'data.xlsx')
@@ -102,48 +96,16 @@ class TestXlsxWrite:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
     ) -> None:
         """
         Test that :func:`write` wraps :class:`ImportError` from :mod:`pandas`.
         """
-
-        class _FailFrame:
-            """
-            Stub for :class:`pandas.DataFrame` that fails on :meth:`to_excel`.
-            """
-
-            def to_excel(
-                self,
-                path: Path,
-                *,
-                index: bool,
-            ) -> None:  # noqa: ARG002
-                """Simulate failure when writing to an Excel file."""
-                raise ImportError('missing')
-
-        class _FailPandas:
-            """
-            Stub for :mod:`pandas` module that fails creating
-            :class:`pandas.DataFrame`.
-            """
-
-            class DataFrame:  # noqa: D106
-                """
-                Stub for :class:`pandas.DataFrame` that fails on
-                :meth:`to_excel`.
-                """
-
-                @staticmethod
-                def from_records(
-                    records: list[dict[str, object]],
-                ) -> _FailFrame:  # noqa: ARG002
-                    """
-                    Simulate :class:`pandas.DataFrame` with
-                    :meth:`from_records` method that fails.
-                    """
-                    return _FailFrame()
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
 
         with pytest.raises(ImportError, match='openpyxl'):
             mod.write(tmp_path / 'data.xlsx', [{'id': 1}])

@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.file.xls`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -22,25 +23,18 @@ class TestXlsRead:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
     ) -> None:
         """
         Test that :func:`read` raises an informative error when the required
         dependency is missing.
         """
 
-        class _FailPandas:
-            """Stub pandas module that fails to import Excel reader."""
-
-            def read_excel(
-                self,
-                path: Path,
-                *,
-                engine: str,
-            ) -> object:  # noqa: ARG002
-                """Simulate failure when reading an Excel file."""
-                raise ImportError('missing')
-
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: _FailPandas())
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
 
         with pytest.raises(ImportError, match='xlrd'):
             mod.read(tmp_path / 'data.xls')
