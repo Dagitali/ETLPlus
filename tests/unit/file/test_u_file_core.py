@@ -685,11 +685,13 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test XLS writes raise a clear error."""
+        """
+        Test that :func:`write` raises an error indicating lack of support.
+        """
         pytest.importorskip('pandas')
         path = tmp_path / 'sample.xls'
 
-        with pytest.raises(RuntimeError, match='XLS write is not supported'):
+        with pytest.raises(RuntimeError, match='read-only'):
             File(path, FileFormat.XLS).write([{'name': 'Ada', 'age': 36}])
 
     def test_xml_respects_root_tag(
