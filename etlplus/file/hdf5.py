@@ -19,19 +19,24 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._imports import get_pandas
 from ._io import coerce_path
+from .base import ReadOnlyFileHandlerABC
+from .base import ReadOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'Hdf5File',
     # Functions
     'read',
     'write',
@@ -70,6 +75,77 @@ def _raise_tables_error(
     ) from err
 
 
+# SECTION: CLASSES ========================================================== #
+
+
+class Hdf5File(ReadOnlyFileHandlerABC):
+    """
+    Read-only handler implementation for HDF5 files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.HDF5
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read HDF5 content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the HDF5 file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the HDF5 file.
+
+        Raises
+        ------
+        ValueError
+            If multiple datasets are found in the HDF5 file without a clear
+            key to use.
+        """
+        _ = options
+        pandas = get_pandas('HDF5')
+        try:
+            store = pandas.HDFStore(path)
+        except ImportError as err:  # pragma: no cover
+            _raise_tables_error(err)
+
+        with store:
+            keys = [key.lstrip('/') for key in store.keys()]
+            if not keys:
+                return []
+            if DEFAULT_KEY in keys:
+                key = DEFAULT_KEY
+            elif len(keys) == 1:
+                key = keys[0]
+            else:
+                raise ValueError(
+                    'Multiple datasets found in HDF5 file; expected "data" or '
+                    'a single dataset',
+                )
+            frame = store.get(key)
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_HDF5_HANDLER = Hdf5File()
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -88,35 +164,8 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the HDF5 file.
-
-    Raises
-    ------
-    ValueError
-        If multiple datasets are found in the HDF5 file without a clear key to
-        use.
     """
-    path = coerce_path(path)
-    pandas = get_pandas('HDF5')
-    try:
-        store = pandas.HDFStore(path)
-    except ImportError as err:  # pragma: no cover
-        _raise_tables_error(err)
-
-    with store:
-        keys = [key.lstrip('/') for key in store.keys()]
-        if not keys:
-            return []
-        if DEFAULT_KEY in keys:
-            key = DEFAULT_KEY
-        elif len(keys) == 1:
-            key = keys[0]
-        else:
-            raise ValueError(
-                'Multiple datasets found in HDF5 file; expected "data" or '
-                'a single dataset',
-            )
-        frame = store.get(key)
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _HDF5_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -139,5 +188,4 @@ def write(
     int
         The number of rows written to the HDF5 file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='HDF5')
+    return _HDF5_HANDLER.write(coerce_path(path), data)
