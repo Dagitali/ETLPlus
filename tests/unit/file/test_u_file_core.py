@@ -17,9 +17,11 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.file import core as core_mod
 from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file
+from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 from tests.unit.file.conftest import normalize_numeric_records
 from tests.unit.file.conftest import normalize_xml_payload
@@ -493,6 +495,52 @@ class TestFile:
         with pytest.raises(TypeError):
             File(path, FileFormat.JSON).read()
 
+    def test_read_uses_class_based_handler_dispatch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test read dispatch through ``core.get_handler`` class-based handlers.
+        """
+        path = tmp_path / 'sample.csv'
+        path.write_text('name\nAda\n', encoding='utf-8')
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                calls['read_path'] = path
+                return {'ok': True}
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                _ = path
+                _ = data
+                _ = options
+                return 0
+
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
+
+        result = File(path, FileFormat.CSV).read()
+
+        assert result == {'ok': True}
+        assert calls['format'] is FileFormat.CSV
+        assert calls['read_path'] == path
+
     @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
         [
@@ -680,6 +728,56 @@ class TestFile:
         json_content = path.read_text(encoding='utf-8')
         assert json_content
         assert json_content.count('\n') >= 2
+
+    def test_write_uses_class_based_handler_and_xml_root_tag(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test write dispatch preserving XML ``root_tag`` via WriteOptions.
+        """
+        path = tmp_path / 'export.xml'
+        payload: JSONData = [{'name': 'Ada'}]
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                _ = path
+                return []
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                calls['write_path'] = path
+                calls['write_data'] = data
+                calls['write_options'] = options
+                return 3
+
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
+
+        written = File(path, FileFormat.XML).write(payload, root_tag='records')
+
+        assert written == 3
+        assert calls['format'] is FileFormat.XML
+        assert calls['write_path'] == path
+        assert calls['write_data'] == payload
+        assert isinstance(calls['write_options'], WriteOptions)
+        options = cast(WriteOptions, calls['write_options'])
+        assert options.root_tag == 'records'
 
     def test_xls_write_not_supported(
         self,
