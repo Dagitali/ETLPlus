@@ -123,7 +123,8 @@ class TestXlsxWrite:
 
         class _FailPandas:
             """
-            Stub for :mod:`pandas` module that fails on :meth:`read_excel`.
+            Stub for :mod:`pandas` module that fails creating
+            :class:`pandas.DataFrame`.
             """
 
             class DataFrame:  # noqa: D106
