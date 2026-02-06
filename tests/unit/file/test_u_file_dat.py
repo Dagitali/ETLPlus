@@ -5,7 +5,6 @@ Unit tests for :mod:`etlplus.file.dat`.
 
 Notes
 -----
-- Focuses on branch coverage in :func:`etlplus.file.dat.read`.
 - Exercises :func:`etlplus.file.dat._sniff` directly to keep tests
     deterministic across platforms/Python versions.
 """
