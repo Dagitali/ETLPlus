@@ -149,10 +149,12 @@ class TestHdf5Read:
 class TestHdf5Write:
     """Unit tests for :func:`etlplus.file.hdf5.write`."""
 
-    def test_write_is_stubbed(
+    def test_write_not_supported(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that writing raises :class:`NotImplementedError`."""
-        with pytest.raises(NotImplementedError, match='HDF5 write'):
+        """
+        Test that :func:`write` raises an error indicating lack of support.
+        """
+        with pytest.raises(RuntimeError, match='read-only'):
             mod.write(tmp_path / 'data.hdf5', [{'id': 1}])
