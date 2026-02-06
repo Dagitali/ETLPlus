@@ -36,9 +36,16 @@ __all__ = [
 _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.CSV: 'etlplus.file.csv:CsvFile',
     FileFormat.DAT: 'etlplus.file.dat:DatFile',
+    FileFormat.INI: 'etlplus.file.ini:IniFile',
+    FileFormat.JSON: 'etlplus.file.json:JsonFile',
+    FileFormat.NDJSON: 'etlplus.file.ndjson:NdjsonFile',
+    FileFormat.PROPERTIES: 'etlplus.file.properties:PropertiesFile',
     FileFormat.PSV: 'etlplus.file.psv:PsvFile',
     FileFormat.TAB: 'etlplus.file.tab:TabFile',
+    FileFormat.TOML: 'etlplus.file.toml:TomlFile',
     FileFormat.TSV: 'etlplus.file.tsv:TsvFile',
+    FileFormat.XML: 'etlplus.file.xml:XmlFile',
+    FileFormat.YAML: 'etlplus.file.yaml:YamlFile',
 }
 
 
