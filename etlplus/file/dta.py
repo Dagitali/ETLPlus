@@ -18,6 +18,7 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
@@ -28,11 +29,17 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from .base import FileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'DtaFile',
     # Functions
     'read',
     'write',
@@ -40,6 +47,85 @@ __all__ = [
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+class DtaFile(FileHandlerABC):
+    """
+    Handler implementation for DTA files.
+    """
+
+    format = FileFormat.DTA
+    category = 'statistical_dataset'
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read DTA content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DTA file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the DTA file.
+        """
+        _ = options
+        get_dependency('pyreadstat', format_name='DTA')
+        pandas = get_pandas('DTA')
+        frame = pandas.read_stata(path)
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to DTA file at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the DTA file on disk.
+        data : JSONData
+            Data to write as DTA file. Should be a list of dictionaries or a
+            single dictionary.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the DTA file.
+        """
+        _ = options
+        records = normalize_records(data, 'DTA')
+        if not records:
+            return 0
+
+        get_dependency('pyreadstat', format_name='DTA')
+        pandas = get_pandas('DTA')
+        ensure_parent_dir(path)
+        frame = pandas.DataFrame.from_records(records)
+        frame.to_stata(path, write_index=False)
+        return len(records)
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_DTA_HANDLER = DtaFile()
 
 
 def read(
@@ -58,11 +144,7 @@ def read(
     JSONList
         The list of dictionaries read from the DTA file.
     """
-    path = coerce_path(path)
-    get_dependency('pyreadstat', format_name='DTA')
-    pandas = get_pandas('DTA')
-    frame = pandas.read_stata(path)
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _DTA_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -85,14 +167,4 @@ def write(
     int
         The number of rows written to the DTA file.
     """
-    path = coerce_path(path)
-    records = normalize_records(data, 'DTA')
-    if not records:
-        return 0
-
-    get_dependency('pyreadstat', format_name='DTA')
-    pandas = get_pandas('DTA')
-    ensure_parent_dir(path)
-    frame = pandas.DataFrame.from_records(records)
-    frame.to_stata(path, write_index=False)
-    return len(records)
+    return _DTA_HANDLER.write(coerce_path(path), data)
