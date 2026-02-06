@@ -167,6 +167,9 @@ class NcFile(FileHandlerABC):
 _NC_HANDLER = NcFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

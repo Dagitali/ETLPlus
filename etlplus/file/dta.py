@@ -128,6 +128,9 @@ class DtaFile(FileHandlerABC):
 _DTA_HANDLER = DtaFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

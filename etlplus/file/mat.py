@@ -112,6 +112,9 @@ class MatFile(FileHandlerABC):
 _MAT_HANDLER = MatFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

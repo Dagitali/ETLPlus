@@ -112,6 +112,9 @@ class ZsavFile(FileHandlerABC):
 _ZSAV_HANDLER = ZsavFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

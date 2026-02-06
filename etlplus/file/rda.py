@@ -153,6 +153,9 @@ class RdaFile(FileHandlerABC):
 _RDA_HANDLER = RdaFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONData:

@@ -146,6 +146,9 @@ class RdsFile(FileHandlerABC):
 _RDS_HANDLER = RdsFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONData:

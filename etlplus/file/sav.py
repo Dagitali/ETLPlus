@@ -126,6 +126,9 @@ class SavFile(FileHandlerABC):
 _SAV_HANDLER = SavFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

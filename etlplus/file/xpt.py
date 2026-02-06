@@ -146,6 +146,9 @@ class XptFile(FileHandlerABC):
 _XPT_HANDLER = XptFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:

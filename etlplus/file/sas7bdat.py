@@ -120,6 +120,9 @@ class Sas7bdatFile(FileHandlerABC):
 _SAS7BDAT_HANDLER = Sas7bdatFile()
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def read(
     path: StrPath,
 ) -> JSONList:
