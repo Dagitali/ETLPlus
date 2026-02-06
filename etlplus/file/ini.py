@@ -20,6 +20,7 @@ Notes
 from __future__ import annotations
 
 import configparser
+from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONDict
@@ -28,15 +29,221 @@ from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import stringify_value
+from .base import ReadOptions
+from .base import SemiStructuredTextFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'IniFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class IniFile(SemiStructuredTextFileHandlerABC):
+    """
+    Handler implementation for INI files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.INI
+    allow_dict_root = True
+    allow_list_root = False
+
+    # -- Instance Methods -- #
+
+    def dumps(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize dictionary *data* into INI text.
+
+        Parameters
+        ----------
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        str
+            Serialized INI text.
+
+        Raises
+        ------
+        TypeError
+            If *data* is not a dictionary.
+        """
+        _ = options
+        payload = require_dict_payload(data, format_name='INI')
+
+        parser = configparser.ConfigParser()
+        for section, values in payload.items():
+            if section == 'DEFAULT':
+                if isinstance(values, dict):
+                    parser['DEFAULT'] = {
+                        key: stringify_value(value)
+                        for key, value in values.items()
+                    }
+                else:
+                    raise TypeError('INI DEFAULT section must be a dict')
+                continue
+            if not isinstance(values, dict):
+                raise TypeError('INI sections must map to dicts')
+            parser[section] = {
+                key: stringify_value(value) for key, value in values.items()
+            }
+
+        from io import StringIO
+
+        stream = StringIO()
+        parser.write(stream)
+        return stream.getvalue()
+
+    def loads(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse INI *text* into dictionary payload.
+
+        Parameters
+        ----------
+        text : str
+            INI payload as text.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload.
+        """
+        _ = options
+        parser = configparser.ConfigParser()
+        parser.read_string(text)
+        payload: JSONDict = {}
+        if parser.defaults():
+            payload['DEFAULT'] = dict(parser.defaults())
+        defaults = dict(parser.defaults())
+        for section in parser.sections():
+            raw_section = dict(parser.items(section))
+            for key in defaults:
+                raw_section.pop(key, None)
+            payload[section] = raw_section
+        return payload
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read INI content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the INI file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the INI file.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        parser = configparser.ConfigParser()
+        parser.read(path, encoding=encoding)
+
+        payload: JSONDict = {}
+        if parser.defaults():
+            payload['DEFAULT'] = dict(parser.defaults())
+        defaults = dict(parser.defaults())
+        for section in parser.sections():
+            raw_section = dict(parser.items(section))
+            for key in defaults:
+                raw_section.pop(key, None)
+            payload[section] = raw_section
+        return payload
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to INI at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the INI file on disk.
+        data : JSONData
+            Data to write as INI. Should be a dictionary.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of records written to the INI file.
+
+        Raises
+        ------
+        TypeError
+            If *data* is not a dictionary.
+        """
+        encoding = options.encoding if options is not None else 'utf-8'
+        payload = require_dict_payload(data, format_name='INI')
+
+        parser = configparser.ConfigParser()
+        for section, values in payload.items():
+            if section == 'DEFAULT':
+                if isinstance(values, dict):
+                    parser['DEFAULT'] = {
+                        key: stringify_value(value)
+                        for key, value in values.items()
+                    }
+                else:
+                    raise TypeError('INI DEFAULT section must be a dict')
+                continue
+            if not isinstance(values, dict):
+                raise TypeError('INI sections must map to dicts')
+            parser[section] = {
+                key: stringify_value(value) for key, value in values.items()
+            }
+
+        ensure_parent_dir(path)
+        with path.open('w', encoding=encoding, newline='') as handle:
+            parser.write(handle)
+        return 1
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_INI_HANDLER = IniFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -58,20 +265,7 @@ def read(
     JSONData
         The structured data read from the INI file.
     """
-    path = coerce_path(path)
-    parser = configparser.ConfigParser()
-    parser.read(path, encoding='utf-8')
-
-    payload: JSONDict = {}
-    if parser.defaults():
-        payload['DEFAULT'] = dict(parser.defaults())
-    defaults = dict(parser.defaults())
-    for section in parser.sections():
-        raw_section = dict(parser.items(section))
-        for key in defaults:
-            raw_section.pop(key, None)
-        payload[section] = raw_section
-    return payload
+    return _INI_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -92,33 +286,5 @@ def write(
     -------
     int
         The number of records written to the INI file.
-
-    Raises
-    ------
-    TypeError
-        If *data* is not a dictionary.
     """
-    path = coerce_path(path)
-    payload = require_dict_payload(data, format_name='INI')
-
-    parser = configparser.ConfigParser()
-    for section, values in payload.items():
-        if section == 'DEFAULT':
-            if isinstance(values, dict):
-                parser['DEFAULT'] = {
-                    key: stringify_value(value)
-                    for key, value in values.items()
-                }
-            else:
-                raise TypeError('INI DEFAULT section must be a dict')
-            continue
-        if not isinstance(values, dict):
-            raise TypeError('INI sections must map to dicts')
-        parser[section] = {
-            key: stringify_value(value) for key, value in values.items()
-        }
-
-    ensure_parent_dir(path)
-    with path.open('w', encoding='utf-8', newline='') as handle:
-        parser.write(handle)
-    return 1
+    return _INI_HANDLER.write(coerce_path(path), data)
