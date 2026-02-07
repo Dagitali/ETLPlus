@@ -199,11 +199,13 @@ Recognized file formats are listed in the tables below. Support for reading to o
 - Delimited/text: `csv`, `dat`, `fwf`, `psv`, `tab`, `tsv`, `txt`
 - Semi-structured/config: `ini`, `json`, `ndjson`, `properties`, `toml`, `xml`, `yaml`
 - Columnar: `arrow`, `feather`, `orc`, `parquet`
-- Binary/interchange: `bson`, `cbor`, `msgpack`, `pb`, `proto`
+- Binary/interchange: `avro`, `bson`, `cbor`, `msgpack`, `pb`, `proto`
 - Embedded DB: `duckdb`, `sqlite`
 - Spreadsheets: `ods`, `xls`, `xlsm`, `xlsx`
 - Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), `mat`/`sylk`/`zsav` (placeholders via stub strategy)
 - Archive wrappers: `gz`, `zip`
+- Explicit stub-handler mappings: `stub`, `accdb`, `cfg`, `conf`, `hbs`, `ion`, `jinja2`, `log`,
+  `mdb`, `mustache`, `numbers`, `pbf`, `vm`, `wks`
 
 #### Stubbed / Placeholder
 
