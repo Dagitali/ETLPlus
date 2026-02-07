@@ -91,6 +91,38 @@ def _extract_payload(
         return handle.read()
 
 
+def _read_payload_as_data(
+    entry_name: str,
+    fmt: FileFormat,
+    payload: bytes,
+) -> JSONData:
+    """
+    Parse archive payload bytes by delegating to the core file dispatcher.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / Path(entry_name).name
+        tmp_path.write_bytes(payload)
+        from .core import File
+
+        return File(tmp_path, fmt).read()
+
+
+def _write_data_as_payload(
+    entry_name: str,
+    fmt: FileFormat,
+    data: JSONData,
+) -> tuple[int, bytes]:
+    """
+    Serialize data to payload bytes by delegating to the core file dispatcher.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / entry_name
+        from .core import File
+
+        count = File(tmp_path, fmt).write(data)
+        return count, tmp_path.read_bytes()
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -120,7 +152,8 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         path : Path
             Path to the ZIP file on disk.
         options : ReadOptions | None, optional
-            Optional read parameters.
+            Optional read parameters. ``inner_name`` can select a single
+            archive member.
 
         Returns
         -------
@@ -131,8 +164,9 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         ------
         ValueError
             If the ZIP archive is empty.
+            If ``inner_name`` is provided and does not match an archive member.
         """
-        _ = options
+        inner_name = self.inner_name_from_read_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
             entries = [
                 entry for entry in archive.infolist() if not entry.is_dir()
@@ -140,27 +174,35 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             if not entries:
                 raise ValueError(f'ZIP archive is empty: {path}')
 
+            if inner_name is not None:
+                for entry in entries:
+                    if entry.filename == inner_name:
+                        fmt = _resolve_format(entry.filename)
+                        payload = _extract_payload(entry, archive)
+                        return _read_payload_as_data(
+                            entry.filename,
+                            fmt,
+                            payload,
+                        )
+                raise ValueError(
+                    f'ZIP archive member not found: {inner_name!r}',
+                )
+
             if len(entries) == 1:
                 entry = entries[0]
                 fmt = _resolve_format(entry.filename)
-                payload = self.read_inner_bytes(path, options=options)
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    tmp_path = Path(tmpdir) / Path(entry.filename).name
-                    tmp_path.write_bytes(payload)
-                    from .core import File
-
-                    return File(tmp_path, fmt).read()
+                payload = _extract_payload(entry, archive)
+                return _read_payload_as_data(entry.filename, fmt, payload)
 
             results: JSONDict = {}
             for entry in entries:
                 fmt = _resolve_format(entry.filename)
                 payload = _extract_payload(entry, archive)
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    tmp_path = Path(tmpdir) / Path(entry.filename).name
-                    tmp_path.write_bytes(payload)
-                    from .core import File
-
-                    results[entry.filename] = File(tmp_path, fmt).read()
+                results[entry.filename] = _read_payload_as_data(
+                    entry.filename,
+                    fmt,
+                    payload,
+                )
             return results
 
     def read_inner_bytes(
@@ -252,12 +294,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         if inner_name is None:  # pragma: no cover
             raise ValueError('ZIP inner archive member name is required')
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / inner_name
-            from .core import File
-
-            count = File(tmp_path, fmt).write(data)
-            payload = tmp_path.read_bytes()
+        count, payload = _write_data_as_payload(inner_name, fmt, data)
 
         self.write_inner_bytes(
             path,
@@ -288,12 +325,19 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         options : WriteOptions | None, optional
             Optional write parameters. ``inner_name`` can override the archive
             member name.
+
+        Raises
+        ------
+        ValueError
+            If ``inner_name`` is not provided and cannot be inferred from the
+            ZIP filename.
         """
         inner_name = self.inner_name_from_write_options(
             options,
             default=self.default_inner_name,
         )
-        assert inner_name is not None
+        if inner_name is None:  # pragma: no cover - guarded by default
+            raise ValueError('ZIP write requires an inner archive member name')
         ensure_parent_dir(path)
         with zipfile.ZipFile(
             path,
