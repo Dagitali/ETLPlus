@@ -43,6 +43,46 @@ class TestScientificStubDatasetKeys:
         _SCIENTIFIC_STUB_MODULES,
         ids=['mat', 'sylk', 'zsav'],
     )
+    def test_dataset_methods_honor_options_dataset_selector(
+        self,
+        module: ModuleType,
+        handler_cls: type[ScientificDatasetFileHandlerABC],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test read_dataset/write_dataset honoring dataset selectors from
+        options.
+        """
+        handler = handler_cls()
+        monkeypatch.setattr(
+            module.stub,
+            'read',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+        monkeypatch.setattr(
+            module.stub,
+            'write',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read_dataset(
+                Path('ignored.file'),
+                options=ReadOptions(dataset='unknown'),
+            )
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write_dataset(
+                Path('ignored.file'),
+                [],
+                options=WriteOptions(dataset='unknown'),
+            )
+
+    @pytest.mark.parametrize(
+        ('module', 'handler_cls'),
+        _SCIENTIFIC_STUB_MODULES,
+        ids=['mat', 'sylk', 'zsav'],
+    )
     def test_list_datasets_returns_single_default_key(
         self,
         module: ModuleType,
