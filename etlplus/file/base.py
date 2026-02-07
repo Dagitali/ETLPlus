@@ -128,7 +128,7 @@ class FileHandlerABC(ABC):
     supports_read: ClassVar[bool] = True
     supports_write: ClassVar[bool] = True
 
-    # -- Instance Methods (Abstract) -- #
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def read(
@@ -703,7 +703,7 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'scientific_dataset'
     dataset_key: ClassVar[str] = 'data'
 
-    # -- Instance Methods -- #
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def list_datasets(
@@ -739,6 +739,8 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         Write one dataset to *path* and return record count.
         """
 
+    # -- Instance Methods -- #
+
     def dataset_from_read_options(
         self,
         options: ReadOptions | None,
@@ -746,7 +748,9 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         """
         Extract dataset selector from read options.
         """
-        return options.dataset if options is not None else None
+        if options is not None and options.dataset is not None:
+            return options.dataset
+        return None
 
     def dataset_from_write_options(
         self,
@@ -755,7 +759,45 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         """
         Extract dataset selector from write options.
         """
-        return options.dataset if options is not None else None
+        if options is not None and options.dataset is not None:
+            return options.dataset
+        return None
+
+    def resolve_read_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | None = None,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Resolve read-time dataset selection using explicit, options, then
+        default.
+        """
+        if dataset is not None:
+            return dataset
+        from_options = self.dataset_from_read_options(options)
+        if from_options is not None:
+            return from_options
+        return default
+
+    def resolve_write_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Resolve write-time dataset selection using explicit, options, then
+        default.
+        """
+        if dataset is not None:
+            return dataset
+        from_options = self.dataset_from_write_options(options)
+        if from_options is not None:
+            return from_options
+        return default
 
 
 class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
