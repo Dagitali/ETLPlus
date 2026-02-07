@@ -240,11 +240,16 @@ class DatFile(DelimitedTextFileHandlerABC):
         """
         delimiters = _DEFAULT_DELIMITERS
         sniffer: _CsvSniffer | None = None
-        if options is not None:
-            delimiters = str(options.extras.get('delimiters', delimiters))
-            extra_sniffer = options.extras.get('sniffer')
-            if extra_sniffer is not None:
-                sniffer = cast(_CsvSniffer, extra_sniffer)
+        extra_delimiters = self.read_extra_option(
+            options,
+            'delimiters',
+            default=delimiters,
+        )
+        if extra_delimiters is not None:
+            delimiters = str(extra_delimiters)
+        extra_sniffer = self.read_extra_option(options, 'sniffer')
+        if extra_sniffer is not None:
+            sniffer = cast(_CsvSniffer, extra_sniffer)
 
         with path.open('r', encoding='utf-8', newline='') as handle:
             sample = handle.read(4096)
