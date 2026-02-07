@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.sas7bdat` module.
 
-Helpers for reading/writing SAS (SAS7BDAT) data files.
+Helpers for reading SAS (SAS7BDAT) data files.
 
 Notes
 -----
@@ -12,7 +12,7 @@ Notes
     - Data exchange with SAS tooling.
 - Rule of thumb:
     - If the file follows the SAS7BDAT specification, use this module for
-        reading and writing.
+        reading.
 """
 
 from __future__ import annotations
@@ -23,13 +23,11 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import coerce_path
-from .base import FileHandlerABC
+from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -47,9 +45,9 @@ __all__ = [
 # SECTION: FUNCTIONS ======================================================== #
 
 
-class Sas7bdatFile(FileHandlerABC):
+class Sas7bdatFile(ReadOnlyFileHandlerABC):
     """
-    Handler implementation for SAS7BDAT files.
+    Read-only handler implementation for SAS7BDAT files.
     """
 
     format = FileFormat.SAS7BDAT
@@ -84,35 +82,6 @@ class Sas7bdatFile(FileHandlerABC):
         except TypeError:
             frame = pandas.read_sas(path)
         return cast(JSONList, frame.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to SAS7BDAT file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAS7BDAT file on disk.
-        data : JSONData
-            Data to write as SAS7BDAT file. Should be a list of dictionaries or
-            a single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the SAS7BDAT file.
-        """
-        _ = options
-        return stub.write(path, data, format_name='SAS7BDAT')
-
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 
@@ -160,6 +129,6 @@ def write(
     Returns
     -------
     int
-        The number of rows written to the SAS7BDAT file.
+        Never returns normally.
     """
     return _SAS7BDAT_HANDLER.write(coerce_path(path), data)
