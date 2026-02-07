@@ -152,6 +152,35 @@ class TestRegistryMappedResolution:
         assert first is second
         assert isinstance(first, JsonFile)
 
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_spec'),
+        [
+            (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
+            (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
+            (FileFormat.CONF, 'etlplus.file.conf:ConfFile'),
+            (FileFormat.HBS, 'etlplus.file.hbs:HbsFile'),
+            (FileFormat.ION, 'etlplus.file.ion:IonFile'),
+            (FileFormat.JINJA2, 'etlplus.file.jinja2:Jinja2File'),
+            (FileFormat.LOG, 'etlplus.file.log:LogFile'),
+            (FileFormat.MDB, 'etlplus.file.mdb:MdbFile'),
+            (FileFormat.MUSTACHE, 'etlplus.file.mustache:MustacheFile'),
+            (FileFormat.NUMBERS, 'etlplus.file.numbers:NumbersFile'),
+            (FileFormat.PBF, 'etlplus.file.pbf:PbfFile'),
+            (FileFormat.VM, 'etlplus.file.vm:VmFile'),
+            (FileFormat.WKS, 'etlplus.file.wks:WksFile'),
+        ],
+    )
+    def test_unstubbed_placeholder_modules_use_module_owned_classes(
+        self,
+        file_format: FileFormat,
+        expected_spec: str,
+    ) -> None:
+        """
+        Test currently stubbed-but-owned format modules mapping to their own
+        class symbols.
+        """
+        assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
+
 
 class TestRegistryModuleAdapterFallback:
     """Unit tests for module-adapter fallback resolution."""
