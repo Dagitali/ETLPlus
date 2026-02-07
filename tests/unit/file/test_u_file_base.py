@@ -539,6 +539,28 @@ class TestNamingConventions:
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
+    def test_encoding_option_helpers_use_override_then_default(self) -> None:
+        """Test encoding helpers using explicit values then defaults."""
+        handler = _ReadOnlyStub()
+
+        assert handler.encoding_from_read_options(None) == 'utf-8'
+        assert handler.encoding_from_read_options(
+            ReadOptions(encoding='latin-1'),
+        ) == 'latin-1'
+        assert handler.encoding_from_read_options(
+            None,
+            default='utf-16',
+        ) == 'utf-16'
+
+        assert handler.encoding_from_write_options(None) == 'utf-8'
+        assert handler.encoding_from_write_options(
+            WriteOptions(encoding='utf-16'),
+        ) == 'utf-16'
+        assert handler.encoding_from_write_options(
+            None,
+            default='ascii',
+        ) == 'ascii'
+
     def test_inner_name_option_helpers_use_override_then_default(self) -> None:
         """
         Test archive option helpers using explicit then default inner name.
@@ -562,6 +584,19 @@ class TestOptionsContracts:
         assert not first.extras
         assert not second.extras
         assert first.extras is not second.extras
+
+    def test_root_tag_option_helper_use_override_then_default(self) -> None:
+        """Test root-tag helper using explicit values then defaults."""
+        handler = _ReadOnlyStub()
+
+        assert handler.root_tag_from_write_options(None) == 'root'
+        assert handler.root_tag_from_write_options(
+            WriteOptions(root_tag='items'),
+        ) == 'items'
+        assert handler.root_tag_from_write_options(
+            None,
+            default='dataset',
+        ) == 'dataset'
 
     def test_sheet_option_helpers_use_override_then_default(self) -> None:
         """
