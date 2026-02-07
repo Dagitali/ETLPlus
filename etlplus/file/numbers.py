@@ -47,7 +47,11 @@ class NumbersFile(StubFileHandlerABC):
     Stub handler implementation for NUMBERS files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.NUMBERS
+
+    # -- Instance Methods -- #
 
     def read(
         self,

@@ -50,7 +50,11 @@ class HbsFile(StubFileHandlerABC):
     Stub handler implementation for HBS files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.HBS
+
+    # -- Instance Methods -- #
 
     def read(
         self,

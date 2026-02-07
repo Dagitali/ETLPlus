@@ -81,8 +81,12 @@ class NcFile(ScientificDatasetFileHandlerABC):
     Handler implementation for NC files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.NC
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

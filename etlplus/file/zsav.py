@@ -50,8 +50,12 @@ class ZsavFile(ScientificDatasetFileHandlerABC):
     Handler implementation for ZSAV files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.ZSAV
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

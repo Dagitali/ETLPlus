@@ -49,7 +49,11 @@ class IonFile(StubFileHandlerABC):
     Stub handler implementation for ION files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.ION
+
+    # -- Instance Methods -- #
 
     def read(
         self,

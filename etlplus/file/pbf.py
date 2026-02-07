@@ -49,7 +49,11 @@ class PbfFile(StubFileHandlerABC):
     Stub handler implementation for PBF files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.PBF
+
+    # -- Instance Methods -- #
 
     def read(
         self,

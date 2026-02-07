@@ -49,7 +49,11 @@ class WksFile(StubFileHandlerABC):
     Stub handler implementation for WKS files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.WKS
+
+    # -- Instance Methods -- #
 
     def read(
         self,

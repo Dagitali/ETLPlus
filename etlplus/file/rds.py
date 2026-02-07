@@ -54,8 +54,12 @@ class RdsFile(ScientificDatasetFileHandlerABC):
     Handler implementation for RDS files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.RDS
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

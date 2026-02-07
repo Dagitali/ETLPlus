@@ -54,8 +54,12 @@ class RdaFile(ScientificDatasetFileHandlerABC):
     Handler implementation for RDA files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.RDA
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

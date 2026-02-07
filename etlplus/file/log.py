@@ -49,7 +49,11 @@ class LogFile(StubFileHandlerABC):
     Stub handler implementation for LOG files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.LOG
+
+    # -- Instance Methods -- #
 
     def read(
         self,

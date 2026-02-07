@@ -50,7 +50,11 @@ class Jinja2File(StubFileHandlerABC):
     Stub handler implementation for JINJA2 files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.JINJA2
+
+    # -- Instance Methods -- #
 
     def read(
         self,

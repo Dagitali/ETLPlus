@@ -50,7 +50,11 @@ class AccdbFile(StubFileHandlerABC):
     Stub handler implementation for ACCDB files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.ACCDB
+
+    # -- Instance Methods -- #
 
     def read(
         self,

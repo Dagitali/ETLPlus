@@ -50,7 +50,11 @@ class MustacheFile(StubFileHandlerABC):
     Stub handler implementation for MUSTACHE files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.MUSTACHE
+
+    # -- Instance Methods -- #
 
     def read(
         self,

@@ -51,7 +51,11 @@ class ConfFile(StubFileHandlerABC):
     Stub handler implementation for CONF files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.CONF
+
+    # -- Instance Methods -- #
 
     def read(
         self,

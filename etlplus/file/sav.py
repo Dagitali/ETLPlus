@@ -53,8 +53,12 @@ class SavFile(ScientificDatasetFileHandlerABC):
     Handler implementation for SAV files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.SAV
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

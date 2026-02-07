@@ -50,8 +50,12 @@ class MatFile(ScientificDatasetFileHandlerABC):
     Handler implementation for MAT files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.MAT
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

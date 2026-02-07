@@ -50,7 +50,11 @@ class VmFile(StubFileHandlerABC):
     Stub handler implementation for VM files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.VM
+
+    # -- Instance Methods -- #
 
     def read(
         self,

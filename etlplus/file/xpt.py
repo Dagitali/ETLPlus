@@ -54,8 +54,12 @@ class XptFile(ScientificDatasetFileHandlerABC):
     Handler implementation for XPT files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.XPT
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

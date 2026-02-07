@@ -54,8 +54,12 @@ class DtaFile(ScientificDatasetFileHandlerABC):
     Handler implementation for DTA files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.DTA
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

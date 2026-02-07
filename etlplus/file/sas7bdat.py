@@ -52,8 +52,12 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
     Read-only handler implementation for SAS7BDAT files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.SAS7BDAT
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

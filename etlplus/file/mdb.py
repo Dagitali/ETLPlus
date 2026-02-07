@@ -50,7 +50,11 @@ class MdbFile(StubFileHandlerABC):
     Stub handler implementation for MDB files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.MDB
+
+    # -- Instance Methods -- #
 
     def read(
         self,

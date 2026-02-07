@@ -50,8 +50,12 @@ class SylkFile(ScientificDatasetFileHandlerABC):
     Handler implementation for SYLK files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.SYLK
     dataset_key = 'data'
+
+    # -- Instance Methods -- #
 
     def list_datasets(
         self,

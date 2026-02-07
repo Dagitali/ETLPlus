@@ -50,7 +50,11 @@ class CfgFile(StubFileHandlerABC):
     Stub handler implementation for CFG files.
     """
 
+    # -- Class Attributes -- #
+
     format = FileFormat.CFG
+
+    # -- Instance Methods -- #
 
     def read(
         self,
