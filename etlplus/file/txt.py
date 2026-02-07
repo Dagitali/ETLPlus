@@ -23,8 +23,9 @@ from ..types import JSONList
 from ..types import StrPath
 from ..utils import count_records
 from ._io import coerce_path
-from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import read_text
+from ._io import write_text
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
 from .base import WriteOptions
@@ -103,14 +104,11 @@ class TxtFile(TextFixedWidthFileHandlerABC):
             options,
             default=self.default_encoding,
         )
-        rows: JSONList = []
-        with path.open('r', encoding=encoding) as handle:
-            for line in handle:
-                text = line.rstrip('\n')
-                if text == '':
-                    continue
-                rows.append({'text': text})
-        return rows
+        return [
+            {'text': line}
+            for line in read_text(path, encoding=encoding).splitlines()
+            if line != ''
+        ]
 
     def write(
         self,
@@ -176,13 +174,11 @@ class TxtFile(TextFixedWidthFileHandlerABC):
             options,
             default=self.default_encoding,
         )
-        ensure_parent_dir(path)
-        with path.open('w', encoding=encoding) as handle:
-            for row in rows:
-                if 'text' not in row:
-                    raise TypeError('TXT payloads must include a "text" key')
-                handle.write(str(row['text']))
-                handle.write('\n')
+        for row in rows:
+            if 'text' not in row:
+                raise TypeError('TXT payloads must include a "text" key')
+        payload = ''.join(f'{row["text"]}\n' for row in rows)
+        write_text(path, payload, encoding=encoding)
         return count_records(rows)
 
 
