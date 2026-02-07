@@ -597,6 +597,35 @@ class TestOptionsContracts:
             == 'fallback'
         )
 
+    def test_delimiter_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test delimited helpers using explicit then default delimiter.
+        """
+        handler = _DelimitedStub()
+
+        assert handler.delimiter_from_read_options(None) == ','
+        assert handler.delimiter_from_write_options(None) == ','
+        assert (
+            handler.delimiter_from_read_options(
+                ReadOptions(extras={'delimiter': '|'}),
+            )
+            == '|'
+        )
+        assert (
+            handler.delimiter_from_write_options(
+                WriteOptions(extras={'delimiter': '\t'}),
+            )
+            == '\t'
+        )
+        assert (
+            handler.delimiter_from_read_options(None, default=';')
+            == ';'
+        )
+        assert (
+            handler.delimiter_from_write_options(None, default=':')
+            == ':'
+        )
+
     def test_encoding_option_helpers_use_override_then_default(self) -> None:
         """Test encoding helpers using explicit values then defaults."""
         handler = _ReadOnlyStub()
