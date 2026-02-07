@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import warnings
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -307,8 +308,8 @@ def get_handler_class(
     file_format : FileFormat
         File format enum value.
     allow_module_adapter_fallback : bool, optional
-        Whether to allow legacy module-adapter fallback when no explicit
-        handler mapping exists. Defaults to ``False``.
+        Deprecated. Whether to allow legacy module-adapter fallback when no
+        explicit handler mapping exists. Defaults to ``False``.
 
     Returns
     -------
@@ -331,6 +332,13 @@ def get_handler_class(
     if not allow_module_adapter_fallback:
         raise ValueError(f'Unsupported format: {file_format}')
 
+    warnings.warn(
+        'allow_module_adapter_fallback=True is deprecated and will be '
+        'removed after explicit handler mappings are finalized.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     try:
         return _module_adapter_class_for_format(file_format)
     except (ModuleNotFoundError, ValueError) as err:
@@ -351,8 +359,8 @@ def get_handler(
     file_format : FileFormat
         File format enum value.
     allow_module_adapter_fallback : bool, optional
-        Whether to allow legacy module-adapter fallback when no explicit
-        handler mapping exists. Defaults to ``False``.
+        Deprecated. Whether to allow legacy module-adapter fallback when no
+        explicit handler mapping exists. Defaults to ``False``.
 
     Returns
     -------
