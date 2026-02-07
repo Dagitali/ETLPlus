@@ -6,13 +6,14 @@ Helpers for reading/writing ZIP files.
 
 from __future__ import annotations
 
-import tempfile
 import zipfile
 from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
+from ._core_dispatch import read_payload_with_core
+from ._core_dispatch import write_payload_with_core
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from .base import ArchiveWrapperFileHandlerABC
@@ -91,38 +92,6 @@ def _extract_payload(
         return handle.read()
 
 
-def _read_payload_as_data(
-    entry_name: str,
-    fmt: FileFormat,
-    payload: bytes,
-) -> JSONData:
-    """
-    Parse archive payload bytes by delegating to the core file dispatcher.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / Path(entry_name).name
-        tmp_path.write_bytes(payload)
-        from .core import File
-
-        return File(tmp_path, fmt).read()
-
-
-def _write_data_as_payload(
-    entry_name: str,
-    fmt: FileFormat,
-    data: JSONData,
-) -> tuple[int, bytes]:
-    """
-    Serialize data to payload bytes by delegating to the core file dispatcher.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / entry_name
-        from .core import File
-
-        count = File(tmp_path, fmt).write(data)
-        return count, tmp_path.read_bytes()
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -179,10 +148,10 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
                     if entry.filename == inner_name:
                         fmt = _resolve_format(entry.filename)
                         payload = _extract_payload(entry, archive)
-                        return _read_payload_as_data(
-                            entry.filename,
-                            fmt,
-                            payload,
+                        return read_payload_with_core(
+                            filename=entry.filename,
+                            fmt=fmt,
+                            payload=payload,
                         )
                 raise ValueError(
                     f'ZIP archive member not found: {inner_name!r}',
@@ -192,16 +161,20 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
                 entry = entries[0]
                 fmt = _resolve_format(entry.filename)
                 payload = _extract_payload(entry, archive)
-                return _read_payload_as_data(entry.filename, fmt, payload)
+                return read_payload_with_core(
+                    filename=entry.filename,
+                    fmt=fmt,
+                    payload=payload,
+                )
 
             results: JSONDict = {}
             for entry in entries:
                 fmt = _resolve_format(entry.filename)
                 payload = _extract_payload(entry, archive)
-                results[entry.filename] = _read_payload_as_data(
-                    entry.filename,
-                    fmt,
-                    payload,
+                results[entry.filename] = read_payload_with_core(
+                    filename=entry.filename,
+                    fmt=fmt,
+                    payload=payload,
                 )
             return results
 
@@ -294,7 +267,11 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         if inner_name is None:  # pragma: no cover
             raise ValueError('ZIP inner archive member name is required')
 
-        count, payload = _write_data_as_payload(inner_name, fmt, data)
+        count, payload = write_payload_with_core(
+            filename=inner_name,
+            fmt=fmt,
+            data=data,
+        )
 
         self.write_inner_bytes(
             path,
