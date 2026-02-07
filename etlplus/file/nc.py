@@ -29,8 +29,8 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from .base import FileHandlerABC
 from .base import ReadOptions
+from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -76,13 +76,33 @@ def _raise_engine_error(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-class NcFile(FileHandlerABC):
+class NcFile(ScientificDatasetFileHandlerABC):
     """
     Handler implementation for NC files.
     """
 
     format = FileFormat.NC
-    category = 'scientific_dataset'
+    dataset_key = 'data'
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return available NC dataset keys.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the NC file on disk.
+
+        Returns
+        -------
+        list[str]
+            Available dataset keys.
+        """
+        _ = path
+        return [self.dataset_key]
 
     def read(
         self,
@@ -105,14 +125,53 @@ class NcFile(FileHandlerABC):
         JSONList
             The list of dictionaries read from the NC file.
         """
+        dataset = options.dataset if options is not None else None
+        return cast(
+            JSONList,
+            self.read_dataset(path, dataset=dataset, options=options),
+        )
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read a dataset from NC at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the NC file on disk.
+        dataset : str | None, optional
+            Dataset selector. NC currently supports one normalized dataset key.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records.
+
+        Raises
+        ------
+        ValueError
+            If *dataset* is provided and not supported.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'NC supports only dataset key {self.dataset_key!r}',
+            )
         xarray = get_dependency('xarray', format_name='NC')
         try:
-            dataset = xarray.open_dataset(path)
+            xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
             _raise_engine_error(err)
-        with dataset:
-            frame = dataset.to_dataframe().reset_index()
+        with xarray_dataset as ds:
+            frame = ds.to_dataframe().reset_index()
         if 'index' in frame.columns:
             values = list(frame['index'])
             if values == list(range(len(values))):
@@ -144,7 +203,52 @@ class NcFile(FileHandlerABC):
         int
             The number of rows written to the NC file.
         """
+        dataset = options.dataset if options is not None else None
+        return self.write_dataset(
+            path,
+            data,
+            dataset=dataset,
+            options=options,
+        )
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to NC at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the NC file on disk.
+        data : JSONData
+            Dataset payload to write.
+        dataset : str | None, optional
+            Dataset selector. NC currently supports one normalized dataset key.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+
+        Raises
+        ------
+        ValueError
+            If *dataset* is provided and not supported.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'NC supports only dataset key {self.dataset_key!r}',
+            )
+
         records = normalize_records(data, 'NC')
         if not records:
             return 0
@@ -152,10 +256,10 @@ class NcFile(FileHandlerABC):
         xarray = get_dependency('xarray', format_name='NC')
         pandas = get_pandas('NC')
         frame = pandas.DataFrame.from_records(records)
-        dataset = xarray.Dataset.from_dataframe(frame)
+        ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
         try:
-            dataset.to_netcdf(path)
+            ds.to_netcdf(path)
         except ImportError as err:  # pragma: no cover
             _raise_engine_error(err)
         return len(records)
