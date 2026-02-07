@@ -128,7 +128,7 @@ class FileHandlerABC(ABC):
     supports_read: ClassVar[bool] = True
     supports_write: ClassVar[bool] = True
 
-    # -- Instance Methods -- #
+    # -- Instance Methods (Abstract) -- #
 
     @abstractmethod
     def read(
@@ -178,6 +178,83 @@ class FileHandlerABC(ABC):
         int
             Number of records written.
         """
+
+    # -- Instance Methods -- #
+
+    def encoding_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str = 'utf-8',
+    ) -> str:
+        """
+        Extract text encoding from read options.
+
+        Parameters
+        ----------
+        options : ReadOptions | None
+            Optional read parameters.
+        default : str, optional
+            Default encoding if not specified in *options*.
+
+        Returns
+        -------
+        str
+            Text encoding.
+        """
+        if options is not None:
+            return options.encoding
+        return default
+
+    def encoding_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str = 'utf-8',
+    ) -> str:
+        """
+        Extract text encoding from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Optional write parameters.
+        default : str, optional
+            Default encoding if not specified in *options*.
+
+        Returns
+        -------
+        str
+            Text encoding.
+        """
+        if options is not None:
+            return options.encoding
+        return default
+
+    def root_tag_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str = 'root',
+    ) -> str:
+        """
+        Extract XML-like root tag from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Optional write parameters.
+        default : str, optional
+            Default root tag if not specified in *options*.
+
+        Returns
+        -------
+        str
+            XML-like root tag.
+        """
+        if options is not None:
+            return options.root_tag
+        return default
 
 
 class ReadOnlyFileHandlerABC(FileHandlerABC):
