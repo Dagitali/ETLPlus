@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from etlplus.file import avro as mod
+from etlplus.file.enums import FileFormat
 
 # SECTION: HELPERS ========================================================== #
 
@@ -53,6 +54,32 @@ class _FastAvroStub:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestAvroHandlerClass:
+    """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
+
+    def test_format_constant(self) -> None:
+        """Test :class:`AvroFile` exposing the expected format enum."""
+        assert mod.AvroFile.format is FileFormat.AVRO
+
+    def test_dumps_and_loads_bytes(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test binary helper methods delegating to :mod:`fastavro`."""
+        stub = _FastAvroStub()
+        optional_module_stub({'fastavro': stub})
+        handler = mod.AvroFile()
+        records = [{'id': 1, 'name': 'Ada'}]
+
+        payload = handler.dumps_bytes(records)
+        result = handler.loads_bytes(payload)
+
+        assert isinstance(payload, bytes)
+        assert stub.parsed_schema is not None
+        assert stub.writes
+        assert result == stub.records
 
 
 class TestAvroHelpers:
