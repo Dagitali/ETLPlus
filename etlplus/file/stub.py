@@ -25,19 +25,6 @@ __all__ = [
     # Classes
     'StubFileHandlerABC',
     'StubFile',
-    'AccdbFile',
-    'CfgFile',
-    'ConfFile',
-    'HbsFile',
-    'IonFile',
-    'Jinja2File',
-    'LogFile',
-    'MdbFile',
-    'MustacheFile',
-    'NumbersFile',
-    'PbfFile',
-    'VmFile',
-    'WksFile',
     # Functions
     'read',
     'write',
@@ -90,84 +77,6 @@ class StubFile(StubFileHandlerABC):
     """Placeholder handler for STUB."""
 
     format = FileFormat.STUB
-
-
-class AccdbFile(StubFileHandlerABC):
-    """Placeholder handler for ACCDB."""
-
-    format = FileFormat.ACCDB
-
-
-class CfgFile(StubFileHandlerABC):
-    """Placeholder handler for CFG."""
-
-    format = FileFormat.CFG
-
-
-class ConfFile(StubFileHandlerABC):
-    """Placeholder handler for CONF."""
-
-    format = FileFormat.CONF
-
-
-class HbsFile(StubFileHandlerABC):
-    """Placeholder handler for HBS."""
-
-    format = FileFormat.HBS
-
-
-class IonFile(StubFileHandlerABC):
-    """Placeholder handler for ION."""
-
-    format = FileFormat.ION
-
-
-class Jinja2File(StubFileHandlerABC):
-    """Placeholder handler for JINJA2."""
-
-    format = FileFormat.JINJA2
-
-
-class LogFile(StubFileHandlerABC):
-    """Placeholder handler for LOG."""
-
-    format = FileFormat.LOG
-
-
-class MdbFile(StubFileHandlerABC):
-    """Placeholder handler for MDB."""
-
-    format = FileFormat.MDB
-
-
-class MustacheFile(StubFileHandlerABC):
-    """Placeholder handler for MUSTACHE."""
-
-    format = FileFormat.MUSTACHE
-
-
-class NumbersFile(StubFileHandlerABC):
-    """Placeholder handler for NUMBERS."""
-
-    format = FileFormat.NUMBERS
-
-
-class PbfFile(StubFileHandlerABC):
-    """Placeholder handler for PBF."""
-
-    format = FileFormat.PBF
-
-
-class VmFile(StubFileHandlerABC):
-    """Placeholder handler for VM."""
-
-    format = FileFormat.VM
-
-
-class WksFile(StubFileHandlerABC):
-    """Placeholder handler for WKS."""
-
-    format = FileFormat.WKS
 
 
 # SECTION: FUNCTIONS ======================================================== #
