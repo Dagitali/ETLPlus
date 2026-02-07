@@ -26,7 +26,8 @@ from ..types import StrPath
 from ..utils import count_records
 from ._io import coerce_path
 from ._io import coerce_record_payload
-from ._io import ensure_parent_dir
+from ._io import read_text
+from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -128,9 +129,10 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
             The structured data read from the JSON file.
         """
         encoding = self.encoding_from_read_options(options)
-        with path.open('r', encoding=encoding) as handle:
-            loaded = json.load(handle)
-        return coerce_record_payload(loaded, format_name='JSON')
+        return self.loads(
+            read_text(path, encoding=encoding),
+            options=options,
+        )
 
     def write(
         self,
@@ -157,15 +159,12 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
             The number of records written to the JSON file.
         """
         encoding = self.encoding_from_write_options(options)
-        ensure_parent_dir(path)
-        with path.open('w', encoding=encoding) as handle:
-            json.dump(
-                data,
-                handle,
-                indent=2,
-                ensure_ascii=False,
-            )
-            handle.write('\n')
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+            trailing_newline=True,
+        )
         return count_records(data)
 
 
