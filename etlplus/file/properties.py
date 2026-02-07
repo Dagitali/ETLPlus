@@ -44,6 +44,36 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _parse_properties_text(
+    text: str,
+) -> JSONDict:
+    """
+    Parse Java-style properties text into key-value mappings.
+    """
+    payload: JSONDict = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(('#', '!')):
+            continue
+        separator_index = -1
+        for sep in ('=', ':'):
+            if sep in stripped:
+                separator_index = stripped.find(sep)
+                break
+        if separator_index == -1:
+            key = stripped
+            value = ''
+        else:
+            key = stripped[:separator_index].strip()
+            value = stripped[separator_index + 1:].strip()
+        if key:
+            payload[key] = value
+    return payload
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -81,26 +111,8 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
         JSONData
             The structured data read from the PROPERTIES file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
-        payload: JSONDict = {}
-        for line in path.read_text(encoding=encoding).splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith(('#', '!')):
-                continue
-            separator_index = -1
-            for sep in ('=', ':'):
-                if sep in stripped:
-                    separator_index = stripped.find(sep)
-                    break
-            if separator_index == -1:
-                key = stripped
-                value = ''
-            else:
-                key = stripped[:separator_index].strip()
-                value = stripped[separator_index + 1:].strip()
-            if key:
-                payload[key] = value
-        return payload
+        encoding = self.encoding_from_read_options(options)
+        return _parse_properties_text(path.read_text(encoding=encoding))
 
     def write(
         self,
@@ -126,7 +138,7 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
         int
             The number of records written to the PROPERTIES file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         payload = require_dict_payload(data, format_name='PROPERTIES')
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding, newline='') as handle:
@@ -184,25 +196,7 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
             Parsed payload.
         """
         _ = options
-        payload: JSONDict = {}
-        for line in text.splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith(('#', '!')):
-                continue
-            separator_index = -1
-            for sep in ('=', ':'):
-                if sep in stripped:
-                    separator_index = stripped.find(sep)
-                    break
-            if separator_index == -1:
-                key = stripped
-                value = ''
-            else:
-                key = stripped[:separator_index].strip()
-                value = stripped[separator_index + 1:].strip()
-            if key:
-                payload[key] = value
-        return payload
+        return _parse_properties_text(text)
 
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
