@@ -27,6 +27,7 @@ from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
+from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SemiStructuredTextFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -117,6 +118,7 @@ class TestRegistryAbcConformance:
             (FileFormat.SQLITE, EmbeddedDatabaseFileHandlerABC),
             # Spreadsheets
             (FileFormat.ODS, SpreadsheetFileHandlerABC),
+            (FileFormat.XLS, SpreadsheetFileHandlerABC),
             (FileFormat.XLSM, SpreadsheetFileHandlerABC),
             (FileFormat.XLSX, SpreadsheetFileHandlerABC),
             # Plain text/fixed-width text
@@ -165,6 +167,8 @@ class TestRegistryAbcConformance:
             (FileFormat.HDF5, ReadOnlyFileHandlerABC),
             (FileFormat.SAS7BDAT, ReadOnlyFileHandlerABC),
             (FileFormat.XLS, ReadOnlyFileHandlerABC),
+            # Read-only spreadsheets
+            (FileFormat.XLS, ReadOnlySpreadsheetFileHandlerABC),
         ],
     )
     def test_mapped_handler_class_inherits_expected_abc(
