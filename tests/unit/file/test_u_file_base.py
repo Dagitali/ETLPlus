@@ -8,16 +8,20 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from etlplus.file import FileFormat
+from etlplus.file.base import ArchiveWrapperFileHandlerABC
 from etlplus.file.base import DelimitedTextFileHandlerABC
+from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
+from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
@@ -30,6 +34,54 @@ from etlplus.types import JSONData
 from etlplus.types import JSONList
 
 # SECTION: HELPERS ========================================================== #
+
+
+class _ArchiveStub(ArchiveWrapperFileHandlerABC):
+    """Concrete archive handler used for option helper tests."""
+
+    format = FileFormat.ZIP
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        return {'inner_name': self.inner_name_from_read_options(options)}
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = self.inner_name_from_write_options(options)
+        return 1
+
+    def read_inner_bytes(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> bytes:
+        _ = path
+        _ = options
+        return b''
+
+    def write_inner_bytes(
+        self,
+        path: Path,
+        payload: bytes,
+        *,
+        options: WriteOptions | None = None,
+    ) -> None:
+        _ = path
+        _ = payload
+        _ = options
 
 
 class _DelimitedStub(DelimitedTextFileHandlerABC):
@@ -78,6 +130,66 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         return len(rows)
 
 
+class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
+    """Concrete embedded-db handler used for option helper tests."""
+
+    format = FileFormat.SQLITE
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        return [{'table': self.table_from_read_options(options)}]
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = self.table_from_write_options(options)
+        return 1
+
+    def connect(
+        self,
+        path: Path,
+    ) -> Any:
+        _ = path
+        return object()
+
+    def list_tables(
+        self,
+        connection: Any,
+    ) -> list[str]:
+        _ = connection
+        return ['data']
+
+    def read_table(
+        self,
+        connection: Any,
+        table: str,
+    ) -> JSONList:
+        _ = connection
+        _ = table
+        return []
+
+    def write_table(
+        self,
+        connection: Any,
+        table: str,
+        rows: JSONList,
+    ) -> int:
+        _ = connection
+        _ = table
+        return len(rows)
+
+
 class _ReadOnlyStub(ReadOnlyFileHandlerABC):
     """Minimal concrete read-only handler for contract checks."""
 
@@ -92,6 +204,58 @@ class _ReadOnlyStub(ReadOnlyFileHandlerABC):
         _ = path
         _ = options
         return []
+
+
+class _SpreadsheetStub(SpreadsheetFileHandlerABC):
+    """Concrete spreadsheet handler used for option helper tests."""
+
+    format = FileFormat.XLSX
+    engine_name = 'stub'
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        return [{'sheet': self.sheet_from_read_options(options)}]
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = self.sheet_from_write_options(options)
+        return 1
+
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        _ = path
+        _ = options
+        return [{'sheet': sheet}]
+
+    def write_sheet(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        sheet: str | int,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = sheet
+        _ = options
+        return len(rows)
 
 
 class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
@@ -242,6 +406,21 @@ class TestBaseAbcContracts:
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
+    def test_inner_name_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test archive option helpers using explicit then default inner name.
+        """
+        handler = _ArchiveStub()
+
+        assert handler.inner_name_from_read_options(None) is None
+        assert handler.inner_name_from_write_options(None) is None
+        assert handler.inner_name_from_read_options(
+            ReadOptions(inner_name='data.json'),
+        ) == 'data.json'
+        assert handler.inner_name_from_write_options(
+            WriteOptions(inner_name='payload.csv'),
+        ) == 'payload.csv'
+
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """Test each ReadOptions instance getting its own extras dict."""
         first = ReadOptions()
@@ -250,6 +429,36 @@ class TestOptionsContracts:
         assert not first.extras
         assert not second.extras
         assert first.extras is not second.extras
+
+    def test_sheet_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test spreadsheet option helpers using explicit then default sheet.
+        """
+        handler = _SpreadsheetStub()
+
+        assert handler.sheet_from_read_options(None) == 0
+        assert handler.sheet_from_write_options(None) == 0
+        assert handler.sheet_from_read_options(
+            ReadOptions(sheet='Sheet2'),
+        ) == 'Sheet2'
+        assert handler.sheet_from_write_options(
+            WriteOptions(sheet=3),
+        ) == 3
+
+    def test_table_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test embedded-db option helpers using explicit then default table.
+        """
+        handler = _EmbeddedDbStub()
+
+        assert handler.table_from_read_options(None) is None
+        assert handler.table_from_write_options(None) is None
+        assert handler.table_from_read_options(
+            ReadOptions(table='events'),
+        ) == 'events'
+        assert handler.table_from_write_options(
+            WriteOptions(table='staging'),
+        ) == 'staging'
 
     def test_write_options_are_frozen(self) -> None:
         """Test WriteOptions immutability contract."""
