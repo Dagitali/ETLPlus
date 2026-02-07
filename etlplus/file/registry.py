@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import warnings
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -34,7 +33,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-# Explicit class map takes precedence; fallback adapter remains temporary.
+# Explicit class map is the default dispatch path.
 _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.ACCDB: 'etlplus.file.stub:AccdbFile',
     FileFormat.AVRO: 'etlplus.file.avro:AvroFile',
@@ -297,6 +296,8 @@ def _module_adapter_class_for_format(
 @cache
 def get_handler_class(
     file_format: FileFormat,
+    *,
+    allow_module_adapter_fallback: bool = False,
 ) -> type[FileHandlerABC]:
     """
     Resolve a handler class for *file_format*.
@@ -305,6 +306,9 @@ def get_handler_class(
     ----------
     file_format : FileFormat
         File format enum value.
+    allow_module_adapter_fallback : bool, optional
+        Whether to allow legacy module-adapter fallback when no explicit
+        handler mapping exists. Defaults to ``False``.
 
     Returns
     -------
@@ -324,16 +328,10 @@ def get_handler_class(
             raise ValueError(f'Unsupported format: {file_format}') from err
         return _coerce_handler_class(symbol, file_format=file_format)
 
+    if not allow_module_adapter_fallback:
+        raise ValueError(f'Unsupported format: {file_format}')
+
     try:
-        warnings.warn(
-            (
-                'Using module-adapter fallback for format '
-                f'{file_format.value!r}; add explicit mapping to '
-                'etlplus.file.registry._HANDLER_CLASS_SPECS'
-            ),
-            RuntimeWarning,
-            stacklevel=2,
-        )
         return _module_adapter_class_for_format(file_format)
     except (ModuleNotFoundError, ValueError) as err:
         raise ValueError(f'Unsupported format: {file_format}') from err
@@ -342,6 +340,8 @@ def get_handler_class(
 @cache
 def get_handler(
     file_format: FileFormat,
+    *,
+    allow_module_adapter_fallback: bool = False,
 ) -> FileHandlerABC:
     """
     Return a singleton handler instance for *file_format*.
@@ -350,10 +350,16 @@ def get_handler(
     ----------
     file_format : FileFormat
         File format enum value.
+    allow_module_adapter_fallback : bool, optional
+        Whether to allow legacy module-adapter fallback when no explicit
+        handler mapping exists. Defaults to ``False``.
 
     Returns
     -------
     FileHandlerABC
         Singleton handler instance.
     """
-    return get_handler_class(file_format)()
+    return get_handler_class(
+        file_format,
+        allow_module_adapter_fallback=allow_module_adapter_fallback,
+    )()
