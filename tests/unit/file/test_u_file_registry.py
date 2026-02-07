@@ -30,6 +30,7 @@ from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SemiStructuredTextFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
+from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
 from etlplus.file.duckdb import DuckdbFile
@@ -117,6 +118,9 @@ class TestRegistryAbcConformance:
             (FileFormat.ODS, SpreadsheetFileHandlerABC),
             (FileFormat.XLSM, SpreadsheetFileHandlerABC),
             (FileFormat.XLSX, SpreadsheetFileHandlerABC),
+            # Plain text/fixed-width text
+            (FileFormat.FWF, TextFixedWidthFileHandlerABC),
+            (FileFormat.TXT, TextFixedWidthFileHandlerABC),
             # Archives
             (FileFormat.GZ, ArchiveWrapperFileHandlerABC),
             (FileFormat.ZIP, ArchiveWrapperFileHandlerABC),
