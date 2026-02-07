@@ -82,10 +82,9 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             The list of dictionaries read from the XPT file.
         """
-        dataset = self.dataset_from_read_options(options)
         return cast(
             JSONList,
-            self.read_dataset(path, dataset=dataset, options=options),
+            self.read_dataset(path, options=options),
         )
 
     def read_dataset(
@@ -112,7 +111,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
 
         pandas = get_pandas('XPT')
@@ -152,13 +151,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         int
             The number of rows written to the XPT file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -192,7 +185,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadstat" is not installed with write support.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
 
         records = normalize_records(data, 'XPT')
@@ -213,8 +206,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _XPT_HANDLER = XptFile()
 

@@ -174,8 +174,7 @@ class TabFile(DelimitedTextFileHandlerABC):
         )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _TAB_HANDLER = TabFile()
 

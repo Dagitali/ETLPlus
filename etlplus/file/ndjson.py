@@ -206,8 +206,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _NDJSON_HANDLER = NdjsonFile()
 

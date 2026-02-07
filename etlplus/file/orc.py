@@ -211,8 +211,7 @@ class OrcFile(ColumnarFileHandlerABC):
         table.to_orc(path, index=False)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _ORC_HANDLER = OrcFile()
 

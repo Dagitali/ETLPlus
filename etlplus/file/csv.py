@@ -172,8 +172,7 @@ class CsvFile(DelimitedTextFileHandlerABC):
         )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _CSV_HANDLER = CsvFile()
 

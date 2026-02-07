@@ -196,8 +196,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
         return 1
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _TOML_HANDLER = TomlFile()
 

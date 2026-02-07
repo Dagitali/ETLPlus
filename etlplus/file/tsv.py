@@ -173,8 +173,7 @@ class TsvFile(DelimitedTextFileHandlerABC):
         )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _TSV_HANDLER = TsvFile()
 

@@ -54,7 +54,8 @@ class Jinja2File(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _JINJA2_HANDLER = Jinja2File()

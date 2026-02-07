@@ -213,8 +213,7 @@ class ArrowFile(ColumnarFileHandlerABC):
                 writer.write_table(table)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _ARROW_HANDLER = ArrowFile()
 

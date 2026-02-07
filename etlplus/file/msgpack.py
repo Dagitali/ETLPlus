@@ -166,8 +166,7 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _MSGPACK_HANDLER = MsgpackFile()
 

@@ -67,7 +67,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         """
         Read and return one dataset from SYLK at *path*.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         return stub.read(path, format_name='SYLK')
 
@@ -92,8 +92,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             The list of dictionaries read from the SYLK file.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
+        return self.read_dataset(path, options=options)
 
     def write(
         self,
@@ -120,13 +119,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         int
             The number of rows written to the SYLK file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -139,13 +132,12 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         """
         Write one dataset to SYLK at *path* and return record count.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         return stub.write(path, data, format_name='SYLK')
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _SYLK_HANDLER = SylkFile()
 

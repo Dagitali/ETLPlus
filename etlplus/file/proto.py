@@ -159,8 +159,7 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         return 1
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PROTO_HANDLER = ProtoFile()
 

@@ -234,8 +234,7 @@ class ParquetFile(ColumnarFileHandlerABC):
             ) from err
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PARQUET_HANDLER = ParquetFile()
 

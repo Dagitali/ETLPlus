@@ -217,8 +217,7 @@ class GzFile(ArchiveWrapperFileHandlerABC):
             handle.write(payload)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _GZ_HANDLER = GzFile()
 

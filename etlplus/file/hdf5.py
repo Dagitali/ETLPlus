@@ -45,8 +45,7 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 DEFAULT_KEY = 'data'
 
@@ -138,8 +137,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         JSONList
             The list of dictionaries read from the HDF5 file.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
+        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -170,7 +168,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         ValueError
             If the selected dataset key is missing or ambiguous.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         pandas = get_pandas('HDF5')
         try:
             store = pandas.HDFStore(path)
@@ -212,7 +210,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         return self.write(path, data, options=options)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _HDF5_HANDLER = Hdf5File()

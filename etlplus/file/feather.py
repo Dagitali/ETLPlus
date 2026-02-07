@@ -211,8 +211,7 @@ class FeatherFile(ColumnarFileHandlerABC):
         table.to_feather(path)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _FEATHER_HANDLER = FeatherFile()
 

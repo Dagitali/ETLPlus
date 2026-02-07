@@ -259,8 +259,7 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         return 1
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _INI_HANDLER = IniFile()
 

@@ -54,7 +54,8 @@ class AccdbFile(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _ACCDB_HANDLER = AccdbFile()

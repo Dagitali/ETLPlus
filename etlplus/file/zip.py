@@ -347,8 +347,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             archive.writestr(inner_name, payload)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _ZIP_HANDLER = ZipFile()
 

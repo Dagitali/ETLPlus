@@ -53,7 +53,8 @@ class IonFile(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _ION_HANDLER = IonFile()

@@ -81,10 +81,9 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             The list of dictionaries read from the SAV file.
         """
-        dataset = self.dataset_from_read_options(options)
         return cast(
             JSONList,
-            self.read_dataset(path, dataset=dataset, options=options),
+            self.read_dataset(path, options=options),
         )
 
     def read_dataset(
@@ -111,7 +110,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         pyreadstat = get_dependency('pyreadstat', format_name='SAV')
         frame, _meta = pyreadstat.read_sav(str(path))
@@ -142,13 +141,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         int
             The number of rows written to the SAV file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -177,7 +170,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
 
         records = normalize_records(data, 'SAV')
@@ -192,8 +185,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _SAV_HANDLER = SavFile()
 

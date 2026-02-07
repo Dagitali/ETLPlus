@@ -83,8 +83,7 @@ class Sas7bdatFile(
         JSONList
             The list of dictionaries read from the SAS7BDAT file.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
+        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -110,7 +109,7 @@ class Sas7bdatFile(
         JSONList
             Parsed records.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         get_dependency('pyreadstat', format_name='SAS7BDAT')
         pandas = get_pandas('SAS7BDAT')
@@ -132,12 +131,12 @@ class Sas7bdatFile(
         Reject writes for SAS7BDAT while preserving scientific dataset
         contract.
         """
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         return self.write(path, data, options=options)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _SAS7BDAT_HANDLER = Sas7bdatFile()
 

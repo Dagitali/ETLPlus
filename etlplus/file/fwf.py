@@ -192,8 +192,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _FWF_HANDLER = FwfFile()
 

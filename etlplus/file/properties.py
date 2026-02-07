@@ -199,8 +199,7 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
         return _parse_properties_text(text)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PROPERTIES_HANDLER = PropertiesFile()
 

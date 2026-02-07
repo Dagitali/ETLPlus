@@ -178,8 +178,7 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         return count_records(data)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _YAML_HANDLER = YamlFile()
 

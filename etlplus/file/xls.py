@@ -117,8 +117,7 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
         return cast(JSONList, frame.to_dict(orient='records'))
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _XLS_HANDLER = XlsFile()
 

@@ -268,8 +268,7 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _DUCKDB_HANDLER = DuckdbFile()
 

@@ -189,8 +189,8 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         str
             Serialized XML text.
         """
-        root_tag = (
-            self.root_tag_from_write_options(options, default=DEFAULT_XML_ROOT)
+        root_tag = self.root_tag_from_write_options(
+            options, default=DEFAULT_XML_ROOT,
         )
         root_element = self._build_root_element(data, root_tag=root_tag)
         return ET.tostring(
@@ -275,8 +275,8 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         int
             The number of records written to the XML file.
         """
-        root_tag = (
-            self.root_tag_from_write_options(options, default=DEFAULT_XML_ROOT)
+        root_tag = self.root_tag_from_write_options(
+            options, default=DEFAULT_XML_ROOT,
         )
         root_element = self._build_root_element(data, root_tag=root_tag)
 
@@ -286,8 +286,7 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         return count_records(data)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _XML_HANDLER = XmlFile()
 

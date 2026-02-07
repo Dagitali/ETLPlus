@@ -207,8 +207,7 @@ class XlsmFile(SpreadsheetFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _XLSM_HANDLER = XlsmFile()
 

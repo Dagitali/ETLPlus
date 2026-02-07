@@ -105,8 +105,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         JSONData
             The structured data read from the RDA file.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
+        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -137,7 +136,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ValueError
             If an explicit dataset key is not present.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         pyreadr = get_dependency('pyreadr', format_name='RDA')
         pandas = get_pandas('RDA')
         result = pyreadr.read_r(str(path))
@@ -185,13 +184,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         int
             The number of rows written to the RDA file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -225,7 +218,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         pyreadr = get_dependency('pyreadr', format_name='RDA')
         pandas = get_pandas('RDA')
         records = normalize_records(data, 'RDA')
@@ -251,8 +244,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         return count
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _RDA_HANDLER = RdaFile()
 

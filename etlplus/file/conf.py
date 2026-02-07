@@ -55,7 +55,8 @@ class ConfFile(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _CONF_HANDLER = ConfFile()

@@ -169,8 +169,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         return count_records(data)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _JSON_HANDLER = JsonFile()
 

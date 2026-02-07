@@ -165,8 +165,7 @@ class PbFile(BinarySerializationFileHandlerABC):
         return 1
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PB_HANDLER = PbFile()
 

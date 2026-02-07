@@ -218,8 +218,7 @@ class OdsFile(SpreadsheetFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _ODS_HANDLER = OdsFile()
 

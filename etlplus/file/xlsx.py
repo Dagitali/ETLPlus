@@ -195,8 +195,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _XLSX_HANDLER = XlsxFile()
 

@@ -264,8 +264,7 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         return len(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _SQLITE_HANDLER = SqliteFile()
 

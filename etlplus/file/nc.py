@@ -109,10 +109,9 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             The list of dictionaries read from the NC file.
         """
-        dataset = self.dataset_from_read_options(options)
         return cast(
             JSONList,
-            self.read_dataset(path, dataset=dataset, options=options),
+            self.read_dataset(path, options=options),
         )
 
     def read_dataset(
@@ -139,7 +138,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
         xarray = get_dependency('xarray', format_name='NC')
         try:
@@ -179,13 +178,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         int
             The number of rows written to the NC file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -214,7 +207,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
 
         records = normalize_records(data, 'NC')
@@ -233,8 +226,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _NC_HANDLER = NcFile()
 

@@ -166,8 +166,7 @@ class CborFile(BinarySerializationFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _CBOR_HANDLER = CborFile()
 

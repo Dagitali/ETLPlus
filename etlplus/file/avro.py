@@ -269,8 +269,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _AVRO_HANDLER = AvroFile()
 

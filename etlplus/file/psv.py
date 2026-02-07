@@ -173,8 +173,7 @@ class PsvFile(DelimitedTextFileHandlerABC):
         )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PSV_HANDLER = PsvFile()
 

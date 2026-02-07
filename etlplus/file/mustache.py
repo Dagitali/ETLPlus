@@ -54,7 +54,8 @@ class MustacheFile(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _MUSTACHE_HANDLER = MustacheFile()

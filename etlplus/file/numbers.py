@@ -51,7 +51,8 @@ class NumbersFile(StubFileHandlerABC):
 
     # Inherits read() and write() from StubFileHandlerABC.
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _NUMBERS_HANDLER = NumbersFile()

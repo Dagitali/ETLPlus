@@ -82,8 +82,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         JSONData
             The structured data read from the RDS file.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
+        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -114,7 +113,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ValueError
             If an explicit dataset key is not present.
         """
-        _ = options
+        dataset = self.resolve_read_dataset(dataset, options=options)
         pyreadr = get_dependency('pyreadr', format_name='RDS')
         pandas = get_pandas('RDS')
         result = pyreadr.read_r(str(path))
@@ -162,13 +161,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         int
             The number of rows written to the RDS file.
         """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
+        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,
@@ -202,7 +195,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        _ = options
+        dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
 
         pyreadr = get_dependency('pyreadr', format_name='RDS')
@@ -222,8 +215,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         return count
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _RDS_HANDLER = RdsFile()
 

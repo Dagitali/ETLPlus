@@ -186,8 +186,7 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         return count_records(rows)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _TXT_HANDLER = TxtFile()
 
