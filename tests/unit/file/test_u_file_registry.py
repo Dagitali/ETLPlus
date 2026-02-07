@@ -29,6 +29,7 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SemiStructuredTextFileHandlerABC
+from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
@@ -136,6 +137,15 @@ class TestRegistryAbcConformance:
             (FileFormat.SYLK, ScientificDatasetFileHandlerABC),
             (FileFormat.XPT, ScientificDatasetFileHandlerABC),
             (FileFormat.ZSAV, ScientificDatasetFileHandlerABC),
+            # Single-dataset scientific subtype
+            (FileFormat.DTA, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.MAT, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.NC, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.SAS7BDAT, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.SAV, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.SYLK, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.XPT, SingleDatasetScientificFileHandlerABC),
+            (FileFormat.ZSAV, SingleDatasetScientificFileHandlerABC),
             # Placeholder/stubbed module-owned formats
             (FileFormat.STUB, StubFileHandlerABC),
             (FileFormat.ACCDB, StubFileHandlerABC),
