@@ -189,10 +189,10 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         ------
         ValueError
             If the ZIP archive is empty.
-            If multiple members are present but no ``inner_name`` is specified.
-            If the specified ``inner_name`` is not found in the archive.
+            If multiple members are present and no ``inner_name`` is provided.
+            If ``inner_name`` does not match any archive member.
         """
-        inner_name = options.inner_name if options is not None else None
+        inner_name = self.inner_name_from_read_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
             entries = [
                 entry for entry in archive.infolist() if not entry.is_dir()
@@ -236,11 +236,21 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         -------
         int
             Number of records written.
+
+        Raises
+        ------
+        ValueError
+            If the inner file format cannot be inferred from the provided
+            options.
         """
         fmt = _resolve_format(path.name)
-        inner_name = Path(path.name).with_suffix('').name
-        if options is not None and options.inner_name is not None:
-            inner_name = options.inner_name
+        default_inner_name = Path(path.name).with_suffix('').name
+        inner_name = self.inner_name_from_write_options(
+            options,
+            default=default_inner_name,
+        )
+        if inner_name is None:  # pragma: no cover
+            raise ValueError('ZIP inner archive member name is required')
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir) / inner_name
@@ -279,9 +289,11 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             Optional write parameters. ``inner_name`` can override the archive
             member name.
         """
-        inner_name = self.default_inner_name
-        if options is not None and options.inner_name is not None:
-            inner_name = options.inner_name
+        inner_name = self.inner_name_from_write_options(
+            options,
+            default=self.default_inner_name,
+        )
+        assert inner_name is not None
         ensure_parent_dir(path)
         with zipfile.ZipFile(
             path,
