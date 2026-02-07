@@ -65,7 +65,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read one dataset from SYLK at *path*.
+        Read and return one dataset from SYLK at *path*.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
@@ -137,7 +137,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write one dataset to SYLK at *path*.
+        Write one dataset to SYLK at *path* and return record count.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
