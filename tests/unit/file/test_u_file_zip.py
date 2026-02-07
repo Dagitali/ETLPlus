@@ -13,6 +13,7 @@ import pytest
 
 from etlplus.file import core
 from etlplus.file import zip as mod
+from etlplus.file.base import ReadOptions
 from etlplus.file.enums import FileFormat
 
 # SECTION: HELPERS ========================================================== #
@@ -63,6 +64,62 @@ def _write_zip(
 
 class TestZipRead:
     """Unit tests for :func:`etlplus.file.zip.read`."""
+
+    def test_read_multiple_entries_respects_inner_name_option(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that reading a multi-entry archive with ``inner_name`` returns
+        only the selected entry payload.
+        """
+        monkeypatch.setattr(core, 'File', _StubFile)
+        path = tmp_path / 'payloads.zip'
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        result = mod.ZipFile().read(
+            path,
+            options=ReadOptions(inner_name='b.json'),
+        )
+
+        assert result == {'fmt': 'json', 'name': 'b.json'}
+
+    def test_read_multiple_entries_raises_on_unknown_inner_name(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that selecting an unknown archive member raises a clear error.
+        """
+        path = tmp_path / 'payloads.zip'
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        with pytest.raises(ValueError, match='ZIP archive member not found'):
+            mod.ZipFile().read(
+                path,
+                options=ReadOptions(inner_name='missing.json'),
+            )
+
+    def test_read_multiple_entries_returns_mapping(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that reading a ZIP archive with multiple entries returns a mapping
+        of file names to their contents.
+        """
+        monkeypatch.setattr(core, 'File', _StubFile)
+        path = tmp_path / 'payloads.zip'
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        result = mod.read(path)
+
+        assert result == {
+            'a.json': {'fmt': 'json', 'name': 'a.json'},
+            'b.json': {'fmt': 'json', 'name': 'b.json'},
+        }
 
     def test_read_raises_on_empty_archive(
         self,
@@ -119,26 +176,6 @@ class TestZipRead:
         result = mod.read(path)
 
         assert result == {'fmt': 'json', 'name': 'payload.json'}
-
-    def test_read_multiple_entries_returns_mapping(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that reading a ZIP archive with multiple entries returns a mapping
-        of file names to their contents.
-        """
-        monkeypatch.setattr(core, 'File', _StubFile)
-        path = tmp_path / 'payloads.zip'
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
-
-        result = mod.read(path)
-
-        assert result == {
-            'a.json': {'fmt': 'json', 'name': 'a.json'},
-            'b.json': {'fmt': 'json', 'name': 'b.json'},
-        }
 
 
 class TestZipWrite:
