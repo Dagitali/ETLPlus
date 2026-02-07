@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import sas7bdat as mod
+from etlplus.file.base import ReadOptions
 
 # SECTION: HELPERS ========================================================== #
 
@@ -59,6 +60,58 @@ class _PandasStub:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestSas7bdatDatasetKeys:
+    """Unit tests for SAS7BDAT dataset-key validation behavior."""
+
+    def test_read_dataset_rejects_unknown_dataset_before_dependencies(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test unknown dataset being rejected before optional imports."""
+        handler = mod.Sas7bdatFile()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: (_ for _ in ()).throw(AssertionError),
+        )
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read_dataset(
+                tmp_path / 'data.sas7bdat',
+                dataset='unknown',
+            )
+
+    def test_read_rejects_unknown_dataset_from_options(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test unknown dataset being rejected when routed via read options."""
+        handler = mod.Sas7bdatFile()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+        monkeypatch.setattr(
+            mod,
+            'get_pandas',
+            lambda *_: (_ for _ in ()).throw(AssertionError),
+        )
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read(
+                tmp_path / 'data.sas7bdat',
+                options=ReadOptions(dataset='unknown'),
+            )
 
 
 class TestSas7bdatRead:
