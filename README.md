@@ -193,6 +193,8 @@ Recognized file formats are listed in the tables below. Support for reading to o
   first.
 - Dispatch is strict-by-default: unmapped formats raise `Unsupported format`.
 - A temporary module-adapter fallback remains available only as an explicit opt-in in registry APIs.
+- Scientific/statistical handlers `dta`, `nc`, `rda`, `rds`, `sav`, and `xpt` now implement
+  `ScientificDatasetFileHandlerABC` dataset hooks.
 
 **Current Migration Coverage (Class-Based + Explicit Registry Mapping)**
 
