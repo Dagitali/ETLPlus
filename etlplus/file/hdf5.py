@@ -149,7 +149,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read one dataset from HDF5 at *path*.
+        Read and return one dataset from HDF5 at *path*.
 
         Parameters
         ----------
