@@ -33,6 +33,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
+# Explicit class map takes precedence; fallback adapter remains temporary.
 _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.ARROW: 'etlplus.file.arrow:ArrowFile',
     FileFormat.BSON: 'etlplus.file.bson:BsonFile',
