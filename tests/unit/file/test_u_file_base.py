@@ -18,6 +18,7 @@ from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
+from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -190,6 +191,33 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
         return len(rows)
 
 
+class _ReadOnlySpreadsheetStub(ReadOnlySpreadsheetFileHandlerABC):
+    """Minimal concrete read-only spreadsheet handler for contract checks."""
+
+    format = FileFormat.XLS
+    engine_name = 'xlrd'
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        sheet = self.sheet_from_read_options(options)
+        return self.read_sheet(path, sheet=sheet, options=options)
+
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        _ = path
+        _ = options
+        return [{'sheet': sheet}]
+
+
 class _ReadOnlyStub(ReadOnlyFileHandlerABC):
     """Minimal concrete read-only handler for contract checks."""
 
@@ -360,6 +388,17 @@ class TestBaseAbcContracts:
 
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write(Path('ignored.xls'), [{'a': 1}])
+
+    def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
+        """Test read-only spreadsheet handlers rejecting write_sheet calls."""
+        handler = _ReadOnlySpreadsheetStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write_sheet(
+                Path('ignored.xls'),
+                [{'a': 1}],
+                sheet=0,
+            )
 
     def test_text_fixed_width_abc_requires_row_methods(self) -> None:
         """Test TextFixedWidthFileHandlerABC requiring row-level methods."""
