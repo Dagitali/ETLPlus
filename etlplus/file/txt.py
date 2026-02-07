@@ -99,8 +99,9 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         JSONList
             The list of dictionaries parsed from the TXT file.
         """
-        encoding = (
-            options.encoding if options is not None else self.default_encoding
+        encoding = self.encoding_from_read_options(
+            options,
+            default=self.default_encoding,
         )
         rows: JSONList = []
         with path.open('r', encoding=encoding) as handle:
@@ -171,8 +172,9 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         if not rows:
             return 0
 
-        encoding = (
-            options.encoding if options is not None else self.default_encoding
+        encoding = self.encoding_from_write_options(
+            options,
+            default=self.default_encoding,
         )
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding) as handle:
