@@ -81,11 +81,7 @@ class XlsmFile(SpreadsheetFileHandlerABC):
         JSONList
             The list of dictionaries read from the XLSM file.
         """
-        sheet = (
-            options.sheet
-            if options is not None and options.sheet is not None
-            else self.default_sheet
-        )
+        sheet = self.sheet_from_read_options(options)
         return self.read_sheet(path, sheet=sheet, options=options)
 
     def read_sheet(
@@ -157,11 +153,7 @@ class XlsmFile(SpreadsheetFileHandlerABC):
         records = normalize_records(data, 'XLSM')
         if not records:
             return 0
-        sheet = (
-            options.sheet
-            if options is not None and options.sheet is not None
-            else self.default_sheet
-        )
+        sheet = self.sheet_from_write_options(options)
         return self.write_sheet(path, records, sheet=sheet, options=options)
 
     def write_sheet(
