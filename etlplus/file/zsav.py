@@ -25,8 +25,8 @@ from ..types import JSONList
 from ..types import StrPath
 from . import stub
 from ._io import coerce_path
-from .base import FileHandlerABC
 from .base import ReadOptions
+from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -45,13 +45,40 @@ __all__ = [
 # SECTION: FUNCTIONS ======================================================== #
 
 
-class ZsavFile(FileHandlerABC):
+class ZsavFile(ScientificDatasetFileHandlerABC):
     """
     Handler implementation for ZSAV files.
     """
 
     format = FileFormat.ZSAV
-    category = 'statistical_dataset'
+    dataset_key = 'data'
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return available ZSAV dataset keys.
+        """
+        _ = path
+        return [self.dataset_key]
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read one dataset from ZSAV at *path*.
+        """
+        _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'ZSAV supports only dataset key {self.dataset_key!r}',
+            )
+        return stub.read(path, format_name='ZSAV')
 
     def read(
         self,
@@ -74,8 +101,8 @@ class ZsavFile(FileHandlerABC):
         JSONList
             The list of dictionaries read from the ZSAV file.
         """
-        _ = options
-        return stub.read(path, format_name='ZSAV')
+        dataset = options.dataset if options is not None else None
+        return self.read_dataset(path, dataset=dataset, options=options)
 
     def write(
         self,
@@ -102,7 +129,30 @@ class ZsavFile(FileHandlerABC):
         int
             The number of rows written to the ZSAV file.
         """
+        dataset = options.dataset if options is not None else None
+        return self.write_dataset(
+            path,
+            data,
+            dataset=dataset,
+            options=options,
+        )
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to ZSAV at *path*.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'ZSAV supports only dataset key {self.dataset_key!r}',
+            )
         return stub.write(path, data, format_name='ZSAV')
 
 
