@@ -111,12 +111,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         -------
         JSONList
             Parsed records.
-
-        Raises
-        ------
-        ValueError
-            If *dataset* is provided and does not match the supported dataset
-            key.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
@@ -184,12 +178,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         -------
         int
             Number of records written.
-
-        Raises
-        ------
-        ValueError
-            If *dataset* is provided and does not match the supported dataset
-            key.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
