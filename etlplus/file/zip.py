@@ -301,7 +301,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             payload,
             options=WriteOptions(
                 inner_name=inner_name,
-                encoding=options.encoding if options is not None else 'utf-8',
+                encoding=self.encoding_from_write_options(options),
             ),
         )
         return count
