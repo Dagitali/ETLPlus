@@ -7,17 +7,16 @@ files.
 
 from __future__ import annotations
 
-import importlib
-import inspect
 from dataclasses import dataclass
-from functools import cache
 from pathlib import Path
-from types import ModuleType
 
 from ..types import JSONData
 from . import xml
+from .base import FileHandlerABC
+from .base import WriteOptions
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
+from .registry import get_handler
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -26,53 +25,6 @@ __all__ = [
     # Classes
     'File',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _accepts_root_tag(handler: object) -> bool:
-    """
-    Return True when *handler* supports a ``root_tag`` argument.
-
-    Parameters
-    ----------
-    handler : object
-        Callable to inspect.
-
-    Returns
-    -------
-    bool
-        True if ``root_tag`` is accepted by the handler.
-    """
-    if not callable(handler):
-        return False
-    try:
-        signature = inspect.signature(handler)
-    except (TypeError, ValueError):
-        return False
-    for param in signature.parameters.values():
-        if param.kind is param.VAR_KEYWORD:
-            return True
-    return 'root_tag' in signature.parameters
-
-
-@cache
-def _module_for_format(file_format: FileFormat) -> ModuleType:
-    """
-    Import and return the module for *file_format*.
-
-    Parameters
-    ----------
-    file_format : FileFormat
-        File format enum value.
-
-    Returns
-    -------
-    ModuleType
-        The module implementing IO for the format.
-    """
-    return importlib.import_module(f'{__package__}.{file_format.value}')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -214,52 +166,17 @@ class File:
             # Leave as None; _ensure_format() will raise on use if needed.
             return None
 
-    def _resolve_handler(self, name: str) -> object:
+    def _resolve_handler(self) -> FileHandlerABC:
         """
-        Resolve a handler from the module for the active file format.
-
-        Parameters
-        ----------
-        name : str
-            Attribute name to resolve (``'read'`` or ``'write'``).
+        Resolve a class-based file handler for the active format.
 
         Returns
         -------
-        object
-            Callable handler exported by the module.
-
-        Raises
-        ------
-        ValueError
-            If the resolved file format is unsupported.
-        """
-        module = self._resolve_module()
-        try:
-            return getattr(module, name)
-        except AttributeError as e:
-            raise ValueError(
-                f'Module {module.__name__} does not implement {name}()',
-            ) from e
-
-    def _resolve_module(self) -> ModuleType:
-        """
-        Resolve the IO module for the active file format.
-
-        Returns
-        -------
-        ModuleType
-            The module that implements read/write for the format.
-
-        Raises
-        ------
-        ValueError
-            If the resolved file format is unsupported.
+        FileHandlerABC
+            Handler instance for the active file format.
         """
         fmt = self._ensure_format()
-        try:
-            return _module_for_format(fmt)
-        except ModuleNotFoundError as e:
-            raise ValueError(f'Unsupported format: {fmt}') from e
+        return get_handler(fmt)
 
     # -- Instance Methods -- #
 
@@ -272,20 +189,10 @@ class File:
         JSONData
             The structured data read from the file.
 
-        Raises
-        ------
-        TypeError
-            If the resolved 'read' handler is not callable.
         """
         self._assert_exists()
-        reader = self._resolve_handler('read')
-        if callable(reader):
-            return reader(self.path)
-        else:
-            raise TypeError(
-                f"'read' handler for format {self.file_format} "
-                'is not callable',
-            )
+        handler = self._resolve_handler()
+        return handler.read(self.path)
 
     def write(
         self,
@@ -309,17 +216,10 @@ class File:
         int
             The number of records written.
 
-        Raises
-        ------
-        TypeError
-            If the resolved 'write' handler is not callable.
         """
-        writer = self._resolve_handler('write')
-        if not callable(writer):
-            raise TypeError(
-                f"'write' handler for format {self.file_format} "
-                'is not callable',
-            )
-        if _accepts_root_tag(writer):
-            return writer(self.path, data, root_tag=root_tag)
-        return writer(self.path, data)
+        handler = self._resolve_handler()
+        return handler.write(
+            self.path,
+            data,
+            options=WriteOptions(root_tag=root_tag),
+        )

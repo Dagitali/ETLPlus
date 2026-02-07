@@ -22,17 +22,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'HbsFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class HbsFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for HBS files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.HBS
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_HBS_HANDLER = HbsFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -42,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ZSAV content from *path*.
+    Read and return HBS content from *path*.
 
     Parameters
     ----------
@@ -54,7 +80,7 @@ def read(
     JSONList
         The list of dictionaries read from the HBS file.
     """
-    return stub.read(path, format_name='HBS')
+    return _HBS_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -62,7 +88,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to HBS file at *path* and return record count.
+    Write *data* to HBS at *path* and return record count.
 
     Parameters
     ----------
@@ -77,5 +103,4 @@ def write(
     int
         The number of rows written to the HBS file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='HBS')
+    return _HBS_HANDLER.write(coerce_path(path), data)

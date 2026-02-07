@@ -745,8 +745,7 @@ def _is_plain_fields_list(
     )
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PIPELINE_STEPS: tuple[PipelineStepName, ...] = (
     'aggregate',

@@ -22,17 +22,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'AccdbFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class AccdbFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for ACCDB files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.ACCDB
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_ACCDB_HANDLER = AccdbFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -42,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ACCDB content from *path*.
+    Read and return ACCDB content from *path*.
 
     Parameters
     ----------
@@ -54,7 +80,7 @@ def read(
     JSONList
         The list of dictionaries read from the ACCDB file.
     """
-    return stub.read(path, format_name='ACCDB')
+    return _ACCDB_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -77,5 +103,4 @@ def write(
     int
         The number of rows written to the ACCDB file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='ACCDB')
+    return _ACCDB_HANDLER.write(coerce_path(path), data)

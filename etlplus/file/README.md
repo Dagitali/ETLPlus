@@ -18,6 +18,7 @@ pip install -e ".[file]"
 Back to project overview: see the top-level [README](../../README.md).
 
 - [`etlplus.file` Subpackage](#etlplusfile-subpackage)
+  - [Handler Architecture](#handler-architecture)
   - [Supported File Formats](#supported-file-formats)
   - [Inferring File Format and Compression](#inferring-file-format-and-compression)
   - [Reading and Writing Files](#reading-and-writing-files)
@@ -79,6 +80,26 @@ Note: HDF5 support is read-only; writing is currently disabled.
 
 Compression formats (gz, zip) are also supported as wrappers for other formats. Formats not listed
 here are currently stubbed and will raise `NotImplementedError` on read/write.
+
+## Handler Architecture
+
+`etlplus.file` uses class-based handlers with abstract base classes in `etlplus/file/base.py`.
+Category contracts include:
+
+- Delimited text (`DelimitedTextFileHandlerABC`)
+- Text/fixed-width (`TextFixedWidthFileHandlerABC`)
+- Semi-structured text (`SemiStructuredTextFileHandlerABC`)
+- Columnar (`ColumnarFileHandlerABC`)
+- Binary serialization (`BinarySerializationFileHandlerABC`)
+- Embedded databases (`EmbeddedDatabaseFileHandlerABC`)
+- Spreadsheets (`SpreadsheetFileHandlerABC`)
+- Read-only spreadsheets (`ReadOnlySpreadsheetFileHandlerABC`)
+- Scientific/statistical datasets (`ScientificDatasetFileHandlerABC` and
+  `SingleDatasetScientificFileHandlerABC`)
+- Archive wrappers (`ArchiveWrapperFileHandlerABC`)
+- Placeholder stubs (`StubFileHandlerABC`)
+
+Format dispatch is registry-driven via explicit format-to-handler mappings.
 
 ## Inferring File Format and Compression
 

@@ -48,8 +48,7 @@ type ValidateFn = Callable[[Any, Ruleset], ValidationResultDict]
 type PrintFn = Callable[[Any], None]
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 _PHASE_CHOICES = MappingProxyType(
     {

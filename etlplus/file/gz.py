@@ -7,13 +7,17 @@ Helpers for reading/writing GZ files.
 from __future__ import annotations
 
 import gzip
-import tempfile
 from pathlib import Path
 
 from ..types import JSONData
 from ..types import StrPath
+from ._core_dispatch import read_payload_with_core
+from ._core_dispatch import write_payload_with_core
 from ._io import coerce_path
 from ._io import ensure_parent_dir
+from .base import ArchiveWrapperFileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
 from .enums import CompressionFormat
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
@@ -22,6 +26,8 @@ from .enums import infer_file_format_and_compression
 
 
 __all__ = [
+    # Classes
+    'GzFile',
     # Functions
     'read',
     'write',
@@ -62,6 +68,139 @@ def _resolve_format(
     return fmt
 
 
+# SECTION: CLASSES ========================================================== #
+
+
+class GzFile(ArchiveWrapperFileHandlerABC):
+    """
+    Handler implementation for GZ files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.GZ
+    default_inner_name = 'payload'
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read GZ content from *path* and parse the inner payload.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the GZ file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload.
+        """
+        fmt = _resolve_format(path)
+        payload = self.read_inner_bytes(path, options=options)
+        return read_payload_with_core(
+            fmt=fmt,
+            payload=payload,
+            filename=f'payload.{fmt.value}',
+        )
+
+    def read_inner_bytes(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> bytes:
+        """
+        Read and return decompressed inner payload bytes.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the GZ file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        bytes
+            Decompressed payload bytes.
+        """
+        _ = options
+        with gzip.open(path, 'rb') as handle:
+            return handle.read()
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to GZ at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the GZ file on disk.
+        data : JSONData
+            Data to write.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        fmt = _resolve_format(path)
+        count, payload = write_payload_with_core(
+            fmt=fmt,
+            data=data,
+            filename=f'payload.{fmt.value}',
+        )
+
+        self.write_inner_bytes(path, payload, options=options)
+        return count
+
+    def write_inner_bytes(
+        self,
+        path: Path,
+        payload: bytes,
+        *,
+        options: WriteOptions | None = None,
+    ) -> None:
+        """
+        Compress and write inner payload bytes.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the GZ file on disk.
+        payload : bytes
+            Raw inner payload bytes.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+        """
+        _ = options
+        ensure_parent_dir(path)
+        with gzip.open(path, 'wb') as handle:
+            handle.write(payload)
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_GZ_HANDLER = GzFile()
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -81,17 +220,7 @@ def read(
     JSONData
         Parsed payload.
     """
-    path = coerce_path(path)
-    fmt = _resolve_format(path)
-    with gzip.open(path, 'rb') as handle:
-        payload = handle.read()
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-        tmp_path.write_bytes(payload)
-        from .core import File
-
-        return File(tmp_path, fmt).read()
+    return _GZ_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -113,17 +242,4 @@ def write(
     int
         Number of records written.
     """
-    path = coerce_path(path)
-    fmt = _resolve_format(path)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-        from .core import File
-
-        count = File(tmp_path, fmt).write(data)
-        payload = tmp_path.read_bytes()
-
-    ensure_parent_dir(path)
-    with gzip.open(path, 'wb') as handle:
-        handle.write(payload)
-
-    return count
+    return _GZ_HANDLER.write(coerce_path(path), data)

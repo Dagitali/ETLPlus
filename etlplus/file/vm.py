@@ -22,17 +22,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'VmFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class VmFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for VM files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.VM
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_VM_HANDLER = VmFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -42,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read VM content from *path*.
+    Read and return VM content from *path*.
 
     Parameters
     ----------
@@ -54,7 +80,7 @@ def read(
     JSONList
         The list of dictionaries read from the VM file.
     """
-    return stub.read(path, format_name='VM')
+    return _VM_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -62,7 +88,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to VM file at *path* and return record count.
+    Write *data* to VM at *path* and return record count.
 
     Parameters
     ----------
@@ -77,5 +103,4 @@ def write(
     int
         The number of rows written to the VM file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='VM')
+    return _VM_HANDLER.write(coerce_path(path), data)

@@ -22,17 +22,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'MdbFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class MdbFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for MDB files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.MDB
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_MDB_HANDLER = MdbFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -42,19 +68,19 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read CSV content from *path*.
+    Read and return MDB content from *path*.
 
     Parameters
     ----------
     path : StrPath
-        Path to the CSV file on disk.
+        Path to the MDB file on disk.
 
     Returns
     -------
     JSONList
-        The list of dictionaries read from the CSV file.
+        The list of dictionaries read from the MDB file.
     """
-    return stub.read(path, format_name='DAT')
+    return _MDB_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -62,20 +88,19 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CSV at *path* and return record count.
+    Write *data* to MDB at *path* and return record count.
 
     Parameters
     ----------
     path : StrPath
-        Path to the CSV file on disk.
+        Path to the MDB file on disk.
     data : JSONData
-        Data to write as CSV. Should be a list of dictionaries or a
+        Data to write as MDB. Should be a list of dictionaries or a
         single dictionary.
 
     Returns
     -------
     int
-        The number of rows written to the CSV file.
+        The number of rows written to the MDB file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='DAT')
+    return _MDB_HANDLER.write(coerce_path(path), data)
