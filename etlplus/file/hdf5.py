@@ -137,14 +137,8 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         -------
         JSONList
             The list of dictionaries read from the HDF5 file.
-
-        Raises
-        ------
-        ValueError
-            If multiple datasets are found in the HDF5 file without a clear
-            key to use.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def read_dataset(
