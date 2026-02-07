@@ -28,8 +28,8 @@ from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._io import stringify_value
-from .base import FileHandlerABC
 from .base import ReadOptions
+from .base import TextFixedWidthFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -47,7 +47,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class FwfFile(FileHandlerABC):
+class FwfFile(TextFixedWidthFileHandlerABC):
     """
     Handler implementation for FWF files.
     """
@@ -55,7 +55,6 @@ class FwfFile(FileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.FWF
-    category = 'fixed_width_text'
 
     # -- Instance Methods -- #
 
@@ -79,6 +78,29 @@ class FwfFile(FileHandlerABC):
         -------
         JSONList
             The list of dictionaries read from the FWF file.
+        """
+        return self.read_rows(path, options=options)
+
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read row records from FWF content at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the FWF file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries parsed from the FWF file.
         """
         _ = options
         pandas = get_pandas('FWF')
@@ -110,17 +132,43 @@ class FwfFile(FileHandlerABC):
         int
             The number of rows written to the FWF file.
         """
+        rows = normalize_records(data, 'FWF')
+        return self.write_rows(path, rows, options=options)
+
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write row records to FWF file at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the FWF file on disk.
+        rows : JSONList
+            Row records to write as FWF file.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the FWF file.
+        """
         _ = options
-        records = normalize_records(data, 'FWF')
-        if not records:
+        if not rows:
             return 0
 
-        fieldnames = sorted({key for row in records for key in row})
+        fieldnames = sorted({key for row in rows for key in row})
         if not fieldnames:
             return 0
 
         widths: dict[str, int] = {name: len(name) for name in fieldnames}
-        for row in records:
+        for row in rows:
             for name in fieldnames:
                 widths[name] = max(
                     widths[name],
@@ -128,16 +176,20 @@ class FwfFile(FileHandlerABC):
                 )
 
         ensure_parent_dir(path)
-        with path.open('w', encoding='utf-8', newline='') as handle:
+        with path.open(
+            'w',
+            encoding=self.default_encoding,
+            newline='',
+        ) as handle:
             header = ' '.join(name.ljust(widths[name]) for name in fieldnames)
             handle.write(header + '\n')
-            for row in records:
+            for row in rows:
                 line = ' '.join(
                     stringify_value(row.get(name)).ljust(widths[name])
                     for name in fieldnames
                 )
                 handle.write(line + '\n')
-        return len(records)
+        return len(rows)
 
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
