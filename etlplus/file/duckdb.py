@@ -19,8 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-
-import duckdb  # type: ignore[import]
+from typing import TYPE_CHECKING
 
 from ..types import JSONData
 from ..types import JSONList
@@ -40,6 +39,9 @@ from .base import EmbeddedDatabaseFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
+
+if TYPE_CHECKING:
+    import duckdb
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -202,7 +204,8 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
             options,
             default=self.default_table,
         )
-        assert table is not None
+        if table is None:  # pragma: no cover - guarded by default
+            raise ValueError('DUCKDB write requires a table name')
         ensure_parent_dir(path)
         conn = self.connect(path)
         try:
