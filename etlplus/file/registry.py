@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import warnings
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -35,9 +36,13 @@ __all__ = [
 
 # Explicit class map takes precedence; fallback adapter remains temporary.
 _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
+    FileFormat.ACCDB: 'etlplus.file.stub:AccdbFile',
+    FileFormat.AVRO: 'etlplus.file.avro:AvroFile',
     FileFormat.ARROW: 'etlplus.file.arrow:ArrowFile',
     FileFormat.BSON: 'etlplus.file.bson:BsonFile',
     FileFormat.CBOR: 'etlplus.file.cbor:CborFile',
+    FileFormat.CFG: 'etlplus.file.stub:CfgFile',
+    FileFormat.CONF: 'etlplus.file.stub:ConfFile',
     FileFormat.CSV: 'etlplus.file.csv:CsvFile',
     FileFormat.DAT: 'etlplus.file.dat:DatFile',
     FileFormat.DTA: 'etlplus.file.dta:DtaFile',
@@ -46,16 +51,24 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.FWF: 'etlplus.file.fwf:FwfFile',
     FileFormat.GZ: 'etlplus.file.gz:GzFile',
     FileFormat.HDF5: 'etlplus.file.hdf5:Hdf5File',
+    FileFormat.HBS: 'etlplus.file.stub:HbsFile',
     FileFormat.INI: 'etlplus.file.ini:IniFile',
+    FileFormat.ION: 'etlplus.file.stub:IonFile',
+    FileFormat.JINJA2: 'etlplus.file.stub:Jinja2File',
     FileFormat.JSON: 'etlplus.file.json:JsonFile',
+    FileFormat.LOG: 'etlplus.file.stub:LogFile',
     FileFormat.MSGPACK: 'etlplus.file.msgpack:MsgpackFile',
     FileFormat.MAT: 'etlplus.file.mat:MatFile',
+    FileFormat.MDB: 'etlplus.file.stub:MdbFile',
+    FileFormat.MUSTACHE: 'etlplus.file.stub:MustacheFile',
     FileFormat.NC: 'etlplus.file.nc:NcFile',
     FileFormat.NDJSON: 'etlplus.file.ndjson:NdjsonFile',
+    FileFormat.NUMBERS: 'etlplus.file.stub:NumbersFile',
     FileFormat.ODS: 'etlplus.file.ods:OdsFile',
     FileFormat.ORC: 'etlplus.file.orc:OrcFile',
     FileFormat.PARQUET: 'etlplus.file.parquet:ParquetFile',
     FileFormat.PB: 'etlplus.file.pb:PbFile',
+    FileFormat.PBF: 'etlplus.file.stub:PbfFile',
     FileFormat.PROTO: 'etlplus.file.proto:ProtoFile',
     FileFormat.PROPERTIES: 'etlplus.file.properties:PropertiesFile',
     FileFormat.PSV: 'etlplus.file.psv:PsvFile',
@@ -69,6 +82,9 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
     FileFormat.TOML: 'etlplus.file.toml:TomlFile',
     FileFormat.TXT: 'etlplus.file.txt:TxtFile',
     FileFormat.TSV: 'etlplus.file.tsv:TsvFile',
+    FileFormat.STUB: 'etlplus.file.stub:StubFile',
+    FileFormat.VM: 'etlplus.file.stub:VmFile',
+    FileFormat.WKS: 'etlplus.file.stub:WksFile',
     FileFormat.XML: 'etlplus.file.xml:XmlFile',
     FileFormat.XLS: 'etlplus.file.xls:XlsFile',
     FileFormat.XLSM: 'etlplus.file.xlsm:XlsmFile',
@@ -309,6 +325,15 @@ def get_handler_class(
         return _coerce_handler_class(symbol, file_format=file_format)
 
     try:
+        warnings.warn(
+            (
+                'Using module-adapter fallback for format '
+                f'{file_format.value!r}; add explicit mapping to '
+                'etlplus.file.registry._HANDLER_CLASS_SPECS'
+            ),
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return _module_adapter_class_for_format(file_format)
     except (ModuleNotFoundError, ValueError) as err:
         raise ValueError(f'Unsupported format: {file_format}') from err
