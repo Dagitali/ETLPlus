@@ -22,6 +22,7 @@ package and command-line interface for data extraction, validation, transformati
     - [REST APIs (`api`)](#rest-apis-api)
     - [Databases (`database`)](#databases-database)
     - [Files (`file`)](#files-file)
+      - [Handler Matrix Guardrail](#handler-matrix-guardrail)
       - [Stubbed / Placeholder](#stubbed--placeholder)
       - [Tabular \& Delimited Text](#tabular--delimited-text)
       - [Semi-Structured Text](#semi-structured-text)
@@ -204,10 +205,76 @@ Recognized file formats are listed in the tables below. Support for reading to o
 - Binary/interchange: `avro`, `bson`, `cbor`, `msgpack`, `pb`, `proto`
 - Embedded DB: `duckdb`, `sqlite`
 - Spreadsheets: `ods`, `xls`, `xlsm`, `xlsx`
-- Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), `mat`/`sylk`/`zsav` (placeholders via stub strategy)
+- Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), `mat`, `sylk`, `zsav`
 - Archive wrappers: `gz`, `zip`
 - Explicit module-owned stub handlers: `stub`, `accdb`, `cfg`, `conf`, `hbs`, `ion`, `jinja2`,
   `log`, `mdb`, `mustache`, `numbers`, `pbf`, `vm`, `wks`
+
+#### Handler Matrix Guardrail
+
+The concise matrix below is the migration guardrail for class-based handler coverage. For
+batch-by-batch maintenance notes and the same matrix in docs, see
+[docs/file-handler-matrix.md](docs/file-handler-matrix.md).
+
+| Format | Handler Class | Base ABC | Read/Write Support | Status |
+| --- | --- | --- | --- | --- |
+| `accdb` | `AccdbFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `arrow` | `ArrowFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
+| `avro` | `AvroFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `bson` | `BsonFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `cbor` | `CborFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `cfg` | `CfgFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `conf` | `ConfFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `csv` | `CsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
+| `dat` | `DatFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
+| `dta` | `DtaFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `duckdb` | `DuckdbFile` | `EmbeddedDatabaseFileHandlerABC` | `read/write` | `implemented` |
+| `feather` | `FeatherFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
+| `fwf` | `FwfFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
+| `gz` | `GzFile` | `ArchiveWrapperFileHandlerABC` | `read/write` | `implemented` |
+| `hbs` | `HbsFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `hdf5` | `Hdf5File` | `ScientificDatasetFileHandlerABC` | `read-only` | `implemented` |
+| `ini` | `IniFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `ion` | `IonFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `jinja2` | `Jinja2File` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `json` | `JsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `log` | `LogFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `mat` | `MatFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `mdb` | `MdbFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `msgpack` | `MsgpackFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `mustache` | `MustacheFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `nc` | `NcFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `ndjson` | `NdjsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `numbers` | `NumbersFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `ods` | `OdsFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
+| `orc` | `OrcFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
+| `parquet` | `ParquetFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
+| `pb` | `PbFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `pbf` | `PbfFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `properties` | `PropertiesFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `proto` | `ProtoFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
+| `psv` | `PsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
+| `rda` | `RdaFile` | `ScientificDatasetFileHandlerABC` | `read/write` | `implemented` |
+| `rds` | `RdsFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `sas7bdat` | `Sas7bdatFile` | `SingleDatasetScientificFileHandlerABC` | `read-only` | `implemented` |
+| `sav` | `SavFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `sqlite` | `SqliteFile` | `EmbeddedDatabaseFileHandlerABC` | `read/write` | `implemented` |
+| `stub` | `StubFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `sylk` | `SylkFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `tab` | `TabFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
+| `toml` | `TomlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `tsv` | `TsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
+| `txt` | `TxtFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
+| `vm` | `VmFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `wks` | `WksFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `xls` | `XlsFile` | `ReadOnlySpreadsheetFileHandlerABC` | `read-only` | `implemented` |
+| `xlsm` | `XlsmFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
+| `xlsx` | `XlsxFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
+| `xml` | `XmlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `xpt` | `XptFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `yaml` | `YamlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
+| `zip` | `ZipFile` | `ArchiveWrapperFileHandlerABC` | `read/write` | `implemented` |
+| `zsav` | `ZsavFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
 
 #### Stubbed / Placeholder
 
@@ -808,6 +875,7 @@ Navigate to detailed documentation for each subpackage:
 
 - API client docs: [`etlplus/api/README.md`](etlplus/api/README.md)
 - Examples: [`examples/README.md`](examples/README.md)
+- File handler matrix guardrail: [`docs/file-handler-matrix.md`](docs/file-handler-matrix.md)
 - Pipeline authoring guide: [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Runner internals: see `etlplus.ops.run` docstrings and [`docs/pipeline-guide.md`](docs/pipeline-guide.md)
 - Design notes (Mapping inputs, dict outputs): [`docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`](docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs)
