@@ -301,13 +301,10 @@ class DatFile(DelimitedTextFileHandlerABC):
         int
             The number of rows written to the DAT file.
         """
-        delimiter = self.delimiter
-        if options is not None:
-            delimiter = str(options.extras.get('delimiter', delimiter))
         return write_delimited(
             path,
             rows,
-            delimiter=delimiter,
+            delimiter=self.delimiter_from_write_options(options),
             format_name='DAT',
         )
 
