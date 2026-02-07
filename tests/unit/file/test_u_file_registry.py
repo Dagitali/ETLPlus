@@ -20,7 +20,16 @@ from etlplus.file import FileFormat
 from etlplus.file import registry as mod
 from etlplus.file.arrow import ArrowFile
 from etlplus.file.avro import AvroFile
+from etlplus.file.base import ArchiveWrapperFileHandlerABC
+from etlplus.file.base import BinarySerializationFileHandlerABC
+from etlplus.file.base import ColumnarFileHandlerABC
+from etlplus.file.base import DelimitedTextFileHandlerABC
+from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
+from etlplus.file.base import ReadOnlyFileHandlerABC
+from etlplus.file.base import ScientificDatasetFileHandlerABC
+from etlplus.file.base import SemiStructuredTextFileHandlerABC
+from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
 from etlplus.file.duckdb import DuckdbFile
@@ -37,6 +46,7 @@ from etlplus.file.rds import RdsFile
 from etlplus.file.sas7bdat import Sas7bdatFile
 from etlplus.file.sav import SavFile
 from etlplus.file.sqlite import SqliteFile
+from etlplus.file.stub import StubFileHandlerABC
 from etlplus.file.sylk import SylkFile
 from etlplus.file.txt import TxtFile
 from etlplus.file.xlsm import XlsmFile
@@ -66,6 +76,92 @@ def clear_registry_caches() -> Iterator[None]:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestRegistryAbcConformance:
+    """Unit tests for category-to-ABC inheritance conformance."""
+
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_abc'),
+        [
+            # Delimited text
+            (FileFormat.CSV, DelimitedTextFileHandlerABC),
+            (FileFormat.DAT, DelimitedTextFileHandlerABC),
+            (FileFormat.PSV, DelimitedTextFileHandlerABC),
+            (FileFormat.TAB, DelimitedTextFileHandlerABC),
+            (FileFormat.TSV, DelimitedTextFileHandlerABC),
+            # Semi-structured
+            (FileFormat.INI, SemiStructuredTextFileHandlerABC),
+            (FileFormat.JSON, SemiStructuredTextFileHandlerABC),
+            (FileFormat.NDJSON, SemiStructuredTextFileHandlerABC),
+            (FileFormat.PROPERTIES, SemiStructuredTextFileHandlerABC),
+            (FileFormat.TOML, SemiStructuredTextFileHandlerABC),
+            (FileFormat.XML, SemiStructuredTextFileHandlerABC),
+            (FileFormat.YAML, SemiStructuredTextFileHandlerABC),
+            # Columnar
+            (FileFormat.ARROW, ColumnarFileHandlerABC),
+            (FileFormat.FEATHER, ColumnarFileHandlerABC),
+            (FileFormat.ORC, ColumnarFileHandlerABC),
+            (FileFormat.PARQUET, ColumnarFileHandlerABC),
+            # Binary serialization/interchange
+            (FileFormat.AVRO, BinarySerializationFileHandlerABC),
+            (FileFormat.BSON, BinarySerializationFileHandlerABC),
+            (FileFormat.CBOR, BinarySerializationFileHandlerABC),
+            (FileFormat.MSGPACK, BinarySerializationFileHandlerABC),
+            (FileFormat.PB, BinarySerializationFileHandlerABC),
+            (FileFormat.PROTO, BinarySerializationFileHandlerABC),
+            # Embedded databases
+            (FileFormat.DUCKDB, EmbeddedDatabaseFileHandlerABC),
+            (FileFormat.SQLITE, EmbeddedDatabaseFileHandlerABC),
+            # Spreadsheets
+            (FileFormat.ODS, SpreadsheetFileHandlerABC),
+            (FileFormat.XLSM, SpreadsheetFileHandlerABC),
+            (FileFormat.XLSX, SpreadsheetFileHandlerABC),
+            # Archives
+            (FileFormat.GZ, ArchiveWrapperFileHandlerABC),
+            (FileFormat.ZIP, ArchiveWrapperFileHandlerABC),
+            # Scientific/statistical
+            (FileFormat.DTA, ScientificDatasetFileHandlerABC),
+            (FileFormat.HDF5, ScientificDatasetFileHandlerABC),
+            (FileFormat.MAT, ScientificDatasetFileHandlerABC),
+            (FileFormat.NC, ScientificDatasetFileHandlerABC),
+            (FileFormat.RDA, ScientificDatasetFileHandlerABC),
+            (FileFormat.RDS, ScientificDatasetFileHandlerABC),
+            (FileFormat.SAS7BDAT, ScientificDatasetFileHandlerABC),
+            (FileFormat.SAV, ScientificDatasetFileHandlerABC),
+            (FileFormat.SYLK, ScientificDatasetFileHandlerABC),
+            (FileFormat.XPT, ScientificDatasetFileHandlerABC),
+            (FileFormat.ZSAV, ScientificDatasetFileHandlerABC),
+            # Placeholder/stubbed module-owned formats
+            (FileFormat.STUB, StubFileHandlerABC),
+            (FileFormat.ACCDB, StubFileHandlerABC),
+            (FileFormat.CFG, StubFileHandlerABC),
+            (FileFormat.CONF, StubFileHandlerABC),
+            (FileFormat.HBS, StubFileHandlerABC),
+            (FileFormat.ION, StubFileHandlerABC),
+            (FileFormat.JINJA2, StubFileHandlerABC),
+            (FileFormat.LOG, StubFileHandlerABC),
+            (FileFormat.MDB, StubFileHandlerABC),
+            (FileFormat.MUSTACHE, StubFileHandlerABC),
+            (FileFormat.NUMBERS, StubFileHandlerABC),
+            (FileFormat.PBF, StubFileHandlerABC),
+            (FileFormat.VM, StubFileHandlerABC),
+            (FileFormat.WKS, StubFileHandlerABC),
+            # Read-only
+            (FileFormat.HDF5, ReadOnlyFileHandlerABC),
+            (FileFormat.SAS7BDAT, ReadOnlyFileHandlerABC),
+            (FileFormat.XLS, ReadOnlyFileHandlerABC),
+        ],
+    )
+    def test_mapped_handler_class_inherits_expected_abc(
+        self,
+        file_format: FileFormat,
+        expected_abc: type[FileHandlerABC],
+    ) -> None:
+        """Test mapped handlers inheriting the expected category ABC."""
+        handler_class = mod.get_handler_class(file_format)
+
+        assert issubclass(handler_class, expected_abc)
 
 
 class TestRegistryMappedResolution:
