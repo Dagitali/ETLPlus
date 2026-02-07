@@ -219,7 +219,7 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONDict:
         """
-        Read XML content from *path*.
+        Read and return XML content from *path*.
 
         Parameters
         ----------
@@ -291,7 +291,7 @@ def read(
     path: StrPath,
 ) -> JSONDict:
     """
-    Read XML content from *path*.
+    Read and return XML content from *path*.
 
     Parameters
     ----------

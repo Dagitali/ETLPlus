@@ -184,7 +184,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read BSON content from *path*.
+        Read and return BSON content from *path*.
 
         Parameters
         ----------
@@ -248,7 +248,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read BSON content from *path*.
+    Read and return BSON content from *path*.
 
     Parameters
     ----------

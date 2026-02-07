@@ -51,7 +51,7 @@ class XlsFile(ReadOnlyFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read XLS content from *path*.
+        Read and return XLS content from *path*.
 
         Parameters
         ----------
@@ -95,7 +95,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read XLS content from *path*.
+    Read and return XLS content from *path*.
 
     Parameters
     ----------

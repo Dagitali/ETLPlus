@@ -65,7 +65,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read FWF content from *path*.
+        Read and return FWF content from *path*.
 
         Parameters
         ----------
@@ -115,7 +115,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to FWF file at *path* and return record count.
+        Write *data* to FWF at *path* and return record count.
 
         Parameters
         ----------
@@ -205,7 +205,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read FWF content from *path*.
+    Read and return FWF content from *path*.
 
     Parameters
     ----------
@@ -225,7 +225,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to FWF file at *path* and return record count.
+    Write *data* to FWF at *path* and return record count.
 
     Parameters
     ----------

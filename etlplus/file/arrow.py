@@ -89,7 +89,7 @@ class ArrowFile(ColumnarFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read ARROW content from *path*.
+        Read and return ARROW content from *path*.
 
         Parameters
         ----------
@@ -224,7 +224,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ARROW content from *path*.
+    Read and return ARROW content from *path*.
 
     Parameters
     ----------

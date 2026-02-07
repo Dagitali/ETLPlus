@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read VM content from *path*.
+    Read and return VM content from *path*.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to VM file at *path* and return record count.
+    Write *data* to VM at *path* and return record count.
 
     Parameters
     ----------

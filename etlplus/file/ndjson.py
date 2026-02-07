@@ -69,7 +69,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read NDJSON content from *path*.
+        Read and return NDJSON content from *path*.
 
         Parameters
         ----------
@@ -111,7 +111,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to NDJSON at *path*.
+        Write *data* to NDJSON at *path* and return record count.
 
         Parameters
         ----------
@@ -219,7 +219,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read NDJSON content from *path*.
+    Read and return NDJSON content from *path*.
 
     Parameters
     ----------
@@ -239,7 +239,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NDJSON at *path*.
+    Write *data* to NDJSON at *path* and return record count.
 
     Parameters
     ----------

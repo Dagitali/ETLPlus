@@ -67,7 +67,7 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read PROPERTIES content from *path*.
+        Read and return PROPERTIES content from *path*.
 
         Parameters
         ----------
@@ -218,7 +218,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read PROPERTIES content from *path*.
+    Read and return PROPERTIES content from *path*.
 
     Parameters
     ----------

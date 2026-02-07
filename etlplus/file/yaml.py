@@ -120,7 +120,7 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read YAML content from *path*.
+        Read and return YAML content from *path*.
 
         Validates that the YAML root is a dict or a list of dicts.
 
@@ -149,7 +149,7 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* as YAML to *path* and return record count.
+        Write *data* to YAML at *path* and return record count.
 
         Parameters
         ----------
@@ -191,7 +191,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read YAML content from *path*.
+    Read and return YAML content from *path*.
 
     Validates that the YAML root is a dict or a list of dicts.
 
@@ -213,7 +213,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* as YAML to *path* and return record count.
+    Write *data* to YAML at *path* and return record count.
 
     Parameters
     ----------

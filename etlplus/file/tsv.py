@@ -67,7 +67,7 @@ class TsvFile(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read TSV content from *path*.
+        Read and return TSV content from *path*.
 
         Parameters
         ----------
@@ -186,7 +186,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read TSV content from *path*.
+    Read and return TSV content from *path*.
 
     Parameters
     ----------

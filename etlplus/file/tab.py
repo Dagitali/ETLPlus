@@ -68,7 +68,7 @@ class TabFile(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read TAB content from *path*.
+        Read and return TAB content from *path*.
 
         Parameters
         ----------
@@ -92,7 +92,7 @@ class TabFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to TAB file at *path* and return record count.
+        Write *data* to TAB at *path* and return record count.
 
         Parameters
         ----------
@@ -187,7 +187,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read TAB content from *path*.
+    Read and return TAB content from *path*.
 
     Parameters
     ----------
@@ -207,7 +207,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TAB file at *path* and return record count.
+    Write *data* to TAB at *path* and return record count.
 
     Parameters
     ----------

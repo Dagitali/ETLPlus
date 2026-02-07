@@ -63,7 +63,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ION content from *path*.
+    Read and return ION content from *path*.
 
     Parameters
     ----------

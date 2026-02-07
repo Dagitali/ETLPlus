@@ -69,7 +69,7 @@ class OrcFile(ColumnarFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read ORC content from *path*.
+        Read and return ORC content from *path*.
 
         Parameters
         ----------
@@ -222,7 +222,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ORC content from *path*.
+    Read and return ORC content from *path*.
 
     Parameters
     ----------

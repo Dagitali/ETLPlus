@@ -66,7 +66,7 @@ class CsvFile(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read CSV content from *path*.
+        Read and return CSV content from *path*.
 
         Parameters
         ----------
@@ -185,7 +185,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read CSV content from *path*.
+    Read and return CSV content from *path*.
 
     Parameters
     ----------

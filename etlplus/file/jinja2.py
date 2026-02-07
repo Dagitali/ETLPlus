@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read JINJA2 content from *path*.
+    Read and return JINJA2 content from *path*.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to JINJA2 file at *path* and return record count.
+    Write *data* to JINJA2 at *path* and return record count.
 
     Parameters
     ----------

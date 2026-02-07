@@ -67,7 +67,7 @@ class PsvFile(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read PSV content from *path*.
+        Read and return PSV content from *path*.
 
         Parameters
         ----------
@@ -91,7 +91,7 @@ class PsvFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to PSV file at *path* and return record count.
+        Write *data* to PSV at *path* and return record count.
 
         Parameters
         ----------
@@ -186,7 +186,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read PSV content from *path*.
+    Read and return PSV content from *path*.
 
     Parameters
     ----------
@@ -206,7 +206,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PSV file at *path* and return record count.
+    Write *data* to PSV at *path* and return record count.
 
     Parameters
     ----------

@@ -148,7 +148,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read TOML content from *path*.
+        Read and return TOML content from *path*.
 
         Parameters
         ----------
@@ -209,7 +209,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read TOML content from *path*.
+    Read and return TOML content from *path*.
 
     Parameters
     ----------

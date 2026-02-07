@@ -156,7 +156,7 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read INI content from *path*.
+        Read and return INI content from *path*.
 
         Parameters
         ----------
@@ -253,7 +253,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read INI content from *path*.
+    Read and return INI content from *path*.
 
     Parameters
     ----------

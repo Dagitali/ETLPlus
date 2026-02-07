@@ -117,7 +117,7 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read SQLITE content from *path*.
+        Read and return SQLITE content from *path*.
 
         Parameters
         ----------
@@ -276,7 +276,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read SQLITE content from *path*.
+    Read and return SQLITE content from *path*.
 
     Parameters
     ----------

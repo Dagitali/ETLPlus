@@ -118,7 +118,7 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read MsgPack content from *path*.
+        Read and return MsgPack content from *path*.
 
         Parameters
         ----------
@@ -179,7 +179,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read MsgPack content from *path*.
+    Read and return MsgPack content from *path*.
 
     Parameters
     ----------

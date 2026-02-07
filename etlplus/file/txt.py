@@ -62,7 +62,7 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read TXT content from *path*.
+        Read and return TXT content from *path*.
 
         Parameters
         ----------
@@ -197,7 +197,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read TXT content from *path*.
+    Read and return TXT content from *path*.
 
     Parameters
     ----------

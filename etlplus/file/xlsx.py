@@ -54,7 +54,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read XLSX content from *path*.
+        Read and return XLSX content from *path*.
 
         Parameters
         ----------
@@ -208,7 +208,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read XLSX content from *path*.
+    Read and return XLSX content from *path*.
 
     Parameters
     ----------

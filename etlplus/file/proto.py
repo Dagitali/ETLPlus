@@ -113,7 +113,7 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read PROTO content from *path*.
+        Read and return PROTO content from *path*.
 
         Parameters
         ----------
@@ -173,7 +173,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read PROTO content from *path*.
+    Read and return PROTO content from *path*.
 
     Parameters
     ----------

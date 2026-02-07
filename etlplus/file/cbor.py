@@ -118,7 +118,7 @@ class CborFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read CBOR content from *path*.
+        Read and return CBOR content from *path*.
 
         Parameters
         ----------
@@ -143,7 +143,7 @@ class CborFile(BinarySerializationFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to CBOR file at *path* and return record count.
+        Write *data* to CBOR at *path* and return record count.
 
         Parameters
         ----------
@@ -179,7 +179,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read CBOR content from *path*.
+    Read and return CBOR content from *path*.
 
     Parameters
     ----------
@@ -199,7 +199,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CBOR file at *path* and return record count.
+    Write *data* to CBOR at *path* and return record count.
 
     Parameters
     ----------

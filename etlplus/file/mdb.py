@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read MDB content from *path*.
+    Read and return MDB content from *path*.
 
     Parameters
     ----------

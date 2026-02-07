@@ -65,7 +65,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read CONF content from *path*.
+    Read and return CONF content from *path*.
 
     Parameters
     ----------

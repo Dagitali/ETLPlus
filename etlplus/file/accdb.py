@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ACCDB content from *path*.
+    Read and return ACCDB content from *path*.
 
     Parameters
     ----------

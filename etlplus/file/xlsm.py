@@ -67,7 +67,7 @@ class XlsmFile(SpreadsheetFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read XLSM content from *path*.
+        Read and return XLSM content from *path*.
 
         Parameters
         ----------
@@ -134,7 +134,7 @@ class XlsmFile(SpreadsheetFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to XLSM file at *path* and return record count.
+        Write *data* to XLSM at *path* and return record count.
 
         Parameters
         ----------
@@ -220,7 +220,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read XLSM content from *path*.
+    Read and return XLSM content from *path*.
 
     Parameters
     ----------
@@ -240,7 +240,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to XLSM file at *path* and return record count.
+    Write *data* to XLSM at *path* and return record count.
 
     Parameters
     ----------

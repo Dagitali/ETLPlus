@@ -113,7 +113,7 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read DUCKDB content from *path*.
+        Read and return DUCKDB content from *path*.
 
         Parameters
         ----------
@@ -278,7 +278,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read DUCKDB content from *path*.
+    Read and return DUCKDB content from *path*.
 
     Parameters
     ----------

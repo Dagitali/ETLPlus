@@ -68,7 +68,7 @@ class ParquetFile(ColumnarFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read Parquet content from *path*.
+        Read and return Parquet content from *path*.
 
         Parameters
         ----------
@@ -245,7 +245,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read Parquet content from *path*.
+    Read and return Parquet content from *path*.
 
     Parameters
     ----------

@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read CFG content from *path*.
+    Read and return CFG content from *path*.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CFG file at *path* and return record count.
+    Write *data* to CFG at *path* and return record count.
 
     Parameters
     ----------

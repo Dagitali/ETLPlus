@@ -64,7 +64,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read HBS content from *path*.
+    Read and return HBS content from *path*.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to HBS file at *path* and return record count.
+    Write *data* to HBS at *path* and return record count.
 
     Parameters
     ----------

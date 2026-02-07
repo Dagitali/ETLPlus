@@ -113,7 +113,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read JSON content from *path*.
+        Read and return JSON content from *path*.
 
         Parameters
         ----------
@@ -140,7 +140,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* as formatted JSON to *path*.
+        Write *data* to JSON at *path* and return record count.
 
         Parameters
         ----------
@@ -182,7 +182,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read JSON content from *path*.
+    Read and return JSON content from *path*.
 
     Validates that the JSON root is a dict or a list of dicts.
 
@@ -204,7 +204,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* as formatted JSON to *path*.
+    Write *data* to JSON at *path* and return record count.
 
     Parameters
     ----------

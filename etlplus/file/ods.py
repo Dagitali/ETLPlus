@@ -67,7 +67,7 @@ class OdsFile(SpreadsheetFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read ODS content from *path*.
+        Read and return ODS content from *path*.
 
         Parameters
         ----------
@@ -139,7 +139,7 @@ class OdsFile(SpreadsheetFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to ODS file at *path* and return record count.
+        Write *data* to ODS at *path* and return record count.
 
         Parameters
         ----------
@@ -231,7 +231,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ODS content from *path*.
+    Read and return ODS content from *path*.
 
     Parameters
     ----------
@@ -251,7 +251,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ODS file at *path* and return record count.
+    Write *data* to ODS at *path* and return record count.
 
     Parameters
     ----------

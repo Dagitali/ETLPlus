@@ -117,7 +117,7 @@ class PbFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read PB content from *path*.
+        Read and return PB content from *path*.
 
         Parameters
         ----------
@@ -178,7 +178,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read PB content from *path*.
+    Read and return PB content from *path*.
 
     Parameters
     ----------

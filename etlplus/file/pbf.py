@@ -63,7 +63,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read PBF content from *path*.
+    Read and return PBF content from *path*.
 
     Parameters
     ----------

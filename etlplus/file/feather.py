@@ -69,7 +69,7 @@ class FeatherFile(ColumnarFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read Feather content from *path*.
+        Read and return Feather content from *path*.
 
         Parameters
         ----------
@@ -222,7 +222,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read Feather content from *path*.
+    Read and return Feather content from *path*.
 
     Parameters
     ----------

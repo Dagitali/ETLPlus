@@ -61,7 +61,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read NUMBERS content from *path*.
+    Read and return NUMBERS content from *path*.
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NUMBERS file at *path* and return record count.
+    Write *data* to NUMBERS at *path* and return record count.
 
     Parameters
     ----------

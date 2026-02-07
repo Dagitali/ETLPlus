@@ -209,7 +209,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read AVRO content from *path*.
+        Read and return AVRO content from *path*.
 
         Parameters
         ----------
@@ -282,7 +282,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read AVRO content from *path*.
+    Read and return AVRO content from *path*.
 
     Parameters
     ----------

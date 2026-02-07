@@ -63,7 +63,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read LOG content from *path*.
+    Read and return LOG content from *path*.
 
     Parameters
     ----------

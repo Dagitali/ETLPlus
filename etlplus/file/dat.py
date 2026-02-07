@@ -172,7 +172,7 @@ class DatFile(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read DAT content from *path*.
+        Read and return DAT content from *path*.
 
         Parameters
         ----------
@@ -196,7 +196,7 @@ class DatFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to DAT file at *path* and return record count.
+        Write *data* to DAT at *path* and return record count.
 
         Parameters
         ----------
@@ -325,7 +325,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read DAT content from *path*.
+    Read and return DAT content from *path*.
 
     Parameters
     ----------
@@ -345,7 +345,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to DAT file at *path* and return record count.
+    Write *data* to DAT at *path* and return record count.
 
     Parameters
     ----------
