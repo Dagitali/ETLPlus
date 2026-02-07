@@ -660,6 +660,29 @@ class TestOptionsContracts:
             == 'ascii'
         )
 
+    def test_extra_option_helpers_use_override_then_default(self) -> None:
+        """Test extras helpers using explicit values then defaults."""
+        handler = _ReadOnlyStub()
+
+        assert handler.read_extra_option(None, 'foo') is None
+        assert handler.write_extra_option(None, 'foo') is None
+        assert handler.read_extra_option(None, 'foo', default='x') == 'x'
+        assert handler.write_extra_option(None, 'foo', default='y') == 'y'
+        assert (
+            handler.read_extra_option(
+                ReadOptions(extras={'foo': 1}),
+                'foo',
+            )
+            == 1
+        )
+        assert (
+            handler.write_extra_option(
+                WriteOptions(extras={'foo': 2}),
+                'foo',
+            )
+            == 2
+        )
+
     def test_inner_name_option_helpers_use_override_then_default(self) -> None:
         """
         Test archive option helpers using explicit then default inner name.
