@@ -199,7 +199,8 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
             options,
             default=self.default_table,
         )
-        assert table is not None
+        if table is None:  # pragma: no cover - guarded by default
+            raise ValueError('SQLITE write requires a table name')
         ensure_parent_dir(path)
         conn = self.connect(path)
         try:
