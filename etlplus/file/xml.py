@@ -137,7 +137,7 @@ def _element_to_dict(
     return result
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
 class XmlFile(SemiStructuredTextFileHandlerABC):
