@@ -24,9 +24,10 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ._io import coerce_path
-from ._io import ensure_parent_dir
+from ._io import read_text
 from ._io import require_dict_payload
 from ._io import stringify_value
+from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -112,7 +113,10 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
             The structured data read from the PROPERTIES file.
         """
         encoding = self.encoding_from_read_options(options)
-        return _parse_properties_text(path.read_text(encoding=encoding))
+        return self.loads(
+            read_text(path, encoding=encoding),
+            options=options,
+        )
 
     def write(
         self,
@@ -139,11 +143,11 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
             The number of records written to the PROPERTIES file.
         """
         encoding = self.encoding_from_write_options(options)
-        payload = require_dict_payload(data, format_name='PROPERTIES')
-        ensure_parent_dir(path)
-        with path.open('w', encoding=encoding, newline='') as handle:
-            for key in sorted(payload.keys()):
-                handle.write(f'{key}={stringify_value(payload[key])}\n')
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+        )
         return 1
 
     def dumps(
