@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
 class RdaFile(ScientificDatasetFileHandlerABC):
@@ -105,7 +105,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         JSONData
             The structured data read from the RDA file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def read_dataset(
@@ -185,7 +185,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         int
             The number of rows written to the RDA file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_write_options(options)
         return self.write_dataset(
             path,
             data,
