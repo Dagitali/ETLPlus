@@ -539,27 +539,97 @@ class TestNamingConventions:
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
+    def test_dataset_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test scientific dataset helpers using explicit then default dataset.
+        """
+        handler = DtaFile()
+
+        assert handler.dataset_from_read_options(None) is None
+        assert handler.dataset_from_write_options(None) is None
+        assert (
+            handler.dataset_from_read_options(
+                ReadOptions(dataset='features'),
+            )
+            == 'features'
+        )
+        assert (
+            handler.dataset_from_write_options(
+                WriteOptions(dataset='labels'),
+            )
+            == 'labels'
+        )
+
+        assert (
+            handler.resolve_read_dataset(
+                None,
+                options=ReadOptions(dataset='features'),
+            )
+            == 'features'
+        )
+        assert (
+            handler.resolve_write_dataset(
+                None,
+                options=WriteOptions(dataset='labels'),
+            )
+            == 'labels'
+        )
+        assert (
+            handler.resolve_read_dataset(
+                'explicit',
+                options=ReadOptions(dataset='ignored'),
+            )
+            == 'explicit'
+        )
+        assert (
+            handler.resolve_write_dataset(
+                'explicit',
+                options=WriteOptions(dataset='ignored'),
+            )
+            == 'explicit'
+        )
+        assert (
+            handler.resolve_read_dataset(None, default='fallback')
+            == 'fallback'
+        )
+        assert (
+            handler.resolve_write_dataset(None, default='fallback')
+            == 'fallback'
+        )
+
     def test_encoding_option_helpers_use_override_then_default(self) -> None:
         """Test encoding helpers using explicit values then defaults."""
         handler = _ReadOnlyStub()
 
         assert handler.encoding_from_read_options(None) == 'utf-8'
-        assert handler.encoding_from_read_options(
-            ReadOptions(encoding='latin-1'),
-        ) == 'latin-1'
-        assert handler.encoding_from_read_options(
-            None,
-            default='utf-16',
-        ) == 'utf-16'
+        assert (
+            handler.encoding_from_read_options(
+                ReadOptions(encoding='latin-1'),
+            )
+            == 'latin-1'
+        )
+        assert (
+            handler.encoding_from_read_options(
+                None,
+                default='utf-16',
+            )
+            == 'utf-16'
+        )
 
         assert handler.encoding_from_write_options(None) == 'utf-8'
-        assert handler.encoding_from_write_options(
-            WriteOptions(encoding='utf-16'),
-        ) == 'utf-16'
-        assert handler.encoding_from_write_options(
-            None,
-            default='ascii',
-        ) == 'ascii'
+        assert (
+            handler.encoding_from_write_options(
+                WriteOptions(encoding='utf-16'),
+            )
+            == 'utf-16'
+        )
+        assert (
+            handler.encoding_from_write_options(
+                None,
+                default='ascii',
+            )
+            == 'ascii'
+        )
 
     def test_inner_name_option_helpers_use_override_then_default(self) -> None:
         """
@@ -569,12 +639,18 @@ class TestOptionsContracts:
 
         assert handler.inner_name_from_read_options(None) is None
         assert handler.inner_name_from_write_options(None) is None
-        assert handler.inner_name_from_read_options(
-            ReadOptions(inner_name='data.json'),
-        ) == 'data.json'
-        assert handler.inner_name_from_write_options(
-            WriteOptions(inner_name='payload.csv'),
-        ) == 'payload.csv'
+        assert (
+            handler.inner_name_from_read_options(
+                ReadOptions(inner_name='data.json'),
+            )
+            == 'data.json'
+        )
+        assert (
+            handler.inner_name_from_write_options(
+                WriteOptions(inner_name='payload.csv'),
+            )
+            == 'payload.csv'
+        )
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """Test each ReadOptions instance getting its own extras dict."""
@@ -590,13 +666,19 @@ class TestOptionsContracts:
         handler = _ReadOnlyStub()
 
         assert handler.root_tag_from_write_options(None) == 'root'
-        assert handler.root_tag_from_write_options(
-            WriteOptions(root_tag='items'),
-        ) == 'items'
-        assert handler.root_tag_from_write_options(
-            None,
-            default='dataset',
-        ) == 'dataset'
+        assert (
+            handler.root_tag_from_write_options(
+                WriteOptions(root_tag='items'),
+            )
+            == 'items'
+        )
+        assert (
+            handler.root_tag_from_write_options(
+                None,
+                default='dataset',
+            )
+            == 'dataset'
+        )
 
     def test_sheet_option_helpers_use_override_then_default(self) -> None:
         """
@@ -606,12 +688,18 @@ class TestOptionsContracts:
 
         assert handler.sheet_from_read_options(None) == 0
         assert handler.sheet_from_write_options(None) == 0
-        assert handler.sheet_from_read_options(
-            ReadOptions(sheet='Sheet2'),
-        ) == 'Sheet2'
-        assert handler.sheet_from_write_options(
-            WriteOptions(sheet=3),
-        ) == 3
+        assert (
+            handler.sheet_from_read_options(
+                ReadOptions(sheet='Sheet2'),
+            )
+            == 'Sheet2'
+        )
+        assert (
+            handler.sheet_from_write_options(
+                WriteOptions(sheet=3),
+            )
+            == 3
+        )
 
     def test_table_option_helpers_use_override_then_default(self) -> None:
         """
@@ -621,12 +709,18 @@ class TestOptionsContracts:
 
         assert handler.table_from_read_options(None) is None
         assert handler.table_from_write_options(None) is None
-        assert handler.table_from_read_options(
-            ReadOptions(table='events'),
-        ) == 'events'
-        assert handler.table_from_write_options(
-            WriteOptions(table='staging'),
-        ) == 'staging'
+        assert (
+            handler.table_from_read_options(
+                ReadOptions(table='events'),
+            )
+            == 'events'
+        )
+        assert (
+            handler.table_from_write_options(
+                WriteOptions(table='staging'),
+            )
+            == 'staging'
+        )
 
     def test_write_options_are_frozen(self) -> None:
         """Test WriteOptions immutability contract."""
