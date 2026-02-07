@@ -26,7 +26,7 @@ from ..types import StrPath
 from . import stub
 from ._io import coerce_path
 from .base import ReadOptions
-from .base import ScientificDatasetFileHandlerABC
+from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -42,10 +42,10 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-class SylkFile(ScientificDatasetFileHandlerABC):
+class SylkFile(SingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for SYLK files.
     """
@@ -56,16 +56,6 @@ class SylkFile(ScientificDatasetFileHandlerABC):
     dataset_key = 'data'
 
     # -- Instance Methods -- #
-
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return available SYLK dataset keys.
-        """
-        _ = path
-        return [self.dataset_key]
 
     def read_dataset(
         self,
@@ -78,10 +68,7 @@ class SylkFile(ScientificDatasetFileHandlerABC):
         Read one dataset from SYLK at *path*.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'SYLK supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
         return stub.read(path, format_name='SYLK')
 
     def read(
@@ -105,7 +92,7 @@ class SylkFile(ScientificDatasetFileHandlerABC):
         JSONList
             The list of dictionaries read from the SYLK file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def write(
@@ -133,7 +120,7 @@ class SylkFile(ScientificDatasetFileHandlerABC):
         int
             The number of rows written to the SYLK file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_write_options(options)
         return self.write_dataset(
             path,
             data,
@@ -153,10 +140,7 @@ class SylkFile(ScientificDatasetFileHandlerABC):
         Write one dataset to SYLK at *path*.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'SYLK supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
         return stub.write(path, data, format_name='SYLK')
 
 
