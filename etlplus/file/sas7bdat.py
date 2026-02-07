@@ -28,6 +28,8 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
+from .base import ScientificDatasetFileHandlerABC
+from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,13 +47,33 @@ __all__ = [
 # SECTION: FUNCTIONS ======================================================== #
 
 
-class Sas7bdatFile(ReadOnlyFileHandlerABC):
+class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
     """
     Read-only handler implementation for SAS7BDAT files.
     """
 
     format = FileFormat.SAS7BDAT
-    category = 'statistical_dataset'
+    dataset_key = 'data'
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return available SAS7BDAT dataset keys.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAS7BDAT file on disk.
+
+        Returns
+        -------
+        list[str]
+            Available dataset keys.
+        """
+        _ = path
+        return [self.dataset_key]
 
     def read(
         self,
@@ -74,7 +96,43 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC):
         JSONList
             The list of dictionaries read from the SAS7BDAT file.
         """
+        dataset = options.dataset if options is not None else None
+        return self.read_dataset(path, dataset=dataset, options=options)
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read one dataset from SAS7BDAT at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAS7BDAT file on disk.
+        dataset : str | None, optional
+            Dataset selector. SAS7BDAT supports a single dataset key.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records.
+
+        Raises
+        ------
+        ValueError
+            If *dataset* is provided and not supported.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'SAS7BDAT supports only dataset key {self.dataset_key!r}',
+            )
         get_dependency('pyreadstat', format_name='SAS7BDAT')
         pandas = get_pandas('SAS7BDAT')
         try:
@@ -82,6 +140,21 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC):
         except TypeError:
             frame = pandas.read_sas(path)
         return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Reject writes for SAS7BDAT while preserving scientific dataset
+        contract.
+        """
+        _ = dataset
+        return self.write(path, data, options=options)
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 
