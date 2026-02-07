@@ -162,7 +162,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
         JSONData
             The structured data read from the TOML file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_read_options(options)
         return self.loads(path.read_text(encoding=encoding), options=options)
 
     def write(
@@ -189,7 +189,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
         int
             The number of records written to the TOML file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         content = self.dumps(data, options=options)
         ensure_parent_dir(path)
         path.write_text(content, encoding=encoding)
