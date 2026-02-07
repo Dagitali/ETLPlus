@@ -28,7 +28,7 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
-from .base import ScientificDatasetFileHandlerABC
+from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -44,10 +44,13 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
+class Sas7bdatFile(
+    ReadOnlyFileHandlerABC,
+    SingleDatasetScientificFileHandlerABC,
+):
     """
     Read-only handler implementation for SAS7BDAT files.
     """
@@ -58,26 +61,6 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
     dataset_key = 'data'
 
     # -- Instance Methods -- #
-
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return available SAS7BDAT dataset keys.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAS7BDAT file on disk.
-
-        Returns
-        -------
-        list[str]
-            Available dataset keys.
-        """
-        _ = path
-        return [self.dataset_key]
 
     def read(
         self,
@@ -100,7 +83,7 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         JSONList
             The list of dictionaries read from the SAS7BDAT file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def read_dataset(
@@ -133,10 +116,7 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If *dataset* is provided and not supported.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'SAS7BDAT supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
         get_dependency('pyreadstat', format_name='SAS7BDAT')
         pandas = get_pandas('SAS7BDAT')
         try:
@@ -157,7 +137,7 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         Reject writes for SAS7BDAT while preserving scientific dataset
         contract.
         """
-        _ = dataset
+        self.validate_single_dataset_key(dataset)
         return self.write(path, data, options=options)
 
 
