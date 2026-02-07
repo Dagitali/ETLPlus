@@ -36,6 +36,21 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _read_payload_as_data(
+    fmt: FileFormat,
+    payload: bytes,
+) -> JSONData:
+    """
+    Parse compressed payload bytes via the core file dispatcher.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
+        tmp_path.write_bytes(payload)
+        from .core import File
+
+        return File(tmp_path, fmt).read()
+
+
 def _resolve_format(
     path: StrPath,
 ) -> FileFormat:
@@ -65,6 +80,21 @@ def _resolve_format(
             f'Cannot infer file format from compressed file {path!r}',
         )
     return fmt
+
+
+def _write_data_as_payload(
+    fmt: FileFormat,
+    data: JSONData,
+) -> tuple[int, bytes]:
+    """
+    Serialize data to payload bytes via the core file dispatcher.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
+        from .core import File
+
+        count = File(tmp_path, fmt).write(data)
+        return count, tmp_path.read_bytes()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -103,15 +133,9 @@ class GzFile(ArchiveWrapperFileHandlerABC):
         JSONData
             Parsed payload.
         """
-        _ = options
         fmt = _resolve_format(path)
-        payload = self.read_inner_bytes(path)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-            tmp_path.write_bytes(payload)
-            from .core import File
-
-            return File(tmp_path, fmt).read()
+        payload = self.read_inner_bytes(path, options=options)
+        return _read_payload_as_data(fmt, payload)
 
     def read_inner_bytes(
         self,
@@ -162,16 +186,10 @@ class GzFile(ArchiveWrapperFileHandlerABC):
         int
             Number of records written.
         """
-        _ = options
         fmt = _resolve_format(path)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-            from .core import File
+        count, payload = _write_data_as_payload(fmt, data)
 
-            count = File(tmp_path, fmt).write(data)
-            payload = tmp_path.read_bytes()
-
-        self.write_inner_bytes(path, payload)
+        self.write_inner_bytes(path, payload, options=options)
         return count
 
     def write_inner_bytes(
