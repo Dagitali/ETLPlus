@@ -25,7 +25,8 @@ from ..utils import count_records
 from ._imports import get_yaml
 from ._io import coerce_path
 from ._io import coerce_record_payload
-from ._io import ensure_parent_dir
+from ._io import read_text
+from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -79,14 +80,17 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
             Serialized YAML text.
         """
         _ = options
-        return str(
-            get_yaml().safe_dump(
-                data,
-                sort_keys=False,
-                allow_unicode=True,
-                default_flow_style=False,
-            ),
+        from io import StringIO
+
+        stream = StringIO()
+        get_yaml().safe_dump(
+            data,
+            stream,
+            sort_keys=False,
+            allow_unicode=True,
+            default_flow_style=False,
         )
+        return stream.getvalue()
 
     def loads(
         self,
@@ -110,7 +114,9 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
             Parsed payload.
         """
         _ = options
-        loaded = get_yaml().safe_load(text)
+        from io import StringIO
+
+        loaded = get_yaml().safe_load(StringIO(text))
         return coerce_record_payload(loaded, format_name='YAML')
 
     def read(
@@ -137,9 +143,10 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
             The structured data read from the YAML file.
         """
         encoding = self.encoding_from_read_options(options)
-        with path.open('r', encoding=encoding) as handle:
-            loaded = get_yaml().safe_load(handle)
-        return coerce_record_payload(loaded, format_name='YAML')
+        return self.loads(
+            read_text(path, encoding=encoding),
+            options=options,
+        )
 
     def write(
         self,
@@ -166,15 +173,11 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
             The number of records written.
         """
         encoding = self.encoding_from_write_options(options)
-        ensure_parent_dir(path)
-        with path.open('w', encoding=encoding) as handle:
-            get_yaml().safe_dump(
-                data,
-                handle,
-                sort_keys=False,
-                allow_unicode=True,
-                default_flow_style=False,
-            )
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+        )
         return count_records(data)
 
 
