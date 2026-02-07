@@ -16,7 +16,14 @@ from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOptions
+from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.file.dta import DtaFile
+from etlplus.file.nc import NcFile
+from etlplus.file.rda import RdaFile
+from etlplus.file.rds import RdsFile
+from etlplus.file.sav import SavFile
+from etlplus.file.xpt import XptFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
 
@@ -88,26 +95,6 @@ class _ReadOnlyStub(ReadOnlyFileHandlerABC):
 # SECTION: TESTS ============================================================ #
 
 
-class TestOptionsContracts:
-    """Unit tests for base option data classes."""
-
-    def test_read_options_use_independent_extras_dicts(self) -> None:
-        """Test each ReadOptions instance getting its own extras dict."""
-        first = ReadOptions()
-        second = ReadOptions()
-
-        assert not first.extras
-        assert not second.extras
-        assert first.extras is not second.extras
-
-    def test_write_options_are_frozen(self) -> None:
-        """Test WriteOptions immutability contract."""
-        options = WriteOptions()
-
-        with pytest.raises(FrozenInstanceError):
-            options.encoding = 'latin-1'  # type: ignore[misc]
-
-
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
@@ -162,3 +149,67 @@ class TestBaseAbcContracts:
         assert handler.category == 'tabular_delimited_text'
         assert handler.read(Path('ignored.csv')) == [{'id': 1}]
         assert handler.write(Path('ignored.csv'), [{'id': 1}, {'id': 2}]) == 2
+
+
+class TestOptionsContracts:
+    """Unit tests for base option data classes."""
+
+    def test_read_options_use_independent_extras_dicts(self) -> None:
+        """Test each ReadOptions instance getting its own extras dict."""
+        first = ReadOptions()
+        second = ReadOptions()
+
+        assert not first.extras
+        assert not second.extras
+        assert first.extras is not second.extras
+
+    def test_write_options_are_frozen(self) -> None:
+        """Test WriteOptions immutability contract."""
+        options = WriteOptions()
+
+        with pytest.raises(FrozenInstanceError):
+            options.encoding = 'latin-1'  # type: ignore[misc]
+
+
+class TestScientificDatasetContracts:
+    """Unit tests for scientific dataset handler contracts."""
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            DtaFile,
+            NcFile,
+            RdaFile,
+            RdsFile,
+            SavFile,
+            XptFile,
+        ],
+    )
+    def test_handlers_use_scientific_dataset_abc(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test key scientific handlers inheriting ScientificDataset ABC."""
+        assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+        assert handler_cls.dataset_key == 'data'
+
+    @pytest.mark.parametrize(
+        ('handler', 'path'),
+        [
+            (DtaFile(), Path('ignored.dta')),
+            (NcFile(), Path('ignored.nc')),
+            (SavFile(), Path('ignored.sav')),
+            (XptFile(), Path('ignored.xpt')),
+        ],
+    )
+    def test_single_dataset_handlers_reject_unknown_dataset_key(
+        self,
+        handler: ScientificDatasetFileHandlerABC,
+        path: Path,
+    ) -> None:
+        """Test single-dataset scientific handlers rejecting unknown keys."""
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read_dataset(path, dataset='unknown')
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write_dataset(path, [], dataset='unknown')
