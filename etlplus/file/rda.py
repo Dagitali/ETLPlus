@@ -202,7 +202,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write one dataset to RDA at *path*.
+        Write one dataset to RDA at *path* and return record count.
 
         Parameters
         ----------
