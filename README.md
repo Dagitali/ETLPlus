@@ -185,6 +185,26 @@ Recognized file formats are listed in the tables below. Support for reading to o
 - **Y**: implemented (may require optional dependencies)
 - **N**: stubbed or not yet implemented
 
+**Handler Architecture**
+
+- File IO is moving to class-based handlers rooted at `etlplus/file/base.py` (`FileHandlerABC`,
+  category ABCs, and `ReadOnlyFileHandlerABC`).
+- `etlplus/file/registry.py` resolves handlers using an explicit `FileFormat -> handler class` map
+  first.
+- A module-adapter fallback still exists temporarily for unmigrated formats, but explicit registry
+  entries are the default path.
+
+**Current Migration Coverage (Class-Based + Explicit Registry Mapping)**
+
+- Delimited/text: `csv`, `dat`, `fwf`, `psv`, `tab`, `tsv`, `txt`
+- Semi-structured/config: `ini`, `json`, `ndjson`, `properties`, `toml`, `xml`, `yaml`
+- Columnar: `arrow`, `feather`, `orc`, `parquet`
+- Binary/interchange: `bson`, `cbor`, `msgpack`, `pb`, `proto`
+- Embedded DB: `duckdb`, `sqlite`
+- Spreadsheets: `ods`, `xls`, `xlsm`, `xlsx`
+- Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), `mat`/`sylk`/`zsav` (placeholders via stub strategy)
+- Archive wrappers: `gz`, `zip`
+
 #### Stubbed / Placeholder
 
 | Format | Read | Write | Description |
