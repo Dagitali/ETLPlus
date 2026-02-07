@@ -88,7 +88,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         TypeError
             If any line in the NDJSON file is not a JSON object (dict).
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_read_options(options)
         rows: JSONList = []
         with path.open('r', encoding=encoding) as handle:
             for idx, line in enumerate(handle, start=1):
@@ -130,7 +130,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         rows = normalize_records(data, 'NDJSON')
         if not rows:
             return 0
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding) as handle:
             for row in rows:
