@@ -25,8 +25,8 @@ from ..utils import count_records
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from .base import FileHandlerABC
 from .base import ReadOptions
+from .base import TextFixedWidthFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -44,7 +44,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class TxtFile(FileHandlerABC):
+class TxtFile(TextFixedWidthFileHandlerABC):
     """
     Handler implementation for TXT files.
     """
@@ -52,7 +52,6 @@ class TxtFile(FileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.TXT
-    category = 'plain_text'
 
     # -- Instance Methods -- #
 
@@ -77,7 +76,34 @@ class TxtFile(FileHandlerABC):
         JSONList
             The list of dictionaries read from the TXT file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        return self.read_rows(path, options=options)
+
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read row records from TXT content at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the TXT file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries parsed from the TXT file.
+        """
+        encoding = (
+            options.encoding
+            if options is not None
+            else self.default_encoding
+        )
         rows: JSONList = []
         with path.open('r', encoding=encoding) as handle:
             for line in handle:
@@ -110,18 +136,48 @@ class TxtFile(FileHandlerABC):
         -------
         int
             Number of records written.
+        """
+        rows = normalize_records(data, 'TXT')
+        return self.write_rows(path, rows, options=options)
+
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write row records to TXT at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the TXT file on disk.
+        rows : JSONList
+            Rows to write. Expects ``{'text': '...'} `` records.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
 
         Raises
         ------
         TypeError
-            If any item in *data* is not a dictionary or if any dictionary
+            If any dictionary
             does not contain a ``'text'`` key.
         """
-        rows = normalize_records(data, 'TXT')
         if not rows:
             return 0
 
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = (
+            options.encoding
+            if options is not None
+            else self.default_encoding
+        )
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding) as handle:
             for row in rows:
