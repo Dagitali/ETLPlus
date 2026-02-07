@@ -476,7 +476,7 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
     quotechar: ClassVar[str] = '"'
     has_header: ClassVar[bool] = True
 
-    # -- Instance Methods -- #
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def read_rows(
@@ -500,6 +500,68 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         """
         Write delimited *rows* to *path*.
         """
+
+    # -- Instance Methods -- #
+
+    def delimiter_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str:
+        """
+        Extract delimiter override from read options.
+
+        Parameters
+        ----------
+        options : ReadOptions | None
+            Optional read parameters.
+        default : str | None, optional
+            Fallback delimiter when no override is provided. When omitted,
+            :attr:`delimiter` is used.
+
+        Returns
+        -------
+        str
+            Effective delimiter.
+        """
+        if options is not None:
+            override = options.extras.get('delimiter')
+            if override is not None:
+                return str(override)
+        if default is not None:
+            return default
+        return self.delimiter
+
+    def delimiter_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str:
+        """
+        Extract delimiter override from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Optional write parameters.
+        default : str | None, optional
+            Fallback delimiter when no override is provided. When omitted,
+            :attr:`delimiter` is used.
+
+        Returns
+        -------
+        str
+            Effective delimiter.
+        """
+        if options is not None:
+            override = options.extras.get('delimiter')
+            if override is not None:
+                return str(override)
+        if default is not None:
+            return default
+        return self.delimiter
 
 
 class TextFixedWidthFileHandlerABC(FileHandlerABC):
