@@ -206,8 +206,8 @@ Recognized file formats are listed in the tables below. Support for reading to o
 - Spreadsheets: `ods`, `xls`, `xlsm`, `xlsx`
 - Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), `mat`/`sylk`/`zsav` (placeholders via stub strategy)
 - Archive wrappers: `gz`, `zip`
-- Explicit stub-handler mappings: `stub`, `accdb`, `cfg`, `conf`, `hbs`, `ion`, `jinja2`, `log`,
-  `mdb`, `mustache`, `numbers`, `pbf`, `vm`, `wks`
+- Explicit module-owned stub handlers: `stub`, `accdb`, `cfg`, `conf`, `hbs`, `ion`, `jinja2`,
+  `log`, `mdb`, `mustache`, `numbers`, `pbf`, `vm`, `wks`
 
 #### Stubbed / Placeholder
 
