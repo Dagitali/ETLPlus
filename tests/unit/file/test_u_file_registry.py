@@ -296,18 +296,18 @@ class TestRegistryMappedResolution:
         assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
 
 
-class TestRegistryModuleAdapterFallback:
-    """Unit tests for module-adapter fallback resolution."""
+class TestRegistryModuleAdapterDeprecation:
+    """Unit tests for deprecated module-adapter fallback behavior."""
 
     # pylint: disable=protected-access
 
-    def test_fallback_builds_module_adapter_and_delegates_calls(
+    def test_deprecated_fallback_builds_module_adapter_and_delegates_calls(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test fallback building a module-adapter class and delegating
-        read/write.
+        Test deprecated fallback path building a module-adapter class and
+        delegating read/write.
         """
         calls: dict[str, object] = {}
 
@@ -338,10 +338,11 @@ class TestRegistryModuleAdapterFallback:
             lambda _fmt: fake_module,
         )
 
-        handler_class = mod.get_handler_class(
-            FileFormat.GZ,
-            allow_module_adapter_fallback=True,
-        )
+        with pytest.warns(DeprecationWarning, match='deprecated'):
+            handler_class = mod.get_handler_class(
+                FileFormat.GZ,
+                allow_module_adapter_fallback=True,
+            )
 
         assert issubclass(handler_class, FileHandlerABC)
         assert handler_class.category == 'module_adapter'
@@ -381,13 +382,12 @@ class TestRegistryUnsupportedFormat:
         with pytest.raises(ValueError, match='Unsupported format'):
             mod.get_handler_class(FileFormat.GZ)
 
-    def test_get_handler_class_raises_for_missing_module_with_fallback_enabled(
+    def test_module_adapter_builder_raises_for_missing_module(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test unsupported-format error wrapping when fallback module import
-        fails.
+        Test module-adapter builder raising when module import fails.
         """
 
         def _raise_module_not_found(_file_format: FileFormat) -> object:
@@ -400,8 +400,5 @@ class TestRegistryUnsupportedFormat:
         )
         monkeypatch.setattr(mod, '_module_for_format', _raise_module_not_found)
 
-        with pytest.raises(ValueError, match='Unsupported format'):
-            mod.get_handler_class(
-                FileFormat.GZ,
-                allow_module_adapter_fallback=True,
-            )
+        with pytest.raises(ModuleNotFoundError, match='missing test module'):
+            mod._module_adapter_class_for_format(FileFormat.GZ)
