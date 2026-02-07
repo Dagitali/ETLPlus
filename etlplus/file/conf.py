@@ -20,20 +20,61 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'ConfFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class ConfFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for CONF files.
+    """
+
+    format = FileFormat.CONF
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        return super().read(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        return super().write(path, data, options=options)
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_CONF_HANDLER = ConfFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -55,7 +96,7 @@ def read(
     JSONList
         The list of dictionaries read from the CONF file.
     """
-    return stub.read(path, format_name='CONF')
+    return _CONF_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -78,5 +119,4 @@ def write(
     int
         The number of rows written to the CONF file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='CONF')
+    return _CONF_HANDLER.write(coerce_path(path), data)
