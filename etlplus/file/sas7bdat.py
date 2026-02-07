@@ -94,14 +94,14 @@ class Sas7bdatFile(
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read one dataset from SAS7BDAT at *path*.
+        Read and return one dataset from SAS7BDAT at *path*.
 
         Parameters
         ----------
         path : Path
             Path to the SAS7BDAT file on disk.
         dataset : str | None, optional
-            Dataset selector. SAS7BDAT supports a single dataset key.
+            Dataset selector. Use the default dataset key or ``None``.
         options : ReadOptions | None, optional
             Optional read parameters.
 
@@ -109,11 +109,6 @@ class Sas7bdatFile(
         -------
         JSONList
             Parsed records.
-
-        Raises
-        ------
-        ValueError
-            If *dataset* is provided and not supported.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
