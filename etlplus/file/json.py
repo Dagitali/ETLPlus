@@ -127,7 +127,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         JSONData
             The structured data read from the JSON file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_read_options(options)
         with path.open('r', encoding=encoding) as handle:
             loaded = json.load(handle)
         return coerce_record_payload(loaded, format_name='JSON')
@@ -156,7 +156,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         int
             The number of records written to the JSON file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding) as handle:
             json.dump(
