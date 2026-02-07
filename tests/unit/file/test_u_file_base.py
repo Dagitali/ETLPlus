@@ -17,6 +17,7 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
+from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
@@ -300,3 +301,19 @@ class TestScientificDatasetContracts:
 
         with pytest.raises(ValueError, match='supports only dataset key'):
             handler.write_dataset(path, [], dataset='unknown')
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            DtaFile,
+            NcFile,
+            SavFile,
+            XptFile,
+        ],
+    )
+    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test single-dataset scientific handlers using subtype contract."""
+        assert issubclass(handler_cls, SingleDatasetScientificFileHandlerABC)
