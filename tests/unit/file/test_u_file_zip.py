@@ -14,6 +14,7 @@ import pytest
 from etlplus.file import core
 from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 from etlplus.file.enums import FileFormat
 
 # SECTION: HELPERS ========================================================== #
@@ -181,16 +182,6 @@ class TestZipRead:
 class TestZipWrite:
     """Unit tests for :func:`etlplus.file.zip.write`."""
 
-    def test_write_requires_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing requires an inner file format."""
-        path = tmp_path / 'payload.zip'
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.write(path, [{'id': 1}])
-
     def test_write_creates_zip_with_inner_payload(
         self,
         tmp_path: Path,
@@ -206,3 +197,33 @@ class TestZipWrite:
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['payload.json']
             assert archive.read('payload.json') == b'payload'
+
+    def test_write_requires_inner_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing requires an inner file format."""
+        path = tmp_path / 'payload.zip'
+
+        with pytest.raises(ValueError, match='Cannot infer file format'):
+            mod.write(path, [{'id': 1}])
+
+    def test_write_supports_nested_inner_name(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that writing supports nested archive member names."""
+        monkeypatch.setattr(core, 'File', _StubFile)
+        path = tmp_path / 'payload.json.zip'
+
+        written = mod.ZipFile().write(
+            path,
+            [{'id': 1}],
+            options=WriteOptions(inner_name='nested/payload.json'),
+        )
+
+        assert written == 1
+        with zipfile.ZipFile(path, 'r') as archive:
+            assert archive.namelist() == ['nested/payload.json']
+            assert archive.read('nested/payload.json') == b'payload'
