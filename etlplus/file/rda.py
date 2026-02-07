@@ -18,6 +18,8 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
@@ -27,15 +29,224 @@ from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._r import coerce_r_object
+from .base import ReadOptions
+from .base import ScientificDatasetFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'RdaFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class RdaFile(ScientificDatasetFileHandlerABC):
+    """
+    Handler implementation for RDA files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.RDA
+    dataset_key = 'data'
+
+    # -- Instance Methods -- #
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return available dataset keys in an RDA container.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the RDA file on disk.
+
+        Returns
+        -------
+        list[str]
+            Available dataset keys.
+        """
+        pyreadr = get_dependency('pyreadr', format_name='RDA')
+        result = pyreadr.read_r(str(path))
+        if not result:
+            return [self.dataset_key]
+        return [str(key) for key in result]
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read RDA content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the RDA file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            The structured data read from the RDA file.
+        """
+        return self.read_dataset(path, options=options)
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read one dataset (or all datasets) from RDA at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the RDA file on disk.
+        dataset : str | None, optional
+            Dataset key to select. If omitted, all objects are returned.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed dataset payload.
+
+        Raises
+        ------
+        ValueError
+            If an explicit dataset key is not present.
+        """
+        dataset = self.resolve_read_dataset(dataset, options=options)
+        pyreadr = get_dependency('pyreadr', format_name='RDA')
+        pandas = get_pandas('RDA')
+        result = pyreadr.read_r(str(path))
+        if not result:
+            return []
+
+        if dataset is not None:
+            if dataset in result:
+                return coerce_r_object(result[dataset], pandas)
+            if dataset == self.dataset_key and len(result) == 1:
+                value = next(iter(result.values()))
+                return coerce_r_object(value, pandas)
+            raise ValueError(f'RDA dataset {dataset!r} not found')
+
+        if len(result) == 1:
+            value = next(iter(result.values()))
+            return coerce_r_object(value, pandas)
+        payload: JSONDict = {}
+        for key, value in result.items():
+            payload[str(key)] = coerce_r_object(value, pandas)
+        return payload
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to RDA file at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the RDA file on disk.
+        data : JSONData
+            Data to write as RDA file. Should be a list of dictionaries or a
+            single dictionary.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the RDA file.
+        """
+        return self.write_dataset(path, data, options=options)
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to RDA at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the RDA file on disk.
+        data : JSONData
+            Dataset payload to write.
+        dataset : str | None, optional
+            Target dataset key. Defaults to :attr:`dataset_key`.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+
+        Raises
+        ------
+        ImportError
+            If "pyreadr" is not installed with write support.
+        """
+        dataset = self.resolve_write_dataset(dataset, options=options)
+        pyreadr = get_dependency('pyreadr', format_name='RDA')
+        pandas = get_pandas('RDA')
+        records = normalize_records(data, 'RDA')
+        frame = pandas.DataFrame.from_records(records)
+        count = len(records)
+        target_dataset = dataset if dataset is not None else self.dataset_key
+
+        writer = getattr(pyreadr, 'write_rdata', None) or getattr(
+            pyreadr,
+            'write_rda',
+            None,
+        )
+        if writer is None:
+            raise ImportError(
+                'RDA write support requires "pyreadr" with write_rdata().',
+            )
+
+        ensure_parent_dir(path)
+        try:
+            writer(str(path), frame, df_name=target_dataset)
+        except TypeError:
+            writer(str(path), frame)
+        return count
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_RDA_HANDLER = RdaFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -57,19 +268,7 @@ def read(
     JSONData
         The structured data read from the RDA file.
     """
-    path = coerce_path(path)
-    pyreadr = get_dependency('pyreadr', format_name='RDA')
-    pandas = get_pandas('RDA')
-    result = pyreadr.read_r(str(path))
-    if not result:
-        return []
-    if len(result) == 1:
-        value = next(iter(result.values()))
-        return coerce_r_object(value, pandas)
-    payload: JSONDict = {}
-    for key, value in result.items():
-        payload[str(key)] = coerce_r_object(value, pandas)
-    return payload
+    return _RDA_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -91,32 +290,5 @@ def write(
     -------
     int
         The number of rows written to the RDA file.
-
-    Raises
-    ------
-    ImportError
-        If "pyreadr" is not installed with write support.
     """
-    path = coerce_path(path)
-    pyreadr = get_dependency('pyreadr', format_name='RDA')
-    pandas = get_pandas('RDA')
-    records = normalize_records(data, 'RDA')
-    frame = pandas.DataFrame.from_records(records)
-    count = len(records)
-
-    writer = getattr(pyreadr, 'write_rdata', None) or getattr(
-        pyreadr,
-        'write_rda',
-        None,
-    )
-    if writer is None:
-        raise ImportError(
-            'RDA write support requires "pyreadr" with write_rdata().',
-        )
-
-    ensure_parent_dir(path)
-    try:
-        writer(str(path), frame, df_name='data')
-    except TypeError:
-        writer(str(path), frame)
-    return count
+    return _RDA_HANDLER.write(coerce_path(path), data)

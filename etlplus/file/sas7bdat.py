@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.sas7bdat` module.
 
-Helpers for reading/writing SAS (SAS7BDAT) data files.
+Helpers for reading SAS (SAS7BDAT) data files.
 
 Notes
 -----
@@ -12,29 +12,133 @@ Notes
     - Data exchange with SAS tooling.
 - Rule of thumb:
     - If the file follows the SAS7BDAT specification, use this module for
-        reading and writing.
+        reading.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import coerce_path
+from .base import ReadOnlyFileHandlerABC
+from .base import ReadOptions
+from .base import SingleDatasetScientificFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'Sas7bdatFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class Sas7bdatFile(
+    ReadOnlyFileHandlerABC,
+    SingleDatasetScientificFileHandlerABC,
+):
+    """
+    Read-only handler implementation for SAS7BDAT files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.SAS7BDAT
+    dataset_key = 'data'
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read SAS7BDAT content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAS7BDAT file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the SAS7BDAT file.
+        """
+        return self.read_dataset(path, options=options)
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return one dataset from SAS7BDAT at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAS7BDAT file on disk.
+        dataset : str | None, optional
+            Dataset selector. Use the default dataset key or ``None``.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records.
+        """
+        dataset = self.resolve_read_dataset(dataset, options=options)
+        self.validate_single_dataset_key(dataset)
+        get_dependency('pyreadstat', format_name='SAS7BDAT')
+        pandas = get_pandas('SAS7BDAT')
+        try:
+            frame = pandas.read_sas(path, format='sas7bdat')
+        except TypeError:
+            frame = pandas.read_sas(path)
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Reject writes for SAS7BDAT while preserving scientific dataset
+        contract.
+        """
+        dataset = self.resolve_write_dataset(dataset, options=options)
+        self.validate_single_dataset_key(dataset)
+        return self.write(path, data, options=options)
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_SAS7BDAT_HANDLER = Sas7bdatFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -56,14 +160,7 @@ def read(
     JSONList
         The list of dictionaries read from the SAS7BDAT file.
     """
-    path = coerce_path(path)
-    get_dependency('pyreadstat', format_name='SAS7BDAT')
-    pandas = get_pandas('SAS7BDAT')
-    try:
-        frame = pandas.read_sas(path, format='sas7bdat')
-    except TypeError:
-        frame = pandas.read_sas(path)
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _SAS7BDAT_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -84,7 +181,6 @@ def write(
     Returns
     -------
     int
-        The number of rows written to the SAS7BDAT file.
+        Never returns normally.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='SAS7BDAT')
+    return _SAS7BDAT_HANDLER.write(coerce_path(path), data)

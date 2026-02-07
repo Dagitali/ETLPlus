@@ -21,17 +21,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'LogFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class LogFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for LOG files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.LOG
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_LOG_HANDLER = LogFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -41,7 +67,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read LOG content from *path*.
+    Read and return LOG content from *path*.
 
     Parameters
     ----------
@@ -53,7 +79,7 @@ def read(
     JSONList
         The list of dictionaries read from the LOG file.
     """
-    return stub.read(path, format_name='LOG')
+    return _LOG_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -76,5 +102,4 @@ def write(
     int
         The number of rows written to the LOG file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='LOG')
+    return _LOG_HANDLER.write(coerce_path(path), data)

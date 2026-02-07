@@ -17,6 +17,7 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
@@ -27,15 +28,166 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from .base import ReadOptions
+from .base import SingleDatasetScientificFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'SavFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class SavFile(SingleDatasetScientificFileHandlerABC):
+    """
+    Handler implementation for SAV files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.SAV
+    dataset_key = 'data'
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read SAV content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the SAV file.
+        """
+        return cast(
+            JSONList,
+            self.read_dataset(path, options=options),
+        )
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return one dataset from SAV at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        dataset : str | None, optional
+            Dataset selector. Use the default dataset key or ``None``.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records.
+        """
+        dataset = self.resolve_read_dataset(dataset, options=options)
+        self.validate_single_dataset_key(dataset)
+        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
+        frame, _meta = pyreadstat.read_sav(str(path))
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to SAV at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        data : JSONData
+            Data to write as SAV. Should be a list of dictionaries or a
+            single dictionary.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the SAV file.
+        """
+        return self.write_dataset(path, data, options=options)
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to SAV at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        data : JSONData
+            Dataset payload to write.
+        dataset : str | None, optional
+            Dataset selector. Use the default dataset key or ``None``.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        dataset = self.resolve_write_dataset(dataset, options=options)
+        self.validate_single_dataset_key(dataset)
+
+        records = normalize_records(data, 'SAV')
+        if not records:
+            return 0
+
+        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
+        pandas = get_pandas('SAV')
+        ensure_parent_dir(path)
+        frame = pandas.DataFrame.from_records(records)
+        pyreadstat.write_sav(frame, str(path))
+        return len(records)
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_SAV_HANDLER = SavFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -57,10 +209,7 @@ def read(
     JSONList
         The list of dictionaries read from the SAV file.
     """
-    path = coerce_path(path)
-    pyreadstat = get_dependency('pyreadstat', format_name='SAV')
-    frame, _meta = pyreadstat.read_sav(str(path))
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _SAV_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -83,14 +232,4 @@ def write(
     int
         The number of rows written to the SAV file.
     """
-    path = coerce_path(path)
-    records = normalize_records(data, 'SAV')
-    if not records:
-        return 0
-
-    pyreadstat = get_dependency('pyreadstat', format_name='SAV')
-    pandas = get_pandas('SAV')
-    ensure_parent_dir(path)
-    frame = pandas.DataFrame.from_records(records)
-    pyreadstat.write_sav(frame, str(path))
-    return len(records)
+    return _SAV_HANDLER.write(coerce_path(path), data)

@@ -19,7 +19,7 @@ class TestXls:
     Smoke tests for :mod:`etlplus.file.xls`.
     """
 
-    def test_read_write_orig(
+    def test_read_write(
         self,
         tmp_path: Path,
         sample_records: list[dict[str, object]],
@@ -42,5 +42,5 @@ class TestXls:
             path,
             payload,
             expect_write_error=RuntimeError,
-            error_match='XLS write is not supported',
+            error_match='read-only',
         )

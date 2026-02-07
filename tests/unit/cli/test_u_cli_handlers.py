@@ -667,9 +667,11 @@ class TestTransformHandler:
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
-            lambda source, **_kwargs: {'source': source}
-            if source == 'data.json'
-            else {'select': ['id']},
+            lambda source, **_kwargs: (
+                {'source': source}
+                if source == 'data.json'
+                else {'select': ['id']}
+            ),
         )
         monkeypatch.setattr(
             handlers,
@@ -718,9 +720,11 @@ class TestValidateHandler:
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
-            lambda source, **_kwargs: {'source': source}
-            if source == 'data.json'
-            else {'id': {'required': True}},
+            lambda source, **_kwargs: (
+                {'source': source}
+                if source == 'data.json'
+                else {'id': {'required': True}}
+            ),
         )
         monkeypatch.setattr(
             handlers,
@@ -754,9 +758,11 @@ class TestValidateHandler:
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
-            lambda source, **_kwargs: {'source': source}
-            if source == 'data.json'
-            else {'id': {'required': True}},
+            lambda source, **_kwargs: (
+                {'source': source}
+                if source == 'data.json'
+                else {'id': {'required': True}}
+            ),
         )
         monkeypatch.setattr(
             handlers,
@@ -786,9 +792,11 @@ class TestValidateHandler:
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
-            lambda source, **_kwargs: {'source': source}
-            if source == 'data.json'
-            else {'id': {'required': True}},
+            lambda source, **_kwargs: (
+                {'source': source}
+                if source == 'data.json'
+                else {'id': {'required': True}}
+            ),
         )
         monkeypatch.setattr(
             handlers,

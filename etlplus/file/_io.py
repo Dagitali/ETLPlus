@@ -162,6 +162,31 @@ def read_delimited(
     return rows
 
 
+def read_text(
+    path: StrPath,
+    *,
+    encoding: str = 'utf-8',
+) -> str:
+    """
+    Read and return text content from *path*.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path to the text file on disk.
+    encoding : str, optional
+        Text encoding. Defaults to ``'utf-8'``.
+
+    Returns
+    -------
+    str
+        File contents as text.
+    """
+    path = coerce_path(path)
+    with path.open('r', encoding=encoding) as handle:
+        return handle.read()
+
+
 def require_dict_payload(
     data: JSONData,
     *,
@@ -290,3 +315,33 @@ def write_delimited(
             writer.writerow({field: row.get(field) for field in fieldnames})
 
     return len(rows)
+
+
+def write_text(
+    path: StrPath,
+    text: str,
+    *,
+    encoding: str = 'utf-8',
+    trailing_newline: bool = False,
+) -> None:
+    """
+    Write text content to *path*.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path to the text file on disk.
+    text : str
+        Text content to write.
+    encoding : str, optional
+        Text encoding. Defaults to ``'utf-8'``.
+    trailing_newline : bool, optional
+        Whether to append a trailing newline if missing.
+    """
+    ensure_parent_dir(path)
+    payload = text
+    if trailing_newline and not payload.endswith('\n'):
+        payload = f'{payload}\n'
+    path = coerce_path(path)
+    with path.open('w', encoding=encoding, newline='') as handle:
+        handle.write(payload)

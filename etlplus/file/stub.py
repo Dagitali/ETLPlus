@@ -1,24 +1,82 @@
 """
 :mod:`etlplus.file.stub` module.
 
-Helpers for reading/writing stubbed files.
+Helpers for reading/writing intentionally unsupported (stubbed) formats.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
+from typing import ClassVar
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from .base import FileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'StubFileHandlerABC',
+    'StubFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class StubFileHandlerABC(FileHandlerABC):
+    """
+    Base class for placeholder formats that intentionally raise
+    :class:`NotImplementedError`.
+    """
+
+    # -- Class Attributes -- #
+
+    format: ClassVar[FileFormat]
+    category: ClassVar[str] = 'placeholder_stub'
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Raise :class:`NotImplementedError` for placeholder reads.
+        """
+        _ = options
+        return read(path, format_name=self.format.value.upper())
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Raise :class:`NotImplementedError` for placeholder writes.
+        """
+        _ = options
+        return write(path, data, format_name=self.format.value.upper())
+
+
+class StubFile(StubFileHandlerABC):
+    """Placeholder handler for STUB."""
+
+    format = FileFormat.STUB
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -29,7 +87,7 @@ def read(
     format_name: str = 'Stubbed',
 ) -> JSONList:
     """
-    Raises a :class:`NotImplementedError` for stubbed reads.
+    Raise :class:`NotImplementedError` for stubbed reads.
 
     Parameters
     ----------
@@ -59,7 +117,7 @@ def write(
     format_name: str = 'Stubbed',
 ) -> int:
     """
-    Raises a :class:`NotImplementedError` for stubbed writes.
+    Raise :class:`NotImplementedError` for stubbed writes.
 
     Parameters
     ----------

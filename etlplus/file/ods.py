@@ -19,6 +19,7 @@ Notes
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from ..types import JSONData
@@ -28,15 +29,198 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from .base import ReadOptions
+from .base import SpreadsheetFileHandlerABC
+from .base import WriteOptions
+from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'OdsFile',
     # Functions
     'read',
     'write',
 ]
+
+# SECTION: CLASSES ========================================================== #
+
+
+class OdsFile(SpreadsheetFileHandlerABC):
+    """
+    Handler implementation for ODS files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.ODS
+    engine_name = 'odf'
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return ODS content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the ODS file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the ODS file.
+        """
+        sheet = self.sheet_from_read_options(options)
+        return self.read_sheet(path, sheet=sheet, options=options)
+
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read one ODS sheet from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the ODS file on disk.
+        sheet : str | int
+            Sheet selector (name or index).
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the ODS sheet.
+
+        Raises
+        ------
+        ImportError
+            If the required optional dependency for ODS support is not
+            installed.
+        """
+        _ = options
+        pandas = get_pandas('ODS')
+        try:
+            frame = pandas.read_excel(
+                path,
+                engine='odf',
+                sheet_name=sheet,
+            )
+        except TypeError:
+            frame = pandas.read_excel(path, engine='odf')
+        except ImportError as err:  # pragma: no cover
+            raise ImportError(
+                'ODS support requires optional dependency "odfpy".\n'
+                'Install with: pip install odfpy',
+            ) from err
+        return cast(JSONList, frame.to_dict(orient='records'))
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to ODS at *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the ODS file on disk.
+        data : JSONData
+            Data to write as ODS.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of rows written to the ODS file.
+        """
+        records = normalize_records(data, 'ODS')
+        if not records:
+            return 0
+        sheet = self.sheet_from_write_options(options)
+        return self.write_sheet(path, records, sheet=sheet, options=options)
+
+    def write_sheet(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        sheet: str | int,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write rows to one ODS sheet in *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the ODS file on disk.
+        rows : JSONList
+            Rows to write.
+        sheet : str | int
+            Sheet selector (name or index).
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of rows written.
+
+        Raises
+        ------
+        ImportError
+            If the required optional dependency for ODS support is not
+            installed.
+        """
+        _ = options
+        pandas = get_pandas('ODS')
+        ensure_parent_dir(path)
+        frame = pandas.DataFrame.from_records(rows)
+        try:
+            if isinstance(sheet, str):
+                frame.to_excel(
+                    path,
+                    index=False,
+                    engine='odf',
+                    sheet_name=sheet,
+                )
+            else:
+                frame.to_excel(path, index=False, engine='odf')
+        except TypeError:
+            frame.to_excel(path, index=False, engine='odf')
+        except ImportError as err:  # pragma: no cover
+            raise ImportError(
+                'ODS support requires optional dependency "odfpy".\n'
+                'Install with: pip install odfpy',
+            ) from err
+        return len(rows)
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_ODS_HANDLER = OdsFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -46,7 +230,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ODS content from *path*.
+    Read and return ODS content from *path*.
 
     Parameters
     ----------
@@ -57,22 +241,8 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the ODS file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for ODS support are missing.
     """
-    path = coerce_path(path)
-    pandas = get_pandas('ODS')
-    try:
-        frame = pandas.read_excel(path, engine='odf')
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'ODS support requires optional dependency "odfpy".\n'
-            'Install with: pip install odfpy',
-        ) from err
-    return cast(JSONList, frame.to_dict(orient='records'))
+    return _ODS_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -80,7 +250,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ODS file at *path* and return record count.
+    Write *data* to ODS at *path* and return record count.
 
     Parameters
     ----------
@@ -94,25 +264,5 @@ def write(
     -------
     int
         The number of rows written to the ODS file.
-
-    Raises
-    ------
-    ImportError
-        If optional dependencies for ODS support are missing.
     """
-    path = coerce_path(path)
-    records = normalize_records(data, 'ODS')
-    if not records:
-        return 0
-
-    pandas = get_pandas('ODS')
-    ensure_parent_dir(path)
-    frame = pandas.DataFrame.from_records(records)
-    try:
-        frame.to_excel(path, index=False, engine='odf')
-    except ImportError as err:  # pragma: no cover
-        raise ImportError(
-            'ODS support requires optional dependency "odfpy".\n'
-            'Install with: pip install odfpy',
-        ) from err
-    return len(records)
+    return _ODS_HANDLER.write(coerce_path(path), data)

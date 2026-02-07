@@ -19,17 +19,43 @@ from __future__ import annotations
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
+from .enums import FileFormat
+from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'NumbersFile',
     # Functions
     'read',
     'write',
 ]
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class NumbersFile(StubFileHandlerABC):
+    """
+    Stub handler implementation for NUMBERS files.
+    """
+
+    # -- Class Attributes -- #
+
+    format = FileFormat.NUMBERS
+
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_NUMBERS_HANDLER = NumbersFile()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -39,7 +65,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read NUMBERS content from *path*.
+    Read and return NUMBERS content from *path*.
 
     Parameters
     ----------
@@ -51,7 +77,7 @@ def read(
     JSONList
         The list of dictionaries read from the NUMBERS file.
     """
-    return stub.read(path, format_name='NUMBERS')
+    return _NUMBERS_HANDLER.read(coerce_path(path))
 
 
 def write(
@@ -59,7 +85,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NUMBERS file at *path* and return record count.
+    Write *data* to NUMBERS at *path* and return record count.
 
     Parameters
     ----------
@@ -74,5 +100,4 @@ def write(
     int
         The number of rows written to the NUMBERS file.
     """
-    path = coerce_path(path)
-    return stub.write(path, data, format_name='NUMBERS')
+    return _NUMBERS_HANDLER.write(coerce_path(path), data)

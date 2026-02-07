@@ -54,14 +54,14 @@ class AggregateName(CoercibleStrEnum):
         if self is AggregateName.COUNT:
             return lambda xs, n: n
         if self is AggregateName.MAX:
-            return lambda xs, n: (max(xs) if xs else None)
+            return lambda xs, n: max(xs) if xs else None
         if self is AggregateName.MIN:
-            return lambda xs, n: (min(xs) if xs else None)
+            return lambda xs, n: min(xs) if xs else None
         if self is AggregateName.SUM:
             return lambda xs, n: sum(xs)
 
         # AVG
-        return lambda xs, n: (fmean(xs) if xs else 0.0)
+        return lambda xs, n: fmean(xs) if xs else 0.0
 
 
 class OperatorName(CoercibleStrEnum):
@@ -160,8 +160,7 @@ class PipelineStep(CoercibleStrEnum):
         return _PIPELINE_ORDER_INDEX[self]
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
-
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 # Precomputed order index for PipelineStep; avoids recomputing on each access.
 _PIPELINE_ORDER_INDEX: dict[PipelineStep, int] = {

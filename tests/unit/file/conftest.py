@@ -17,11 +17,14 @@ import numbers
 from collections.abc import Callable
 from collections.abc import Generator
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
 
 import etlplus.file._imports as import_helpers
+from etlplus.file.base import SingleDatasetScientificFileHandlerABC
+from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
 
@@ -53,6 +56,54 @@ def _coerce_numeric_value(
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def assert_single_dataset_rejects_non_default_key(
+    handler: SingleDatasetScientificFileHandlerABC,
+    *,
+    suffix: str,
+) -> None:
+    """Assert single-dataset scientific handlers reject non-default keys."""
+    bad_dataset = 'not_default_dataset'
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.read_dataset(
+            Path(f'ignored.{suffix}'),
+            dataset=bad_dataset,
+        )
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.write_dataset(
+            Path(f'ignored.{suffix}'),
+            [],
+            dataset=bad_dataset,
+        )
+
+
+def assert_stub_module_contract(
+    module: ModuleType,
+    handler_cls: type[StubFileHandlerABC],
+    *,
+    format_name: str,
+    tmp_path: Path,
+    write_payload: JSONData | None = None,
+) -> None:
+    """Assert baseline contract for a placeholder stub module."""
+    if write_payload is None:
+        write_payload = [{'id': 1}]
+
+    assert issubclass(handler_cls, StubFileHandlerABC)
+    assert handler_cls.format.value == format_name
+
+    path = tmp_path / f'data.{format_name}'
+    with pytest.raises(
+        NotImplementedError,
+        match=rf'{format_name.upper()} read is not implemented yet',
+    ):
+        module.read(path)
+    with pytest.raises(
+        NotImplementedError,
+        match=rf'{format_name.upper()} write is not implemented yet',
+    ):
+        module.write(path, write_payload)
 
 
 def make_import_error_reader_module(
