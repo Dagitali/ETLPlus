@@ -156,6 +156,7 @@ class Sas7bdatFile(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         _ = dataset
         return self.write(path, data, options=options)
 
+
 # SECTION: INTERNAL CONSTANTS ============================================== #
 
 
