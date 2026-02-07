@@ -77,7 +77,7 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         bytes
             Encoded schema bytes.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         payload = require_dict_payload(data, format_name='PROTO')
         schema = require_str_key(payload, format_name='PROTO', key='schema')
         return schema.encode(encoding)
@@ -103,7 +103,7 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         JSONData
             Payload dictionary with ``schema`` key.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_read_options(options)
         return {'schema': payload.decode(encoding)}
 
     def read(
@@ -127,8 +127,7 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         JSONData
             The structured data read from the PROTO file.
         """
-        _ = options
-        return self.loads_bytes(path.read_bytes())
+        return self.loads_bytes(path.read_bytes(), options=options)
 
     def write(
         self,
