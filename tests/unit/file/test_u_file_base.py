@@ -17,6 +17,7 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
+from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
 from etlplus.file.nc import NcFile
@@ -92,6 +93,51 @@ class _ReadOnlyStub(ReadOnlyFileHandlerABC):
         return []
 
 
+class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
+    """Concrete text/fixed-width handler used for abstract contract tests."""
+
+    format = FileFormat.TXT
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        return self.read_rows(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        rows: JSONList = data if isinstance(data, list) else [data]
+        return self.write_rows(path, rows, options=options)
+
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        _ = path
+        _ = options
+        return [{'text': 'ok'}]
+
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = options
+        return len(rows)
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -135,13 +181,6 @@ class TestBaseAbcContracts:
         with pytest.raises(TypeError):
             _IncompleteDelimited()  # type: ignore[abstract]
 
-    def test_read_only_handler_rejects_write(self) -> None:
-        """Test read-only handlers raising on write."""
-        handler = _ReadOnlyStub()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write(Path('ignored.xls'), [{'a': 1}])
-
     def test_delimited_concrete_subclass_satisfies_contract(self) -> None:
         """Test a concrete delimited subclass being fully instantiable."""
         handler = _DelimitedStub()
@@ -149,6 +188,54 @@ class TestBaseAbcContracts:
         assert handler.category == 'tabular_delimited_text'
         assert handler.read(Path('ignored.csv')) == [{'id': 1}]
         assert handler.write(Path('ignored.csv'), [{'id': 1}, {'id': 2}]) == 2
+
+    def test_read_only_handler_rejects_write(self) -> None:
+        """Test read-only handlers raising on write."""
+        handler = _ReadOnlyStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write(Path('ignored.xls'), [{'a': 1}])
+
+    def test_text_fixed_width_abc_requires_row_methods(self) -> None:
+        """Test TextFixedWidthFileHandlerABC requiring row-level methods."""
+
+        class _IncompleteText(TextFixedWidthFileHandlerABC):
+            format = FileFormat.TXT
+
+            def read(
+                self,
+                path: Path,
+                *,
+                options: ReadOptions | None = None,
+            ) -> JSONData:
+                _ = path
+                _ = options
+                return []
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                _ = path
+                _ = data
+                _ = options
+                return 0
+
+        with pytest.raises(TypeError):
+            _IncompleteText()  # type: ignore[abstract]
+
+    def test_text_fixed_width_concrete_subclass_satisfies_contract(
+        self,
+    ) -> None:
+        """Test a concrete text/fixed-width subclass being instantiable."""
+        handler = _TextFixedWidthStub()
+
+        assert handler.category == 'text_fixed_width'
+        assert handler.read(Path('ignored.txt')) == [{'text': 'ok'}]
+        assert handler.write(Path('ignored.txt'), [{'text': 'ok'}]) == 1
 
 
 class TestOptionsContracts:
