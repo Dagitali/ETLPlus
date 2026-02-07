@@ -235,7 +235,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
         return len(records)
 
 
-# SECTION: INTERNAL CONSTANTS ============================================== #
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _BSON_HANDLER = BsonFile()
