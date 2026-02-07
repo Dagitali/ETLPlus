@@ -96,14 +96,14 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read a dataset from DTA at *path*.
+        Read and return one dataset from DTA at *path*.
 
         Parameters
         ----------
         path : Path
             Path to the DTA file on disk.
         dataset : str | None, optional
-            Dataset selector. DTA supports a single dataset key.
+            Dataset selector. Use the default dataset key or ``None``.
         options : ReadOptions | None, optional
             Optional read parameters.
 
@@ -115,7 +115,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         Raises
         ------
         ValueError
-            If *dataset* is provided and not supported.
+            If *dataset* is provided and does not match the supported dataset
+            key.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
@@ -166,7 +167,7 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write one dataset to DTA at *path*.
+        Write one dataset to DTA at *path* and return record count.
 
         Parameters
         ----------
@@ -175,7 +176,7 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         data : JSONData
             Dataset payload to write.
         dataset : str | None, optional
-            Dataset selector. DTA supports a single dataset key.
+            Dataset selector. Use the default dataset key or ``None``.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -187,7 +188,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         Raises
         ------
         ValueError
-            If *dataset* is provided and not supported.
+            If *dataset* is provided and does not match the supported dataset
+            key.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
