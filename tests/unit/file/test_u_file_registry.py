@@ -39,6 +39,54 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zsav import ZsavFile
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_EXPLICIT_CLASS_FORMATS: set[FileFormat] = {
+    FileFormat.ARROW,
+    FileFormat.BSON,
+    FileFormat.CBOR,
+    FileFormat.CSV,
+    FileFormat.DAT,
+    FileFormat.DTA,
+    FileFormat.DUCKDB,
+    FileFormat.FEATHER,
+    FileFormat.FWF,
+    FileFormat.GZ,
+    FileFormat.HDF5,
+    FileFormat.INI,
+    FileFormat.JSON,
+    FileFormat.MAT,
+    FileFormat.MSGPACK,
+    FileFormat.NC,
+    FileFormat.NDJSON,
+    FileFormat.ODS,
+    FileFormat.ORC,
+    FileFormat.PARQUET,
+    FileFormat.PB,
+    FileFormat.PROPERTIES,
+    FileFormat.PROTO,
+    FileFormat.PSV,
+    FileFormat.RDA,
+    FileFormat.RDS,
+    FileFormat.SAS7BDAT,
+    FileFormat.SAV,
+    FileFormat.SQLITE,
+    FileFormat.SYLK,
+    FileFormat.TAB,
+    FileFormat.TOML,
+    FileFormat.TSV,
+    FileFormat.TXT,
+    FileFormat.XLS,
+    FileFormat.XLSM,
+    FileFormat.XLSX,
+    FileFormat.XML,
+    FileFormat.XPT,
+    FileFormat.YAML,
+    FileFormat.ZIP,
+    FileFormat.ZSAV,
+}
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -65,6 +113,16 @@ def clear_registry_caches() -> Iterator[None]:
 
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
+
+    # pylint: disable=protected-access
+
+    def test_explicit_map_contains_all_migrated_class_handlers(self) -> None:
+        """
+        Test explicit registry map covering all migrated class handlers.
+        """
+        mapped_formats = set(mod._HANDLER_CLASS_SPECS.keys())
+        missing = _EXPLICIT_CLASS_FORMATS - mapped_formats
+        assert not missing
 
     @pytest.mark.parametrize(
         ('file_format', 'expected_class'),
