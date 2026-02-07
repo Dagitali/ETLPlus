@@ -13,6 +13,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
@@ -179,7 +180,61 @@ class FileHandlerABC(ABC):
             Number of records written.
         """
 
+    # -- Internal Instance Methods -- #
+
+    def _option_attr(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        attr_name: str,
+    ) -> Any | None:
+        """
+        Return an option attribute value when present.
+
+        Parameters
+        ----------
+        options : ReadOptions | WriteOptions | None
+            Optional parameter bundle.
+        attr_name : str
+            Dataclass attribute to read.
+
+        Returns
+        -------
+        Any | None
+            The attribute value, or ``None`` when missing.
+        """
+        if options is None:
+            return None
+        return getattr(options, attr_name)
+
     # -- Instance Methods -- #
+
+    def read_extra_option(
+        self,
+        options: ReadOptions | None,
+        key: str,
+        *,
+        default: Any | None = None,
+    ) -> Any | None:
+        """
+        Read one format-specific read option from ``options.extras``.
+        """
+        if options is None:
+            return default
+        return options.extras.get(key, default)
+
+    def write_extra_option(
+        self,
+        options: WriteOptions | None,
+        key: str,
+        *,
+        default: Any | None = None,
+    ) -> Any | None:
+        """
+        Read one format-specific write option from ``options.extras``.
+        """
+        if options is None:
+            return default
+        return options.extras.get(key, default)
 
     def encoding_from_read_options(
         self,
@@ -202,8 +257,9 @@ class FileHandlerABC(ABC):
         str
             Text encoding.
         """
-        if options is not None:
-            return options.encoding
+        value = self._option_attr(options, 'encoding')
+        if value is not None:
+            return cast(str, value)
         return default
 
     def encoding_from_write_options(
@@ -227,8 +283,9 @@ class FileHandlerABC(ABC):
         str
             Text encoding.
         """
-        if options is not None:
-            return options.encoding
+        value = self._option_attr(options, 'encoding')
+        if value is not None:
+            return cast(str, value)
         return default
 
     def root_tag_from_write_options(
@@ -252,8 +309,9 @@ class FileHandlerABC(ABC):
         str
             XML-like root tag.
         """
-        if options is not None:
-            return options.root_tag
+        value = self._option_attr(options, 'root_tag')
+        if value is not None:
+            return cast(str, value)
         return default
 
 
@@ -352,8 +410,9 @@ class ArchiveWrapperFileHandlerABC(FileHandlerABC):
         """
         Extract archive member selector from read options.
         """
-        if options is not None and options.inner_name is not None:
-            return options.inner_name
+        value = self._option_attr(options, 'inner_name')
+        if value is not None:
+            return cast(str, value)
         return default
 
     def inner_name_from_write_options(
@@ -365,8 +424,9 @@ class ArchiveWrapperFileHandlerABC(FileHandlerABC):
         """
         Extract archive member selector from write options.
         """
-        if options is not None and options.inner_name is not None:
-            return options.inner_name
+        value = self._option_attr(options, 'inner_name')
+        if value is not None:
+            return cast(str, value)
         return default
 
 
@@ -525,10 +585,9 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         str
             Effective delimiter.
         """
-        if options is not None:
-            override = options.extras.get('delimiter')
-            if override is not None:
-                return str(override)
+        override = self.read_extra_option(options, 'delimiter')
+        if override is not None:
+            return str(override)
         if default is not None:
             return default
         return self.delimiter
@@ -555,10 +614,9 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         str
             Effective delimiter.
         """
-        if options is not None:
-            override = options.extras.get('delimiter')
-            if override is not None:
-                return str(override)
+        override = self.write_extra_option(options, 'delimiter')
+        if override is not None:
+            return str(override)
         if default is not None:
             return default
         return self.delimiter
@@ -664,8 +722,9 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         """
         Extract table selector from read options.
         """
-        if options is not None and options.table is not None:
-            return options.table
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
         return default
 
     def table_from_write_options(
@@ -677,8 +736,9 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         """
         Extract table selector from write options.
         """
-        if options is not None and options.table is not None:
-            return options.table
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
         return default
 
 
@@ -810,8 +870,9 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         """
         Extract dataset selector from read options.
         """
-        if options is not None and options.dataset is not None:
-            return options.dataset
+        value = self._option_attr(options, 'dataset')
+        if value is not None:
+            return cast(str, value)
         return None
 
     def dataset_from_write_options(
@@ -821,8 +882,9 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         """
         Extract dataset selector from write options.
         """
-        if options is not None and options.dataset is not None:
-            return options.dataset
+        value = self._option_attr(options, 'dataset')
+        if value is not None:
+            return cast(str, value)
         return None
 
     def resolve_read_dataset(
@@ -941,8 +1003,9 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         """
         Extract sheet selector from read options.
         """
-        if options is not None and options.sheet is not None:
-            return options.sheet
+        value = self._option_attr(options, 'sheet')
+        if value is not None:
+            return cast(str | int, value)
         if default is not None:
             return default
         return self.default_sheet
@@ -956,8 +1019,9 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         """
         Extract sheet selector from write options.
         """
-        if options is not None and options.sheet is not None:
-            return options.sheet
+        value = self._option_attr(options, 'sheet')
+        if value is not None:
+            return cast(str | int, value)
         if default is not None:
             return default
         return self.default_sheet
