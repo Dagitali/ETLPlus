@@ -50,6 +50,9 @@ class MustacheFile(StubFileHandlerABC):
 
     format = FileFormat.MUSTACHE
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

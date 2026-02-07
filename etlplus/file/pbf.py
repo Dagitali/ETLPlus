@@ -49,6 +49,9 @@ class PbfFile(StubFileHandlerABC):
 
     format = FileFormat.PBF
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

@@ -49,6 +49,9 @@ class WksFile(StubFileHandlerABC):
 
     format = FileFormat.WKS
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

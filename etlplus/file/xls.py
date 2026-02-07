@@ -14,7 +14,7 @@ from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
 from ._io import coerce_path
-from .base import ReadOnlyFileHandlerABC
+from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
 from .enums import FileFormat
 
@@ -33,7 +33,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class XlsFile(ReadOnlyFileHandlerABC):
+class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
     """
     Read-only handler implementation for XLS files.
     """
@@ -41,6 +41,7 @@ class XlsFile(ReadOnlyFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.XLS
+    engine_name = 'xlrd'
 
     # -- Instance Methods -- #
 
@@ -70,9 +71,43 @@ class XlsFile(ReadOnlyFileHandlerABC):
         ImportError
             If the optional dependency "xlrd" is not installed.
         """
+        sheet = self.sheet_from_read_options(options)
+        return self.read_sheet(path, sheet=sheet, options=options)
+
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read one XLS sheet from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the XLS file on disk.
+        sheet : str | int
+            Sheet selector (name or index).
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the XLS sheet.
+
+        Raises
+        ------
+        ImportError
+            If the optional dependency "xlrd" is not installed.
+        """
         _ = options
         pandas = get_pandas('XLS')
         try:
+            frame = pandas.read_excel(path, engine='xlrd', sheet_name=sheet)
+        except TypeError:
             frame = pandas.read_excel(path, engine='xlrd')
         except ImportError as e:  # pragma: no cover
             raise ImportError(

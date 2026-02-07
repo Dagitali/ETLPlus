@@ -50,6 +50,9 @@ class VmFile(StubFileHandlerABC):
 
     format = FileFormat.VM
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

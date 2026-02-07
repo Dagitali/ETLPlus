@@ -50,6 +50,9 @@ class Jinja2File(StubFileHandlerABC):
 
     format = FileFormat.JINJA2
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

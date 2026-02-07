@@ -50,6 +50,9 @@ class AccdbFile(StubFileHandlerABC):
 
     format = FileFormat.ACCDB
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

@@ -50,6 +50,9 @@ class HbsFile(StubFileHandlerABC):
 
     format = FileFormat.HBS
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

@@ -51,6 +51,9 @@ class ConfFile(StubFileHandlerABC):
 
     format = FileFormat.CONF
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

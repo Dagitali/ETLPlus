@@ -50,6 +50,9 @@ class MdbFile(StubFileHandlerABC):
 
     format = FileFormat.MDB
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 

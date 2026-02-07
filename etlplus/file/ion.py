@@ -49,6 +49,9 @@ class IonFile(StubFileHandlerABC):
 
     format = FileFormat.ION
 
+    # -- Instance Methods -- #
+
+    # Inherits read() and write() from StubFileHandlerABC.
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
 
