@@ -64,9 +64,7 @@ class MatFile(SingleDatasetScientificFileHandlerABC):
         dataset: str | None = None,
         options: ReadOptions | None = None,
     ) -> JSONList:
-        """
-        Read one dataset from MAT at *path*.
-        """
+        """Read and return one dataset from MAT at *path*."""
         _ = options
         self.validate_single_dataset_key(dataset)
         return stub.read(path, format_name='MAT')
@@ -136,9 +134,7 @@ class MatFile(SingleDatasetScientificFileHandlerABC):
         dataset: str | None = None,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Write one dataset to MAT at *path*.
-        """
+        """Write one dataset to MAT at *path* and return record count."""
         _ = options
         self.validate_single_dataset_key(dataset)
         return stub.write(path, data, format_name='MAT')
