@@ -93,7 +93,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Read one dataset from RDS at *path*.
+        Read and return one dataset from RDS at *path*.
 
         Parameters
         ----------
@@ -179,7 +179,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write one dataset to RDS at *path*.
+        Write one dataset to RDS at *path* and return record count.
 
         Parameters
         ----------
@@ -188,7 +188,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         data : JSONData
             Dataset payload to write.
         dataset : str | None, optional
-            Dataset selector. RDS supports a single stored object.
+            Dataset selector. Use the default dataset key or ``None``.
         options : WriteOptions | None, optional
             Optional write parameters.
 
