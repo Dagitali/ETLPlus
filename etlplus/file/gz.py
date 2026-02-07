@@ -7,11 +7,12 @@ Helpers for reading/writing GZ files.
 from __future__ import annotations
 
 import gzip
-import tempfile
 from pathlib import Path
 
 from ..types import JSONData
 from ..types import StrPath
+from ._core_dispatch import read_payload_with_core
+from ._core_dispatch import write_payload_with_core
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from .base import ArchiveWrapperFileHandlerABC
@@ -34,21 +35,6 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _read_payload_as_data(
-    fmt: FileFormat,
-    payload: bytes,
-) -> JSONData:
-    """
-    Parse compressed payload bytes via the core file dispatcher.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-        tmp_path.write_bytes(payload)
-        from .core import File
-
-        return File(tmp_path, fmt).read()
 
 
 def _resolve_format(
@@ -80,21 +66,6 @@ def _resolve_format(
             f'Cannot infer file format from compressed file {path!r}',
         )
     return fmt
-
-
-def _write_data_as_payload(
-    fmt: FileFormat,
-    data: JSONData,
-) -> tuple[int, bytes]:
-    """
-    Serialize data to payload bytes via the core file dispatcher.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / f'payload.{fmt.value}'
-        from .core import File
-
-        count = File(tmp_path, fmt).write(data)
-        return count, tmp_path.read_bytes()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -135,7 +106,11 @@ class GzFile(ArchiveWrapperFileHandlerABC):
         """
         fmt = _resolve_format(path)
         payload = self.read_inner_bytes(path, options=options)
-        return _read_payload_as_data(fmt, payload)
+        return read_payload_with_core(
+            fmt=fmt,
+            payload=payload,
+            filename=f'payload.{fmt.value}',
+        )
 
     def read_inner_bytes(
         self,
@@ -187,7 +162,11 @@ class GzFile(ArchiveWrapperFileHandlerABC):
             Number of records written.
         """
         fmt = _resolve_format(path)
-        count, payload = _write_data_as_payload(fmt, data)
+        count, payload = write_payload_with_core(
+            fmt=fmt,
+            data=data,
+            filename=f'payload.{fmt.value}',
+        )
 
         self.write_inner_bytes(path, payload, options=options)
         return count
