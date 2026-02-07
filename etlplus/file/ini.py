@@ -46,6 +46,77 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _parser_from_payload(
+    payload: JSONDict,
+) -> configparser.ConfigParser:
+    """
+    Build a ConfigParser instance from the JSON-like INI payload shape.
+
+    Parameters
+    ----------
+    payload : JSONDict
+        The INI payload as a dictionary.
+
+    Returns
+    -------
+    configparser.ConfigParser
+        The constructed ConfigParser instance.
+
+    Raises
+    ------
+    TypeError
+        If the payload structure is invalid.
+    """
+    parser = configparser.ConfigParser()
+    for section, values in payload.items():
+        if section == 'DEFAULT':
+            if isinstance(values, dict):
+                parser['DEFAULT'] = {
+                    key: stringify_value(value)
+                    for key, value in values.items()
+                }
+            else:
+                raise TypeError('INI DEFAULT section must be a dict')
+            continue
+        if not isinstance(values, dict):
+            raise TypeError('INI sections must map to dicts')
+        parser[section] = {
+            key: stringify_value(value) for key, value in values.items()
+        }
+    return parser
+
+
+def _payload_from_parser(
+    parser: configparser.ConfigParser,
+) -> JSONDict:
+    """
+    Convert a ConfigParser instance to the JSON-like INI payload shape.
+
+    Parameters
+    ----------
+    parser : configparser.ConfigParser
+        The ConfigParser instance to convert.
+
+    Returns
+    -------
+    JSONDict
+        The JSON-like INI payload.
+    """
+    payload: JSONDict = {}
+    if parser.defaults():
+        payload['DEFAULT'] = dict(parser.defaults())
+    defaults = dict(parser.defaults())
+    for section in parser.sections():
+        raw_section = dict(parser.items(section))
+        for key in defaults:
+            raw_section.pop(key, None)
+        payload[section] = raw_section
+    return payload
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -82,31 +153,10 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         -------
         str
             Serialized INI text.
-
-        Raises
-        ------
-        TypeError
-            If *data* is not a dictionary.
         """
         _ = options
         payload = require_dict_payload(data, format_name='INI')
-
-        parser = configparser.ConfigParser()
-        for section, values in payload.items():
-            if section == 'DEFAULT':
-                if isinstance(values, dict):
-                    parser['DEFAULT'] = {
-                        key: stringify_value(value)
-                        for key, value in values.items()
-                    }
-                else:
-                    raise TypeError('INI DEFAULT section must be a dict')
-                continue
-            if not isinstance(values, dict):
-                raise TypeError('INI sections must map to dicts')
-            parser[section] = {
-                key: stringify_value(value) for key, value in values.items()
-            }
+        parser = _parser_from_payload(payload)
 
         from io import StringIO
 
@@ -170,20 +220,10 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         JSONData
             The structured data read from the INI file.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_read_options(options)
         parser = configparser.ConfigParser()
         parser.read(path, encoding=encoding)
-
-        payload: JSONDict = {}
-        if parser.defaults():
-            payload['DEFAULT'] = dict(parser.defaults())
-        defaults = dict(parser.defaults())
-        for section in parser.sections():
-            raw_section = dict(parser.items(section))
-            for key in defaults:
-                raw_section.pop(key, None)
-            payload[section] = raw_section
-        return payload
+        return _payload_from_parser(parser)
 
     def write(
         self,
@@ -208,31 +248,10 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         -------
         int
             The number of records written to the INI file.
-
-        Raises
-        ------
-        TypeError
-            If *data* is not a dictionary.
         """
-        encoding = options.encoding if options is not None else 'utf-8'
+        encoding = self.encoding_from_write_options(options)
         payload = require_dict_payload(data, format_name='INI')
-
-        parser = configparser.ConfigParser()
-        for section, values in payload.items():
-            if section == 'DEFAULT':
-                if isinstance(values, dict):
-                    parser['DEFAULT'] = {
-                        key: stringify_value(value)
-                        for key, value in values.items()
-                    }
-                else:
-                    raise TypeError('INI DEFAULT section must be a dict')
-                continue
-            if not isinstance(values, dict):
-                raise TypeError('INI sections must map to dicts')
-            parser[section] = {
-                key: stringify_value(value) for key, value in values.items()
-            }
+        parser = _parser_from_payload(payload)
 
         ensure_parent_dir(path)
         with path.open('w', encoding=encoding, newline='') as handle:
