@@ -28,8 +28,9 @@ from ..types import JSONDict
 from ..types import StrPath
 from ._imports import get_optional_module
 from ._io import coerce_path
-from ._io import ensure_parent_dir
+from ._io import read_text
 from ._io import require_dict_payload
+from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -163,7 +164,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             The structured data read from the TOML file.
         """
         encoding = self.encoding_from_read_options(options)
-        return self.loads(path.read_text(encoding=encoding), options=options)
+        return self.loads(read_text(path, encoding=encoding), options=options)
 
     def write(
         self,
@@ -190,9 +191,11 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             The number of records written to the TOML file.
         """
         encoding = self.encoding_from_write_options(options)
-        content = self.dumps(data, options=options)
-        ensure_parent_dir(path)
-        path.write_text(content, encoding=encoding)
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+        )
         return 1
 
 
