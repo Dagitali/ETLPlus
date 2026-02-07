@@ -6,12 +6,16 @@ Unit tests for :mod:`etlplus.file.registry`.
 
 from __future__ import annotations
 
+import importlib
+import inspect
+import pkgutil
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+import etlplus.file as file_package
 from etlplus.file import FileFormat
 from etlplus.file import registry as mod
 from etlplus.file.arrow import ArrowFile
@@ -38,54 +42,6 @@ from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zsav import ZsavFile
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_EXPLICIT_CLASS_FORMATS: set[FileFormat] = {
-    FileFormat.ARROW,
-    FileFormat.BSON,
-    FileFormat.CBOR,
-    FileFormat.CSV,
-    FileFormat.DAT,
-    FileFormat.DTA,
-    FileFormat.DUCKDB,
-    FileFormat.FEATHER,
-    FileFormat.FWF,
-    FileFormat.GZ,
-    FileFormat.HDF5,
-    FileFormat.INI,
-    FileFormat.JSON,
-    FileFormat.MAT,
-    FileFormat.MSGPACK,
-    FileFormat.NC,
-    FileFormat.NDJSON,
-    FileFormat.ODS,
-    FileFormat.ORC,
-    FileFormat.PARQUET,
-    FileFormat.PB,
-    FileFormat.PROPERTIES,
-    FileFormat.PROTO,
-    FileFormat.PSV,
-    FileFormat.RDA,
-    FileFormat.RDS,
-    FileFormat.SAS7BDAT,
-    FileFormat.SAV,
-    FileFormat.SQLITE,
-    FileFormat.SYLK,
-    FileFormat.TAB,
-    FileFormat.TOML,
-    FileFormat.TSV,
-    FileFormat.TXT,
-    FileFormat.XLS,
-    FileFormat.XLSM,
-    FileFormat.XLSX,
-    FileFormat.XML,
-    FileFormat.XPT,
-    FileFormat.YAML,
-    FileFormat.ZIP,
-    FileFormat.ZSAV,
-}
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -116,13 +72,38 @@ class TestRegistryMappedResolution:
 
     # pylint: disable=protected-access
 
-    def test_explicit_map_contains_all_migrated_class_handlers(self) -> None:
+    def test_explicit_for_implemented_formats(self) -> None:
         """
-        Test explicit registry map covering all migrated class handlers.
+        Test every implemented handler class format being explicitly mapped,
+        and every mapped class matching its registry format key.
         """
+        implemented_formats: set[FileFormat] = set()
+        for module_info in pkgutil.iter_modules(file_package.__path__):
+            if module_info.ispkg or module_info.name.startswith('_'):
+                continue
+            module_name = f'{file_package.__name__}.{module_info.name}'
+            module = importlib.import_module(module_name)
+            for _, symbol in inspect.getmembers(module, inspect.isclass):
+                if symbol.__module__ != module_name:
+                    continue
+                if not issubclass(symbol, FileHandlerABC):
+                    continue
+                if not symbol.__name__.endswith('File'):
+                    continue
+                format_value = getattr(symbol, 'format', None)
+                if isinstance(format_value, FileFormat):
+                    implemented_formats.add(format_value)
+
         mapped_formats = set(mod._HANDLER_CLASS_SPECS.keys())
-        missing = _EXPLICIT_CLASS_FORMATS - mapped_formats
+        missing = implemented_formats - mapped_formats
         assert not missing
+
+        for file_format, spec in mod._HANDLER_CLASS_SPECS.items():
+            mapped_class = mod._coerce_handler_class(
+                mod._import_symbol(spec),
+                file_format=file_format,
+            )
+            assert mapped_class.format == file_format
 
     @pytest.mark.parametrize(
         ('file_format', 'expected_class'),
