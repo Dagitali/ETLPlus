@@ -25,11 +25,23 @@ from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.file.csv import CsvFile
+from etlplus.file.dat import DatFile
 from etlplus.file.dta import DtaFile
+from etlplus.file.fwf import FwfFile
 from etlplus.file.nc import NcFile
+from etlplus.file.ods import OdsFile
+from etlplus.file.psv import PsvFile
 from etlplus.file.rda import RdaFile
 from etlplus.file.rds import RdsFile
 from etlplus.file.sav import SavFile
+from etlplus.file.sqlite import SqliteFile
+from etlplus.file.tab import TabFile
+from etlplus.file.tsv import TsvFile
+from etlplus.file.txt import TxtFile
+from etlplus.file.xls import XlsFile
+from etlplus.file.xlsm import XlsmFile
+from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
@@ -440,6 +452,88 @@ class TestBaseAbcContracts:
         assert handler.category == 'text_fixed_width'
         assert handler.read(Path('ignored.txt')) == [{'text': 'ok'}]
         assert handler.write(Path('ignored.txt'), [{'text': 'ok'}]) == 1
+
+
+class TestNamingConventions:
+    """Unit tests for category-level internal naming conventions."""
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            CsvFile,
+            DatFile,
+            PsvFile,
+            TabFile,
+            TsvFile,
+            TxtFile,
+            FwfFile,
+        ],
+    )
+    def test_delimited_text_handlers_expose_row_methods(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test delimited/text handlers exposing read_rows/write_rows."""
+        assert callable(getattr(handler_cls, 'read', None))
+        assert callable(getattr(handler_cls, 'write', None))
+        assert callable(getattr(handler_cls, 'read_rows', None))
+        assert callable(getattr(handler_cls, 'write_rows', None))
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            XlsFile,
+            XlsxFile,
+            XlsmFile,
+            OdsFile,
+        ],
+    )
+    def test_spreadsheet_handlers_expose_sheet_methods(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test spreadsheet handlers exposing read_sheet/write_sheet."""
+        assert callable(getattr(handler_cls, 'read', None))
+        assert callable(getattr(handler_cls, 'write', None))
+        assert callable(getattr(handler_cls, 'read_sheet', None))
+        assert callable(getattr(handler_cls, 'write_sheet', None))
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            SqliteFile,
+        ],
+    )
+    def test_embedded_db_handlers_expose_table_methods(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test embedded database handlers exposing read_table/write_table."""
+        assert callable(getattr(handler_cls, 'read', None))
+        assert callable(getattr(handler_cls, 'write', None))
+        assert callable(getattr(handler_cls, 'read_table', None))
+        assert callable(getattr(handler_cls, 'write_table', None))
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        [
+            DtaFile,
+            NcFile,
+            RdaFile,
+            RdsFile,
+            SavFile,
+            XptFile,
+        ],
+    )
+    def test_scientific_handlers_expose_dataset_methods(
+        self,
+        handler_cls: type[FileHandlerABC],
+    ) -> None:
+        """Test scientific handlers exposing read_dataset/write_dataset."""
+        assert callable(getattr(handler_cls, 'read', None))
+        assert callable(getattr(handler_cls, 'write', None))
+        assert callable(getattr(handler_cls, 'read_dataset', None))
+        assert callable(getattr(handler_cls, 'write_dataset', None))
 
 
 class TestOptionsContracts:
