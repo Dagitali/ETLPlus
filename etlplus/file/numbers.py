@@ -16,14 +16,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
-from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 from .stub import StubFileHandlerABC
 
@@ -50,25 +46,6 @@ class NumbersFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.NUMBERS
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        return super().read(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        return super().write(path, data, options=options)
 
 
 # SECTION: INTERNAL CONSTANTS ============================================== #
