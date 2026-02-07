@@ -26,9 +26,10 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ._io import coerce_path
-from ._io import ensure_parent_dir
+from ._io import read_text
 from ._io import require_dict_payload
 from ._io import stringify_value
+from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -188,16 +189,7 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         _ = options
         parser = configparser.ConfigParser()
         parser.read_string(text)
-        payload: JSONDict = {}
-        if parser.defaults():
-            payload['DEFAULT'] = dict(parser.defaults())
-        defaults = dict(parser.defaults())
-        for section in parser.sections():
-            raw_section = dict(parser.items(section))
-            for key in defaults:
-                raw_section.pop(key, None)
-            payload[section] = raw_section
-        return payload
+        return _payload_from_parser(parser)
 
     def read(
         self,
@@ -221,9 +213,10 @@ class IniFile(SemiStructuredTextFileHandlerABC):
             The structured data read from the INI file.
         """
         encoding = self.encoding_from_read_options(options)
-        parser = configparser.ConfigParser()
-        parser.read(path, encoding=encoding)
-        return _payload_from_parser(parser)
+        return self.loads(
+            read_text(path, encoding=encoding),
+            options=options,
+        )
 
     def write(
         self,
@@ -250,12 +243,11 @@ class IniFile(SemiStructuredTextFileHandlerABC):
             The number of records written to the INI file.
         """
         encoding = self.encoding_from_write_options(options)
-        payload = require_dict_payload(data, format_name='INI')
-        parser = _parser_from_payload(payload)
-
-        ensure_parent_dir(path)
-        with path.open('w', encoding=encoding, newline='') as handle:
-            parser.write(handle)
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+        )
         return 1
 
 
