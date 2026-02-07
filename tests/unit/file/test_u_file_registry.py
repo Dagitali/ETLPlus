@@ -19,6 +19,7 @@ import etlplus.file as file_package
 from etlplus.file import FileFormat
 from etlplus.file import registry as mod
 from etlplus.file.arrow import ArrowFile
+from etlplus.file.avro import AvroFile
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.dta import DtaFile
@@ -108,6 +109,7 @@ class TestRegistryMappedResolution:
     @pytest.mark.parametrize(
         ('file_format', 'expected_class'),
         [
+            (FileFormat.AVRO, AvroFile),
             (FileFormat.ARROW, ArrowFile),
             (FileFormat.DTA, DtaFile),
             (FileFormat.DUCKDB, DuckdbFile),
@@ -193,7 +195,8 @@ class TestRegistryModuleAdapterFallback:
             lambda _fmt: fake_module,
         )
 
-        handler_class = mod.get_handler_class(FileFormat.GZ)
+        with pytest.warns(RuntimeWarning, match='module-adapter fallback'):
+            handler_class = mod.get_handler_class(FileFormat.GZ)
 
         assert issubclass(handler_class, FileHandlerABC)
         assert handler_class.category == 'module_adapter'
