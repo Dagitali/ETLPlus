@@ -191,8 +191,8 @@ Recognized file formats are listed in the tables below. Support for reading to o
   category ABCs, and `ReadOnlyFileHandlerABC`).
 - `etlplus/file/registry.py` resolves handlers using an explicit `FileFormat -> handler class` map
   first.
-- A module-adapter fallback still exists temporarily for unmigrated formats, but explicit registry
-  entries are the default path.
+- Dispatch is strict-by-default: unmapped formats raise `Unsupported format`.
+- A temporary module-adapter fallback remains available only as an explicit opt-in in registry APIs.
 
 **Current Migration Coverage (Class-Based + Explicit Registry Mapping)**
 
