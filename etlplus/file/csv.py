@@ -104,10 +104,10 @@ class CsvFile(DelimitedTextFileHandlerABC):
         JSONList
             Parsed rows.
         """
-        delimiter = self.delimiter
-        if options is not None:
-            delimiter = str(options.extras.get('delimiter', delimiter))
-        return read_delimited(path, delimiter=delimiter)
+        return read_delimited(
+            path,
+            delimiter=self.delimiter_from_read_options(options),
+        )
 
     def write(
         self,
@@ -161,13 +161,10 @@ class CsvFile(DelimitedTextFileHandlerABC):
         int
             The number of rows written to the CSV file.
         """
-        delimiter = self.delimiter
-        if options is not None:
-            delimiter = str(options.extras.get('delimiter', delimiter))
         return write_delimited(
             path,
             rows,
-            delimiter=delimiter,
+            delimiter=self.delimiter_from_write_options(options),
             format_name='CSV',
         )
 
