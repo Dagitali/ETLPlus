@@ -28,8 +28,8 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from .base import FileHandlerABC
 from .base import ReadOptions
+from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -48,13 +48,33 @@ __all__ = [
 # SECTION: FUNCTIONS ======================================================== #
 
 
-class SavFile(FileHandlerABC):
+class SavFile(ScientificDatasetFileHandlerABC):
     """
     Handler implementation for SAV files.
     """
 
     format = FileFormat.SAV
-    category = 'statistical_dataset'
+    dataset_key = 'data'
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return available SAV dataset keys.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+
+        Returns
+        -------
+        list[str]
+            Available dataset keys.
+        """
+        _ = path
+        return [self.dataset_key]
 
     def read(
         self,
@@ -77,7 +97,46 @@ class SavFile(FileHandlerABC):
         JSONList
             The list of dictionaries read from the SAV file.
         """
+        dataset = options.dataset if options is not None else None
+        return cast(
+            JSONList,
+            self.read_dataset(path, dataset=dataset, options=options),
+        )
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read a dataset from SAV at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        dataset : str | None, optional
+            Dataset selector. SAV supports a single dataset key.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records.
+
+        Raises
+        ------
+        ValueError
+            If *dataset* is provided and not supported.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'SAV supports only dataset key {self.dataset_key!r}',
+            )
         pyreadstat = get_dependency('pyreadstat', format_name='SAV')
         frame, _meta = pyreadstat.read_sav(str(path))
         return cast(JSONList, frame.to_dict(orient='records'))
@@ -107,7 +166,52 @@ class SavFile(FileHandlerABC):
         int
             The number of rows written to the SAV file.
         """
+        dataset = options.dataset if options is not None else None
+        return self.write_dataset(
+            path,
+            data,
+            dataset=dataset,
+            options=options,
+        )
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to SAV at *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file on disk.
+        data : JSONData
+            Dataset payload to write.
+        dataset : str | None, optional
+            Dataset selector. SAV supports a single dataset key.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+
+        Raises
+        ------
+        ValueError
+            If *dataset* is provided and not supported.
+        """
         _ = options
+        if dataset is not None and dataset != self.dataset_key:
+            raise ValueError(
+                f'SAV supports only dataset key {self.dataset_key!r}',
+            )
+
         records = normalize_records(data, 'SAV')
         if not records:
             return 0
