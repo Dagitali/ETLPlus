@@ -134,11 +134,9 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         conn = self.connect(path)
         try:
             tables = self.list_tables(conn)
-            table = (
-                options.table
-                if options is not None and options.table is not None
-                else resolve_table(tables, engine_name='SQLite')
-            )
+            table = self.table_from_read_options(options)
+            if table is None:
+                table = resolve_table(tables, engine_name='SQLite')
             if table is None:
                 return []
             return self.read_table(conn, table)
@@ -197,11 +195,11 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         if not records:
             return 0
 
-        table = (
-            options.table
-            if options is not None and options.table is not None
-            else self.default_table
+        table = self.table_from_write_options(
+            options,
+            default=self.default_table,
         )
+        assert table is not None
         ensure_parent_dir(path)
         conn = self.connect(path)
         try:
