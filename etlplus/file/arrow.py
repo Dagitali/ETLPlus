@@ -19,9 +19,8 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import cast
-
-import pyarrow  # type: ignore[import]
 
 from ..types import JSONData
 from ..types import JSONList
@@ -34,6 +33,9 @@ from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
+
+if TYPE_CHECKING:
+    import pyarrow
 
 # SECTION: EXPORTS ========================================================== #
 
