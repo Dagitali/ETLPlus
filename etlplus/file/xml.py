@@ -149,6 +149,22 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
 
     format = FileFormat.XML
 
+    # -- Internal Instance Methods -- #
+
+    def _build_root_element(
+        self,
+        data: JSONData,
+        *,
+        root_tag: str,
+    ) -> ET.Element:
+        """
+        Build the XML root element from JSON-like input data.
+        """
+        if isinstance(data, dict) and len(data) == 1:
+            root_name, payload = next(iter(data.items()))
+            return _dict_to_element(str(root_name), payload)
+        return _dict_to_element(root_tag, data)
+
     # -- Instance Methods -- #
 
     def dumps(
@@ -174,13 +190,9 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
             Serialized XML text.
         """
         root_tag = (
-            options.root_tag if options is not None else DEFAULT_XML_ROOT
+            self.root_tag_from_write_options(options, default=DEFAULT_XML_ROOT)
         )
-        if isinstance(data, dict) and len(data) == 1:
-            root_name, payload = next(iter(data.items()))
-            root_element = _dict_to_element(str(root_name), payload)
-        else:
-            root_element = _dict_to_element(root_tag, data)
+        root_element = self._build_root_element(data, root_tag=root_tag)
         return ET.tostring(
             root_element,
             encoding='unicode',
@@ -264,13 +276,9 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
             The number of records written to the XML file.
         """
         root_tag = (
-            options.root_tag if options is not None else DEFAULT_XML_ROOT
+            self.root_tag_from_write_options(options, default=DEFAULT_XML_ROOT)
         )
-        if isinstance(data, dict) and len(data) == 1:
-            root_name, payload = next(iter(data.items()))
-            root_element = _dict_to_element(str(root_name), payload)
-        else:
-            root_element = _dict_to_element(root_tag, data)
+        root_element = self._build_root_element(data, root_tag=root_tag)
 
         tree = ET.ElementTree(root_element)
         ensure_parent_dir(path)
