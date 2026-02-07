@@ -30,7 +30,7 @@ from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._r import coerce_r_object
 from .base import ReadOptions
-from .base import ScientificDatasetFileHandlerABC
+from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -46,10 +46,10 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-class RdsFile(ScientificDatasetFileHandlerABC):
+class RdsFile(SingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for RDS files.
     """
@@ -60,29 +60,6 @@ class RdsFile(ScientificDatasetFileHandlerABC):
     dataset_key = 'data'
 
     # -- Instance Methods -- #
-
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return available dataset keys in an RDS container.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDS file on disk.
-
-        Returns
-        -------
-        list[str]
-            Available dataset keys.
-        """
-        pyreadr = get_dependency('pyreadr', format_name='RDS')
-        result = pyreadr.read_r(str(path))
-        if not result:
-            return [self.dataset_key]
-        return [str(key) for key in result]
 
     def read(
         self,
@@ -105,7 +82,7 @@ class RdsFile(ScientificDatasetFileHandlerABC):
         JSONData
             The structured data read from the RDS file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def read_dataset(
@@ -185,7 +162,7 @@ class RdsFile(ScientificDatasetFileHandlerABC):
         int
             The number of rows written to the RDS file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_write_options(options)
         return self.write_dataset(
             path,
             data,
@@ -222,16 +199,11 @@ class RdsFile(ScientificDatasetFileHandlerABC):
 
         Raises
         ------
-        ValueError
-            If *dataset* is provided and not supported.
         ImportError
             If "pyreadr" is not installed with write support.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'RDS supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
 
         pyreadr = get_dependency('pyreadr', format_name='RDS')
         pandas = get_pandas('RDS')
