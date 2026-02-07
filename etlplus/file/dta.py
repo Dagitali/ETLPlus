@@ -30,7 +30,7 @@ from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 from .base import ReadOptions
-from .base import ScientificDatasetFileHandlerABC
+from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -46,10 +46,10 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-class DtaFile(ScientificDatasetFileHandlerABC):
+class DtaFile(SingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for DTA files.
     """
@@ -60,26 +60,6 @@ class DtaFile(ScientificDatasetFileHandlerABC):
     dataset_key = 'data'
 
     # -- Instance Methods -- #
-
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return available DTA dataset keys.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-
-        Returns
-        -------
-        list[str]
-            Available dataset keys.
-        """
-        _ = path
-        return [self.dataset_key]
 
     def read(
         self,
@@ -102,7 +82,7 @@ class DtaFile(ScientificDatasetFileHandlerABC):
         JSONList
             The list of dictionaries read from the DTA file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_read_options(options)
         return cast(
             JSONList,
             self.read_dataset(path, dataset=dataset, options=options),
@@ -138,10 +118,7 @@ class DtaFile(ScientificDatasetFileHandlerABC):
             If *dataset* is provided and not supported.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'DTA supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
         get_dependency('pyreadstat', format_name='DTA')
         pandas = get_pandas('DTA')
         frame = pandas.read_stata(path)
@@ -172,7 +149,7 @@ class DtaFile(ScientificDatasetFileHandlerABC):
         int
             The number of rows written to the DTA file.
         """
-        dataset = options.dataset if options is not None else None
+        dataset = self.dataset_from_write_options(options)
         return self.write_dataset(
             path,
             data,
@@ -213,10 +190,7 @@ class DtaFile(ScientificDatasetFileHandlerABC):
             If *dataset* is provided and not supported.
         """
         _ = options
-        if dataset is not None and dataset != self.dataset_key:
-            raise ValueError(
-                f'DTA supports only dataset key {self.dataset_key!r}',
-            )
+        self.validate_single_dataset_key(dataset)
 
         records = normalize_records(data, 'DTA')
         if not records:
