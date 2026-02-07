@@ -96,14 +96,14 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read a dataset from XPT at *path*.
+        Read and return one dataset from XPT at *path*.
 
         Parameters
         ----------
         path : Path
             Path to the XPT file on disk.
         dataset : str | None, optional
-            Dataset selector. XPT supports a single dataset key.
+            Dataset selector. Use the default dataset key or ``None``.
         options : ReadOptions | None, optional
             Optional read parameters.
 
@@ -111,11 +111,6 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         -------
         JSONList
             Parsed records.
-
-        Raises
-        ------
-        ValueError
-            If *dataset* is provided and not supported.
         """
         _ = options
         self.validate_single_dataset_key(dataset)
@@ -174,7 +169,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write one dataset to XPT at *path*.
+        Write one dataset to XPT at *path* and return record count.
 
         Parameters
         ----------
@@ -183,7 +178,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         data : JSONData
             Dataset payload to write.
         dataset : str | None, optional
-            Dataset selector. XPT supports a single dataset key.
+            Dataset selector. Use the default dataset key or ``None``.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -194,8 +189,6 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
 
         Raises
         ------
-        ValueError
-            If *dataset* is provided and not supported.
         ImportError
             If "pyreadstat" is not installed with write support.
         """
