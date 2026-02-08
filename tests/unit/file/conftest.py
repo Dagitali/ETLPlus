@@ -20,6 +20,7 @@ import numbers
 import pkgutil
 from collections.abc import Callable
 from collections.abc import Generator
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from types import ModuleType
 from types import SimpleNamespace
@@ -45,6 +46,13 @@ from etlplus.types import JSONDict
 
 # Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
+
+
+# SECTION: TYPE ALIAS ======================================================= #
+
+
+# Shared callable used by dependency-stubbing contracts.
+type OptionalModuleInstaller = Callable[[dict[str, object]], None]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -88,34 +96,6 @@ def assert_single_dataset_rejects_non_default_key(
             [],
             dataset=bad_dataset,
         )
-
-
-def assert_stub_module_contract(
-    module: ModuleType,
-    handler_cls: type[StubFileHandlerABC],
-    *,
-    format_name: str,
-    tmp_path: Path,
-    write_payload: JSONData | None = None,
-) -> None:
-    """Assert baseline contract for a placeholder stub module."""
-    if write_payload is None:
-        write_payload = [{'id': 1}]
-
-    assert issubclass(handler_cls, StubFileHandlerABC)
-    assert handler_cls.format.value == format_name
-
-    path = tmp_path / f'data.{format_name}'
-    with pytest.raises(
-        NotImplementedError,
-        match=rf'{format_name.upper()} read is not implemented yet',
-    ):
-        module.read(path)
-    with pytest.raises(
-        NotImplementedError,
-        match=rf'{format_name.upper()} write is not implemented yet',
-    ):
-        module.write(path, write_payload)
 
 
 def assert_stub_module_operation_raises(
@@ -658,9 +638,8 @@ class BaseOptionResolutionContract:
         """Test WriteOptions immutability contract."""
         options = WriteOptions()
 
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(FrozenInstanceError):
             options.encoding = 'latin-1'  # type: ignore[misc]
-        assert exc.type.__name__ == 'FrozenInstanceError'
 
 
 class BinaryCodecModuleContract:
@@ -709,7 +688,7 @@ class BinaryCodecModuleContract:
     def test_read_uses_dependency_codec(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read delegating bytes decoding to the codec dependency."""
         codec = self._make_codec_stub(loaded_result=self.loaded_result)
@@ -734,7 +713,7 @@ class BinaryCodecModuleContract:
     def test_write_serializes_payload(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         payload_attr: str,
         expected_attr: str,
     ) -> None:
@@ -795,7 +774,7 @@ class BinaryDependencyModuleContract:
     def test_read_uses_dependency(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
@@ -811,7 +790,7 @@ class BinaryDependencyModuleContract:
     def test_write_uses_dependency(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test write delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
@@ -966,7 +945,7 @@ class EmbeddedDatabaseModuleContract:
     def build_empty_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Create an empty database fixture path for read tests."""
         raise NotImplementedError
@@ -974,7 +953,7 @@ class EmbeddedDatabaseModuleContract:
     def build_multi_table_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Create a multi-table database fixture path for read tests."""
         raise NotImplementedError
@@ -982,7 +961,7 @@ class EmbeddedDatabaseModuleContract:
     def test_read_returns_empty_when_no_tables(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading empty embedded databases returning no records."""
         path = self.build_empty_database_path(tmp_path, optional_module_stub)
@@ -991,7 +970,7 @@ class EmbeddedDatabaseModuleContract:
     def test_read_raises_on_multiple_tables(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read rejecting ambiguous multi-table databases."""
         path = self.build_multi_table_database_path(
@@ -1203,7 +1182,7 @@ class PandasColumnarModuleContract:
 
     def _install_read_write_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         pandas: object,
     ) -> None:
         """Install optional module stubs used by read/write tests."""
@@ -1215,7 +1194,7 @@ class PandasColumnarModuleContract:
     def test_read_returns_records(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         make_records_frame: Callable[[list[dict[str, object]]], object],
         make_pandas_stub: Callable[[object], object],
     ) -> None:
@@ -1232,7 +1211,7 @@ class PandasColumnarModuleContract:
     def test_write_calls_expected_table_writer(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         make_records_frame: Callable[[list[dict[str, object]]], object],
         make_pandas_stub: Callable[[object], object],
     ) -> None:
@@ -1276,7 +1255,7 @@ class PandasColumnarModuleContract:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         make_import_error_reader: Callable[[str], object],
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read dependency failures raising :class:`ImportError`."""
         if self.requires_pyarrow:
@@ -1295,7 +1274,7 @@ class PandasColumnarModuleContract:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         make_import_error_writer: Callable[[], object],
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test write dependency failures raising :class:`ImportError`."""
         if self.requires_pyarrow:
@@ -1440,7 +1419,7 @@ class RDataModuleContract:
     def test_read_empty_result_returns_empty_list(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading empty R-data results returning an empty list."""
         optional_module_stub(
@@ -1455,7 +1434,7 @@ class RDataModuleContract:
     def test_read_single_value_coerces_to_records(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading one R object coercing to JSON records."""
         frame = self.build_frame([{'id': 1}])
@@ -1473,7 +1452,7 @@ class RDataModuleContract:
     def test_read_multiple_values_returns_mapping(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading multiple R objects returning key-mapped payloads."""
         result: dict[str, object] = {'one': {'id': 1}, 'two': [{'id': 2}]}
@@ -1491,7 +1470,7 @@ class RDataModuleContract:
     def test_write_raises_when_writer_missing(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test writing failing when pyreadr writer methods are unavailable."""
         optional_module_stub(
@@ -1510,7 +1489,7 @@ class RDataModuleContract:
     def test_write_happy_path_uses_writer(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test writing delegating to pyreadr writer methods."""
         pyreadr = self.build_pyreadr_stub({})
@@ -1546,7 +1525,7 @@ class ReadOnlyScientificDatasetModuleContract:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install stubs needed for unknown-dataset contract checks."""
         _ = tmp_path
@@ -1563,7 +1542,7 @@ class ReadOnlyScientificDatasetModuleContract:
         handler: object,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test explicit unknown dataset keys being rejected."""
         self.prepare_unknown_dataset_env(
@@ -1586,7 +1565,7 @@ class ReadOnlyScientificDatasetModuleContract:
         handler: object,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test unknown dataset rejection routed via read options."""
         self.prepare_unknown_dataset_env(
@@ -2055,7 +2034,7 @@ class SemiStructuredReadModuleContract:
 
     def setup_read_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install optional dependencies needed for read tests."""
 
@@ -2069,7 +2048,7 @@ class SemiStructuredReadModuleContract:
     def test_read_parses_expected_payload(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading expected payload from representative text content."""
         self.setup_read_dependencies(optional_module_stub)
@@ -2099,7 +2078,7 @@ class SemiStructuredWriteDictModuleContract:
 
     def setup_write_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install optional dependencies needed for write tests."""
 
@@ -2113,7 +2092,7 @@ class SemiStructuredWriteDictModuleContract:
     def test_write_accepts_single_dict_payload(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test writing a single dictionary payload."""
         self.setup_write_dependencies(optional_module_stub)
@@ -2318,7 +2297,7 @@ class TextRowModuleContract:
     def prepare_read_case(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> tuple[Path, JSONData]:
         """Prepare and return ``(path, expected_result)`` for read tests."""
         raise NotImplementedError
@@ -2333,7 +2312,7 @@ class TextRowModuleContract:
     def test_read_returns_expected_rows(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading representative row-oriented input."""
         path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
@@ -2384,7 +2363,7 @@ class WritableSpreadsheetModuleContract:
     def test_read_returns_records(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         make_records_frame: Callable[[list[dict[str, object]]], object],
         make_pandas_stub: Callable[[object], object],
     ) -> None:
@@ -2422,7 +2401,7 @@ class WritableSpreadsheetModuleContract:
     def test_write_calls_to_excel(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         make_records_frame: Callable[[list[dict[str, object]]], object],
         make_pandas_stub: Callable[[object], object],
     ) -> None:
@@ -2867,7 +2846,7 @@ def make_records_frame_fixture() -> Callable[
 
 @pytest.fixture(name='optional_module_stub')
 def optional_module_stub_fixture() -> Generator[
-    Callable[[dict[str, object]], None]
+    OptionalModuleInstaller
 ]:
     """
     Install stub modules into the optional import cache.
