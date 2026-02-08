@@ -12,33 +12,46 @@ import pytest
 
 from etlplus.file import mat as mod
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
-from tests.unit.file.conftest import (
+from tests.unit.file._module_contracts import (
     assert_single_dataset_rejects_non_default_key,
 )
 
 # SECTION: TESTS ============================================================ #
 
 
-def test_mat_uses_single_dataset_scientific_abc() -> None:
-    """Test mat handler base contract."""
-    assert issubclass(mod.MatFile, SingleDatasetScientificFileHandlerABC)
-    assert mod.MatFile.dataset_key == 'data'
+class TestMat:
+    """Unit tests for :mod:`etlplus.file.mat`."""
 
+    @pytest.fixture
+    def handler(self) -> mod.MatFile:
+        """Create a MAT handler instance."""
+        return mod.MatFile()
 
-def test_mat_rejects_non_default_dataset_key() -> None:
-    """Test mat rejecting non-default dataset key overrides."""
-    assert_single_dataset_rejects_non_default_key(
-        mod.MatFile(),
-        suffix='mat',
-    )
+    def test_uses_single_dataset_scientific_abc(self) -> None:
+        """Test MAT handler base contract."""
+        assert issubclass(mod.MatFile, SingleDatasetScientificFileHandlerABC)
+        assert mod.MatFile.dataset_key == 'data'
 
+    def test_rejects_non_default_dataset_key(
+        self,
+        handler: mod.MatFile,
+    ) -> None:
+        """Test MAT rejecting non-default dataset key overrides."""
+        assert_single_dataset_rejects_non_default_key(
+            handler,
+            suffix='mat',
+        )
 
-def test_mat_read_write_raise_not_implemented(
-    tmp_path: Path,
-) -> None:
-    """Test mat module-level read/write placeholder behavior."""
-    path = tmp_path / 'data.mat'
-    with pytest.raises(NotImplementedError, match='not implemented yet'):
-        mod.read(path)
-    with pytest.raises(NotImplementedError, match='not implemented yet'):
-        mod.write(path, [{'id': 1}])
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_level_placeholders_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: str,
+    ) -> None:
+        """Test MAT module-level placeholder read/write behavior."""
+        path = tmp_path / 'data.mat'
+        with pytest.raises(NotImplementedError, match='not implemented yet'):
+            if operation == 'read':
+                mod.read(path)
+            else:
+                mod.write(path, [{'id': 1}])
