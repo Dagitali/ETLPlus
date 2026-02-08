@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -496,27 +495,27 @@ class TestOptionsContracts(BaseOptionResolutionContract):
 
     def make_scientific_handler(self) -> ScientificOptionHandlerProtocol:
         """Build a scientific handler for option contract checks."""
-        return cast(ScientificOptionHandlerProtocol, DtaFile())
+        return DtaFile()
 
     def make_delimited_handler(self) -> DelimitedOptionHandlerProtocol:
         """Build a delimited handler for option contract checks."""
-        return cast(DelimitedOptionHandlerProtocol, _DelimitedStub())
+        return _DelimitedStub()
 
     def make_read_only_handler(self) -> EncodingRootExtrasHandlerProtocol:
         """Build a read-only handler for option contract checks."""
-        return cast(EncodingRootExtrasHandlerProtocol, _ReadOnlyStub())
+        return _ReadOnlyStub()
 
     def make_archive_handler(self) -> ArchiveOptionHandlerProtocol:
         """Build an archive handler for option contract checks."""
-        return cast(ArchiveOptionHandlerProtocol, _ArchiveStub())
+        return _ArchiveStub()
 
     def make_spreadsheet_handler(self) -> SheetOptionHandlerProtocol:
         """Build a spreadsheet handler for option contract checks."""
-        return cast(SheetOptionHandlerProtocol, _SpreadsheetStub())
+        return _SpreadsheetStub()
 
     def make_embedded_handler(self) -> TableOptionHandlerProtocol:
         """Build an embedded-db handler for option contract checks."""
-        return cast(TableOptionHandlerProtocol, _EmbeddedDbStub())
+        return _EmbeddedDbStub()
 
     def test_write_options_are_frozen(self) -> None:
         """Test WriteOptions immutability contract."""
