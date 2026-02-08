@@ -6,23 +6,28 @@ Focused unit tests for scientific handler dataset-key validation behavior.
 
 from __future__ import annotations
 
-from types import ModuleType
+from typing import cast
 
 from etlplus.file import mat as mat_mod
 from etlplus.file import sylk as sylk_mod
 from etlplus.file import zsav as zsav_mod
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from tests.unit.file.conftest import ScientificStubDatasetKeysContract
+from tests.unit.file.conftest import ScientificStubModuleProtocol
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _SCIENTIFIC_STUB_MODULES: list[
-    tuple[ModuleType, type[ScientificDatasetFileHandlerABC], str]
+    tuple[
+        ScientificStubModuleProtocol,
+        type[ScientificDatasetFileHandlerABC],
+        str,
+    ]
 ] = [
-    (mat_mod, mat_mod.MatFile, 'mat'),
-    (sylk_mod, sylk_mod.SylkFile, 'sylk'),
-    (zsav_mod, zsav_mod.ZsavFile, 'zsav'),
+    (cast(ScientificStubModuleProtocol, mat_mod), mat_mod.MatFile, 'mat'),
+    (cast(ScientificStubModuleProtocol, sylk_mod), sylk_mod.SylkFile, 'sylk'),
+    (cast(ScientificStubModuleProtocol, zsav_mod), zsav_mod.ZsavFile, 'zsav'),
 ]
 
 
