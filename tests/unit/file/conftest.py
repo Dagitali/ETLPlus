@@ -282,38 +282,86 @@ def require_optional_modules(
 # SECTION: CLASSES (CONTRACTS) ============================================== #
 
 
-class StubModuleContract:
+class ArchiveWrapperCoreDispatchModuleContract:
     """
-    Reusable contract suite for placeholder/stub format modules.
+    Reusable contract suite for archive wrappers using core dispatch.
 
     Subclasses must provide:
-    - ``module``
-    - ``handler_cls``
-    - ``format_name``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`valid_path_name`
+    - :attr:`missing_inner_path_name`
+    - :attr:`expected_read_result`
+    - :attr:`seed_archive_payload`
+    - :attr:`assert_archive_payload`
     """
 
     module: ModuleType
-    handler_cls: type[StubFileHandlerABC]
     format_name: str
+    valid_path_name: str
+    missing_inner_path_name: str
+    expected_read_result: JSONData
+    write_payload: JSONData = [{'id': 1}]
+    expected_written_count: int = 1
+    missing_inner_error_pattern: str = 'Cannot infer file format'
 
-    def test_handler_inherits_stub_abc(self) -> None:
-        """Test handler metadata and inheritance contract."""
-        assert issubclass(self.handler_cls, StubFileHandlerABC)
-        assert self.handler_cls.format.value == self.format_name
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Write a wrapped payload used by read tests."""
+        raise NotImplementedError
 
-    @pytest.mark.parametrize('operation', ['read', 'write'])
-    def test_module_operations_raise_not_implemented(
+    def assert_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert wrapped payload bytes/content produced by writes."""
+        raise NotImplementedError
+
+    def install_core_file_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch core file dispatch for deterministic archive tests."""
+
+    def test_read_uses_core_dispatch(
         self,
         tmp_path: Path,
-        operation: str,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test module-level read/write placeholder behavior."""
-        assert_stub_module_operation_raises(
-            self.module,
-            format_name=self.format_name,
-            operation=cast(Literal['read', 'write'], operation),
-            path=tmp_path / f'data.{self.format_name}',
-        )
+        """Test read delegating payload parsing through core dispatch."""
+        self.install_core_file_stub(monkeypatch)
+        path = tmp_path / self.valid_path_name
+        self.seed_archive_payload(path)
+
+        result = self.module.read(path)
+
+        assert result == self.expected_read_result
+
+    def test_write_creates_wrapped_payload(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write persisting wrapped payload through core dispatch."""
+        self.install_core_file_stub(monkeypatch)
+        path = tmp_path / self.valid_path_name
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_archive_payload(path)
+
+    def test_write_requires_inner_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writes requiring a resolvable inner file format."""
+        path = tmp_path / self.missing_inner_path_name
+
+        with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
+            self.module.write(path, self.write_payload)
 
 
 class BinaryCodecModuleContract:
@@ -321,15 +369,15 @@ class BinaryCodecModuleContract:
     Reusable contract suite for binary codec wrapper modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``dependency_name``
-    - ``reader_method_name``
-    - ``writer_method_name``
-    - ``reader_kwargs``
-    - ``writer_kwargs``
-    - ``loaded_result``
-    - ``emitted_bytes``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`dependency_name`
+    - :attr:`reader_method_name`
+    - :attr:`writer_method_name`
+    - :attr:`reader_kwargs`
+    - :attr:`writer_kwargs`
+    - :attr:`loaded_result`
+    - :attr:`emitted_bytes`
     """
 
     module: ModuleType
@@ -406,17 +454,88 @@ class BinaryCodecModuleContract:
         assert path.read_bytes() == self.emitted_bytes
 
 
+class BinaryDependencyModuleContract:
+    """
+    Reusable contract suite for binary modules backed by one dependency.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`dependency_name`
+    - :attr:`expected_read_result`
+    - :attr:`write_payload`
+    - :attr:`make_dependency_stub`
+    """
+
+    module: ModuleType
+    format_name: str
+    dependency_name: str
+    expected_read_result: JSONData
+    write_payload: JSONData
+    read_payload_bytes: bytes = b'payload'
+    expected_written_count: int = 1
+
+    def make_dependency_stub(self) -> object:
+        """Build dependency stub used by read/write tests."""
+        raise NotImplementedError
+
+    def assert_dependency_after_read(
+        self,
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert dependency interactions for read tests."""
+
+    def assert_dependency_after_write(
+        self,
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert dependency interactions for write tests."""
+
+    def test_read_uses_dependency(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read delegating to the configured dependency."""
+        dependency = self.make_dependency_stub()
+        optional_module_stub({self.dependency_name: dependency})
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_bytes(self.read_payload_bytes)
+
+        result = self.module.read(path)
+
+        assert result == self.expected_read_result
+        self.assert_dependency_after_read(dependency, path)
+
+    def test_write_uses_dependency(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test write delegating to the configured dependency."""
+        dependency = self.make_dependency_stub()
+        optional_module_stub({self.dependency_name: dependency})
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_dependency_after_write(dependency, path)
+
+
 class BinaryKeyedPayloadModuleContract:
     """
     Reusable contract suite for keyed binary payload wrapper modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``payload_key``
-    - ``sample_payload_value``
-    - ``expected_bytes``
-    - ``invalid_payload``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`payload_key`
+    - :attr:`sample_payload_value`
+    - :attr:`expected_bytes`
+    - :attr:`invalid_payload`
     """
 
     module: ModuleType
@@ -461,9 +580,9 @@ class DelimitedModuleContract:
     Reusable contract suite for delimited text wrapper modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``delimiter``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`delimiter`
     """
 
     module: ModuleType
@@ -527,15 +646,82 @@ class DelimitedModuleContract:
         assert calls['format_name'] == self.format_name.upper()
 
 
+class EmbeddedDatabaseModuleContract:
+    """
+    Reusable contract suite for embedded database wrapper modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`multi_table_error_pattern`
+    - :attr:`build_empty_database_path`
+    - :attr:`build_multi_table_database_path`
+    """
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    format_name: str
+    multi_table_error_pattern: str
+
+    def build_empty_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Create an empty database fixture path for read tests."""
+        raise NotImplementedError
+
+    def build_multi_table_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Create a multi-table database fixture path for read tests."""
+        raise NotImplementedError
+
+    def test_read_returns_empty_when_no_tables(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading empty embedded databases returning no records."""
+        path = self.build_empty_database_path(tmp_path, optional_module_stub)
+        assert self.module.read(path) == []
+
+    def test_read_raises_on_multiple_tables(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read rejecting ambiguous multi-table databases."""
+        path = self.build_multi_table_database_path(
+            tmp_path,
+            optional_module_stub,
+        )
+        with pytest.raises(ValueError, match=self.multi_table_error_pattern):
+            self.module.read(path)
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        assert self.module.write(
+            tmp_path / f'data.{self.format_name}',
+            [],
+        ) == 0
+
+
 class PandasColumnarModuleContract:
     """
     Reusable contract suite for pandas-backed columnar format modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``read_method_name``
-    - ``write_calls_attr``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`read_method_name`
+    - :attr:`write_calls_attr`
     """
 
     module: ModuleType
@@ -656,43 +842,13 @@ class PandasColumnarModuleContract:
             )
 
 
-class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
-    """
-    Reusable suite for pandas-backed columnar modules gated by pyarrow.
-    """
-
-    requires_pyarrow = True
-    missing_dependency_pattern: str = 'missing pyarrow'
-
-    @pytest.mark.parametrize('operation', ['read', 'write'])
-    def test_operations_raise_when_pyarrow_missing(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        operation: str,
-    ) -> None:
-        """Test read/write failing when pyarrow dependency resolution fails."""
-
-        def _missing(*_args: object, **_kwargs: object) -> object:
-            raise ImportError(self.missing_dependency_pattern)
-
-        monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = tmp_path / f'data.{self.format_name}'
-
-        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
-            if operation == 'read':
-                self.module.read(path)
-            else:
-                self.module.write(path, [{'id': 1}])
-
-
 class PyarrowGateOnlyModuleContract:
     """
     Reusable contract suite for pyarrow-gated IPC-style modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
+    - :attr:`module`
+    - :attr:`format_name`
     """
 
     module: ModuleType
@@ -730,14 +886,44 @@ class PyarrowGateOnlyModuleContract:
                 self.module.write(path, [{'id': 1}])
 
 
+class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
+    """
+    Reusable suite for pandas-backed columnar modules gated by pyarrow.
+    """
+
+    requires_pyarrow = True
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_operations_raise_when_pyarrow_missing(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test read/write failing when pyarrow dependency resolution fails."""
+
+        def _missing(*_args: object, **_kwargs: object) -> object:
+            raise ImportError(self.missing_dependency_pattern)
+
+        monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        path = tmp_path / f'data.{self.format_name}'
+
+        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
+            if operation == 'read':
+                self.module.read(path)
+            else:
+                self.module.write(path, [{'id': 1}])
+
+
 class ReadOnlySpreadsheetModuleContract:
     """
     Reusable contract suite for read-only spreadsheet wrapper modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``dependency_hint``
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`dependency_hint`
     """
 
     module: ModuleType
@@ -772,14 +958,104 @@ class ReadOnlySpreadsheetModuleContract:
             )
 
 
+class SemiStructuredReadModuleContract:
+    """
+    Reusable contract suite for semi-structured text module reads.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`sample_read_text`
+    - :attr:`expected_read_payload`
+    """
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    format_name: str
+    sample_read_text: str
+    expected_read_payload: JSONData
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install optional dependencies needed for read tests."""
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        """Assert module-specific read contract expectations."""
+        assert result == self.expected_read_payload
+
+    def test_read_parses_expected_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading expected payload from representative text content."""
+        self.setup_read_dependencies(optional_module_stub)
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_text(self.sample_read_text, encoding='utf-8')
+
+        result = self.module.read(path)
+
+        self.assert_read_contract_result(result)
+
+
+class SemiStructuredWriteDictModuleContract:
+    """
+    Reusable contract suite for semi-structured text module dict writes.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`dict_payload`
+    """
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    format_name: str
+    dict_payload: JSONData
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install optional dependencies needed for write tests."""
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract expectations."""
+        assert path.exists()
+
+    def test_write_accepts_single_dict_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test writing a single dictionary payload."""
+        self.setup_write_dependencies(optional_module_stub)
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, self.dict_payload)
+
+        assert written == 1
+        self.assert_write_contract_result(path)
+
+
 class SingleDatasetHandlerContract:
     """
     Reusable contract suite for single-dataset scientific handlers.
 
     Subclasses must provide:
-    - ``module``
-    - ``handler_cls``
-    - ``format_name``
+    - :attr:`module`
+    - :attr:`handler_cls`
+    - :attr:`format_name`
     """
 
     module: ModuleType
@@ -845,16 +1121,50 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
                 self.module.write(path, [{'id': 1}])
 
 
+class StubModuleContract:
+    """
+    Reusable contract suite for placeholder/stub format modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`handler_cls`
+    - :attr:`format_name`
+    """
+
+    module: ModuleType
+    handler_cls: type[StubFileHandlerABC]
+    format_name: str
+
+    def test_handler_inherits_stub_abc(self) -> None:
+        """Test handler metadata and inheritance contract."""
+        assert issubclass(self.handler_cls, StubFileHandlerABC)
+        assert self.handler_cls.format.value == self.format_name
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_operations_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: str,
+    ) -> None:
+        """Test module-level read/write placeholder behavior."""
+        assert_stub_module_operation_raises(
+            self.module,
+            format_name=self.format_name,
+            operation=cast(Literal['read', 'write'], operation),
+            path=tmp_path / f'data.{self.format_name}',
+        )
+
+
 class WritableSpreadsheetModuleContract:
     """
     Reusable contract suite for writable spreadsheet wrapper modules.
 
     Subclasses must provide:
-    - ``module``
-    - ``format_name``
-    - ``dependency_hint``
-    - ``read_engine`` (optional)
-    - ``write_engine`` (optional)
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`dependency_hint`
+    - :attr:`read_engine` (optional)
+    - :attr:`write_engine` (optional)
     """
 
     module: ModuleType
@@ -965,7 +1275,7 @@ class BinaryCodecStub:
     Generic codec stub for binary serialization module tests.
 
     Supports configurable reader/writer method names to cover modules like
-    ``msgpack`` and ``cbor2`` with one reusable implementation.
+    :mod:`msgpack` and :mod:`cbor2` with one reusable implementation.
     """
 
     def __init__(
