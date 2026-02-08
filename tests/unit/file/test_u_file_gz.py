@@ -14,6 +14,7 @@ import pytest
 from etlplus.file import core
 from etlplus.file import gz as mod
 from etlplus.file.enums import FileFormat
+from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -40,8 +41,37 @@ class _StubFile:
 # SECTION: TESTS ============================================================ #
 
 
-class TestGzRead:
-    """Unit tests for :func:`etlplus.file.gz.read`."""
+class TestGz(ArchiveWrapperCoreDispatchModuleContract):
+    """Unit tests for :mod:`etlplus.file.gz`."""
+
+    module = mod
+    format_name = 'gz'
+    valid_path_name = 'payload.json.gz'
+    missing_inner_path_name = 'payload.gz'
+    expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
+
+    def install_core_file_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Install deterministic core file stub."""
+        monkeypatch.setattr(core, 'File', _StubFile)
+
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Seed gzip archive payload for read contract tests."""
+        with gzip.open(path, 'wb') as handle:
+            handle.write(b'payload')
+
+    def assert_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert gzip payload bytes for write contract tests."""
+        with gzip.open(path, 'rb') as handle:
+            assert handle.read() == b'payload'
 
     def test_read_raises_on_missing_inner_format(
         self,
@@ -63,47 +93,3 @@ class TestGzRead:
 
         with pytest.raises(ValueError, match='Not a gzip file'):
             mod.read(path)
-
-    def test_read_uses_file_helper(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that reading uses the File helper."""
-        monkeypatch.setattr(core, 'File', _StubFile)
-        path = tmp_path / 'payload.json.gz'
-        with gzip.open(path, 'wb') as handle:
-            handle.write(b'payload')
-
-        result = mod.read(path)
-
-        assert result == {'fmt': 'json', 'name': 'payload.json'}
-
-
-class TestGzWrite:
-    """Unit tests for :func:`etlplus.file.gz.write`."""
-
-    def test_write_raises_on_missing_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing a gzip file without an inner format fails."""
-        path = tmp_path / 'payload.gz'
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.write(path, [{'id': 1}])
-
-    def test_write_creates_gzip_payload(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that writing creates a gzip file with the expected payload."""
-        monkeypatch.setattr(core, 'File', _StubFile)
-        path = tmp_path / 'payload.json.gz'
-
-        written = mod.write(path, [{'id': 1}])
-
-        assert written == 1
-        with gzip.open(path, 'rb') as handle:
-            assert handle.read() == b'payload'
