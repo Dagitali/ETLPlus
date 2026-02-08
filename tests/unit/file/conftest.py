@@ -12,6 +12,7 @@ Notes
 
 from __future__ import annotations
 
+import csv
 import math
 import numbers
 from collections.abc import Callable
@@ -1282,6 +1283,135 @@ class SemiStructuredWriteDictModuleContract:
         self.assert_write_contract_result(path)
 
 
+class SniffedDelimitedModuleContract:
+    """
+    Reusable contract suite for sniffed delimited-text modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    """
+
+    module: ModuleType
+    format_name: str
+
+    def _patch_default_sniff(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch sniffer behavior to a deterministic CSV dialect."""
+        monkeypatch.setattr(
+            self.module,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+
+    def test_read_empty_returns_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading empty input returning an empty list."""
+        path = tmp_path / f'empty.{self.format_name}'
+        path.write_text('', encoding='utf-8')
+
+        assert self.module.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / f'out.{self.format_name}'
+
+        written = self.module.write(path, sample_records)
+        result = self.module.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        self._patch_default_sniff(monkeypatch)
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
+
+
+class TextRowModuleContract:
+    """
+    Reusable contract suite for text/fixed-width row-oriented modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`write_payload`
+    - :meth:`prepare_read_case`
+    - :meth:`assert_write_contract_result`
+    """
+
+    module: ModuleType
+    format_name: str
+    write_payload: JSONData
+    expected_written_count: int = 1
+
+    def prepare_read_case(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> tuple[Path, JSONData]:
+        """Prepare and return ``(path, expected_result)`` for read tests."""
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract behavior."""
+        assert path.exists()
+
+    def test_read_returns_expected_rows(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading representative row-oriented input."""
+        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
+
+        assert self.module.read(path) == expected
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        path = tmp_path / f'data.{self.format_name}'
+        assert self.module.write(path, []) == 0
+
+    def test_write_rows_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing representative row payloads."""
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_write_contract_result(path)
+
+
 class SingleDatasetHandlerContract:
     """
     Reusable contract suite for single-dataset scientific handlers.
@@ -1502,6 +1632,35 @@ class WritableSpreadsheetModuleContract:
                 tmp_path / f'data.{self.format_name}',
                 [{'id': 1}],
             )
+
+
+class XmlModuleContract:
+    """
+    Reusable contract suite for XML module read/write behavior.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`root_tag`
+    """
+
+    module: ModuleType
+    format_name: str
+    root_tag: str = 'root'
+
+    def test_write_uses_root_tag_and_read_round_trip(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test XML write using explicit root tag and readable output."""
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, [{'id': 1}], root_tag=self.root_tag)
+
+        assert written == 1
+        assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
+        result = self.module.read(path)
+        assert self.root_tag in result
 
 
 # SECTION: CLASSES (STUBS) ============================================== #
