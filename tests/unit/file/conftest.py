@@ -19,7 +19,6 @@ from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-from typing import ClassVar
 from typing import Literal
 from typing import cast
 
@@ -293,9 +292,9 @@ class StubModuleContract:
     - ``format_name``
     """
 
-    module: ClassVar[ModuleType]
-    handler_cls: ClassVar[type[StubFileHandlerABC]]
-    format_name: ClassVar[str]
+    module: ModuleType
+    handler_cls: type[StubFileHandlerABC]
+    format_name: str
 
     def test_handler_inherits_stub_abc(self) -> None:
         """Test handler metadata and inheritance contract."""
@@ -327,9 +326,9 @@ class SingleDatasetHandlerContract:
     - ``format_name``
     """
 
-    module: ClassVar[ModuleType]
-    handler_cls: ClassVar[type[SingleDatasetScientificFileHandlerABC]]
-    format_name: ClassVar[str]
+    module: ModuleType
+    handler_cls: type[SingleDatasetScientificFileHandlerABC]
+    format_name: str
 
     @pytest.fixture
     def handler(self) -> SingleDatasetScientificFileHandlerABC:
