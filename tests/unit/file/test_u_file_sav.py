@@ -12,7 +12,7 @@ import pytest
 
 from etlplus.file import sav as mod
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
-from tests.unit.file._module_contracts import (
+from tests.unit.file.conftest import (
     assert_single_dataset_rejects_non_default_key,
 )
 

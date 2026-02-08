@@ -7,9 +7,13 @@ Unit tests for :mod:`etlplus.file.cfg`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
+
+import pytest
 
 from etlplus.file import cfg as mod
-from tests.unit.file._module_contracts import assert_stub_module_contract
+from etlplus.file.stub import StubFileHandlerABC
+from tests.unit.file.conftest import assert_stub_module_operation_raises
 
 # SECTION: TESTS ============================================================ #
 
@@ -17,14 +21,28 @@ from tests.unit.file._module_contracts import assert_stub_module_contract
 class TestCfg:
     """Unit tests for :mod:`etlplus.file.cfg`."""
 
-    def test_stub_contract(
+    @pytest.fixture
+    def write_payload(self) -> list[dict[str, int]]:
+        """Create a representative write payload."""
+        return [{'id': 1}]
+
+    def test_handler_inherits_stub_abc(self) -> None:
+        """Test cfg handler class contract."""
+        assert issubclass(mod.CfgFile, StubFileHandlerABC)
+        assert mod.CfgFile.format.value == 'cfg'
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_operations_raise_not_implemented(
         self,
         tmp_path: Path,
+        write_payload: list[dict[str, int]],
+        operation: Literal['read', 'write'],
     ) -> None:
-        """Test CFG stub handler module contract."""
-        assert_stub_module_contract(
+        """Test cfg module-level read/write placeholder behavior."""
+        assert_stub_module_operation_raises(
             mod,
-            mod.CfgFile,
             format_name='cfg',
-            tmp_path=tmp_path,
+            operation=operation,
+            path=tmp_path / 'data.cfg',
+            write_payload=write_payload,
         )
