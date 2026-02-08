@@ -13,12 +13,16 @@ Notes
 from __future__ import annotations
 
 import csv
+import importlib
+import inspect
 import math
 import numbers
+import pkgutil
 from collections.abc import Callable
 from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
+from types import SimpleNamespace
 from typing import Any
 from typing import Literal
 from typing import cast
@@ -26,8 +30,12 @@ from typing import cast
 import pytest
 
 import etlplus.file._imports as import_helpers
+from etlplus.file import FileFormat
+from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOptions
+from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
+from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
@@ -364,6 +372,292 @@ class ArchiveWrapperCoreDispatchModuleContract:
 
         with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
             self.module.write(path, self.write_payload)
+
+
+class BaseOptionResolutionContract:
+    """
+    Reusable contract suite for base option helper behaviors.
+
+    Subclasses must provide factory methods for concrete handlers.
+    """
+
+    def make_scientific_handler(self) -> ScientificDatasetFileHandlerABC:
+        """Build a scientific handler used by dataset helper tests."""
+        raise NotImplementedError
+
+    def make_delimited_handler(self) -> FileHandlerABC:
+        """Build a delimited handler used by delimiter helper tests."""
+        raise NotImplementedError
+
+    def make_read_only_handler(self) -> FileHandlerABC:
+        """Build a generic handler used by encoding/root/extras tests."""
+        raise NotImplementedError
+
+    def make_archive_handler(self) -> FileHandlerABC:
+        """Build an archive handler used by inner-name helper tests."""
+        raise NotImplementedError
+
+    def make_spreadsheet_handler(self) -> FileHandlerABC:
+        """Build a spreadsheet handler used by sheet helper tests."""
+        raise NotImplementedError
+
+    def make_embedded_handler(self) -> FileHandlerABC:
+        """Build an embedded-db handler used by table helper tests."""
+        raise NotImplementedError
+
+    def test_dataset_option_helpers_use_override_then_default(self) -> None:
+        """Test scientific dataset helpers using explicit then default data."""
+        handler = self.make_scientific_handler()
+
+        assert cast(Any, handler).dataset_from_read_options(None) is None
+        assert cast(Any, handler).dataset_from_write_options(None) is None
+        assert (
+            cast(
+                Any,
+                handler,
+            ).dataset_from_read_options(ReadOptions(dataset='features'))
+            == 'features'
+        )
+        assert (
+            cast(
+                Any,
+                handler,
+            ).dataset_from_write_options(WriteOptions(dataset='labels'))
+            == 'labels'
+        )
+        assert (
+            cast(Any, handler).resolve_read_dataset(
+                None,
+                options=ReadOptions(dataset='features'),
+            )
+            == 'features'
+        )
+        assert (
+            cast(Any, handler).resolve_write_dataset(
+                None,
+                options=WriteOptions(dataset='labels'),
+            )
+            == 'labels'
+        )
+        assert (
+            cast(Any, handler).resolve_read_dataset(
+                'explicit',
+                options=ReadOptions(dataset='ignored'),
+            )
+            == 'explicit'
+        )
+        assert (
+            cast(Any, handler).resolve_write_dataset(
+                'explicit',
+                options=WriteOptions(dataset='ignored'),
+            )
+            == 'explicit'
+        )
+        assert (
+            cast(Any, handler).resolve_read_dataset(None, default='fallback')
+            == 'fallback'
+        )
+        assert (
+            cast(Any, handler).resolve_write_dataset(None, default='fallback')
+            == 'fallback'
+        )
+
+    def test_delimiter_option_helpers_use_override_then_default(self) -> None:
+        """Test delimited helpers using explicit then default delimiter."""
+        handler = self.make_delimited_handler()
+
+        assert cast(Any, handler).delimiter_from_read_options(None) == ','
+        assert cast(Any, handler).delimiter_from_write_options(None) == ','
+        assert (
+            cast(
+                Any,
+                handler,
+            ).delimiter_from_read_options(
+                ReadOptions(extras={'delimiter': '|'}),
+            )
+            == '|'
+        )
+        assert (
+            cast(
+                Any,
+                handler,
+            ).delimiter_from_write_options(
+                WriteOptions(extras={'delimiter': '\t'}),
+            )
+            == '\t'
+        )
+        assert (
+            cast(Any, handler).delimiter_from_read_options(None, default=';')
+            == ';'
+        )
+        assert (
+            cast(Any, handler).delimiter_from_write_options(None, default=':')
+            == ':'
+        )
+
+    def test_encoding_option_helpers_use_override_then_default(self) -> None:
+        """Test encoding helpers using explicit values then defaults."""
+        handler = self.make_read_only_handler()
+
+        assert cast(Any, handler).encoding_from_read_options(None) == 'utf-8'
+        assert (
+            cast(
+                Any,
+                handler,
+            ).encoding_from_read_options(ReadOptions(encoding='latin-1'))
+            == 'latin-1'
+        )
+        assert (
+            cast(Any, handler).encoding_from_read_options(
+                None, default='utf-16',
+            )
+            == 'utf-16'
+        )
+
+        assert cast(Any, handler).encoding_from_write_options(None) == 'utf-8'
+        assert (
+            cast(
+                Any,
+                handler,
+            ).encoding_from_write_options(WriteOptions(encoding='utf-16'))
+            == 'utf-16'
+        )
+        assert (
+            cast(Any, handler).encoding_from_write_options(
+                None, default='ascii',
+            )
+            == 'ascii'
+        )
+
+    def test_extra_option_helpers_use_override_then_default(self) -> None:
+        """Test extras helpers using explicit values then defaults."""
+        handler = self.make_read_only_handler()
+
+        assert cast(Any, handler).read_extra_option(None, 'foo') is None
+        assert cast(Any, handler).write_extra_option(None, 'foo') is None
+        assert (
+            cast(Any, handler).read_extra_option(None, 'foo', default='x')
+            == 'x'
+        )
+        assert (
+            cast(Any, handler).write_extra_option(None, 'foo', default='y')
+            == 'y'
+        )
+        assert (
+            cast(
+                Any,
+                handler,
+            ).read_extra_option(ReadOptions(extras={'foo': 1}), 'foo')
+            == 1
+        )
+        assert (
+            cast(
+                Any,
+                handler,
+            ).write_extra_option(WriteOptions(extras={'foo': 2}), 'foo')
+            == 2
+        )
+
+    def test_inner_name_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test archive option helpers using explicit then default inner name.
+        """
+        handler = self.make_archive_handler()
+
+        assert cast(Any, handler).inner_name_from_read_options(None) is None
+        assert cast(Any, handler).inner_name_from_write_options(None) is None
+        assert (
+            cast(
+                Any,
+                handler,
+            ).inner_name_from_read_options(ReadOptions(inner_name='data.json'))
+            == 'data.json'
+        )
+        assert (
+            cast(
+                Any,
+                handler,
+            ).inner_name_from_write_options(
+                WriteOptions(inner_name='payload.csv'),
+            )
+            == 'payload.csv'
+        )
+
+    def test_read_options_use_independent_extras_dicts(self) -> None:
+        """Test each ReadOptions instance getting its own extras dict."""
+        first = ReadOptions()
+        second = ReadOptions()
+
+        assert not first.extras
+        assert not second.extras
+        assert first.extras is not second.extras
+
+    def test_root_tag_option_helper_use_override_then_default(self) -> None:
+        """Test root-tag helper using explicit values then defaults."""
+        handler = self.make_read_only_handler()
+
+        assert cast(Any, handler).root_tag_from_write_options(None) == 'root'
+        assert (
+            cast(
+                Any,
+                handler,
+            ).root_tag_from_write_options(WriteOptions(root_tag='items'))
+            == 'items'
+        )
+        assert (
+            cast(Any, handler).root_tag_from_write_options(
+                None, default='dataset',
+            )
+            == 'dataset'
+        )
+
+    def test_sheet_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test spreadsheet option helpers using explicit then default sheet.
+        """
+        handler = self.make_spreadsheet_handler()
+
+        assert cast(Any, handler).sheet_from_read_options(None) == 0
+        assert cast(Any, handler).sheet_from_write_options(None) == 0
+        assert (
+            cast(Any, handler).sheet_from_read_options(
+                ReadOptions(sheet='Sheet2'),
+            )
+            == 'Sheet2'
+        )
+        assert (
+            cast(Any, handler).sheet_from_write_options(WriteOptions(sheet=3))
+            == 3
+        )
+
+    def test_table_option_helpers_use_override_then_default(self) -> None:
+        """
+        Test embedded-db option helpers using explicit then default table.
+        """
+        handler = self.make_embedded_handler()
+
+        assert cast(Any, handler).table_from_read_options(None) is None
+        assert cast(Any, handler).table_from_write_options(None) is None
+        assert (
+            cast(Any, handler).table_from_read_options(
+                ReadOptions(table='events'),
+            )
+            == 'events'
+        )
+        assert (
+            cast(Any, handler).table_from_write_options(
+                WriteOptions(table='staging'),
+            )
+            == 'staging'
+        )
+
+    def test_write_options_are_frozen(self) -> None:
+        """Test WriteOptions immutability contract."""
+        options = WriteOptions()
+
+        with pytest.raises(Exception) as exc:
+            options.encoding = 'latin-1'  # type: ignore[misc]
+        assert exc.type.__name__ == 'FrozenInstanceError'
 
 
 class BinaryCodecModuleContract:
@@ -716,6 +1010,172 @@ class EmbeddedDatabaseModuleContract:
             )
             == 0
         )
+
+
+class FileCoreDispatchContract:
+    """
+    Reusable contract suite for class-based core dispatch in ``File``.
+
+    Subclasses must provide:
+    - :attr:`file_cls`
+    - :attr:`core_module`
+    """
+
+    file_cls: type[Any]
+    core_module: ModuleType
+    read_format: FileFormat = FileFormat.CSV
+    write_format: FileFormat = FileFormat.XML
+    read_filename: str = 'sample.csv'
+    write_filename: str = 'export.xml'
+    read_result: JSONData = {'ok': True}
+    write_payload: JSONData = [{'name': 'Ada'}]
+    write_root_tag: str = 'records'
+    write_result: int = 3
+
+    def test_read_uses_class_based_handler_dispatch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read dispatch through ``core.get_handler`` handlers."""
+        path = tmp_path / self.read_filename
+        path.write_text('name\nAda\n', encoding='utf-8')
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                calls['read_path'] = path
+                return cast(JSONData, self_read_result)
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                _ = path
+                _ = data
+                _ = options
+                return 0
+
+        self_read_result = self.read_result
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+
+        result = self.file_cls(path, self.read_format).read()
+
+        assert result == self.read_result
+        assert calls['format'] is self.read_format
+        assert calls['read_path'] == path
+
+    def test_write_uses_class_based_handler_and_root_tag(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write dispatch preserving XML ``root_tag`` in options."""
+        path = tmp_path / self.write_filename
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                _ = path
+                return []
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                calls['write_path'] = path
+                calls['write_data'] = data
+                calls['write_options'] = options
+                return self_write_result
+
+        self_write_result = self.write_result
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+
+        written = self.file_cls(path, self.write_format).write(
+            self.write_payload,
+            root_tag=self.write_root_tag,
+        )
+
+        assert written == self.write_result
+        assert calls['format'] is self.write_format
+        assert calls['write_path'] == path
+        assert calls['write_data'] == self.write_payload
+        assert isinstance(calls['write_options'], WriteOptions)
+        options = cast(WriteOptions, calls['write_options'])
+        assert options.root_tag == self.write_root_tag
+
+
+class HandlerMethodNamingContract:
+    """
+    Reusable contract suite for category-level handler naming conventions.
+
+    Subclasses must provide:
+    - :attr:`delimited_handlers`
+    - :attr:`spreadsheet_handlers`
+    - :attr:`embedded_db_handlers`
+    - :attr:`scientific_handlers`
+    """
+
+    delimited_handlers: list[type[FileHandlerABC]]
+    spreadsheet_handlers: list[type[FileHandlerABC]]
+    embedded_db_handlers: list[type[FileHandlerABC]]
+    scientific_handlers: list[type[FileHandlerABC]]
+
+    def test_delimited_text_handlers_expose_row_methods(self) -> None:
+        """Test delimited/text handlers exposing read_rows/write_rows."""
+        for handler_cls in self.delimited_handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, 'read_rows', None))
+            assert callable(getattr(handler_cls, 'write_rows', None))
+
+    def test_spreadsheet_handlers_expose_sheet_methods(self) -> None:
+        """Test spreadsheet handlers exposing read_sheet/write_sheet."""
+        for handler_cls in self.spreadsheet_handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, 'read_sheet', None))
+            assert callable(getattr(handler_cls, 'write_sheet', None))
+
+    def test_embedded_db_handlers_expose_table_methods(self) -> None:
+        """Test embedded-db handlers exposing read_table/write_table."""
+        for handler_cls in self.embedded_db_handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, 'read_table', None))
+            assert callable(getattr(handler_cls, 'write_table', None))
+
+    def test_scientific_handlers_expose_dataset_methods(self) -> None:
+        """Test scientific handlers exposing read_dataset/write_dataset."""
+        for handler_cls in self.scientific_handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, 'read_dataset', None))
+            assert callable(getattr(handler_cls, 'write_dataset', None))
 
 
 class PandasColumnarModuleContract:
@@ -1110,7 +1570,8 @@ class ReadOnlyScientificDatasetModuleContract:
         )
 
         with pytest.raises(
-            ValueError, match=self.unknown_dataset_error_pattern,
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
         ):
             cast(Any, handler).read_dataset(
                 tmp_path / f'data.{self.format_name}',
@@ -1132,7 +1593,8 @@ class ReadOnlyScientificDatasetModuleContract:
         )
 
         with pytest.raises(
-            ValueError, match=self.unknown_dataset_error_pattern,
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
         ):
             cast(Any, handler).read(
                 tmp_path / f'data.{self.format_name}',
@@ -1191,6 +1653,376 @@ class ReadOnlySpreadsheetModuleContract:
                 tmp_path / f'data.{self.format_name}',
                 [{'id': 1}],
             )
+
+
+class RegistryAbcConformanceContract:
+    """
+    Reusable contract suite for registry handler-ABC conformance checks.
+
+    Subclasses must provide:
+    - :attr:`registry_module`
+    - :attr:`abc_cases`
+    """
+
+    registry_module: ModuleType
+    abc_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
+
+    def test_mapped_handler_class_inherits_expected_abc(self) -> None:
+        """Test mapped handlers inheriting each expected category ABC."""
+        for file_format, expected_abc in self.abc_cases:
+            handler_class = cast(
+                Any,
+                self.registry_module,
+            ).get_handler_class(file_format)
+            assert issubclass(handler_class, expected_abc)
+
+
+class RegistryFallbackPolicyContract:
+    """
+    Reusable contract suite for registry fallback/deprecation policies.
+
+    Subclasses must provide:
+    - :attr:`registry_module`
+    """
+
+    registry_module: ModuleType
+    fallback_format: FileFormat = FileFormat.GZ
+
+    # pylint: disable=protected-access
+
+    def test_deprecated_fallback_builds_module_adapter_and_delegates_calls(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test deprecated fallback building a module-adapter and delegating I/O.
+        """
+        registry = cast(Any, self.registry_module)
+        calls: dict[str, object] = {}
+
+        def _read(path: Path) -> dict[str, object]:
+            calls['read_path'] = path
+            return {'ok': True}
+
+        def _write(
+            path: Path,
+            data: object,
+            *,
+            root_tag: str = 'root',
+        ) -> int:
+            calls['write_path'] = path
+            calls['write_data'] = data
+            calls['root_tag'] = root_tag
+            return 7
+
+        monkeypatch.delitem(
+            registry._HANDLER_CLASS_SPECS,
+            self.fallback_format,
+            raising=False,
+        )
+        fake_module = SimpleNamespace(read=_read, write=_write)
+        monkeypatch.setattr(
+            registry,
+            '_module_for_format',
+            lambda _fmt: fake_module,
+        )
+
+        with pytest.warns(DeprecationWarning, match='deprecated'):
+            handler_class = registry.get_handler_class(
+                self.fallback_format,
+                allow_module_adapter_fallback=True,
+            )
+
+        assert issubclass(handler_class, FileHandlerABC)
+        assert handler_class.category == 'module_adapter'
+
+        handler = handler_class()
+        path = Path('payload.gz')
+        assert handler.read(path) == {'ok': True}
+        written = handler.write(
+            path,
+            {'row': 1},
+            options=WriteOptions(root_tag='records'),
+        )
+
+        assert written == 7
+        assert calls['read_path'] == path
+        assert calls['write_path'] == path
+        assert calls['write_data'] == {'row': 1}
+        assert calls['root_tag'] == 'records'
+
+    def test_get_handler_class_raises_without_explicit_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test strict mode rejecting unmapped formats by default."""
+        registry = cast(Any, self.registry_module)
+        monkeypatch.delitem(
+            registry._HANDLER_CLASS_SPECS,
+            self.fallback_format,
+            raising=False,
+        )
+
+        with pytest.raises(ValueError, match='Unsupported format'):
+            registry.get_handler_class(self.fallback_format)
+
+    def test_module_adapter_builder_raises_for_missing_module(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module-adapter builder raising when module import fails."""
+        registry = cast(Any, self.registry_module)
+
+        def _raise_module_not_found(_file_format: FileFormat) -> object:
+            raise ModuleNotFoundError('missing test module')
+
+        monkeypatch.delitem(
+            registry._HANDLER_CLASS_SPECS,
+            self.fallback_format,
+            raising=False,
+        )
+        monkeypatch.setattr(
+            registry, '_module_for_format', _raise_module_not_found,
+        )
+
+        with pytest.raises(ModuleNotFoundError, match='missing test module'):
+            registry._module_adapter_class_for_format(self.fallback_format)
+
+
+class RegistryMappedResolutionContract:
+    """
+    Reusable contract suite for explicit registry mapping resolution.
+
+    Subclasses must provide:
+    - :attr:`registry_module`
+    - :attr:`file_package`
+    - :attr:`mapped_class_cases`
+    - :attr:`placeholder_spec_cases`
+    - :attr:`singleton_format`
+    - :attr:`singleton_class`
+    """
+
+    registry_module: ModuleType
+    file_package: ModuleType
+    mapped_class_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
+    placeholder_spec_cases: list[tuple[FileFormat, str]]
+    singleton_format: FileFormat = FileFormat.JSON
+    singleton_class: type[FileHandlerABC]
+
+    # pylint: disable=protected-access
+
+    def test_explicit_for_implemented_formats(self) -> None:
+        """
+        Test every implemented handler class format being explicitly mapped.
+        """
+        registry = cast(Any, self.registry_module)
+        implemented_formats: set[FileFormat] = set()
+        for module_info in pkgutil.iter_modules(self.file_package.__path__):
+            if module_info.ispkg or module_info.name.startswith('_'):
+                continue
+            module_name = f'{self.file_package.__name__}.{module_info.name}'
+            module = importlib.import_module(module_name)
+            for _, symbol in inspect.getmembers(module, inspect.isclass):
+                if symbol.__module__ != module_name:
+                    continue
+                if not issubclass(symbol, FileHandlerABC):
+                    continue
+                if not symbol.__name__.endswith('File'):
+                    continue
+                format_value = getattr(symbol, 'format', None)
+                if isinstance(format_value, FileFormat):
+                    implemented_formats.add(format_value)
+
+        mapped_formats = set(registry._HANDLER_CLASS_SPECS.keys())
+        missing = implemented_formats - mapped_formats
+        assert not missing
+
+        for file_format, spec in registry._HANDLER_CLASS_SPECS.items():
+            mapped_class = registry._coerce_handler_class(
+                registry._import_symbol(spec),
+                file_format=file_format,
+            )
+            assert mapped_class.format == file_format
+
+    def test_get_handler_class_uses_mapped_class(self) -> None:
+        """Test mapped formats resolving to concrete handler classes."""
+        registry = cast(Any, self.registry_module)
+        for file_format, expected_class in self.mapped_class_cases:
+            handler_class = registry.get_handler_class(file_format)
+            assert handler_class is expected_class
+
+    def test_get_handler_returns_singleton_instance(self) -> None:
+        """Test get_handler returning a cached singleton for mapped formats."""
+        registry = cast(Any, self.registry_module)
+        first = registry.get_handler(self.singleton_format)
+        second = registry.get_handler(self.singleton_format)
+
+        assert first is second
+        assert isinstance(first, self.singleton_class)
+
+    def test_unstubbed_placeholder_modules_use_module_owned_classes(
+        self,
+    ) -> None:
+        """
+        Test owned placeholder modules mapping to their own class symbols.
+        """
+        registry = cast(Any, self.registry_module)
+        for file_format, expected_spec in self.placeholder_spec_cases:
+            assert registry._HANDLER_CLASS_SPECS[file_format] == expected_spec
+
+
+class ScientificDatasetInheritanceContract:
+    """
+    Reusable contract suite for scientific dataset ABC inheritance checks.
+
+    Subclasses must provide:
+    - :attr:`scientific_handlers`
+    - :attr:`single_dataset_handlers`
+    """
+
+    scientific_handlers: list[type[ScientificDatasetFileHandlerABC]]
+    single_dataset_handlers: list[type[SingleDatasetScientificFileHandlerABC]]
+
+    def test_handlers_use_scientific_dataset_abc(self) -> None:
+        """Test scientific handlers inheriting ScientificDataset ABC."""
+        for handler_cls in self.scientific_handlers:
+            assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+            assert handler_cls.dataset_key == 'data'
+
+    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
+        self,
+    ) -> None:
+        """Test single-dataset handlers inheriting the subtype ABC."""
+        for handler_cls in self.single_dataset_handlers:
+            assert issubclass(
+                handler_cls, SingleDatasetScientificFileHandlerABC,
+            )
+
+    def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
+        """Test single-dataset scientific handlers rejecting unknown keys."""
+        suffix_by_format = {
+            FileFormat.DTA: 'dta',
+            FileFormat.NC: 'nc',
+            FileFormat.SAV: 'sav',
+            FileFormat.XPT: 'xpt',
+        }
+        for handler_cls in self.single_dataset_handlers:
+            handler = handler_cls()
+            file_format = cast(FileFormat, handler_cls.format)
+            suffix = suffix_by_format.get(file_format, file_format.value)
+            assert_single_dataset_rejects_non_default_key(
+                handler,
+                suffix=suffix,
+            )
+
+
+class ScientificStubDatasetKeysContract:
+    """
+    Reusable contract suite for stub-backed scientific dataset-key checks.
+
+    Subclasses must provide:
+    - :attr:`module_cases`
+    """
+
+    module_cases: list[
+        tuple[ModuleType, type[ScientificDatasetFileHandlerABC], str]
+    ]
+
+    def _assert_stub_not_called(
+        self,
+        module: ModuleType,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        operation: Literal['read', 'write'] | None = None,
+    ) -> None:
+        """Patch module stub operations to fail if they are called."""
+        stub_module = cast(Any, module).stub
+        if operation in (None, 'read'):
+            monkeypatch.setattr(
+                stub_module,
+                'read',
+                lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+            )
+        if operation in (None, 'write'):
+            monkeypatch.setattr(
+                stub_module,
+                'write',
+                lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+            )
+
+    def test_dataset_methods_honor_options_dataset_selector(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read_dataset/write_dataset honoring options-based selectors."""
+        for module, handler_cls, _ in self.module_cases:
+            handler = handler_cls()
+            self._assert_stub_not_called(module, monkeypatch)
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.read_dataset(
+                    Path('ignored.file'),
+                    options=ReadOptions(dataset='unknown'),
+                )
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.write_dataset(
+                    Path('ignored.file'),
+                    [],
+                    options=WriteOptions(dataset='unknown'),
+                )
+
+    def test_list_datasets_returns_single_default_key(self) -> None:
+        """Test list_datasets exposing only the default dataset key."""
+        for _, handler_cls, _ in self.module_cases:
+            handler = handler_cls()
+            assert handler.list_datasets(Path('ignored.file')) == ['data']
+
+    def test_read_dataset_rejects_unknown_key_without_calling_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read_dataset rejecting unknown keys before stub reads."""
+        for module, handler_cls, _ in self.module_cases:
+            handler = handler_cls()
+            self._assert_stub_not_called(module, monkeypatch, operation='read')
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.read_dataset(Path('ignored.file'), dataset='unknown')
+
+    def test_write_dataset_rejects_unknown_key_without_calling_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write_dataset rejecting unknown keys before stub writes."""
+        for module, handler_cls, _ in self.module_cases:
+            handler = handler_cls()
+            self._assert_stub_not_called(
+                module, monkeypatch, operation='write',
+            )
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.write_dataset(
+                    Path('ignored.file'),
+                    [],
+                    dataset='unknown',
+                )
+
+    def test_read_and_write_options_route_unknown_dataset_to_validation(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test option-based selectors following the same validation path."""
+        for module, handler_cls, _ in self.module_cases:
+            handler = handler_cls()
+            self._assert_stub_not_called(module, monkeypatch)
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.read(
+                    Path('ignored.file'),
+                    options=ReadOptions(dataset='unknown'),
+                )
+            with pytest.raises(ValueError, match='supports only dataset key'):
+                handler.write(
+                    Path('ignored.file'),
+                    [],
+                    options=WriteOptions(dataset='unknown'),
+                )
 
 
 class SemiStructuredReadModuleContract:
@@ -1283,135 +2115,6 @@ class SemiStructuredWriteDictModuleContract:
         self.assert_write_contract_result(path)
 
 
-class SniffedDelimitedModuleContract:
-    """
-    Reusable contract suite for sniffed delimited-text modules.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    """
-
-    module: ModuleType
-    format_name: str
-
-    def _patch_default_sniff(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Patch sniffer behavior to a deterministic CSV dialect."""
-        monkeypatch.setattr(
-            self.module,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-
-    def test_read_empty_returns_empty_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test reading empty input returning an empty list."""
-        path = tmp_path / f'empty.{self.format_name}'
-        path.write_text('', encoding='utf-8')
-
-        assert self.module.read(path) == []
-
-    def test_write_round_trip_returns_written_count(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write/read round-trip preserving the written row count."""
-        sample_records: list[dict[str, object]] = [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ]
-        path = tmp_path / f'out.{self.format_name}'
-
-        written = self.module.write(path, sample_records)
-        result = self.module.read(path)
-
-        assert written == len(sample_records)
-        assert len(result) == len(sample_records)
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test blank rows being ignored during reads."""
-        self._patch_default_sniff(monkeypatch)
-        path = tmp_path / f'data.{self.format_name}'
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
-
-
-class TextRowModuleContract:
-    """
-    Reusable contract suite for text/fixed-width row-oriented modules.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`write_payload`
-    - :meth:`prepare_read_case`
-    - :meth:`assert_write_contract_result`
-    """
-
-    module: ModuleType
-    format_name: str
-    write_payload: JSONData
-    expected_written_count: int = 1
-
-    def prepare_read_case(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> tuple[Path, JSONData]:
-        """Prepare and return ``(path, expected_result)`` for read tests."""
-        raise NotImplementedError
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert module-specific write contract behavior."""
-        assert path.exists()
-
-    def test_read_returns_expected_rows(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test reading representative row-oriented input."""
-        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
-
-        assert self.module.read(path) == expected
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        path = tmp_path / f'data.{self.format_name}'
-        assert self.module.write(path, []) == 0
-
-    def test_write_rows_contract(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing representative row payloads."""
-        path = tmp_path / f'data.{self.format_name}'
-
-        written = self.module.write(path, self.write_payload)
-
-        assert written == self.expected_written_count
-        self.assert_write_contract_result(path)
-
-
 class SingleDatasetHandlerContract:
     """
     Reusable contract suite for single-dataset scientific handlers.
@@ -1485,6 +2188,72 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
                 self.module.write(path, [{'id': 1}])
 
 
+class SniffedDelimitedModuleContract:
+    """
+    Reusable contract suite for sniffed delimited-text modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    """
+
+    module: ModuleType
+    format_name: str
+
+    def _patch_default_sniff(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch sniffer behavior to a deterministic CSV dialect."""
+        monkeypatch.setattr(
+            self.module,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+
+    def test_read_empty_returns_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading empty input returning an empty list."""
+        path = tmp_path / f'empty.{self.format_name}'
+        path.write_text('', encoding='utf-8')
+
+        assert self.module.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / f'out.{self.format_name}'
+
+        written = self.module.write(path, sample_records)
+        result = self.module.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        self._patch_default_sniff(monkeypatch)
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
+
+
 class StubModuleContract:
     """
     Reusable contract suite for placeholder/stub format modules.
@@ -1517,6 +2286,69 @@ class StubModuleContract:
             operation=cast(Literal['read', 'write'], operation),
             path=tmp_path / f'data.{self.format_name}',
         )
+
+
+class TextRowModuleContract:
+    """
+    Reusable contract suite for text/fixed-width row-oriented modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`write_payload`
+    - :meth:`prepare_read_case`
+    - :meth:`assert_write_contract_result`
+    """
+
+    module: ModuleType
+    format_name: str
+    write_payload: JSONData
+    expected_written_count: int = 1
+
+    def prepare_read_case(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> tuple[Path, JSONData]:
+        """Prepare and return ``(path, expected_result)`` for read tests."""
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract behavior."""
+        assert path.exists()
+
+    def test_read_returns_expected_rows(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading representative row-oriented input."""
+        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
+
+        assert self.module.read(path) == expected
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        path = tmp_path / f'data.{self.format_name}'
+        assert self.module.write(path, []) == 0
+
+    def test_write_rows_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing representative row payloads."""
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_write_contract_result(path)
 
 
 class WritableSpreadsheetModuleContract:
