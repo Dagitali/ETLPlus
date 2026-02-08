@@ -19,7 +19,9 @@ from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from typing import ClassVar
 from typing import Literal
+from typing import cast
 
 import pytest
 
@@ -279,6 +281,113 @@ def require_optional_modules(
 
 
 # SECTION: CLASSES ========================================================== #
+
+
+class StubModuleContract:
+    """
+    Reusable contract suite for placeholder/stub format modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``handler_cls``
+    - ``format_name``
+    """
+
+    module: ClassVar[ModuleType]
+    handler_cls: ClassVar[type[StubFileHandlerABC]]
+    format_name: ClassVar[str]
+
+    def test_handler_inherits_stub_abc(self) -> None:
+        """Test handler metadata and inheritance contract."""
+        assert issubclass(self.handler_cls, StubFileHandlerABC)
+        assert self.handler_cls.format.value == self.format_name
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_operations_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: str,
+    ) -> None:
+        """Test module-level read/write placeholder behavior."""
+        assert_stub_module_operation_raises(
+            self.module,
+            format_name=self.format_name,
+            operation=cast(Literal['read', 'write'], operation),
+            path=tmp_path / f'data.{self.format_name}',
+        )
+
+
+class SingleDatasetHandlerContract:
+    """
+    Reusable contract suite for single-dataset scientific handlers.
+
+    Subclasses must provide:
+    - ``module``
+    - ``handler_cls``
+    - ``format_name``
+    """
+
+    module: ClassVar[ModuleType]
+    handler_cls: ClassVar[type[SingleDatasetScientificFileHandlerABC]]
+    format_name: ClassVar[str]
+
+    @pytest.fixture
+    def handler(self) -> SingleDatasetScientificFileHandlerABC:
+        """Create a handler instance for contract tests."""
+        return self.handler_cls()
+
+    def test_uses_single_dataset_scientific_abc(self) -> None:
+        """Test single-dataset scientific class contract."""
+        assert issubclass(
+            self.handler_cls,
+            SingleDatasetScientificFileHandlerABC,
+        )
+        assert self.handler_cls.dataset_key == 'data'
+
+    def test_rejects_non_default_dataset_key(
+        self,
+        handler: SingleDatasetScientificFileHandlerABC,
+    ) -> None:
+        """Test non-default dataset keys are rejected."""
+        assert_single_dataset_rejects_non_default_key(
+            handler,
+            suffix=self.format_name,
+        )
+
+
+class SingleDatasetWritableContract(SingleDatasetHandlerContract):
+    """
+    Reusable suite for writable single-dataset scientific handlers.
+    """
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test empty write payloads return zero and create no file."""
+        path = tmp_path / f'data.{self.format_name}'
+        assert self.module.write(path, []) == 0
+        assert not path.exists()
+
+
+class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
+    """
+    Reusable suite for placeholder single-dataset scientific handlers.
+    """
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_level_placeholders_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: str,
+    ) -> None:
+        """Test placeholder read/write behavior for module-level wrappers."""
+        path = tmp_path / f'data.{self.format_name}'
+        with pytest.raises(NotImplementedError, match='not implemented yet'):
+            if operation == 'read':
+                self.module.read(path)
+            else:
+                self.module.write(path, [{'id': 1}])
 
 
 class PandasModuleStub:
