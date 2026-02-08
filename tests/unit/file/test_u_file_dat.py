@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import dat as mod
+from tests.unit.file.conftest import SniffedDelimitedModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -124,37 +125,11 @@ class TestDatSniff:
         assert has_header is True
 
 
-class TestDatRead:
-    """Unit tests for :func:`etlplus.file.dat.read`."""
+class TestDat(SniffedDelimitedModuleContract):
+    """Unit tests for :mod:`etlplus.file.dat`."""
 
-    def test_read_empty_returns_empty_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that empty files yield an empty list."""
-        path = tmp_path / 'empty.dat'
-        path.write_text('', encoding='utf-8')
-
-        assert not mod.read(path)
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that blank rows (or rows with only whitespace) are ignored."""
-        monkeypatch.setattr(
-            mod,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-        path = tmp_path / 'data.dat'
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert mod.read(path) == [{'a': '1', 'b': '2'}]
+    module = mod
+    format_name = 'dat'
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,
@@ -233,23 +208,3 @@ class TestDatRead:
         path.write_text(content, encoding='utf-8')
 
         assert mod.read(path) == [{'a': '1', 'b': '2'}]
-
-
-class TestDatWrite:
-    """Unit tests for :func:`etlplus.file.dat.write`."""
-
-    def test_write_round_trip(
-        self,
-        tmp_path: Path,
-        sample_records: list[dict[str, object]],
-    ) -> None:
-        """
-        Test that writing then reading preserves record count and produces
-        non-empty output.
-        """
-        path = tmp_path / 'out.dat'
-
-        written = mod.write(path, sample_records)
-
-        assert written == len(sample_records)
-        assert mod.read(path)

@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import nc as mod
+from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -142,8 +143,12 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestNcRead:
-    """Unit tests for :func:`etlplus.file.nc.read`."""
+class TestNc(SingleDatasetWritableContract):
+    """Unit tests for :mod:`etlplus.file.nc`."""
+
+    module = mod
+    handler_cls = mod.NcFile
+    format_name = 'nc'
 
     def test_read_keeps_non_sequential_index(
         self,
@@ -195,17 +200,6 @@ class TestNcRead:
 
         with pytest.raises(ImportError, match='NC support requires optional'):
             mod.read(tmp_path / 'data.nc')
-
-
-class TestNcWrite:
-    """Unit tests for :func:`etlplus.file.nc.write`."""
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing returns zero for empty payload."""
-        assert mod.write(tmp_path / 'data.nc', []) == 0
 
     def test_write_raises_engine_error(
         self,
