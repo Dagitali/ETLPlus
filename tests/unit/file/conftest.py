@@ -279,7 +279,7 @@ def require_optional_modules(
         pytest.importorskip(module)
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: CLASSES (CONTRACTS) ============================================== #
 
 
 class StubModuleContract:
@@ -314,6 +314,119 @@ class StubModuleContract:
             operation=cast(Literal['read', 'write'], operation),
             path=tmp_path / f'data.{self.format_name}',
         )
+
+
+class DelimitedModuleContract:
+    """
+    Reusable contract suite for delimited text wrapper modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``delimiter``
+    """
+
+    module: ModuleType
+    format_name: str
+    delimiter: str
+
+    def test_read_uses_expected_delimiter(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module read delegating with the expected delimiter."""
+        calls: dict[str, object] = {}
+
+        def _read_delimited(
+            path: object,
+            *,
+            delimiter: str,
+        ) -> list[dict[str, object]]:
+            calls['path'] = path
+            calls['delimiter'] = delimiter
+            return [{'ok': True}]
+
+        monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
+
+        result = self.module.read(tmp_path / f'data.{self.format_name}')
+
+        assert result == [{'ok': True}]
+        assert calls['delimiter'] == self.delimiter
+
+    def test_write_uses_expected_delimiter_and_format_name(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module write delegating with expected delimiter/format."""
+        calls: dict[str, object] = {}
+
+        def _write_delimited(
+            path: object,
+            data: object,
+            *,
+            delimiter: str,
+            format_name: str,
+        ) -> int:
+            calls['path'] = path
+            calls['data'] = data
+            calls['delimiter'] = delimiter
+            calls['format_name'] = format_name
+            return 1
+
+        monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
+
+        written = self.module.write(
+            tmp_path / f'data.{self.format_name}',
+            [{'id': 1}],
+        )
+
+        assert written == 1
+        assert calls['delimiter'] == self.delimiter
+        assert calls['format_name'] == self.format_name.upper()
+
+
+class ReadOnlySpreadsheetModuleContract:
+    """
+    Reusable contract suite for read-only spreadsheet wrapper modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``dependency_hint``
+    """
+
+    module: ModuleType
+    format_name: str
+    dependency_hint: str
+
+    def test_read_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+    ) -> None:
+        """Test read wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.read(tmp_path / f'data.{self.format_name}')
+
+    def test_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test read-only formats rejecting writes."""
+        with pytest.raises(RuntimeError, match='read-only'):
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [{'id': 1}],
+            )
 
 
 class SingleDatasetHandlerContract:
@@ -387,6 +500,121 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
                 self.module.read(path)
             else:
                 self.module.write(path, [{'id': 1}])
+
+
+class WritableSpreadsheetModuleContract:
+    """
+    Reusable contract suite for writable spreadsheet wrapper modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``dependency_hint``
+    - ``read_engine`` (optional)
+    - ``write_engine`` (optional)
+    """
+
+    module: ModuleType
+    format_name: str
+    dependency_hint: str
+    read_engine: str | None = None
+    write_engine: str | None = None
+
+    # pylint: disable=unused-argument
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test read returning row records via pandas."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+        path = tmp_path / f'data.{self.format_name}'
+
+        result = self.module.read(path)
+
+        assert result == [{'id': 1}]
+        assert pandas.read_calls
+        call = pandas.read_calls[-1]
+        assert call.get('path') == path
+        if self.read_engine is not None:
+            assert call.get('engine') == self.read_engine
+
+    def test_read_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+    ) -> None:
+        """Test read wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.read(tmp_path / f'data.{self.format_name}')
+
+    def test_write_calls_to_excel(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test write delegating to DataFrame.to_excel with expected args."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, [{'id': 1}])
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        assert pandas.last_frame.to_excel_calls
+        call = pandas.last_frame.to_excel_calls[-1]
+        assert call.get('path') == path
+        assert call.get('index') is False
+        if self.write_engine is not None:
+            assert call.get('engine') == self.write_engine
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        assert self.module.write(
+            tmp_path / f'data.{self.format_name}',
+            [],
+        ) == 0
+
+    def test_write_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
+    ) -> None:
+        """Test write wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [{'id': 1}],
+            )
+
+
+# SECTION: CLASSES (STUBS) ============================================== #
 
 
 class PandasModuleStub:
