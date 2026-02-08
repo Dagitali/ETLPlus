@@ -617,14 +617,8 @@ class TestOptionsContracts:
             )
             == '\t'
         )
-        assert (
-            handler.delimiter_from_read_options(None, default=';')
-            == ';'
-        )
-        assert (
-            handler.delimiter_from_write_options(None, default=':')
-            == ':'
-        )
+        assert handler.delimiter_from_read_options(None, default=';') == ';'
+        assert handler.delimiter_from_write_options(None, default=':') == ':'
 
     def test_encoding_option_helpers_use_override_then_default(self) -> None:
         """Test encoding helpers using explicit values then defaults."""
