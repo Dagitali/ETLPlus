@@ -66,19 +66,17 @@ class ScientificOptionHandlerProtocol(Protocol):
 
     def dataset_from_read_options(
         self,
-        options: ReadOptions | None = None,
-        default: str | None = None,
+        options: ReadOptions | None,
     ) -> str | None: ...
 
     def dataset_from_write_options(
         self,
-        options: WriteOptions | None = None,
-        default: str | None = None,
+        options: WriteOptions | None,
     ) -> str | None: ...
 
     def resolve_read_dataset(
         self,
-        dataset: str | None,
+        dataset: str | None = None,
         *,
         options: ReadOptions | None = None,
         default: str | None = None,
@@ -86,7 +84,7 @@ class ScientificOptionHandlerProtocol(Protocol):
 
     def resolve_write_dataset(
         self,
-        dataset: str | None,
+        dataset: str | None = None,
         *,
         options: WriteOptions | None = None,
         default: str | None = None,
@@ -98,14 +96,14 @@ class DelimitedOptionHandlerProtocol(Protocol):
 
     def delimiter_from_read_options(
         self,
-        options: ReadOptions | None = None,
+        options: ReadOptions | None,
         *,
         default: str | None = None,
     ) -> str: ...
 
     def delimiter_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str: ...
@@ -116,16 +114,16 @@ class EncodingRootExtrasHandlerProtocol(Protocol):
 
     def encoding_from_read_options(
         self,
-        options: ReadOptions | None = None,
+        options: ReadOptions | None,
         *,
-        default: str | None = None,
+        default: str = 'utf-8',
     ) -> str: ...
 
     def encoding_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
-        default: str | None = None,
+        default: str = 'utf-8',
     ) -> str: ...
 
     def read_extra_option(
@@ -146,9 +144,9 @@ class EncodingRootExtrasHandlerProtocol(Protocol):
 
     def root_tag_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
-        default: str | None = None,
+        default: str = 'root',
     ) -> str: ...
 
 
@@ -157,14 +155,14 @@ class ArchiveOptionHandlerProtocol(Protocol):
 
     def inner_name_from_read_options(
         self,
-        options: ReadOptions | None = None,
+        options: ReadOptions | None,
         *,
         default: str | None = None,
     ) -> str | None: ...
 
     def inner_name_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str | None: ...
@@ -175,14 +173,14 @@ class SheetOptionHandlerProtocol(Protocol):
 
     def sheet_from_read_options(
         self,
-        options: ReadOptions | None = None,
+        options: ReadOptions | None,
         *,
         default: str | int | None = None,
     ) -> str | int: ...
 
     def sheet_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
         default: str | int | None = None,
     ) -> str | int: ...
@@ -193,14 +191,14 @@ class TableOptionHandlerProtocol(Protocol):
 
     def table_from_read_options(
         self,
-        options: ReadOptions | None = None,
+        options: ReadOptions | None,
         *,
         default: str | None = None,
     ) -> str | None: ...
 
     def table_from_write_options(
         self,
-        options: WriteOptions | None = None,
+        options: WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str | None: ...
