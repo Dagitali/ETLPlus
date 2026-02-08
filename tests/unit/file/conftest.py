@@ -1668,7 +1668,8 @@ class RegistryAbcConformanceContract:
     """
 
     registry_module: ModuleType
-    abc_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
+    # abc_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
+    abc_cases: list[tuple[FileFormat, type[Any]]]
 
     def test_mapped_handler_class_inherits_expected_abc(self) -> None:
         """Test mapped handlers inheriting each expected category ABC."""
@@ -1807,14 +1808,15 @@ class RegistryMappedResolutionContract:
     - :attr:`singleton_class`
     """
 
+    # pylint: disable=protected-access
+
     registry_module: ModuleType
     file_package: ModuleType
-    mapped_class_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
+    mapped_class_cases: list[tuple[FileFormat, type[Any]]]
     placeholder_spec_cases: list[tuple[FileFormat, str]]
     singleton_format: FileFormat = FileFormat.JSON
-    singleton_class: type[FileHandlerABC]
-
-    # pylint: disable=protected-access
+    # singleton_class: type[FileHandlerABC]
+    singleton_class: type[Any]
 
     def test_explicit_for_implemented_formats(self) -> None:
         """
