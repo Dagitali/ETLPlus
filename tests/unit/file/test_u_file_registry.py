@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.file.registry`.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import cast
 
 import pytest
 
@@ -52,6 +53,7 @@ from etlplus.file.zsav import ZsavFile
 from tests.unit.file.conftest import RegistryAbcConformanceContract
 from tests.unit.file.conftest import RegistryFallbackPolicyContract
 from tests.unit.file.conftest import RegistryMappedResolutionContract
+from tests.unit.file.conftest import RegistryModuleProtocol
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -80,7 +82,7 @@ def clear_registry_caches() -> Iterator[None]:
 class TestRegistryAbcConformance(RegistryAbcConformanceContract):
     """Unit tests for category-to-ABC inheritance conformance."""
 
-    registry_module = mod
+    registry_module = cast(RegistryModuleProtocol, mod)
     abc_cases = [
         # Delimited text
         (FileFormat.CSV, DelimitedTextFileHandlerABC),
@@ -170,7 +172,7 @@ class TestRegistryAbcConformance(RegistryAbcConformanceContract):
 class TestRegistryMappedResolution(RegistryMappedResolutionContract):
     """Unit tests for explicitly mapped handler class resolution."""
 
-    registry_module = mod
+    registry_module = cast(RegistryModuleProtocol, mod)
     file_package = file_package
     singleton_class = JsonFile
     mapped_class_cases = [
@@ -218,4 +220,4 @@ class TestRegistryMappedResolution(RegistryMappedResolutionContract):
 class TestRegistryFallbackPolicy(RegistryFallbackPolicyContract):
     """Unit tests for registry fallback/deprecation and strict policies."""
 
-    registry_module = mod
+    registry_module = cast(RegistryModuleProtocol, mod)

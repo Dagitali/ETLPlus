@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -20,7 +21,6 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ReadOptions
-from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
@@ -44,9 +44,15 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
+from tests.unit.file.conftest import ArchiveOptionHandlerProtocol
 from tests.unit.file.conftest import BaseOptionResolutionContract
+from tests.unit.file.conftest import DelimitedOptionHandlerProtocol
+from tests.unit.file.conftest import EncodingRootExtrasHandlerProtocol
 from tests.unit.file.conftest import HandlerMethodNamingContract
 from tests.unit.file.conftest import ScientificDatasetInheritanceContract
+from tests.unit.file.conftest import ScientificOptionHandlerProtocol
+from tests.unit.file.conftest import SheetOptionHandlerProtocol
+from tests.unit.file.conftest import TableOptionHandlerProtocol
 
 # SECTION: HELPERS ========================================================== #
 
@@ -488,29 +494,29 @@ class TestNamingConventions(HandlerMethodNamingContract):
 class TestOptionsContracts(BaseOptionResolutionContract):
     """Unit tests for base option data classes."""
 
-    def make_scientific_handler(self) -> ScientificDatasetFileHandlerABC:
+    def make_scientific_handler(self) -> ScientificOptionHandlerProtocol:
         """Build a scientific handler for option contract checks."""
-        return DtaFile()
+        return cast(ScientificOptionHandlerProtocol, DtaFile())
 
-    def make_delimited_handler(self) -> FileHandlerABC:
+    def make_delimited_handler(self) -> DelimitedOptionHandlerProtocol:
         """Build a delimited handler for option contract checks."""
-        return _DelimitedStub()
+        return cast(DelimitedOptionHandlerProtocol, _DelimitedStub())
 
-    def make_read_only_handler(self) -> FileHandlerABC:
+    def make_read_only_handler(self) -> EncodingRootExtrasHandlerProtocol:
         """Build a read-only handler for option contract checks."""
-        return _ReadOnlyStub()
+        return cast(EncodingRootExtrasHandlerProtocol, _ReadOnlyStub())
 
-    def make_archive_handler(self) -> FileHandlerABC:
+    def make_archive_handler(self) -> ArchiveOptionHandlerProtocol:
         """Build an archive handler for option contract checks."""
-        return _ArchiveStub()
+        return cast(ArchiveOptionHandlerProtocol, _ArchiveStub())
 
-    def make_spreadsheet_handler(self) -> FileHandlerABC:
+    def make_spreadsheet_handler(self) -> SheetOptionHandlerProtocol:
         """Build a spreadsheet handler for option contract checks."""
-        return _SpreadsheetStub()
+        return cast(SheetOptionHandlerProtocol, _SpreadsheetStub())
 
-    def make_embedded_handler(self) -> FileHandlerABC:
+    def make_embedded_handler(self) -> TableOptionHandlerProtocol:
         """Build an embedded-db handler for option contract checks."""
-        return _EmbeddedDbStub()
+        return cast(TableOptionHandlerProtocol, _EmbeddedDbStub())
 
     def test_write_options_are_frozen(self) -> None:
         """Test WriteOptions immutability contract."""
