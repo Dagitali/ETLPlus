@@ -316,6 +316,56 @@ class StubModuleContract:
         )
 
 
+class BinaryKeyedPayloadModuleContract:
+    """
+    Reusable contract suite for keyed binary payload wrapper modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``payload_key``
+    - ``sample_payload_value``
+    - ``expected_bytes``
+    - ``invalid_payload``
+    """
+
+    module: ModuleType
+    format_name: str
+    payload_key: str
+    sample_payload_value: str
+    expected_bytes: bytes
+    invalid_payload: JSONData
+
+    @pytest.fixture
+    def sample_payload(self) -> JSONDict:
+        """Create a representative keyed payload dictionary."""
+        return {self.payload_key: self.sample_payload_value}
+
+    def test_read_write_round_trip(
+        self,
+        tmp_path: Path,
+        sample_payload: JSONDict,
+    ) -> None:
+        """Test write/read round-trip preserving payload bytes."""
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, sample_payload)
+
+        assert written == 1
+        assert path.read_bytes() == self.expected_bytes
+        assert self.module.read(path) == sample_payload
+
+    def test_write_rejects_missing_required_key(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writes requiring the expected payload key."""
+        path = tmp_path / f'data.{self.format_name}'
+
+        with pytest.raises(TypeError, match=self.payload_key):
+            self.module.write(path, self.invalid_payload)
+
+
 class DelimitedModuleContract:
     """
     Reusable contract suite for delimited text wrapper modules.
@@ -385,6 +435,209 @@ class DelimitedModuleContract:
         assert written == 1
         assert calls['delimiter'] == self.delimiter
         assert calls['format_name'] == self.format_name.upper()
+
+
+class PandasColumnarModuleContract:
+    """
+    Reusable contract suite for pandas-backed columnar format modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``read_method_name``
+    - ``write_calls_attr``
+    """
+
+    module: ModuleType
+    format_name: str
+    read_method_name: str
+    write_calls_attr: str
+    write_uses_index: bool = False
+    requires_pyarrow: bool = False
+    read_error_pattern: str = 'missing'
+    write_error_pattern: str = 'missing'
+
+    def _install_read_write_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        pandas: object,
+    ) -> None:
+        """Install optional module stubs used by read/write tests."""
+        mapping: dict[str, object] = {'pandas': pandas}
+        if self.requires_pyarrow:
+            mapping['pyarrow'] = object()
+        optional_module_stub(mapping)
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test read returning row records via pandas."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        self._install_read_write_dependencies(optional_module_stub, pandas)
+
+        result = self.module.read(tmp_path / f'data.{self.format_name}')
+
+        assert result == [{'id': 1}]
+        assert pandas.read_calls
+
+    def test_write_calls_expected_table_writer(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test write calling the expected DataFrame writer method."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(Any, make_pandas_stub(frame))
+        self._install_read_write_dependencies(optional_module_stub, pandas)
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, [{'id': 1}])
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        calls = cast(
+            list[dict[str, object]],
+            getattr(pandas.last_frame, self.write_calls_attr),
+        )
+        assert calls
+        call = calls[-1]
+        assert call.get('path') == path
+        if self.write_uses_index:
+            assert call.get('index') is False
+        else:
+            assert 'index' not in call
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        assert self.module.write(
+            tmp_path / f'data.{self.format_name}',
+            [],
+        ) == 0
+
+    def test_read_import_error_path(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read dependency failures raising :class:`ImportError`."""
+        if self.requires_pyarrow:
+            optional_module_stub({'pyarrow': object()})
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader(self.read_method_name),
+        )
+
+        with pytest.raises(ImportError, match=self.read_error_pattern):
+            self.module.read(tmp_path / f'data.{self.format_name}')
+
+    def test_write_import_error_path(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test write dependency failures raising :class:`ImportError`."""
+        if self.requires_pyarrow:
+            optional_module_stub({'pyarrow': object()})
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
+
+        with pytest.raises(ImportError, match=self.write_error_pattern):
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [{'id': 1}],
+            )
+
+
+class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
+    """
+    Reusable suite for pandas-backed columnar modules gated by pyarrow.
+    """
+
+    requires_pyarrow = True
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_operations_raise_when_pyarrow_missing(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test read/write failing when pyarrow dependency resolution fails."""
+
+        def _missing(*_args: object, **_kwargs: object) -> object:
+            raise ImportError(self.missing_dependency_pattern)
+
+        monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        path = tmp_path / f'data.{self.format_name}'
+
+        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
+            if operation == 'read':
+                self.module.read(path)
+            else:
+                self.module.write(path, [{'id': 1}])
+
+
+class PyarrowGateOnlyModuleContract:
+    """
+    Reusable contract suite for pyarrow-gated IPC-style modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    """
+
+    module: ModuleType
+    format_name: str
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test empty writes short-circuiting without file creation."""
+        path = tmp_path / f'data.{self.format_name}'
+        assert self.module.write(path, []) == 0
+        assert not path.exists()
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_operations_raise_when_pyarrow_missing(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test read/write failing when pyarrow dependency resolution fails."""
+
+        def _missing(*_args: object, **_kwargs: object) -> object:
+            raise ImportError(self.missing_dependency_pattern)
+
+        monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        path = tmp_path / f'data.{self.format_name}'
+
+        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
+            if operation == 'read':
+                self.module.read(path)
+            else:
+                self.module.write(path, [{'id': 1}])
 
 
 class ReadOnlySpreadsheetModuleContract:
