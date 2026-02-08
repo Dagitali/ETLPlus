@@ -19,6 +19,7 @@ from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from typing import Literal
 
 import pytest
 
@@ -104,6 +105,28 @@ def assert_stub_module_contract(
         match=rf'{format_name.upper()} write is not implemented yet',
     ):
         module.write(path, write_payload)
+
+
+def assert_stub_module_operation_raises(
+    module: ModuleType,
+    *,
+    format_name: str,
+    operation: Literal['read', 'write'],
+    path: Path,
+    write_payload: JSONData | None = None,
+) -> None:
+    """Assert one stub module operation raises :class:`NotImplementedError`."""
+    if write_payload is None:
+        write_payload = [{'id': 1}]
+
+    with pytest.raises(
+        NotImplementedError,
+        match=rf'{format_name.upper()} {operation} is not implemented yet',
+    ):
+        if operation == 'read':
+            module.read(path)
+        else:
+            module.write(path, write_payload)
 
 
 def make_import_error_reader_module(
