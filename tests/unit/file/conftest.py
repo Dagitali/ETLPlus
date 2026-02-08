@@ -26,6 +26,7 @@ from types import ModuleType
 from types import SimpleNamespace
 from typing import Any
 from typing import Literal
+from typing import Protocol
 from typing import cast
 
 import pytest
@@ -52,7 +53,229 @@ pytestmark = pytest.mark.unit
 
 
 # Shared callable used by dependency-stubbing contracts.
+type AbcCase = tuple[FileFormat, type[Any]]
+type HandlerClassCase = tuple[FileFormat, type[Any]]
 type OptionalModuleInstaller = Callable[[dict[str, object]], None]
+
+
+# SECTION: PROTOCOLS ======================================================== #
+
+
+class ScientificOptionHandlerProtocol(Protocol):
+    """Protocol for scientific dataset option helper methods."""
+
+    def dataset_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def dataset_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def resolve_read_dataset(
+        self,
+        dataset: str | None,
+        *,
+        options: ReadOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def resolve_write_dataset(
+        self,
+        dataset: str | None,
+        *,
+        options: WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
+
+
+class DelimitedOptionHandlerProtocol(Protocol):
+    """Protocol for delimited option helper methods."""
+
+    def delimiter_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str: ...
+
+    def delimiter_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str: ...
+
+
+class EncodingRootExtrasHandlerProtocol(Protocol):
+    """Protocol for shared encoding/root/extras helper methods."""
+
+    def encoding_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str: ...
+
+    def encoding_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str: ...
+
+    def read_extra_option(
+        self,
+        options: ReadOptions | None,
+        key: str,
+        *,
+        default: object | None = None,
+    ) -> object | None: ...
+
+    def write_extra_option(
+        self,
+        options: WriteOptions | None,
+        key: str,
+        *,
+        default: object | None = None,
+    ) -> object | None: ...
+
+    def root_tag_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str: ...
+
+
+class ArchiveOptionHandlerProtocol(Protocol):
+    """Protocol for archive inner-name helper methods."""
+
+    def inner_name_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def inner_name_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
+
+
+class SheetOptionHandlerProtocol(Protocol):
+    """Protocol for spreadsheet sheet helper methods."""
+
+    def sheet_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int: ...
+
+    def sheet_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int: ...
+
+
+class TableOptionHandlerProtocol(Protocol):
+    """Protocol for embedded-table helper methods."""
+
+    def table_from_read_options(
+        self,
+        options: ReadOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def table_from_write_options(
+        self,
+        options: WriteOptions | None = None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
+
+
+class ReadDatasetHandlerProtocol(Protocol):
+    """Protocol for handlers exposing read/read_dataset operations."""
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData: ...
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONData: ...
+
+
+class RegistryModuleProtocol(Protocol):
+    """Protocol for registry module operations consumed by contracts."""
+
+    _HANDLER_CLASS_SPECS: dict[FileFormat, str]
+
+    def get_handler_class(
+        self,
+        file_format: FileFormat,
+        *,
+        allow_module_adapter_fallback: bool = False,
+    ) -> type[FileHandlerABC]: ...
+
+    def get_handler(
+        self,
+        file_format: FileFormat,
+    ) -> FileHandlerABC: ...
+
+    def _coerce_handler_class(
+        self,
+        handler_class: object,
+        *,
+        file_format: FileFormat,
+    ) -> type[FileHandlerABC]: ...
+
+    def _import_symbol(
+        self,
+        spec: str,
+    ) -> object: ...
+
+    def _module_adapter_class_for_format(
+        self,
+        file_format: FileFormat,
+    ) -> type[FileHandlerABC]: ...
+
+    def _module_for_format(
+        self,
+        file_format: FileFormat,
+    ) -> object: ...
+
+
+class PandasStubProtocol(Protocol):
+    """Protocol for pandas-like stubs used by table/spreadsheet contracts."""
+
+    read_calls: list[dict[str, object]]
+    last_frame: object | None
+
+
+class ScientificStubModuleProtocol(Protocol):
+    """Protocol for scientific modules exposing ``stub``."""
+
+    stub: object
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -361,27 +584,27 @@ class BaseOptionResolutionContract:
     Subclasses must provide factory methods for concrete handlers.
     """
 
-    def make_scientific_handler(self) -> ScientificDatasetFileHandlerABC:
+    def make_scientific_handler(self) -> ScientificOptionHandlerProtocol:
         """Build a scientific handler used by dataset helper tests."""
         raise NotImplementedError
 
-    def make_delimited_handler(self) -> FileHandlerABC:
+    def make_delimited_handler(self) -> DelimitedOptionHandlerProtocol:
         """Build a delimited handler used by delimiter helper tests."""
         raise NotImplementedError
 
-    def make_read_only_handler(self) -> FileHandlerABC:
+    def make_read_only_handler(self) -> EncodingRootExtrasHandlerProtocol:
         """Build a generic handler used by encoding/root/extras tests."""
         raise NotImplementedError
 
-    def make_archive_handler(self) -> FileHandlerABC:
+    def make_archive_handler(self) -> ArchiveOptionHandlerProtocol:
         """Build an archive handler used by inner-name helper tests."""
         raise NotImplementedError
 
-    def make_spreadsheet_handler(self) -> FileHandlerABC:
+    def make_spreadsheet_handler(self) -> SheetOptionHandlerProtocol:
         """Build a spreadsheet handler used by sheet helper tests."""
         raise NotImplementedError
 
-    def make_embedded_handler(self) -> FileHandlerABC:
+    def make_embedded_handler(self) -> TableOptionHandlerProtocol:
         """Build an embedded-db handler used by table helper tests."""
         raise NotImplementedError
 
@@ -389,56 +612,54 @@ class BaseOptionResolutionContract:
         """Test scientific dataset helpers using explicit then default data."""
         handler = self.make_scientific_handler()
 
-        assert cast(Any, handler).dataset_from_read_options(None) is None
-        assert cast(Any, handler).dataset_from_write_options(None) is None
+        assert handler.dataset_from_read_options(None) is None
+        assert handler.dataset_from_write_options(None) is None
         assert (
-            cast(
-                Any,
-                handler,
-            ).dataset_from_read_options(ReadOptions(dataset='features'))
+            handler.dataset_from_read_options(
+                ReadOptions(dataset='features'),
+            )
             == 'features'
         )
         assert (
-            cast(
-                Any,
-                handler,
-            ).dataset_from_write_options(WriteOptions(dataset='labels'))
+            handler.dataset_from_write_options(
+                WriteOptions(dataset='labels'),
+            )
             == 'labels'
         )
         assert (
-            cast(Any, handler).resolve_read_dataset(
+            handler.resolve_read_dataset(
                 None,
                 options=ReadOptions(dataset='features'),
             )
             == 'features'
         )
         assert (
-            cast(Any, handler).resolve_write_dataset(
+            handler.resolve_write_dataset(
                 None,
                 options=WriteOptions(dataset='labels'),
             )
             == 'labels'
         )
         assert (
-            cast(Any, handler).resolve_read_dataset(
+            handler.resolve_read_dataset(
                 'explicit',
                 options=ReadOptions(dataset='ignored'),
             )
             == 'explicit'
         )
         assert (
-            cast(Any, handler).resolve_write_dataset(
+            handler.resolve_write_dataset(
                 'explicit',
                 options=WriteOptions(dataset='ignored'),
             )
             == 'explicit'
         )
         assert (
-            cast(Any, handler).resolve_read_dataset(None, default='fallback')
+            handler.resolve_read_dataset(None, default='fallback')
             == 'fallback'
         )
         assert (
-            cast(Any, handler).resolve_write_dataset(None, default='fallback')
+            handler.resolve_write_dataset(None, default='fallback')
             == 'fallback'
         )
 
@@ -446,32 +667,26 @@ class BaseOptionResolutionContract:
         """Test delimited helpers using explicit then default delimiter."""
         handler = self.make_delimited_handler()
 
-        assert cast(Any, handler).delimiter_from_read_options(None) == ','
-        assert cast(Any, handler).delimiter_from_write_options(None) == ','
+        assert handler.delimiter_from_read_options(None) == ','
+        assert handler.delimiter_from_write_options(None) == ','
         assert (
-            cast(
-                Any,
-                handler,
-            ).delimiter_from_read_options(
+            handler.delimiter_from_read_options(
                 ReadOptions(extras={'delimiter': '|'}),
             )
             == '|'
         )
         assert (
-            cast(
-                Any,
-                handler,
-            ).delimiter_from_write_options(
+            handler.delimiter_from_write_options(
                 WriteOptions(extras={'delimiter': '\t'}),
             )
             == '\t'
         )
         assert (
-            cast(Any, handler).delimiter_from_read_options(None, default=';')
+            handler.delimiter_from_read_options(None, default=';')
             == ';'
         )
         assert (
-            cast(Any, handler).delimiter_from_write_options(None, default=':')
+            handler.delimiter_from_write_options(None, default=':')
             == ':'
         )
 
@@ -479,32 +694,30 @@ class BaseOptionResolutionContract:
         """Test encoding helpers using explicit values then defaults."""
         handler = self.make_read_only_handler()
 
-        assert cast(Any, handler).encoding_from_read_options(None) == 'utf-8'
+        assert handler.encoding_from_read_options(None) == 'utf-8'
         assert (
-            cast(
-                Any,
-                handler,
-            ).encoding_from_read_options(ReadOptions(encoding='latin-1'))
+            handler.encoding_from_read_options(
+                ReadOptions(encoding='latin-1'),
+            )
             == 'latin-1'
         )
         assert (
-            cast(Any, handler).encoding_from_read_options(
+            handler.encoding_from_read_options(
                 None,
                 default='utf-16',
             )
             == 'utf-16'
         )
 
-        assert cast(Any, handler).encoding_from_write_options(None) == 'utf-8'
+        assert handler.encoding_from_write_options(None) == 'utf-8'
         assert (
-            cast(
-                Any,
-                handler,
-            ).encoding_from_write_options(WriteOptions(encoding='utf-16'))
+            handler.encoding_from_write_options(
+                WriteOptions(encoding='utf-16'),
+            )
             == 'utf-16'
         )
         assert (
-            cast(Any, handler).encoding_from_write_options(
+            handler.encoding_from_write_options(
                 None,
                 default='ascii',
             )
@@ -515,28 +728,22 @@ class BaseOptionResolutionContract:
         """Test extras helpers using explicit values then defaults."""
         handler = self.make_read_only_handler()
 
-        assert cast(Any, handler).read_extra_option(None, 'foo') is None
-        assert cast(Any, handler).write_extra_option(None, 'foo') is None
+        assert handler.read_extra_option(None, 'foo') is None
+        assert handler.write_extra_option(None, 'foo') is None
+        assert handler.read_extra_option(None, 'foo', default='x') == 'x'
+        assert handler.write_extra_option(None, 'foo', default='y') == 'y'
         assert (
-            cast(Any, handler).read_extra_option(None, 'foo', default='x')
-            == 'x'
-        )
-        assert (
-            cast(Any, handler).write_extra_option(None, 'foo', default='y')
-            == 'y'
-        )
-        assert (
-            cast(
-                Any,
-                handler,
-            ).read_extra_option(ReadOptions(extras={'foo': 1}), 'foo')
+            handler.read_extra_option(
+                ReadOptions(extras={'foo': 1}),
+                'foo',
+            )
             == 1
         )
         assert (
-            cast(
-                Any,
-                handler,
-            ).write_extra_option(WriteOptions(extras={'foo': 2}), 'foo')
+            handler.write_extra_option(
+                WriteOptions(extras={'foo': 2}),
+                'foo',
+            )
             == 2
         )
 
@@ -546,20 +753,16 @@ class BaseOptionResolutionContract:
         """
         handler = self.make_archive_handler()
 
-        assert cast(Any, handler).inner_name_from_read_options(None) is None
-        assert cast(Any, handler).inner_name_from_write_options(None) is None
+        assert handler.inner_name_from_read_options(None) is None
+        assert handler.inner_name_from_write_options(None) is None
         assert (
-            cast(
-                Any,
-                handler,
-            ).inner_name_from_read_options(ReadOptions(inner_name='data.json'))
+            handler.inner_name_from_read_options(
+                ReadOptions(inner_name='data.json'),
+            )
             == 'data.json'
         )
         assert (
-            cast(
-                Any,
-                handler,
-            ).inner_name_from_write_options(
+            handler.inner_name_from_write_options(
                 WriteOptions(inner_name='payload.csv'),
             )
             == 'payload.csv'
@@ -578,16 +781,15 @@ class BaseOptionResolutionContract:
         """Test root-tag helper using explicit values then defaults."""
         handler = self.make_read_only_handler()
 
-        assert cast(Any, handler).root_tag_from_write_options(None) == 'root'
+        assert handler.root_tag_from_write_options(None) == 'root'
         assert (
-            cast(
-                Any,
-                handler,
-            ).root_tag_from_write_options(WriteOptions(root_tag='items'))
+            handler.root_tag_from_write_options(
+                WriteOptions(root_tag='items'),
+            )
             == 'items'
         )
         assert (
-            cast(Any, handler).root_tag_from_write_options(
+            handler.root_tag_from_write_options(
                 None,
                 default='dataset',
             )
@@ -600,16 +802,16 @@ class BaseOptionResolutionContract:
         """
         handler = self.make_spreadsheet_handler()
 
-        assert cast(Any, handler).sheet_from_read_options(None) == 0
-        assert cast(Any, handler).sheet_from_write_options(None) == 0
+        assert handler.sheet_from_read_options(None) == 0
+        assert handler.sheet_from_write_options(None) == 0
         assert (
-            cast(Any, handler).sheet_from_read_options(
+            handler.sheet_from_read_options(
                 ReadOptions(sheet='Sheet2'),
             )
             == 'Sheet2'
         )
         assert (
-            cast(Any, handler).sheet_from_write_options(WriteOptions(sheet=3))
+            handler.sheet_from_write_options(WriteOptions(sheet=3))
             == 3
         )
 
@@ -619,16 +821,16 @@ class BaseOptionResolutionContract:
         """
         handler = self.make_embedded_handler()
 
-        assert cast(Any, handler).table_from_read_options(None) is None
-        assert cast(Any, handler).table_from_write_options(None) is None
+        assert handler.table_from_read_options(None) is None
+        assert handler.table_from_write_options(None) is None
         assert (
-            cast(Any, handler).table_from_read_options(
+            handler.table_from_read_options(
                 ReadOptions(table='events'),
             )
             == 'events'
         )
         assert (
-            cast(Any, handler).table_from_write_options(
+            handler.table_from_write_options(
                 WriteOptions(table='staging'),
             )
             == 'staging'
@@ -1200,7 +1402,7 @@ class PandasColumnarModuleContract:
     ) -> None:
         """Test read returning row records via pandas."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(Any, make_pandas_stub(frame))
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
 
         result = self.module.read(tmp_path / f'data.{self.format_name}')
@@ -1217,7 +1419,7 @@ class PandasColumnarModuleContract:
     ) -> None:
         """Test write calling the expected DataFrame writer method."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(Any, make_pandas_stub(frame))
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
         path = tmp_path / f'data.{self.format_name}'
 
@@ -1517,7 +1719,7 @@ class ReadOnlyScientificDatasetModuleContract:
     """
 
     module: ModuleType
-    handler_cls: type[object]
+    handler_cls: type[ReadDatasetHandlerProtocol]
     format_name: str
     unknown_dataset_error_pattern: str
 
@@ -1533,13 +1735,13 @@ class ReadOnlyScientificDatasetModuleContract:
         _ = optional_module_stub
 
     @pytest.fixture
-    def handler(self) -> object:
+    def handler(self) -> ReadDatasetHandlerProtocol:
         """Create a handler instance for read-only scientific contracts."""
         return self.handler_cls()
 
     def test_read_dataset_rejects_unknown_dataset(
         self,
-        handler: object,
+        handler: ReadDatasetHandlerProtocol,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         optional_module_stub: OptionalModuleInstaller,
@@ -1555,14 +1757,14 @@ class ReadOnlyScientificDatasetModuleContract:
             ValueError,
             match=self.unknown_dataset_error_pattern,
         ):
-            cast(Any, handler).read_dataset(
+            handler.read_dataset(
                 tmp_path / f'data.{self.format_name}',
                 dataset='unknown',
             )
 
     def test_read_rejects_unknown_dataset_from_options(
         self,
-        handler: object,
+        handler: ReadDatasetHandlerProtocol,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         optional_module_stub: OptionalModuleInstaller,
@@ -1578,7 +1780,7 @@ class ReadOnlyScientificDatasetModuleContract:
             ValueError,
             match=self.unknown_dataset_error_pattern,
         ):
-            cast(Any, handler).read(
+            handler.read(
                 tmp_path / f'data.{self.format_name}',
                 options=ReadOptions(dataset='unknown'),
             )
@@ -1646,17 +1848,13 @@ class RegistryAbcConformanceContract:
     - :attr:`abc_cases`
     """
 
-    registry_module: ModuleType
-    # abc_cases: list[tuple[FileFormat, type[FileHandlerABC]]]
-    abc_cases: list[tuple[FileFormat, type[Any]]]
+    registry_module: RegistryModuleProtocol
+    abc_cases: list[AbcCase]
 
     def test_mapped_handler_class_inherits_expected_abc(self) -> None:
         """Test mapped handlers inheriting each expected category ABC."""
         for file_format, expected_abc in self.abc_cases:
-            handler_class = cast(
-                Any,
-                self.registry_module,
-            ).get_handler_class(file_format)
+            handler_class = self.registry_module.get_handler_class(file_format)
             assert issubclass(handler_class, expected_abc)
 
 
@@ -1668,7 +1866,7 @@ class RegistryFallbackPolicyContract:
     - :attr:`registry_module`
     """
 
-    registry_module: ModuleType
+    registry_module: RegistryModuleProtocol
     fallback_format: FileFormat = FileFormat.GZ
 
     # pylint: disable=protected-access
@@ -1680,7 +1878,7 @@ class RegistryFallbackPolicyContract:
         """
         Test deprecated fallback building a module-adapter and delegating I/O.
         """
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         calls: dict[str, object] = {}
 
         def _read(path: Path) -> dict[str, object]:
@@ -1739,7 +1937,7 @@ class RegistryFallbackPolicyContract:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test strict mode rejecting unmapped formats by default."""
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         monkeypatch.delitem(
             registry._HANDLER_CLASS_SPECS,
             self.fallback_format,
@@ -1754,7 +1952,7 @@ class RegistryFallbackPolicyContract:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test module-adapter builder raising when module import fails."""
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
 
         def _raise_module_not_found(_file_format: FileFormat) -> object:
             raise ModuleNotFoundError('missing test module')
@@ -1789,19 +1987,18 @@ class RegistryMappedResolutionContract:
 
     # pylint: disable=protected-access
 
-    registry_module: ModuleType
+    registry_module: RegistryModuleProtocol
     file_package: ModuleType
-    mapped_class_cases: list[tuple[FileFormat, type[Any]]]
+    mapped_class_cases: list[HandlerClassCase]
     placeholder_spec_cases: list[tuple[FileFormat, str]]
     singleton_format: FileFormat = FileFormat.JSON
-    # singleton_class: type[FileHandlerABC]
     singleton_class: type[Any]
 
     def test_explicit_for_implemented_formats(self) -> None:
         """
         Test every implemented handler class format being explicitly mapped.
         """
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         implemented_formats: set[FileFormat] = set()
         for module_info in pkgutil.iter_modules(self.file_package.__path__):
             if module_info.ispkg or module_info.name.startswith('_'):
@@ -1832,14 +2029,14 @@ class RegistryMappedResolutionContract:
 
     def test_get_handler_class_uses_mapped_class(self) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         for file_format, expected_class in self.mapped_class_cases:
             handler_class = registry.get_handler_class(file_format)
             assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         first = registry.get_handler(self.singleton_format)
         second = registry.get_handler(self.singleton_format)
 
@@ -1852,7 +2049,7 @@ class RegistryMappedResolutionContract:
         """
         Test owned placeholder modules mapping to their own class symbols.
         """
-        registry = cast(Any, self.registry_module)
+        registry = self.registry_module
         for file_format, expected_spec in self.placeholder_spec_cases:
             assert registry._HANDLER_CLASS_SPECS[file_format] == expected_spec
 
@@ -1912,18 +2109,22 @@ class ScientificStubDatasetKeysContract:
     """
 
     module_cases: list[
-        tuple[ModuleType, type[ScientificDatasetFileHandlerABC], str]
+        tuple[
+            ScientificStubModuleProtocol,
+            type[ScientificDatasetFileHandlerABC],
+            str,
+        ]
     ]
 
     def _assert_stub_not_called(
         self,
-        module: ModuleType,
+        module: ScientificStubModuleProtocol,
         monkeypatch: pytest.MonkeyPatch,
         *,
         operation: Literal['read', 'write'] | None = None,
     ) -> None:
         """Patch module stub operations to fail if they are called."""
-        stub_module = cast(Any, module).stub
+        stub_module = module.stub
         if operation in (None, 'read'):
             monkeypatch.setattr(
                 stub_module,
@@ -2369,7 +2570,7 @@ class WritableSpreadsheetModuleContract:
     ) -> None:
         """Test read returning row records via pandas."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(Any, make_pandas_stub(frame))
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
         path = tmp_path / f'data.{self.format_name}'
 
@@ -2407,7 +2608,7 @@ class WritableSpreadsheetModuleContract:
     ) -> None:
         """Test write delegating to DataFrame.to_excel with expected args."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(Any, make_pandas_stub(frame))
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
         path = tmp_path / f'data.{self.format_name}'
 
@@ -2415,8 +2616,9 @@ class WritableSpreadsheetModuleContract:
 
         assert written == 1
         assert pandas.last_frame is not None
-        assert pandas.last_frame.to_excel_calls
-        call = pandas.last_frame.to_excel_calls[-1]
+        frame_stub = cast(RecordsFrameStub, pandas.last_frame)
+        assert frame_stub.to_excel_calls
+        call = frame_stub.to_excel_calls[-1]
         assert call.get('path') == path
         assert call.get('index') is False
         if self.write_engine is not None:
