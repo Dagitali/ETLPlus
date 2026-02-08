@@ -509,7 +509,8 @@ class BaseOptionResolutionContract:
         )
         assert (
             cast(Any, handler).encoding_from_read_options(
-                None, default='utf-16',
+                None,
+                default='utf-16',
             )
             == 'utf-16'
         )
@@ -524,7 +525,8 @@ class BaseOptionResolutionContract:
         )
         assert (
             cast(Any, handler).encoding_from_write_options(
-                None, default='ascii',
+                None,
+                default='ascii',
             )
             == 'ascii'
         )
@@ -606,7 +608,8 @@ class BaseOptionResolutionContract:
         )
         assert (
             cast(Any, handler).root_tag_from_write_options(
-                None, default='dataset',
+                None,
+                default='dataset',
             )
             == 'dataset'
         )
@@ -1782,7 +1785,9 @@ class RegistryFallbackPolicyContract:
             raising=False,
         )
         monkeypatch.setattr(
-            registry, '_module_for_format', _raise_module_not_found,
+            registry,
+            '_module_for_format',
+            _raise_module_not_found,
         )
 
         with pytest.raises(ModuleNotFoundError, match='missing test module'):
@@ -1895,7 +1900,8 @@ class ScientificDatasetInheritanceContract:
         """Test single-dataset handlers inheriting the subtype ABC."""
         for handler_cls in self.single_dataset_handlers:
             assert issubclass(
-                handler_cls, SingleDatasetScientificFileHandlerABC,
+                handler_cls,
+                SingleDatasetScientificFileHandlerABC,
             )
 
     def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
@@ -1995,7 +2001,9 @@ class ScientificStubDatasetKeysContract:
         for module, handler_cls, _ in self.module_cases:
             handler = handler_cls()
             self._assert_stub_not_called(
-                module, monkeypatch, operation='write',
+                module,
+                monkeypatch,
+                operation='write',
             )
             with pytest.raises(ValueError, match='supports only dataset key'):
                 handler.write_dataset(
