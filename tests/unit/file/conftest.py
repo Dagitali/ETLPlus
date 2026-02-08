@@ -25,6 +25,7 @@ from typing import cast
 import pytest
 
 import etlplus.file._imports as import_helpers
+from etlplus.file.base import ReadOptions
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
@@ -707,10 +708,13 @@ class EmbeddedDatabaseModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        assert self.module.write(
-            tmp_path / f'data.{self.format_name}',
-            [],
-        ) == 0
+        assert (
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [],
+            )
+            == 0
+        )
 
 
 class PandasColumnarModuleContract:
@@ -795,10 +799,13 @@ class PandasColumnarModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        assert self.module.write(
-            tmp_path / f'data.{self.format_name}',
-            [],
-        ) == 0
+        assert (
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [],
+            )
+            == 0
+        )
 
     def test_read_import_error_path(
         self,
@@ -914,6 +921,233 @@ class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
                 self.module.read(path)
             else:
                 self.module.write(path, [{'id': 1}])
+
+
+class RDataModuleContract:
+    """
+    Reusable contract suite for R-data wrapper modules (RDA/RDS).
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`writer_missing_pattern`
+    - :meth:`build_frame`
+    - :meth:`build_pandas_stub`
+    - :meth:`build_pyreadr_stub`
+    - :meth:`build_reader_only_stub`
+    """
+
+    module: ModuleType
+    format_name: str
+    writer_missing_pattern: str
+    write_payload: JSONData = [{'id': 1}]
+
+    def build_frame(
+        self,
+        records: list[dict[str, object]],
+    ) -> object:
+        """Build a frame-like stub from row records."""
+        raise NotImplementedError
+
+    def build_pandas_stub(self) -> object:
+        """Build pandas module stub."""
+        raise NotImplementedError
+
+    def build_pyreadr_stub(
+        self,
+        result: dict[str, object],
+    ) -> object:
+        """Build pyreadr module stub."""
+        raise NotImplementedError
+
+    def build_reader_only_stub(self) -> object:
+        """Build pyreadr-like stub without writer methods."""
+        raise NotImplementedError
+
+    def assert_write_success(
+        self,
+        pyreadr_stub: object,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write success behavior."""
+        _ = pyreadr_stub
+        _ = path
+
+    def test_read_empty_result_returns_empty_list(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading empty R-data results returning an empty list."""
+        optional_module_stub(
+            {
+                'pyreadr': self.build_pyreadr_stub({}),
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
+        assert self.module.read(tmp_path / f'data.{self.format_name}') == []
+
+    def test_read_single_value_coerces_to_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading one R object coercing to JSON records."""
+        frame = self.build_frame([{'id': 1}])
+        optional_module_stub(
+            {
+                'pyreadr': self.build_pyreadr_stub({'data': frame}),
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
+        assert self.module.read(tmp_path / f'data.{self.format_name}') == [
+            {'id': 1},
+        ]
+
+    def test_read_multiple_values_returns_mapping(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test reading multiple R objects returning key-mapped payloads."""
+        result: dict[str, object] = {'one': {'id': 1}, 'two': [{'id': 2}]}
+        optional_module_stub(
+            {
+                'pyreadr': self.build_pyreadr_stub(result),
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
+        assert (
+            self.module.read(tmp_path / f'data.{self.format_name}') == result
+        )
+
+    def test_write_raises_when_writer_missing(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test writing failing when pyreadr writer methods are unavailable."""
+        optional_module_stub(
+            {
+                'pyreadr': self.build_reader_only_stub(),
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
+        with pytest.raises(ImportError, match=self.writer_missing_pattern):
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                self.write_payload,
+            )
+
+    def test_write_happy_path_uses_writer(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test writing delegating to pyreadr writer methods."""
+        pyreadr = self.build_pyreadr_stub({})
+        optional_module_stub(
+            {'pyreadr': pyreadr, 'pandas': self.build_pandas_stub()},
+        )
+        path = tmp_path / f'data.{self.format_name}'
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == 1
+        self.assert_write_success(pyreadr, path)
+
+
+class ReadOnlyScientificDatasetModuleContract:
+    """
+    Reusable contract suite for read-only scientific dataset handlers.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`handler_cls`
+    - :attr:`format_name`
+    - :attr:`unknown_dataset_error_pattern`
+    - :meth:`prepare_unknown_dataset_env`
+    """
+
+    module: ModuleType
+    handler_cls: type[object]
+    format_name: str
+    unknown_dataset_error_pattern: str
+
+    def prepare_unknown_dataset_env(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install stubs needed for unknown-dataset contract checks."""
+        _ = tmp_path
+        _ = monkeypatch
+        _ = optional_module_stub
+
+    @pytest.fixture
+    def handler(self) -> object:
+        """Create a handler instance for read-only scientific contracts."""
+        return self.handler_cls()
+
+    def test_read_dataset_rejects_unknown_dataset(
+        self,
+        handler: object,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test explicit unknown dataset keys being rejected."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError, match=self.unknown_dataset_error_pattern,
+        ):
+            cast(Any, handler).read_dataset(
+                tmp_path / f'data.{self.format_name}',
+                dataset='unknown',
+            )
+
+    def test_read_rejects_unknown_dataset_from_options(
+        self,
+        handler: object,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test unknown dataset rejection routed via read options."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError, match=self.unknown_dataset_error_pattern,
+        ):
+            cast(Any, handler).read(
+                tmp_path / f'data.{self.format_name}',
+                options=ReadOptions(dataset='unknown'),
+            )
+
+    def test_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test read-only handlers rejecting writes."""
+        with pytest.raises(RuntimeError, match='read-only'):
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [{'id': 1}],
+            )
 
 
 class ReadOnlySpreadsheetModuleContract:
@@ -1242,10 +1476,13 @@ class WritableSpreadsheetModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        assert self.module.write(
-            tmp_path / f'data.{self.format_name}',
-            [],
-        ) == 0
+        assert (
+            self.module.write(
+                tmp_path / f'data.{self.format_name}',
+                [],
+            )
+            == 0
+        )
 
     def test_write_wraps_import_error(
         self,
