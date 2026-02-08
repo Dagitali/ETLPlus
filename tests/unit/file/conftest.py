@@ -296,6 +296,16 @@ def _coerce_numeric_value(
     return value
 
 
+def _format_path(
+    tmp_path: Path,
+    format_name: str,
+    *,
+    stem: str = 'data',
+) -> Path:
+    """Build a deterministic format-specific path under ``tmp_path``."""
+    return tmp_path / f'{stem}.{format_name}'
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -893,7 +903,7 @@ class BinaryCodecModuleContract:
         """Test read delegating bytes decoding to the codec dependency."""
         codec = self._make_codec_stub(loaded_result=self.loaded_result)
         optional_module_stub({self.dependency_name: codec})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         path.write_bytes(b'payload')
 
         result = self.module.read(path)
@@ -920,7 +930,7 @@ class BinaryCodecModuleContract:
         """Test write delegating payload encoding to the codec dependency."""
         codec = self._make_codec_stub(loaded_result=self.loaded_result)
         optional_module_stub({self.dependency_name: codec})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         payload = cast(JSONData, getattr(self, payload_attr))
         expected_dump = getattr(self, expected_attr)
 
@@ -979,7 +989,7 @@ class BinaryDependencyModuleContract:
         """Test read delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
         optional_module_stub({self.dependency_name: dependency})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         path.write_bytes(self.read_payload_bytes)
 
         result = self.module.read(path)
@@ -995,7 +1005,7 @@ class BinaryDependencyModuleContract:
         """Test write delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
         optional_module_stub({self.dependency_name: dependency})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, self.write_payload)
 
@@ -1034,7 +1044,7 @@ class BinaryKeyedPayloadModuleContract:
         sample_payload: JSONDict,
     ) -> None:
         """Test write/read round-trip preserving payload bytes."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, sample_payload)
 
@@ -1047,7 +1057,7 @@ class BinaryKeyedPayloadModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writes requiring the expected payload key."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         with pytest.raises(TypeError, match=self.payload_key):
             self.module.write(path, self.invalid_payload)
@@ -1086,7 +1096,7 @@ class DelimitedModuleContract:
 
         monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
 
-        result = self.module.read(tmp_path / f'data.{self.format_name}')
+        result = self.module.read(_format_path(tmp_path, self.format_name))
 
         assert result == [{'ok': True}]
         assert calls['delimiter'] == self.delimiter
@@ -1115,7 +1125,7 @@ class DelimitedModuleContract:
         monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
 
         written = self.module.write(
-            tmp_path / f'data.{self.format_name}',
+            _format_path(tmp_path, self.format_name),
             [{'id': 1}],
         )
 
@@ -1187,7 +1197,7 @@ class EmbeddedDatabaseModuleContract:
         """Test writing empty payloads returning zero."""
         assert (
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [],
             )
             == 0
@@ -1403,7 +1413,7 @@ class PandasColumnarModuleContract:
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
 
-        result = self.module.read(tmp_path / f'data.{self.format_name}')
+        result = self.module.read(_format_path(tmp_path, self.format_name))
 
         assert result == [{'id': 1}]
         assert pandas.read_calls
@@ -1419,7 +1429,7 @@ class PandasColumnarModuleContract:
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, [{'id': 1}])
 
@@ -1444,7 +1454,7 @@ class PandasColumnarModuleContract:
         """Test writing empty payloads returning zero."""
         assert (
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [],
             )
             == 0
@@ -1467,7 +1477,7 @@ class PandasColumnarModuleContract:
         )
 
         with pytest.raises(ImportError, match=self.read_error_pattern):
-            self.module.read(tmp_path / f'data.{self.format_name}')
+            self.module.read(_format_path(tmp_path, self.format_name))
 
     def test_write_import_error_path(
         self,
@@ -1487,7 +1497,7 @@ class PandasColumnarModuleContract:
 
         with pytest.raises(ImportError, match=self.write_error_pattern):
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [{'id': 1}],
             )
 
@@ -1510,7 +1520,7 @@ class PyarrowGateOnlyModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test empty writes short-circuiting without file creation."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         assert self.module.write(path, []) == 0
         assert not path.exists()
 
@@ -1527,7 +1537,7 @@ class PyarrowGateOnlyModuleContract:
             raise ImportError(self.missing_dependency_pattern)
 
         monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         with pytest.raises(ImportError, match=self.missing_dependency_pattern):
             if operation == 'read':
@@ -1557,7 +1567,7 @@ class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
             raise ImportError(self.missing_dependency_pattern)
 
         monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         with pytest.raises(ImportError, match=self.missing_dependency_pattern):
             if operation == 'read':
@@ -1629,7 +1639,7 @@ class RDataModuleContract:
             },
         )
 
-        assert self.module.read(tmp_path / f'data.{self.format_name}') == []
+        assert self.module.read(_format_path(tmp_path, self.format_name)) == []
 
     def test_read_single_value_coerces_to_records(
         self,
@@ -1645,7 +1655,7 @@ class RDataModuleContract:
             },
         )
 
-        assert self.module.read(tmp_path / f'data.{self.format_name}') == [
+        assert self.module.read(_format_path(tmp_path, self.format_name)) == [
             {'id': 1},
         ]
 
@@ -1664,7 +1674,8 @@ class RDataModuleContract:
         )
 
         assert (
-            self.module.read(tmp_path / f'data.{self.format_name}') == result
+            self.module.read(_format_path(tmp_path, self.format_name))
+            == result
         )
 
     def test_write_raises_when_writer_missing(
@@ -1682,7 +1693,7 @@ class RDataModuleContract:
 
         with pytest.raises(ImportError, match=self.writer_missing_pattern):
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 self.write_payload,
             )
 
@@ -1696,7 +1707,7 @@ class RDataModuleContract:
         optional_module_stub(
             {'pyreadr': pyreadr, 'pandas': self.build_pandas_stub()},
         )
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, self.write_payload)
 
@@ -1756,7 +1767,7 @@ class ReadOnlyScientificDatasetModuleContract:
             match=self.unknown_dataset_error_pattern,
         ):
             handler.read_dataset(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 dataset='unknown',
             )
 
@@ -1779,7 +1790,7 @@ class ReadOnlyScientificDatasetModuleContract:
             match=self.unknown_dataset_error_pattern,
         ):
             handler.read(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 options=ReadOptions(dataset='unknown'),
             )
 
@@ -1790,7 +1801,7 @@ class ReadOnlyScientificDatasetModuleContract:
         """Test read-only handlers rejecting writes."""
         with pytest.raises(RuntimeError, match='read-only'):
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [{'id': 1}],
             )
 
@@ -1823,7 +1834,7 @@ class ReadOnlySpreadsheetModuleContract:
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(tmp_path / f'data.{self.format_name}')
+            self.module.read(_format_path(tmp_path, self.format_name))
 
     def test_write_not_supported(
         self,
@@ -1832,7 +1843,7 @@ class ReadOnlySpreadsheetModuleContract:
         """Test read-only formats rejecting writes."""
         with pytest.raises(RuntimeError, match='read-only'):
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [{'id': 1}],
             )
 
@@ -2251,7 +2262,7 @@ class SemiStructuredReadModuleContract:
     ) -> None:
         """Test reading expected payload from representative text content."""
         self.setup_read_dependencies(optional_module_stub)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         path.write_text(self.sample_read_text, encoding='utf-8')
 
         result = self.module.read(path)
@@ -2295,7 +2306,7 @@ class SemiStructuredWriteDictModuleContract:
     ) -> None:
         """Test writing a single dictionary payload."""
         self.setup_write_dependencies(optional_module_stub)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, self.dict_payload)
 
@@ -2351,7 +2362,7 @@ class SingleDatasetWritableContract(SingleDatasetHandlerContract):
         tmp_path: Path,
     ) -> None:
         """Test empty write payloads return zero and create no file."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         assert self.module.write(path, []) == 0
         assert not path.exists()
 
@@ -2368,7 +2379,7 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
         operation: str,
     ) -> None:
         """Test placeholder read/write behavior for module-level wrappers."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         with pytest.raises(NotImplementedError, match='not implemented yet'):
             if operation == 'read':
                 self.module.read(path)
@@ -2404,7 +2415,7 @@ class SniffedDelimitedModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test reading empty input returning an empty list."""
-        path = tmp_path / f'empty.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name, stem='empty')
         path.write_text('', encoding='utf-8')
 
         assert self.module.read(path) == []
@@ -2418,7 +2429,7 @@ class SniffedDelimitedModuleContract:
             {'id': 1, 'name': 'Alice'},
             {'id': 2, 'name': 'Bob'},
         ]
-        path = tmp_path / f'out.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name, stem='out')
 
         written = self.module.write(path, sample_records)
         result = self.module.read(path)
@@ -2433,7 +2444,7 @@ class SniffedDelimitedModuleContract:
     ) -> None:
         """Test blank rows being ignored during reads."""
         self._patch_default_sniff(monkeypatch)
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         path.write_text(
             'a,b\n\n , \n1,2\n',
             encoding='utf-8',
@@ -2472,7 +2483,7 @@ class StubModuleContract:
             self.module,
             format_name=self.format_name,
             operation=cast(Literal['read', 'write'], operation),
-            path=tmp_path / f'data.{self.format_name}',
+            path=_format_path(tmp_path, self.format_name),
         )
 
 
@@ -2523,7 +2534,7 @@ class TextRowModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
         assert self.module.write(path, []) == 0
 
     def test_write_rows_contract(
@@ -2531,7 +2542,7 @@ class TextRowModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing representative row payloads."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, self.write_payload)
 
@@ -2570,7 +2581,7 @@ class WritableSpreadsheetModuleContract:
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         result = self.module.read(path)
 
@@ -2595,7 +2606,7 @@ class WritableSpreadsheetModuleContract:
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(tmp_path / f'data.{self.format_name}')
+            self.module.read(_format_path(tmp_path, self.format_name))
 
     def test_write_calls_to_excel(
         self,
@@ -2608,7 +2619,7 @@ class WritableSpreadsheetModuleContract:
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, [{'id': 1}])
 
@@ -2629,7 +2640,7 @@ class WritableSpreadsheetModuleContract:
         """Test writing empty payloads returning zero."""
         assert (
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [],
             )
             == 0
@@ -2650,7 +2661,7 @@ class WritableSpreadsheetModuleContract:
 
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module.write(
-                tmp_path / f'data.{self.format_name}',
+                _format_path(tmp_path, self.format_name),
                 [{'id': 1}],
             )
 
@@ -2674,7 +2685,7 @@ class XmlModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test XML write using explicit root tag and readable output."""
-        path = tmp_path / f'data.{self.format_name}'
+        path = _format_path(tmp_path, self.format_name)
 
         written = self.module.write(path, [{'id': 1}], root_tag=self.root_tag)
 
