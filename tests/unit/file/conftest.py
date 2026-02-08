@@ -316,6 +316,96 @@ class StubModuleContract:
         )
 
 
+class BinaryCodecModuleContract:
+    """
+    Reusable contract suite for binary codec wrapper modules.
+
+    Subclasses must provide:
+    - ``module``
+    - ``format_name``
+    - ``dependency_name``
+    - ``reader_method_name``
+    - ``writer_method_name``
+    - ``reader_kwargs``
+    - ``writer_kwargs``
+    - ``loaded_result``
+    - ``emitted_bytes``
+    """
+
+    module: ModuleType
+    format_name: str
+    dependency_name: str
+    reader_method_name: str
+    writer_method_name: str
+    reader_kwargs: dict[str, object]
+    writer_kwargs: dict[str, object]
+    loaded_result: JSONData
+    emitted_bytes: bytes
+    list_payload: JSONData = [{'id': 1}]
+    dict_payload: JSONData = {'id': 1}
+    expected_list_dump: object = [{'id': 1}]
+    expected_dict_dump: object = {'id': 1}
+
+    def _make_codec_stub(
+        self,
+        *,
+        loaded_result: object,
+    ) -> BinaryCodecStub:
+        """Create a codec stub configured for this binary format module."""
+        return BinaryCodecStub(
+            reader_method_name=self.reader_method_name,
+            writer_method_name=self.writer_method_name,
+            loaded_result=loaded_result,
+            emitted_bytes=self.emitted_bytes,
+        )
+
+    def test_read_uses_dependency_codec(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read delegating bytes decoding to the codec dependency."""
+        codec = self._make_codec_stub(loaded_result=self.loaded_result)
+        optional_module_stub({self.dependency_name: codec})
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_bytes(b'payload')
+
+        result = self.module.read(path)
+
+        assert result == self.loaded_result
+        assert codec.reader_payloads == [b'payload']
+        assert codec.reader_kwargs == [self.reader_kwargs]
+
+    @pytest.mark.parametrize(
+        ('payload_attr', 'expected_attr'),
+        [
+            ('list_payload', 'expected_list_dump'),
+            ('dict_payload', 'expected_dict_dump'),
+        ],
+        ids=['list', 'dict'],
+    )
+    def test_write_serializes_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        payload_attr: str,
+        expected_attr: str,
+    ) -> None:
+        """Test write delegating payload encoding to the codec dependency."""
+        codec = self._make_codec_stub(loaded_result=self.loaded_result)
+        optional_module_stub({self.dependency_name: codec})
+        path = tmp_path / f'data.{self.format_name}'
+        payload = cast(JSONData, getattr(self, payload_attr))
+        expected_dump = getattr(self, expected_attr)
+
+        written = self.module.write(path, payload)
+
+        assert written == 1
+        assert codec.writer_payloads == [expected_dump]
+        assert codec.writer_kwargs == [self.writer_kwargs]
+        assert path.read_bytes() == self.emitted_bytes
+
+
 class BinaryKeyedPayloadModuleContract:
     """
     Reusable contract suite for keyed binary payload wrapper modules.
@@ -868,6 +958,60 @@ class WritableSpreadsheetModuleContract:
 
 
 # SECTION: CLASSES (STUBS) ============================================== #
+
+
+class BinaryCodecStub:
+    """
+    Generic codec stub for binary serialization module tests.
+
+    Supports configurable reader/writer method names to cover modules like
+    ``msgpack`` and ``cbor2`` with one reusable implementation.
+    """
+
+    def __init__(
+        self,
+        *,
+        reader_method_name: str,
+        writer_method_name: str,
+        loaded_result: object,
+        emitted_bytes: bytes,
+    ) -> None:
+        self.reader_method_name = reader_method_name
+        self.writer_method_name = writer_method_name
+        self.loaded_result = loaded_result
+        self.emitted_bytes = emitted_bytes
+        self.reader_payloads: list[bytes] = []
+        self.reader_kwargs: list[dict[str, object]] = []
+        self.writer_payloads: list[object] = []
+        self.writer_kwargs: list[dict[str, object]] = []
+
+    def _reader(
+        self,
+        payload: bytes,
+        **kwargs: object,
+    ) -> object:
+        self.reader_payloads.append(payload)
+        self.reader_kwargs.append(dict(kwargs))
+        return self.loaded_result
+
+    def _writer(
+        self,
+        payload: object,
+        **kwargs: object,
+    ) -> bytes:
+        self.writer_payloads.append(payload)
+        self.writer_kwargs.append(dict(kwargs))
+        return self.emitted_bytes
+
+    def __getattr__(
+        self,
+        name: str,
+    ) -> object:
+        if name == self.reader_method_name:
+            return self._reader
+        if name == self.writer_method_name:
+            return self._writer
+        raise AttributeError(name)
 
 
 class PandasModuleStub:
