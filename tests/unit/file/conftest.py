@@ -52,7 +52,7 @@ pytestmark = pytest.mark.unit
 # SECTION: TYPE ALIAS ======================================================= #
 
 
-# Shared callable used by dependency-stubbing contracts.
+# Shared callable used by dependency-stubbing fixtures/contracts.
 type AbcCase = tuple[FileFormat, type[Any]]
 type HandlerClassCase = tuple[FileFormat, type[Any]]
 type OptionalModuleInstaller = Callable[[dict[str, object]], None]
@@ -61,32 +61,20 @@ type OptionalModuleInstaller = Callable[[dict[str, object]], None]
 # SECTION: PROTOCOLS ======================================================== #
 
 
-class ScientificOptionHandlerProtocol(Protocol):
-    """Protocol for scientific dataset option helper methods."""
+class ArchiveOptionHandlerProtocol(Protocol):
+    """Protocol for archive inner-name helper methods."""
 
-    def dataset_from_read_options(
+    def inner_name_from_read_options(
         self,
         options: ReadOptions | None,
-    ) -> str | None: ...
-
-    def dataset_from_write_options(
-        self,
-        options: WriteOptions | None,
-    ) -> str | None: ...
-
-    def resolve_read_dataset(
-        self,
-        dataset: str | None = None,
         *,
-        options: ReadOptions | None = None,
         default: str | None = None,
     ) -> str | None: ...
 
-    def resolve_write_dataset(
+    def inner_name_from_write_options(
         self,
-        dataset: str | None = None,
+        options: WriteOptions | None,
         *,
-        options: WriteOptions | None = None,
         default: str | None = None,
     ) -> str | None: ...
 
@@ -150,58 +138,11 @@ class EncodingRootExtrasHandlerProtocol(Protocol):
     ) -> str: ...
 
 
-class ArchiveOptionHandlerProtocol(Protocol):
-    """Protocol for archive inner-name helper methods."""
+class PandasStubProtocol(Protocol):
+    """Protocol for pandas-like stubs used by table/spreadsheet contracts."""
 
-    def inner_name_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-
-class SheetOptionHandlerProtocol(Protocol):
-    """Protocol for spreadsheet sheet helper methods."""
-
-    def sheet_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int: ...
-
-    def sheet_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int: ...
-
-
-class TableOptionHandlerProtocol(Protocol):
-    """Protocol for embedded-table helper methods."""
-
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
+    read_calls: list[dict[str, object]]
+    last_frame: object | None
 
 
 class ReadDatasetHandlerProtocol(Protocol):
@@ -263,17 +204,76 @@ class RegistryModuleProtocol(Protocol):
     ) -> object: ...
 
 
-class PandasStubProtocol(Protocol):
-    """Protocol for pandas-like stubs used by table/spreadsheet contracts."""
+class ScientificOptionHandlerProtocol(Protocol):
+    """Protocol for scientific dataset option helper methods."""
 
-    read_calls: list[dict[str, object]]
-    last_frame: object | None
+    def dataset_from_read_options(
+        self,
+        options: ReadOptions | None,
+    ) -> str | None: ...
+
+    def dataset_from_write_options(
+        self,
+        options: WriteOptions | None,
+    ) -> str | None: ...
+
+    def resolve_read_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def resolve_write_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None: ...
 
 
 class ScientificStubModuleProtocol(Protocol):
     """Protocol for scientific modules exposing ``stub``."""
 
     stub: object
+
+
+class SheetOptionHandlerProtocol(Protocol):
+    """Protocol for spreadsheet sheet helper methods."""
+
+    def sheet_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int: ...
+
+    def sheet_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int: ...
+
+
+class TableOptionHandlerProtocol(Protocol):
+    """Protocol for embedded-table helper methods."""
+
+    def table_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
+
+    def table_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None: ...
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
