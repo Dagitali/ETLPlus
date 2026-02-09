@@ -567,28 +567,20 @@ class PathMixin:
         return _format_path(tmp_path, self.format_name, stem=stem)
 
 
-class EmptyWriteReturnsZeroMixin:
+class EmptyWriteReturnsZeroMixin(PathMixin):
     """
     Shared mixin for contracts where empty writes should return ``0``.
     """
 
     module: ModuleType
-    format_name: str
     assert_file_not_created_on_empty_write: bool = False
-
-    def empty_write_path(
-        self,
-        tmp_path: Path,
-    ) -> Path:
-        """Build the default path used for empty-write checks."""
-        return _format_path(tmp_path, self.format_name)
 
     def test_write_empty_payload_returns_zero(
         self,
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        path = self.empty_write_path(tmp_path)
+        path = self.format_path(tmp_path)
         assert self.module.write(path, []) == 0
         if self.assert_file_not_created_on_empty_write:
             assert not path.exists()
@@ -727,20 +719,7 @@ class DelimitedSniffedMixin(PathMixin):
         assert self.module.read(path) == [{'a': '1', 'b': '2'}]
 
 
-class PathEmptyWriteReturnsZeroMixin(PathMixin, EmptyWriteReturnsZeroMixin):
-    """
-    Empty-write specialization for contracts that already use PathMixin.
-    """
-
-    def empty_write_path(
-        self,
-        tmp_path: Path,
-    ) -> Path:
-        """Build the path used for empty-write checks."""
-        return self.format_path(tmp_path)
-
-
-class DelimitedTextRowsMixin(PathEmptyWriteReturnsZeroMixin):
+class DelimitedTextRowsMixin(EmptyWriteReturnsZeroMixin):
     """
     Parametrized mixin for text/fixed-width row-oriented modules.
     """
@@ -1014,7 +993,7 @@ class ScientificSingleDatasetHandlerMixin:
         )
 
 
-class SpreadsheetWritableMixin(PathEmptyWriteReturnsZeroMixin):
+class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     """
     Parametrized mixin for writable spreadsheet module contracts.
     """
@@ -2717,7 +2696,7 @@ class SingleDatasetHandlerContract(
 
 
 class SingleDatasetWritableContract(
-    PathEmptyWriteReturnsZeroMixin,
+    EmptyWriteReturnsZeroMixin,
     SingleDatasetHandlerContract,
 ):
     """
