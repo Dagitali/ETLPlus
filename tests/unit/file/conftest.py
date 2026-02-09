@@ -1261,10 +1261,7 @@ class RDataModuleContract(PathMixin):
             pyreadr_stub=self.build_pyreadr_stub(result),
         )
 
-        assert (
-            self.module.read(self.format_path(tmp_path))
-            == result
-        )
+        assert self.module.read(self.format_path(tmp_path)) == result
 
     def test_write_raises_when_writer_missing(
         self,
@@ -1663,9 +1660,7 @@ def make_records_frame_fixture() -> Callable[
 
 
 @pytest.fixture(name='optional_module_stub')
-def optional_module_stub_fixture() -> Generator[
-    OptionalModuleInstaller
-]:
+def optional_module_stub_fixture() -> Generator[OptionalModuleInstaller]:
     """Install optional dependency stubs and restore import cache afterward."""
     cache = import_helpers._MODULE_CACHE  # pylint: disable=protected-access
     original = dict(cache)
