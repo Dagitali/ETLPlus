@@ -547,7 +547,7 @@ def require_optional_modules(
         pytest.importorskip(module)
 
 
-# SECTION: CLASSES (MIXINS) ================================================= #
+# SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
 
 
 class PathMixin:
@@ -565,6 +565,36 @@ class PathMixin:
     ) -> Path:
         """Build a deterministic path for the configured format name."""
         return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class EmptyWriteReturnsZeroMixin:
+    """
+    Shared mixin for contracts where empty writes should return ``0``.
+    """
+
+    module: ModuleType
+    format_name: str
+    assert_file_not_created_on_empty_write: bool = False
+
+    def empty_write_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build the default path used for empty-write checks."""
+        return _format_path(tmp_path, self.format_name)
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        path = self.empty_write_path(tmp_path)
+        assert self.module.write(path, []) == 0
+        if self.assert_file_not_created_on_empty_write:
+            assert not path.exists()
+
+
+# SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
 
 
 class DelimitedReadWriteMixin(PathMixin):
@@ -697,7 +727,20 @@ class DelimitedSniffedMixin(PathMixin):
         assert self.module.read(path) == [{'a': '1', 'b': '2'}]
 
 
-class DelimitedTextRowsMixin(PathMixin):
+class PathEmptyWriteReturnsZeroMixin(PathMixin, EmptyWriteReturnsZeroMixin):
+    """
+    Empty-write specialization for contracts that already use PathMixin.
+    """
+
+    def empty_write_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build the path used for empty-write checks."""
+        return self.format_path(tmp_path)
+
+
+class DelimitedTextRowsMixin(PathEmptyWriteReturnsZeroMixin):
     """
     Parametrized mixin for text/fixed-width row-oriented modules.
     """
@@ -730,13 +773,6 @@ class DelimitedTextRowsMixin(PathMixin):
         path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
 
         assert self.module.read(path) == expected
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert self.module.write(self.format_path(tmp_path), []) == 0
 
     def test_write_rows_contract(
         self,
@@ -819,20 +855,27 @@ class ScientificReadOnlyUnknownDatasetMixin(PathMixin):
             )
 
 
-class ScientificReadOnlyWriteGuardMixin(PathMixin):
+class ReadOnlyWriteGuardMixin(PathMixin):
     """
-    Shared mixin for scientific handlers that do not support writes.
+    Shared mixin for read-only handlers rejecting module-level writes.
     """
 
     module: ModuleType
+    read_only_error_pattern: str = 'read-only'
 
     def test_write_not_supported(
         self,
         tmp_path: Path,
     ) -> None:
         """Test read-only handlers rejecting writes."""
-        with pytest.raises(RuntimeError, match='read-only'):
+        with pytest.raises(RuntimeError, match=self.read_only_error_pattern):
             self.module.write(self.format_path(tmp_path), make_payload('list'))
+
+
+class ScientificReadOnlyWriteGuardMixin(ReadOnlyWriteGuardMixin):
+    """
+    Shared mixin for scientific handlers that do not support writes.
+    """
 
 
 class SpreadsheetReadImportErrorMixin(PathMixin):
@@ -860,23 +903,10 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
             self.module.read(self.format_path(tmp_path))
 
 
-class SpreadsheetReadOnlyMixin(PathMixin):
+class SpreadsheetReadOnlyMixin(ReadOnlyWriteGuardMixin):
     """
     Shared mixin for read-only spreadsheet write guards.
     """
-
-    module: ModuleType
-
-    def test_write_not_supported(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test read-only formats rejecting writes."""
-        with pytest.raises(RuntimeError, match='read-only'):
-            self.module.write(
-                self.format_path(tmp_path),
-                make_payload('list'),
-            )
 
 
 class SemiStructuredReadMixin(PathMixin):
@@ -984,7 +1014,7 @@ class ScientificSingleDatasetHandlerMixin:
         )
 
 
-class SpreadsheetWritableMixin(PathMixin):
+class SpreadsheetWritableMixin(PathEmptyWriteReturnsZeroMixin):
     """
     Parametrized mixin for writable spreadsheet module contracts.
     """
@@ -1042,13 +1072,6 @@ class SpreadsheetWritableMixin(PathMixin):
         assert call.get('index') is False
         if self.write_engine is not None:
             assert call.get('engine') == self.write_engine
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert self.module.write(self.format_path(tmp_path), []) == 0
 
     def test_write_wraps_import_error(
         self,
@@ -1715,7 +1738,7 @@ class DelimitedModuleContract(
     """
 
 
-class EmbeddedDatabaseModuleContract:
+class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
     """
     Reusable contract suite for embedded database wrapper modules.
 
@@ -1770,19 +1793,6 @@ class EmbeddedDatabaseModuleContract:
         )
         with pytest.raises(ValueError, match=self.multi_table_error_pattern):
             self.module.read(path)
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert (
-            self.module.write(
-                _format_path(tmp_path, self.format_name),
-                [],
-            )
-            == 0
-        )
 
 
 class FileCoreDispatchContract:
@@ -1954,7 +1964,7 @@ class HandlerMethodNamingContract:
             assert callable(getattr(handler_cls, 'write_dataset', None))
 
 
-class PandasColumnarModuleContract:
+class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
     """
     Reusable contract suite for pandas-backed columnar format modules.
 
@@ -2031,19 +2041,6 @@ class PandasColumnarModuleContract:
         else:
             assert 'index' not in call
 
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert (
-            self.module.write(
-                _format_path(tmp_path, self.format_name),
-                [],
-            )
-            == 0
-        )
-
     def test_read_import_error_path(
         self,
         tmp_path: Path,
@@ -2086,7 +2083,38 @@ class PandasColumnarModuleContract:
             )
 
 
-class PyarrowGateOnlyModuleContract:
+class PyarrowMissingDependencyMixin:
+    """
+    Shared mixin for pyarrow-gated read/write dependency checks.
+    """
+
+    module: ModuleType
+    format_name: str
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_operations_raise_when_pyarrow_missing(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test read/write failing when pyarrow dependency resolution fails."""
+
+        def _missing(*_args: object, **_kwargs: object) -> object:
+            raise ImportError(self.missing_dependency_pattern)
+
+        monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        path = _format_path(tmp_path, self.format_name)
+
+        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
+            if operation == 'read':
+                self.module.read(path)
+            else:
+                self.module.write(path, make_payload('list'))
+
+
+class PyarrowGateOnlyModuleContract(PyarrowMissingDependencyMixin):
     """
     Reusable contract suite for pyarrow-gated IPC-style modules.
 
@@ -2108,56 +2136,17 @@ class PyarrowGateOnlyModuleContract:
         assert self.module.write(path, []) == 0
         assert not path.exists()
 
-    @pytest.mark.parametrize('operation', ['read', 'write'])
-    def test_operations_raise_when_pyarrow_missing(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        operation: str,
-    ) -> None:
-        """Test read/write failing when pyarrow dependency resolution fails."""
 
-        def _missing(*_args: object, **_kwargs: object) -> object:
-            raise ImportError(self.missing_dependency_pattern)
-
-        monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = _format_path(tmp_path, self.format_name)
-
-        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
-            if operation == 'read':
-                self.module.read(path)
-            else:
-                self.module.write(path, make_payload('list'))
-
-
-class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
+class PyarrowGatedPandasColumnarModuleContract(
+    PyarrowMissingDependencyMixin,
+    PandasColumnarModuleContract,
+):
     """
     Reusable suite for pandas-backed columnar modules gated by pyarrow.
     """
 
     requires_pyarrow = True
     missing_dependency_pattern: str = 'missing pyarrow'
-
-    @pytest.mark.parametrize('operation', ['read', 'write'])
-    def test_operations_raise_when_pyarrow_missing(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        operation: str,
-    ) -> None:
-        """Test read/write failing when pyarrow dependency resolution fails."""
-
-        def _missing(*_args: object, **_kwargs: object) -> object:
-            raise ImportError(self.missing_dependency_pattern)
-
-        monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = _format_path(tmp_path, self.format_name)
-
-        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
-            if operation == 'read':
-                self.module.read(path)
-            else:
-                self.module.write(path, make_payload('list'))
 
 
 class RDataModuleContract:
@@ -2727,19 +2716,15 @@ class SingleDatasetHandlerContract(
     """
 
 
-class SingleDatasetWritableContract(SingleDatasetHandlerContract):
+class SingleDatasetWritableContract(
+    PathEmptyWriteReturnsZeroMixin,
+    SingleDatasetHandlerContract,
+):
     """
     Reusable suite for writable single-dataset scientific handlers.
     """
 
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test empty write payloads return zero and create no file."""
-        path = _format_path(tmp_path, self.format_name)
-        assert self.module.write(path, []) == 0
-        assert not path.exists()
+    assert_file_not_created_on_empty_write = True
 
 
 class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
