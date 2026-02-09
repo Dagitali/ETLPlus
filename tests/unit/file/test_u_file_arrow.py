@@ -19,7 +19,6 @@ class TestArrow(PyarrowMissingDependencyMixin):
 
     module = mod
     format_name = 'arrow'
-    missing_dependency_pattern = 'missing pyarrow'
 
     def test_write_returns_zero_for_empty_payload(
         self,

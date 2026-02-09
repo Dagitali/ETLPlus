@@ -76,13 +76,13 @@ class TestScientificStubDatasetKeys:
             monkeypatch.setattr(
                 stub_module,
                 'read',
-                lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+                self._raise_stub_called,
             )
         if operation in (None, 'write'):
             monkeypatch.setattr(
                 stub_module,
                 'write',
-                lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+                self._raise_stub_called,
             )
 
     def test_dataset_methods_honor_options_dataset_selector(
@@ -162,3 +162,13 @@ class TestScientificStubDatasetKeys:
                 [],
                 options=WriteOptions(dataset='unknown'),
             )
+
+    @staticmethod
+    def _raise_stub_called(
+        *_args: object,
+        **_kwargs: object,
+    ) -> object:
+        """
+        Raise when a stubbed scientific I/O function is unexpectedly used.
+        """
+        raise AssertionError('stub operation should not be called')

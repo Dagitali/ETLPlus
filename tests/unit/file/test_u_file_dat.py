@@ -17,7 +17,6 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import dat as mod
-from tests.unit.file.conftest import PathMixin
 
 # SECTION: HELPERS ========================================================== #
 
@@ -82,66 +81,6 @@ class _StubSniffer:
 # SECTION: TESTS ============================================================ #
 
 
-class DelimitedSniffedMixin(PathMixin):
-    """Parametrized mixin for sniffed delimited module behavior."""
-
-    module = mod
-    format_name: str
-
-    def _patch_default_sniff(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Patch sniffer behavior to a deterministic CSV dialect."""
-        monkeypatch.setattr(
-            self.module,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-
-    def test_read_empty_returns_empty_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test reading empty input returning an empty list."""
-        path = tmp_path / f'empty.{self.format_name}'
-        path.write_text('', encoding='utf-8')
-
-        assert self.module.read(path) == []
-
-    def test_write_round_trip_returns_written_count(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write/read round-trip preserving the written row count."""
-        sample_records: list[dict[str, object]] = [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ]
-        path = tmp_path / f'out.{self.format_name}'
-
-        written = self.module.write(path, sample_records)
-        result = self.module.read(path)
-
-        assert written == len(sample_records)
-        assert len(result) == len(sample_records)
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test blank rows being ignored during reads."""
-        self._patch_default_sniff(monkeypatch)
-        path = tmp_path / f'data.{self.format_name}'
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
-
-
 class TestDatSniff:
     """Unit tests for :func:`_sniff`."""
 
@@ -185,13 +124,54 @@ class TestDatSniff:
         assert has_header is True
 
 
-class TestDat(
-    DelimitedSniffedMixin,
-):
+class TestDat:
     """Unit tests for :mod:`etlplus.file.dat`."""
 
-    module = mod
-    format_name = 'dat'
+    def test_read_empty_returns_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading empty input returning an empty list."""
+        path = tmp_path / 'empty.dat'
+        path.write_text('', encoding='utf-8')
+
+        assert mod.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / 'out.dat'
+
+        written = mod.write(path, sample_records)
+        result = mod.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        monkeypatch.setattr(
+            mod,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+        path = tmp_path / 'data.dat'
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert mod.read(path) == [{'a': '1', 'b': '2'}]
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,
