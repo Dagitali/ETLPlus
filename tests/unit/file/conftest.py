@@ -1107,7 +1107,6 @@ class ArchiveWrapperCoreDispatchModuleContract:
 
     Subclasses must provide:
     - :attr:`module`
-    - :attr:`format_name`
     - :attr:`valid_path_name`
     - :attr:`missing_inner_path_name`
     - :attr:`expected_read_result`
@@ -1116,7 +1115,6 @@ class ArchiveWrapperCoreDispatchModuleContract:
     """
 
     module: ModuleType
-    format_name: str
     valid_path_name: str
     missing_inner_path_name: str
     expected_read_result: JSONData
@@ -1916,6 +1914,14 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
     read_error_pattern: str = 'missing'
     write_error_pattern: str = 'missing'
 
+    def _install_pyarrow_dependency_stub(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install pyarrow dependency stub only when required."""
+        if self.requires_pyarrow:
+            optional_module_stub({'pyarrow': object()})
+
     def _install_read_write_dependencies(
         self,
         optional_module_stub: OptionalModuleInstaller,
@@ -1981,8 +1987,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read dependency failures raising :class:`ImportError`."""
-        if self.requires_pyarrow:
-            optional_module_stub({'pyarrow': object()})
+        self._install_pyarrow_dependency_stub(optional_module_stub)
         monkeypatch.setattr(
             self.module,
             'get_pandas',
@@ -2000,8 +2005,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test write dependency failures raising :class:`ImportError`."""
-        if self.requires_pyarrow:
-            optional_module_stub({'pyarrow': object()})
+        self._install_pyarrow_dependency_stub(optional_module_stub)
         monkeypatch.setattr(
             self.module,
             'get_pandas',
@@ -2097,6 +2101,20 @@ class RDataModuleContract(PathMixin):
     writer_missing_pattern: str
     write_payload: JSONData = make_payload('list')
 
+    def _install_optional_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+        *,
+        pyreadr_stub: object,
+    ) -> None:
+        """Install module stubs required by R-data contract tests."""
+        optional_module_stub(
+            {
+                'pyreadr': pyreadr_stub,
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
     def build_frame(
         self,
         records: list[dict[str, object]],
@@ -2134,11 +2152,9 @@ class RDataModuleContract(PathMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reading empty R-data results returning an empty list."""
-        optional_module_stub(
-            {
-                'pyreadr': self.build_pyreadr_stub({}),
-                'pandas': self.build_pandas_stub(),
-            },
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub({}),
         )
 
         assert self.module.read(self.format_path(tmp_path)) == []
@@ -2150,11 +2166,9 @@ class RDataModuleContract(PathMixin):
     ) -> None:
         """Test reading one R object coercing to JSON records."""
         frame = self.build_frame([{'id': 1}])
-        optional_module_stub(
-            {
-                'pyreadr': self.build_pyreadr_stub({'data': frame}),
-                'pandas': self.build_pandas_stub(),
-            },
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub({'data': frame}),
         )
 
         assert self.module.read(self.format_path(tmp_path)) == [
@@ -2168,11 +2182,9 @@ class RDataModuleContract(PathMixin):
     ) -> None:
         """Test reading multiple R objects returning key-mapped payloads."""
         result: dict[str, object] = {'one': {'id': 1}, 'two': [{'id': 2}]}
-        optional_module_stub(
-            {
-                'pyreadr': self.build_pyreadr_stub(result),
-                'pandas': self.build_pandas_stub(),
-            },
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub(result),
         )
 
         assert (
@@ -2186,11 +2198,9 @@ class RDataModuleContract(PathMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test writing failing when pyreadr writer methods are unavailable."""
-        optional_module_stub(
-            {
-                'pyreadr': self.build_reader_only_stub(),
-                'pandas': self.build_pandas_stub(),
-            },
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_reader_only_stub(),
         )
 
         with pytest.raises(ImportError, match=self.writer_missing_pattern):
@@ -2206,8 +2216,9 @@ class RDataModuleContract(PathMixin):
     ) -> None:
         """Test writing delegating to pyreadr writer methods."""
         pyreadr = self.build_pyreadr_stub({})
-        optional_module_stub(
-            {'pyreadr': pyreadr, 'pandas': self.build_pandas_stub()},
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
         )
         path = self.format_path(tmp_path)
 
