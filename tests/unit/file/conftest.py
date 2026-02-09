@@ -296,16 +296,6 @@ def _coerce_numeric_value(
     return value
 
 
-def _format_path(
-    tmp_path: Path,
-    format_name: str,
-    *,
-    stem: str = 'data',
-) -> Path:
-    """Build a deterministic format-specific path under :attr:`tmp_path`."""
-    return tmp_path / f'{stem}.{format_name}'
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -563,8 +553,13 @@ class PathMixin:
         *,
         stem: str = 'data',
     ) -> Path:
-        """Build a deterministic path for the configured format name."""
-        return _format_path(tmp_path, self.format_name, stem=stem)
+        """
+        Build a deterministic format-specific path under :attr:`tmp_path`.
+        """
+        return tmp_path / f'{stem}.{self.format_name}'
+
+
+# SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
 
 
 class EmptyWriteReturnsZeroMixin(PathMixin):
@@ -584,9 +579,6 @@ class EmptyWriteReturnsZeroMixin(PathMixin):
         assert self.module.write(path, []) == 0
         if self.assert_file_not_created_on_empty_write:
             assert not path.exists()
-
-
-# SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
 
 
 class DelimitedReadWriteMixin(PathMixin):
@@ -1492,7 +1484,7 @@ class BaseOptionResolutionContract:
             options.encoding = 'latin-1'  # type: ignore[misc]
 
 
-class BinaryCodecModuleContract:
+class BinaryCodecModuleContract(PathMixin):
     """
     Reusable contract suite for binary codec wrapper modules.
 
@@ -1543,7 +1535,7 @@ class BinaryCodecModuleContract:
         """Test read delegating bytes decoding to the codec dependency."""
         codec = self._make_codec_stub(loaded_result=self.loaded_result)
         optional_module_stub({self.dependency_name: codec})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         path.write_bytes(b'payload')
 
         result = self.module.read(path)
@@ -1570,7 +1562,7 @@ class BinaryCodecModuleContract:
         """Test write delegating payload encoding to the codec dependency."""
         codec = self._make_codec_stub(loaded_result=self.loaded_result)
         optional_module_stub({self.dependency_name: codec})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         payload = cast(JSONData, getattr(self, payload_attr))
         expected_dump = getattr(self, expected_attr)
 
@@ -1582,7 +1574,7 @@ class BinaryCodecModuleContract:
         assert path.read_bytes() == self.emitted_bytes
 
 
-class BinaryDependencyModuleContract:
+class BinaryDependencyModuleContract(PathMixin):
     """
     Reusable contract suite for binary modules backed by one dependency.
 
@@ -1629,7 +1621,7 @@ class BinaryDependencyModuleContract:
         """Test read delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
         optional_module_stub({self.dependency_name: dependency})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         path.write_bytes(self.read_payload_bytes)
 
         result = self.module.read(path)
@@ -1645,7 +1637,7 @@ class BinaryDependencyModuleContract:
         """Test write delegating to the configured dependency."""
         dependency = self.make_dependency_stub()
         optional_module_stub({self.dependency_name: dependency})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, self.write_payload)
 
@@ -1653,7 +1645,7 @@ class BinaryDependencyModuleContract:
         self.assert_dependency_after_write(dependency, path)
 
 
-class BinaryKeyedPayloadModuleContract:
+class BinaryKeyedPayloadModuleContract(PathMixin):
     """
     Reusable contract suite for keyed binary payload wrapper modules.
 
@@ -1684,7 +1676,7 @@ class BinaryKeyedPayloadModuleContract:
         sample_payload: JSONDict,
     ) -> None:
         """Test write/read round-trip preserving payload bytes."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, sample_payload)
 
@@ -1697,7 +1689,7 @@ class BinaryKeyedPayloadModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writes requiring the expected payload key."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match=self.payload_key):
             self.module.write(path, self.invalid_payload)
@@ -1986,7 +1978,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
 
-        result = self.module.read(_format_path(tmp_path, self.format_name))
+        result = self.module.read(self.format_path(tmp_path))
 
         assert result == make_payload('list')
         assert pandas.read_calls
@@ -2002,7 +1994,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         self._install_read_write_dependencies(optional_module_stub, pandas)
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, make_payload('list'))
 
@@ -2037,7 +2029,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         )
 
         with pytest.raises(ImportError, match=self.read_error_pattern):
-            self.module.read(_format_path(tmp_path, self.format_name))
+            self.module.read(self.format_path(tmp_path))
 
     def test_write_import_error_path(
         self,
@@ -2057,12 +2049,12 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
 
         with pytest.raises(ImportError, match=self.write_error_pattern):
             self.module.write(
-                _format_path(tmp_path, self.format_name),
+                self.format_path(tmp_path),
                 make_payload('list'),
             )
 
 
-class PyarrowMissingDependencyMixin:
+class PyarrowMissingDependencyMixin(PathMixin):
     """
     Shared mixin for pyarrow-gated read/write dependency checks.
     """
@@ -2084,7 +2076,7 @@ class PyarrowMissingDependencyMixin:
             raise ImportError(self.missing_dependency_pattern)
 
         monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match=self.missing_dependency_pattern):
             if operation == 'read':
@@ -2111,7 +2103,7 @@ class PyarrowGateOnlyModuleContract(PyarrowMissingDependencyMixin):
         tmp_path: Path,
     ) -> None:
         """Test empty writes short-circuiting without file creation."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         assert self.module.write(path, []) == 0
         assert not path.exists()
 
@@ -2128,7 +2120,7 @@ class PyarrowGatedPandasColumnarModuleContract(
     missing_dependency_pattern: str = 'missing pyarrow'
 
 
-class RDataModuleContract:
+class RDataModuleContract(PathMixin):
     """
     Reusable contract suite for R-data wrapper modules (RDA/RDS).
 
@@ -2191,7 +2183,7 @@ class RDataModuleContract:
             },
         )
 
-        assert self.module.read(_format_path(tmp_path, self.format_name)) == []
+        assert self.module.read(self.format_path(tmp_path)) == []
 
     def test_read_single_value_coerces_to_records(
         self,
@@ -2207,7 +2199,7 @@ class RDataModuleContract:
             },
         )
 
-        assert self.module.read(_format_path(tmp_path, self.format_name)) == [
+        assert self.module.read(self.format_path(tmp_path)) == [
             {'id': 1},
         ]
 
@@ -2226,7 +2218,7 @@ class RDataModuleContract:
         )
 
         assert (
-            self.module.read(_format_path(tmp_path, self.format_name))
+            self.module.read(self.format_path(tmp_path))
             == result
         )
 
@@ -2245,7 +2237,7 @@ class RDataModuleContract:
 
         with pytest.raises(ImportError, match=self.writer_missing_pattern):
             self.module.write(
-                _format_path(tmp_path, self.format_name),
+                self.format_path(tmp_path),
                 self.write_payload,
             )
 
@@ -2259,7 +2251,7 @@ class RDataModuleContract:
         optional_module_stub(
             {'pyreadr': pyreadr, 'pandas': self.build_pandas_stub()},
         )
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, self.write_payload)
 
@@ -2718,7 +2710,7 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
         operation: str,
     ) -> None:
         """Test placeholder read/write behavior for module-level wrappers."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         with pytest.raises(NotImplementedError, match='not implemented yet'):
             if operation == 'read':
                 self.module.read(path)
@@ -2735,7 +2727,7 @@ class SniffedDelimitedModuleContract(
     """
 
 
-class StubModuleContract:
+class StubModuleContract(PathMixin):
     """
     Reusable contract suite for placeholder/stub format modules.
 
@@ -2765,7 +2757,7 @@ class StubModuleContract:
             self.module,
             format_name=self.format_name,
             operation=cast(Literal['read', 'write'], operation),
-            path=_format_path(tmp_path, self.format_name),
+            path=self.format_path(tmp_path),
         )
 
 
@@ -2788,7 +2780,7 @@ class WritableSpreadsheetModuleContract(
     """
 
 
-class XmlModuleContract:
+class XmlModuleContract(PathMixin):
     """
     Reusable contract suite for XML module read/write behavior.
 
@@ -2807,7 +2799,7 @@ class XmlModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test XML write using explicit root tag and readable output."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(
             path,
