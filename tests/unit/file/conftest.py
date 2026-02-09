@@ -389,21 +389,16 @@ def make_import_error_writer_module() -> object:
 
             return _fail_writer
 
-    class _FailModule:
-        """Module stub exposing failing ``DataFrame.from_records``."""
+    class _DataFrame:
+        """Minimal DataFrame namespace for write-path tests."""
 
-        # pylint: disable=unused-argument
+        @staticmethod
+        def from_records(
+            records: list[dict[str, object]],
+        ) -> _FailFrame:  # noqa: ARG002
+            return _FailFrame()
 
-        class DataFrame:  # noqa: D106
-            """Minimal DataFrame namespace for write-path tests."""
-
-            @staticmethod
-            def from_records(
-                records: list[dict[str, object]],
-            ) -> _FailFrame:  # noqa: ARG002
-                return _FailFrame()
-
-    return _FailModule()
+    return SimpleNamespace(DataFrame=_DataFrame)
 
 
 def make_payload(
@@ -2898,62 +2893,16 @@ class PandasModuleStub:
             return self._record_read(path)
         return self._record_read(path, engine=engine)
 
-    def read_parquet(
+    def _read_table(
         self,
         path: Path,
     ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_parquet``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
+        """Simulate table-like pandas readers returning record frames."""
         return self._record_read(path)
 
-    def read_feather(
-        self,
-        path: Path,
-    ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_feather``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
-        return self._record_read(path)
-
-    def read_orc(
-        self,
-        path: Path,
-    ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_orc``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
-        return self._record_read(path)
+    read_parquet = _read_table
+    read_feather = _read_table
+    read_orc = _read_table
 
 
 class RecordsFrameStub:
@@ -3017,10 +2966,10 @@ class RecordsFrameStub:
         engine : str | None, optional
             Optional pandas engine argument.
         """
-        call: dict[str, object] = {'path': path, 'index': index}
+        kwargs: dict[str, object] = {'index': index}
         if engine is not None:
-            call['engine'] = engine
-        self.to_excel_calls.append(call)
+            kwargs['engine'] = engine
+        self._append_write_call(self.to_excel_calls, path, **kwargs)
 
     def to_feather(
         self,
@@ -3034,7 +2983,7 @@ class RecordsFrameStub:
         path : Path
             Target output path.
         """
-        self.to_feather_calls.append({'path': path})
+        self._append_write_call(self.to_feather_calls, path)
 
     def to_orc(
         self,
@@ -3052,7 +3001,7 @@ class RecordsFrameStub:
         index : bool
             Whether index persistence was requested.
         """
-        self.to_orc_calls.append({'path': path, 'index': index})
+        self._append_write_call(self.to_orc_calls, path, index=index)
 
     def to_parquet(
         self,
@@ -3070,7 +3019,16 @@ class RecordsFrameStub:
         index : bool
             Whether index persistence was requested.
         """
-        self.to_parquet_calls.append({'path': path, 'index': index})
+        self._append_write_call(self.to_parquet_calls, path, index=index)
+
+    @staticmethod
+    def _append_write_call(
+        calls: list[dict[str, object]],
+        path: Path,
+        **kwargs: object,
+    ) -> None:
+        """Append one writer-call record with path and keyword payload."""
+        calls.append({'path': path, **kwargs})
 
 
 # SECTION: FIXTURES ========================================================= #
