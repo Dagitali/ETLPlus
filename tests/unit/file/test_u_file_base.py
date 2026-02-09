@@ -6,9 +6,11 @@ Unit tests for :mod:`etlplus.file.base`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -20,6 +22,8 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ReadOptions
+from etlplus.file.base import ScientificDatasetFileHandlerABC
+from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
@@ -43,11 +47,296 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
-from tests.unit.file.conftest import BaseOptionResolutionContract
-from tests.unit.file.conftest import HandlerMethodNamingContract
-from tests.unit.file.conftest import ScientificDatasetInheritanceContract
 
 # SECTION: HELPERS ========================================================== #
+
+
+_NO_DEFAULT: object = object()
+
+
+def _assert_single_dataset_rejects_non_default_key(
+    handler: SingleDatasetScientificFileHandlerABC,
+    *,
+    suffix: str,
+) -> None:
+    """Assert single-dataset scientific handlers reject non-default keys."""
+    bad_dataset = 'not_default_dataset'
+    path = Path(f'ignored.{suffix}')
+    for operation in ('read', 'write'):
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            if operation == 'read':
+                handler.read_dataset(path, dataset=bad_dataset)
+            else:
+                handler.write_dataset(path, [], dataset=bad_dataset)
+
+
+class BaseOptionResolutionContract:
+    """Reusable contract suite for base option helper behaviors."""
+
+    def make_scientific_handler(self) -> ScientificDatasetFileHandlerABC:
+        """Build a scientific handler used by dataset helper tests."""
+        raise NotImplementedError
+
+    def make_delimited_handler(self) -> DelimitedTextFileHandlerABC:
+        """Build a delimited handler used by delimiter helper tests."""
+        raise NotImplementedError
+
+    def make_read_only_handler(self) -> FileHandlerABC:
+        """Build a generic handler used by encoding/root/extras tests."""
+        raise NotImplementedError
+
+    def make_archive_handler(self) -> ArchiveWrapperFileHandlerABC:
+        """Build an archive handler used by inner-name helper tests."""
+        raise NotImplementedError
+
+    def make_spreadsheet_handler(self) -> SpreadsheetFileHandlerABC:
+        """Build a spreadsheet handler used by sheet helper tests."""
+        raise NotImplementedError
+
+    def make_embedded_handler(self) -> EmbeddedDatabaseFileHandlerABC:
+        """Build an embedded-db handler used by table helper tests."""
+        raise NotImplementedError
+
+    def test_dataset_option_helpers_use_override_then_default(self) -> None:
+        """Test scientific dataset helpers using explicit then default data."""
+        handler = self.make_scientific_handler()
+        cases = (
+            (
+                handler.dataset_from_read_options,
+                handler.resolve_read_dataset,
+                ReadOptions(dataset='features'),
+            ),
+            (
+                handler.dataset_from_write_options,
+                handler.resolve_write_dataset,
+                WriteOptions(dataset='labels'),
+            ),
+        )
+        for from_options, resolve, options in cases:
+            expected = cast(str, options.dataset)
+            from_options_method = cast(Callable[..., object], from_options)
+            resolve_method = cast(Callable[..., object], resolve)
+            assert from_options_method(None) is None
+            assert from_options_method(options) == expected
+            assert resolve_method(None, options=options) == expected
+            assert resolve_method('explicit', options=options) == 'explicit'
+            assert resolve_method(None, default='fallback') == 'fallback'
+
+    @pytest.mark.parametrize(
+        (
+            'factory_name',
+            'read_method_name',
+            'write_method_name',
+            'read_options',
+            'write_options',
+            'baseline',
+            'read_expected',
+            'write_expected',
+            'read_default',
+            'write_default',
+        ),
+        [
+            (
+                'make_delimited_handler',
+                'delimiter_from_read_options',
+                'delimiter_from_write_options',
+                ReadOptions(extras={'delimiter': '|'}),
+                WriteOptions(extras={'delimiter': '\t'}),
+                ',',
+                '|',
+                '\t',
+                ';',
+                ':',
+            ),
+            (
+                'make_read_only_handler',
+                'encoding_from_read_options',
+                'encoding_from_write_options',
+                ReadOptions(encoding='latin-1'),
+                WriteOptions(encoding='utf-16'),
+                'utf-8',
+                'latin-1',
+                'utf-16',
+                'utf-16',
+                'ascii',
+            ),
+            (
+                'make_archive_handler',
+                'inner_name_from_read_options',
+                'inner_name_from_write_options',
+                ReadOptions(inner_name='data.json'),
+                WriteOptions(inner_name='payload.csv'),
+                None,
+                'data.json',
+                'payload.csv',
+                _NO_DEFAULT,
+                _NO_DEFAULT,
+            ),
+            (
+                'make_spreadsheet_handler',
+                'sheet_from_read_options',
+                'sheet_from_write_options',
+                ReadOptions(sheet='Sheet2'),
+                WriteOptions(sheet=3),
+                0,
+                'Sheet2',
+                3,
+                'fallback_sheet',
+                99,
+            ),
+            (
+                'make_embedded_handler',
+                'table_from_read_options',
+                'table_from_write_options',
+                ReadOptions(table='events'),
+                WriteOptions(table='staging'),
+                None,
+                'events',
+                'staging',
+                'fallback_table',
+                'fallback_table',
+            ),
+        ],
+        ids=['delimiter', 'encoding', 'inner_name', 'sheet', 'table'],
+    )
+    def test_option_helper_pairs_use_override_then_default(
+        self,
+        factory_name: str,
+        read_method_name: str,
+        write_method_name: str,
+        read_options: ReadOptions,
+        write_options: WriteOptions,
+        baseline: object,
+        read_expected: object,
+        write_expected: object,
+        read_default: object,
+        write_default: object,
+    ) -> None:
+        """Test paired read/write option helpers with override/default."""
+        factory = cast(Callable[[], object], getattr(self, factory_name))
+        handler = factory()
+        read_call = cast(
+            Callable[..., object],
+            getattr(handler, read_method_name),
+        )
+        write_call = cast(
+            Callable[..., object],
+            getattr(handler, write_method_name),
+        )
+
+        assert read_call(None) == baseline
+        assert write_call(None) == baseline
+        assert read_call(read_options) == read_expected
+        assert write_call(write_options) == write_expected
+        if read_default is not _NO_DEFAULT:
+            assert read_call(None, default=read_default) == read_default
+        if write_default is not _NO_DEFAULT:
+            assert write_call(None, default=write_default) == write_default
+
+    def test_read_options_use_independent_extras_dicts(self) -> None:
+        """Test each ReadOptions instance getting its own extras dict."""
+        first = ReadOptions()
+        second = ReadOptions()
+
+        assert not first.extras
+        assert not second.extras
+        assert first.extras is not second.extras
+
+    def test_root_tag_option_helper_use_override_then_default(self) -> None:
+        """Test root-tag helper using explicit values then defaults."""
+        handler = self.make_read_only_handler()
+        assert handler.root_tag_from_write_options(None) == 'root'
+        assert (
+            handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
+            == 'items'
+        )
+        assert (
+            handler.root_tag_from_write_options(None, default='dataset')
+            == 'dataset'
+        )
+
+    def test_write_options_are_frozen(self) -> None:
+        """Test WriteOptions immutability contract."""
+        options = WriteOptions()
+
+        with pytest.raises(FrozenInstanceError):
+            options.encoding = 'latin-1'  # type: ignore[misc]
+
+
+class HandlerMethodNamingContract:
+    """Reusable contract suite for handler naming conventions by category."""
+
+    delimited_handlers: list[type[FileHandlerABC]]
+    spreadsheet_handlers: list[type[FileHandlerABC]]
+    embedded_db_handlers: list[type[FileHandlerABC]]
+    scientific_handlers: list[type[FileHandlerABC]]
+
+    @pytest.mark.parametrize(
+        ('handlers_attr', 'read_method', 'write_method'),
+        [
+            ('delimited_handlers', 'read_rows', 'write_rows'),
+            ('spreadsheet_handlers', 'read_sheet', 'write_sheet'),
+            ('embedded_db_handlers', 'read_table', 'write_table'),
+            ('scientific_handlers', 'read_dataset', 'write_dataset'),
+        ],
+        ids=['delimited', 'spreadsheet', 'embedded_db', 'scientific'],
+    )
+    def test_handlers_expose_category_methods(
+        self,
+        handlers_attr: str,
+        read_method: str,
+        write_method: str,
+    ) -> None:
+        """Test handlers exposing category-level read/write methods."""
+        handlers = cast(
+            list[type[FileHandlerABC]],
+            getattr(self, handlers_attr),
+        )
+        for handler_cls in handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, read_method, None))
+            assert callable(getattr(handler_cls, write_method, None))
+
+
+class ScientificDatasetInheritanceContract:
+    """Reusable contract suite for scientific dataset ABC inheritance."""
+
+    scientific_handlers: list[type[ScientificDatasetFileHandlerABC]]
+    single_dataset_handlers: list[type[SingleDatasetScientificFileHandlerABC]]
+
+    def test_handlers_use_scientific_dataset_abc(self) -> None:
+        """Test scientific handlers inheriting ScientificDataset ABC."""
+        for handler_cls in self.scientific_handlers:
+            assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+            assert handler_cls.dataset_key == 'data'
+
+    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
+        self,
+    ) -> None:
+        """Test single-dataset handlers inheriting the subtype ABC."""
+        for handler_cls in self.single_dataset_handlers:
+            assert issubclass(
+                handler_cls,
+                SingleDatasetScientificFileHandlerABC,
+            )
+
+    def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
+        """Test single-dataset scientific handlers rejecting unknown keys."""
+        suffix_by_format = {
+            FileFormat.DTA: 'dta',
+            FileFormat.NC: 'nc',
+            FileFormat.SAV: 'sav',
+            FileFormat.XPT: 'xpt',
+        }
+        for handler_cls in self.single_dataset_handlers:
+            handler = handler_cls()
+            file_format = cast(FileFormat, handler_cls.format)
+            suffix = suffix_by_format.get(file_format, file_format.value)
+            _assert_single_dataset_rejects_non_default_key(
+                handler,
+                suffix=suffix,
+            )
 
 
 class _ArchiveStub(ArchiveWrapperFileHandlerABC):
@@ -64,6 +353,16 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         _ = path
         return {'inner_name': self.inner_name_from_read_options(options)}
 
+    def read_inner_bytes(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> bytes:
+        _ = path
+        _ = options
+        return b''
+
     def write(
         self,
         path: Path,
@@ -75,16 +374,6 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         _ = data
         _ = self.inner_name_from_write_options(options)
         return 1
-
-    def read_inner_bytes(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> bytes:
-        _ = path
-        _ = options
-        return b''
 
     def write_inner_bytes(
         self,
@@ -149,27 +438,6 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
 
     format = FileFormat.SQLITE
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'table': self.table_from_read_options(options)}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.table_from_write_options(options)
-        return 1
-
     def connect(
         self,
         path: Path,
@@ -184,6 +452,15 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
         _ = connection
         return ['data']
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        return [{'table': self.table_from_read_options(options)}]
+
     def read_table(
         self,
         connection: Any,
@@ -192,6 +469,18 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
         _ = connection
         _ = table
         return []
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = self.table_from_write_options(options)
+        return 1
 
     def write_table(
         self,
@@ -262,6 +551,17 @@ class _SpreadsheetStub(SpreadsheetFileHandlerABC):
         _ = path
         return [{'sheet': self.sheet_from_read_options(options)}]
 
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        _ = path
+        _ = options
+        return [{'sheet': sheet}]
+
     def write(
         self,
         path: Path,
@@ -273,17 +573,6 @@ class _SpreadsheetStub(SpreadsheetFileHandlerABC):
         _ = data
         _ = self.sheet_from_write_options(options)
         return 1
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
 
     def write_sheet(
         self,
@@ -312,16 +601,6 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
     ) -> JSONData:
         return self.read_rows(path, options=options)
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
-
     def read_rows(
         self,
         path: Path,
@@ -331,6 +610,16 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
         _ = path
         _ = options
         return [{'text': 'ok'}]
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        rows: JSONList = data if isinstance(data, list) else [data]
+        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,
