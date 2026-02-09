@@ -1110,19 +1110,42 @@ class BinaryKeyedPayloadModuleContract:
             self.module.write(path, self.invalid_payload)
 
 
-class DelimitedModuleContract:
+class DelimitedCategoryContractBase:
     """
-    Reusable contract suite for delimited text wrapper modules.
+    Shared base contract for delimited/text category modules.
+    """
 
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`delimiter`
+    module: ModuleType
+    format_name: str
+    sample_rows: JSONData = make_payload('list')
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for the current category contract."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class DelimitedReadWriteMixin:
+    """
+    Parametrized mixin for delimiter-forwarding read/write wrappers.
     """
 
     module: ModuleType
     format_name: str
     delimiter: str
+    sample_rows: JSONData
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def test_read_uses_expected_delimiter(
         self,
@@ -1139,13 +1162,16 @@ class DelimitedModuleContract:
         ) -> list[dict[str, object]]:
             calls['path'] = path
             calls['delimiter'] = delimiter
-            return [{'ok': True}]
+            return cast(
+                list[dict[str, object]],
+                make_payload('list', record={'ok': True}),
+            )
 
         monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
 
-        result = self.module.read(_format_path(tmp_path, self.format_name))
+        result = self.module.read(self.format_path(tmp_path))
 
-        assert result == [{'ok': True}]
+        assert result == make_payload('list', record={'ok': True})
         assert calls['delimiter'] == self.delimiter
 
     def test_write_uses_expected_delimiter_and_format_name(
@@ -1172,13 +1198,27 @@ class DelimitedModuleContract:
         monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
 
         written = self.module.write(
-            _format_path(tmp_path, self.format_name),
-            make_payload('list'),
+            self.format_path(tmp_path),
+            self.sample_rows,
         )
 
         assert written == 1
         assert calls['delimiter'] == self.delimiter
         assert calls['format_name'] == self.format_name.upper()
+
+
+class DelimitedModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedReadWriteMixin,
+):
+    """
+    Reusable contract suite for standard delimited wrapper modules.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`format_name`
+    - :attr:`delimiter`
+    """
 
 
 class EmbeddedDatabaseModuleContract:
@@ -1765,22 +1805,40 @@ class RDataModuleContract:
         self.assert_write_success(pyreadr, path)
 
 
-class ReadOnlyScientificDatasetModuleContract:
+class ScientificCategoryContractBase:
     """
-    Reusable contract suite for read-only scientific dataset handlers.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`handler_cls`
-    - :attr:`format_name`
-    - :attr:`unknown_dataset_error_pattern`
-    - :meth:`prepare_unknown_dataset_env`
+    Shared base contract for scientific dataset handlers/modules.
     """
 
     module: ModuleType
-    handler_cls: type[ReadDatasetHandlerProtocol]
     format_name: str
+    dataset_key: str = 'data'
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for scientific contracts."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class ScientificReadOnlyUnknownDatasetMixin:
+    """
+    Parametrized mixin for read-only scientific unknown-dataset checks.
+    """
+
+    handler_cls: type[ReadDatasetHandlerProtocol]
     unknown_dataset_error_pattern: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def prepare_unknown_dataset_env(
         self,
@@ -1816,10 +1874,7 @@ class ReadOnlyScientificDatasetModuleContract:
             ValueError,
             match=self.unknown_dataset_error_pattern,
         ):
-            handler.read_dataset(
-                _format_path(tmp_path, self.format_name),
-                dataset='unknown',
-            )
+            handler.read_dataset(self.format_path(tmp_path), dataset='unknown')
 
     def test_read_rejects_unknown_dataset_from_options(
         self,
@@ -1840,9 +1895,25 @@ class ReadOnlyScientificDatasetModuleContract:
             match=self.unknown_dataset_error_pattern,
         ):
             handler.read(
-                _format_path(tmp_path, self.format_name),
+                self.format_path(tmp_path),
                 options=ReadOptions(dataset='unknown'),
             )
+
+
+class ScientificReadOnlyWriteGuardMixin:
+    """
+    Shared mixin for scientific handlers that do not support writes.
+    """
+
+    module: ModuleType
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def test_write_not_supported(
         self,
@@ -1850,25 +1921,55 @@ class ReadOnlyScientificDatasetModuleContract:
     ) -> None:
         """Test read-only handlers rejecting writes."""
         with pytest.raises(RuntimeError, match='read-only'):
-            self.module.write(
-                _format_path(tmp_path, self.format_name),
-                make_payload('list'),
-            )
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
 
 
-class ReadOnlySpreadsheetModuleContract:
+class ReadOnlyScientificDatasetModuleContract(
+    ScientificCategoryContractBase,
+    ScientificReadOnlyUnknownDatasetMixin,
+    ScientificReadOnlyWriteGuardMixin,
+):
     """
-    Reusable contract suite for read-only spreadsheet wrapper modules.
+    Reusable contract suite for read-only scientific dataset handlers.
+    """
 
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`dependency_hint`
+
+class SpreadsheetCategoryContractBase:
+    """
+    Shared base contract for spreadsheet format handlers.
     """
 
     module: ModuleType
     format_name: str
     dependency_hint: str
+    read_engine: str | None = None
+    write_engine: str | None = None
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for spreadsheet contracts."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class SpreadsheetReadImportErrorMixin:
+    """
+    Shared mixin for spreadsheet read dependency error behavior.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def test_read_wraps_import_error(
         self,
@@ -1884,7 +1985,23 @@ class ReadOnlySpreadsheetModuleContract:
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(_format_path(tmp_path, self.format_name))
+            self.module.read(self.format_path(tmp_path))
+
+
+class SpreadsheetReadOnlyMixin:
+    """
+    Shared mixin for read-only spreadsheet write guards.
+    """
+
+    module: ModuleType
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def test_write_not_supported(
         self,
@@ -1893,9 +2010,19 @@ class ReadOnlySpreadsheetModuleContract:
         """Test read-only formats rejecting writes."""
         with pytest.raises(RuntimeError, match='read-only'):
             self.module.write(
-                _format_path(tmp_path, self.format_name),
+                self.format_path(tmp_path),
                 make_payload('list'),
             )
+
+
+class ReadOnlySpreadsheetModuleContract(
+    SpreadsheetCategoryContractBase,
+    SpreadsheetReadImportErrorMixin,
+    SpreadsheetReadOnlyMixin,
+):
+    """
+    Reusable contract suite for read-only spreadsheet wrapper modules.
+    """
 
 
 class RegistryAbcConformanceContract:
@@ -2274,29 +2401,39 @@ class ScientificStubDatasetKeysContract:
                 )
 
 
-class SemiStructuredReadModuleContract:
+class SemiStructuredCategoryContractBase:
     """
-    Reusable contract suite for semi-structured text module reads.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`sample_read_text`
-    - :attr:`expected_read_payload`
+    Shared base contract for semi-structured text modules.
     """
 
     # pylint: disable=unused-argument
 
     module: ModuleType
     format_name: str
-    sample_read_text: str
-    expected_read_payload: JSONData
+    sample_read_text: str = ''
+    expected_read_payload: JSONData = make_payload('dict')
+    dict_payload: JSONData = make_payload('dict')
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for this semi-structured contract."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
 
     def setup_read_dependencies(
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install optional dependencies needed for read tests."""
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for write tests."""
 
     def assert_read_contract_result(
         self,
@@ -2305,6 +2442,42 @@ class SemiStructuredReadModuleContract:
         """Assert module-specific read contract expectations."""
         assert result == self.expected_read_payload
 
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract expectations."""
+        assert path.exists()
+
+
+class SemiStructuredReadMixin:
+    """
+    Parametrized read contract mixin for semi-structured modules.
+    """
+
+    module: ModuleType
+    sample_read_text: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        raise NotImplementedError
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        raise NotImplementedError
+
     def test_read_parses_expected_payload(
         self,
         tmp_path: Path,
@@ -2312,7 +2485,7 @@ class SemiStructuredReadModuleContract:
     ) -> None:
         """Test reading expected payload from representative text content."""
         self.setup_read_dependencies(optional_module_stub)
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         path.write_text(self.sample_read_text, encoding='utf-8')
 
         result = self.module.read(path)
@@ -2320,34 +2493,33 @@ class SemiStructuredReadModuleContract:
         self.assert_read_contract_result(result)
 
 
-class SemiStructuredWriteDictModuleContract:
+class SemiStructuredWriteDictMixin:
     """
-    Reusable contract suite for semi-structured text module dict writes.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`dict_payload`
+    Parametrized write contract mixin for semi-structured modules.
     """
-
-    # pylint: disable=unused-argument
 
     module: ModuleType
-    format_name: str
     dict_payload: JSONData
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def setup_write_dependencies(
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Install optional dependencies needed for write tests."""
+        raise NotImplementedError
 
     def assert_write_contract_result(
         self,
         path: Path,
     ) -> None:
-        """Assert module-specific write contract expectations."""
-        assert path.exists()
+        raise NotImplementedError
 
     def test_write_accepts_single_dict_payload(
         self,
@@ -2356,7 +2528,7 @@ class SemiStructuredWriteDictModuleContract:
     ) -> None:
         """Test writing a single dictionary payload."""
         self.setup_write_dependencies(optional_module_stub)
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, self.dict_payload)
 
@@ -2364,18 +2536,31 @@ class SemiStructuredWriteDictModuleContract:
         self.assert_write_contract_result(path)
 
 
-class SingleDatasetHandlerContract:
+class SemiStructuredReadModuleContract(
+    SemiStructuredCategoryContractBase,
+    SemiStructuredReadMixin,
+):
     """
-    Reusable contract suite for single-dataset scientific handlers.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`handler_cls`
-    - :attr:`format_name`
+    Reusable read contract suite for semi-structured text modules.
     """
 
-    module: ModuleType
+
+class SemiStructuredWriteDictModuleContract(
+    SemiStructuredCategoryContractBase,
+    SemiStructuredWriteDictMixin,
+):
+    """
+    Reusable write contract suite for semi-structured text modules.
+    """
+
+
+class ScientificSingleDatasetHandlerMixin:
+    """
+    Parametrized mixin for single-dataset scientific handler behavior.
+    """
+
     handler_cls: type[SingleDatasetScientificFileHandlerABC]
+    dataset_key: str
     format_name: str
 
     @pytest.fixture
@@ -2383,13 +2568,15 @@ class SingleDatasetHandlerContract:
         """Create a handler instance for contract tests."""
         return self.handler_cls()
 
-    def test_uses_single_dataset_scientific_abc(self) -> None:
+    def test_uses_single_dataset_scientific_abc(
+        self,
+    ) -> None:
         """Test single-dataset scientific class contract."""
         assert issubclass(
             self.handler_cls,
             SingleDatasetScientificFileHandlerABC,
         )
-        assert self.handler_cls.dataset_key == 'data'
+        assert self.handler_cls.dataset_key == self.dataset_key
 
     def test_rejects_non_default_dataset_key(
         self,
@@ -2400,6 +2587,20 @@ class SingleDatasetHandlerContract:
             handler,
             suffix=self.format_name,
         )
+
+
+class SingleDatasetHandlerContract(
+    ScientificCategoryContractBase,
+    ScientificSingleDatasetHandlerMixin,
+):
+    """
+    Reusable contract suite for single-dataset scientific handlers.
+
+    Subclasses must provide:
+    - :attr:`module`
+    - :attr:`handler_cls`
+    - :attr:`format_name`
+    """
 
 
 class SingleDatasetWritableContract(SingleDatasetHandlerContract):
@@ -2437,17 +2638,20 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
                 self.module.write(path, make_payload('list'))
 
 
-class SniffedDelimitedModuleContract:
+class DelimitedSniffedMixin:
     """
-    Reusable contract suite for sniffed delimited-text modules.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
+    Parametrized mixin for sniffed delimited module behavior.
     """
 
     module: ModuleType
-    format_name: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def _patch_default_sniff(
         self,
@@ -2465,7 +2669,7 @@ class SniffedDelimitedModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test reading empty input returning an empty list."""
-        path = _format_path(tmp_path, self.format_name, stem='empty')
+        path = self.format_path(tmp_path, stem='empty')
         path.write_text('', encoding='utf-8')
 
         assert self.module.read(path) == []
@@ -2479,7 +2683,7 @@ class SniffedDelimitedModuleContract:
             {'id': 1, 'name': 'Alice'},
             {'id': 2, 'name': 'Bob'},
         ]
-        path = _format_path(tmp_path, self.format_name, stem='out')
+        path = self.format_path(tmp_path, stem='out')
 
         written = self.module.write(path, sample_records)
         result = self.module.read(path)
@@ -2494,13 +2698,22 @@ class SniffedDelimitedModuleContract:
     ) -> None:
         """Test blank rows being ignored during reads."""
         self._patch_default_sniff(monkeypatch)
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
         path.write_text(
             'a,b\n\n , \n1,2\n',
             encoding='utf-8',
         )
 
         assert self.module.read(path) == [{'a': '1', 'b': '2'}]
+
+
+class SniffedDelimitedModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedSniffedMixin,
+):
+    """
+    Reusable contract suite for sniffed delimited-text modules.
+    """
 
 
 class StubModuleContract:
@@ -2537,22 +2750,22 @@ class StubModuleContract:
         )
 
 
-class TextRowModuleContract:
+class DelimitedTextRowsMixin:
     """
-    Reusable contract suite for text/fixed-width row-oriented modules.
-
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`write_payload`
-    - :meth:`prepare_read_case`
-    - :meth:`assert_write_contract_result`
+    Parametrized mixin for text/fixed-width row-oriented modules.
     """
 
     module: ModuleType
-    format_name: str
     write_payload: JSONData
     expected_written_count: int = 1
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     def prepare_read_case(
         self,
@@ -2584,15 +2797,14 @@ class TextRowModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        path = _format_path(tmp_path, self.format_name)
-        assert self.module.write(path, []) == 0
+        assert self.module.write(self.format_path(tmp_path), []) == 0
 
     def test_write_rows_contract(
         self,
         tmp_path: Path,
     ) -> None:
         """Test writing representative row payloads."""
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, self.write_payload)
 
@@ -2600,23 +2812,32 @@ class TextRowModuleContract:
         self.assert_write_contract_result(path)
 
 
-class WritableSpreadsheetModuleContract:
+class TextRowModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedTextRowsMixin,
+):
     """
-    Reusable contract suite for writable spreadsheet wrapper modules.
+    Reusable contract suite for text/fixed-width row-oriented modules.
+    """
 
-    Subclasses must provide:
-    - :attr:`module`
-    - :attr:`format_name`
-    - :attr:`dependency_hint`
-    - :attr:`read_engine` (optional)
-    - :attr:`write_engine` (optional)
+
+class SpreadsheetWritableMixin:
+    """
+    Parametrized mixin for writable spreadsheet module contracts.
     """
 
     module: ModuleType
-    format_name: str
     dependency_hint: str
-    read_engine: str | None = None
-    write_engine: str | None = None
+    read_engine: str | None
+    write_engine: str | None
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
 
     # pylint: disable=unused-argument
 
@@ -2631,7 +2852,7 @@ class WritableSpreadsheetModuleContract:
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         result = self.module.read(path)
 
@@ -2641,22 +2862,6 @@ class WritableSpreadsheetModuleContract:
         assert call.get('path') == path
         if self.read_engine is not None:
             assert call.get('engine') == self.read_engine
-
-    def test_read_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        make_import_error_reader: Callable[[str], object],
-    ) -> None:
-        """Test read wrapping dependency import errors."""
-        monkeypatch.setattr(
-            self.module,
-            'get_pandas',
-            lambda *_: make_import_error_reader('read_excel'),
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(_format_path(tmp_path, self.format_name))
 
     def test_write_calls_to_excel(
         self,
@@ -2669,7 +2874,7 @@ class WritableSpreadsheetModuleContract:
         frame = make_records_frame([{'id': 1}])
         pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
         optional_module_stub({'pandas': pandas})
-        path = _format_path(tmp_path, self.format_name)
+        path = self.format_path(tmp_path)
 
         written = self.module.write(path, make_payload('list'))
 
@@ -2688,13 +2893,7 @@ class WritableSpreadsheetModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writing empty payloads returning zero."""
-        assert (
-            self.module.write(
-                _format_path(tmp_path, self.format_name),
-                [],
-            )
-            == 0
-        )
+        assert self.module.write(self.format_path(tmp_path), []) == 0
 
     def test_write_wraps_import_error(
         self,
@@ -2710,10 +2909,17 @@ class WritableSpreadsheetModuleContract:
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.write(
-                _format_path(tmp_path, self.format_name),
-                make_payload('list'),
-            )
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
+
+
+class WritableSpreadsheetModuleContract(
+    SpreadsheetCategoryContractBase,
+    SpreadsheetReadImportErrorMixin,
+    SpreadsheetWritableMixin,
+):
+    """
+    Reusable contract suite for writable spreadsheet wrapper modules.
+    """
 
 
 class XmlModuleContract:
