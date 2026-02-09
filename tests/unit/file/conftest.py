@@ -339,7 +339,7 @@ def assert_stub_module_operation_raises(
 ) -> None:
     """Assert one stub module operation raises :class:`NotImplementedError`."""
     if write_payload is None:
-        write_payload = [{'id': 1}]
+        write_payload = make_payload('list')
 
     with pytest.raises(
         NotImplementedError,
@@ -427,6 +427,53 @@ def make_import_error_writer_module() -> object:
                 return _FailFrame()
 
     return _FailModule()
+
+
+def make_payload(
+    kind: Literal['dict', 'list', 'read'],
+    **kwargs: object,
+) -> JSONData:
+    """
+    Build common JSON payload shapes used across file-handler contracts.
+
+    Parameters
+    ----------
+    kind : Literal['dict', 'list', 'read']
+        Payload shape to build.
+    **kwargs : object
+        Optional overrides:
+        - ``payload``/``result`` for direct payload injection.
+        - ``key``/``value`` for ``dict``.
+        - ``record``/``records`` for ``list``.
+        - ``ok`` for ``read``.
+
+    Returns
+    -------
+    JSONData
+        Constructed payload.
+    """
+    payload = kwargs.get('payload')
+    if payload is not None:
+        return cast(JSONData, payload)
+
+    if kind == 'dict':
+        key = cast(str, kwargs.get('key', 'id'))
+        value = kwargs.get('value', 1)
+        return cast(JSONData, {key: value})
+
+    if kind == 'list':
+        records = kwargs.get('records')
+        if records is not None:
+            return cast(JSONData, records)
+        record = kwargs.get('record')
+        if record is not None:
+            return cast(JSONData, [record])
+        return cast(JSONData, [make_payload('dict')])
+
+    result = kwargs.get('result')
+    if result is not None:
+        return cast(JSONData, result)
+    return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
 
 
 def normalize_numeric_records(
@@ -522,7 +569,7 @@ class ArchiveWrapperCoreDispatchModuleContract:
     valid_path_name: str
     missing_inner_path_name: str
     expected_read_result: JSONData
-    write_payload: JSONData = [{'id': 1}]
+    write_payload: JSONData = make_payload('list')
     expected_written_count: int = 1
     missing_inner_error_pattern: str = 'Cannot infer file format'
 
@@ -877,10 +924,10 @@ class BinaryCodecModuleContract:
     writer_kwargs: dict[str, object]
     loaded_result: JSONData
     emitted_bytes: bytes
-    list_payload: JSONData = [{'id': 1}]
-    dict_payload: JSONData = {'id': 1}
-    expected_list_dump: object = [{'id': 1}]
-    expected_dict_dump: object = {'id': 1}
+    list_payload: JSONData = make_payload('list')
+    dict_payload: JSONData = make_payload('dict')
+    expected_list_dump: object = make_payload('list')
+    expected_dict_dump: object = make_payload('dict')
 
     def _make_codec_stub(
         self,
@@ -1126,7 +1173,7 @@ class DelimitedModuleContract:
 
         written = self.module.write(
             _format_path(tmp_path, self.format_name),
-            [{'id': 1}],
+            make_payload('list'),
         )
 
         assert written == 1
@@ -1219,8 +1266,11 @@ class FileCoreDispatchContract:
     write_format: FileFormat = FileFormat.XML
     read_filename: str = 'sample.csv'
     write_filename: str = 'export.xml'
-    read_result: JSONData = {'ok': True}
-    write_payload: JSONData = [{'name': 'Ada'}]
+    read_result: JSONData = make_payload('read')
+    write_payload: JSONData = make_payload(
+        'list',
+        records=[{'name': 'Ada'}],
+    )
     write_root_tag: str = 'records'
     write_result: int = 3
 
@@ -1415,7 +1465,7 @@ class PandasColumnarModuleContract:
 
         result = self.module.read(_format_path(tmp_path, self.format_name))
 
-        assert result == [{'id': 1}]
+        assert result == make_payload('list')
         assert pandas.read_calls
 
     def test_write_calls_expected_table_writer(
@@ -1431,7 +1481,7 @@ class PandasColumnarModuleContract:
         self._install_read_write_dependencies(optional_module_stub, pandas)
         path = _format_path(tmp_path, self.format_name)
 
-        written = self.module.write(path, [{'id': 1}])
+        written = self.module.write(path, make_payload('list'))
 
         assert written == 1
         assert pandas.last_frame is not None
@@ -1498,7 +1548,7 @@ class PandasColumnarModuleContract:
         with pytest.raises(ImportError, match=self.write_error_pattern):
             self.module.write(
                 _format_path(tmp_path, self.format_name),
-                [{'id': 1}],
+                make_payload('list'),
             )
 
 
@@ -1543,7 +1593,7 @@ class PyarrowGateOnlyModuleContract:
             if operation == 'read':
                 self.module.read(path)
             else:
-                self.module.write(path, [{'id': 1}])
+                self.module.write(path, make_payload('list'))
 
 
 class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
@@ -1573,7 +1623,7 @@ class PyarrowGatedPandasColumnarModuleContract(PandasColumnarModuleContract):
             if operation == 'read':
                 self.module.read(path)
             else:
-                self.module.write(path, [{'id': 1}])
+                self.module.write(path, make_payload('list'))
 
 
 class RDataModuleContract:
@@ -1593,7 +1643,7 @@ class RDataModuleContract:
     module: ModuleType
     format_name: str
     writer_missing_pattern: str
-    write_payload: JSONData = [{'id': 1}]
+    write_payload: JSONData = make_payload('list')
 
     def build_frame(
         self,
@@ -1802,7 +1852,7 @@ class ReadOnlyScientificDatasetModuleContract:
         with pytest.raises(RuntimeError, match='read-only'):
             self.module.write(
                 _format_path(tmp_path, self.format_name),
-                [{'id': 1}],
+                make_payload('list'),
             )
 
 
@@ -1844,7 +1894,7 @@ class ReadOnlySpreadsheetModuleContract:
         with pytest.raises(RuntimeError, match='read-only'):
             self.module.write(
                 _format_path(tmp_path, self.format_name),
-                [{'id': 1}],
+                make_payload('list'),
             )
 
 
@@ -1892,7 +1942,7 @@ class RegistryFallbackPolicyContract:
 
         def _read(path: Path) -> dict[str, object]:
             calls['read_path'] = path
-            return {'ok': True}
+            return cast(dict[str, object], make_payload('read'))
 
         def _write(
             path: Path,
@@ -1928,7 +1978,7 @@ class RegistryFallbackPolicyContract:
 
         handler = handler_class()
         path = Path('payload.gz')
-        assert handler.read(path) == {'ok': True}
+        assert handler.read(path) == make_payload('read')
         written = handler.write(
             path,
             {'row': 1},
@@ -2384,7 +2434,7 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
             if operation == 'read':
                 self.module.read(path)
             else:
-                self.module.write(path, [{'id': 1}])
+                self.module.write(path, make_payload('list'))
 
 
 class SniffedDelimitedModuleContract:
@@ -2585,7 +2635,7 @@ class WritableSpreadsheetModuleContract:
 
         result = self.module.read(path)
 
-        assert result == [{'id': 1}]
+        assert result == make_payload('list')
         assert pandas.read_calls
         call = pandas.read_calls[-1]
         assert call.get('path') == path
@@ -2621,7 +2671,7 @@ class WritableSpreadsheetModuleContract:
         optional_module_stub({'pandas': pandas})
         path = _format_path(tmp_path, self.format_name)
 
-        written = self.module.write(path, [{'id': 1}])
+        written = self.module.write(path, make_payload('list'))
 
         assert written == 1
         assert pandas.last_frame is not None
@@ -2662,7 +2712,7 @@ class WritableSpreadsheetModuleContract:
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module.write(
                 _format_path(tmp_path, self.format_name),
-                [{'id': 1}],
+                make_payload('list'),
             )
 
 
@@ -2687,7 +2737,11 @@ class XmlModuleContract:
         """Test XML write using explicit root tag and readable output."""
         path = _format_path(tmp_path, self.format_name)
 
-        written = self.module.write(path, [{'id': 1}], root_tag=self.root_tag)
+        written = self.module.write(
+            path,
+            make_payload('list'),
+            root_tag=self.root_tag,
+        )
 
         assert written == 1
         assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
