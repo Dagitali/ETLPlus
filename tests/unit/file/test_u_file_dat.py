@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import dat as mod
-from tests.unit.file.conftest import SniffedDelimitedModuleContract
+from tests.unit.file.conftest import DelimitedCategoryContractBase
 
 # SECTION: HELPERS ========================================================== #
 
@@ -80,6 +80,73 @@ class _StubSniffer:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class DelimitedSniffedMixin:
+    """Parametrized mixin for sniffed delimited module behavior."""
+
+    module = mod
+    format_name: str
+
+    def _patch_default_sniff(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch sniffer behavior to a deterministic CSV dialect."""
+        monkeypatch.setattr(
+            self.module,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+
+    def test_read_empty_returns_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading empty input returning an empty list."""
+        path = tmp_path / f'empty.{self.format_name}'
+        path.write_text('', encoding='utf-8')
+
+        assert self.module.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / f'out.{self.format_name}'
+
+        written = self.module.write(path, sample_records)
+        result = self.module.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        self._patch_default_sniff(monkeypatch)
+        path = tmp_path / f'data.{self.format_name}'
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
+
+
+class SniffedDelimitedModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedSniffedMixin,
+):
+    """Reusable contract suite for sniffed delimited-text modules."""
 
 
 class TestDatSniff:
