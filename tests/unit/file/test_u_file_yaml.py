@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from etlplus.file import yaml as mod
+from tests.unit.file.conftest import SemiStructuredReadModuleContract
+from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -43,50 +45,50 @@ class _StubYaml:
 # SECTION: TESTS ============================================================ #
 
 
-class TestYamlRead:
-    """Unit tests for :func:`etlplus.file.yaml.read`."""
+class TestYaml(
+    SemiStructuredReadModuleContract,
+    SemiStructuredWriteDictModuleContract,
+):
+    """Unit tests for :mod:`etlplus.file.yaml`."""
 
-    def test_read_uses_yaml_module(
+    module = mod
+    format_name = 'yaml'
+    sample_read_text = 'name: etl\n'
+    expected_read_payload = {'name': 'etl'}
+    dict_payload = {'name': 'etl'}
+
+    def setup_read_dependencies(
         self,
-        tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """
-        Test that :func:`read` uses the :mod:`yaml` module when available.
-        """
-        path = tmp_path / 'data.yaml'
-        path.write_text('name: etl\n', encoding='utf-8')
-        yaml_stub = _StubYaml({'name': 'etl'})
-        optional_module_stub({'yaml': yaml_stub})
+        """Install YAML dependency stub for read tests."""
+        self._read_yaml_stub = _StubYaml(self.expected_read_payload)
+        optional_module_stub({'yaml': self._read_yaml_stub})
 
-        result = mod.read(path)
-
-        assert result == {'name': 'etl'}
-        assert yaml_stub.load_calls == 1
-
-
-class TestYamlWrite:
-    """Unit tests for :func:`etlplus.file.yaml.write`."""
-
-    def test_write_uses_yaml_module_and_options(
+    def assert_read_contract_result(
         self,
-        tmp_path: Path,
+        result: object,
+    ) -> None:
+        """Assert YAML read contract expectations."""
+        assert result == self.expected_read_payload
+        assert self._read_yaml_stub.load_calls == 1
+
+    def setup_write_dependencies(
+        self,
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """
-        Test that :func:`write` uses the :mod:`yaml` module when available.
-        """
-        path = tmp_path / 'data.yaml'
-        payload = [{'name': 'etl'}]
-        yaml_stub = _StubYaml()
-        optional_module_stub({'yaml': yaml_stub})
+        """Install YAML dependency stub for write tests."""
+        self._write_yaml_stub = _StubYaml()
+        optional_module_stub({'yaml': self._write_yaml_stub})
 
-        written = mod.write(path, payload)
-
-        assert written == 1
-        assert yaml_stub.dump_calls == [
+    def assert_write_contract_result(
+        self,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert YAML write contract expectations."""
+        assert self._write_yaml_stub.dump_calls == [
             {
-                'data': payload,
+                'data': self.dict_payload,
                 'kwargs': {
                     'sort_keys': False,
                     'allow_unicode': True,

@@ -6,37 +6,18 @@ Unit tests for :mod:`etlplus.file.proto`.
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from etlplus.file import proto as mod
+from tests.unit.file.conftest import BinaryKeyedPayloadModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestProtoReadWrite:
-    """Unit tests for PROTO read/write functions."""
+class TestProtoReadWrite(BinaryKeyedPayloadModuleContract):
+    """Unit tests for :mod:`etlplus.file.proto`."""
 
-    def test_read_write_round_trip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that schema text is preserved through read/write."""
-        data = {'schema': 'message Row { string id = 1; }'}
-        path = tmp_path / 'data.proto'
-
-        written = mod.write(path, data)
-
-        assert written == 1
-        assert mod.read(path) == data
-
-    def test_write_rejects_missing_schema_key(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test PROTO write requiring the schema key."""
-        path = tmp_path / 'data.proto'
-
-        with pytest.raises(TypeError, match='schema'):
-            mod.write(path, {'payload': 'message Row {}'})
+    module = mod
+    format_name = 'proto'
+    payload_key = 'schema'
+    sample_payload_value = 'message Row { string id = 1; }'
+    expected_bytes = sample_payload_value.encode('utf-8')
+    invalid_payload = {'payload': 'message Row {}'}

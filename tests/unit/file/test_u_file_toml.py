@@ -12,6 +12,8 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import toml as mod
+from tests.unit.file.conftest import SemiStructuredReadModuleContract
+from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -53,18 +55,33 @@ class _TomlStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestTomlRead:
-    """Unit tests for :func:`etlplus.file.toml.read`."""
+class TestToml(
+    SemiStructuredReadModuleContract,
+    SemiStructuredWriteDictModuleContract,
+):
+    """Unit tests for :mod:`etlplus.file.toml`."""
 
-    def test_read_valid_table(
+    module = mod
+    format_name = 'toml'
+    sample_read_text = 'name = "etl"'
+    expected_read_payload = {'name': 'etl'}
+    dict_payload = {'name': 'etl'}
+
+    def setup_write_dependencies(
         self,
-        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """Test that reading a valid TOML table works correctly."""
-        path = tmp_path / 'config.toml'
-        path.write_text('name = "etl"', encoding='utf-8')
+        """Install ``tomli_w`` stub for write contract tests."""
+        self._tomli_w_stub = _TomliWStub()
+        optional_module_stub({'tomli_w': self._tomli_w_stub})
 
-        assert mod.read(path) == {'name': 'etl'}
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert TOML write contract expectations."""
+        assert path.read_text(encoding='utf-8') == 'tomli_w_output'
+        assert self._tomli_w_stub.calls == [self.dict_payload]
 
     def test_read_non_table_raises(
         self,
@@ -80,26 +97,6 @@ class TestTomlRead:
 
         with pytest.raises(TypeError, match='TOML root must be a table'):
             mod.read(path)
-
-
-class TestTomlWrite:
-    """Unit tests for :func:`etlplus.file.toml.write`."""
-
-    def test_write_prefers_tomli_w(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that :func:`write` prefers :func:`tomli_w` when available."""
-        stub = _TomliWStub()
-        optional_module_stub({'tomli_w': stub})
-        path = tmp_path / 'config.toml'
-
-        written = mod.write(path, {'name': 'etl'})
-
-        assert written == 1
-        assert path.read_text(encoding='utf-8') == 'tomli_w_output'
-        assert stub.calls == [{'name': 'etl'}]
 
     def test_write_falls_back_to_toml_when_tomli_w_missing(
         self,

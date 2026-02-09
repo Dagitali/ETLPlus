@@ -8,62 +8,31 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
 from etlplus.file import cbor as mod
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _CborStub:
-    """Stub for the :mod:`cbor2` module."""
-
-    def __init__(self) -> None:
-        self.loaded: list[bytes] = []
-        self.dumped: list[object] = []
-
-    def loads(
-        self,
-        payload: bytes,
-    ) -> object:
-        """Simulate loading a CBOR payload."""
-        self.loaded.append(payload)
-        return {'loaded': True}
-
-    def dumps(
-        self,
-        payload: object,
-    ) -> bytes:
-        """Simulate dumping a payload to CBOR."""
-        self.dumped.append(payload)
-        return b'cbor'
-
+from tests.unit.file.conftest import BinaryCodecModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestCborRead:
-    """Unit tests for :func:`etlplus.file.cbor.read`."""
+class TestCbor(BinaryCodecModuleContract):
+    """Unit tests for :mod:`etlplus.file.cbor`."""
 
-    def test_read_uses_cbor2(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """
-        Test that :func:`read` uses the :mod:`cbor2` module to load records.
-        """
-        stub = _CborStub()
-        optional_module_stub({'cbor2': stub})
-        path = tmp_path / 'data.cbor'
-        path.write_bytes(b'payload')
+    module = mod
+    format_name = 'cbor'
+    dependency_name = 'cbor2'
+    reader_method_name = 'loads'
+    writer_method_name = 'dumps'
+    reader_kwargs: dict[str, object] = {}
+    writer_kwargs: dict[str, object] = {}
+    loaded_result = {'loaded': True}
+    emitted_bytes = b'cbor'
 
-        result = mod.read(path)
-
-        assert result == {'loaded': True}
-        assert stub.loaded == [b'payload']
-
+    # pylint: disable=assignment-from-no-return
     def test_read_rejects_non_object_arrays(
         self,
         tmp_path: Path,
@@ -73,47 +42,15 @@ class TestCborRead:
         Test that :func:`read` raises when the CBOR payload is not an array of
         objects.
         """
-        stub = _CborStub()
+        codec = self._make_codec_stub(loaded_result={'loaded': True})
 
-        def _loads(_: bytes) -> object:
+        def _loads(_: bytes) -> object:  # noqa: ARG001
             return [1, 2]
 
-        stub.loads = _loads  # type: ignore[assignment]
-        optional_module_stub({'cbor2': stub})
+        cast(Any, codec).loads = _loads
+        optional_module_stub({'cbor2': codec})
         path = tmp_path / 'data.cbor'
         path.write_bytes(b'payload')
 
         with pytest.raises(TypeError, match='CBOR array must contain'):
             mod.read(path)
-
-
-class TestCborWrite:
-    """Unit tests for :func:`etlplus.file.cbor.write`."""
-
-    @pytest.mark.parametrize(
-        ('payload', 'expected_dump'),
-        [
-            ([{'id': 1}], [{'id': 1}]),
-            ({'id': 1}, {'id': 1}),
-        ],
-        ids=['list', 'dict'],
-    )
-    def test_write_serializes_payload(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-        payload: object,
-        expected_dump: object,
-    ) -> None:
-        """
-        Test that :func:`write` uses the :mod:`cbor2` module to dump records.
-        """
-        stub = _CborStub()
-        optional_module_stub({'cbor2': stub})
-        path = tmp_path / 'data.cbor'
-
-        written = mod.write(path, payload)  # type: ignore[arg-type]
-
-        assert written == 1
-        assert stub.dumped == [expected_dump]
-        assert path.read_bytes() == b'cbor'

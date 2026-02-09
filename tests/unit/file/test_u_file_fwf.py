@@ -10,6 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import fwf as mod
+from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -47,8 +48,37 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestFwfRead:
-    """Unit tests for :func:`etlplus.file.fwf.read`."""
+class TestFwf(TextRowModuleContract):
+    """Unit tests for :mod:`etlplus.file.fwf`."""
+
+    module = mod
+    format_name = 'fwf'
+    write_payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
+    expected_written_count = 2
+    _pandas: _PandasStub
+
+    def prepare_read_case(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> tuple[Path, list[dict[str, object]]]:
+        """Prepare representative FWF read input and dependency stubs."""
+        frame = _Frame([{'id': 1}])
+        self._pandas = _PandasStub(frame)
+        optional_module_stub({'pandas': self._pandas})
+        path = tmp_path / 'data.fwf'
+        return path, [{'id': 1}]
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert FWF fixed-width formatting contract output."""
+        assert path.read_text(encoding='utf-8').splitlines() == [
+            'id name',
+            '1  Ada ',
+            '2  Bob ',
+        ]
 
     def test_read_uses_pandas(
         self,
@@ -56,25 +86,9 @@ class TestFwfRead:
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that :func:`read` uses pandas to read fixed-width files."""
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame)
-        optional_module_stub({'pandas': pandas})
-
-        result = mod.read(tmp_path / 'data.fwf')
-
-        assert result == [{'id': 1}]
-        assert pandas.read_calls
-
-
-class TestFwfWrite:
-    """Unit tests for :func:`etlplus.file.fwf.write`."""
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing an empty payload returns zero."""
-        assert mod.write(tmp_path / 'data.fwf', []) == 0
+        path, _ = self.prepare_read_case(tmp_path, optional_module_stub)
+        assert mod.read(path) == [{'id': 1}]
+        assert self._pandas.read_calls
 
     def test_write_empty_fieldnames_returns_zero(
         self,
@@ -82,20 +96,3 @@ class TestFwfWrite:
     ) -> None:
         """Test that writing with empty fieldnames returns zero."""
         assert mod.write(tmp_path / 'data.fwf', [{}]) == 0
-
-    def test_write_formats_fixed_width_columns(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing formats fixed-width columns correctly."""
-        path = tmp_path / 'data.fwf'
-        payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
-
-        written = mod.write(path, payload)
-
-        assert written == 2
-        assert path.read_text(encoding='utf-8').splitlines() == [
-            'id name',
-            '1  Ada ',
-            '2  Bob ',
-        ]

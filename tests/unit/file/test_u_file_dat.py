@@ -124,25 +124,42 @@ class TestDatSniff:
         assert has_header is True
 
 
-class TestDatRead:
-    """Unit tests for :func:`etlplus.file.dat.read`."""
+class TestDat:
+    """Unit tests for :mod:`etlplus.file.dat`."""
 
     def test_read_empty_returns_empty_list(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that empty files yield an empty list."""
+        """Test reading empty input returning an empty list."""
         path = tmp_path / 'empty.dat'
         path.write_text('', encoding='utf-8')
 
-        assert not mod.read(path)
+        assert mod.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / 'out.dat'
+
+        written = mod.write(path, sample_records)
+        result = mod.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
 
     def test_read_skips_blank_rows(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that blank rows (or rows with only whitespace) are ignored."""
+        """Test blank rows being ignored during reads."""
         monkeypatch.setattr(
             mod,
             '_sniff',
@@ -233,23 +250,3 @@ class TestDatRead:
         path.write_text(content, encoding='utf-8')
 
         assert mod.read(path) == [{'a': '1', 'b': '2'}]
-
-
-class TestDatWrite:
-    """Unit tests for :func:`etlplus.file.dat.write`."""
-
-    def test_write_round_trip(
-        self,
-        tmp_path: Path,
-        sample_records: list[dict[str, object]],
-    ) -> None:
-        """
-        Test that writing then reading preserves record count and produces
-        non-empty output.
-        """
-        path = tmp_path / 'out.dat'
-
-        written = mod.write(path, sample_records)
-
-        assert written == len(sample_records)
-        assert mod.read(path)

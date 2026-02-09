@@ -1,28 +1,26 @@
 """
 :mod:`tests.unit.file.conftest` module.
 
-Define shared fixtures and helpers for pytest-based unit tests of
-:mod:`etlplus.file`.
-
-Notes
------
-- Fixtures are designed for reuse and DRY test setup across file-focused unit
-    tests.
+Shared fixtures and helpers for pytest-based unit tests of :mod:`etlplus.file`.
 """
 
 from __future__ import annotations
 
-import math
-import numbers
 from collections.abc import Callable
 from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
+from types import SimpleNamespace
 from typing import Any
+from typing import Literal
+from typing import cast
 
 import pytest
 
 import etlplus.file._imports as import_helpers
+from etlplus.file import FileFormat
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
@@ -35,24 +33,42 @@ from etlplus.types import JSONDict
 pytestmark = pytest.mark.unit
 
 
+# SECTION: TYPE ALIAS ======================================================= #
+
+
+# Shared callable used by dependency-stubbing fixtures/contracts.
+type HandlerCase = tuple[FileFormat, type[Any]]
+type OptionalModuleInstaller = Callable[[dict[str, object]], None]
+type Operation = Literal['read', 'write']
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _coerce_numeric_value(
-    value: object,
-) -> object:
-    """Coerce numeric scalars into stable Python numeric types."""
-    if isinstance(value, numbers.Real):
-        try:
-            numeric = float(value)
-            if math.isnan(numeric):
-                return None
-        except (TypeError, ValueError):
-            return value
-        if numeric.is_integer():
-            return int(numeric)
-        return float(numeric)
-    return value
+def _call_module_operation(
+    module: ModuleType,
+    *,
+    operation: Operation,
+    path: Path,
+    write_payload: JSONData | None = None,
+) -> JSONData | int:
+    """Invoke ``read``/``write`` on a module-like object."""
+    if operation == 'read':
+        return cast(JSONData, module.read(path))
+    payload = make_payload('list') if write_payload is None else write_payload
+    return cast(int, module.write(path, payload))
+
+
+def _call_scientific_dataset_operation(
+    handler: SingleDatasetScientificFileHandlerABC,
+    *,
+    operation: Operation,
+    path: Path,
+    dataset: str,
+) -> JSONData | int:
+    """Invoke scientific ``read_dataset``/``write_dataset`` by operation."""
+    if operation == 'read':
+        return cast(JSONData, handler.read_dataset(path, dataset=dataset))
+    return cast(int, handler.write_dataset(path, [], dataset=dataset))
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -65,92 +81,54 @@ def assert_single_dataset_rejects_non_default_key(
 ) -> None:
     """Assert single-dataset scientific handlers reject non-default keys."""
     bad_dataset = 'not_default_dataset'
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.read_dataset(
-            Path(f'ignored.{suffix}'),
-            dataset=bad_dataset,
-        )
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.write_dataset(
-            Path(f'ignored.{suffix}'),
-            [],
-            dataset=bad_dataset,
-        )
+    path = Path(f'ignored.{suffix}')
+    for operation in ('read', 'write'):
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            _call_scientific_dataset_operation(
+                handler,
+                operation=cast(Operation, operation),
+                path=path,
+                dataset=bad_dataset,
+            )
 
 
-def assert_stub_module_contract(
+def assert_stub_module_operation_raises(
     module: ModuleType,
-    handler_cls: type[StubFileHandlerABC],
     *,
     format_name: str,
-    tmp_path: Path,
+    operation: Operation,
+    path: Path,
     write_payload: JSONData | None = None,
 ) -> None:
-    """Assert baseline contract for a placeholder stub module."""
-    if write_payload is None:
-        write_payload = [{'id': 1}]
-
-    assert issubclass(handler_cls, StubFileHandlerABC)
-    assert handler_cls.format.value == format_name
-
-    path = tmp_path / f'data.{format_name}'
+    """Assert one stub module operation raises :class:`NotImplementedError`."""
     with pytest.raises(
         NotImplementedError,
-        match=rf'{format_name.upper()} read is not implemented yet',
+        match=rf'{format_name.upper()} {operation} is not implemented yet',
     ):
-        module.read(path)
-    with pytest.raises(
-        NotImplementedError,
-        match=rf'{format_name.upper()} write is not implemented yet',
-    ):
-        module.write(path, write_payload)
+        _call_module_operation(
+            module,
+            operation=operation,
+            path=path,
+            write_payload=write_payload,
+        )
 
 
 def make_import_error_reader_module(
     method_name: str,
 ) -> object:
-    """
-    Build a module-like object whose reader method raises ImportError.
+    """Build a module-like object whose reader method raises ImportError."""
 
-    Parameters
-    ----------
-    method_name : str
-        Reader method name to define (for example, ``"read_excel"``).
+    def _fail_reader(
+        *args: object,
+        **kwargs: object,
+    ) -> object:  # noqa: ARG001
+        raise ImportError('missing')
 
-    Returns
-    -------
-    object
-        Module-like object with one failing reader method.
-    """
-
-    class _FailModule:
-        """Module stub exposing one reader that always raises ImportError."""
-
-        def __getattribute__(self, name: str) -> Any:
-            if name != method_name:
-                return super().__getattribute__(name)
-
-            def _fail_reader(
-                *args: object,
-                **kwargs: object,
-            ) -> object:  # noqa: ARG001
-                raise ImportError('missing')
-
-            return _fail_reader
-
-    return _FailModule()
+    return SimpleNamespace(**{method_name: _fail_reader})
 
 
 def make_import_error_writer_module() -> object:
-    """
-    Build a pandas-like module whose DataFrame writes raise ImportError.
-
-    Returns
-    -------
-    object
-        Module-like object with ``DataFrame.from_records`` that returns a
-        failing frame.
-    """
+    """Build a pandas-like module whose DataFrame writes raise ImportError."""
 
     class _FailFrame:
         """Frame stub whose write-like attributes raise ImportError."""
@@ -167,106 +145,1360 @@ def make_import_error_writer_module() -> object:
 
             return _fail_writer
 
-    class _FailModule:
-        """Module stub exposing failing ``DataFrame.from_records``."""
+    class _DataFrame:
+        """Minimal DataFrame namespace for write-path tests."""
 
-        # pylint: disable=unused-argument
+        @staticmethod
+        def from_records(
+            records: list[dict[str, object]],
+        ) -> _FailFrame:  # noqa: ARG002
+            return _FailFrame()
 
-        class DataFrame:  # noqa: D106
-            """Minimal DataFrame namespace for write-path tests."""
-
-            @staticmethod
-            def from_records(
-                records: list[dict[str, object]],
-            ) -> _FailFrame:  # noqa: ARG002
-                return _FailFrame()
-
-    return _FailModule()
+    return SimpleNamespace(DataFrame=_DataFrame)
 
 
-def normalize_numeric_records(
-    records: JSONData,
+def make_payload(
+    kind: Literal['dict', 'list', 'read'],
+    **kwargs: object,
 ) -> JSONData:
+    """Build common JSON payload shapes used across test contracts."""
+    if (payload := kwargs.get('payload')) is not None:
+        return cast(JSONData, payload)
+
+    match kind:
+        case 'dict':
+            key = cast(str, kwargs.get('key', 'id'))
+            return cast(JSONData, {key: kwargs.get('value', 1)})
+        case 'list':
+            if (records := kwargs.get('records')) is not None:
+                return cast(JSONData, records)
+            if (record := kwargs.get('record')) is not None:
+                return cast(JSONData, [record])
+            return cast(JSONData, [make_payload('dict')])
+        case _:
+            if (result := kwargs.get('result')) is not None:
+                return cast(JSONData, result)
+            return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
+
+
+# SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
+
+
+class PathMixin:
+    """Shared path helper for format-aligned contract classes."""
+
+    format_name: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a deterministic format-specific path."""
+        return tmp_path / f'{stem}.{self.format_name}'
+
+
+# SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
+
+
+class EmptyWriteReturnsZeroMixin(PathMixin):
     """
-    Normalize numeric record values for deterministic comparisons.
-
-    Parameters
-    ----------
-    records : JSONData
-        Record payloads to normalize.
-
-    Returns
-    -------
-    JSONData
-        Normalized record payloads.
+    Shared mixin for contracts where empty writes should return ``0``.
     """
-    if isinstance(records, list):
-        normalized: list[JSONDict] = []
-        for row in records:
-            if not isinstance(row, dict):
-                normalized.append(row)
-                continue
-            cleaned: JSONDict = {}
-            for key, value in row.items():
-                cleaned[key] = _coerce_numeric_value(value)
-            normalized.append(cleaned)
-        return normalized
-    return records
+
+    module: ModuleType
+    assert_file_not_created_on_empty_write: bool = False
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        path = self.format_path(tmp_path)
+        assert self.module.write(path, []) == 0
+        if self.assert_file_not_created_on_empty_write:
+            assert not path.exists()
 
 
-def normalize_xml_payload(payload: JSONData) -> JSONData:
+class DelimitedReadWriteMixin(PathMixin):
     """
-    Normalize XML payloads to list-based item structures when possible.
-
-    Parameters
-    ----------
-    payload : JSONData
-        XML payload to normalize.
-
-    Returns
-    -------
-    JSONData
-        Normalized XML payload.
+    Parametrized mixin for delimiter-forwarding read/write wrappers.
     """
-    if not isinstance(payload, dict):
-        return payload
-    root = payload.get('root')
-    if not isinstance(root, dict):
-        return payload
-    items = root.get('items')
-    if isinstance(items, dict):
-        root = {**root, 'items': [items]}
-        return {**payload, 'root': root}
-    return payload
+
+    module: ModuleType
+    delimiter: str
+    sample_rows: JSONData
+
+    def test_read_uses_expected_delimiter(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module read delegating with the expected delimiter."""
+        calls: dict[str, object] = {}
+
+        def _read_delimited(
+            path: object,
+            *,
+            delimiter: str,
+        ) -> list[dict[str, object]]:
+            calls['path'] = path
+            calls['delimiter'] = delimiter
+            return cast(
+                list[dict[str, object]],
+                make_payload('list', record={'ok': True}),
+            )
+
+        monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
+
+        result = self.module.read(self.format_path(tmp_path))
+
+        assert result == make_payload('list', record={'ok': True})
+        assert calls['delimiter'] == self.delimiter
+
+    def test_write_uses_expected_delimiter_and_format_name(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module write delegating with expected delimiter/format."""
+        calls: dict[str, object] = {}
+
+        def _write_delimited(
+            path: object,
+            data: object,
+            *,
+            delimiter: str,
+            format_name: str,
+        ) -> int:
+            calls['path'] = path
+            calls['data'] = data
+            calls['delimiter'] = delimiter
+            calls['format_name'] = format_name
+            return 1
+
+        monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
+
+        written = self.module.write(
+            self.format_path(tmp_path),
+            self.sample_rows,
+        )
+
+        assert written == 1
+        assert calls['delimiter'] == self.delimiter
+        assert calls['format_name'] == self.format_name.upper()
 
 
-def require_optional_modules(
-    *modules: str,
-) -> None:
+class DelimitedTextRowsMixin(EmptyWriteReturnsZeroMixin):
     """
-    Skip the test when optional dependencies are missing.
-
-    Parameters
-    ----------
-    *modules : str
-        Module names to verify via ``pytest.importorskip``.
+    Parametrized mixin for text/fixed-width row-oriented modules.
     """
-    for module in modules:
-        pytest.importorskip(module)
+
+    module: ModuleType
+    write_payload: JSONData
+    expected_written_count: int = 1
+
+    def prepare_read_case(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> tuple[Path, JSONData]:
+        """Prepare and return ``(path, expected_result)`` for read tests."""
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract behavior."""
+        assert path.exists()
+
+    def test_read_returns_expected_rows(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading representative row-oriented input."""
+        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
+
+        assert self.module.read(path) == expected
+
+    def test_write_rows_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing representative row payloads."""
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_write_contract_result(path)
 
 
-# SECTION: CLASSES ========================================================== #
+class ScientificReadOnlyUnknownDatasetMixin(PathMixin):
+    """
+    Parametrized mixin for read-only scientific unknown-dataset checks.
+    """
+
+    handler_cls: type[ScientificDatasetFileHandlerABC]
+    unknown_dataset_error_pattern: str
+
+    def prepare_unknown_dataset_env(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install stubs needed for unknown-dataset contract checks."""
+        _ = tmp_path
+        _ = monkeypatch
+        _ = optional_module_stub
+
+    @pytest.fixture
+    def handler(self) -> ScientificDatasetFileHandlerABC:
+        """Create a handler instance for read-only scientific contracts."""
+        return self.handler_cls()
+
+    def test_read_dataset_rejects_unknown_dataset(
+        self,
+        handler: ScientificDatasetFileHandlerABC,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test explicit unknown dataset keys being rejected."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
+        ):
+            handler.read_dataset(self.format_path(tmp_path), dataset='unknown')
+
+    def test_read_rejects_unknown_dataset_from_options(
+        self,
+        handler: ScientificDatasetFileHandlerABC,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test unknown dataset rejection routed via read options."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
+        ):
+            handler.read(
+                self.format_path(tmp_path),
+                options=ReadOptions(dataset='unknown'),
+            )
+
+
+class ReadOnlyWriteGuardMixin(PathMixin):
+    """
+    Shared mixin for read-only handlers rejecting module-level writes.
+    """
+
+    module: ModuleType
+    read_only_error_pattern: str = 'read-only'
+
+    def test_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test read-only handlers rejecting writes."""
+        with pytest.raises(RuntimeError, match=self.read_only_error_pattern):
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
+
+
+class SpreadsheetReadImportErrorMixin(PathMixin):
+    """
+    Shared mixin for spreadsheet read dependency error behavior.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+
+    def test_read_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+    ) -> None:
+        """Test read wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.read(self.format_path(tmp_path))
+
+
+class SemiStructuredReadMixin(PathMixin):
+    """
+    Parametrized read contract mixin for semi-structured modules.
+    """
+
+    module: ModuleType
+    sample_read_text: str
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        raise NotImplementedError
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        raise NotImplementedError
+
+    def test_read_parses_expected_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading expected payload from representative text content."""
+        self.setup_read_dependencies(optional_module_stub)
+        path = self.format_path(tmp_path)
+        path.write_text(self.sample_read_text, encoding='utf-8')
+
+        result = self.module.read(path)
+
+        self.assert_read_contract_result(result)
+
+
+class SemiStructuredWriteDictMixin(PathMixin):
+    """
+    Parametrized write contract mixin for semi-structured modules.
+    """
+
+    module: ModuleType
+    dict_payload: JSONData
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        raise NotImplementedError
+
+    def test_write_accepts_single_dict_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test writing a single dictionary payload."""
+        self.setup_write_dependencies(optional_module_stub)
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.dict_payload)
+
+        assert written == 1
+        self.assert_write_contract_result(path)
+
+
+class ScientificSingleDatasetHandlerMixin:
+    """
+    Parametrized mixin for single-dataset scientific handler behavior.
+    """
+
+    handler_cls: type[SingleDatasetScientificFileHandlerABC]
+    dataset_key: str
+    format_name: str
+
+    @pytest.fixture
+    def handler(self) -> SingleDatasetScientificFileHandlerABC:
+        """Create a handler instance for contract tests."""
+        return self.handler_cls()
+
+    def test_uses_single_dataset_scientific_abc(
+        self,
+    ) -> None:
+        """Test single-dataset scientific class contract."""
+        assert issubclass(
+            self.handler_cls,
+            SingleDatasetScientificFileHandlerABC,
+        )
+        assert self.handler_cls.dataset_key == self.dataset_key
+
+    def test_rejects_non_default_dataset_key(
+        self,
+        handler: SingleDatasetScientificFileHandlerABC,
+    ) -> None:
+        """Test non-default dataset keys are rejected."""
+        assert_single_dataset_rejects_non_default_key(
+            handler,
+            suffix=self.format_name,
+        )
+
+
+class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
+    """
+    Parametrized mixin for writable spreadsheet module contracts.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+    read_engine: str | None
+    write_engine: str | None
+
+    # pylint: disable=unused-argument
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
+    ) -> None:
+        """Test read returning row records via pandas."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = make_pandas_stub(frame)
+        optional_module_stub({'pandas': pandas})
+        path = self.format_path(tmp_path)
+
+        result = self.module.read(path)
+
+        assert result == make_payload('list')
+        assert pandas.read_calls
+        call = pandas.read_calls[-1]
+        assert call.get('path') == path
+        if self.read_engine is not None:
+            assert call.get('engine') == self.read_engine
+
+    def test_write_calls_to_excel(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
+    ) -> None:
+        """Test write delegating to DataFrame.to_excel with expected args."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = make_pandas_stub(frame)
+        optional_module_stub({'pandas': pandas})
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, make_payload('list'))
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        frame_stub = cast(RecordsFrameStub, pandas.last_frame)
+        assert frame_stub.to_excel_calls
+        call = frame_stub.to_excel_calls[-1]
+        assert call.get('path') == path
+        assert call.get('index') is False
+        if self.write_engine is not None:
+            assert call.get('engine') == self.write_engine
+
+    def test_write_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
+    ) -> None:
+        """Test write wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
+
+
+# SECTION: CLASSES (BASES) ================================================== #
+
+
+class DelimitedCategoryContractBase(PathMixin):
+    """
+    Shared base contract for delimited/text category modules.
+    """
+
+    module: ModuleType
+    sample_rows: JSONData = make_payload('list')
+
+
+class ScientificCategoryContractBase(PathMixin):
+    """
+    Shared base contract for scientific dataset handlers/modules.
+    """
+
+    module: ModuleType
+    dataset_key: str = 'data'
+
+
+class SpreadsheetCategoryContractBase(PathMixin):
+    """
+    Shared base contract for spreadsheet format handlers.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+    read_engine: str | None = None
+    write_engine: str | None = None
+
+
+class SemiStructuredCategoryContractBase(PathMixin):
+    """
+    Shared base contract for semi-structured text modules.
+    """
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    sample_read_text: str = ''
+    expected_read_payload: JSONData = make_payload('dict')
+    dict_payload: JSONData = make_payload('dict')
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for read tests."""
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for write tests."""
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        """Assert module-specific read contract expectations."""
+        assert result == self.expected_read_payload
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract expectations."""
+        assert path.exists()
+
+
+# SECTION: CLASSES (CONTRACTS) ============================================== #
+
+
+class ArchiveWrapperCoreDispatchModuleContract:
+    """Reusable contract suite for archive wrappers using core dispatch."""
+
+    module: ModuleType
+    valid_path_name: str
+    missing_inner_path_name: str
+    expected_read_result: JSONData
+    write_payload: JSONData = make_payload('list')
+    expected_written_count: int = 1
+    missing_inner_error_pattern: str = 'Cannot infer file format'
+
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Write a wrapped payload used by read tests."""
+        raise NotImplementedError
+
+    def assert_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert wrapped payload bytes/content produced by writes."""
+        raise NotImplementedError
+
+    def install_core_file_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch core file dispatch for deterministic archive tests."""
+
+    def test_read_uses_core_dispatch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read delegating payload parsing through core dispatch."""
+        self.install_core_file_stub(monkeypatch)
+        path = tmp_path / self.valid_path_name
+        self.seed_archive_payload(path)
+
+        result = self.module.read(path)
+
+        assert result == self.expected_read_result
+
+    def test_write_creates_wrapped_payload(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write persisting wrapped payload through core dispatch."""
+        self.install_core_file_stub(monkeypatch)
+        path = tmp_path / self.valid_path_name
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_archive_payload(path)
+
+    def test_write_requires_inner_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writes requiring a resolvable inner file format."""
+        path = tmp_path / self.missing_inner_path_name
+
+        with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
+            self.module.write(path, self.write_payload)
+
+
+class BinaryCodecModuleContract(PathMixin):
+    """Reusable contract suite for binary codec wrapper modules."""
+
+    module: ModuleType
+    dependency_name: str
+    reader_method_name: str
+    writer_method_name: str
+    reader_kwargs: dict[str, object]
+    writer_kwargs: dict[str, object]
+    loaded_result: JSONData
+    emitted_bytes: bytes
+    list_payload: JSONData = make_payload('list')
+    dict_payload: JSONData = make_payload('dict')
+    expected_list_dump: object = make_payload('list')
+    expected_dict_dump: object = make_payload('dict')
+
+    def _make_codec_stub(
+        self,
+        *,
+        loaded_result: object,
+    ) -> BinaryCodecStub:
+        """Create a codec stub configured for this binary format module."""
+        return BinaryCodecStub(
+            reader_method_name=self.reader_method_name,
+            writer_method_name=self.writer_method_name,
+            loaded_result=loaded_result,
+            emitted_bytes=self.emitted_bytes,
+        )
+
+    def test_read_uses_dependency_codec(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read delegating bytes decoding to the codec dependency."""
+        codec = self._make_codec_stub(loaded_result=self.loaded_result)
+        optional_module_stub({self.dependency_name: codec})
+        path = self.format_path(tmp_path)
+        path.write_bytes(b'payload')
+
+        result = self.module.read(path)
+
+        assert result == self.loaded_result
+        assert codec.reader_payloads == [b'payload']
+        assert codec.reader_kwargs == [self.reader_kwargs]
+
+    @pytest.mark.parametrize(
+        ('payload_attr', 'expected_attr'),
+        [
+            ('list_payload', 'expected_list_dump'),
+            ('dict_payload', 'expected_dict_dump'),
+        ],
+        ids=['list', 'dict'],
+    )
+    def test_write_serializes_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        payload_attr: str,
+        expected_attr: str,
+    ) -> None:
+        """Test write delegating payload encoding to the codec dependency."""
+        codec = self._make_codec_stub(loaded_result=self.loaded_result)
+        optional_module_stub({self.dependency_name: codec})
+        path = self.format_path(tmp_path)
+        payload = cast(JSONData, getattr(self, payload_attr))
+        expected_dump = getattr(self, expected_attr)
+
+        written = self.module.write(path, payload)
+
+        assert written == 1
+        assert codec.writer_payloads == [expected_dump]
+        assert codec.writer_kwargs == [self.writer_kwargs]
+        assert path.read_bytes() == self.emitted_bytes
+
+
+class BinaryDependencyModuleContract(PathMixin):
+    """Reusable contract suite for binary modules backed by one dependency."""
+
+    module: ModuleType
+    dependency_name: str
+    expected_read_result: JSONData
+    write_payload: JSONData
+    read_payload_bytes: bytes = b'payload'
+    expected_written_count: int = 1
+
+    def make_dependency_stub(self) -> object:
+        """Build dependency stub used by read/write tests."""
+        raise NotImplementedError
+
+    def assert_dependency_after_read(
+        self,
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert dependency interactions for read tests."""
+
+    def assert_dependency_after_write(
+        self,
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert dependency interactions for write tests."""
+
+    def test_read_uses_dependency(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read delegating to the configured dependency."""
+        dependency = self.make_dependency_stub()
+        optional_module_stub({self.dependency_name: dependency})
+        path = self.format_path(tmp_path)
+        path.write_bytes(self.read_payload_bytes)
+
+        result = self.module.read(path)
+
+        assert result == self.expected_read_result
+        self.assert_dependency_after_read(dependency, path)
+
+    def test_write_uses_dependency(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test write delegating to the configured dependency."""
+        dependency = self.make_dependency_stub()
+        optional_module_stub({self.dependency_name: dependency})
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_dependency_after_write(dependency, path)
+
+
+class BinaryKeyedPayloadModuleContract(PathMixin):
+    """Reusable contract suite for keyed binary payload wrapper modules."""
+
+    module: ModuleType
+    payload_key: str
+    sample_payload_value: str
+    expected_bytes: bytes
+    invalid_payload: JSONData
+
+    @pytest.fixture
+    def sample_payload(self) -> JSONDict:
+        """Create a representative keyed payload dictionary."""
+        return {self.payload_key: self.sample_payload_value}
+
+    def test_read_write_round_trip(
+        self,
+        tmp_path: Path,
+        sample_payload: JSONDict,
+    ) -> None:
+        """Test write/read round-trip preserving payload bytes."""
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, sample_payload)
+
+        assert written == 1
+        assert path.read_bytes() == self.expected_bytes
+        assert self.module.read(path) == sample_payload
+
+    def test_write_rejects_missing_required_key(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writes requiring the expected payload key."""
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(TypeError, match=self.payload_key):
+            self.module.write(path, self.invalid_payload)
+
+
+class DelimitedModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedReadWriteMixin,
+):
+    """Reusable contract suite for standard delimited wrapper modules."""
+
+
+class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
+    """Reusable contract suite for embedded database wrapper modules."""
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    multi_table_error_pattern: str
+
+    def build_empty_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> Path:
+        """Create an empty database fixture path for read tests."""
+        raise NotImplementedError
+
+    def build_multi_table_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> Path:
+        """Create a multi-table database fixture path for read tests."""
+        raise NotImplementedError
+
+    def test_read_returns_empty_when_no_tables(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading empty embedded databases returning no records."""
+        path = self.build_empty_database_path(tmp_path, optional_module_stub)
+        assert self.module.read(path) == []
+
+    def test_read_raises_on_multiple_tables(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read rejecting ambiguous multi-table databases."""
+        path = self.build_multi_table_database_path(
+            tmp_path,
+            optional_module_stub,
+        )
+        with pytest.raises(ValueError, match=self.multi_table_error_pattern):
+            self.module.read(path)
+
+
+class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
+    """Reusable contract suite for pandas-backed columnar format modules."""
+
+    module: ModuleType
+    read_method_name: str
+    write_calls_attr: str
+    write_uses_index: bool = False
+    requires_pyarrow: bool = False
+    read_error_pattern: str = 'missing'
+    write_error_pattern: str = 'missing'
+
+    def _install_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+        *,
+        pandas: object | None = None,
+    ) -> None:
+        """Install optional stubs required by columnar contract tests."""
+        mapping: dict[str, object] = {}
+        if pandas is not None:
+            mapping['pandas'] = pandas
+        if self.requires_pyarrow:
+            mapping['pyarrow'] = object()
+        if mapping:
+            optional_module_stub(mapping)
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
+    ) -> None:
+        """Test read returning row records via pandas."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = make_pandas_stub(frame)
+        self._install_dependencies(optional_module_stub, pandas=pandas)
+
+        result = self.module.read(self.format_path(tmp_path))
+
+        assert result == make_payload('list')
+        assert pandas.read_calls
+
+    def test_write_calls_expected_table_writer(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
+    ) -> None:
+        """Test write calling the expected DataFrame writer method."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = make_pandas_stub(frame)
+        self._install_dependencies(optional_module_stub, pandas=pandas)
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, make_payload('list'))
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        calls = cast(
+            list[dict[str, object]],
+            getattr(pandas.last_frame, self.write_calls_attr),
+        )
+        assert calls
+        call = calls[-1]
+        assert call.get('path') == path
+        if self.write_uses_index:
+            assert call.get('index') is False
+        else:
+            assert 'index' not in call
+
+    def test_read_import_error_path(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read dependency failures raising :class:`ImportError`."""
+        self._install_dependencies(optional_module_stub)
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader(self.read_method_name),
+        )
+
+        with pytest.raises(ImportError, match=self.read_error_pattern):
+            self.module.read(self.format_path(tmp_path))
+
+    def test_write_import_error_path(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test write dependency failures raising :class:`ImportError`."""
+        self._install_dependencies(optional_module_stub)
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
+
+        with pytest.raises(ImportError, match=self.write_error_pattern):
+            self.module.write(
+                self.format_path(tmp_path),
+                make_payload('list'),
+            )
+
+
+class PyarrowMissingDependencyMixin(PathMixin):
+    """
+    Shared mixin for pyarrow-gated read/write dependency checks.
+    """
+
+    module: ModuleType
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_operations_raise_when_pyarrow_missing(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: Operation,
+    ) -> None:
+        """Test read/write failing when pyarrow dependency resolution fails."""
+
+        def _missing(*_args: object, **_kwargs: object) -> object:
+            raise ImportError(self.missing_dependency_pattern)
+
+        monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(ImportError, match=self.missing_dependency_pattern):
+            _call_module_operation(
+                self.module,
+                operation=operation,
+                path=path,
+            )
+
+
+class PyarrowGatedPandasColumnarModuleContract(
+    PyarrowMissingDependencyMixin,
+    PandasColumnarModuleContract,
+):
+    """
+    Reusable suite for pandas-backed columnar modules gated by pyarrow.
+    """
+
+    requires_pyarrow = True
+    missing_dependency_pattern: str = 'missing pyarrow'
+
+
+class RDataModuleContract(PathMixin):
+    """Reusable contract suite for R-data wrapper modules (RDA/RDS)."""
+
+    module: ModuleType
+    writer_missing_pattern: str
+    write_payload: JSONData = make_payload('list')
+
+    def _install_optional_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+        *,
+        pyreadr_stub: object,
+    ) -> None:
+        """Install module stubs required by R-data contract tests."""
+        optional_module_stub(
+            {
+                'pyreadr': pyreadr_stub,
+                'pandas': self.build_pandas_stub(),
+            },
+        )
+
+    def build_frame(
+        self,
+        records: list[dict[str, object]],
+    ) -> object:
+        """Build a frame-like stub from row records."""
+        raise NotImplementedError
+
+    def build_pandas_stub(self) -> object:
+        """Build pandas module stub."""
+        raise NotImplementedError
+
+    def build_pyreadr_stub(
+        self,
+        result: dict[str, object],
+    ) -> object:
+        """Build pyreadr module stub."""
+        raise NotImplementedError
+
+    def build_reader_only_stub(self) -> object:
+        """Build pyreadr-like stub without writer methods."""
+        raise NotImplementedError
+
+    def assert_write_success(
+        self,
+        pyreadr_stub: object,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write success behavior."""
+        _ = pyreadr_stub
+        _ = path
+
+    def test_read_empty_result_returns_empty_list(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading empty R-data results returning an empty list."""
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub({}),
+        )
+
+        assert self.module.read(self.format_path(tmp_path)) == []
+
+    def test_read_single_value_coerces_to_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading one R object coercing to JSON records."""
+        frame = self.build_frame([{'id': 1}])
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub({'data': frame}),
+        )
+
+        assert self.module.read(self.format_path(tmp_path)) == [
+            {'id': 1},
+        ]
+
+    def test_read_multiple_values_returns_mapping(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading multiple R objects returning key-mapped payloads."""
+        result: dict[str, object] = {'one': {'id': 1}, 'two': [{'id': 2}]}
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_pyreadr_stub(result),
+        )
+
+        assert self.module.read(self.format_path(tmp_path)) == result
+
+    def test_write_raises_when_writer_missing(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test writing failing when pyreadr writer methods are unavailable."""
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=self.build_reader_only_stub(),
+        )
+
+        with pytest.raises(ImportError, match=self.writer_missing_pattern):
+            self.module.write(
+                self.format_path(tmp_path),
+                self.write_payload,
+            )
+
+    def test_write_happy_path_uses_writer(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test writing delegating to pyreadr writer methods."""
+        pyreadr = self.build_pyreadr_stub({})
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == 1
+        self.assert_write_success(pyreadr, path)
+
+
+class ReadOnlyScientificDatasetModuleContract(
+    ScientificCategoryContractBase,
+    ScientificReadOnlyUnknownDatasetMixin,
+    ReadOnlyWriteGuardMixin,
+):
+    """
+    Reusable contract suite for read-only scientific dataset handlers.
+    """
+
+
+class SemiStructuredReadModuleContract(
+    SemiStructuredCategoryContractBase,
+    SemiStructuredReadMixin,
+):
+    """
+    Reusable read contract suite for semi-structured text modules.
+    """
+
+
+class SemiStructuredWriteDictModuleContract(
+    SemiStructuredCategoryContractBase,
+    SemiStructuredWriteDictMixin,
+):
+    """
+    Reusable write contract suite for semi-structured text modules.
+    """
+
+
+class SingleDatasetHandlerContract(
+    ScientificCategoryContractBase,
+    ScientificSingleDatasetHandlerMixin,
+):
+    """Reusable contract suite for single-dataset scientific handlers."""
+
+
+class SingleDatasetWritableContract(
+    EmptyWriteReturnsZeroMixin,
+    SingleDatasetHandlerContract,
+):
+    """
+    Reusable suite for writable single-dataset scientific handlers.
+    """
+
+    assert_file_not_created_on_empty_write = True
+
+
+class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
+    """
+    Reusable suite for placeholder single-dataset scientific handlers.
+    """
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_level_placeholders_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: Operation,
+    ) -> None:
+        """Test placeholder read/write behavior for module-level wrappers."""
+        path = self.format_path(tmp_path)
+        with pytest.raises(NotImplementedError, match='not implemented yet'):
+            _call_module_operation(
+                self.module,
+                operation=operation,
+                path=path,
+            )
+
+
+class StubModuleContract(PathMixin):
+    """Reusable contract suite for placeholder/stub format modules."""
+
+    module: ModuleType
+    handler_cls: type[StubFileHandlerABC]
+
+    def test_handler_inherits_stub_abc(self) -> None:
+        """Test handler metadata and inheritance contract."""
+        assert issubclass(self.handler_cls, StubFileHandlerABC)
+        assert self.handler_cls.format.value == self.format_name
+
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_module_operations_raise_not_implemented(
+        self,
+        tmp_path: Path,
+        operation: Operation,
+    ) -> None:
+        """Test module-level read/write placeholder behavior."""
+        assert_stub_module_operation_raises(
+            self.module,
+            format_name=self.format_name,
+            operation=operation,
+            path=self.format_path(tmp_path),
+        )
+
+
+class TextRowModuleContract(
+    DelimitedCategoryContractBase,
+    DelimitedTextRowsMixin,
+):
+    """
+    Reusable contract suite for text/fixed-width row-oriented modules.
+    """
+
+
+class WritableSpreadsheetModuleContract(
+    SpreadsheetCategoryContractBase,
+    SpreadsheetReadImportErrorMixin,
+    SpreadsheetWritableMixin,
+):
+    """
+    Reusable contract suite for writable spreadsheet wrapper modules.
+    """
+
+
+# SECTION: CLASSES (STUBS) ============================================== #
+
+
+class BinaryCodecStub:
+    """
+    Generic codec stub for binary serialization module tests.
+
+    Supports configurable reader/writer method names to cover modules like
+    :mod:`msgpack` and :mod:`cbor2` with one reusable implementation.
+    """
+
+    def __init__(
+        self,
+        *,
+        reader_method_name: str,
+        writer_method_name: str,
+        loaded_result: object,
+        emitted_bytes: bytes,
+    ) -> None:
+        self.reader_method_name = reader_method_name
+        self.writer_method_name = writer_method_name
+        self.loaded_result = loaded_result
+        self.emitted_bytes = emitted_bytes
+        self.reader_payloads: list[bytes] = []
+        self.reader_kwargs: list[dict[str, object]] = []
+        self.writer_payloads: list[object] = []
+        self.writer_kwargs: list[dict[str, object]] = []
+
+    def _reader(
+        self,
+        payload: bytes,
+        **kwargs: object,
+    ) -> object:
+        self.reader_payloads.append(payload)
+        self.reader_kwargs.append(dict(kwargs))
+        return self.loaded_result
+
+    def _writer(
+        self,
+        payload: object,
+        **kwargs: object,
+    ) -> bytes:
+        self.writer_payloads.append(payload)
+        self.writer_kwargs.append(dict(kwargs))
+        return self.emitted_bytes
+
+    def __getattr__(
+        self,
+        name: str,
+    ) -> object:
+        if name == self.reader_method_name:
+            return self._reader
+        if name == self.writer_method_name:
+            return self._writer
+        raise AttributeError(name)
+
+
+class CoreDispatchFileStub:
+    """
+    Minimal stand-in for :class:`etlplus.file.core.File` in archive tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        path: Path,
+        fmt: FileFormat,
+    ) -> None:
+        self.path = Path(path)
+        self.fmt = fmt
+
+    def read(self) -> dict[str, str]:
+        """Return deterministic payload for archive-wrapper read tests."""
+        return {'fmt': self.fmt.value, 'name': self.path.name}
+
+    def write(
+        self,
+        data: object,
+    ) -> int:
+        """Persist deterministic content so wrapper tests can assert bytes."""
+        _ = data
+        self.path.write_text('payload', encoding='utf-8')
+        return 1
 
 
 class PandasModuleStub:
-    """
-    Minimal pandas-module stub with read and DataFrame factory helpers.
-
-    Parameters
-    ----------
-    frame : RecordsFrameStub
-        Frame object returned by read operations.
-    """
+    """Minimal pandas-module stub with reader and DataFrame helpers."""
 
     # pylint: disable=invalid-name
 
@@ -306,92 +1538,25 @@ class PandasModuleStub:
         *,
         engine: str | None = None,
     ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_excel``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-        engine : str | None, optional
-            Optional engine argument.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
+        """Simulate ``pandas.read_excel``."""
         if engine is None:
             return self._record_read(path)
         return self._record_read(path, engine=engine)
 
-    def read_parquet(
+    def _read_table(
         self,
         path: Path,
     ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_parquet``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
+        """Simulate table-like pandas readers returning record frames."""
         return self._record_read(path)
 
-    def read_feather(
-        self,
-        path: Path,
-    ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_feather``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
-        return self._record_read(path)
-
-    def read_orc(
-        self,
-        path: Path,
-    ) -> RecordsFrameStub:
-        """
-        Simulate ``pandas.read_orc``.
-
-        Parameters
-        ----------
-        path : Path
-            Input path.
-
-        Returns
-        -------
-        RecordsFrameStub
-            Simulated DataFrame result.
-        """
-        return self._record_read(path)
+    read_parquet = _read_table
+    read_feather = _read_table
+    read_orc = _read_table
 
 
 class RecordsFrameStub:
-    """
-    Minimal frame stub that mimics pandas record/table APIs.
-
-    Parameters
-    ----------
-    records : list[dict[str, object]]
-        In-memory records returned by :meth:`to_dict`.
-    """
+    """Minimal frame stub that mimics pandas record/table APIs."""
 
     # pylint: disable=unused-argument
 
@@ -410,19 +1575,7 @@ class RecordsFrameStub:
         *,
         orient: str,
     ) -> list[dict[str, object]]:  # noqa: ARG002
-        """
-        Return record payloads in ``records`` orientation.
-
-        Parameters
-        ----------
-        orient : str
-            Requested output orientation.
-
-        Returns
-        -------
-        list[dict[str, object]]
-            Record payloads.
-        """
+        """Return record payloads in ``records`` orientation."""
         return list(self._records)
 
     def to_excel(
@@ -432,36 +1585,18 @@ class RecordsFrameStub:
         index: bool,
         engine: str | None = None,
     ) -> None:
-        """
-        Record an Excel write call.
-
-        Parameters
-        ----------
-        path : Path
-            Target output path.
-        index : bool
-            Whether index persistence was requested.
-        engine : str | None, optional
-            Optional pandas engine argument.
-        """
-        call: dict[str, object] = {'path': path, 'index': index}
+        """Record an Excel write call."""
+        kwargs: dict[str, object] = {'index': index}
         if engine is not None:
-            call['engine'] = engine
-        self.to_excel_calls.append(call)
+            kwargs['engine'] = engine
+        self._append_write_call(self.to_excel_calls, path, **kwargs)
 
     def to_feather(
         self,
         path: Path,
     ) -> None:
-        """
-        Record a feather write call.
-
-        Parameters
-        ----------
-        path : Path
-            Target output path.
-        """
-        self.to_feather_calls.append({'path': path})
+        """Record a feather write call."""
+        self._append_write_call(self.to_feather_calls, path)
 
     def to_orc(
         self,
@@ -469,17 +1604,8 @@ class RecordsFrameStub:
         *,
         index: bool,
     ) -> None:
-        """
-        Record an ORC write call.
-
-        Parameters
-        ----------
-        path : Path
-            Target output path.
-        index : bool
-            Whether index persistence was requested.
-        """
-        self.to_orc_calls.append({'path': path, 'index': index})
+        """Record an ORC write call."""
+        self._append_write_call(self.to_orc_calls, path, index=index)
 
     def to_parquet(
         self,
@@ -487,17 +1613,17 @@ class RecordsFrameStub:
         *,
         index: bool,
     ) -> None:
-        """
-        Record a parquet write call.
+        """Record a parquet write call."""
+        self._append_write_call(self.to_parquet_calls, path, index=index)
 
-        Parameters
-        ----------
-        path : Path
-            Target output path.
-        index : bool
-            Whether index persistence was requested.
-        """
-        self.to_parquet_calls.append({'path': path, 'index': index})
+    @staticmethod
+    def _append_write_call(
+        calls: list[dict[str, object]],
+        path: Path,
+        **kwargs: object,
+    ) -> None:
+        """Append one writer-call record with path and keyword payload."""
+        calls.append({'path': path, **kwargs})
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -505,27 +1631,13 @@ class RecordsFrameStub:
 
 @pytest.fixture(name='make_import_error_reader')
 def make_import_error_reader_fixture() -> Callable[[str], object]:
-    """
-    Build module-like objects with one failing reader method.
-
-    Returns
-    -------
-    Callable[[str], object]
-        Factory that maps a method name to a failing module-like object.
-    """
+    """Return factory for module-like objects with failing reader methods."""
     return make_import_error_reader_module
 
 
 @pytest.fixture(name='make_import_error_writer')
 def make_import_error_writer_fixture() -> Callable[[], object]:
-    """
-    Build pandas-like module objects with failing write paths.
-
-    Returns
-    -------
-    Callable[[], object]
-        Factory returning a failing module-like object.
-    """
+    """Return factory for pandas-like objects with failing write paths."""
     return make_import_error_writer_module
 
 
@@ -534,14 +1646,7 @@ def make_pandas_stub_fixture() -> Callable[
     [RecordsFrameStub],
     PandasModuleStub,
 ]:
-    """
-    Build :class:`PandasModuleStub` instances for tests.
-
-    Returns
-    -------
-    Callable[[RecordsFrameStub], PandasModuleStub]
-        pandas module stub factory.
-    """
+    """Return factory for :class:`PandasModuleStub` test doubles."""
     return PandasModuleStub
 
 
@@ -550,26 +1655,13 @@ def make_records_frame_fixture() -> Callable[
     [list[dict[str, object]]],
     RecordsFrameStub,
 ]:
-    """
-    Build :class:`RecordsFrameStub` instances for tests.
-
-    Returns
-    -------
-    Callable[[list[dict[str, object]]], RecordsFrameStub]
-        Frame factory.
-    """
+    """Return factory for :class:`RecordsFrameStub` test doubles."""
     return RecordsFrameStub
 
 
 @pytest.fixture(name='optional_module_stub')
-def optional_module_stub_fixture() -> Generator[
-    Callable[[dict[str, object]], None]
-]:
-    """
-    Install stub modules into the optional import cache.
-
-    Clears the cache for deterministic tests, and restores it afterward.
-    """
+def optional_module_stub_fixture() -> Generator[OptionalModuleInstaller]:
+    """Install optional dependency stubs and restore import cache afterward."""
     cache = import_helpers._MODULE_CACHE  # pylint: disable=protected-access
     original = dict(cache)
     cache.clear()
