@@ -43,15 +43,9 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
-from tests.unit.file.conftest import ArchiveOptionHandlerProtocol
 from tests.unit.file.conftest import BaseOptionResolutionContract
-from tests.unit.file.conftest import DelimitedOptionHandlerProtocol
-from tests.unit.file.conftest import EncodingRootExtrasHandlerProtocol
 from tests.unit.file.conftest import HandlerMethodNamingContract
 from tests.unit.file.conftest import ScientificDatasetInheritanceContract
-from tests.unit.file.conftest import ScientificOptionHandlerProtocol
-from tests.unit.file.conftest import SheetOptionHandlerProtocol
-from tests.unit.file.conftest import TableOptionHandlerProtocol
 
 # SECTION: HELPERS ========================================================== #
 
@@ -493,27 +487,27 @@ class TestNamingConventions(HandlerMethodNamingContract):
 class TestOptionsContracts(BaseOptionResolutionContract):
     """Unit tests for base option data classes."""
 
-    def make_scientific_handler(self) -> ScientificOptionHandlerProtocol:
+    def make_scientific_handler(self) -> DtaFile:
         """Build a scientific handler for option contract checks."""
         return DtaFile()
 
-    def make_delimited_handler(self) -> DelimitedOptionHandlerProtocol:
+    def make_delimited_handler(self) -> _DelimitedStub:
         """Build a delimited handler for option contract checks."""
         return _DelimitedStub()
 
-    def make_read_only_handler(self) -> EncodingRootExtrasHandlerProtocol:
+    def make_read_only_handler(self) -> _ReadOnlyStub:
         """Build a read-only handler for option contract checks."""
         return _ReadOnlyStub()
 
-    def make_archive_handler(self) -> ArchiveOptionHandlerProtocol:
+    def make_archive_handler(self) -> _ArchiveStub:
         """Build an archive handler for option contract checks."""
         return _ArchiveStub()
 
-    def make_spreadsheet_handler(self) -> SheetOptionHandlerProtocol:
+    def make_spreadsheet_handler(self) -> _SpreadsheetStub:
         """Build a spreadsheet handler for option contract checks."""
         return _SpreadsheetStub()
 
-    def make_embedded_handler(self) -> TableOptionHandlerProtocol:
+    def make_embedded_handler(self) -> _EmbeddedDbStub:
         """Build an embedded-db handler for option contract checks."""
         return _EmbeddedDbStub()
 
