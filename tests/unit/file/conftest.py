@@ -361,9 +361,9 @@ def make_import_error_reader_module(
     class _FailModule:
         """Module stub exposing one reader that always raises ImportError."""
 
-        def __getattribute__(self, name: str) -> Any:
+        def __getattr__(self, name: str) -> object:
             if name != method_name:
-                return super().__getattribute__(name)
+                raise AttributeError(name)
 
             def _fail_reader(
                 *args: object,
@@ -442,28 +442,23 @@ def make_payload(
     JSONData
         Constructed payload.
     """
-    payload = kwargs.get('payload')
-    if payload is not None:
+    if (payload := kwargs.get('payload')) is not None:
         return cast(JSONData, payload)
 
-    if kind == 'dict':
-        key = cast(str, kwargs.get('key', 'id'))
-        value = kwargs.get('value', 1)
-        return cast(JSONData, {key: value})
-
-    if kind == 'list':
-        records = kwargs.get('records')
-        if records is not None:
-            return cast(JSONData, records)
-        record = kwargs.get('record')
-        if record is not None:
-            return cast(JSONData, [record])
-        return cast(JSONData, [make_payload('dict')])
-
-    result = kwargs.get('result')
-    if result is not None:
-        return cast(JSONData, result)
-    return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
+    match kind:
+        case 'dict':
+            key = cast(str, kwargs.get('key', 'id'))
+            return cast(JSONData, {key: kwargs.get('value', 1)})
+        case 'list':
+            if (records := kwargs.get('records')) is not None:
+                return cast(JSONData, records)
+            if (record := kwargs.get('record')) is not None:
+                return cast(JSONData, [record])
+            return cast(JSONData, [make_payload('dict')])
+        case _:
+            if (result := kwargs.get('result')) is not None:
+                return cast(JSONData, result)
+            return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
 
 
 def normalize_numeric_records(
@@ -482,18 +477,19 @@ def normalize_numeric_records(
     JSONData
         Normalized record payloads.
     """
-    if isinstance(records, list):
-        normalized: list[JSONDict] = []
-        for row in records:
-            if not isinstance(row, dict):
-                normalized.append(row)
-                continue
-            cleaned: JSONDict = {}
-            for key, value in row.items():
-                cleaned[key] = _coerce_numeric_value(value)
-            normalized.append(cleaned)
-        return normalized
-    return records
+    if not isinstance(records, list):
+        return records
+    return [
+        (
+            {
+                key: _coerce_numeric_value(value)
+                for key, value in row.items()
+            }
+            if isinstance(row, dict)
+            else row
+        )
+        for row in records
+    ]
 
 
 def normalize_xml_payload(payload: JSONData) -> JSONData:
@@ -1501,7 +1497,6 @@ class BinaryCodecModuleContract(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     dependency_name: str
     reader_method_name: str
     writer_method_name: str
@@ -1588,7 +1583,6 @@ class BinaryDependencyModuleContract(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     dependency_name: str
     expected_read_result: JSONData
     write_payload: JSONData
@@ -1659,7 +1653,6 @@ class BinaryKeyedPayloadModuleContract(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     payload_key: str
     sample_payload_value: str
     expected_bytes: bytes
@@ -1724,7 +1717,6 @@ class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
     # pylint: disable=unused-argument
 
     module: ModuleType
-    format_name: str
     multi_table_error_pattern: str
 
     def build_empty_database_path(
@@ -1947,7 +1939,6 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
     """
 
     module: ModuleType
-    format_name: str
     read_method_name: str
     write_calls_attr: str
     write_uses_index: bool = False
@@ -2060,7 +2051,6 @@ class PyarrowMissingDependencyMixin(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     missing_dependency_pattern: str = 'missing pyarrow'
 
     @pytest.mark.parametrize('operation', ['read', 'write'])
@@ -2095,7 +2085,6 @@ class PyarrowGateOnlyModuleContract(PyarrowMissingDependencyMixin):
     """
 
     module: ModuleType
-    format_name: str
     missing_dependency_pattern: str = 'missing pyarrow'
 
     def test_write_returns_zero_for_empty_payload(
@@ -2135,7 +2124,6 @@ class RDataModuleContract(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     writer_missing_pattern: str
     write_payload: JSONData = make_payload('list')
 
@@ -2739,7 +2727,6 @@ class StubModuleContract(PathMixin):
 
     module: ModuleType
     handler_cls: type[StubFileHandlerABC]
-    format_name: str
 
     def test_handler_inherits_stub_abc(self) -> None:
         """Test handler metadata and inheritance contract."""
@@ -2791,7 +2778,6 @@ class XmlModuleContract(PathMixin):
     """
 
     module: ModuleType
-    format_name: str
     root_tag: str = 'root'
 
     def test_write_uses_root_tag_and_read_round_trip(
