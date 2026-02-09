@@ -13,57 +13,42 @@ from typing import cast
 import pytest
 
 from etlplus.file import properties as mod
+from tests.unit.file.conftest import SemiStructuredReadModuleContract
+from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestPropertiesRead:
-    """Unit tests for :func:`etlplus.file.properties.read`."""
+class TestProperties(
+    SemiStructuredReadModuleContract,
+    SemiStructuredWriteDictModuleContract,
+):
+    """Unit tests for :mod:`etlplus.file.properties`."""
 
-    def test_read_parses_keys_and_ignores_comments(
+    module = mod
+    format_name = 'properties'
+    sample_read_text = (
+        '# comment\n'
+        '! another comment\n'
+        'host=localhost\n'
+        'port: 5432\n'
+        'flag\n'
+        '=ignored\n'
+        ' spaced = value \n'
+    )
+    expected_read_payload = {
+        'host': 'localhost',
+        'port': '5432',
+        'flag': '',
+        'spaced': 'value',
+    }
+    dict_payload = {'b': 2, 'a': 1}
+
+    def assert_write_contract_result(
         self,
-        tmp_path: Path,
+        path: Path,
     ) -> None:
-        """
-        Test that :func:`read` correctly parses key-value pairs and ignores
-        comments.
-        """
-        path = tmp_path / 'config.properties'
-        path.write_text(
-            '# comment\n'
-            '! another comment\n'
-            'host=localhost\n'
-            'port: 5432\n'
-            'flag\n'
-            '=ignored\n'
-            ' spaced = value \n',
-            encoding='utf-8',
-        )
-
-        result = mod.read(path)
-
-        assert result == {
-            'host': 'localhost',
-            'port': '5432',
-            'flag': '',
-            'spaced': 'value',
-        }
-
-
-class TestPropertiesWrite:
-    """Unit tests for :func:`etlplus.file.properties.write`."""
-
-    def test_write_sorts_keys(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :func:`write` sorts keys alphabetically in output."""
-        path = tmp_path / 'config.properties'
-        payload = {'b': 2, 'a': 1}
-
-        written = mod.write(path, payload)
-
-        assert written == 1
+        """Assert PROPERTIES writes sorted keys in output."""
         assert path.read_text(encoding='utf-8') == 'a=1\nb=2\n'
 
     def test_write_rejects_non_dict(

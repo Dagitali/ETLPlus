@@ -6,12 +6,13 @@ Unit tests for :mod:`etlplus.file.sas7bdat`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from etlplus.file import sas7bdat as mod
-from etlplus.file.base import ReadOptions
+from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -62,16 +63,24 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestSas7bdatDatasetKeys:
-    """Unit tests for SAS7BDAT dataset-key validation behavior."""
+class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
+    """Read-only scientific contract tests for :mod:`etlplus.file.sas7bdat`."""
 
-    def test_read_dataset_rejects_unknown_dataset_before_dependencies(
+    # pylint: disable=unused-variable
+
+    module = mod
+    handler_cls = mod.Sas7bdatFile
+    format_name = 'sas7bdat'
+    unknown_dataset_error_pattern = 'supports only dataset key'
+
+    def prepare_unknown_dataset_env(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """Test unknown dataset being rejected before optional imports."""
-        handler = mod.Sas7bdatFile()
+        """Ensure dataset-key validation occurs before optional imports."""
+        _ = tmp_path
         monkeypatch.setattr(
             mod,
             'get_dependency',
@@ -82,36 +91,6 @@ class TestSas7bdatDatasetKeys:
             'get_pandas',
             lambda *_: (_ for _ in ()).throw(AssertionError),
         )
-
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.read_dataset(
-                tmp_path / 'data.sas7bdat',
-                dataset='unknown',
-            )
-
-    def test_read_rejects_unknown_dataset_from_options(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test unknown dataset being rejected when routed via read options."""
-        handler = mod.Sas7bdatFile()
-        monkeypatch.setattr(
-            mod,
-            'get_dependency',
-            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
-        )
-        monkeypatch.setattr(
-            mod,
-            'get_pandas',
-            lambda *_: (_ for _ in ()).throw(AssertionError),
-        )
-
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.read(
-                tmp_path / 'data.sas7bdat',
-                options=ReadOptions(dataset='unknown'),
-            )
 
 
 class TestSas7bdatRead:
@@ -153,15 +132,3 @@ class TestSas7bdatRead:
             {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
             {'path': tmp_path / 'data.sas7bdat', 'format': None},
         ]
-
-
-class TestSas7bdatWrite:
-    """Unit tests for :func:`etlplus.file.sas7bdat.write`."""
-
-    def test_write_not_supported(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that write raises read-only RuntimeError."""
-        with pytest.raises(RuntimeError, match='read-only'):
-            mod.write(tmp_path / 'data.sas7bdat', [{'id': 1}])

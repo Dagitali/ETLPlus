@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import bson as mod
+from tests.unit.file.conftest import BinaryDependencyModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -138,26 +139,41 @@ class TestBsonHelpers:
             mod._encode_doc(object(), {'id': 1})
 
 
-class TestBsonRead:
-    """Unit tests for :func:`etlplus.file.bson.read`."""
+class TestBsonIo(BinaryDependencyModuleContract):
+    """Unit tests for BSON module-level read/write dispatch."""
 
-    def test_read_uses_bson_module(
+    module = mod
+    format_name = 'bson'
+    dependency_name = 'bson'
+    expected_read_result = [{'decoded': True}]
+    write_payload = [{'id': 1}, {'id': 2}]
+    expected_written_count = 2
+
+    def make_dependency_stub(self) -> _BsonModuleStub:
+        """Build a bson dependency stub exposing module-level helpers."""
+        return _BsonModuleStub()
+
+    def assert_dependency_after_read(
         self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        dependency_stub: object,
+        path: Path,
     ) -> None:
-        """
-        Test that :func:`read` uses the :mod:`bson` module to read records.
-        """
-        stub = _BsonModuleStub()
-        optional_module_stub({'bson': stub})
-        path = tmp_path / 'data.bson'
-        path.write_bytes(b'payload')
-
-        result = mod.read(path)
-
-        assert result == [{'decoded': True}]
+        """Assert bson module-level read behavior."""
+        stub = dependency_stub
+        assert isinstance(stub, _BsonModuleStub)
         assert stub.decoded == [b'payload']
+        assert path.exists()
+
+    def assert_dependency_after_write(
+        self,
+        dependency_stub: object,
+        path: Path,
+    ) -> None:
+        """Assert bson module-level write behavior."""
+        stub = dependency_stub
+        assert isinstance(stub, _BsonModuleStub)
+        assert stub.encoded == self.write_payload
+        assert path.read_bytes() == b'docdoc'
 
     def test_read_uses_bson_class(
         self,
@@ -177,29 +193,6 @@ class TestBsonRead:
         assert result == [{'decoded': True}]
         assert stub.BSON.decoded == [b'payload']
 
-
-class TestBsonWrite:
-    """Unit tests for :func:`etlplus.file.bson.write`."""
-
-    def test_write_uses_bson_module(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """
-        Test that :func:`write` uses the :mod:`bson` module to write records.
-        """
-        stub = _BsonModuleStub()
-        optional_module_stub({'bson': stub})
-        path = tmp_path / 'data.bson'
-        payload = [{'id': 1}, {'id': 2}]
-
-        written = mod.write(path, payload)
-
-        assert written == 2
-        assert stub.encoded == payload
-        assert path.read_bytes() == b'docdoc'
-
     def test_write_uses_bson_class(
         self,
         tmp_path: Path,
@@ -211,10 +204,9 @@ class TestBsonWrite:
         stub = _BsonModuleWithClass()
         optional_module_stub({'bson': stub})
         path = tmp_path / 'data.bson'
-        payload = [{'id': 1}, {'id': 2}]
 
-        written = mod.write(path, payload)
+        written = mod.write(path, self.write_payload)
 
         assert written == 2
-        assert stub.BSON.encoded == payload
+        assert stub.BSON.encoded == self.write_payload
         assert path.read_bytes() == b'docdoc'

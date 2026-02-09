@@ -6,9 +6,11 @@ Unit tests for :mod:`etlplus.file.base`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -49,6 +51,40 @@ from etlplus.types import JSONList
 # SECTION: HELPERS ========================================================== #
 
 
+_NO_DEFAULT: object = object()
+
+
+def _assert_single_dataset_rejects_non_default_key(
+    handler: SingleDatasetScientificFileHandlerABC,
+    *,
+    suffix: str,
+) -> None:
+    """Assert single-dataset scientific handlers reject non-default keys."""
+    bad_dataset = 'not_default_dataset'
+    path = Path(f'ignored.{suffix}')
+    for operation in ('read', 'write'):
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            if operation == 'read':
+                handler.read_dataset(path, dataset=bad_dataset)
+            else:
+                handler.write_dataset(path, [], dataset=bad_dataset)
+
+
+_NAMING_METHOD_CASES: list[tuple[str, str, str]] = [
+    ('delimited_handlers', 'read_rows', 'write_rows'),
+    ('spreadsheet_handlers', 'read_sheet', 'write_sheet'),
+    ('embedded_db_handlers', 'read_table', 'write_table'),
+    ('scientific_handlers', 'read_dataset', 'write_dataset'),
+]
+
+_SINGLE_DATASET_SUFFIX_BY_FORMAT: dict[FileFormat, str] = {
+    FileFormat.DTA: 'dta',
+    FileFormat.NC: 'nc',
+    FileFormat.SAV: 'sav',
+    FileFormat.XPT: 'xpt',
+}
+
+
 class _ArchiveStub(ArchiveWrapperFileHandlerABC):
     """Concrete archive handler used for option helper tests."""
 
@@ -63,6 +99,16 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         _ = path
         return {'inner_name': self.inner_name_from_read_options(options)}
 
+    def read_inner_bytes(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> bytes:
+        _ = path
+        _ = options
+        return b''
+
     def write(
         self,
         path: Path,
@@ -74,16 +120,6 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         _ = data
         _ = self.inner_name_from_write_options(options)
         return 1
-
-    def read_inner_bytes(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> bytes:
-        _ = path
-        _ = options
-        return b''
 
     def write_inner_bytes(
         self,
@@ -148,27 +184,6 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
 
     format = FileFormat.SQLITE
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'table': self.table_from_read_options(options)}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.table_from_write_options(options)
-        return 1
-
     def connect(
         self,
         path: Path,
@@ -183,6 +198,15 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
         _ = connection
         return ['data']
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        return [{'table': self.table_from_read_options(options)}]
+
     def read_table(
         self,
         connection: Any,
@@ -191,6 +215,18 @@ class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
         _ = connection
         _ = table
         return []
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = self.table_from_write_options(options)
+        return 1
 
     def write_table(
         self,
@@ -261,6 +297,17 @@ class _SpreadsheetStub(SpreadsheetFileHandlerABC):
         _ = path
         return [{'sheet': self.sheet_from_read_options(options)}]
 
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        _ = path
+        _ = options
+        return [{'sheet': sheet}]
+
     def write(
         self,
         path: Path,
@@ -272,17 +319,6 @@ class _SpreadsheetStub(SpreadsheetFileHandlerABC):
         _ = data
         _ = self.sheet_from_write_options(options)
         return 1
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
 
     def write_sheet(
         self,
@@ -311,16 +347,6 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
     ) -> JSONData:
         return self.read_rows(path, options=options)
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
-
     def read_rows(
         self,
         path: Path,
@@ -330,6 +356,16 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
         _ = path
         _ = options
         return [{'text': 'ok'}]
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        rows: JSONList = data if isinstance(data, list) else [data]
+        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,
@@ -457,252 +493,208 @@ class TestBaseAbcContracts:
 class TestNamingConventions:
     """Unit tests for category-level internal naming conventions."""
 
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            CsvFile,
-            DatFile,
-            PsvFile,
-            TabFile,
-            TsvFile,
-            TxtFile,
-            FwfFile,
-        ],
-    )
-    def test_delimited_text_handlers_expose_row_methods(
-        self,
-        handler_cls: type[FileHandlerABC],
-    ) -> None:
-        """Test delimited/text handlers exposing read_rows/write_rows."""
-        assert callable(getattr(handler_cls, 'read', None))
-        assert callable(getattr(handler_cls, 'write', None))
-        assert callable(getattr(handler_cls, 'read_rows', None))
-        assert callable(getattr(handler_cls, 'write_rows', None))
+    delimited_handlers = [
+        CsvFile,
+        DatFile,
+        PsvFile,
+        TabFile,
+        TsvFile,
+        TxtFile,
+        FwfFile,
+    ]
+    spreadsheet_handlers = [
+        XlsFile,
+        XlsxFile,
+        XlsmFile,
+        OdsFile,
+    ]
+    embedded_db_handlers = [SqliteFile]
+    scientific_handlers = [
+        DtaFile,
+        NcFile,
+        RdaFile,
+        RdsFile,
+        SavFile,
+        XptFile,
+    ]
 
     @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            XlsFile,
-            XlsxFile,
-            XlsmFile,
-            OdsFile,
-        ],
+        ('handlers_attr', 'read_method', 'write_method'),
+        _NAMING_METHOD_CASES,
+        ids=['delimited', 'spreadsheet', 'embedded_db', 'scientific'],
     )
-    def test_spreadsheet_handlers_expose_sheet_methods(
+    def test_handlers_expose_category_methods(
         self,
-        handler_cls: type[FileHandlerABC],
+        handlers_attr: str,
+        read_method: str,
+        write_method: str,
     ) -> None:
-        """Test spreadsheet handlers exposing read_sheet/write_sheet."""
-        assert callable(getattr(handler_cls, 'read', None))
-        assert callable(getattr(handler_cls, 'write', None))
-        assert callable(getattr(handler_cls, 'read_sheet', None))
-        assert callable(getattr(handler_cls, 'write_sheet', None))
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            SqliteFile,
-        ],
-    )
-    def test_embedded_db_handlers_expose_table_methods(
-        self,
-        handler_cls: type[FileHandlerABC],
-    ) -> None:
-        """Test embedded database handlers exposing read_table/write_table."""
-        assert callable(getattr(handler_cls, 'read', None))
-        assert callable(getattr(handler_cls, 'write', None))
-        assert callable(getattr(handler_cls, 'read_table', None))
-        assert callable(getattr(handler_cls, 'write_table', None))
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            DtaFile,
-            NcFile,
-            RdaFile,
-            RdsFile,
-            SavFile,
-            XptFile,
-        ],
-    )
-    def test_scientific_handlers_expose_dataset_methods(
-        self,
-        handler_cls: type[FileHandlerABC],
-    ) -> None:
-        """Test scientific handlers exposing read_dataset/write_dataset."""
-        assert callable(getattr(handler_cls, 'read', None))
-        assert callable(getattr(handler_cls, 'write', None))
-        assert callable(getattr(handler_cls, 'read_dataset', None))
-        assert callable(getattr(handler_cls, 'write_dataset', None))
+        """Test handlers exposing category-level read/write methods."""
+        handlers = cast(
+            list[type[FileHandlerABC]],
+            getattr(self, handlers_attr),
+        )
+        for handler_cls in handlers:
+            assert callable(getattr(handler_cls, 'read', None))
+            assert callable(getattr(handler_cls, 'write', None))
+            assert callable(getattr(handler_cls, read_method, None))
+            assert callable(getattr(handler_cls, write_method, None))
 
 
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
+    @staticmethod
+    def _make_handler(handler_kind: str) -> object:
+        """Build handler stubs used by option-helper contract tests."""
+        match handler_kind:
+            case 'delimited':
+                return _DelimitedStub()
+            case 'read_only':
+                return _ReadOnlyStub()
+            case 'archive':
+                return _ArchiveStub()
+            case 'spreadsheet':
+                return _SpreadsheetStub()
+            case 'embedded':
+                return _EmbeddedDbStub()
+            case _:
+                raise ValueError(f'Unknown handler kind: {handler_kind}')
+
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
-        """
-        Test scientific dataset helpers using explicit then default dataset.
-        """
+        """Test scientific dataset helpers using explicit then default data."""
         handler = DtaFile()
-
-        assert handler.dataset_from_read_options(None) is None
-        assert handler.dataset_from_write_options(None) is None
-        assert (
-            handler.dataset_from_read_options(
+        cases = (
+            (
+                handler.dataset_from_read_options,
+                handler.resolve_read_dataset,
                 ReadOptions(dataset='features'),
-            )
-            == 'features'
-        )
-        assert (
-            handler.dataset_from_write_options(
+            ),
+            (
+                handler.dataset_from_write_options,
+                handler.resolve_write_dataset,
                 WriteOptions(dataset='labels'),
-            )
-            == 'labels'
+            ),
         )
+        for from_options, resolve, options in cases:
+            expected = cast(str, options.dataset)
+            from_options_method = cast(Callable[..., object], from_options)
+            resolve_method = cast(Callable[..., object], resolve)
+            assert from_options_method(None) is None
+            assert from_options_method(options) == expected
+            assert resolve_method(None, options=options) == expected
+            assert resolve_method('explicit', options=options) == 'explicit'
+            assert resolve_method(None, default='fallback') == 'fallback'
 
-        assert (
-            handler.resolve_read_dataset(
-                None,
-                options=ReadOptions(dataset='features'),
-            )
-            == 'features'
-        )
-        assert (
-            handler.resolve_write_dataset(
-                None,
-                options=WriteOptions(dataset='labels'),
-            )
-            == 'labels'
-        )
-        assert (
-            handler.resolve_read_dataset(
-                'explicit',
-                options=ReadOptions(dataset='ignored'),
-            )
-            == 'explicit'
-        )
-        assert (
-            handler.resolve_write_dataset(
-                'explicit',
-                options=WriteOptions(dataset='ignored'),
-            )
-            == 'explicit'
-        )
-        assert (
-            handler.resolve_read_dataset(None, default='fallback')
-            == 'fallback'
-        )
-        assert (
-            handler.resolve_write_dataset(None, default='fallback')
-            == 'fallback'
-        )
-
-    def test_delimiter_option_helpers_use_override_then_default(self) -> None:
-        """
-        Test delimited helpers using explicit then default delimiter.
-        """
-        handler = _DelimitedStub()
-
-        assert handler.delimiter_from_read_options(None) == ','
-        assert handler.delimiter_from_write_options(None) == ','
-        assert (
-            handler.delimiter_from_read_options(
+    @pytest.mark.parametrize(
+        (
+            'handler_kind',
+            'read_method_name',
+            'write_method_name',
+            'read_options',
+            'write_options',
+            'baseline',
+            'read_expected',
+            'write_expected',
+            'read_default',
+            'write_default',
+        ),
+        [
+            (
+                'delimited',
+                'delimiter_from_read_options',
+                'delimiter_from_write_options',
                 ReadOptions(extras={'delimiter': '|'}),
-            )
-            == '|'
-        )
-        assert (
-            handler.delimiter_from_write_options(
                 WriteOptions(extras={'delimiter': '\t'}),
-            )
-            == '\t'
-        )
-        assert (
-            handler.delimiter_from_read_options(None, default=';')
-            == ';'
-        )
-        assert (
-            handler.delimiter_from_write_options(None, default=':')
-            == ':'
-        )
-
-    def test_encoding_option_helpers_use_override_then_default(self) -> None:
-        """Test encoding helpers using explicit values then defaults."""
-        handler = _ReadOnlyStub()
-
-        assert handler.encoding_from_read_options(None) == 'utf-8'
-        assert (
-            handler.encoding_from_read_options(
+                ',',
+                '|',
+                '\t',
+                ';',
+                ':',
+            ),
+            (
+                'read_only',
+                'encoding_from_read_options',
+                'encoding_from_write_options',
                 ReadOptions(encoding='latin-1'),
-            )
-            == 'latin-1'
-        )
-        assert (
-            handler.encoding_from_read_options(
-                None,
-                default='utf-16',
-            )
-            == 'utf-16'
-        )
-
-        assert handler.encoding_from_write_options(None) == 'utf-8'
-        assert (
-            handler.encoding_from_write_options(
                 WriteOptions(encoding='utf-16'),
-            )
-            == 'utf-16'
-        )
-        assert (
-            handler.encoding_from_write_options(
-                None,
-                default='ascii',
-            )
-            == 'ascii'
-        )
-
-    def test_extra_option_helpers_use_override_then_default(self) -> None:
-        """Test extras helpers using explicit values then defaults."""
-        handler = _ReadOnlyStub()
-
-        assert handler.read_extra_option(None, 'foo') is None
-        assert handler.write_extra_option(None, 'foo') is None
-        assert handler.read_extra_option(None, 'foo', default='x') == 'x'
-        assert handler.write_extra_option(None, 'foo', default='y') == 'y'
-        assert (
-            handler.read_extra_option(
-                ReadOptions(extras={'foo': 1}),
-                'foo',
-            )
-            == 1
-        )
-        assert (
-            handler.write_extra_option(
-                WriteOptions(extras={'foo': 2}),
-                'foo',
-            )
-            == 2
-        )
-
-    def test_inner_name_option_helpers_use_override_then_default(self) -> None:
-        """
-        Test archive option helpers using explicit then default inner name.
-        """
-        handler = _ArchiveStub()
-
-        assert handler.inner_name_from_read_options(None) is None
-        assert handler.inner_name_from_write_options(None) is None
-        assert (
-            handler.inner_name_from_read_options(
+                'utf-8',
+                'latin-1',
+                'utf-16',
+                'utf-16',
+                'ascii',
+            ),
+            (
+                'archive',
+                'inner_name_from_read_options',
+                'inner_name_from_write_options',
                 ReadOptions(inner_name='data.json'),
-            )
-            == 'data.json'
-        )
-        assert (
-            handler.inner_name_from_write_options(
                 WriteOptions(inner_name='payload.csv'),
-            )
-            == 'payload.csv'
+                None,
+                'data.json',
+                'payload.csv',
+                _NO_DEFAULT,
+                _NO_DEFAULT,
+            ),
+            (
+                'spreadsheet',
+                'sheet_from_read_options',
+                'sheet_from_write_options',
+                ReadOptions(sheet='Sheet2'),
+                WriteOptions(sheet=3),
+                0,
+                'Sheet2',
+                3,
+                'fallback_sheet',
+                99,
+            ),
+            (
+                'embedded',
+                'table_from_read_options',
+                'table_from_write_options',
+                ReadOptions(table='events'),
+                WriteOptions(table='staging'),
+                None,
+                'events',
+                'staging',
+                'fallback_table',
+                'fallback_table',
+            ),
+        ],
+        ids=['delimiter', 'encoding', 'inner_name', 'sheet', 'table'],
+    )
+    def test_option_helper_pairs_use_override_then_default(
+        self,
+        handler_kind: str,
+        read_method_name: str,
+        write_method_name: str,
+        read_options: ReadOptions,
+        write_options: WriteOptions,
+        baseline: object,
+        read_expected: object,
+        write_expected: object,
+        read_default: object,
+        write_default: object,
+    ) -> None:
+        """Test paired read/write option helpers with override/default."""
+        handler = self._make_handler(handler_kind)
+        read_call = cast(
+            Callable[..., object],
+            getattr(handler, read_method_name),
         )
+        write_call = cast(
+            Callable[..., object],
+            getattr(handler, write_method_name),
+        )
+
+        assert read_call(None) == baseline
+        assert write_call(None) == baseline
+        assert read_call(read_options) == read_expected
+        assert write_call(write_options) == write_expected
+        if read_default is not _NO_DEFAULT:
+            assert read_call(None, default=read_default) == read_default
+        if write_default is not _NO_DEFAULT:
+            assert write_call(None, default=write_default) == write_default
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """Test each ReadOptions instance getting its own extras dict."""
@@ -716,62 +708,14 @@ class TestOptionsContracts:
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
         """Test root-tag helper using explicit values then defaults."""
         handler = _ReadOnlyStub()
-
         assert handler.root_tag_from_write_options(None) == 'root'
         assert (
-            handler.root_tag_from_write_options(
-                WriteOptions(root_tag='items'),
-            )
+            handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
             == 'items'
         )
         assert (
-            handler.root_tag_from_write_options(
-                None,
-                default='dataset',
-            )
+            handler.root_tag_from_write_options(None, default='dataset')
             == 'dataset'
-        )
-
-    def test_sheet_option_helpers_use_override_then_default(self) -> None:
-        """
-        Test spreadsheet option helpers using explicit then default sheet.
-        """
-        handler = _SpreadsheetStub()
-
-        assert handler.sheet_from_read_options(None) == 0
-        assert handler.sheet_from_write_options(None) == 0
-        assert (
-            handler.sheet_from_read_options(
-                ReadOptions(sheet='Sheet2'),
-            )
-            == 'Sheet2'
-        )
-        assert (
-            handler.sheet_from_write_options(
-                WriteOptions(sheet=3),
-            )
-            == 3
-        )
-
-    def test_table_option_helpers_use_override_then_default(self) -> None:
-        """
-        Test embedded-db option helpers using explicit then default table.
-        """
-        handler = _EmbeddedDbStub()
-
-        assert handler.table_from_read_options(None) is None
-        assert handler.table_from_write_options(None) is None
-        assert (
-            handler.table_from_read_options(
-                ReadOptions(table='events'),
-            )
-            == 'events'
-        )
-        assert (
-            handler.table_from_write_options(
-                WriteOptions(table='staging'),
-            )
-            == 'staging'
         )
 
     def test_write_options_are_frozen(self) -> None:
@@ -785,58 +729,51 @@ class TestOptionsContracts:
 class TestScientificDatasetContracts:
     """Unit tests for scientific dataset handler contracts."""
 
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            DtaFile,
-            NcFile,
-            RdaFile,
-            RdsFile,
-            SavFile,
-            XptFile,
-        ],
-    )
-    def test_handlers_use_scientific_dataset_abc(
-        self,
-        handler_cls: type[FileHandlerABC],
-    ) -> None:
-        """Test key scientific handlers inheriting ScientificDataset ABC."""
-        assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
-        assert handler_cls.dataset_key == 'data'
+    scientific_handlers = [
+        DtaFile,
+        NcFile,
+        RdaFile,
+        RdsFile,
+        SavFile,
+        XptFile,
+    ]
+    single_dataset_handlers = [
+        DtaFile,
+        NcFile,
+        SavFile,
+        XptFile,
+    ]
 
-    @pytest.mark.parametrize(
-        ('handler', 'path'),
-        [
-            (DtaFile(), Path('ignored.dta')),
-            (NcFile(), Path('ignored.nc')),
-            (SavFile(), Path('ignored.sav')),
-            (XptFile(), Path('ignored.xpt')),
-        ],
-    )
-    def test_single_dataset_handlers_reject_unknown_dataset_key(
-        self,
-        handler: ScientificDatasetFileHandlerABC,
-        path: Path,
-    ) -> None:
-        """Test single-dataset scientific handlers rejecting unknown keys."""
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.read_dataset(path, dataset='unknown')
+    def test_handlers_use_scientific_dataset_abc(self) -> None:
+        """Test scientific handlers inheriting ScientificDataset ABC."""
+        for handler_cls in self.scientific_handlers:
+            assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+            assert handler_cls.dataset_key == 'data'
 
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(path, [], dataset='unknown')
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            DtaFile,
-            NcFile,
-            SavFile,
-            XptFile,
-        ],
-    )
     def test_single_dataset_handlers_use_single_dataset_scientific_abc(
         self,
-        handler_cls: type[FileHandlerABC],
     ) -> None:
-        """Test single-dataset scientific handlers using subtype contract."""
-        assert issubclass(handler_cls, SingleDatasetScientificFileHandlerABC)
+        """Test single-dataset handlers inheriting the subtype ABC."""
+        for handler_cls in self.single_dataset_handlers:
+            assert issubclass(
+                handler_cls,
+                SingleDatasetScientificFileHandlerABC,
+            )
+
+    def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
+        """Test single-dataset scientific handlers rejecting unknown keys."""
+        for handler_cls in self.single_dataset_handlers:
+            concrete_cls = cast(type[Any], handler_cls)
+            handler = cast(
+                SingleDatasetScientificFileHandlerABC,
+                concrete_cls(),
+            )
+            file_format = cast(FileFormat, handler_cls.format)
+            suffix = _SINGLE_DATASET_SUFFIX_BY_FORMAT.get(
+                file_format,
+                file_format.value,
+            )
+            _assert_single_dataset_rejects_non_default_key(
+                handler,
+                suffix=suffix,
+            )

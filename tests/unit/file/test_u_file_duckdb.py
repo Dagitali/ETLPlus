@@ -9,9 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-import pytest
-
 from etlplus.file import duckdb as mod
+from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -90,8 +89,32 @@ class _DuckdbStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestDuckdbRead:
-    """Unit tests for :func:`etlplus.file.duckdb.read`."""
+class TestDuckdb(EmbeddedDatabaseModuleContract):
+    """Unit tests for :mod:`etlplus.file.duckdb`."""
+
+    module = mod
+    format_name = 'duckdb'
+    multi_table_error_pattern = 'Multiple tables found in DuckDB'
+
+    def build_empty_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Build a DuckDB fixture with no tables."""
+        conn = _Connection()
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        return tmp_path / 'data.duckdb'
+
+    def build_multi_table_database_path(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Build a DuckDB fixture with multiple tables."""
+        conn = _Connection(tables=['a', 'b'])
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        return tmp_path / 'data.duckdb'
 
     def test_read_uses_description_columns(
         self,
@@ -110,34 +133,6 @@ class TestDuckdbRead:
 
         assert result == [{'id': 1, 'name': 'Ada'}]
 
-    def test_read_returns_empty_when_no_tables(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """
-        Test that :func:`read` returns an empty list when no tables are found.
-        """
-        conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
-
-        assert mod.read(tmp_path / 'data.duckdb') == []
-
-    def test_read_raises_on_multiple_tables(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that :func:`read` raises when multiple tables are found."""
-        conn = _Connection(tables=['a', 'b'])
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
-
-        with pytest.raises(
-            ValueError,
-            match='Multiple tables found in DuckDB',
-        ):
-            mod.read(tmp_path / 'data.duckdb')
-
     def test_read_falls_back_to_pragma_columns(
         self,
         tmp_path: Path,
@@ -155,16 +150,6 @@ class TestDuckdbRead:
         result = mod.read(tmp_path / 'data.duckdb')
 
         assert result == [{'id': 1, 'name': 'Ada'}]
-
-
-class TestDuckdbWrite:
-    """Unit tests for :func:`etlplus.file.duckdb.write`."""
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        assert mod.write(tmp_path / 'data.duckdb', []) == 0
 
     def test_write_inserts_records(
         self,

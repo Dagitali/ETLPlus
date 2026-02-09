@@ -12,12 +12,32 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import json as mod
+from tests.unit.file.conftest import SemiStructuredReadModuleContract
+from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestJsonRead:
-    """Unit tests for :func:`etlplus.file.json.read`."""
+class TestJson(
+    SemiStructuredReadModuleContract,
+    SemiStructuredWriteDictModuleContract,
+):
+    """Unit tests for :mod:`etlplus.file.json`."""
+
+    module = mod
+    format_name = 'json'
+    sample_read_text = json.dumps({'id': 1})
+    expected_read_payload = {'id': 1}
+    dict_payload = {'id': 1}
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Test writing a dict payload including trailing newline."""
+        content = path.read_text(encoding='utf-8')
+        assert content.endswith('\n')
+        assert json.loads(content) == self.dict_payload
 
     def test_read_list_of_records(
         self,
@@ -46,17 +66,6 @@ class TestJsonRead:
         with pytest.raises(TypeError, match='JSON array must contain'):
             mod.read(path)
 
-    def test_read_accepts_dict_root(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :func:`read` accepts a JSON object as root."""
-        path = tmp_path / 'data.json'
-        payload = {'id': 1}
-        path.write_text(json.dumps(payload), encoding='utf-8')
-
-        assert mod.read(path) == payload
-
     def test_read_rejects_scalar_root(
         self,
         tmp_path: Path,
@@ -67,10 +76,6 @@ class TestJsonRead:
 
         with pytest.raises(TypeError, match='JSON root must be'):
             mod.read(path)
-
-
-class TestJsonWrite:
-    """Unit tests for :func:`etlplus.file.json.write`."""
 
     def test_write_adds_newline_and_counts_records(
         self,
@@ -87,20 +92,3 @@ class TestJsonWrite:
         assert written == 2
         content = path.read_text(encoding='utf-8')
         assert content.endswith('\n')
-
-    def test_write_accepts_dict_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :func:`write` accepts a dict payload and counts as 1 record.
-        """
-        path = tmp_path / 'data.json'
-        payload = {'id': 1}
-
-        written = mod.write(path, payload)
-
-        assert written == 1
-        content = path.read_text(encoding='utf-8')
-        assert content.endswith('\n')
-        assert json.loads(content) == payload

@@ -14,6 +14,7 @@ import pytest
 
 from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
+from tests.unit.file.conftest import BinaryDependencyModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -159,48 +160,36 @@ class TestAvroHelpers:
         ]
 
 
-class TestAvroRead:
-    """Unit tests for :func:`etlplus.file.avro.read`."""
+class TestAvroIo(BinaryDependencyModuleContract):
+    """Unit tests for AVRO module-level read/write dispatch."""
 
-    def test_read(
+    module = mod
+    format_name = 'avro'
+    dependency_name = 'fastavro'
+    expected_read_result = [{'id': 1}, {'id': 2}]
+    write_payload = [{'id': 1, 'name': 'Ada'}]
+
+    def make_dependency_stub(self) -> _FastAvroStub:
+        """Build a fastavro dependency stub."""
+        return _FastAvroStub()
+
+    def assert_dependency_after_read(
         self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
     ) -> None:
-        """
-        Test that :func:`read` uses the :mod:`fastavro` module to read
-        records.
-        """
-        stub = _FastAvroStub()
-        optional_module_stub({'fastavro': stub})
-        path = tmp_path / 'data.avro'
-        path.write_bytes(b'payload')
+        """Assert fastavro read behavior."""
+        stub = dependency_stub
+        assert isinstance(stub, _FastAvroStub)
 
-        result = mod.read(path)
-
-        assert result == stub.records
-
-
-class TestAvroWrite:
-    """Unit tests for :func:`etlplus.file.avro.write`."""
-
-    def test_write(
+    def assert_dependency_after_write(
         self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        dependency_stub: object,
+        path: Path,  # noqa: ARG002
     ) -> None:
-        """
-        Test that :func:`write` uses the :mod:`fastavro` module to write
-        records.
-        """
-        stub = _FastAvroStub()
-        optional_module_stub({'fastavro': stub})
-        path = tmp_path / 'data.avro'
-        records = [{'id': 1, 'name': 'Ada'}]
-
-        written = mod.write(path, records)
-
-        assert written == 1
+        """Assert fastavro write behavior."""
+        stub = dependency_stub
+        assert isinstance(stub, _FastAvroStub)
         assert stub.parsed_schema is not None
         assert stub.writes
-        assert stub.writes[0]['records'] == records
+        assert stub.writes[0]['records'] == self.write_payload

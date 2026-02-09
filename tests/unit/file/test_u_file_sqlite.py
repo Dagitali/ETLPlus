@@ -7,33 +7,40 @@ Unit tests for :mod:`etlplus.file.sqlite`.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 
-import pytest
-
 from etlplus.file import sqlite as mod
+from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestSqliteRead:
-    """Unit tests for :func:`etlplus.file.sqlite.read`."""
+class TestSqlite(EmbeddedDatabaseModuleContract):
+    """Unit tests for :mod:`etlplus.file.sqlite`."""
 
-    def test_read_empty_database_returns_empty_list(
+    # pylint: disable=unused-variable
+
+    module = mod
+    format_name = 'sqlite'
+    multi_table_error_pattern = 'Multiple tables found in SQLite'
+
+    def build_empty_database_path(
         self,
         tmp_path: Path,
-    ) -> None:
-        """Test that reading an empty database returns an empty list."""
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Build an empty SQLite database file."""
         path = tmp_path / 'empty.sqlite'
         sqlite3.connect(path).close()
+        return path
 
-        assert mod.read(path) == []
-
-    def test_read_raises_on_multiple_tables(
+    def build_multi_table_database_path(
         self,
         tmp_path: Path,
-    ) -> None:
-        """Test that reading raises an error when multiple tables exist."""
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> Path:
+        """Build a SQLite database with more than one table."""
         path = tmp_path / 'multi.sqlite'
         conn = sqlite3.connect(path)
         try:
@@ -42,16 +49,7 @@ class TestSqliteRead:
             conn.commit()
         finally:
             conn.close()
-
-        with pytest.raises(
-            ValueError,
-            match='Multiple tables found in SQLite',
-        ):
-            mod.read(path)
-
-
-class TestSqliteWrite:
-    """Unit tests for :func:`etlplus.file.sqlite.write`."""
+        return path
 
     def test_write_round_trip(
         self,
@@ -65,12 +63,3 @@ class TestSqliteWrite:
 
         assert written == 2
         assert mod.read(path) == payload
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing an empty payload returns zero."""
-        path = tmp_path / 'data.sqlite'
-
-        assert mod.write(path, []) == 0

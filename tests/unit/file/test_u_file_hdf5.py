@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import hdf5 as mod
-from etlplus.file.base import ReadOptions
+from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -83,42 +83,25 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestHdf5DatasetKeys:
-    """Unit tests for HDF5 dataset-key validation behavior."""
+class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
+    """Read-only scientific contract tests for :mod:`etlplus.file.hdf5`."""
 
-    def test_read_dataset_rejects_unknown_dataset(
+    module = mod
+    handler_cls = mod.Hdf5File
+    format_name = 'hdf5'
+    unknown_dataset_error_pattern = 'not found'
+
+    def prepare_unknown_dataset_env(
         self,
         tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,  # noqa: ARG002
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """Test rejecting an explicit dataset key that does not exist."""
+        """Install a pandas store stub for unknown-dataset checks."""
+        _ = tmp_path
         frame = _Frame([{'id': 1}])
         store = _HDFStore(['data'], {'data': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
-        handler = mod.Hdf5File()
-
-        with pytest.raises(ValueError, match='not found'):
-            handler.read_dataset(
-                tmp_path / 'data.hdf5',
-                dataset='unknown',
-            )
-
-    def test_read_rejects_unknown_dataset_from_options(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test rejecting unknown dataset when passed through read options."""
-        frame = _Frame([{'id': 1}])
-        store = _HDFStore(['data'], {'data': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
-        handler = mod.Hdf5File()
-
-        with pytest.raises(ValueError, match='not found'):
-            handler.read(
-                tmp_path / 'data.hdf5',
-                options=ReadOptions(dataset='unknown'),
-            )
 
 
 class TestHdf5Read:
@@ -183,17 +166,3 @@ class TestHdf5Read:
 
         with pytest.raises(ValueError, match='Multiple datasets'):
             mod.read(tmp_path / 'data.hdf5')
-
-
-class TestHdf5Write:
-    """Unit tests for :func:`etlplus.file.hdf5.write`."""
-
-    def test_write_not_supported(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :func:`write` raises an error indicating lack of support.
-        """
-        with pytest.raises(RuntimeError, match='read-only'):
-            mod.write(tmp_path / 'data.hdf5', [{'id': 1}])

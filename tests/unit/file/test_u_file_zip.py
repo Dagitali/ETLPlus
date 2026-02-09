@@ -15,35 +15,10 @@ from etlplus.file import core
 from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from etlplus.file.enums import FileFormat
+from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
+from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _StubFile:
-    """Minimal stand-in for :class:`etlplus.file.core.File`."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(
-        self,
-        path: Path,
-        fmt: FileFormat,
-    ) -> None:
-        self.path = Path(path)
-        self.fmt = fmt
-
-    def read(self) -> dict[str, str]:
-        """Return deterministic payload for smoke reads."""
-        return {'fmt': self.fmt.value, 'name': self.path.name}
-
-    def write(
-        self,
-        data: object,
-    ) -> int:  # noqa: ARG002
-        """Persist dummy bytes so ZIP write can read them."""
-        self.path.write_text('payload', encoding='utf-8')
-        return 1
 
 
 def _write_zip(
@@ -63,8 +38,37 @@ def _write_zip(
 # SECTION: TESTS ============================================================ #
 
 
-class TestZipRead:
-    """Unit tests for :func:`etlplus.file.zip.read`."""
+class TestZip(ArchiveWrapperCoreDispatchModuleContract):
+    """Unit tests for :mod:`etlplus.file.zip`."""
+
+    module = mod
+    format_name = 'zip'
+    valid_path_name = 'payload.json.zip'
+    missing_inner_path_name = 'payload.zip'
+    expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
+
+    def install_core_file_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Install deterministic core file stub."""
+        self._install_core_file_stub(monkeypatch)
+
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Seed zip archive payload for read contract tests."""
+        _write_zip(path, {'payload.json': b'{}'})
+
+    def assert_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert zip member payload for write contract tests."""
+        with zipfile.ZipFile(path, 'r') as archive:
+            assert archive.namelist() == ['payload.json']
+            assert archive.read('payload.json') == b'payload'
 
     def test_read_multiple_entries_respects_inner_name_option(
         self,
@@ -75,7 +79,7 @@ class TestZipRead:
         Test that reading a multi-entry archive with ``inner_name`` returns
         only the selected entry payload.
         """
-        monkeypatch.setattr(core, 'File', _StubFile)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -111,7 +115,7 @@ class TestZipRead:
         Test that reading a ZIP archive with multiple entries returns a mapping
         of file names to their contents.
         """
-        monkeypatch.setattr(core, 'File', _StubFile)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -161,60 +165,13 @@ class TestZipRead:
         with pytest.raises(ValueError, match='Cannot infer file format'):
             mod.read(path)
 
-    def test_read_single_entry_uses_file_helper(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that reading a ZIP archive with a single entry uses the file
-        helper.
-        """
-        monkeypatch.setattr(core, 'File', _StubFile)
-        path = tmp_path / 'payload.zip'
-        _write_zip(path, {'payload.json': b'{}'})
-
-        result = mod.read(path)
-
-        assert result == {'fmt': 'json', 'name': 'payload.json'}
-
-
-class TestZipWrite:
-    """Unit tests for :func:`etlplus.file.zip.write`."""
-
-    def test_write_creates_zip_with_inner_payload(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that writing creates a ZIP archive with the inner payload."""
-        monkeypatch.setattr(core, 'File', _StubFile)
-        path = tmp_path / 'payload.json.zip'
-
-        written = mod.write(path, [{'id': 1}])
-
-        assert written == 1
-        with zipfile.ZipFile(path, 'r') as archive:
-            assert archive.namelist() == ['payload.json']
-            assert archive.read('payload.json') == b'payload'
-
-    def test_write_requires_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing requires an inner file format."""
-        path = tmp_path / 'payload.zip'
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.write(path, [{'id': 1}])
-
     def test_write_supports_nested_inner_name(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing supports nested archive member names."""
-        monkeypatch.setattr(core, 'File', _StubFile)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payload.json.zip'
 
         written = mod.ZipFile().write(
@@ -227,3 +184,10 @@ class TestZipWrite:
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['nested/payload.json']
             assert archive.read('nested/payload.json') == b'payload'
+
+    @staticmethod
+    def _install_core_file_stub(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Install deterministic core file stub."""
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)

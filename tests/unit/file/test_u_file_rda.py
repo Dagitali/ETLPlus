@@ -9,9 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-import pytest
-
 from etlplus.file import rda as mod
+from tests.unit.file.conftest import RDataModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -99,95 +98,61 @@ class _PyreadrFallbackStub:
         self.writes.append((path, frame))
 
 
-# SECTION: TESTS ============================================================ #
-
-
-class TestRdaRead:
-    """Unit tests for :func:`etlplus.file.rda.read`."""
-
-    def test_read_empty_result_returns_empty_list(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that reading an empty result returns an empty list."""
-        optional_module_stub(
-            {'pyreadr': _PyreadrStub({}), 'pandas': _PandasStub()},
-        )
-
-        assert mod.read(tmp_path / 'data.rda') == []
-
-    def test_read_single_value_coerces(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that reading a single value coerces it to a list."""
-        frame = _Frame([{'id': 1}])
-        optional_module_stub(
-            {
-                'pyreadr': _PyreadrStub({'data': frame}),
-                'pandas': _PandasStub(),
-            },
-        )
-
-        assert mod.read(tmp_path / 'data.rda') == [{'id': 1}]
-
-    def test_read_multiple_values_returns_mapping(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that reading multiple values returns a mapping."""
-        result: dict[str, object] = {'one': {'id': 1}, 'two': [{'id': 2}]}
-        optional_module_stub(
-            {'pyreadr': _PyreadrStub(result), 'pandas': _PandasStub()},
-        )
-
-        assert mod.read(tmp_path / 'data.rda') == result
-
-
-class TestRdaWrite:
-    """Unit tests for :func:`etlplus.file.rda.write`."""
+class _NoWriter:
+    """Stub exposing ``read_r`` without any write method."""
 
     # pylint: disable=unused-argument
 
-    def test_write_raises_when_writer_missing(
+    def read_r(
         self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """
-        Test that :func:`write` raises an error when no writer is available.
-        """
+        path: str,
+    ) -> dict[str, object]:  # noqa: ARG002
+        """Simulate missing writer by only providing a reader."""
+        return {}
 
-        class _NoWriter:  # noqa: D401
-            def read_r(self, path: str) -> dict[str, object]:  # noqa: ARG002
-                """Simulate missing writer by only providing a reader."""
-                return {}
 
-        optional_module_stub({'pyreadr': _NoWriter(), 'pandas': _PandasStub()})
+# SECTION: TESTS ============================================================ #
 
-        with pytest.raises(ImportError, match='write_rdata'):
-            mod.write(tmp_path / 'data.rda', [{'id': 1}])
 
-    def test_write_prefers_write_rdata_with_df_name(
+class TestRda(RDataModuleContract):
+    """Unit tests for :mod:`etlplus.file.rda`."""
+
+    module = mod
+    format_name = 'rda'
+    writer_missing_pattern = 'write_rdata'
+
+    def build_frame(
         self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        records: list[dict[str, object]],
+    ) -> _Frame:
+        """Build a frame-like stub."""
+        return _Frame(records)
+
+    def build_pandas_stub(self) -> _PandasStub:
+        """Build pandas stub."""
+        return _PandasStub()
+
+    def build_pyreadr_stub(
+        self,
+        result: dict[str, object],
+    ) -> _PyreadrStub:
+        """Build pyreadr stub exposing ``write_rdata``."""
+        return _PyreadrStub(result)
+
+    def build_reader_only_stub(self) -> _NoWriter:
+        """Build pyreadr-like stub without write methods."""
+        return _NoWriter()
+
+    def assert_write_success(
+        self,
+        pyreadr_stub: object,
+        path: Path,  # noqa: ARG002
     ) -> None:
-        """
-        Test that :func:`write` prefers :meth:`write_rdata` when available.
-        """
-        pyreadr = _PyreadrStub({})
-        optional_module_stub({'pyreadr': pyreadr, 'pandas': _PandasStub()})
-        path = tmp_path / 'data.rda'
-
-        written = mod.write(path, [{'id': 1}])
-
-        assert written == 1
-        assert pyreadr.writes
-        _, _, kwargs = pyreadr.writes[0]
+        """Assert RDA write route using ``write_rdata`` with ``df_name``."""
+        stub = pyreadr_stub
+        assert isinstance(stub, _PyreadrStub)
+        assert stub.writes
+        _, _, kwargs = stub.writes[0]
         assert kwargs.get('df_name') == 'data'
 
     def test_write_falls_back_to_write_rda(
