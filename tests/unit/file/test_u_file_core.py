@@ -54,10 +54,7 @@ def normalize_numeric_records(records: JSONData) -> JSONData:
         return records
     return [
         (
-            {
-                key: _coerce_numeric_value(value)
-                for key, value in row.items()
-            }
+            {key: _coerce_numeric_value(value) for key, value in row.items()}
             if isinstance(row, dict)
             else row
         )
