@@ -985,162 +985,118 @@ class BaseOptionResolutionContract:
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
         handler = self.make_scientific_handler()
-
-        assert handler.dataset_from_read_options(None) is None
-        assert handler.dataset_from_write_options(None) is None
-        assert (
-            handler.dataset_from_read_options(
+        cases = (
+            (
+                handler.dataset_from_read_options,
+                handler.resolve_read_dataset,
                 ReadOptions(dataset='features'),
-            )
-            == 'features'
-        )
-        assert (
-            handler.dataset_from_write_options(
+            ),
+            (
+                handler.dataset_from_write_options,
+                handler.resolve_write_dataset,
                 WriteOptions(dataset='labels'),
-            )
-            == 'labels'
+            ),
         )
-        assert (
-            handler.resolve_read_dataset(
-                None,
-                options=ReadOptions(dataset='features'),
-            )
-            == 'features'
-        )
-        assert (
-            handler.resolve_write_dataset(
-                None,
-                options=WriteOptions(dataset='labels'),
-            )
-            == 'labels'
-        )
-        assert (
-            handler.resolve_read_dataset(
-                'explicit',
-                options=ReadOptions(dataset='ignored'),
-            )
-            == 'explicit'
-        )
-        assert (
-            handler.resolve_write_dataset(
-                'explicit',
-                options=WriteOptions(dataset='ignored'),
-            )
-            == 'explicit'
-        )
-        assert (
-            handler.resolve_read_dataset(None, default='fallback')
-            == 'fallback'
-        )
-        assert (
-            handler.resolve_write_dataset(None, default='fallback')
-            == 'fallback'
-        )
+        for from_options, resolve, options in cases:
+            expected = cast(str, options.dataset)
+            from_options_method = cast(Callable[..., object], from_options)
+            resolve_method = cast(Callable[..., object], resolve)
+            assert from_options_method(None) is None
+            assert from_options_method(options) == expected
+            assert resolve_method(None, options=options) == expected
+            assert resolve_method('explicit', options=options) == 'explicit'
+            assert resolve_method(None, default='fallback') == 'fallback'
 
     def test_delimiter_option_helpers_use_override_then_default(self) -> None:
         """Test delimited helpers using explicit then default delimiter."""
         handler = self.make_delimited_handler()
-
-        assert handler.delimiter_from_read_options(None) == ','
-        assert handler.delimiter_from_write_options(None) == ','
-        assert (
-            handler.delimiter_from_read_options(
+        cases = (
+            (
+                handler.delimiter_from_read_options,
                 ReadOptions(extras={'delimiter': '|'}),
-            )
-            == '|'
-        )
-        assert (
-            handler.delimiter_from_write_options(
+                '|',
+                ';',
+            ),
+            (
+                handler.delimiter_from_write_options,
                 WriteOptions(extras={'delimiter': '\t'}),
-            )
-            == '\t'
+                '\t',
+                ':',
+            ),
         )
-        assert (
-            handler.delimiter_from_read_options(None, default=';')
-            == ';'
-        )
-        assert (
-            handler.delimiter_from_write_options(None, default=':')
-            == ':'
-        )
+        for method, options, expected, fallback in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None) == ','
+            assert call(options) == expected
+            assert call(None, default=fallback) == fallback
 
     def test_encoding_option_helpers_use_override_then_default(self) -> None:
         """Test encoding helpers using explicit values then defaults."""
         handler = self.make_read_only_handler()
-
-        assert handler.encoding_from_read_options(None) == 'utf-8'
-        assert (
-            handler.encoding_from_read_options(
+        cases = (
+            (
+                handler.encoding_from_read_options,
                 ReadOptions(encoding='latin-1'),
-            )
-            == 'latin-1'
-        )
-        assert (
-            handler.encoding_from_read_options(
-                None,
-                default='utf-16',
-            )
-            == 'utf-16'
-        )
-
-        assert handler.encoding_from_write_options(None) == 'utf-8'
-        assert (
-            handler.encoding_from_write_options(
+                'latin-1',
+                'utf-16',
+            ),
+            (
+                handler.encoding_from_write_options,
                 WriteOptions(encoding='utf-16'),
-            )
-            == 'utf-16'
+                'utf-16',
+                'ascii',
+            ),
         )
-        assert (
-            handler.encoding_from_write_options(
-                None,
-                default='ascii',
-            )
-            == 'ascii'
-        )
+        for method, options, expected, fallback in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None) == 'utf-8'
+            assert call(options) == expected
+            assert call(None, default=fallback) == fallback
 
     def test_extra_option_helpers_use_override_then_default(self) -> None:
         """Test extras helpers using explicit values then defaults."""
         handler = self.make_read_only_handler()
-
-        assert handler.read_extra_option(None, 'foo') is None
-        assert handler.write_extra_option(None, 'foo') is None
-        assert handler.read_extra_option(None, 'foo', default='x') == 'x'
-        assert handler.write_extra_option(None, 'foo', default='y') == 'y'
-        assert (
-            handler.read_extra_option(
+        cases = (
+            (
+                handler.read_extra_option,
                 ReadOptions(extras={'foo': 1}),
-                'foo',
-            )
-            == 1
-        )
-        assert (
-            handler.write_extra_option(
+                1,
+                'x',
+            ),
+            (
+                handler.write_extra_option,
                 WriteOptions(extras={'foo': 2}),
-                'foo',
-            )
-            == 2
+                2,
+                'y',
+            ),
         )
+        for method, options, expected, fallback in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None, 'foo') is None
+            assert call(None, 'foo', default=fallback) == fallback
+            assert call(options, 'foo') == expected
 
     def test_inner_name_option_helpers_use_override_then_default(self) -> None:
         """
         Test archive option helpers using explicit then default inner name.
         """
         handler = self.make_archive_handler()
-
-        assert handler.inner_name_from_read_options(None) is None
-        assert handler.inner_name_from_write_options(None) is None
-        assert (
-            handler.inner_name_from_read_options(
+        cases = (
+            (
+                handler.inner_name_from_read_options,
                 ReadOptions(inner_name='data.json'),
-            )
-            == 'data.json'
-        )
-        assert (
-            handler.inner_name_from_write_options(
+                'data.json',
+            ),
+            (
+                handler.inner_name_from_write_options,
                 WriteOptions(inner_name='payload.csv'),
-            )
-            == 'payload.csv'
+                'payload.csv',
+            ),
         )
+        for method, options, expected in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None) is None
+            assert call(options) == expected
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """Test each ReadOptions instance getting its own extras dict."""
@@ -1154,19 +1110,13 @@ class BaseOptionResolutionContract:
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
         """Test root-tag helper using explicit values then defaults."""
         handler = self.make_read_only_handler()
-
         assert handler.root_tag_from_write_options(None) == 'root'
         assert (
-            handler.root_tag_from_write_options(
-                WriteOptions(root_tag='items'),
-            )
+            handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
             == 'items'
         )
         assert (
-            handler.root_tag_from_write_options(
-                None,
-                default='dataset',
-            )
+            handler.root_tag_from_write_options(None, default='dataset')
             == 'dataset'
         )
 
@@ -1175,40 +1125,40 @@ class BaseOptionResolutionContract:
         Test spreadsheet option helpers using explicit then default sheet.
         """
         handler = self.make_spreadsheet_handler()
-
-        assert handler.sheet_from_read_options(None) == 0
-        assert handler.sheet_from_write_options(None) == 0
-        assert (
-            handler.sheet_from_read_options(
+        cases = (
+            (
+                handler.sheet_from_read_options,
                 ReadOptions(sheet='Sheet2'),
-            )
-            == 'Sheet2'
+                'Sheet2',
+            ),
+            (handler.sheet_from_write_options, WriteOptions(sheet=3), 3),
         )
-        assert (
-            handler.sheet_from_write_options(WriteOptions(sheet=3))
-            == 3
-        )
+        for method, options, expected in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None) == 0
+            assert call(options) == expected
 
     def test_table_option_helpers_use_override_then_default(self) -> None:
         """
         Test embedded-db option helpers using explicit then default table.
         """
         handler = self.make_embedded_handler()
-
-        assert handler.table_from_read_options(None) is None
-        assert handler.table_from_write_options(None) is None
-        assert (
-            handler.table_from_read_options(
+        cases = (
+            (
+                handler.table_from_read_options,
                 ReadOptions(table='events'),
-            )
-            == 'events'
-        )
-        assert (
-            handler.table_from_write_options(
+                'events',
+            ),
+            (
+                handler.table_from_write_options,
                 WriteOptions(table='staging'),
-            )
-            == 'staging'
+                'staging',
+            ),
         )
+        for method, options, expected in cases:
+            call = cast(Callable[..., object], method)
+            assert call(None) is None
+            assert call(options) == expected
 
     def test_write_options_are_frozen(self) -> None:
         """Test WriteOptions immutability contract."""
