@@ -27,10 +27,14 @@ import pytest
 
 import etlplus.file._imports as import_helpers
 from etlplus.file import FileFormat
+from etlplus.file.base import ArchiveWrapperFileHandlerABC
+from etlplus.file.base import DelimitedTextFileHandlerABC
+from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
+from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
@@ -53,109 +57,6 @@ type Operation = Literal['read', 'write']
 
 
 # SECTION: PROTOCOLS ======================================================== #
-
-
-class ArchiveOptionHandlerProtocol(Protocol):
-    """Protocol for archive inner-name helper methods."""
-
-    def inner_name_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-
-class DelimitedOptionHandlerProtocol(Protocol):
-    """Protocol for delimited option helper methods."""
-
-    def delimiter_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str: ...
-
-    def delimiter_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str: ...
-
-
-class EncodingRootExtrasHandlerProtocol(Protocol):
-    """Protocol for shared encoding/root/extras helper methods."""
-
-    def encoding_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str: ...
-
-    def encoding_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str: ...
-
-    def read_extra_option(
-        self,
-        options: ReadOptions | None,
-        key: str,
-        *,
-        default: object | None = None,
-    ) -> object | None: ...
-
-    def write_extra_option(
-        self,
-        options: WriteOptions | None,
-        key: str,
-        *,
-        default: object | None = None,
-    ) -> object | None: ...
-
-    def root_tag_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'root',
-    ) -> str: ...
-
-
-class PandasStubProtocol(Protocol):
-    """Protocol for pandas-like stubs used by table/spreadsheet contracts."""
-
-    read_calls: list[dict[str, object]]
-    last_frame: object | None
-
-
-class ReadDatasetHandlerProtocol(Protocol):
-    """Protocol for handlers exposing read/read_dataset operations."""
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData: ...
-
-    def read_dataset(
-        self,
-        path: Path,
-        *,
-        dataset: str | None = None,
-        options: ReadOptions | None = None,
-    ) -> JSONData: ...
 
 
 class RegistryModuleProtocol(Protocol):
@@ -196,78 +97,6 @@ class RegistryModuleProtocol(Protocol):
         self,
         file_format: FileFormat,
     ) -> object: ...
-
-
-class ScientificOptionHandlerProtocol(Protocol):
-    """Protocol for scientific dataset option helper methods."""
-
-    def dataset_from_read_options(
-        self,
-        options: ReadOptions | None,
-    ) -> str | None: ...
-
-    def dataset_from_write_options(
-        self,
-        options: WriteOptions | None,
-    ) -> str | None: ...
-
-    def resolve_read_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: ReadOptions | None = None,
-        default: str | None = None,
-    ) -> str | None: ...
-
-    def resolve_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-        default: str | None = None,
-    ) -> str | None: ...
-
-
-class ScientificStubModuleProtocol(Protocol):
-    """Protocol for scientific modules exposing ``stub``."""
-
-    stub: object
-
-
-class SheetOptionHandlerProtocol(Protocol):
-    """Protocol for spreadsheet sheet helper methods."""
-
-    def sheet_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int: ...
-
-    def sheet_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int: ...
-
-
-class TableOptionHandlerProtocol(Protocol):
-    """Protocol for embedded-table helper methods."""
-
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None: ...
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -690,7 +519,7 @@ class ScientificReadOnlyUnknownDatasetMixin(PathMixin):
     Parametrized mixin for read-only scientific unknown-dataset checks.
     """
 
-    handler_cls: type[ReadDatasetHandlerProtocol]
+    handler_cls: type[ScientificDatasetFileHandlerABC]
     unknown_dataset_error_pattern: str
 
     def prepare_unknown_dataset_env(
@@ -705,13 +534,13 @@ class ScientificReadOnlyUnknownDatasetMixin(PathMixin):
         _ = optional_module_stub
 
     @pytest.fixture
-    def handler(self) -> ReadDatasetHandlerProtocol:
+    def handler(self) -> ScientificDatasetFileHandlerABC:
         """Create a handler instance for read-only scientific contracts."""
         return self.handler_cls()
 
     def test_read_dataset_rejects_unknown_dataset(
         self,
-        handler: ReadDatasetHandlerProtocol,
+        handler: ScientificDatasetFileHandlerABC,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         optional_module_stub: OptionalModuleInstaller,
@@ -731,7 +560,7 @@ class ScientificReadOnlyUnknownDatasetMixin(PathMixin):
 
     def test_read_rejects_unknown_dataset_from_options(
         self,
-        handler: ReadDatasetHandlerProtocol,
+        handler: ScientificDatasetFileHandlerABC,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         optional_module_stub: OptionalModuleInstaller,
@@ -916,12 +745,15 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         self,
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test read returning row records via pandas."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        pandas = make_pandas_stub(frame)
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
@@ -938,12 +770,15 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         self,
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test write delegating to DataFrame.to_excel with expected args."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        pandas = make_pandas_stub(frame)
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
@@ -1123,27 +958,27 @@ class ArchiveWrapperCoreDispatchModuleContract:
 class BaseOptionResolutionContract:
     """Reusable contract suite for base option helper behaviors."""
 
-    def make_scientific_handler(self) -> ScientificOptionHandlerProtocol:
+    def make_scientific_handler(self) -> ScientificDatasetFileHandlerABC:
         """Build a scientific handler used by dataset helper tests."""
         raise NotImplementedError
 
-    def make_delimited_handler(self) -> DelimitedOptionHandlerProtocol:
+    def make_delimited_handler(self) -> DelimitedTextFileHandlerABC:
         """Build a delimited handler used by delimiter helper tests."""
         raise NotImplementedError
 
-    def make_read_only_handler(self) -> EncodingRootExtrasHandlerProtocol:
+    def make_read_only_handler(self) -> FileHandlerABC:
         """Build a generic handler used by encoding/root/extras tests."""
         raise NotImplementedError
 
-    def make_archive_handler(self) -> ArchiveOptionHandlerProtocol:
+    def make_archive_handler(self) -> ArchiveWrapperFileHandlerABC:
         """Build an archive handler used by inner-name helper tests."""
         raise NotImplementedError
 
-    def make_spreadsheet_handler(self) -> SheetOptionHandlerProtocol:
+    def make_spreadsheet_handler(self) -> SpreadsheetFileHandlerABC:
         """Build a spreadsheet handler used by sheet helper tests."""
         raise NotImplementedError
 
-    def make_embedded_handler(self) -> TableOptionHandlerProtocol:
+    def make_embedded_handler(self) -> EmbeddedDatabaseFileHandlerABC:
         """Build an embedded-db handler used by table helper tests."""
         raise NotImplementedError
 
@@ -1792,12 +1627,15 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         self,
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test read returning row records via pandas."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        pandas = make_pandas_stub(frame)
         self._install_dependencies(optional_module_stub, pandas=pandas)
 
         result = self.module.read(self.format_path(tmp_path))
@@ -1809,12 +1647,15 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         self,
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
+        make_records_frame: Callable[
+            [list[dict[str, object]]],
+            RecordsFrameStub,
+        ],
+        make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test write calling the expected DataFrame writer method."""
         frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        pandas = make_pandas_stub(frame)
         self._install_dependencies(optional_module_stub, pandas=pandas)
         path = self.format_path(tmp_path)
 
@@ -2326,7 +2167,7 @@ class ScientificStubDatasetKeysContract:
 
     module_cases: list[
         tuple[
-            ScientificStubModuleProtocol,
+            ModuleType,
             type[ScientificDatasetFileHandlerABC],
             str,
         ]
@@ -2334,13 +2175,13 @@ class ScientificStubDatasetKeysContract:
 
     def _assert_stub_not_called(
         self,
-        module: ScientificStubModuleProtocol,
+        module: ModuleType,
         monkeypatch: pytest.MonkeyPatch,
         *,
         operation: Operation | None = None,
     ) -> None:
         """Patch module stub operations to fail if they are called."""
-        stub_module = module.stub
+        stub_module = cast(Any, module).stub
         if operation in (None, 'read'):
             monkeypatch.setattr(
                 stub_module,
