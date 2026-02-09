@@ -7,19 +7,19 @@ Unit tests for :mod:`etlplus.file.arrow`.
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
 
 from etlplus.file import arrow as mod
 from tests.unit.file.conftest import PyarrowMissingDependencyMixin
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: TESTS ============================================================ #
 
 
-class PyarrowGateOnlyModuleContract(PyarrowMissingDependencyMixin):
-    """Reusable contract suite for pyarrow-gated IPC-style modules."""
+class TestArrow(PyarrowMissingDependencyMixin):
+    """Unit tests for :mod:`etlplus.file.arrow`."""
 
-    module: ModuleType
-    missing_dependency_pattern: str = 'missing pyarrow'
+    module = mod
+    format_name = 'arrow'
+    missing_dependency_pattern = 'missing pyarrow'
 
     def test_write_returns_zero_for_empty_payload(
         self,
@@ -29,12 +29,3 @@ class PyarrowGateOnlyModuleContract(PyarrowMissingDependencyMixin):
         path = self.format_path(tmp_path)
         assert self.module.write(path, []) == 0
         assert not path.exists()
-
-# SECTION: TESTS ============================================================ #
-
-
-class TestArrow(PyarrowGateOnlyModuleContract):
-    """Unit tests for :mod:`etlplus.file.arrow`."""
-
-    module = mod
-    format_name = 'arrow'

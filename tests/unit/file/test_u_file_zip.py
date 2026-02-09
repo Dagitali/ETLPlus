@@ -52,7 +52,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
+        self._install_core_file_stub(monkeypatch)
 
     def seed_archive_payload(
         self,
@@ -79,7 +79,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a multi-entry archive with ``inner_name`` returns
         only the selected entry payload.
         """
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -115,7 +115,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a ZIP archive with multiple entries returns a mapping
         of file names to their contents.
         """
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -171,7 +171,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing supports nested archive member names."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
+        self._install_core_file_stub(monkeypatch)
         path = tmp_path / 'payload.json.zip'
 
         written = mod.ZipFile().write(
@@ -184,3 +184,10 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['nested/payload.json']
             assert archive.read('nested/payload.json') == b'payload'
+
+    @staticmethod
+    def _install_core_file_stub(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Install deterministic core file stub."""
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)

@@ -17,7 +17,6 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import dat as mod
-from tests.unit.file.conftest import DelimitedCategoryContractBase
 from tests.unit.file.conftest import PathMixin
 
 # SECTION: HELPERS ========================================================== #
@@ -187,7 +186,6 @@ class TestDatSniff:
 
 
 class TestDat(
-    DelimitedCategoryContractBase,
     DelimitedSniffedMixin,
 ):
     """Unit tests for :mod:`etlplus.file.dat`."""
