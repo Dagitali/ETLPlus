@@ -302,7 +302,7 @@ def _format_path(
     *,
     stem: str = 'data',
 ) -> Path:
-    """Build a deterministic format-specific path under ``tmp_path``."""
+    """Build a deterministic format-specific path under :attr:`tmp_path`."""
     return tmp_path / f'{stem}.{format_name}'
 
 
@@ -545,6 +545,701 @@ def require_optional_modules(
     """
     for module in modules:
         pytest.importorskip(module)
+
+
+# SECTION: CLASSES (BASES) ================================================== #
+
+
+class DelimitedCategoryContractBase:
+    """
+    Shared base contract for delimited/text category modules.
+    """
+
+    module: ModuleType
+    format_name: str
+    sample_rows: JSONData = make_payload('list')
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for the current category contract."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class ScientificCategoryContractBase:
+    """
+    Shared base contract for scientific dataset handlers/modules.
+    """
+
+    module: ModuleType
+    format_name: str
+    dataset_key: str = 'data'
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for scientific contracts."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class SpreadsheetCategoryContractBase:
+    """
+    Shared base contract for spreadsheet format handlers.
+    """
+
+    module: ModuleType
+    format_name: str
+    dependency_hint: str
+    read_engine: str | None = None
+    write_engine: str | None = None
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for spreadsheet contracts."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+
+class SemiStructuredCategoryContractBase:
+    """
+    Shared base contract for semi-structured text modules.
+    """
+
+    # pylint: disable=unused-argument
+
+    module: ModuleType
+    format_name: str
+    sample_read_text: str = ''
+    expected_read_payload: JSONData = make_payload('dict')
+    dict_payload: JSONData = make_payload('dict')
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        """Build a format-specific path for this semi-structured contract."""
+        return _format_path(tmp_path, self.format_name, stem=stem)
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for read tests."""
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for write tests."""
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        """Assert module-specific read contract expectations."""
+        assert result == self.expected_read_payload
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract expectations."""
+        assert path.exists()
+
+
+# SECTION: CLASSES (MIXINS) ================================================= #
+
+
+class DelimitedReadWriteMixin:
+    """
+    Parametrized mixin for delimiter-forwarding read/write wrappers.
+    """
+
+    module: ModuleType
+    format_name: str
+    delimiter: str
+    sample_rows: JSONData
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def test_read_uses_expected_delimiter(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module read delegating with the expected delimiter."""
+        calls: dict[str, object] = {}
+
+        def _read_delimited(
+            path: object,
+            *,
+            delimiter: str,
+        ) -> list[dict[str, object]]:
+            calls['path'] = path
+            calls['delimiter'] = delimiter
+            return cast(
+                list[dict[str, object]],
+                make_payload('list', record={'ok': True}),
+            )
+
+        monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
+
+        result = self.module.read(self.format_path(tmp_path))
+
+        assert result == make_payload('list', record={'ok': True})
+        assert calls['delimiter'] == self.delimiter
+
+    def test_write_uses_expected_delimiter_and_format_name(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module write delegating with expected delimiter/format."""
+        calls: dict[str, object] = {}
+
+        def _write_delimited(
+            path: object,
+            data: object,
+            *,
+            delimiter: str,
+            format_name: str,
+        ) -> int:
+            calls['path'] = path
+            calls['data'] = data
+            calls['delimiter'] = delimiter
+            calls['format_name'] = format_name
+            return 1
+
+        monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
+
+        written = self.module.write(
+            self.format_path(tmp_path),
+            self.sample_rows,
+        )
+
+        assert written == 1
+        assert calls['delimiter'] == self.delimiter
+        assert calls['format_name'] == self.format_name.upper()
+
+
+class ScientificReadOnlyUnknownDatasetMixin:
+    """
+    Parametrized mixin for read-only scientific unknown-dataset checks.
+    """
+
+    handler_cls: type[ReadDatasetHandlerProtocol]
+    unknown_dataset_error_pattern: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def prepare_unknown_dataset_env(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install stubs needed for unknown-dataset contract checks."""
+        _ = tmp_path
+        _ = monkeypatch
+        _ = optional_module_stub
+
+    @pytest.fixture
+    def handler(self) -> ReadDatasetHandlerProtocol:
+        """Create a handler instance for read-only scientific contracts."""
+        return self.handler_cls()
+
+    def test_read_dataset_rejects_unknown_dataset(
+        self,
+        handler: ReadDatasetHandlerProtocol,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test explicit unknown dataset keys being rejected."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
+        ):
+            handler.read_dataset(self.format_path(tmp_path), dataset='unknown')
+
+    def test_read_rejects_unknown_dataset_from_options(
+        self,
+        handler: ReadDatasetHandlerProtocol,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test unknown dataset rejection routed via read options."""
+        self.prepare_unknown_dataset_env(
+            tmp_path,
+            monkeypatch,
+            optional_module_stub,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match=self.unknown_dataset_error_pattern,
+        ):
+            handler.read(
+                self.format_path(tmp_path),
+                options=ReadOptions(dataset='unknown'),
+            )
+
+
+class ScientificReadOnlyWriteGuardMixin:
+    """
+    Shared mixin for scientific handlers that do not support writes.
+    """
+
+    module: ModuleType
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def test_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test read-only handlers rejecting writes."""
+        with pytest.raises(RuntimeError, match='read-only'):
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
+
+
+class SpreadsheetReadImportErrorMixin:
+    """
+    Shared mixin for spreadsheet read dependency error behavior.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def test_read_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_reader: Callable[[str], object],
+    ) -> None:
+        """Test read wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_reader('read_excel'),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.read(self.format_path(tmp_path))
+
+
+class SpreadsheetReadOnlyMixin:
+    """
+    Shared mixin for read-only spreadsheet write guards.
+    """
+
+    module: ModuleType
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def test_write_not_supported(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test read-only formats rejecting writes."""
+        with pytest.raises(RuntimeError, match='read-only'):
+            self.module.write(
+                self.format_path(tmp_path),
+                make_payload('list'),
+            )
+
+
+class SemiStructuredReadMixin:
+    """
+    Parametrized read contract mixin for semi-structured modules.
+    """
+
+    module: ModuleType
+    sample_read_text: str
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        raise NotImplementedError
+
+    def assert_read_contract_result(
+        self,
+        result: JSONData,
+    ) -> None:
+        raise NotImplementedError
+
+    def test_read_parses_expected_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading expected payload from representative text content."""
+        self.setup_read_dependencies(optional_module_stub)
+        path = self.format_path(tmp_path)
+        path.write_text(self.sample_read_text, encoding='utf-8')
+
+        result = self.module.read(path)
+
+        self.assert_read_contract_result(result)
+
+
+class SemiStructuredWriteDictMixin:
+    """
+    Parametrized write contract mixin for semi-structured modules.
+    """
+
+    module: ModuleType
+    dict_payload: JSONData
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        raise NotImplementedError
+
+    def test_write_accepts_single_dict_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test writing a single dictionary payload."""
+        self.setup_write_dependencies(optional_module_stub)
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.dict_payload)
+
+        assert written == 1
+        self.assert_write_contract_result(path)
+
+
+class ScientificSingleDatasetHandlerMixin:
+    """
+    Parametrized mixin for single-dataset scientific handler behavior.
+    """
+
+    handler_cls: type[SingleDatasetScientificFileHandlerABC]
+    dataset_key: str
+    format_name: str
+
+    @pytest.fixture
+    def handler(self) -> SingleDatasetScientificFileHandlerABC:
+        """Create a handler instance for contract tests."""
+        return self.handler_cls()
+
+    def test_uses_single_dataset_scientific_abc(
+        self,
+    ) -> None:
+        """Test single-dataset scientific class contract."""
+        assert issubclass(
+            self.handler_cls,
+            SingleDatasetScientificFileHandlerABC,
+        )
+        assert self.handler_cls.dataset_key == self.dataset_key
+
+    def test_rejects_non_default_dataset_key(
+        self,
+        handler: SingleDatasetScientificFileHandlerABC,
+    ) -> None:
+        """Test non-default dataset keys are rejected."""
+        assert_single_dataset_rejects_non_default_key(
+            handler,
+            suffix=self.format_name,
+        )
+
+
+class DelimitedSniffedMixin:
+    """
+    Parametrized mixin for sniffed delimited module behavior.
+    """
+
+    module: ModuleType
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def _patch_default_sniff(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch sniffer behavior to a deterministic CSV dialect."""
+        monkeypatch.setattr(
+            self.module,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+
+    def test_read_empty_returns_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading empty input returning an empty list."""
+        path = self.format_path(tmp_path, stem='empty')
+        path.write_text('', encoding='utf-8')
+
+        assert self.module.read(path) == []
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = self.format_path(tmp_path, stem='out')
+
+        written = self.module.write(path, sample_records)
+        result = self.module.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        self._patch_default_sniff(monkeypatch)
+        path = self.format_path(tmp_path)
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
+
+
+class DelimitedTextRowsMixin:
+    """
+    Parametrized mixin for text/fixed-width row-oriented modules.
+    """
+
+    module: ModuleType
+    write_payload: JSONData
+    expected_written_count: int = 1
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    def prepare_read_case(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> tuple[Path, JSONData]:
+        """Prepare and return ``(path, expected_result)`` for read tests."""
+        raise NotImplementedError
+
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert module-specific write contract behavior."""
+        assert path.exists()
+
+    def test_read_returns_expected_rows(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test reading representative row-oriented input."""
+        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
+
+        assert self.module.read(path) == expected
+
+    def test_write_empty_payload_returns_zero(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        assert self.module.write(self.format_path(tmp_path), []) == 0
+
+    def test_write_rows_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing representative row payloads."""
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, self.write_payload)
+
+        assert written == self.expected_written_count
+        self.assert_write_contract_result(path)
+
+
+class SpreadsheetWritableMixin:
+    """
+    Parametrized mixin for writable spreadsheet module contracts.
+    """
+
+    module: ModuleType
+    dependency_hint: str
+    read_engine: str | None
+    write_engine: str | None
+
+    def format_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str = 'data',
+    ) -> Path:
+        raise NotImplementedError
+
+    # pylint: disable=unused-argument
+
+    def test_read_returns_records(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test read returning row records via pandas."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+        path = self.format_path(tmp_path)
+
+        result = self.module.read(path)
+
+        assert result == make_payload('list')
+        assert pandas.read_calls
+        call = pandas.read_calls[-1]
+        assert call.get('path') == path
+        if self.read_engine is not None:
+            assert call.get('engine') == self.read_engine
+
+    def test_write_calls_to_excel(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        make_records_frame: Callable[[list[dict[str, object]]], object],
+        make_pandas_stub: Callable[[object], object],
+    ) -> None:
+        """Test write delegating to DataFrame.to_excel with expected args."""
+        frame = make_records_frame([{'id': 1}])
+        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
+        optional_module_stub({'pandas': pandas})
+        path = self.format_path(tmp_path)
+
+        written = self.module.write(path, make_payload('list'))
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        frame_stub = cast(RecordsFrameStub, pandas.last_frame)
+        assert frame_stub.to_excel_calls
+        call = frame_stub.to_excel_calls[-1]
+        assert call.get('path') == path
+        assert call.get('index') is False
+        if self.write_engine is not None:
+            assert call.get('engine') == self.write_engine
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing empty payloads returning zero."""
+        assert self.module.write(self.format_path(tmp_path), []) == 0
+
+    def test_write_wraps_import_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        make_import_error_writer: Callable[[], object],
+    ) -> None:
+        """Test write wrapping dependency import errors."""
+        monkeypatch.setattr(
+            self.module,
+            'get_pandas',
+            lambda *_: make_import_error_writer(),
+        )
+
+        with pytest.raises(ImportError, match=self.dependency_hint):
+            self.module.write(self.format_path(tmp_path), make_payload('list'))
 
 
 # SECTION: CLASSES (CONTRACTS) ============================================== #
@@ -1108,103 +1803,6 @@ class BinaryKeyedPayloadModuleContract:
 
         with pytest.raises(TypeError, match=self.payload_key):
             self.module.write(path, self.invalid_payload)
-
-
-class DelimitedCategoryContractBase:
-    """
-    Shared base contract for delimited/text category modules.
-    """
-
-    module: ModuleType
-    format_name: str
-    sample_rows: JSONData = make_payload('list')
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        """Build a format-specific path for the current category contract."""
-        return _format_path(tmp_path, self.format_name, stem=stem)
-
-
-class DelimitedReadWriteMixin:
-    """
-    Parametrized mixin for delimiter-forwarding read/write wrappers.
-    """
-
-    module: ModuleType
-    format_name: str
-    delimiter: str
-    sample_rows: JSONData
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def test_read_uses_expected_delimiter(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test module read delegating with the expected delimiter."""
-        calls: dict[str, object] = {}
-
-        def _read_delimited(
-            path: object,
-            *,
-            delimiter: str,
-        ) -> list[dict[str, object]]:
-            calls['path'] = path
-            calls['delimiter'] = delimiter
-            return cast(
-                list[dict[str, object]],
-                make_payload('list', record={'ok': True}),
-            )
-
-        monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
-
-        result = self.module.read(self.format_path(tmp_path))
-
-        assert result == make_payload('list', record={'ok': True})
-        assert calls['delimiter'] == self.delimiter
-
-    def test_write_uses_expected_delimiter_and_format_name(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test module write delegating with expected delimiter/format."""
-        calls: dict[str, object] = {}
-
-        def _write_delimited(
-            path: object,
-            data: object,
-            *,
-            delimiter: str,
-            format_name: str,
-        ) -> int:
-            calls['path'] = path
-            calls['data'] = data
-            calls['delimiter'] = delimiter
-            calls['format_name'] = format_name
-            return 1
-
-        monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
-
-        written = self.module.write(
-            self.format_path(tmp_path),
-            self.sample_rows,
-        )
-
-        assert written == 1
-        assert calls['delimiter'] == self.delimiter
-        assert calls['format_name'] == self.format_name.upper()
 
 
 class DelimitedModuleContract(
@@ -1805,125 +2403,6 @@ class RDataModuleContract:
         self.assert_write_success(pyreadr, path)
 
 
-class ScientificCategoryContractBase:
-    """
-    Shared base contract for scientific dataset handlers/modules.
-    """
-
-    module: ModuleType
-    format_name: str
-    dataset_key: str = 'data'
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        """Build a format-specific path for scientific contracts."""
-        return _format_path(tmp_path, self.format_name, stem=stem)
-
-
-class ScientificReadOnlyUnknownDatasetMixin:
-    """
-    Parametrized mixin for read-only scientific unknown-dataset checks.
-    """
-
-    handler_cls: type[ReadDatasetHandlerProtocol]
-    unknown_dataset_error_pattern: str
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def prepare_unknown_dataset_env(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install stubs needed for unknown-dataset contract checks."""
-        _ = tmp_path
-        _ = monkeypatch
-        _ = optional_module_stub
-
-    @pytest.fixture
-    def handler(self) -> ReadDatasetHandlerProtocol:
-        """Create a handler instance for read-only scientific contracts."""
-        return self.handler_cls()
-
-    def test_read_dataset_rejects_unknown_dataset(
-        self,
-        handler: ReadDatasetHandlerProtocol,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test explicit unknown dataset keys being rejected."""
-        self.prepare_unknown_dataset_env(
-            tmp_path,
-            monkeypatch,
-            optional_module_stub,
-        )
-
-        with pytest.raises(
-            ValueError,
-            match=self.unknown_dataset_error_pattern,
-        ):
-            handler.read_dataset(self.format_path(tmp_path), dataset='unknown')
-
-    def test_read_rejects_unknown_dataset_from_options(
-        self,
-        handler: ReadDatasetHandlerProtocol,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test unknown dataset rejection routed via read options."""
-        self.prepare_unknown_dataset_env(
-            tmp_path,
-            monkeypatch,
-            optional_module_stub,
-        )
-
-        with pytest.raises(
-            ValueError,
-            match=self.unknown_dataset_error_pattern,
-        ):
-            handler.read(
-                self.format_path(tmp_path),
-                options=ReadOptions(dataset='unknown'),
-            )
-
-
-class ScientificReadOnlyWriteGuardMixin:
-    """
-    Shared mixin for scientific handlers that do not support writes.
-    """
-
-    module: ModuleType
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def test_write_not_supported(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test read-only handlers rejecting writes."""
-        with pytest.raises(RuntimeError, match='read-only'):
-            self.module.write(self.format_path(tmp_path), make_payload('list'))
-
-
 class ReadOnlyScientificDatasetModuleContract(
     ScientificCategoryContractBase,
     ScientificReadOnlyUnknownDatasetMixin,
@@ -1932,87 +2411,6 @@ class ReadOnlyScientificDatasetModuleContract(
     """
     Reusable contract suite for read-only scientific dataset handlers.
     """
-
-
-class SpreadsheetCategoryContractBase:
-    """
-    Shared base contract for spreadsheet format handlers.
-    """
-
-    module: ModuleType
-    format_name: str
-    dependency_hint: str
-    read_engine: str | None = None
-    write_engine: str | None = None
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        """Build a format-specific path for spreadsheet contracts."""
-        return _format_path(tmp_path, self.format_name, stem=stem)
-
-
-class SpreadsheetReadImportErrorMixin:
-    """
-    Shared mixin for spreadsheet read dependency error behavior.
-    """
-
-    module: ModuleType
-    dependency_hint: str
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def test_read_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        make_import_error_reader: Callable[[str], object],
-    ) -> None:
-        """Test read wrapping dependency import errors."""
-        monkeypatch.setattr(
-            self.module,
-            'get_pandas',
-            lambda *_: make_import_error_reader('read_excel'),
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(self.format_path(tmp_path))
-
-
-class SpreadsheetReadOnlyMixin:
-    """
-    Shared mixin for read-only spreadsheet write guards.
-    """
-
-    module: ModuleType
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def test_write_not_supported(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test read-only formats rejecting writes."""
-        with pytest.raises(RuntimeError, match='read-only'):
-            self.module.write(
-                self.format_path(tmp_path),
-                make_payload('list'),
-            )
 
 
 class ReadOnlySpreadsheetModuleContract(
@@ -2401,141 +2799,6 @@ class ScientificStubDatasetKeysContract:
                 )
 
 
-class SemiStructuredCategoryContractBase:
-    """
-    Shared base contract for semi-structured text modules.
-    """
-
-    # pylint: disable=unused-argument
-
-    module: ModuleType
-    format_name: str
-    sample_read_text: str = ''
-    expected_read_payload: JSONData = make_payload('dict')
-    dict_payload: JSONData = make_payload('dict')
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        """Build a format-specific path for this semi-structured contract."""
-        return _format_path(tmp_path, self.format_name, stem=stem)
-
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install optional dependencies needed for read tests."""
-
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install optional dependencies needed for write tests."""
-
-    def assert_read_contract_result(
-        self,
-        result: JSONData,
-    ) -> None:
-        """Assert module-specific read contract expectations."""
-        assert result == self.expected_read_payload
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert module-specific write contract expectations."""
-        assert path.exists()
-
-
-class SemiStructuredReadMixin:
-    """
-    Parametrized read contract mixin for semi-structured modules.
-    """
-
-    module: ModuleType
-    sample_read_text: str
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        raise NotImplementedError
-
-    def assert_read_contract_result(
-        self,
-        result: JSONData,
-    ) -> None:
-        raise NotImplementedError
-
-    def test_read_parses_expected_payload(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test reading expected payload from representative text content."""
-        self.setup_read_dependencies(optional_module_stub)
-        path = self.format_path(tmp_path)
-        path.write_text(self.sample_read_text, encoding='utf-8')
-
-        result = self.module.read(path)
-
-        self.assert_read_contract_result(result)
-
-
-class SemiStructuredWriteDictMixin:
-    """
-    Parametrized write contract mixin for semi-structured modules.
-    """
-
-    module: ModuleType
-    dict_payload: JSONData
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        raise NotImplementedError
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        raise NotImplementedError
-
-    def test_write_accepts_single_dict_payload(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test writing a single dictionary payload."""
-        self.setup_write_dependencies(optional_module_stub)
-        path = self.format_path(tmp_path)
-
-        written = self.module.write(path, self.dict_payload)
-
-        assert written == 1
-        self.assert_write_contract_result(path)
-
-
 class SemiStructuredReadModuleContract(
     SemiStructuredCategoryContractBase,
     SemiStructuredReadMixin,
@@ -2552,41 +2815,6 @@ class SemiStructuredWriteDictModuleContract(
     """
     Reusable write contract suite for semi-structured text modules.
     """
-
-
-class ScientificSingleDatasetHandlerMixin:
-    """
-    Parametrized mixin for single-dataset scientific handler behavior.
-    """
-
-    handler_cls: type[SingleDatasetScientificFileHandlerABC]
-    dataset_key: str
-    format_name: str
-
-    @pytest.fixture
-    def handler(self) -> SingleDatasetScientificFileHandlerABC:
-        """Create a handler instance for contract tests."""
-        return self.handler_cls()
-
-    def test_uses_single_dataset_scientific_abc(
-        self,
-    ) -> None:
-        """Test single-dataset scientific class contract."""
-        assert issubclass(
-            self.handler_cls,
-            SingleDatasetScientificFileHandlerABC,
-        )
-        assert self.handler_cls.dataset_key == self.dataset_key
-
-    def test_rejects_non_default_dataset_key(
-        self,
-        handler: SingleDatasetScientificFileHandlerABC,
-    ) -> None:
-        """Test non-default dataset keys are rejected."""
-        assert_single_dataset_rejects_non_default_key(
-            handler,
-            suffix=self.format_name,
-        )
 
 
 class SingleDatasetHandlerContract(
@@ -2638,75 +2866,6 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
                 self.module.write(path, make_payload('list'))
 
 
-class DelimitedSniffedMixin:
-    """
-    Parametrized mixin for sniffed delimited module behavior.
-    """
-
-    module: ModuleType
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def _patch_default_sniff(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Patch sniffer behavior to a deterministic CSV dialect."""
-        monkeypatch.setattr(
-            self.module,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-
-    def test_read_empty_returns_empty_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test reading empty input returning an empty list."""
-        path = self.format_path(tmp_path, stem='empty')
-        path.write_text('', encoding='utf-8')
-
-        assert self.module.read(path) == []
-
-    def test_write_round_trip_returns_written_count(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write/read round-trip preserving the written row count."""
-        sample_records: list[dict[str, object]] = [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ]
-        path = self.format_path(tmp_path, stem='out')
-
-        written = self.module.write(path, sample_records)
-        result = self.module.read(path)
-
-        assert written == len(sample_records)
-        assert len(result) == len(sample_records)
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test blank rows being ignored during reads."""
-        self._patch_default_sniff(monkeypatch)
-        path = self.format_path(tmp_path)
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert self.module.read(path) == [{'a': '1', 'b': '2'}]
-
-
 class SniffedDelimitedModuleContract(
     DelimitedCategoryContractBase,
     DelimitedSniffedMixin,
@@ -2750,68 +2909,6 @@ class StubModuleContract:
         )
 
 
-class DelimitedTextRowsMixin:
-    """
-    Parametrized mixin for text/fixed-width row-oriented modules.
-    """
-
-    module: ModuleType
-    write_payload: JSONData
-    expected_written_count: int = 1
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    def prepare_read_case(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> tuple[Path, JSONData]:
-        """Prepare and return ``(path, expected_result)`` for read tests."""
-        raise NotImplementedError
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert module-specific write contract behavior."""
-        assert path.exists()
-
-    def test_read_returns_expected_rows(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test reading representative row-oriented input."""
-        path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
-
-        assert self.module.read(path) == expected
-
-    def test_write_empty_payload_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert self.module.write(self.format_path(tmp_path), []) == 0
-
-    def test_write_rows_contract(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing representative row payloads."""
-        path = self.format_path(tmp_path)
-
-        written = self.module.write(path, self.write_payload)
-
-        assert written == self.expected_written_count
-        self.assert_write_contract_result(path)
-
-
 class TextRowModuleContract(
     DelimitedCategoryContractBase,
     DelimitedTextRowsMixin,
@@ -2819,97 +2916,6 @@ class TextRowModuleContract(
     """
     Reusable contract suite for text/fixed-width row-oriented modules.
     """
-
-
-class SpreadsheetWritableMixin:
-    """
-    Parametrized mixin for writable spreadsheet module contracts.
-    """
-
-    module: ModuleType
-    dependency_hint: str
-    read_engine: str | None
-    write_engine: str | None
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        raise NotImplementedError
-
-    # pylint: disable=unused-argument
-
-    def test_read_returns_records(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
-    ) -> None:
-        """Test read returning row records via pandas."""
-        frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
-        optional_module_stub({'pandas': pandas})
-        path = self.format_path(tmp_path)
-
-        result = self.module.read(path)
-
-        assert result == make_payload('list')
-        assert pandas.read_calls
-        call = pandas.read_calls[-1]
-        assert call.get('path') == path
-        if self.read_engine is not None:
-            assert call.get('engine') == self.read_engine
-
-    def test_write_calls_to_excel(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-        make_records_frame: Callable[[list[dict[str, object]]], object],
-        make_pandas_stub: Callable[[object], object],
-    ) -> None:
-        """Test write delegating to DataFrame.to_excel with expected args."""
-        frame = make_records_frame([{'id': 1}])
-        pandas = cast(PandasStubProtocol, make_pandas_stub(frame))
-        optional_module_stub({'pandas': pandas})
-        path = self.format_path(tmp_path)
-
-        written = self.module.write(path, make_payload('list'))
-
-        assert written == 1
-        assert pandas.last_frame is not None
-        frame_stub = cast(RecordsFrameStub, pandas.last_frame)
-        assert frame_stub.to_excel_calls
-        call = frame_stub.to_excel_calls[-1]
-        assert call.get('path') == path
-        assert call.get('index') is False
-        if self.write_engine is not None:
-            assert call.get('engine') == self.write_engine
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test writing empty payloads returning zero."""
-        assert self.module.write(self.format_path(tmp_path), []) == 0
-
-    def test_write_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        make_import_error_writer: Callable[[], object],
-    ) -> None:
-        """Test write wrapping dependency import errors."""
-        monkeypatch.setattr(
-            self.module,
-            'get_pandas',
-            lambda *_: make_import_error_writer(),
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.write(self.format_path(tmp_path), make_payload('list'))
 
 
 class WritableSpreadsheetModuleContract(
