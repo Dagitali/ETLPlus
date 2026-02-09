@@ -1471,6 +1471,35 @@ class BinaryCodecStub:
         raise AttributeError(name)
 
 
+class CoreDispatchFileStub:
+    """
+    Minimal stand-in for :class:`etlplus.file.core.File` in archive tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        path: Path,
+        fmt: FileFormat,
+    ) -> None:
+        self.path = Path(path)
+        self.fmt = fmt
+
+    def read(self) -> dict[str, str]:
+        """Return deterministic payload for archive-wrapper read tests."""
+        return {'fmt': self.fmt.value, 'name': self.path.name}
+
+    def write(
+        self,
+        data: object,
+    ) -> int:
+        """Persist deterministic content so wrapper tests can assert bytes."""
+        _ = data
+        self.path.write_text('payload', encoding='utf-8')
+        return 1
+
+
 class PandasModuleStub:
     """Minimal pandas-module stub with reader and DataFrame helpers."""
 
