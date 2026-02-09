@@ -11,20 +11,14 @@ from tests.unit.file.conftest import ReadOnlyWriteGuardMixin
 from tests.unit.file.conftest import SpreadsheetCategoryContractBase
 from tests.unit.file.conftest import SpreadsheetReadImportErrorMixin
 
-# SECTION: CONTRACTS ======================================================== #
+# SECTION: TESTS ============================================================ #
 
 
-class ReadOnlySpreadsheetModuleContract(
+class TestXls(
     SpreadsheetCategoryContractBase,
     SpreadsheetReadImportErrorMixin,
     ReadOnlyWriteGuardMixin,
 ):
-    """Reusable contract suite for read-only spreadsheet wrapper modules."""
-
-# SECTION: TESTS ============================================================ #
-
-
-class TestXls(ReadOnlySpreadsheetModuleContract):
     """Unit tests for :mod:`etlplus.file.xls`."""
 
     module = mod

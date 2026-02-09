@@ -7,28 +7,19 @@ Unit tests for :mod:`etlplus.file.xml`.
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
 
 from etlplus.file import xml as mod
+from tests.unit.file.conftest import PathMixin
 
-# SECTION: CONTRACTS ======================================================== #
+# SECTION: TESTS ============================================================ #
 
 
-class XmlModuleContract:
-    """Reusable contract suite for XML module read/write behavior."""
+class TestXml(PathMixin):
+    """Unit tests for :mod:`etlplus.file.xml`."""
 
-    module: ModuleType
-    format_name: str
-    root_tag: str = 'root'
-
-    def format_path(
-        self,
-        tmp_path: Path,
-        *,
-        stem: str = 'data',
-    ) -> Path:
-        """Build a deterministic format-specific path."""
-        return tmp_path / f'{stem}.{self.format_name}'
+    module = mod
+    format_name = 'xml'
+    root_tag = 'rows'
 
     def test_write_uses_root_tag_and_read_round_trip(
         self,
@@ -47,13 +38,3 @@ class XmlModuleContract:
         assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
         result = self.module.read(path)
         assert self.root_tag in result
-
-# SECTION: TESTS ============================================================ #
-
-
-class TestXml(XmlModuleContract):
-    """Unit tests for :mod:`etlplus.file.xml`."""
-
-    module = mod
-    format_name = 'xml'
-    root_tag = 'rows'

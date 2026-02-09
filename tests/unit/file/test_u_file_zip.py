@@ -15,36 +15,10 @@ from etlplus.file import core
 from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
+from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _StubFile:
-    """Minimal stand-in for :class:`etlplus.file.core.File`."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(
-        self,
-        path: Path,
-        fmt: FileFormat,
-    ) -> None:
-        self.path = Path(path)
-        self.fmt = fmt
-
-    def read(self) -> dict[str, str]:
-        """Return deterministic payload for smoke reads."""
-        return {'fmt': self.fmt.value, 'name': self.path.name}
-
-    def write(
-        self,
-        data: object,
-    ) -> int:  # noqa: ARG002
-        """Persist dummy bytes so ZIP write can read them."""
-        self.path.write_text('payload', encoding='utf-8')
-        return 1
 
 
 def _write_zip(
@@ -78,7 +52,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', _StubFile)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
 
     def seed_archive_payload(
         self,
@@ -105,7 +79,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a multi-entry archive with ``inner_name`` returns
         only the selected entry payload.
         """
-        monkeypatch.setattr(core, 'File', _StubFile)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -141,7 +115,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a ZIP archive with multiple entries returns a mapping
         of file names to their contents.
         """
-        monkeypatch.setattr(core, 'File', _StubFile)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
         path = tmp_path / 'payloads.zip'
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -197,7 +171,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing supports nested archive member names."""
-        monkeypatch.setattr(core, 'File', _StubFile)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
         path = tmp_path / 'payload.json.zip'
 
         written = mod.ZipFile().write(

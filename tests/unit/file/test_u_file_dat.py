@@ -18,6 +18,7 @@ import pytest
 
 from etlplus.file import dat as mod
 from tests.unit.file.conftest import DelimitedCategoryContractBase
+from tests.unit.file.conftest import PathMixin
 
 # SECTION: HELPERS ========================================================== #
 
@@ -82,7 +83,7 @@ class _StubSniffer:
 # SECTION: TESTS ============================================================ #
 
 
-class DelimitedSniffedMixin:
+class DelimitedSniffedMixin(PathMixin):
     """Parametrized mixin for sniffed delimited module behavior."""
 
     module = mod
@@ -142,13 +143,6 @@ class DelimitedSniffedMixin:
         assert self.module.read(path) == [{'a': '1', 'b': '2'}]
 
 
-class SniffedDelimitedModuleContract(
-    DelimitedCategoryContractBase,
-    DelimitedSniffedMixin,
-):
-    """Reusable contract suite for sniffed delimited-text modules."""
-
-
 class TestDatSniff:
     """Unit tests for :func:`_sniff`."""
 
@@ -192,7 +186,10 @@ class TestDatSniff:
         assert has_header is True
 
 
-class TestDat(SniffedDelimitedModuleContract):
+class TestDat(
+    DelimitedCategoryContractBase,
+    DelimitedSniffedMixin,
+):
     """Unit tests for :mod:`etlplus.file.dat`."""
 
     module = mod

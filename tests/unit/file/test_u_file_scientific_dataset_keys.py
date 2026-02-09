@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import ModuleType
 from typing import Literal
+from typing import cast
 
 import pytest
 
@@ -23,11 +24,7 @@ from etlplus.file.base import WriteOptions
 
 
 _SCIENTIFIC_STUB_MODULES: list[
-    tuple[
-        ModuleType,
-        type[ScientificDatasetFileHandlerABC],
-        str,
-    ]
+    tuple[ModuleType, type[ScientificDatasetFileHandlerABC], str]
 ] = [
     (mat_mod, mat_mod.MatFile, 'mat'),
     (sylk_mod, sylk_mod.SylkFile, 'sylk'),
@@ -35,19 +32,36 @@ _SCIENTIFIC_STUB_MODULES: list[
 ]
 
 
+type ScientificModuleCase = tuple[
+    ModuleType,
+    type[ScientificDatasetFileHandlerABC],
+    str,
+]
 type Operation = Literal['read', 'write']
 
 
-class ScientificStubDatasetKeysContract:
-    """Reusable contract suite for stub-backed scientific dataset keys."""
+# SECTION: FIXTURES ========================================================= #
 
-    module_cases: list[
-        tuple[
-            ModuleType,
-            type[ScientificDatasetFileHandlerABC],
-            str,
-        ]
-    ]
+
+@pytest.fixture(
+    name='scientific_module_case',
+    params=_SCIENTIFIC_STUB_MODULES,
+    ids=[case[2] for case in _SCIENTIFIC_STUB_MODULES],
+)
+def scientific_module_case_fixture(
+    request: pytest.FixtureRequest,
+) -> ScientificModuleCase:
+    """Parametrize scientific-stub dataset-key tests by file format."""
+    return cast(ScientificModuleCase, request.param)
+
+
+# SECTION: TESTS ============================================================ #
+
+
+class TestScientificStubDatasetKeys:
+    """
+    Unit tests for dataset-key validation in stub-backed scientific files.
+    """
 
     def _assert_stub_not_called(
         self,
@@ -74,28 +88,32 @@ class ScientificStubDatasetKeysContract:
     def test_dataset_methods_honor_options_dataset_selector(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        scientific_module_case: ScientificModuleCase,
     ) -> None:
         """Test read_dataset/write_dataset honoring options-based selectors."""
-        for module, handler_cls, _ in self.module_cases:
-            handler = handler_cls()
-            self._assert_stub_not_called(module, monkeypatch)
-            with pytest.raises(ValueError, match='supports only dataset key'):
-                handler.read_dataset(
-                    Path('ignored.file'),
-                    options=ReadOptions(dataset='unknown'),
-                )
-            with pytest.raises(ValueError, match='supports only dataset key'):
-                handler.write_dataset(
-                    Path('ignored.file'),
-                    [],
-                    options=WriteOptions(dataset='unknown'),
-                )
+        module, handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        self._assert_stub_not_called(module, monkeypatch)
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read_dataset(
+                Path('ignored.file'),
+                options=ReadOptions(dataset='unknown'),
+            )
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write_dataset(
+                Path('ignored.file'),
+                [],
+                options=WriteOptions(dataset='unknown'),
+            )
 
-    def test_list_datasets_returns_single_default_key(self) -> None:
+    def test_list_datasets_returns_single_default_key(
+        self,
+        scientific_module_case: ScientificModuleCase,
+    ) -> None:
         """Test list_datasets exposing only the default dataset key."""
-        for _, handler_cls, _ in self.module_cases:
-            handler = handler_cls()
-            assert handler.list_datasets(Path('ignored.file')) == ['data']
+        _, handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        assert handler.list_datasets(Path('ignored.file')) == ['data']
 
     @pytest.mark.parametrize(
         ('operation', 'method_name'),
@@ -107,49 +125,40 @@ class ScientificStubDatasetKeysContract:
         monkeypatch: pytest.MonkeyPatch,
         operation: Operation,
         method_name: str,
+        scientific_module_case: ScientificModuleCase,
     ) -> None:
         """Test dataset methods rejecting unknown keys before stub I/O."""
-        for module, handler_cls, _ in self.module_cases:
-            handler = handler_cls()
-            self._assert_stub_not_called(
-                module,
-                monkeypatch,
-                operation=operation,
-            )
-            method = getattr(handler, method_name)
-            with pytest.raises(ValueError, match='supports only dataset key'):
-                args: tuple[object, ...] = (Path('ignored.file'),)
-                if operation == 'write':
-                    args = (*args, [])
-                method(*args, dataset='unknown')
+        module, handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        self._assert_stub_not_called(
+            module,
+            monkeypatch,
+            operation=operation,
+        )
+        method = getattr(handler, method_name)
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            args: tuple[object, ...] = (Path('ignored.file'),)
+            if operation == 'write':
+                args = (*args, [])
+            method(*args, dataset='unknown')
 
     def test_read_and_write_options_route_unknown_dataset_to_validation(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        scientific_module_case: ScientificModuleCase,
     ) -> None:
         """Test option-based selectors following the same validation path."""
-        for module, handler_cls, _ in self.module_cases:
-            handler = handler_cls()
-            self._assert_stub_not_called(module, monkeypatch)
-            with pytest.raises(ValueError, match='supports only dataset key'):
-                handler.read(
-                    Path('ignored.file'),
-                    options=ReadOptions(dataset='unknown'),
-                )
-            with pytest.raises(ValueError, match='supports only dataset key'):
-                handler.write(
-                    Path('ignored.file'),
-                    [],
-                    options=WriteOptions(dataset='unknown'),
-                )
-
-
-# SECTION: TESTS ============================================================ #
-
-
-class TestScientificStubDatasetKeys(ScientificStubDatasetKeysContract):
-    """
-    Unit tests for dataset-key validation in stub-backed scientific files.
-    """
-
-    module_cases = _SCIENTIFIC_STUB_MODULES
+        module, handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        self._assert_stub_not_called(module, monkeypatch)
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.read(
+                Path('ignored.file'),
+                options=ReadOptions(dataset='unknown'),
+            )
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write(
+                Path('ignored.file'),
+                [],
+                options=WriteOptions(dataset='unknown'),
+            )

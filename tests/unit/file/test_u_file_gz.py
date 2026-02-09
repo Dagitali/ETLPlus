@@ -13,30 +13,8 @@ import pytest
 
 from etlplus.file import core
 from etlplus.file import gz as mod
-from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _StubFile:
-    """Minimal stand-in for :class:`etlplus.file.core.File`."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, path: Path, fmt: FileFormat) -> None:
-        self.path = Path(path)
-        self.fmt = fmt
-
-    def read(self) -> dict[str, str]:
-        """Return deterministic payload for smoke reads."""
-        return {'fmt': self.fmt.value, 'name': self.path.name}
-
-    def write(self, data: object) -> int:  # noqa: ARG002
-        """Persist dummy bytes so gzip write can read them."""
-        self.path.write_text('payload', encoding='utf-8')
-        return 1
-
+from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: TESTS ============================================================ #
 
@@ -55,7 +33,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', _StubFile)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
 
     def seed_archive_payload(
         self,
