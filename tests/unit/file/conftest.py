@@ -306,17 +306,13 @@ def assert_single_dataset_rejects_non_default_key(
 ) -> None:
     """Assert single-dataset scientific handlers reject non-default keys."""
     bad_dataset = 'not_default_dataset'
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.read_dataset(
-            Path(f'ignored.{suffix}'),
-            dataset=bad_dataset,
-        )
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.write_dataset(
-            Path(f'ignored.{suffix}'),
-            [],
-            dataset=bad_dataset,
-        )
+    path = Path(f'ignored.{suffix}')
+    for operation in ('read', 'write'):
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            if operation == 'read':
+                handler.read_dataset(path, dataset=bad_dataset)
+            else:
+                handler.write_dataset(path, [], dataset=bad_dataset)
 
 
 def assert_stub_module_operation_raises(
@@ -358,22 +354,13 @@ def make_import_error_reader_module(
         Module-like object with one failing reader method.
     """
 
-    class _FailModule:
-        """Module stub exposing one reader that always raises ImportError."""
+    def _fail_reader(
+        *args: object,
+        **kwargs: object,
+    ) -> object:  # noqa: ARG001
+        raise ImportError('missing')
 
-        def __getattr__(self, name: str) -> object:
-            if name != method_name:
-                raise AttributeError(name)
-
-            def _fail_reader(
-                *args: object,
-                **kwargs: object,
-            ) -> object:  # noqa: ARG001
-                raise ImportError('missing')
-
-            return _fail_reader
-
-    return _FailModule()
+    return SimpleNamespace(**{method_name: _fail_reader})
 
 
 def make_import_error_writer_module() -> object:
@@ -839,12 +826,6 @@ class ReadOnlyWriteGuardMixin(PathMixin):
             self.module.write(self.format_path(tmp_path), make_payload('list'))
 
 
-class ScientificReadOnlyWriteGuardMixin(ReadOnlyWriteGuardMixin):
-    """
-    Shared mixin for scientific handlers that do not support writes.
-    """
-
-
 class SpreadsheetReadImportErrorMixin(PathMixin):
     """
     Shared mixin for spreadsheet read dependency error behavior.
@@ -868,12 +849,6 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
 
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module.read(self.format_path(tmp_path))
-
-
-class SpreadsheetReadOnlyMixin(ReadOnlyWriteGuardMixin):
-    """
-    Shared mixin for read-only spreadsheet write guards.
-    """
 
 
 class SemiStructuredReadMixin(PathMixin):
@@ -2250,7 +2225,7 @@ class RDataModuleContract(PathMixin):
 class ReadOnlyScientificDatasetModuleContract(
     ScientificCategoryContractBase,
     ScientificReadOnlyUnknownDatasetMixin,
-    ScientificReadOnlyWriteGuardMixin,
+    ReadOnlyWriteGuardMixin,
 ):
     """
     Reusable contract suite for read-only scientific dataset handlers.
@@ -2260,7 +2235,7 @@ class ReadOnlyScientificDatasetModuleContract(
 class ReadOnlySpreadsheetModuleContract(
     SpreadsheetCategoryContractBase,
     SpreadsheetReadImportErrorMixin,
-    SpreadsheetReadOnlyMixin,
+    ReadOnlyWriteGuardMixin,
 ):
     """
     Reusable contract suite for read-only spreadsheet wrapper modules.
