@@ -1497,6 +1497,35 @@ class CoreDispatchFileStub:
         return 1
 
 
+class DictRecordsFrameStub:
+    """
+    Minimal records-only frame stub shared by scientific format tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        records: list[dict[str, object]],
+    ) -> None:
+        self._records = list(records)
+
+    def to_dict(
+        self,
+        *,
+        orient: str,
+    ) -> list[dict[str, object]]:  # noqa: ARG002
+        """Return record payloads in ``records`` orientation."""
+        return list(self._records)
+
+    @staticmethod
+    def from_records(
+        records: list[dict[str, object]],
+    ) -> DictRecordsFrameStub:
+        """Construct a frame from row records."""
+        return DictRecordsFrameStub(records)
+
+
 class PandasModuleStub:
     """Minimal pandas-module stub with reader and DataFrame helpers."""
 
@@ -1553,6 +1582,100 @@ class PandasModuleStub:
     read_parquet = _read_table
     read_feather = _read_table
     read_orc = _read_table
+
+
+class PandasReadSasStub:
+    """
+    Minimal pandas stub for ``read_sas``-based handlers.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        frame: DictRecordsFrameStub,
+        *,
+        fail_on_format_kwarg: bool = False,
+    ) -> None:
+        self._frame = frame
+        self._fail_on_format_kwarg = fail_on_format_kwarg
+        self.read_calls: list[dict[str, object]] = []
+
+    def read_sas(
+        self,
+        path: Path,
+        **kwargs: object,
+    ) -> DictRecordsFrameStub:
+        """Simulate pandas.read_sas with optional format rejection."""
+        self.read_calls.append({'path': path, **kwargs})
+        if self._fail_on_format_kwarg and 'format' in kwargs:
+            raise TypeError('format not supported')
+        return self._frame
+
+
+class PyreadrStub:
+    """
+    Shared pyreadr-style stub for RDA/RDS tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        result: dict[str, object],
+    ) -> None:
+        self._result = result
+        self.write_rds_calls: list[tuple[str, object]] = []
+        self.write_rdata_calls: list[
+            tuple[str, object, dict[str, object]]
+        ] = []
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:
+        """Return configured R object mapping."""
+        return dict(self._result)
+
+    def write_rds(
+        self,
+        path: str,
+        frame: object,
+    ) -> None:
+        """Record one RDS write call."""
+        self.write_rds_calls.append((path, frame))
+
+    def write_rdata(
+        self,
+        path: str,
+        frame: object,
+        **kwargs: object,
+    ) -> None:
+        """Record one RDA write call."""
+        self.write_rdata_calls.append((path, frame, dict(kwargs)))
+
+
+class RDataPandasStub:
+    """
+    Minimal pandas stub for R-data tests using record-frame conversion.
+    """
+
+    DataFrame = DictRecordsFrameStub
+
+
+class RDataNoWriterStub:
+    """
+    Minimal pyreadr-like stub exposing only ``read_r``.
+    """
+
+    # pylint: disable=unused-argument
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:
+        """Return an empty mapping for reader-only flows."""
+        return {}
 
 
 class RecordsFrameStub:
