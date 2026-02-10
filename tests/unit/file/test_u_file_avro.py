@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file.avro`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -185,7 +184,7 @@ class TestAvroHelpers:
 
     def test_infer_schema_builds_fields(self) -> None:
         """Test that :func:`_infer_schema` builds expected fields."""
-        records: list[dict[str, Any]] = [
+        records: list[dict[str, object]] = [
             {'b': 'text', 'a': 1},
             {'b': None},
         ]

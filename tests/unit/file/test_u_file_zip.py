@@ -215,7 +215,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     ) -> None:
         """Test that writing to non-ZIP compressed suffixes fails early."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / 'payload.json.gz'
+        path = self._archive_path(tmp_path, stem='payload.json', suffix='gz')
 
         with pytest.raises(ValueError, match='Unexpected compression'):
             mod.write(path, [{'id': 1}])
@@ -240,7 +240,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     ) -> None:
         """Test that writing supports nested archive member names."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / 'payload.json.zip'
+        path = self._archive_path(tmp_path, stem='payload.json')
 
         written = mod.ZipFile().write(
             path,
@@ -258,6 +258,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
         *,
         stem: str,
+        suffix: str = 'zip',
     ) -> Path:
-        """Build a deterministic zip path for ad hoc test cases."""
-        return tmp_path / f'{stem}.zip'
+        """Build deterministic archive paths for ad hoc test cases."""
+        return tmp_path / f'{stem}.{suffix}'
