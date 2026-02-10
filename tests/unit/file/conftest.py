@@ -708,7 +708,7 @@ class SemiStructuredCategoryContractBase(PathMixin):
 # SECTION: CLASSES (CONTRACTS) ============================================== #
 
 
-class ArchiveWrapperCoreDispatchModuleContract:
+class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     """Reusable contract suite for archive wrappers using core dispatch."""
 
     module: ModuleType
@@ -718,6 +718,17 @@ class ArchiveWrapperCoreDispatchModuleContract:
     write_payload: JSONData = make_payload('list')
     expected_written_count: int = 1
     missing_inner_error_pattern: str = 'Cannot infer file format'
+
+    def archive_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str,
+        suffix: str | None = None,
+    ) -> Path:
+        """Build deterministic archive paths for ad hoc test cases."""
+        extension = self.format_name if suffix is None else suffix
+        return tmp_path / f'{stem}.{extension}'
 
     def seed_archive_payload(
         self,
