@@ -57,6 +57,7 @@ class _PandasStub:
         def from_records(records: list[dict[str, object]]) -> _Frame:
             return _Frame(records)
 
+
 # SECTION: TESTS ============================================================ #
 
 

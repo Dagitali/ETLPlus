@@ -45,6 +45,7 @@ class _PandasStub:
             raise TypeError('sheet_name not supported')
         return self._frame
 
+
 # SECTION: TESTS ============================================================ #
 
 

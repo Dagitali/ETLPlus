@@ -209,8 +209,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
         assert written == 2
         assert any(
-            stmt.startswith('CREATE TABLE "data"')
-            for stmt in conn.executed
+            stmt.startswith('CREATE TABLE "data"') for stmt in conn.executed
         )
         assert conn.executemany_calls
 
@@ -234,8 +233,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
         assert result == [{'id': 1}]
         assert any(
-            stmt == 'SELECT * FROM "my table"'
-            for stmt in conn.executed
+            stmt == 'SELECT * FROM "my table"' for stmt in conn.executed
         )
 
     def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
