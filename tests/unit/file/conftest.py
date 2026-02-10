@@ -738,6 +738,10 @@ class ArchiveWrapperCoreDispatchModuleContract:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Patch core file dispatch for deterministic archive tests."""
+        monkeypatch.setattr(
+            'etlplus.file.core.File',
+            CoreDispatchFileStub,
+        )
 
     def test_read_uses_core_dispatch(
         self,
