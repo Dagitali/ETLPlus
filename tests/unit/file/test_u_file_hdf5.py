@@ -12,35 +12,20 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import hdf5 as mod
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _Frame:
-    """Minimal frame stub for HDF5 helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(
-        self,
-        records: list[dict[str, object]],
-    ) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting a frame to a list of records."""
-        return list(self._records)
-
-
 class _HDFStore:
     """Stub for pandas.HDFStore."""
 
-    def __init__(self, keys: list[str], frames: dict[str, _Frame]) -> None:
+    def __init__(
+        self,
+        keys: list[str],
+        frames: dict[str, DictRecordsFrameStub],
+    ) -> None:
         self._keys = keys
         self._frames = frames
 
@@ -50,7 +35,7 @@ class _HDFStore:
     def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
         return None
 
-    def get(self, key: str) -> _Frame:
+    def get(self, key: str) -> DictRecordsFrameStub:
         """Simulate retrieving a dataset by key."""
         return self._frames[key]
 
@@ -99,7 +84,7 @@ class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
     ) -> None:
         """Install a pandas store stub for unknown-dataset checks."""
         _ = tmp_path
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['data'], {'data': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
 
@@ -136,7 +121,7 @@ class TestHdf5Read:
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that reading prefers the default key when present."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
 
@@ -148,7 +133,7 @@ class TestHdf5Read:
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that reading raises when multiple keys are present."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['a', 'b'], {'a': frame, 'b': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
 
@@ -161,7 +146,7 @@ class TestHdf5Read:
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that reading uses the single key when only one is present."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['only'], {'only': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
 

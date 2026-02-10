@@ -10,36 +10,20 @@ from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import fwf as mod
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _Frame:
-    """Minimal frame stub for FWF helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting a frame to a list of records."""
-        return list(self._records)
-
-
 class _PandasStub:
     """Stub for pandas module."""
 
-    def __init__(self, frame: _Frame) -> None:
+    def __init__(self, frame: DictRecordsFrameStub) -> None:
         self._frame = frame
         self.read_calls: list[dict[str, object]] = []
 
-    def read_fwf(self, path: Path) -> _Frame:
+    def read_fwf(self, path: Path) -> DictRecordsFrameStub:
         """Simulate reading a fixed-width file into a frame."""
         self.read_calls.append({'path': path})
         return self._frame
@@ -63,7 +47,7 @@ class TestFwf(TextRowModuleContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> tuple[Path, list[dict[str, object]]]:
         """Prepare representative FWF read input and dependency stubs."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         self._pandas = _PandasStub(frame)
         optional_module_stub({'pandas': self._pandas})
         path = tmp_path / 'data.fwf'

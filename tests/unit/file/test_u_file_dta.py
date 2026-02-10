@@ -12,27 +12,18 @@ from pathlib import Path
 from etlplus.file import dta as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _Frame:
+class _Frame(DictRecordsFrameStub):
     """Minimal frame stub for DTA helpers."""
 
-    # pylint: disable=unused-argument
-
     def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = list(records)
+        super().__init__(records)
         self.to_stata_calls: list[tuple[Path, bool]] = []
-
-    def to_dict(
-        self,
-        *,
-        orient: str,  # noqa: ARG002
-    ) -> list[dict[str, object]]:
-        """Simulate frame-to-record conversion."""
-        return list(self._records)
 
     def to_stata(
         self,
