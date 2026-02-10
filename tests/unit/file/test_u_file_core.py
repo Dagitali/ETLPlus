@@ -551,6 +551,16 @@ class TestFile:
         with pytest.raises(ValueError, match='Multiple tables'):
             File(path, FileFormat.DUCKDB).read()
 
+    def test_explicit_string_file_format_is_coerced(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that string file-format arguments are normalized."""
+        path = tmp_path / 'data.json'
+        file = File(path, cast(Any, 'json'))
+
+        assert file.file_format is FileFormat.JSON
+
     def test_gz_round_trip_json(
         self,
         tmp_path: Path,
@@ -631,6 +641,16 @@ class TestFile:
         assert f.file_format == expected_format
         assert f.read() == expected_content
 
+    def test_invalid_explicit_string_file_format_raises(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that invalid explicit format strings fail fast."""
+        path = tmp_path / 'data.json'
+
+        with pytest.raises(ValueError):
+            File(path, cast(Any, 'not-a-real-format'))
+
     def test_read_csv_skips_blank_rows(
         self,
         tmp_path: Path,
@@ -655,6 +675,17 @@ class TestFile:
 
         with pytest.raises(TypeError):
             File(path, FileFormat.JSON).read()
+
+    def test_read_missing_file_raises_before_format_inference(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test missing path checks run before format inference on read."""
+        missing = tmp_path / 'missing.unknown'
+        file = File(missing)
+
+        with pytest.raises(FileNotFoundError):
+            file.read()
 
     @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
@@ -844,6 +875,17 @@ class TestFile:
         assert json_content
         assert json_content.count('\n') >= 2
 
+    def test_write_unknown_extension_without_format_raises(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write fails when format cannot be inferred."""
+        path = tmp_path / 'output.unknown'
+        file = File(path)
+
+        with pytest.raises(ValueError, match='Cannot infer file format'):
+            file.write({'ok': True})
+
     def test_xls_write_not_supported(
         self,
         tmp_path: Path,
@@ -892,6 +934,47 @@ class TestFile:
         result = File(path, FileFormat.XML).read()
 
         assert result == payload
+
+    def test_xml_write_uses_default_root_tag_when_not_provided(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test default XML root tag routing in class-based dispatch."""
+        path = tmp_path / 'export.xml'
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                _ = path
+                return []
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                calls['path'] = path
+                calls['data'] = data
+                calls['options'] = options
+                return 1
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            assert file_format is FileFormat.XML
+            return _StubHandler()
+
+        monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
+
+        written = File(path, FileFormat.XML).write([{'name': 'Ada'}])
+
+        assert written == 1
+        options = cast(WriteOptions, calls['options'])
+        assert options.root_tag == xml_file.DEFAULT_XML_ROOT
 
     def test_zip_multi_file_read(
         self,

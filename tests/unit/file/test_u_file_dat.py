@@ -17,6 +17,8 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import dat as mod
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 
 # SECTION: HELPERS ========================================================== #
 
@@ -126,6 +128,31 @@ class TestDatSniff:
 
 class TestDat:
     """Unit tests for :mod:`etlplus.file.dat`."""
+
+    def test_read_accepts_custom_sniffer_via_read_options(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test DAT reads honoring custom sniffer and delimiters options."""
+        handler = mod.DatFile()
+        sniffer = _StubSniffer(
+            dialect=_make_dialect('|'),
+            has_header=False,
+        )
+        path = tmp_path / 'custom_sniffer.dat'
+        path.write_text('1|alice\n2|bob\n', encoding='utf-8')
+
+        result = handler.read(
+            path,
+            options=ReadOptions(
+                extras={'sniffer': sniffer, 'delimiters': '|'},
+            ),
+        )
+
+        assert result == [
+            {'col_1': '1', 'col_2': 'alice'},
+            {'col_1': '2', 'col_2': 'bob'},
+        ]
 
     def test_read_empty_returns_empty_list(
         self,
@@ -250,3 +277,22 @@ class TestDat:
 
         assert written == len(sample_records)
         assert len(result) == len(sample_records)
+
+    def test_write_uses_delimiter_override_from_write_options(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test DAT writes honoring delimiter overrides from options extras."""
+        handler = mod.DatFile()
+        path = tmp_path / 'delimiter_override.dat'
+
+        written = handler.write(
+            path,
+            [{'id': '1', 'name': 'Ada'}],
+            options=WriteOptions(extras={'delimiter': '|'}),
+        )
+
+        assert written == 1
+        lines = path.read_text(encoding='utf-8').splitlines()
+        assert lines[0] == 'id|name'
+        assert lines[1] == '1|Ada'

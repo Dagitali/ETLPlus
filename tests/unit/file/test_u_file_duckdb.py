@@ -10,6 +10,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import duckdb as mod
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -30,8 +32,13 @@ class _Connection:
         self.rows = rows or []
         self.description = description
         self.pragma_info = pragma_info or []
+        self.closed = False
         self.executed: list[str] = []
         self.executemany_calls: list[tuple[str, list[tuple[object, ...]]]] = []
+
+    def close(self) -> None:  # noqa: D401 - simple stub
+        """Record close calls for lifecycle assertions."""
+        self.closed = True
 
     def execute(
         self,
@@ -52,9 +59,6 @@ class _Connection:
     ) -> None:
         """Simulate executing a SQL statement with multiple rows."""
         self.executemany_calls.append((sql, rows))
-
-    def close(self) -> None:  # noqa: D401 - simple stub
-        """No-op close."""
 
 
 class _Cursor:
@@ -117,22 +121,22 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         optional_module_stub({'duckdb': _DuckdbStub(conn)})
         return tmp_path / 'data.duckdb'
 
-    def test_read_uses_description_columns(
+    def test_read_closes_connection_after_query(
         self,
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
-        """Test that :func:`read` uses description columns when available."""
+        """Test reads always closing the DuckDB connection."""
         conn = _Connection(
             tables=['data'],
-            rows=[(1, 'Ada')],
-            description=[('id',), ('name',)],
+            rows=[(1,)],
+            description=[('id',)],
         )
         optional_module_stub({'duckdb': _DuckdbStub(conn)})
 
-        result = mod.read(tmp_path / 'data.duckdb')
+        _ = mod.read(tmp_path / 'data.duckdb')
 
-        assert result == [{'id': 1, 'name': 'Ada'}]
+        assert conn.closed is True
 
     def test_read_falls_back_to_pragma_columns(
         self,
@@ -152,6 +156,45 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
         assert result == [{'id': 1, 'name': 'Ada'}]
 
+    def test_read_uses_description_columns(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test that :func:`read` uses description columns when available."""
+        conn = _Connection(
+            tables=['data'],
+            rows=[(1, 'Ada')],
+            description=[('id',), ('name',)],
+        )
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+
+        result = mod.read(tmp_path / 'data.duckdb')
+
+        assert result == [{'id': 1, 'name': 'Ada'}]
+
+    def test_read_uses_explicit_table_option_when_multiple_tables_exist(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test explicit table selection avoiding multi-table ambiguity."""
+        conn = _Connection(
+            tables=['a', 'b'],
+            rows=[(1,)],
+            description=[('id',)],
+        )
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        handler = mod.DuckdbFile()
+
+        result = handler.read(
+            tmp_path / 'data.duckdb',
+            options=ReadOptions(table='b'),
+        )
+
+        assert result == [{'id': 1}]
+        assert 'SELECT * FROM "b"' in conn.executed
+
     def test_write_inserts_records(
         self,
         tmp_path: Path,
@@ -167,3 +210,35 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         assert written == 2
         assert any(stmt.startswith('CREATE TABLE') for stmt in conn.executed)
         assert conn.executemany_calls
+
+    def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
+        """Test write_table short-circuiting rows that provide no columns."""
+        conn = _Connection()
+        handler = mod.DuckdbFile()
+
+        written = handler.write_table(conn, 'data', [{}])
+
+        assert written == 0
+        assert not conn.executemany_calls
+
+    def test_write_uses_table_option_and_closes_connection(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """
+        Test writes honoring explicit table names and closing connections.
+        """
+        conn = _Connection()
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        handler = mod.DuckdbFile()
+
+        written = handler.write(
+            tmp_path / 'data.duckdb',
+            [{'id': 1}],
+            options=WriteOptions(table='events'),
+        )
+
+        assert written == 1
+        assert any('CREATE TABLE "events"' in stmt for stmt in conn.executed)
+        assert conn.closed is True

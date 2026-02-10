@@ -70,6 +70,20 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
             assert archive.namelist() == ['payload.json']
             assert archive.read('payload.json') == b'payload'
 
+    def test_read_inner_bytes_requires_inner_name_for_multiple_entries(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that reading raw bytes from multi-member ZIP requires
+        ``inner_name``.
+        """
+        path = tmp_path / 'payloads.zip'
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        with pytest.raises(ValueError, match='multiple members'):
+            mod.ZipFile().read_inner_bytes(path)
+
     def test_read_multiple_entries_respects_inner_name_option(
         self,
         tmp_path: Path,
@@ -164,6 +178,46 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
 
         with pytest.raises(ValueError, match='Cannot infer file format'):
             mod.read(path)
+
+    def test_read_inner_bytes_respects_inner_name_option(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that ``read_inner_bytes`` selects the configured member."""
+        path = tmp_path / 'payloads.zip'
+        _write_zip(path, {'a.json': b'first', 'b.json': b'second'})
+
+        result = mod.ZipFile().read_inner_bytes(
+            path,
+            options=ReadOptions(inner_name='b.json'),
+        )
+
+        assert result == b'second'
+
+    def test_write_raises_on_unexpected_output_compression(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that writing to non-ZIP compressed suffixes fails early."""
+        self._install_core_file_stub(monkeypatch)
+        path = tmp_path / 'payload.json.gz'
+
+        with pytest.raises(ValueError, match='Unexpected compression'):
+            mod.write(path, [{'id': 1}])
+
+    def test_write_inner_bytes_uses_default_member_name(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test ``write_inner_bytes`` default archive member naming."""
+        path = tmp_path / 'payload.zip'
+
+        mod.ZipFile().write_inner_bytes(path, b'data')
+
+        with zipfile.ZipFile(path, 'r') as archive:
+            assert archive.namelist() == ['payload']
+            assert archive.read('payload') == b'data'
 
     def test_write_supports_nested_inner_name(
         self,

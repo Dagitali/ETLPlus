@@ -13,6 +13,8 @@ import pytest
 
 from etlplus.file import core
 from etlplus.file import gz as mod
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
 from tests.unit.file.conftest import CoreDispatchFileStub
 
@@ -51,6 +53,23 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         with gzip.open(path, 'wb') as handle:
             handle.write(b'payload')
 
+    def test_read_inner_bytes_returns_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading decompressed bytes via ``read_inner_bytes``."""
+        path = tmp_path / 'payload.json.gz'
+        expected = b'{"ok": true}'
+        with gzip.open(path, 'wb') as handle:
+            handle.write(expected)
+
+        result = mod.GzFile().read_inner_bytes(
+            path,
+            options=ReadOptions(inner_name='ignored'),
+        )
+
+        assert result == expected
+
     def test_read_raises_on_missing_inner_format(
         self,
         tmp_path: Path,
@@ -71,3 +90,30 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
 
         with pytest.raises(ValueError, match='Not a gzip file'):
             mod.read(path)
+
+    def test_write_inner_bytes_writes_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing compressed bytes via ``write_inner_bytes``."""
+        path = tmp_path / 'payload.json.gz'
+        payload = b'{"written": true}'
+
+        mod.GzFile().write_inner_bytes(
+            path,
+            payload,
+            options=WriteOptions(inner_name='ignored'),
+        )
+
+        with gzip.open(path, 'rb') as handle:
+            assert handle.read() == payload
+
+    def test_write_raises_on_missing_inner_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing without an inferable inner format fails."""
+        path = tmp_path / 'payload.gz'
+
+        with pytest.raises(ValueError, match='Cannot infer file format'):
+            mod.write(path, [{'id': 1}])
