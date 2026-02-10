@@ -61,7 +61,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Install deterministic core file stub."""
-        self._install_core_file_stub(monkeypatch)
+        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
 
     def seed_archive_payload(
         self,
@@ -138,7 +138,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a multi-entry archive with ``inner_name`` returns
         only the selected entry payload.
         """
-        self._install_core_file_stub(monkeypatch)
+        self.install_core_file_stub(monkeypatch)
         path = self._archive_path(tmp_path, stem='payloads')
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -158,7 +158,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a ZIP archive with multiple entries returns a mapping
         of file names to their contents.
         """
-        self._install_core_file_stub(monkeypatch)
+        self.install_core_file_stub(monkeypatch)
         path = self._archive_path(tmp_path, stem='payloads')
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
@@ -214,7 +214,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing to non-ZIP compressed suffixes fails early."""
-        self._install_core_file_stub(monkeypatch)
+        self.install_core_file_stub(monkeypatch)
         path = tmp_path / 'payload.json.gz'
 
         with pytest.raises(ValueError, match='Unexpected compression'):
@@ -239,7 +239,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing supports nested archive member names."""
-        self._install_core_file_stub(monkeypatch)
+        self.install_core_file_stub(monkeypatch)
         path = tmp_path / 'payload.json.zip'
 
         written = mod.ZipFile().write(
@@ -261,10 +261,3 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     ) -> Path:
         """Build a deterministic zip path for ad hoc test cases."""
         return tmp_path / f'{stem}.zip'
-
-    @staticmethod
-    def _install_core_file_stub(
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)

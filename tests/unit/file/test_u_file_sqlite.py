@@ -34,7 +34,8 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
     ) -> Path:
         """Build an empty SQLite database file."""
         path = self.format_path(tmp_path)
-        sqlite3.connect(path).close()
+        with sqlite3.connect(path):
+            pass
         return path
 
     def build_multi_table_database_path(
@@ -83,9 +84,8 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
 
     def test_write_table_returns_zero_for_rows_without_columns(self) -> None:
         """Test write_table short-circuiting records with no columns."""
-        conn = sqlite3.connect(':memory:')
         handler = mod.SqliteFile()
-        try:
+        with sqlite3.connect(':memory:') as conn:
             written = handler.write_table(conn, 'data', [{}])
 
             assert written == 0
@@ -93,8 +93,6 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
                 "SELECT name FROM sqlite_master WHERE type='table'",
             ).fetchall()
             assert tables == []
-        finally:
-            conn.close()
 
     def test_write_uses_explicit_table_option(
         self,
@@ -111,8 +109,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         )
 
         assert written == 1
-        conn = sqlite3.connect(path)
-        try:
+        with sqlite3.connect(path) as conn:
             tables = [
                 row[0]
                 for row in conn.execute(
@@ -122,8 +119,6 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
             assert tables == ['events']
             rows = conn.execute('SELECT id FROM events').fetchall()
             assert rows == [(1,)]
-        finally:
-            conn.close()
 
     @staticmethod
     def _create_multi_table_db(
@@ -132,8 +127,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         rows: dict[str, list[tuple[object, ...]]] | None = None,
     ) -> None:
         """Create a deterministic two-table SQLite fixture database."""
-        conn = sqlite3.connect(path)
-        try:
+        with sqlite3.connect(path) as conn:
             conn.execute('CREATE TABLE alpha (id INTEGER)')
             conn.execute('CREATE TABLE beta (id INTEGER)')
             for table, values in (rows or {}).items():
@@ -142,5 +136,3 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
                     values,
                 )
             conn.commit()
-        finally:
-            conn.close()
