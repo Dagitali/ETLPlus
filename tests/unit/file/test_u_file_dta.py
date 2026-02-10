@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.dta`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -15,6 +14,7 @@ from etlplus.file import dta as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
@@ -68,7 +68,7 @@ class TestDta(SingleDatasetWritableContract):
     def test_read_dataset_uses_pandas_read_stata(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test DTA reads delegating to ``pandas.read_stata``."""
         pandas = _PandasStub(_Frame([{'id': 1}]))
@@ -85,7 +85,7 @@ class TestDta(SingleDatasetWritableContract):
     def test_write_dataset_uses_to_stata_without_index(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test DTA writes disabling index serialization."""

@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.hdf5`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ import pytest
 from etlplus.file import hdf5 as mod
 from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -75,7 +75,7 @@ class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,  # noqa: ARG002
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install a pandas store stub for unknown-dataset checks."""
         _ = tmp_path
@@ -102,7 +102,7 @@ class TestHdf5Read:
     def test_read_returns_empty_when_no_keys(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading returns an empty list when no keys are present."""
         store = _HDFStore([], {})
@@ -113,7 +113,7 @@ class TestHdf5Read:
     def test_read_prefers_default_key(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading prefers the default key when present."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -125,7 +125,7 @@ class TestHdf5Read:
     def test_read_raises_on_multiple_keys(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading raises when multiple keys are present."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -138,7 +138,7 @@ class TestHdf5Read:
     def test_read_uses_single_key(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading uses the single key when only one is present."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -149,7 +149,7 @@ class TestHdf5Read:
 
     @staticmethod
     def _install_store(
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         store: _HDFStore,
     ) -> None:
         """Install one HDFStore-backed pandas stub."""

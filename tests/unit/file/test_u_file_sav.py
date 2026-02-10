@@ -6,13 +6,13 @@ Unit tests for :mod:`etlplus.file.sav`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import sav as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PyreadstatTabularStub
 from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
@@ -30,7 +30,7 @@ class TestSav(SingleDatasetWritableContract):
     def test_read_dataset_uses_pyreadstat_reader(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test SAV reads delegating to ``pyreadstat.read_sav``."""
         stub = PyreadstatTabularStub(
@@ -51,7 +51,7 @@ class TestSav(SingleDatasetWritableContract):
     def test_write_dataset_uses_pyreadstat_writer(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test SAV writes delegating to ``pyreadstat.write_sav``."""
         stub = PyreadstatTabularStub(

@@ -6,12 +6,12 @@ Unit tests for :mod:`etlplus.file.rda`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import rda as mod
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PyreadrStub
 from tests.unit.file.conftest import RDataModuleContract
 from tests.unit.file.conftest import RDataNoWriterStub
@@ -79,7 +79,7 @@ class TestRda(RDataModuleContract):
     def test_write_falls_back_to_write_rda(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test that :func:`write` falls back to :meth:`write_rda` when needed.
@@ -108,7 +108,7 @@ class TestRda(RDataModuleContract):
     def test_list_datasets_returns_default_key_for_empty_payload(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test list_datasets returning default key when file has no objects.
@@ -126,7 +126,7 @@ class TestRda(RDataModuleContract):
     def test_list_datasets_returns_object_names(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test list_datasets exposing keys from pyreadr payloads."""
         pyreadr = self.build_pyreadr_stub({'first': object(), 'second': 1})
@@ -142,7 +142,7 @@ class TestRda(RDataModuleContract):
     def test_write_dataset_uses_dataset_option_name(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test write_dataset forwarding explicit dataset names to pyreadr."""
         pyreadr = self.build_pyreadr_stub({})

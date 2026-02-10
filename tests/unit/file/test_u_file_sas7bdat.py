@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.sas7bdat`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ import pytest
 from etlplus.file import sas7bdat as mod
 from etlplus.file.base import ReadOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PandasReadSasStub
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
@@ -34,7 +34,7 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Ensure dataset-key validation occurs before optional imports."""
         _ = tmp_path

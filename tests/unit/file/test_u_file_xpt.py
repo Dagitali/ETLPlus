@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.xpt`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -15,6 +14,7 @@ from etlplus.file import xpt as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PandasReadSasStub
 from tests.unit.file.conftest import PyreadstatTabularStub
 from tests.unit.file.conftest import RDataPandasStub
@@ -33,7 +33,7 @@ class TestXpt(SingleDatasetWritableContract):
     def test_read_falls_back_to_pandas_read_sas(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test XPT reads falling back to pandas when read_xport is absent."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -51,7 +51,7 @@ class TestXpt(SingleDatasetWritableContract):
     def test_read_prefers_pyreadstat_read_xport(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test XPT reads preferring pyreadstat's native reader."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -74,7 +74,7 @@ class TestXpt(SingleDatasetWritableContract):
     def test_write_raises_when_pyreadstat_writer_missing(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test XPT writes requiring pyreadstat.write_xport."""
         optional_module_stub(
@@ -87,7 +87,7 @@ class TestXpt(SingleDatasetWritableContract):
     def test_write_uses_pyreadstat_writer(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test XPT writes delegating to pyreadstat.write_xport."""
         pyreadstat = PyreadstatTabularStub(write_method_name='write_xport')

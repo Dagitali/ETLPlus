@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.file.base`.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -385,8 +386,6 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    # pylint: disable=abstract-class-instantiated
-
     def test_delimited_abc_requires_row_methods(self) -> None:
         """Test DelimitedTextFileHandlerABC requiring row-level methods."""
 
@@ -416,8 +415,10 @@ class TestBaseAbcContracts:
                 _ = options
                 return 0
 
-        with pytest.raises(TypeError):
-            _IncompleteDelimited()  # type: ignore[abstract]
+        assert inspect.isabstract(_IncompleteDelimited)
+        assert {'read_rows', 'write_rows'} <= (
+            _IncompleteDelimited.__abstractmethods__
+        )
 
     def test_delimited_concrete_subclass_satisfies_contract(self) -> None:
         """Test a concrete delimited subclass being fully instantiable."""
@@ -427,17 +428,17 @@ class TestBaseAbcContracts:
         assert handler.read(Path('ignored.csv')) == [{'id': 1}]
         assert handler.write(Path('ignored.csv'), [{'id': 1}, {'id': 2}]) == 2
 
+    def test_file_handler_abc_declares_read_write_as_abstract(self) -> None:
+        """Test FileHandlerABC preserving read/write abstract methods."""
+        assert inspect.isabstract(FileHandlerABC)
+        assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
+
     def test_read_only_handler_rejects_write(self) -> None:
         """Test read-only handlers raising on write."""
         handler = _ReadOnlyStub()
 
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write(Path('ignored.xls'), [{'a': 1}])
-
-    def test_file_handler_abc_cannot_be_instantiated(self) -> None:
-        """Test FileHandlerABC remaining abstract."""
-        with pytest.raises(TypeError):
-            FileHandlerABC()  # type: ignore[abstract]
 
     def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
         """Test read-only spreadsheet handlers rejecting write_sheet calls."""
@@ -478,8 +479,10 @@ class TestBaseAbcContracts:
                 _ = options
                 return 0
 
-        with pytest.raises(TypeError):
-            _IncompleteText()  # type: ignore[abstract]
+        assert inspect.isabstract(_IncompleteText)
+        assert {'read_rows', 'write_rows'} <= (
+            _IncompleteText.__abstractmethods__
+        )
 
     def test_text_fixed_width_concrete_subclass_satisfies_contract(
         self,

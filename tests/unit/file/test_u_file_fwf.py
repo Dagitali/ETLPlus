@@ -6,11 +6,11 @@ Unit tests for :mod:`etlplus.file.fwf`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import fwf as mod
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -44,7 +44,7 @@ class TestFwf(TextRowModuleContract):
     def prepare_read_case(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> tuple[Path, list[dict[str, object]]]:
         """Prepare representative FWF read input and dependency stubs."""
         frame = DictRecordsFrameStub([{'id': 1}])
@@ -67,7 +67,7 @@ class TestFwf(TextRowModuleContract):
     def test_read_uses_pandas(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that :func:`read` uses pandas to read fixed-width files."""
         path, _ = self.prepare_read_case(tmp_path, optional_module_stub)

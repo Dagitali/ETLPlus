@@ -6,13 +6,13 @@ Unit tests for :mod:`etlplus.file.duckdb`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import duckdb as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 
@@ -104,7 +104,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def build_empty_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build a DuckDB fixture with no tables."""
         conn = _Connection()
@@ -114,7 +114,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def build_multi_table_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build a DuckDB fixture with multiple tables."""
         conn = _Connection(tables=['a', 'b'])
@@ -124,7 +124,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_read_closes_connection_after_query(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test reads always closing the DuckDB connection."""
         conn = _Connection(
@@ -141,7 +141,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_read_falls_back_to_pragma_columns(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that :func:`read` falls back to pragma columns."""
         conn = _Connection(
@@ -159,7 +159,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_read_uses_description_columns(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that :func:`read` uses description columns when available."""
         conn = _Connection(
@@ -176,7 +176,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_read_uses_explicit_table_option_when_multiple_tables_exist(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test explicit table selection avoiding multi-table ambiguity."""
         conn = _Connection(
@@ -198,7 +198,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_write_inserts_records(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that :func:`write` creates a table and inserts records."""
         conn = _Connection()
@@ -216,7 +216,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_read_quotes_explicit_table_name(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read quoting explicit table names in generated SQL."""
         conn = _Connection(
@@ -249,7 +249,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     def test_write_uses_table_option_and_closes_connection(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test writes honoring explicit table names and closing connections.
@@ -270,7 +270,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
     @staticmethod
     def _install_connection(
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         connection: _Connection,
     ) -> None:
         """Install one DuckDB connection stub for a test case."""

@@ -6,11 +6,11 @@ Unit tests for :mod:`etlplus.file.rds`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import rds as mod
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PyreadrStub
 from tests.unit.file.conftest import RDataModuleContract
 from tests.unit.file.conftest import RDataNoWriterStub
@@ -61,7 +61,7 @@ class TestRds(RDataModuleContract):
     def test_read_dataset_data_alias_maps_single_object(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test dataset='data' alias selecting sole object in RDS payload."""
         pyreadr = self.build_pyreadr_stub(
@@ -82,7 +82,7 @@ class TestRds(RDataModuleContract):
     def test_read_dataset_selects_named_object(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test read_dataset selecting explicit object names."""
         pyreadr = self.build_pyreadr_stub(

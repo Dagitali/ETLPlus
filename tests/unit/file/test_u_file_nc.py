@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.nc`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ import pytest
 from etlplus.file import nc as mod
 from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
@@ -90,7 +90,7 @@ class TestNc(SingleDatasetWritableContract):
     def test_read_drops_sequential_index(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading drops a sequential index."""
         frame = DictRecordsFrameStub(
@@ -108,7 +108,7 @@ class TestNc(SingleDatasetWritableContract):
     def test_read_keeps_non_sequential_index(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that reading keeps a non-sequential index."""
         frame = DictRecordsFrameStub(
@@ -145,7 +145,7 @@ class TestNc(SingleDatasetWritableContract):
     def test_write_happy_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test the happy path of writing data to a NetCDF file."""
@@ -172,7 +172,7 @@ class TestNc(SingleDatasetWritableContract):
     def test_write_raises_engine_error(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing raises an engine error."""
