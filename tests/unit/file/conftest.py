@@ -71,6 +71,14 @@ def _call_scientific_dataset_operation(
     return cast(int, handler.write_dataset(path, [], dataset=dataset))
 
 
+def _raise_unexpected_dependency_call(
+    *args: object,
+    **kwargs: object,
+) -> object:  # noqa: ARG001
+    """Raise when a dependency resolver is called unexpectedly in tests."""
+    raise AssertionError('dependency resolver should not be called')
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -111,6 +119,20 @@ def assert_stub_module_operation_raises(
             path=path,
             write_payload=write_payload,
         )
+
+
+def patch_dependency_resolver_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    *,
+    resolver_name: str = 'get_dependency',
+) -> None:
+    """Patch one dependency resolver to raise if a test triggers it."""
+    monkeypatch.setattr(
+        module,
+        resolver_name,
+        _raise_unexpected_dependency_call,
+    )
 
 
 def make_import_error_reader_module(
@@ -712,9 +734,6 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     """Reusable contract suite for archive wrappers using core dispatch."""
 
     module: ModuleType
-    valid_path_name: str
-    missing_inner_path_name: str
-    expected_read_result: JSONData
     write_payload: JSONData = make_payload('list')
     expected_written_count: int = 1
     missing_inner_error_pattern: str = 'Cannot infer file format'
@@ -729,6 +748,26 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
         """Build deterministic archive paths for ad hoc test cases."""
         extension = self.format_name if suffix is None else suffix
         return tmp_path / f'{stem}.{extension}'
+
+    def valid_archive_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build the canonical archive path for core-dispatch tests."""
+        return self.archive_path(tmp_path, stem='payload.json')
+
+    def missing_inner_format_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build an archive path with no inferable inner file format."""
+        return self.archive_path(tmp_path, stem='payload')
+
+    def expected_read_result(
+        self,
+    ) -> JSONData:
+        """Build the expected core-dispatch payload for archive reads."""
+        return {'fmt': 'json', 'name': 'payload.json'}
 
     def seed_archive_payload(
         self,
@@ -761,12 +800,12 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     ) -> None:
         """Test read delegating payload parsing through core dispatch."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / self.valid_path_name
+        path = self.valid_archive_path(tmp_path)
         self.seed_archive_payload(path)
 
         result = self.module.read(path)
 
-        assert result == self.expected_read_result
+        assert result == self.expected_read_result()
 
     def test_write_creates_wrapped_payload(
         self,
@@ -775,7 +814,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     ) -> None:
         """Test write persisting wrapped payload through core dispatch."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / self.valid_path_name
+        path = self.valid_archive_path(tmp_path)
 
         written = self.module.write(path, self.write_payload)
 
@@ -787,7 +826,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
         tmp_path: Path,
     ) -> None:
         """Test writes requiring a resolvable inner file format."""
-        path = tmp_path / self.missing_inner_path_name
+        path = self.missing_inner_format_path(tmp_path)
 
         with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
             self.module.write(path, self.write_payload)
