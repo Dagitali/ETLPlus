@@ -152,6 +152,8 @@ def make_import_error_reader_module(
 def make_import_error_writer_module() -> object:
     """Build a pandas-like module whose DataFrame writes raise ImportError."""
 
+    # pylint: disable=unused-argument
+
     class _FailFrame:
         """Frame stub whose write-like attributes raise ImportError."""
 
@@ -474,19 +476,23 @@ class SemiStructuredReadMixin(PathMixin):
     Parametrized read contract mixin for semi-structured modules.
     """
 
+    # pylint: disable=unused-argument
+
     module: ModuleType
     sample_read_text: str
-
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        raise NotImplementedError
 
     def assert_read_contract_result(
         self,
         result: JSONData,
     ) -> None:
+        """Assert module-specific read contract expectations."""
+        raise NotImplementedError
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for read tests."""
         raise NotImplementedError
 
     def test_read_parses_expected_payload(
@@ -516,12 +522,14 @@ class SemiStructuredWriteDictMixin(PathMixin):
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
+        """Install optional dependencies needed for write tests."""
         raise NotImplementedError
 
     def assert_write_contract_result(
         self,
         path: Path,
     ) -> None:
+        """Assert module-specific write contract behavior."""
         raise NotImplementedError
 
     def test_write_accepts_single_dict_payload(
@@ -1664,8 +1672,6 @@ class PandasReadSasStub:
     Minimal pandas stub for ``read_sas``-based handlers.
     """
 
-    # pylint: disable=unused-argument
-
     def __init__(
         self,
         frame: DictRecordsFrameStub,
@@ -1675,6 +1681,32 @@ class PandasReadSasStub:
         self._frame = frame
         self._fail_on_format_kwarg = fail_on_format_kwarg
         self.read_calls: list[dict[str, object]] = []
+
+    def assert_fallback_read_calls(
+        self,
+        path: Path,
+        *,
+        format_name: str,
+    ) -> None:
+        """Assert fallback behavior after a rejected format keyword read."""
+        assert self.read_calls == [
+            {'path': path, 'format': format_name},
+            {'path': path},
+        ]
+
+    def assert_single_read_call(
+        self,
+        path: Path,
+        *,
+        format_name: str | None = None,
+    ) -> None:
+        """
+        Assert one pandas :meth:`read_sas` call with optional format hint.
+        """
+        expected: dict[str, object] = {'path': path}
+        if format_name is not None:
+            expected['format'] = format_name
+        assert self.read_calls == [expected]
 
     def read_sas(
         self,
@@ -1773,6 +1805,22 @@ class PyreadstatTabularStub:
         path: str,
     ) -> None:
         self.write_calls.append((frame, path))
+
+    def assert_single_read_path(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert one pyreadstat read call using the provided path."""
+        assert self.read_calls == [str(path)]
+
+    def assert_last_write_path(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert the most recent pyreadstat write call path."""
+        assert self.write_calls
+        _, write_path = self.write_calls[-1]
+        assert write_path == str(path)
 
 
 class RDataPandasStub:
