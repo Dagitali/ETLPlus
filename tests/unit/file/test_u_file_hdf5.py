@@ -14,6 +14,7 @@ from etlplus.file import hdf5 as mod
 from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -84,8 +85,10 @@ class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
         optional_module_stub({'pandas': _PandasStub(store)})
 
 
-class TestHdf5Read:
+class TestHdf5Read(PathMixin):
     """Unit tests for :func:`etlplus.file.hdf5.read`."""
+
+    format_name = 'hdf5'
 
     def test_read_raises_when_tables_missing(
         self,
@@ -95,9 +98,10 @@ class TestHdf5Read:
         """Test that reading raises when the HDF5 store has no tables."""
         pandas = _PandasStub(store=None)
         monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='tables'):
-            mod.read(tmp_path / 'data.hdf5')
+            mod.read(path)
 
     def test_read_returns_empty_when_no_keys(
         self,
@@ -107,8 +111,9 @@ class TestHdf5Read:
         """Test that reading returns an empty list when no keys are present."""
         store = _HDFStore([], {})
         self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
 
-        assert mod.read(tmp_path / 'data.hdf5') == []
+        assert mod.read(path) == []
 
     def test_read_prefers_default_key(
         self,
@@ -119,8 +124,9 @@ class TestHdf5Read:
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
         self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
 
-        assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
+        assert mod.read(path) == [{'id': 1}]
 
     def test_read_raises_on_multiple_keys(
         self,
@@ -131,9 +137,10 @@ class TestHdf5Read:
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['a', 'b'], {'a': frame, 'b': frame})
         self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
 
         with pytest.raises(ValueError, match='Multiple datasets'):
-            mod.read(tmp_path / 'data.hdf5')
+            mod.read(path)
 
     def test_read_uses_single_key(
         self,
@@ -144,8 +151,9 @@ class TestHdf5Read:
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['only'], {'only': frame})
         self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
 
-        assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
+        assert mod.read(path) == [{'id': 1}]
 
     @staticmethod
     def _install_store(

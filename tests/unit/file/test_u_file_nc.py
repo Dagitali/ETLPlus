@@ -99,7 +99,7 @@ class TestNc(SingleDatasetWritableContract):
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
         optional_module_stub({'xarray': xarray})
-        path = tmp_path / 'data.nc'
+        path = self.format_path(tmp_path)
 
         result = mod.read(path)
 
@@ -117,8 +117,9 @@ class TestNc(SingleDatasetWritableContract):
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
         optional_module_stub({'xarray': xarray})
+        path = self.format_path(tmp_path)
 
-        result = mod.read(tmp_path / 'data.nc')
+        result = mod.read(path)
 
         assert result == [
             {'index': 2, 'value': 10},
@@ -138,9 +139,10 @@ class TestNc(SingleDatasetWritableContract):
         xarray = _XarrayStub(_Dataset(DictRecordsFrameStub([])))
         xarray.open_dataset = _open_dataset  # type: ignore[assignment]
         monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: xarray)
+        path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='NC support requires optional'):
-            mod.read(tmp_path / 'data.nc')
+            mod.read(path)
 
     def test_write_happy_path(
         self,
@@ -152,17 +154,9 @@ class TestNc(SingleDatasetWritableContract):
         frame = DictRecordsFrameStub([{'value': 1}])
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
-
-        def _from_dataframe(_: object) -> _Dataset:
-            return dataset
-
-        monkeypatch.setattr(
-            xarray.Dataset,
-            'from_dataframe',
-            staticmethod(_from_dataframe),
-        )
+        self._patch_from_dataframe(monkeypatch, xarray, dataset)
         optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
-        path = tmp_path / 'data.nc'
+        path = self.format_path(tmp_path)
 
         written = mod.write(path, [{'value': 1}])
 
@@ -179,6 +173,20 @@ class TestNc(SingleDatasetWritableContract):
         frame = DictRecordsFrameStub([{'value': 1}])
         dataset = _Dataset(frame, fail=True)
         xarray = _XarrayStub(dataset)
+        self._patch_from_dataframe(monkeypatch, xarray, dataset)
+        optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(ImportError, match='NC support requires optional'):
+            mod.write(path, [{'value': 1}])
+
+    @staticmethod
+    def _patch_from_dataframe(
+        monkeypatch: pytest.MonkeyPatch,
+        xarray: _XarrayStub,
+        dataset: _Dataset,
+    ) -> None:
+        """Patch xarray Dataset constructor to return a deterministic stub."""
 
         def _from_dataframe(_: object) -> _Dataset:
             return dataset
@@ -188,7 +196,3 @@ class TestNc(SingleDatasetWritableContract):
             'from_dataframe',
             staticmethod(_from_dataframe),
         )
-        optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
-
-        with pytest.raises(ImportError, match='NC support requires optional'):
-            mod.write(tmp_path / 'data.nc', [{'value': 1}])
