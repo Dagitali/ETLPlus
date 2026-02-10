@@ -58,16 +58,26 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         """Seed zip archive payload for read contract tests."""
         _write_zip(path, {'payload.json': b'{}'})
 
-    def test_read_inner_bytes_raises_on_unknown_inner_name(
+    @pytest.mark.parametrize(
+        ('reader_method', 'needs_core_stub'),
+        [('read_inner_bytes', False), ('read', True)],
+        ids=['inner_bytes', 'parsed_read'],
+    )
+    def test_read_raises_on_unknown_inner_name(
         self,
         tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        reader_method: str,
+        needs_core_stub: bool,
     ) -> None:
-        """Test read_inner_bytes errors for unknown archive members."""
+        """Test read APIs erroring for unknown archive members."""
+        if needs_core_stub:
+            self.install_core_file_stub(monkeypatch)
         path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'first'})
+        _write_zip(path, {'a.json': b'first', 'b.json': b'second'})
 
         with pytest.raises(ValueError, match='ZIP archive member not found'):
-            mod.ZipFile().read_inner_bytes(
+            getattr(mod.ZipFile(), reader_method)(
                 path,
                 options=ReadOptions(inner_name='missing.json'),
             )
@@ -86,56 +96,45 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with pytest.raises(ValueError, match='multiple members'):
             mod.ZipFile().read_inner_bytes(path)
 
-    def test_read_inner_bytes_respects_inner_name_option(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that ``read_inner_bytes`` selects the configured member."""
-        path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'first', 'b.json': b'second'})
-
-        result = mod.ZipFile().read_inner_bytes(
-            path,
-            options=ReadOptions(inner_name='b.json'),
-        )
-
-        assert result == b'second'
-
-    def test_read_multiple_entries_raises_on_unknown_inner_name(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that selecting an unknown archive member raises a clear error.
-        """
-        path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
-
-        with pytest.raises(ValueError, match='ZIP archive member not found'):
-            mod.ZipFile().read(
-                path,
-                options=ReadOptions(inner_name='missing.json'),
-            )
-
-    def test_read_multiple_entries_respects_inner_name_option(
+    @pytest.mark.parametrize(
+        ('reader_method', 'needs_core_stub', 'entries', 'expected'),
+        [
+            (
+                'read_inner_bytes',
+                False,
+                {'a.json': b'first', 'b.json': b'second'},
+                b'second',
+            ),
+            (
+                'read',
+                True,
+                {'a.json': b'{}', 'b.json': b'{}'},
+                {'fmt': 'json', 'name': 'b.json'},
+            ),
+        ],
+        ids=['inner_bytes', 'parsed_read'],
+    )
+    def test_read_respects_inner_name_option(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        reader_method: str,
+        needs_core_stub: bool,
+        entries: dict[str, bytes],
+        expected: object,
     ) -> None:
-        """
-        Test that reading a multi-entry archive with ``inner_name`` returns
-        only the selected entry payload.
-        """
-        self.install_core_file_stub(monkeypatch)
+        """Test read APIs selecting the configured archive member."""
+        if needs_core_stub:
+            self.install_core_file_stub(monkeypatch)
         path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+        _write_zip(path, entries)
 
-        result = mod.ZipFile().read(
+        result = getattr(mod.ZipFile(), reader_method)(
             path,
             options=ReadOptions(inner_name='b.json'),
         )
 
-        assert result == {'fmt': 'json', 'name': 'b.json'}
+        assert result == expected
 
     def test_read_multiple_entries_returns_mapping(
         self,
