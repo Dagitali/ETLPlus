@@ -563,7 +563,7 @@ class TestOptionsContracts:
 
     @pytest.mark.parametrize(
         (
-            'handler_kind',
+            'handler_cls',
             'read_method_name',
             'write_method_name',
             'read_options',
@@ -576,7 +576,7 @@ class TestOptionsContracts:
         ),
         [
             (
-                'delimited',
+                _DelimitedStub,
                 'delimiter_from_read_options',
                 'delimiter_from_write_options',
                 ReadOptions(extras={'delimiter': '|'}),
@@ -588,7 +588,7 @@ class TestOptionsContracts:
                 ':',
             ),
             (
-                'read_only',
+                _ReadOnlyStub,
                 'encoding_from_read_options',
                 'encoding_from_write_options',
                 ReadOptions(encoding='latin-1'),
@@ -600,7 +600,7 @@ class TestOptionsContracts:
                 'ascii',
             ),
             (
-                'archive',
+                _ArchiveStub,
                 'inner_name_from_read_options',
                 'inner_name_from_write_options',
                 ReadOptions(inner_name='data.json'),
@@ -612,7 +612,7 @@ class TestOptionsContracts:
                 _NO_DEFAULT,
             ),
             (
-                'spreadsheet',
+                _SpreadsheetStub,
                 'sheet_from_read_options',
                 'sheet_from_write_options',
                 ReadOptions(sheet='Sheet2'),
@@ -624,7 +624,7 @@ class TestOptionsContracts:
                 99,
             ),
             (
-                'embedded',
+                _EmbeddedDbStub,
                 'table_from_read_options',
                 'table_from_write_options',
                 ReadOptions(table='events'),
@@ -640,7 +640,7 @@ class TestOptionsContracts:
     )
     def test_option_helper_pairs_use_override_then_default(
         self,
-        handler_kind: str,
+        handler_cls: type[object],
         read_method_name: str,
         write_method_name: str,
         read_options: ReadOptions,
@@ -652,7 +652,7 @@ class TestOptionsContracts:
         write_default: object,
     ) -> None:
         """Test paired read/write option helpers with override/default."""
-        handler = self._make_handler(handler_kind)
+        handler = handler_cls()
         read_call = cast(
             Callable[..., object],
             getattr(handler, read_method_name),
@@ -699,23 +699,6 @@ class TestOptionsContracts:
 
         with pytest.raises(FrozenInstanceError):
             options.encoding = 'latin-1'  # type: ignore[misc]
-
-    @staticmethod
-    def _make_handler(handler_kind: str) -> object:
-        """Build handler stubs used by option-helper contract tests."""
-        match handler_kind:
-            case 'delimited':
-                return _DelimitedStub()
-            case 'read_only':
-                return _ReadOnlyStub()
-            case 'archive':
-                return _ArchiveStub()
-            case 'spreadsheet':
-                return _SpreadsheetStub()
-            case 'embedded':
-                return _EmbeddedDbStub()
-            case _:
-                raise ValueError(f'Unknown handler kind: {handler_kind}')
 
 
 class TestScientificDatasetContracts:
