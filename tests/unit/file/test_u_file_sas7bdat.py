@@ -15,6 +15,7 @@ from etlplus.file.base import ReadOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PandasReadSasStub
+from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: TESTS ============================================================ #
@@ -50,17 +51,10 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
         )
 
 
-class TestSas7bdatRead:
+class TestSas7bdatRead(PathMixin):
     """Unit tests for :func:`etlplus.file.sas7bdat.read`."""
 
-    @staticmethod
-    def _install_dependency_stubs(
-        monkeypatch: pytest.MonkeyPatch,
-        pandas: PandasReadSasStub,
-    ) -> None:
-        """Install deterministic dependency stubs for SAS7BDAT tests."""
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+    format_name = 'sas7bdat'
 
     def test_list_datasets_returns_default_key(self) -> None:
         """Test list_datasets exposing the single supported key."""
@@ -77,13 +71,14 @@ class TestSas7bdatRead:
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
         self._install_dependency_stubs(monkeypatch, pandas)
+        path = self.format_path(tmp_path)
 
-        result = mod.read(tmp_path / 'data.sas7bdat')
+        result = mod.read(path)
 
         assert result == [{'id': 1}]
         assert pandas.read_calls == [
-            {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
-            {'path': tmp_path / 'data.sas7bdat'},
+            {'path': path, 'format': 'sas7bdat'},
+            {'path': path},
         ]
 
     def test_read_dataset_accepts_default_key_via_options(
@@ -95,9 +90,10 @@ class TestSas7bdatRead:
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
         self._install_dependency_stubs(monkeypatch, pandas)
+        path = self.format_path(tmp_path)
 
         result = mod.Sas7bdatFile().read_dataset(
-            tmp_path / 'data.sas7bdat',
+            path,
             options=ReadOptions(dataset='data'),
         )
 
@@ -112,10 +108,20 @@ class TestSas7bdatRead:
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
         self._install_dependency_stubs(monkeypatch, pandas)
+        path = self.format_path(tmp_path)
 
-        result = mod.read(tmp_path / 'data.sas7bdat')
+        result = mod.read(path)
 
         assert result == [{'id': 1}]
         assert pandas.read_calls == [
-            {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
+            {'path': path, 'format': 'sas7bdat'},
         ]
+
+    @staticmethod
+    def _install_dependency_stubs(
+        monkeypatch: pytest.MonkeyPatch,
+        pandas: PandasReadSasStub,
+    ) -> None:
+        """Install deterministic dependency stubs for SAS7BDAT tests."""
+        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
+        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
