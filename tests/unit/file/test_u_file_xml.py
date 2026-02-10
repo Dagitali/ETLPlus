@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from etlplus.file import xml as mod
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import PathMixin
 
 # SECTION: TESTS ============================================================ #
@@ -38,3 +39,41 @@ class TestXml(PathMixin):
         assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
         result = self.module.read(path)
         assert self.root_tag in result
+
+    def test_dumps_defaults_to_root_tag_for_non_single_mapping(self) -> None:
+        """Test dumps using the default root tag for list payloads."""
+        text = mod.XmlFile().dumps([{'id': 1}])
+
+        assert text.startswith('<root>')
+        assert '<item>' in text
+
+    def test_dumps_prefers_single_mapping_root_over_options(self) -> None:
+        """Test dumps preserving explicit single mapping roots."""
+        text = mod.XmlFile().dumps(
+            {'rows': [{'id': 1}]},
+            options=WriteOptions(root_tag='ignored'),
+        )
+
+        assert text.startswith('<rows>')
+        assert 'ignored' not in text
+
+    def test_loads_parses_attributes_and_repeated_tags(self) -> None:
+        """Test loads converting attributes and repeated tags predictably."""
+        payload = (
+            '<root id="7">'
+            '<item code="A"><text>first</text></item>'
+            '<item code="B"><text>second</text></item>'
+            '</root>'
+        )
+
+        result = mod.XmlFile().loads(payload)
+
+        assert result == {
+            'root': {
+                '@id': '7',
+                'item': [
+                    {'@code': 'A', 'text': {'text': 'first'}},
+                    {'@code': 'B', 'text': {'text': 'second'}},
+                ],
+            },
+        }

@@ -208,8 +208,35 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         written = mod.write(path, [{'id': 1}, {'id': 2}])
 
         assert written == 2
-        assert any(stmt.startswith('CREATE TABLE') for stmt in conn.executed)
+        assert any(
+            stmt.startswith('CREATE TABLE "data"')
+            for stmt in conn.executed
+        )
         assert conn.executemany_calls
+
+    def test_read_quotes_explicit_table_name(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read quoting explicit table names in generated SQL."""
+        conn = _Connection(
+            tables=['my table'],
+            rows=[(1,)],
+            description=[('id',)],
+        )
+        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+
+        result = mod.DuckdbFile().read(
+            tmp_path / 'data.duckdb',
+            options=ReadOptions(table='my table'),
+        )
+
+        assert result == [{'id': 1}]
+        assert any(
+            stmt == 'SELECT * FROM "my table"'
+            for stmt in conn.executed
+        )
 
     def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
         """Test write_table short-circuiting rows that provide no columns."""

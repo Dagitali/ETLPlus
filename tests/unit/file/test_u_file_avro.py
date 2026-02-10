@@ -60,9 +60,21 @@ class _FastAvroStub:
 class TestAvroHandlerClass:
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
 
-    def test_format_constant(self) -> None:
-        """Test :class:`AvroFile` exposing the expected format enum."""
-        assert mod.AvroFile.format is FileFormat.AVRO
+    def test_dumps_bytes_returns_empty_for_empty_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test empty payload serialization short-circuiting to bytes."""
+        handler = mod.AvroFile()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+
+        payload = handler.dumps_bytes([])
+
+        assert payload == b''
 
     def test_dumps_and_loads_bytes(
         self,
@@ -81,6 +93,27 @@ class TestAvroHandlerClass:
         assert stub.parsed_schema is not None
         assert stub.writes
         assert result == stub.records
+
+    def test_format_constant(self) -> None:
+        """Test :class:`AvroFile` exposing the expected format enum."""
+        assert mod.AvroFile.format is FileFormat.AVRO
+
+    def test_write_returns_zero_for_empty_payload(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test file writes short-circuiting on empty payloads."""
+        handler = mod.AvroFile()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
+        )
+
+        written = handler.write(tmp_path / 'data.avro', [])
+
+        assert written == 0
 
 
 class TestAvroHelpers:

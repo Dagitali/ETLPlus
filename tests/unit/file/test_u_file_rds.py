@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.file.rds`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -127,3 +128,48 @@ class TestRds(RDataModuleContract):
         stub = pyreadr_stub
         assert isinstance(stub, _PyreadrStub)
         assert stub.writes
+
+    def test_read_dataset_data_alias_maps_single_object(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test dataset='data' alias selecting sole object in RDS payload."""
+        pyreadr = self.build_pyreadr_stub(
+            {'only': self.build_frame([{'id': 1}])},
+        )
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+
+        result = mod.RdsFile().read_dataset(
+            self.format_path(tmp_path),
+            dataset='data',
+        )
+
+        assert result == [{'id': 1}]
+
+    def test_read_dataset_selects_named_object(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test read_dataset selecting explicit object names."""
+        pyreadr = self.build_pyreadr_stub(
+            {
+                'first': self.build_frame([{'id': 1}]),
+                'second': self.build_frame([{'id': 2}]),
+            },
+        )
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+
+        result = mod.RdsFile().read_dataset(
+            self.format_path(tmp_path),
+            dataset='second',
+        )
+
+        assert result == [{'id': 2}]

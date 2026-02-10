@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import sas7bdat as mod
+from etlplus.file.base import ReadOptions
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -96,6 +97,12 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
 class TestSas7bdatRead:
     """Unit tests for :func:`etlplus.file.sas7bdat.read`."""
 
+    def test_list_datasets_returns_default_key(self) -> None:
+        """Test list_datasets exposing the single supported key."""
+        assert mod.Sas7bdatFile().list_datasets(Path('ignored.sas7bdat')) == [
+            'data',
+        ]
+
     def test_read_falls_back_when_format_kwarg_not_supported(
         self,
         tmp_path: Path,
@@ -114,6 +121,24 @@ class TestSas7bdatRead:
             {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
             {'path': tmp_path / 'data.sas7bdat', 'format': None},
         ]
+
+    def test_read_dataset_accepts_default_key_via_options(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test option-based default dataset selection for read_dataset."""
+        frame = _Frame([{'id': 1}])
+        pandas = _PandasStub(frame)
+        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
+        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+
+        result = mod.Sas7bdatFile().read_dataset(
+            tmp_path / 'data.sas7bdat',
+            options=ReadOptions(dataset='data'),
+        )
+
+        assert result == [{'id': 1}]
 
     def test_read_uses_format_hint(
         self,

@@ -10,6 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import rda as mod
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import RDataModuleContract
 
 # SECTION: HELPERS ========================================================== #
@@ -171,3 +172,61 @@ class TestRda(RDataModuleContract):
         assert stub.writes
         _, _, kwargs = stub.writes[0]
         assert kwargs.get('df_name') == 'data'
+
+    def test_list_datasets_returns_default_key_for_empty_payload(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """
+        Test list_datasets returning default key when file has no objects.
+        """
+        pyreadr = self.build_pyreadr_stub({})
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+
+        result = mod.RdaFile().list_datasets(self.format_path(tmp_path))
+
+        assert result == ['data']
+
+    def test_list_datasets_returns_object_names(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test list_datasets exposing keys from pyreadr payloads."""
+        pyreadr = self.build_pyreadr_stub({'first': object(), 'second': 1})
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+
+        result = mod.RdaFile().list_datasets(self.format_path(tmp_path))
+
+        assert result == ['first', 'second']
+
+    def test_write_dataset_uses_dataset_option_name(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test write_dataset forwarding explicit dataset names to pyreadr."""
+        pyreadr = self.build_pyreadr_stub({})
+        self._install_optional_dependencies(
+            optional_module_stub,
+            pyreadr_stub=pyreadr,
+        )
+
+        written = mod.RdaFile().write_dataset(
+            self.format_path(tmp_path),
+            [{'id': 1}],
+            options=WriteOptions(dataset='metrics'),
+        )
+
+        assert written == 1
+        assert isinstance(pyreadr, _PyreadrStub)
+        assert pyreadr.writes
+        _, _, kwargs = pyreadr.writes[-1]
+        assert kwargs.get('df_name') == 'metrics'
