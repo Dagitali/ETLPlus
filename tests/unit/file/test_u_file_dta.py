@@ -9,10 +9,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
 from etlplus.file import dta as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
@@ -35,12 +38,11 @@ class _Frame(DictRecordsFrameStub):
         self.to_stata_calls.append((path, write_index))
 
 
-class _PandasStub:
+class _PandasStub(RDataPandasStub):
     """Stub for pandas module."""
 
-    # pylint: disable=unused-argument
-
     def __init__(self, frame: _Frame) -> None:
+        super().__init__()
         self._frame = frame
         self.read_calls: list[Path] = []
 
@@ -51,11 +53,6 @@ class _PandasStub:
         """Simulate reading Stata data."""
         self.read_calls.append(path)
         return self._frame
-
-    class DataFrame:  # noqa: D106
-        @staticmethod
-        def from_records(records: list[dict[str, object]]) -> _Frame:
-            return _Frame(records)
 
 
 # SECTION: TESTS ============================================================ #
@@ -89,20 +86,16 @@ class TestDta(SingleDatasetWritableContract):
         self,
         tmp_path: Path,
         optional_module_stub: Callable[[dict[str, object]], None],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test DTA writes disabling index serialization."""
         frame = _Frame([])
-
-        class _WriterDataFrame:
-            @staticmethod
-            def from_records(records: list[dict[str, object]]) -> _Frame:
-                _ = records
-                return frame
-
-        class _PandasWriterStub:
-            DataFrame = _WriterDataFrame
-
-        pandas = _PandasWriterStub()
+        pandas = _PandasStub(_Frame([]))
+        monkeypatch.setattr(
+            pandas.DataFrame,
+            'from_records',
+            staticmethod(lambda _records: frame),
+        )
         optional_module_stub({'pandas': pandas, 'pyreadstat': object()})
         path = tmp_path / 'data.dta'
 

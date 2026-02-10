@@ -108,7 +108,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     ) -> Path:
         """Build a DuckDB fixture with no tables."""
         conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
         return tmp_path / 'data.duckdb'
 
     def build_multi_table_database_path(
@@ -118,7 +118,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     ) -> Path:
         """Build a DuckDB fixture with multiple tables."""
         conn = _Connection(tables=['a', 'b'])
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
         return tmp_path / 'data.duckdb'
 
     def test_read_closes_connection_after_query(
@@ -132,7 +132,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             rows=[(1,)],
             description=[('id',)],
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
 
         _ = mod.read(tmp_path / 'data.duckdb')
 
@@ -150,7 +150,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             description=None,
             pragma_info=[(0, 'id'), (1, 'name')],
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
 
         result = mod.read(tmp_path / 'data.duckdb')
 
@@ -167,7 +167,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             rows=[(1, 'Ada')],
             description=[('id',), ('name',)],
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
 
         result = mod.read(tmp_path / 'data.duckdb')
 
@@ -184,7 +184,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             rows=[(1,)],
             description=[('id',)],
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
         handler = mod.DuckdbFile()
 
         result = handler.read(
@@ -202,7 +202,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     ) -> None:
         """Test that :func:`write` creates a table and inserts records."""
         conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
         path = tmp_path / 'data.duckdb'
 
         written = mod.write(path, [{'id': 1}, {'id': 2}])
@@ -224,7 +224,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             rows=[(1,)],
             description=[('id',)],
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
 
         result = mod.DuckdbFile().read(
             tmp_path / 'data.duckdb',
@@ -255,7 +255,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         Test writes honoring explicit table names and closing connections.
         """
         conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        self._install_connection(optional_module_stub, conn)
         handler = mod.DuckdbFile()
 
         written = handler.write(
@@ -267,3 +267,11 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         assert written == 1
         assert any('CREATE TABLE "events"' in stmt for stmt in conn.executed)
         assert conn.closed is True
+
+    @staticmethod
+    def _install_connection(
+        optional_module_stub: Callable[[dict[str, object]], None],
+        connection: _Connection,
+    ) -> None:
+        """Install one DuckDB connection stub for a test case."""
+        optional_module_stub({'duckdb': _DuckdbStub(connection)})

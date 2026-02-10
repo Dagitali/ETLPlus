@@ -106,7 +106,7 @@ class TestHdf5Read:
     ) -> None:
         """Test that reading returns an empty list when no keys are present."""
         store = _HDFStore([], {})
-        optional_module_stub({'pandas': _PandasStub(store)})
+        self._install_store(optional_module_stub, store)
 
         assert mod.read(tmp_path / 'data.hdf5') == []
 
@@ -118,7 +118,7 @@ class TestHdf5Read:
         """Test that reading prefers the default key when present."""
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
+        self._install_store(optional_module_stub, store)
 
         assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
 
@@ -130,7 +130,7 @@ class TestHdf5Read:
         """Test that reading raises when multiple keys are present."""
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['a', 'b'], {'a': frame, 'b': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
+        self._install_store(optional_module_stub, store)
 
         with pytest.raises(ValueError, match='Multiple datasets'):
             mod.read(tmp_path / 'data.hdf5')
@@ -143,6 +143,14 @@ class TestHdf5Read:
         """Test that reading uses the single key when only one is present."""
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['only'], {'only': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
+        self._install_store(optional_module_stub, store)
 
         assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
+
+    @staticmethod
+    def _install_store(
+        optional_module_stub: Callable[[dict[str, object]], None],
+        store: _HDFStore,
+    ) -> None:
+        """Install one HDFStore-backed pandas stub."""
+        optional_module_stub({'pandas': _PandasStub(store)})

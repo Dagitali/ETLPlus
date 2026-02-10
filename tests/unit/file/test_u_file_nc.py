@@ -14,6 +14,7 @@ import pytest
 from etlplus.file import nc as mod
 from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
@@ -59,7 +60,6 @@ class _XarrayStub:
 
     def __init__(self, dataset: _Dataset) -> None:
         self._dataset = dataset
-        self._from_frame: list[object] = []
 
     def open_dataset(
         self,
@@ -75,20 +75,6 @@ class _XarrayStub:
         def from_dataframe(frame: object) -> _Dataset:
             """Simulate creating a dataset from a :class:`pandas.DataFrame`."""
             raise AssertionError('Dataset.from_dataframe not patched')
-
-
-class _PandasStub:
-    """Stub for pandas module."""
-
-    class DataFrame:  # noqa: D106
-        """Simulate :class:`pandas.DataFrame` with from_records method."""
-
-        @staticmethod
-        def from_records(
-            records: list[dict[str, object]],
-        ) -> DictRecordsFrameStub:
-            """Simulate creating a DataFrame from records."""
-            return DictRecordsFrameStub(records)
 
 
 # SECTION: TESTS ============================================================ #
@@ -112,7 +98,7 @@ class TestNc(SingleDatasetWritableContract):
         )
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+        optional_module_stub({'xarray': xarray})
         path = tmp_path / 'data.nc'
 
         result = mod.read(path)
@@ -130,7 +116,7 @@ class TestNc(SingleDatasetWritableContract):
         )
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+        optional_module_stub({'xarray': xarray})
 
         result = mod.read(tmp_path / 'data.nc')
 
@@ -175,7 +161,7 @@ class TestNc(SingleDatasetWritableContract):
             'from_dataframe',
             staticmethod(_from_dataframe),
         )
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+        optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
         path = tmp_path / 'data.nc'
 
         written = mod.write(path, [{'value': 1}])
@@ -202,7 +188,7 @@ class TestNc(SingleDatasetWritableContract):
             'from_dataframe',
             staticmethod(_from_dataframe),
         )
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+        optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
 
         with pytest.raises(ImportError, match='NC support requires optional'):
             mod.write(tmp_path / 'data.nc', [{'value': 1}])
