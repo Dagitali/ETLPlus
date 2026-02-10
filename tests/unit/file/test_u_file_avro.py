@@ -15,6 +15,7 @@ from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import BinaryDependencyModuleContract
 from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.conftest import PathMixin
 
 # SECTION: HELPERS ========================================================== #
 
@@ -57,8 +58,10 @@ class _FastAvroStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestAvroHandlerClass:
+class TestAvroHandlerClass(PathMixin):
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
+
+    format_name = 'avro'
 
     def test_dumps_bytes_returns_empty_for_empty_payload(
         self,
@@ -66,11 +69,7 @@ class TestAvroHandlerClass:
     ) -> None:
         """Test empty payload serialization short-circuiting to bytes."""
         handler = mod.AvroFile()
-        monkeypatch.setattr(
-            mod,
-            'get_dependency',
-            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
-        )
+        self._patch_dependency_missing(monkeypatch)
 
         payload = handler.dumps_bytes([])
 
@@ -105,16 +104,23 @@ class TestAvroHandlerClass:
     ) -> None:
         """Test file writes short-circuiting on empty payloads."""
         handler = mod.AvroFile()
+        self._patch_dependency_missing(monkeypatch)
+        path = self.format_path(tmp_path)
+
+        written = handler.write(path, [])
+
+        assert written == 0
+
+    @staticmethod
+    def _patch_dependency_missing(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Patch dependency resolution to fail if called."""
         monkeypatch.setattr(
             mod,
             'get_dependency',
             lambda *_, **__: (_ for _ in ()).throw(AssertionError),
         )
-        path = tmp_path / f'data.{mod.AvroFile.format.value}'
-
-        written = handler.write(path, [])
-
-        assert written == 0
 
 
 class TestAvroHelpers:

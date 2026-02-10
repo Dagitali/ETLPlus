@@ -17,32 +17,8 @@ from tests.unit.file.conftest import OptionalModuleInstaller
 # SECTION: HELPERS ========================================================== #
 
 
-class _BsonModuleStub:
-    """Stub providing module-level encode/decode helpers."""
-
-    def __init__(self) -> None:
-        self.decoded: list[bytes] = []
-        self.encoded: list[dict[str, object]] = []
-
-    def decode_all(
-        self,
-        payload: bytes,
-    ) -> list[dict[str, object]]:
-        """Simulate decoding BSON payloads."""
-        self.decoded.append(payload)
-        return [{'decoded': True}]
-
-    def encode(
-        self,
-        doc: dict[str, object],
-    ) -> bytes:
-        """Simulate encoding a document to BSON."""
-        self.encoded.append(doc)
-        return b'doc'
-
-
-class _BsonClassStub:
-    """Stub exposing a BSON class with encode/decode_all helpers."""
+class _BsonCodecStub:
+    """Stub providing encode/decode helpers."""
 
     def __init__(self) -> None:
         self.decoded: list[bytes] = []
@@ -70,7 +46,7 @@ class _BsonModuleWithClass:
 
     def __init__(self) -> None:
         # pylint: disable=invalid-name
-        self.BSON = _BsonClassStub()
+        self.BSON = _BsonCodecStub()
 
 
 # SECTION: TESTS ============================================================ #
@@ -105,7 +81,7 @@ class TestBsonHelpers:
         Test that :func:`_decode_all` uses the module-level :func:`decode_all`
         when available.
         """
-        stub = _BsonModuleStub()
+        stub = _BsonCodecStub()
 
         assert mod._decode_all(stub, b'payload') == [{'decoded': True}]
         assert stub.decoded == [b'payload']
@@ -115,7 +91,7 @@ class TestBsonHelpers:
         Test that :func:`_encode_doc` uses the module-level :func:`encode` when
         available.
         """
-        stub = _BsonModuleStub()
+        stub = _BsonCodecStub()
 
         assert mod._encode_doc(stub, {'id': 1}) == b'doc'
         assert stub.encoded == [{'id': 1}]
@@ -149,9 +125,9 @@ class TestBsonIo(BinaryDependencyModuleContract):
     write_payload = [{'id': 1}, {'id': 2}]
     expected_written_count = 2
 
-    def make_dependency_stub(self) -> _BsonModuleStub:
+    def make_dependency_stub(self) -> _BsonCodecStub:
         """Build a bson dependency stub exposing module-level helpers."""
-        return _BsonModuleStub()
+        return _BsonCodecStub()
 
     def assert_dependency_after_read(
         self,
@@ -160,7 +136,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
     ) -> None:
         """Assert bson module-level read behavior."""
         stub = dependency_stub
-        assert isinstance(stub, _BsonModuleStub)
+        assert isinstance(stub, _BsonCodecStub)
         assert stub.decoded == [b'payload']
         assert path.exists()
 
@@ -171,7 +147,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
     ) -> None:
         """Assert bson module-level write behavior."""
         stub = dependency_stub
-        assert isinstance(stub, _BsonModuleStub)
+        assert isinstance(stub, _BsonCodecStub)
         assert stub.encoded == self.write_payload
         assert path.read_bytes() == b'docdoc'
 

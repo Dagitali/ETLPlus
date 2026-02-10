@@ -18,10 +18,11 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 # SECTION: HELPERS ========================================================== #
 
 
-class _TomliWStub:
-    """Stub for ``tomli_w`` module."""
+class _TomlDumperStub:
+    """Stub for TOML dumper modules exposing ``dumps``."""
 
-    def __init__(self) -> None:
+    def __init__(self, output: str) -> None:
+        self._output = output
         self.calls: list[dict[str, object]] = []
 
     def dumps(
@@ -32,24 +33,7 @@ class _TomliWStub:
         Simulate dumping by recording the payload and returning a fixed string.
         """
         self.calls.append(payload)
-        return 'tomli_w_output'
-
-
-class _TomlStub:
-    """Stub for ``toml`` module."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def dumps(
-        self,
-        payload: dict[str, object],
-    ) -> str:
-        """
-        Simulate dumping by recording the payload and returning a fixed string.
-        """
-        self.calls.append(payload)
-        return 'toml_output'
+        return self._output
 
 
 # SECTION: TESTS ============================================================ #
@@ -80,7 +64,7 @@ class TestToml(
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install ``tomli_w`` stub for write contract tests."""
-        self._tomli_w_stub = _TomliWStub()
+        self._tomli_w_stub = _TomlDumperStub('tomli_w_output')
         optional_module_stub({'tomli_w': self._tomli_w_stub})
 
     def test_read_non_table_raises(
@@ -107,7 +91,7 @@ class TestToml(
         Test that :func:`write` falls back to :func:`toml` when :func:`tomli_w`
         is missing.
         """
-        stub = _TomlStub()
+        stub = _TomlDumperStub('toml_output')
 
         def _get_optional_module(name: str, *, error_message: str) -> object:
             if name == 'tomli_w':
