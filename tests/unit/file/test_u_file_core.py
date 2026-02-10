@@ -608,38 +608,13 @@ class TestFile:
 
         assert f.file_format == expected_format
 
-    @pytest.mark.parametrize(
-        'filename,expected_format,expected_content',
-        [
-            ('data.json', FileFormat.JSON, {}),
-        ],
-    )
-    def test_infers_json_from_extension(
-        self,
-        tmp_path: Path,
-        filename: str,
-        expected_format: FileFormat,
-        expected_content: dict[str, object],
-    ) -> None:
-        """
-        Test JSON file inference from extension.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory path.
-        filename : str
-            Name of the file to create.
-        expected_format : FileFormat
-            Expected file format.
-        expected_content : dict[str, object]
-            Expected content after reading the file.
-        """
-        p = tmp_path / filename
+    def test_infers_json_from_extension(self, tmp_path: Path) -> None:
+        """Test JSON file inference from extension and read behavior."""
+        p = tmp_path / 'data.json'
         p.write_text('{}', encoding='utf-8')
         f = File(p)
-        assert f.file_format == expected_format
-        assert f.read() == expected_content
+        assert f.file_format == FileFormat.JSON
+        assert f.read() == {}
 
     def test_invalid_explicit_string_file_format_raises(
         self,
@@ -780,66 +755,33 @@ class TestFile:
         )
         assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
 
-    def test_stub_formats_raise_on_read(
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_stub_formats_raise_on_operations(
         self,
         tmp_path: Path,
         stubbed_formats: list[tuple[FileFormat, str]],
+        operation: str,
     ) -> None:
-        """Test stub formats raising NotImplementedError on read."""
+        """Test stub formats raising NotImplementedError on read/write."""
         if not stubbed_formats:
             pytest.skip('No stubbed formats to test')
         for file_format, filename in stubbed_formats:
             path = tmp_path / filename
-            path.write_text('stub', encoding='utf-8')
+            if operation == 'read':
+                path.write_text('stub', encoding='utf-8')
 
             with pytest.raises(NotImplementedError):
-                File(path, file_format).read()
+                if operation == 'read':
+                    File(path, file_format).read()
+                else:
+                    File(path, file_format).write({'stub': True})
 
-    def test_stub_formats_raise_on_write(
-        self,
-        tmp_path: Path,
-        stubbed_formats: list[tuple[FileFormat, str]],
-    ) -> None:
-        """Test stub formats raising NotImplementedError on write."""
-        if not stubbed_formats:
-            pytest.skip('No stubbed formats to test')
-        for file_format, filename in stubbed_formats:
-            path = tmp_path / filename
-
-            with pytest.raises(NotImplementedError):
-                File(path, file_format).write({'stub': True})
-
-    @pytest.mark.parametrize(
-        'filename,expected_format',
-        [
-            ('weird.data', None),
-        ],
-    )
-    def test_unknown_extension_defers_error(
-        self,
-        tmp_path: Path,
-        filename: str,
-        expected_format: FileFormat | None,
-    ) -> None:
-        """
-        Test unknown file extension handling and error deferral.
-
-        Ensures :class:`FileFormat` is None and reading raises
-        :class:`ValueError`.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory path.
-        filename : str
-            Name of the file to create.
-        expected_format : FileFormat | None
-            Expected file format (should be None).
-        """
-        p = tmp_path / filename
+    def test_unknown_extension_defers_error(self, tmp_path: Path) -> None:
+        """Test unknown extension sets ``None`` format and defers error."""
+        p = tmp_path / 'weird.data'
         p.write_text('{}', encoding='utf-8')
         f = File(p)
-        assert f.file_format is expected_format
+        assert f.file_format is None
         with pytest.raises(ValueError) as e:
             f.read()
         assert 'Cannot infer file format' in str(e.value)
