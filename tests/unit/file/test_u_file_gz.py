@@ -49,7 +49,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test reading decompressed bytes via ``read_inner_bytes``."""
-        path = tmp_path / 'payload.json.gz'
+        path = self.archive_path(tmp_path, stem='payload.json')
         expected = b'{"ok": true}'
         with gzip.open(path, 'wb') as handle:
             handle.write(expected)
@@ -66,7 +66,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that reading a gzip file without an inner format fails."""
-        path = tmp_path / 'payload.gz'
+        path = self.archive_path(tmp_path, stem='payload')
 
         with pytest.raises(ValueError, match='Cannot infer file format'):
             mod.read(path)
@@ -76,7 +76,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that reading a non-gzip file raises an error."""
-        path = tmp_path / 'payload.json'
+        path = self.archive_path(tmp_path, stem='payload', suffix='json')
         path.write_text('irrelevant', encoding='utf-8')
 
         with pytest.raises(ValueError, match='Not a gzip file'):
@@ -87,7 +87,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test writing compressed bytes via ``write_inner_bytes``."""
-        path = tmp_path / 'payload.json.gz'
+        path = self.archive_path(tmp_path, stem='payload.json')
         payload = b'{"written": true}'
 
         mod.GzFile().write_inner_bytes(
@@ -104,7 +104,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that writing without an inferable inner format fails."""
-        path = tmp_path / 'payload.gz'
+        path = self.archive_path(tmp_path, stem='payload')
 
         with pytest.raises(ValueError, match='Cannot infer file format'):
             mod.write(path, [{'id': 1}])
