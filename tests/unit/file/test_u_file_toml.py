@@ -6,12 +6,12 @@ Unit tests for :mod:`etlplus.file.toml`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from etlplus.file import toml as mod
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import SemiStructuredReadModuleContract
 from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
@@ -77,7 +77,7 @@ class TestToml(
 
     def setup_write_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install ``tomli_w`` stub for write contract tests."""
         self._tomli_w_stub = _TomliWStub()
@@ -91,7 +91,7 @@ class TestToml(
         """
         Test that reading a non-table TOML root raises :class:`TypeError`.
         """
-        path = tmp_path / 'config.toml'
+        path = self.format_path(tmp_path, stem='config')
         path.write_text('name = "etl"', encoding='utf-8')
         monkeypatch.setattr(mod.tomllib, 'loads', lambda *_: ['bad'])
 
@@ -117,7 +117,7 @@ class TestToml(
             raise AssertionError(f'Unexpected module {name!r}')
 
         monkeypatch.setattr(mod, 'get_optional_module', _get_optional_module)
-        path = tmp_path / 'config.toml'
+        path = self.format_path(tmp_path, stem='config')
 
         written = mod.write(path, {'name': 'etl'})
 

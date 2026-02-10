@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.yaml`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +14,7 @@ import pytest
 from etlplus.file import yaml as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import SemiStructuredReadModuleContract
 from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
@@ -87,7 +87,7 @@ class TestYaml(
 
     def setup_read_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install YAML dependency stub for read tests."""
         self._read_yaml_stub = _StubYaml(self.expected_read_payload)
@@ -95,7 +95,7 @@ class TestYaml(
 
     def setup_write_dependencies(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install YAML dependency stub for write tests."""
         self._write_yaml_stub = _StubYaml()
@@ -103,7 +103,7 @@ class TestYaml(
 
     def test_loads_rejects_scalar_yaml_root(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test YAML loads rejecting scalar roots."""
         optional_module_stub({'yaml': _StubYaml('scalar')})
@@ -118,11 +118,11 @@ class TestYaml(
     def test_read_honors_encoding_option(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test YAML reads honoring explicit text encoding options."""
         optional_module_stub({'yaml': _StubYaml({'name': 'José'})})
-        path = tmp_path / 'latin1.yaml'
+        path = self.format_path(tmp_path, stem='latin1')
         path.write_bytes('name: José\n'.encode('latin-1'))
         handler = mod.YamlFile()
 
@@ -133,12 +133,12 @@ class TestYaml(
     def test_write_counts_records_for_list_payloads(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test YAML writes returning list record counts."""
         stub = _StubYaml()
         optional_module_stub({'yaml': stub})
-        path = tmp_path / 'list.yaml'
+        path = self.format_path(tmp_path, stem='list')
         handler = mod.YamlFile()
 
         written = handler.write(
