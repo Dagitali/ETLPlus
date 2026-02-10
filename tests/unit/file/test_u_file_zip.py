@@ -11,12 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.file import core
 from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
-from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: HELPERS ========================================================== #
 
@@ -55,13 +53,6 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['payload.json']
             assert archive.read('payload.json') == b'payload'
-
-    def install_core_file_stub(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
 
     def seed_archive_payload(
         self,

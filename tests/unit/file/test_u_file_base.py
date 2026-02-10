@@ -10,22 +10,16 @@ import inspect
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file.base import ArchiveWrapperFileHandlerABC
 from etlplus.file.base import DelimitedTextFileHandlerABC
-from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
-from etlplus.file.base import ReadOnlyFileHandlerABC
-from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
-from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.csv import CsvFile
@@ -46,6 +40,7 @@ from etlplus.file.xls import XlsFile
 from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
+from etlplus.file.zip import ZipFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
 
@@ -102,54 +97,6 @@ _NAMING_METHOD_CASES: list[
 ]
 
 
-class _ArchiveStub(ArchiveWrapperFileHandlerABC):
-    """Concrete archive handler used for option helper tests."""
-
-    format = FileFormat.ZIP
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return {'inner_name': self.inner_name_from_read_options(options)}
-
-    def read_inner_bytes(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> bytes:
-        _ = path
-        _ = options
-        return b''
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.inner_name_from_write_options(options)
-        return 1
-
-    def write_inner_bytes(
-        self,
-        path: Path,
-        payload: bytes,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
-        _ = path
-        _ = payload
-        _ = options
-
-
 class _DelimitedStub(DelimitedTextFileHandlerABC):
     """Concrete delimited handler used for abstract contract tests."""
 
@@ -192,161 +139,6 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         _ = path
-        _ = options
-        return len(rows)
-
-
-class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
-    """Concrete embedded-db handler used for option helper tests."""
-
-    format = FileFormat.SQLITE
-
-    def connect(
-        self,
-        path: Path,
-    ) -> Any:
-        _ = path
-        return object()
-
-    def list_tables(
-        self,
-        connection: Any,
-    ) -> list[str]:
-        _ = connection
-        return ['data']
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'table': self.table_from_read_options(options)}]
-
-    def read_table(
-        self,
-        connection: Any,
-        table: str,
-    ) -> JSONList:
-        _ = connection
-        _ = table
-        return []
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.table_from_write_options(options)
-        return 1
-
-    def write_table(
-        self,
-        connection: Any,
-        table: str,
-        rows: JSONList,
-    ) -> int:
-        _ = connection
-        _ = table
-        return len(rows)
-
-
-class _ReadOnlySpreadsheetStub(ReadOnlySpreadsheetFileHandlerABC):
-    """Minimal concrete read-only spreadsheet handler for contract checks."""
-
-    format = FileFormat.XLS
-    engine_name = 'xlrd'
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
-
-
-class _ReadOnlyStub(ReadOnlyFileHandlerABC):
-    """Minimal concrete read-only handler for contract checks."""
-
-    format = FileFormat.XLS
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        _ = options
-        return []
-
-
-class _SpreadsheetStub(SpreadsheetFileHandlerABC):
-    """Concrete spreadsheet handler used for option helper tests."""
-
-    format = FileFormat.XLSX
-    engine_name = 'stub'
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'sheet': self.sheet_from_read_options(options)}]
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.sheet_from_write_options(options)
-        return 1
-
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = sheet
         _ = options
         return len(rows)
 
@@ -451,14 +243,14 @@ class TestBaseAbcContracts:
 
     def test_read_only_handler_rejects_write(self) -> None:
         """Test read-only handlers raising on write."""
-        handler = _ReadOnlyStub()
+        handler = XlsFile()
 
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write(Path('ignored.xls'), [{'a': 1}])
 
     def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
         """Test read-only spreadsheet handlers rejecting write_sheet calls."""
-        handler = _ReadOnlySpreadsheetStub()
+        handler = XlsFile()
 
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write_sheet(
@@ -588,7 +380,7 @@ class TestOptionsContracts:
                 ':',
             ),
             (
-                _ReadOnlyStub,
+                XlsFile,
                 'encoding_from_read_options',
                 'encoding_from_write_options',
                 ReadOptions(encoding='latin-1'),
@@ -600,7 +392,7 @@ class TestOptionsContracts:
                 'ascii',
             ),
             (
-                _ArchiveStub,
+                ZipFile,
                 'inner_name_from_read_options',
                 'inner_name_from_write_options',
                 ReadOptions(inner_name='data.json'),
@@ -612,7 +404,7 @@ class TestOptionsContracts:
                 _NO_DEFAULT,
             ),
             (
-                _SpreadsheetStub,
+                XlsxFile,
                 'sheet_from_read_options',
                 'sheet_from_write_options',
                 ReadOptions(sheet='Sheet2'),
@@ -624,7 +416,7 @@ class TestOptionsContracts:
                 99,
             ),
             (
-                _EmbeddedDbStub,
+                SqliteFile,
                 'table_from_read_options',
                 'table_from_write_options',
                 ReadOptions(table='events'),
@@ -682,7 +474,7 @@ class TestOptionsContracts:
 
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
         """Test root-tag helper using explicit values then defaults."""
-        handler = _ReadOnlyStub()
+        handler = XlsFile()
         assert handler.root_tag_from_write_options(None) == 'root'
         assert (
             handler.root_tag_from_write_options(WriteOptions(root_tag='items'))

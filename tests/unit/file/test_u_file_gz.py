@@ -11,12 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.file import core
 from etlplus.file import gz as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
-from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: TESTS ============================================================ #
 
@@ -37,13 +35,6 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         """Assert gzip payload bytes for write contract tests."""
         with gzip.open(path, 'rb') as handle:
             assert handle.read() == b'payload'
-
-    def install_core_file_stub(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
 
     def seed_archive_payload(
         self,
