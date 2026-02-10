@@ -58,25 +58,31 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
 
         assert result == expected
 
-    def test_read_raises_on_missing_inner_format(
+    @pytest.mark.parametrize(
+        ('stem', 'suffix', 'text_content', 'error_pattern'),
+        [
+            ('payload', None, None, 'Cannot infer file format'),
+            ('payload', 'json', 'irrelevant', 'Not a gzip file'),
+        ],
+        ids=['missing_inner_format', 'non_gzip_payload'],
+    )
+    def test_read_invalid_inputs_raise(
         self,
         tmp_path: Path,
+        stem: str,
+        suffix: str | None,
+        text_content: str | None,
+        error_pattern: str,
     ) -> None:
-        """Test that reading a gzip file without an inner format fails."""
-        path = self.archive_path(tmp_path, stem='payload')
+        """Test invalid gzip read inputs raising clear errors."""
+        if suffix is None:
+            path = self.archive_path(tmp_path, stem=stem)
+        else:
+            path = self.archive_path(tmp_path, stem=stem, suffix=suffix)
+        if text_content is not None:
+            path.write_text(text_content, encoding='utf-8')
 
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.read(path)
-
-    def test_read_raises_on_non_gzip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that reading a non-gzip file raises an error."""
-        path = self.archive_path(tmp_path, stem='payload', suffix='json')
-        path.write_text('irrelevant', encoding='utf-8')
-
-        with pytest.raises(ValueError, match='Not a gzip file'):
+        with pytest.raises(ValueError, match=error_pattern):
             mod.read(path)
 
     def test_write_inner_bytes_writes_payload(

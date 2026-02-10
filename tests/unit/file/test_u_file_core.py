@@ -438,22 +438,30 @@ class TestFile:
     - Exercises JSON detection and defers errors for unknown extensions.
     """
 
-    def test_compression_only_extension_defers_error(
+    @pytest.mark.parametrize(
+        ('filename', 'contents', 'error_pattern'),
+        [
+            ('data.gz', 'compressed', 'compressed file'),
+            ('weird.data', '{}', 'Cannot infer file format'),
+        ],
+        ids=['compression_only_suffix', 'unknown_extension'],
+    )
+    def test_read_unknown_formats_defer_error(
         self,
         tmp_path: Path,
+        filename: str,
+        contents: str,
+        error_pattern: str,
     ) -> None:
-        """
-        Test compression-only file extension handling and error deferral.
-        """
-        p = tmp_path / 'data.gz'
-        p.write_text('compressed', encoding='utf-8')
+        """Test unresolved formats deferring failure until read dispatch."""
+        # path = tmp_path / filename
+        path = tmp_path / 'data.gz'
+        path.write_text(contents, encoding='utf-8')
+        file = File(path)
 
-        f = File(p)
-
-        assert f.file_format is None
-        with pytest.raises(ValueError) as e:
-            f.read()
-        assert 'compressed file' in str(e.value)
+        assert file.file_format is None
+        with pytest.raises(ValueError, match=error_pattern):
+            file.read()
 
     def test_duckdb_read_fails_with_multiple_tables(
         self,
@@ -698,16 +706,6 @@ class TestFile:
                     File(path, file_format).read()
                 else:
                     File(path, file_format).write({'stub': True})
-
-    def test_unknown_extension_defers_error(self, tmp_path: Path) -> None:
-        """Test unknown extension sets ``None`` format and defers error."""
-        p = tmp_path / 'weird.data'
-        p.write_text('{}', encoding='utf-8')
-        f = File(p)
-        assert f.file_format is None
-        with pytest.raises(ValueError) as e:
-            f.read()
-        assert 'Cannot infer file format' in str(e.value)
 
     def test_write_csv_rejects_non_dicts(
         self,

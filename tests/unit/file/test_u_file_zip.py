@@ -156,43 +156,35 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
             'b.json': {'fmt': 'json', 'name': 'b.json'},
         }
 
-    def test_read_raises_on_empty_archive(
+    @pytest.mark.parametrize(
+        ('stem', 'entries', 'error_pattern'),
+        [
+            ('empty', {}, 'ZIP archive is empty'),
+            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
+            (
+                'payload',
+                {'payload.unknown': b'ignored'},
+                'Cannot infer file format',
+            ),
+        ],
+        ids=[
+            'empty_archive',
+            'unexpected_compression',
+            'unknown_inner_format',
+        ],
+    )
+    def test_read_invalid_archives_raise(
         self,
         tmp_path: Path,
+        stem: str,
+        entries: dict[str, bytes],
+        error_pattern: str,
     ) -> None:
-        """Test that reading an empty ZIP archive raises an error."""
-        path = self.archive_path(tmp_path, stem='empty')
-        _write_zip(path, {})
+        """Test invalid ZIP structures raising clear read-time errors."""
+        path = self.archive_path(tmp_path, stem=stem)
+        _write_zip(path, entries)
 
-        with pytest.raises(ValueError, match='ZIP archive is empty'):
-            mod.read(path)
-
-    def test_read_raises_on_unexpected_compression(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that reading a ZIP archive with unexpected compression raises an
-        error.
-        """
-        path = self.archive_path(tmp_path, stem='nested')
-        _write_zip(path, {'data.csv.gz': b'ignored'})
-
-        with pytest.raises(ValueError, match='Unexpected compression'):
-            mod.read(path)
-
-    def test_read_raises_on_unknown_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that reading a ZIP archive with unknown inner format raises an
-        error.
-        """
-        path = self.archive_path(tmp_path, stem='payload')
-        _write_zip(path, {'payload.unknown': b'ignored'})
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
+        with pytest.raises(ValueError, match=error_pattern):
             mod.read(path)
 
     def test_write_raises_on_unexpected_output_compression(
