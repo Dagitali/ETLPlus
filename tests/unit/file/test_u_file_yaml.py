@@ -57,14 +57,6 @@ class TestYaml(
     expected_read_payload = {'name': 'etl'}
     dict_payload = {'name': 'etl'}
 
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Install YAML dependency stub for read tests."""
-        self._read_yaml_stub = _StubYaml(self.expected_read_payload)
-        optional_module_stub({'yaml': self._read_yaml_stub})
-
     def assert_read_contract_result(
         self,
         result: object,
@@ -72,14 +64,6 @@ class TestYaml(
         """Assert YAML read contract expectations."""
         assert result == self.expected_read_payload
         assert self._read_yaml_stub.load_calls == 1
-
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Install YAML dependency stub for write tests."""
-        self._write_yaml_stub = _StubYaml()
-        optional_module_stub({'yaml': self._write_yaml_stub})
 
     def assert_write_contract_result(
         self,
@@ -96,3 +80,19 @@ class TestYaml(
                 },
             },
         ]
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install YAML dependency stub for read tests."""
+        self._read_yaml_stub = _StubYaml(self.expected_read_payload)
+        optional_module_stub({'yaml': self._read_yaml_stub})
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install YAML dependency stub for write tests."""
+        self._write_yaml_stub = _StubYaml()
+        optional_module_stub({'yaml': self._write_yaml_stub})

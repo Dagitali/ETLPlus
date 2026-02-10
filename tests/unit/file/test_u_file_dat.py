@@ -135,62 +135,7 @@ class TestDat:
         path = tmp_path / 'empty.dat'
         path.write_text('', encoding='utf-8')
 
-        assert mod.read(path) == []
-
-    def test_write_round_trip_returns_written_count(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write/read round-trip preserving the written row count."""
-        sample_records: list[dict[str, object]] = [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ]
-        path = tmp_path / 'out.dat'
-
-        written = mod.write(path, sample_records)
-        result = mod.read(path)
-
-        assert written == len(sample_records)
-        assert len(result) == len(sample_records)
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test blank rows being ignored during reads."""
-        monkeypatch.setattr(
-            mod,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-        path = tmp_path / 'data.dat'
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert mod.read(path) == [{'a': '1', 'b': '2'}]
-
-    def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that rows shorter than the header are padded with ``None`` and
-        extra fields beyond the header are ignored.
-        """
-        path = tmp_path / 'ragged.dat'
-        path.write_text(
-            'a,b,c\n1,2\n3,4,5,6\n',
-            encoding='utf-8',
-        )
-
-        assert mod.read(path) == [
-            {'a': '1', 'b': '2', 'c': None},
-            {'a': '3', 'b': '4', 'c': '5'},
-        ]
+        assert not mod.read(path)
 
     def test_read_no_header_generates_col_names(
         self,
@@ -217,6 +162,44 @@ class TestDat:
             {'col_1': '1', 'col_2': 'alice'},
             {'col_1': '2', 'col_2': 'bob'},
         ]
+
+    def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that rows shorter than the header are padded with ``None`` and
+        extra fields beyond the header are ignored.
+        """
+        path = tmp_path / 'ragged.dat'
+        path.write_text(
+            'a,b,c\n1,2\n3,4,5,6\n',
+            encoding='utf-8',
+        )
+
+        assert mod.read(path) == [
+            {'a': '1', 'b': '2', 'c': None},
+            {'a': '3', 'b': '4', 'c': '5'},
+        ]
+
+    def test_read_skips_blank_rows(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test blank rows being ignored during reads."""
+        monkeypatch.setattr(
+            mod,
+            '_sniff',
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
+        )
+        path = tmp_path / 'data.dat'
+        path.write_text(
+            'a,b\n\n , \n1,2\n',
+            encoding='utf-8',
+        )
+
+        assert mod.read(path) == [{'a': '1', 'b': '2'}]
 
     @pytest.mark.parametrize(
         ('filename', 'content', 'delimiter'),
@@ -250,3 +233,20 @@ class TestDat:
         path.write_text(content, encoding='utf-8')
 
         assert mod.read(path) == [{'a': '1', 'b': '2'}]
+
+    def test_write_round_trip_returns_written_count(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read round-trip preserving the written row count."""
+        sample_records: list[dict[str, object]] = [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ]
+        path = tmp_path / 'out.dat'
+
+        written = mod.write(path, sample_records)
+        result = mod.read(path)
+
+        assert written == len(sample_records)
+        assert len(result) == len(sample_records)

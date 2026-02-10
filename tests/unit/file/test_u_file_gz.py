@@ -28,6 +28,14 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
     missing_inner_path_name = 'payload.gz'
     expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
 
+    def assert_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert gzip payload bytes for write contract tests."""
+        with gzip.open(path, 'rb') as handle:
+            assert handle.read() == b'payload'
+
     def install_core_file_stub(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -42,14 +50,6 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         """Seed gzip archive payload for read contract tests."""
         with gzip.open(path, 'wb') as handle:
             handle.write(b'payload')
-
-    def assert_archive_payload(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert gzip payload bytes for write contract tests."""
-        with gzip.open(path, 'rb') as handle:
-            assert handle.read() == b'payload'
 
     def test_read_raises_on_missing_inner_format(
         self,

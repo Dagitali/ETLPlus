@@ -30,6 +30,13 @@ class TestTxt(TextRowModuleContract):
     write_payload = [{'text': 'alpha'}, {'text': 'beta'}]
     expected_written_count = 2
 
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert TXT write contract output."""
+        assert path.read_text(encoding='utf-8') == 'alpha\nbeta\n'
+
     def prepare_read_case(
         self,
         tmp_path: Path,
@@ -41,12 +48,17 @@ class TestTxt(TextRowModuleContract):
 
         return path, [{'text': 'alpha'}, {'text': 'beta'}]
 
-    def assert_write_contract_result(
+    def test_write_accepts_single_dict(
         self,
-        path: Path,
+        tmp_path: Path,
     ) -> None:
-        """Assert TXT write contract output."""
-        assert path.read_text(encoding='utf-8') == 'alpha\nbeta\n'
+        """Test that :func:`write` accepts a single dictionary as payload."""
+        path = tmp_path / 'data.txt'
+
+        written = mod.write(path, {'text': 'alpha'})
+
+        assert written == 1
+        assert path.read_text(encoding='utf-8') == 'alpha\n'
 
     def test_write_empty_payload_returns_zero(
         self,
@@ -66,18 +78,6 @@ class TestTxt(TextRowModuleContract):
 
         with pytest.raises(TypeError, match='TXT payloads must include'):
             mod.write(path, [{'nope': 'value'}])
-
-    def test_write_accepts_single_dict(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :func:`write` accepts a single dictionary as payload."""
-        path = tmp_path / 'data.txt'
-
-        written = mod.write(path, {'text': 'alpha'})
-
-        assert written == 1
-        assert path.read_text(encoding='utf-8') == 'alpha\n'
 
     def test_write_rejects_non_dict_payloads(
         self,

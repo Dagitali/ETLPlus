@@ -50,13 +50,13 @@ class _HDFStore:
     def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
         return None
 
-    def keys(self) -> list[str]:
-        """Simulate returning the list of dataset keys in the store."""
-        return [f'/{key}' for key in self._keys]
-
     def get(self, key: str) -> _Frame:
         """Simulate retrieving a dataset by key."""
         return self._frames[key]
+
+    def keys(self) -> list[str]:
+        """Simulate returning the list of dataset keys in the store."""
+        return [f'/{key}' for key in self._keys]
 
 
 class _PandasStub:
@@ -142,18 +142,6 @@ class TestHdf5Read:
 
         assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
 
-    def test_read_uses_single_key(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that reading uses the single key when only one is present."""
-        frame = _Frame([{'id': 1}])
-        store = _HDFStore(['only'], {'only': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
-
-        assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]
-
     def test_read_raises_on_multiple_keys(
         self,
         tmp_path: Path,
@@ -166,3 +154,15 @@ class TestHdf5Read:
 
         with pytest.raises(ValueError, match='Multiple datasets'):
             mod.read(tmp_path / 'data.hdf5')
+
+    def test_read_uses_single_key(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test that reading uses the single key when only one is present."""
+        frame = _Frame([{'id': 1}])
+        store = _HDFStore(['only'], {'only': frame})
+        optional_module_stub({'pandas': _PandasStub(store)})
+
+        assert mod.read(tmp_path / 'data.hdf5') == [{'id': 1}]

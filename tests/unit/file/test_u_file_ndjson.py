@@ -39,6 +39,20 @@ class TestNdjson(
         """Assert NDJSON dict payload serialization."""
         assert path.read_text(encoding='utf-8').strip() == '{"id": 1}'
 
+    def test_read_raises_for_invalid_json(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that :func:`read` raises a JSONDecodeError for lines that do not
+        contain valid JSON.
+        """
+        path = tmp_path / 'data.ndjson'
+        path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')
+
+        with pytest.raises(json.JSONDecodeError):
+            mod.read(path)
+
     def test_read_rejects_non_dict_line(
         self,
         tmp_path: Path,
@@ -55,20 +69,6 @@ class TestNdjson(
         with pytest.raises(TypeError, match='line 2'):
             mod.read(path)
 
-    def test_read_raises_for_invalid_json(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :func:`read` raises a JSONDecodeError for lines that do not
-        contain valid JSON.
-        """
-        path = tmp_path / 'data.ndjson'
-        path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')
-
-        with pytest.raises(json.JSONDecodeError):
-            mod.read(path)
-
     def test_write_empty_returns_zero(
         self,
         tmp_path: Path,
@@ -80,6 +80,16 @@ class TestNdjson(
 
         assert mod.write(path, []) == 0
         assert not path.exists()
+
+    def test_write_rejects_non_dict_records(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing rejects records that are not dictionaries."""
+        path = tmp_path / 'data.ndjson'
+
+        with pytest.raises(TypeError, match='NDJSON payloads must contain'):
+            mod.write(path, cast(list[dict[str, Any]], [1]))
 
     def test_write_writes_each_record_on_its_own_line(
         self,
@@ -96,13 +106,3 @@ class TestNdjson(
         assert written == 2
         lines = path.read_text(encoding='utf-8').splitlines()
         assert [json.loads(line) for line in lines] == payload
-
-    def test_write_rejects_non_dict_records(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing rejects records that are not dictionaries."""
-        path = tmp_path / 'data.ndjson'
-
-        with pytest.raises(TypeError, match='NDJSON payloads must contain'):
-            mod.write(path, cast(list[dict[str, Any]], [1]))

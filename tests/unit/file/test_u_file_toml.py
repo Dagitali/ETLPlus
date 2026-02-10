@@ -67,14 +67,6 @@ class TestToml(
     expected_read_payload = {'name': 'etl'}
     dict_payload = {'name': 'etl'}
 
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Install ``tomli_w`` stub for write contract tests."""
-        self._tomli_w_stub = _TomliWStub()
-        optional_module_stub({'tomli_w': self._tomli_w_stub})
-
     def assert_write_contract_result(
         self,
         path: Path,
@@ -82,6 +74,14 @@ class TestToml(
         """Assert TOML write contract expectations."""
         assert path.read_text(encoding='utf-8') == 'tomli_w_output'
         assert self._tomli_w_stub.calls == [self.dict_payload]
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Install ``tomli_w`` stub for write contract tests."""
+        self._tomli_w_stub = _TomliWStub()
+        optional_module_stub({'tomli_w': self._tomli_w_stub})
 
     def test_read_non_table_raises(
         self,

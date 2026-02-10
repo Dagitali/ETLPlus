@@ -106,15 +106,6 @@ class TestScientificStubDatasetKeys:
                 options=WriteOptions(dataset='unknown'),
             )
 
-    def test_list_datasets_returns_single_default_key(
-        self,
-        scientific_module_case: ScientificModuleCase,
-    ) -> None:
-        """Test list_datasets exposing only the default dataset key."""
-        _, handler_cls, _ = scientific_module_case
-        handler = handler_cls()
-        assert handler.list_datasets(Path('ignored.file')) == ['data']
-
     @pytest.mark.parametrize(
         ('operation', 'method_name'),
         [('read', 'read_dataset'), ('write', 'write_dataset')],
@@ -141,6 +132,15 @@ class TestScientificStubDatasetKeys:
             if operation == 'write':
                 args = (*args, [])
             method(*args, dataset='unknown')
+
+    def test_list_datasets_returns_single_default_key(
+        self,
+        scientific_module_case: ScientificModuleCase,
+    ) -> None:
+        """Test list_datasets exposing only the default dataset key."""
+        _, handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        assert handler.list_datasets(Path('ignored.file')) == ['data']
 
     def test_read_and_write_options_route_unknown_dataset_to_validation(
         self,

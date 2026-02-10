@@ -15,23 +15,6 @@ from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 # SECTION: HELPERS ========================================================== #
 
 
-class _Cursor:
-    """Stub cursor for DuckDB queries."""
-
-    def __init__(
-        self,
-        rows: list[tuple[object, ...]],
-        *,
-        description: list[tuple[str, ...]] | None = None,
-    ) -> None:
-        self._rows = rows
-        self.description = description
-
-    def fetchall(self) -> list[tuple[object, ...]]:
-        """Simulate fetching all rows from a query."""
-        return list(self._rows)
-
-
 class _Connection:
     """Stub DuckDB connection."""
 
@@ -74,6 +57,23 @@ class _Connection:
         """No-op close."""
 
 
+class _Cursor:
+    """Stub cursor for DuckDB queries."""
+
+    def __init__(
+        self,
+        rows: list[tuple[object, ...]],
+        *,
+        description: list[tuple[str, ...]] | None = None,
+    ) -> None:
+        self._rows = rows
+        self.description = description
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        """Simulate fetching all rows from a query."""
+        return list(self._rows)
+
+
 class _DuckdbStub:
     """Stub module exposing ``connect``."""
 
@@ -82,7 +82,8 @@ class _DuckdbStub:
     def __init__(self, connection: _Connection) -> None:
         self._connection = connection
 
-    def connect(self, path: str) -> _Connection:  # noqa: ARG002
+    def connect(self, path: str) -> _Connection:
+        """Simulate connecting to a DuckDB database."""
         return self._connection
 
 

@@ -30,163 +30,6 @@ from etlplus.types import JSONData
 # SECTION: HELPERS ========================================================== #
 
 
-type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
-
-
-def _coerce_numeric_value(value: object) -> object:
-    """Coerce numeric scalars into stable Python numeric types."""
-    if isinstance(value, numbers.Real):
-        try:
-            numeric = float(value)
-            if math.isnan(numeric):
-                return None
-        except (TypeError, ValueError):
-            return value
-        if numeric.is_integer():
-            return int(numeric)
-        return float(numeric)
-    return value
-
-
-def normalize_numeric_records(records: JSONData) -> JSONData:
-    """Normalize numeric values for deterministic record comparisons."""
-    if not isinstance(records, list):
-        return records
-    return [
-        (
-            {key: _coerce_numeric_value(value) for key, value in row.items()}
-            if isinstance(row, dict)
-            else row
-        )
-        for row in records
-    ]
-
-
-def normalize_xml_payload(payload: JSONData) -> JSONData:
-    """Normalize XML payloads to list-based item structures."""
-    if not isinstance(payload, dict):
-        return payload
-    root = payload.get('root')
-    if not isinstance(root, dict):
-        return payload
-    items = root.get('items')
-    if isinstance(items, dict):
-        root = {**root, 'items': [items]}
-        return {**payload, 'root': root}
-    return payload
-
-
-def require_optional_modules(*modules: str) -> None:
-    """Skip the test when optional dependencies are missing."""
-    for module in modules:
-        pytest.importorskip(module)
-
-
-class FileCoreDispatchContract:
-    """Reusable contract suite for class-based core dispatch in ``File``."""
-
-    file_cls: type[Any]
-    core_module: object
-    read_format: FileFormat = FileFormat.CSV
-    write_format: FileFormat = FileFormat.XML
-    read_filename: str = 'sample.csv'
-    write_filename: str = 'export.xml'
-    read_result: JSONData = {'ok': True}
-    write_payload: JSONData = [{'name': 'Ada'}]
-    write_root_tag: str = 'records'
-    write_result: int = 3
-
-    def test_read_uses_class_based_handler_dispatch(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test read dispatch through ``core.get_handler`` handlers."""
-        path = tmp_path / self.read_filename
-        path.write_text('name\nAda\n', encoding='utf-8')
-        calls: dict[str, object] = {}
-
-        class _StubHandler:
-            def read(self, path: Path) -> JSONData:
-                calls['read_path'] = path
-                return cast(JSONData, self_read_result)
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        self_read_result = self.read_result
-        stub_handler = _StubHandler()
-
-        def _get_handler(file_format: FileFormat) -> _StubHandler:
-            calls['format'] = file_format
-            return stub_handler
-
-        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
-
-        result = self.file_cls(path, self.read_format).read()
-
-        assert result == self.read_result
-        assert calls['format'] is self.read_format
-        assert calls['read_path'] == path
-
-    def test_write_uses_class_based_handler_and_root_tag(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test write dispatch preserving XML ``root_tag`` in options."""
-        path = tmp_path / self.write_filename
-        calls: dict[str, object] = {}
-
-        class _StubHandler:
-            def read(self, path: Path) -> JSONData:
-                _ = path
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                calls['write_path'] = path
-                calls['write_data'] = data
-                calls['write_options'] = options
-                return self_write_result
-
-        self_write_result = self.write_result
-        stub_handler = _StubHandler()
-
-        def _get_handler(file_format: FileFormat) -> _StubHandler:
-            calls['format'] = file_format
-            return stub_handler
-
-        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
-
-        written = self.file_cls(path, self.write_format).write(
-            self.write_payload,
-            root_tag=self.write_root_tag,
-        )
-
-        assert written == self.write_result
-        assert calls['format'] is self.write_format
-        assert calls['write_path'] == path
-        assert calls['write_data'] == self.write_payload
-        assert isinstance(calls['write_options'], WriteOptions)
-        options = cast(WriteOptions, calls['write_options'])
-        assert options.root_tag == self.write_root_tag
-
-
 FORMAT_CASES: list[FormatCase] = [
     # Tabular & delimited text
     (
@@ -475,6 +318,170 @@ STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
     # (FileFormat.WSV, 'data.wsv'),
     (FileFormat.ZSAV, 'data.zsav'),
 )
+
+
+type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
+
+
+def _coerce_numeric_value(value: object) -> object:
+    """Coerce numeric scalars into stable Python numeric types."""
+    if isinstance(value, numbers.Real):
+        try:
+            numeric = float(value)
+            if math.isnan(numeric):
+                return None
+        except (TypeError, ValueError):
+            return value
+        if numeric.is_integer():
+            return int(numeric)
+        return float(numeric)
+    return value
+
+
+def normalize_numeric_records(records: JSONData) -> JSONData:
+    """Normalize numeric values for deterministic record comparisons."""
+    if not isinstance(records, list):
+        return records
+    return [
+        (
+            {key: _coerce_numeric_value(value) for key, value in row.items()}
+            if isinstance(row, dict)
+            else row
+        )
+        for row in records
+    ]
+
+
+def normalize_xml_payload(payload: JSONData) -> JSONData:
+    """Normalize XML payloads to list-based item structures."""
+    if not isinstance(payload, dict):
+        return payload
+    root = payload.get('root')
+    if not isinstance(root, dict):
+        return payload
+    items = root.get('items')
+    if isinstance(items, dict):
+        root = {**root, 'items': [items]}
+        return {**payload, 'root': root}
+    return payload
+
+
+def require_optional_modules(*modules: str) -> None:
+    """Skip the test when optional dependencies are missing."""
+    for module in modules:
+        pytest.importorskip(module)
+
+
+class FileCoreDispatchContract:
+    """Reusable contract suite for class-based core dispatch in ``File``."""
+
+    file_cls: type[Any]
+    core_module: object
+    read_format: FileFormat = FileFormat.CSV
+    write_format: FileFormat = FileFormat.XML
+    read_filename: str = 'sample.csv'
+    write_filename: str = 'export.xml'
+    read_result: JSONData = {'ok': True}
+    write_payload: JSONData = [{'name': 'Ada'}]
+    write_root_tag: str = 'records'
+    write_result: int = 3
+
+    def test_read_uses_class_based_handler_dispatch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read dispatch through ``core.get_handler`` handlers."""
+        path = tmp_path / self.read_filename
+        path.write_text('name\nAda\n', encoding='utf-8')
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(self, path: Path) -> JSONData:
+                """Stub read method recording call parameters."""
+                calls['read_path'] = path
+                return cast(JSONData, self_read_result)
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                """Stub write method recording call parameters."""
+                _ = path
+                _ = data
+                _ = options
+                return 0
+
+        self_read_result = self.read_result
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+
+        result = self.file_cls(path, self.read_format).read()
+
+        assert result == self.read_result
+        assert calls['format'] is self.read_format
+        assert calls['read_path'] == path
+
+    def test_write_uses_class_based_handler_and_root_tag(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write dispatch preserving XML ``root_tag`` in options."""
+        path = tmp_path / self.write_filename
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            def read(
+                self,
+                path: Path,
+            ) -> JSONData:
+                """Stub read method (not used in this test)."""
+                _ = path
+                return []
+
+            def write(
+                self,
+                path: Path,
+                data: JSONData,
+                *,
+                options: WriteOptions | None = None,
+            ) -> int:
+                """Stub write method recording call parameters."""
+                calls['write_path'] = path
+                calls['write_data'] = data
+                calls['write_options'] = options
+                return self_write_result
+
+        self_write_result = self.write_result
+        stub_handler = _StubHandler()
+
+        def _get_handler(file_format: FileFormat) -> _StubHandler:
+            calls['format'] = file_format
+            return stub_handler
+
+        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+
+        written = self.file_cls(path, self.write_format).write(
+            self.write_payload,
+            root_tag=self.write_root_tag,
+        )
+
+        assert written == self.write_result
+        assert calls['format'] is self.write_format
+        assert calls['write_path'] == path
+        assert calls['write_data'] == self.write_payload
+        assert isinstance(calls['write_options'], WriteOptions)
+        options = cast(WriteOptions, calls['write_options'])
+        assert options.root_tag == self.write_root_tag
 
 
 class _DummyPath(PathLike[str]):

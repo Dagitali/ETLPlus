@@ -81,15 +81,13 @@ class TestBsonHelpers:
 
     # pylint: disable=protected-access
 
-    def test_decode_all_uses_module_function(self) -> None:
+    def test_decode_all_raises_without_support(self) -> None:
         """
-        Test that :func:`_decode_all` uses the module-level :func:`decode_all`
-        when available.
+        Test that :func:`_decode_all` raises when no suitable decode method is
+        found.
         """
-        stub = _BsonModuleStub()
-
-        assert mod._decode_all(stub, b'payload') == [{'decoded': True}]
-        assert stub.decoded == [b'payload']
+        with pytest.raises(AttributeError, match='decode_all'):
+            mod._decode_all(object(), b'payload')
 
     def test_decode_all_uses_bson_class(self) -> None:
         """
@@ -102,13 +100,15 @@ class TestBsonHelpers:
         assert mod._decode_all(stub, b'payload') == [{'decoded': True}]
         assert stub.BSON.decoded == [b'payload']
 
-    def test_decode_all_raises_without_support(self) -> None:
+    def test_decode_all_uses_module_function(self) -> None:
         """
-        Test that :func:`_decode_all` raises when no suitable decode method is
-        found.
+        Test that :func:`_decode_all` uses the module-level :func:`decode_all`
+        when available.
         """
-        with pytest.raises(AttributeError, match='decode_all'):
-            mod._decode_all(object(), b'payload')
+        stub = _BsonModuleStub()
+
+        assert mod._decode_all(stub, b'payload') == [{'decoded': True}]
+        assert stub.decoded == [b'payload']
 
     def test_encode_doc_uses_module_function(self) -> None:
         """

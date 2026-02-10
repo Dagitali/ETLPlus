@@ -385,10 +385,7 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_file_handler_abc_cannot_be_instantiated(self) -> None:
-        """Test FileHandlerABC remaining abstract."""
-        with pytest.raises(TypeError):
-            FileHandlerABC()  # type: ignore[abstract]
+    # pylint: disable=abstract-class-instantiated
 
     def test_delimited_abc_requires_row_methods(self) -> None:
         """Test DelimitedTextFileHandlerABC requiring row-level methods."""
@@ -436,6 +433,11 @@ class TestBaseAbcContracts:
 
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write(Path('ignored.xls'), [{'a': 1}])
+
+    def test_file_handler_abc_cannot_be_instantiated(self) -> None:
+        """Test FileHandlerABC remaining abstract."""
+        with pytest.raises(TypeError):
+            FileHandlerABC()  # type: ignore[abstract]
 
     def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
         """Test read-only spreadsheet handlers rejecting write_sheet calls."""
@@ -543,23 +545,6 @@ class TestNamingConventions:
 
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
-
-    @staticmethod
-    def _make_handler(handler_kind: str) -> object:
-        """Build handler stubs used by option-helper contract tests."""
-        match handler_kind:
-            case 'delimited':
-                return _DelimitedStub()
-            case 'read_only':
-                return _ReadOnlyStub()
-            case 'archive':
-                return _ArchiveStub()
-            case 'spreadsheet':
-                return _SpreadsheetStub()
-            case 'embedded':
-                return _EmbeddedDbStub()
-            case _:
-                raise ValueError(f'Unknown handler kind: {handler_kind}')
 
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
@@ -724,6 +709,23 @@ class TestOptionsContracts:
 
         with pytest.raises(FrozenInstanceError):
             options.encoding = 'latin-1'  # type: ignore[misc]
+
+    @staticmethod
+    def _make_handler(handler_kind: str) -> object:
+        """Build handler stubs used by option-helper contract tests."""
+        match handler_kind:
+            case 'delimited':
+                return _DelimitedStub()
+            case 'read_only':
+                return _ReadOnlyStub()
+            case 'archive':
+                return _ArchiveStub()
+            case 'spreadsheet':
+                return _SpreadsheetStub()
+            case 'embedded':
+                return _EmbeddedDbStub()
+            case _:
+                raise ValueError(f'Unknown handler kind: {handler_kind}')
 
 
 class TestScientificDatasetContracts:

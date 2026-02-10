@@ -26,13 +26,6 @@ class _Frame:
         self._records = list(records)
         self.columns = list(records[0].keys()) if records else []
 
-    def reset_index(self) -> _Frame:
-        """
-        Simulate resetting the index by ignoring any 'index' column and
-        returning a new frame.
-        """
-        return self
-
     def __getitem__(self, key: str) -> list[object]:
         return [row.get(key) for row in self._records]
 
@@ -49,6 +42,13 @@ class _Frame:
             for row in self._records
         ]
         return _Frame(remaining)
+
+    def reset_index(self) -> _Frame:
+        """
+        Simulate resetting the index by ignoring any 'index' column and
+        returning a new frame.
+        """
+        return self
 
     def to_dict(
         self,
@@ -150,6 +150,22 @@ class TestNc(SingleDatasetWritableContract):
     handler_cls = mod.NcFile
     format_name = 'nc'
 
+    def test_read_drops_sequential_index(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+    ) -> None:
+        """Test that reading drops a sequential index."""
+        frame = _Frame([{'index': 0, 'value': 1}, {'index': 1, 'value': 2}])
+        dataset = _Dataset(frame)
+        xarray = _XarrayStub(dataset)
+        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+        path = tmp_path / 'data.nc'
+
+        result = mod.read(path)
+
+        assert result == [{'value': 1}, {'value': 2}]
+
     def test_read_keeps_non_sequential_index(
         self,
         tmp_path: Path,
@@ -168,22 +184,6 @@ class TestNc(SingleDatasetWritableContract):
             {'index': 4, 'value': 11},
         ]
 
-    def test_read_drops_sequential_index(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-    ) -> None:
-        """Test that reading drops a sequential index."""
-        frame = _Frame([{'index': 0, 'value': 1}, {'index': 1, 'value': 2}])
-        dataset = _Dataset(frame)
-        xarray = _XarrayStub(dataset)
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
-        path = tmp_path / 'data.nc'
-
-        result = mod.read(path)
-
-        assert result == [{'value': 1}, {'value': 2}]
-
     def test_read_raises_engine_error(
         self,
         tmp_path: Path,
@@ -200,30 +200,6 @@ class TestNc(SingleDatasetWritableContract):
 
         with pytest.raises(ImportError, match='NC support requires optional'):
             mod.read(tmp_path / 'data.nc')
-
-    def test_write_raises_engine_error(
-        self,
-        tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that writing raises an engine error."""
-        frame = _Frame([{'value': 1}])
-        dataset = _Dataset(frame, fail=True)
-        xarray = _XarrayStub(dataset)
-
-        def _from_dataframe(_: object) -> _Dataset:
-            return dataset
-
-        monkeypatch.setattr(
-            xarray.Dataset,
-            'from_dataframe',
-            staticmethod(_from_dataframe),
-        )
-        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
-
-        with pytest.raises(ImportError, match='NC support requires optional'):
-            mod.write(tmp_path / 'data.nc', [{'value': 1}])
 
     def test_write_happy_path(
         self,
@@ -251,3 +227,27 @@ class TestNc(SingleDatasetWritableContract):
 
         assert written == 1
         assert dataset.to_netcdf_calls == [path]
+
+    def test_write_raises_engine_error(
+        self,
+        tmp_path: Path,
+        optional_module_stub: Callable[[dict[str, object]], None],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that writing raises an engine error."""
+        frame = _Frame([{'value': 1}])
+        dataset = _Dataset(frame, fail=True)
+        xarray = _XarrayStub(dataset)
+
+        def _from_dataframe(_: object) -> _Dataset:
+            return dataset
+
+        monkeypatch.setattr(
+            xarray.Dataset,
+            'from_dataframe',
+            staticmethod(_from_dataframe),
+        )
+        optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
+
+        with pytest.raises(ImportError, match='NC support requires optional'):
+            mod.write(tmp_path / 'data.nc', [{'value': 1}])

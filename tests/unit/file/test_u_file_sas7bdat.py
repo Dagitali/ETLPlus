@@ -96,24 +96,6 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
 class TestSas7bdatRead:
     """Unit tests for :func:`etlplus.file.sas7bdat.read`."""
 
-    def test_read_uses_format_hint(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that read requests the SAS7BDAT format hint when supported."""
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame)
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
-
-        result = mod.read(tmp_path / 'data.sas7bdat')
-
-        assert result == [{'id': 1}]
-        assert pandas.read_calls == [
-            {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
-        ]
-
     def test_read_falls_back_when_format_kwarg_not_supported(
         self,
         tmp_path: Path,
@@ -131,4 +113,22 @@ class TestSas7bdatRead:
         assert pandas.read_calls == [
             {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
             {'path': tmp_path / 'data.sas7bdat', 'format': None},
+        ]
+
+    def test_read_uses_format_hint(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that read requests the SAS7BDAT format hint when supported."""
+        frame = _Frame([{'id': 1}])
+        pandas = _PandasStub(frame)
+        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
+        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+
+        result = mod.read(tmp_path / 'data.sas7bdat')
+
+        assert result == [{'id': 1}]
+        assert pandas.read_calls == [
+            {'path': tmp_path / 'data.sas7bdat', 'format': 'sas7bdat'},
         ]

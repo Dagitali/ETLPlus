@@ -39,6 +39,19 @@ class _Frame:
         return _Frame(records)
 
 
+class _NoWriter:
+    """Stub exposing ``read_r`` without any write method."""
+
+    # pylint: disable=unused-argument
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:  # noqa: ARG002
+        """Simulate missing writer by only providing a reader."""
+        return {}
+
+
 class _PandasStub:
     """Stub for :mod:`pandas` module."""
 
@@ -98,19 +111,6 @@ class _PyreadrFallbackStub:
         self.writes.append((path, frame))
 
 
-class _NoWriter:
-    """Stub exposing ``read_r`` without any write method."""
-
-    # pylint: disable=unused-argument
-
-    def read_r(
-        self,
-        path: str,
-    ) -> dict[str, object]:  # noqa: ARG002
-        """Simulate missing writer by only providing a reader."""
-        return {}
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -143,18 +143,6 @@ class TestRda(RDataModuleContract):
         """Build pyreadr-like stub without write methods."""
         return _NoWriter()
 
-    def assert_write_success(
-        self,
-        pyreadr_stub: object,
-        path: Path,  # noqa: ARG002
-    ) -> None:
-        """Assert RDA write route using ``write_rdata`` with ``df_name``."""
-        stub = pyreadr_stub
-        assert isinstance(stub, _PyreadrStub)
-        assert stub.writes
-        _, _, kwargs = stub.writes[0]
-        assert kwargs.get('df_name') == 'data'
-
     def test_write_falls_back_to_write_rda(
         self,
         tmp_path: Path,
@@ -171,3 +159,15 @@ class TestRda(RDataModuleContract):
 
         assert written == 1
         assert pyreadr.writes
+
+    def assert_write_success(
+        self,
+        pyreadr_stub: object,
+        path: Path,  # noqa: ARG002
+    ) -> None:
+        """Assert RDA write route using ``write_rdata`` with ``df_name``."""
+        stub = pyreadr_stub
+        assert isinstance(stub, _PyreadrStub)
+        assert stub.writes
+        _, _, kwargs = stub.writes[0]
+        assert kwargs.get('df_name') == 'data'

@@ -39,6 +39,19 @@ class _Frame:
         return _Frame(records)
 
 
+class _NoWriter:
+    """Stub exposing ``read_r`` without any write method."""
+
+    # pylint: disable=unused-argument
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:  # noqa: ARG002
+        """Simulate missing writer by only providing a reader."""
+        return {}
+
+
 class _PandasStub:
     """Stub for :mod:`pandas` module."""
 
@@ -71,19 +84,6 @@ class _PyreadrStub:
     ) -> None:
         """Simulate writing an RDS file by recording the call."""
         self.writes.append((path, frame))
-
-
-class _NoWriter:
-    """Stub exposing ``read_r`` without any write method."""
-
-    # pylint: disable=unused-argument
-
-    def read_r(
-        self,
-        path: str,
-    ) -> dict[str, object]:  # noqa: ARG002
-        """Simulate missing writer by only providing a reader."""
-        return {}
 
 
 # SECTION: TESTS ============================================================ #
