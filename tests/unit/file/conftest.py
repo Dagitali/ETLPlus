@@ -1655,6 +1655,51 @@ class PyreadrStub:
         self.write_rdata_calls.append((path, frame, dict(kwargs)))
 
 
+class PyreadstatTabularStub:
+    """
+    Configurable pyreadstat-style stub for SAV/XPT tabular handlers.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        *,
+        frame: DictRecordsFrameStub | None = None,
+        read_method_name: str | None = None,
+        write_method_name: str | None = None,
+    ) -> None:
+        self._frame = frame if frame is not None else DictRecordsFrameStub([])
+        self._read_method_name = read_method_name
+        self._write_method_name = write_method_name
+        self.read_calls: list[str] = []
+        self.write_calls: list[tuple[object, str]] = []
+
+    def __getattr__(
+        self,
+        name: str,
+    ) -> object:
+        if name == self._read_method_name:
+            return self._read_method
+        if name == self._write_method_name:
+            return self._write_method
+        raise AttributeError(name)
+
+    def _read_method(
+        self,
+        path: str,
+    ) -> tuple[DictRecordsFrameStub, object]:
+        self.read_calls.append(path)
+        return self._frame, object()
+
+    def _write_method(
+        self,
+        frame: object,
+        path: str,
+    ) -> None:
+        self.write_calls.append((frame, path))
+
+
 class RDataPandasStub:
     """
     Minimal pandas stub for R-data tests using record-frame conversion.
