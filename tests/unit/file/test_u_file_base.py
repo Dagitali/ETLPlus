@@ -43,6 +43,9 @@ from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
+from tests.unit.file.conftest import (
+    assert_single_dataset_rejects_non_default_key,
+)
 
 # SECTION: HELPERS ========================================================== #
 
@@ -307,7 +310,7 @@ class TestNamingConventions:
     @pytest.mark.parametrize(
         ('handlers', 'read_method', 'write_method'),
         _NAMING_METHOD_CASES,
-        ids=['delimited', 'spreadsheet', 'embedded_db', 'scientific'],
+        ids=['delimited', 'embedded_db', 'scientific', 'spreadsheet'],
     )
     def test_handlers_expose_category_methods(
         self,
@@ -512,16 +515,8 @@ class TestScientificDatasetContracts:
 
     def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        bad_dataset = 'not_default_dataset'
         for handler_cls in _SINGLE_DATASET_HANDLER_CLASSES:
-            handler = handler_cls()
-            path = Path(f'ignored.{handler_cls.format.value}')
-            for operation in ('read', 'write'):
-                with pytest.raises(
-                    ValueError,
-                    match='supports only dataset key',
-                ):
-                    if operation == 'read':
-                        handler.read_dataset(path, dataset=bad_dataset)
-                    else:
-                        handler.write_dataset(path, [], dataset=bad_dataset)
+            assert_single_dataset_rejects_non_default_key(
+                handler_cls(),
+                suffix=handler_cls.format.value,
+            )
