@@ -13,6 +13,7 @@ import zipfile
 from os import PathLike
 from pathlib import Path
 from pathlib import PurePath
+from types import SimpleNamespace
 from typing import Any
 from typing import cast
 
@@ -386,6 +387,42 @@ class FileCoreDispatchContract:
     write_root_tag: str = 'records'
     write_result: int = 3
 
+    def _install_handler_stub(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        read_result: JSONData | None = None,
+        write_result: int = 0,
+    ) -> dict[str, object]:
+        """
+        Install a configurable core handler stub and return call metadata.
+        """
+        calls: dict[str, object] = {}
+
+        def _read(path: Path) -> JSONData:
+            calls['read_path'] = path
+            return [] if read_result is None else read_result
+
+        def _write(
+            path: Path,
+            data: JSONData,
+            *,
+            options: WriteOptions | None = None,
+        ) -> int:
+            calls['write_path'] = path
+            calls['write_data'] = data
+            calls['write_options'] = options
+            return write_result
+
+        handler = SimpleNamespace(read=_read, write=_write)
+
+        def _get_handler(file_format: FileFormat) -> object:
+            calls['format'] = file_format
+            return handler
+
+        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+        return calls
+
     def test_read_uses_class_based_handler_dispatch(
         self,
         tmp_path: Path,
@@ -394,35 +431,10 @@ class FileCoreDispatchContract:
         """Test read dispatch through ``core.get_handler`` handlers."""
         path = tmp_path / self.read_filename
         path.write_text('name\nAda\n', encoding='utf-8')
-        calls: dict[str, object] = {}
-
-        class _StubHandler:
-            def read(self, path: Path) -> JSONData:
-                """Stub read method recording call parameters."""
-                calls['read_path'] = path
-                return cast(JSONData, self_read_result)
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                """Stub write method recording call parameters."""
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        self_read_result = self.read_result
-        stub_handler = _StubHandler()
-
-        def _get_handler(file_format: FileFormat) -> _StubHandler:
-            calls['format'] = file_format
-            return stub_handler
-
-        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+        calls = self._install_handler_stub(
+            monkeypatch,
+            read_result=self.read_result,
+        )
 
         result = self.file_cls(path, self.read_format).read()
 
@@ -437,38 +449,10 @@ class FileCoreDispatchContract:
     ) -> None:
         """Test write dispatch preserving XML ``root_tag`` in options."""
         path = tmp_path / self.write_filename
-        calls: dict[str, object] = {}
-
-        class _StubHandler:
-            def read(
-                self,
-                path: Path,
-            ) -> JSONData:
-                """Stub read method (not used in this test)."""
-                _ = path
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                """Stub write method recording call parameters."""
-                calls['write_path'] = path
-                calls['write_data'] = data
-                calls['write_options'] = options
-                return self_write_result
-
-        self_write_result = self.write_result
-        stub_handler = _StubHandler()
-
-        def _get_handler(file_format: FileFormat) -> _StubHandler:
-            calls['format'] = file_format
-            return stub_handler
-
-        monkeypatch.setattr(self.core_module, 'get_handler', _get_handler)
+        calls = self._install_handler_stub(
+            monkeypatch,
+            write_result=self.write_result,
+        )
 
         written = self.file_cls(path, self.write_format).write(
             self.write_payload,
