@@ -47,7 +47,7 @@ class TestNdjson(
         Test that :func:`read` raises a JSONDecodeError for lines that do not
         contain valid JSON.
         """
-        path = tmp_path / 'data.ndjson'
+        path = self.format_path(tmp_path)
         path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')
 
         with pytest.raises(json.JSONDecodeError):
@@ -60,7 +60,7 @@ class TestNdjson(
         """
         Test that :func:`read` rejects lines that do not contain JSON objects.
         """
-        path = tmp_path / 'data.ndjson'
+        path = self.format_path(tmp_path)
         path.write_text(
             '{"id": 1}\n42\n',
             encoding='utf-8',
@@ -76,7 +76,7 @@ class TestNdjson(
         """
         Test that writing an empty payload returns zero and creates no file.
         """
-        path = tmp_path / 'data.ndjson'
+        path = self.format_path(tmp_path)
 
         assert mod.write(path, []) == 0
         assert not path.exists()
@@ -86,7 +86,7 @@ class TestNdjson(
         tmp_path: Path,
     ) -> None:
         """Test that writing rejects records that are not dictionaries."""
-        path = tmp_path / 'data.ndjson'
+        path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='NDJSON payloads must contain'):
             mod.write(path, cast(list[dict[str, Any]], [1]))
@@ -98,7 +98,7 @@ class TestNdjson(
         """
         Test that writing writes each record on its own line.
         """
-        path = tmp_path / 'data.ndjson'
+        path = self.format_path(tmp_path)
         payload = [{'id': 1}, {'id': 2}]
 
         written = mod.write(path, payload)

@@ -47,7 +47,7 @@ class TestJson(
         Test that :func:`read` correctly reads a list of JSON objects as
         records.
         """
-        path = tmp_path / 'data.json'
+        path = self.format_path(tmp_path)
         path.write_text(json.dumps([{'id': 1}]), encoding='utf-8')
 
         assert mod.read(path) == [{'id': 1}]
@@ -60,7 +60,7 @@ class TestJson(
         Test that :func:`read` rejects a JSON array as root since it cannot be
         treated as records.
         """
-        path = tmp_path / 'data.json'
+        path = self.format_path(tmp_path)
         path.write_text(json.dumps([1, 2]), encoding='utf-8')
 
         with pytest.raises(TypeError, match='JSON array must contain'):
@@ -71,7 +71,7 @@ class TestJson(
         tmp_path: Path,
     ) -> None:
         """Test that :func:`read` rejects a scalar JSON value as root."""
-        path = tmp_path / 'data.json'
+        path = self.format_path(tmp_path)
         path.write_text('42', encoding='utf-8')
 
         with pytest.raises(TypeError, match='JSON root must be'):
@@ -84,7 +84,7 @@ class TestJson(
         """
         Test that :func:`write` adds a newline and counts records correctly.
         """
-        path = tmp_path / 'data.json'
+        path = self.format_path(tmp_path)
         payload = [{'id': 1}, {'id': 2}]
 
         written = mod.write(path, payload)

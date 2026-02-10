@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.txt`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -15,6 +14,7 @@ import pytest
 
 from etlplus.file import txt as mod
 from etlplus.types import JSONData
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: TESTS ============================================================ #
@@ -40,10 +40,10 @@ class TestTxt(TextRowModuleContract):
     def prepare_read_case(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> tuple[Path, JSONData]:
         """Prepare representative TXT read input."""
-        path = tmp_path / 'data.txt'
+        path = self.format_path(tmp_path)
         path.write_text('alpha\n\nbeta\n', encoding='utf-8')
 
         return path, [{'text': 'alpha'}, {'text': 'beta'}]
@@ -53,7 +53,7 @@ class TestTxt(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that :func:`write` accepts a single dictionary as payload."""
-        path = tmp_path / 'data.txt'
+        path = self.format_path(tmp_path)
 
         written = mod.write(path, {'text': 'alpha'})
 
@@ -65,7 +65,7 @@ class TestTxt(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that :func:`write` returns zero when given an empty payload."""
-        path = tmp_path / 'data.txt'
+        path = self.format_path(tmp_path)
         assert mod.write(path, []) == 0
         assert not path.exists()
 
@@ -74,7 +74,7 @@ class TestTxt(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that :func:`write` rejects payloads missing the 'text' key."""
-        path = tmp_path / 'data.txt'
+        path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT payloads must include'):
             mod.write(path, [{'nope': 'value'}])
@@ -84,7 +84,7 @@ class TestTxt(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that :func:`write` rejects payloads that are not dicts."""
-        path = tmp_path / 'data.txt'
+        path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT payloads must contain'):
             mod.write(path, cast(list[dict[str, Any]], [1]))

@@ -50,7 +50,7 @@ class TestFwf(TextRowModuleContract):
         frame = DictRecordsFrameStub([{'id': 1}])
         self._pandas = _PandasStub(frame)
         optional_module_stub({'pandas': self._pandas})
-        path = tmp_path / 'data.fwf'
+        path = self.format_path(tmp_path)
         return path, [{'id': 1}]
 
     def assert_write_contract_result(
@@ -79,4 +79,4 @@ class TestFwf(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that writing with empty fieldnames returns zero."""
-        assert mod.write(tmp_path / 'data.fwf', [{}]) == 0
+        assert mod.write(self.format_path(tmp_path), [{}]) == 0
