@@ -1509,6 +1509,27 @@ class DictRecordsFrameStub:
         records: list[dict[str, object]],
     ) -> None:
         self._records = list(records)
+        self.columns = list(records[0].keys()) if records else []
+
+    def __getitem__(self, key: str) -> list[object]:
+        """Return one column as a list of row values."""
+        return [row.get(key) for row in self._records]
+
+    def drop(
+        self,
+        columns: list[str],
+    ) -> DictRecordsFrameStub:
+        """Return a new frame with selected columns removed."""
+        return DictRecordsFrameStub(
+            [
+                {k: v for k, v in row.items() if k not in columns}
+                for row in self._records
+            ],
+        )
+
+    def reset_index(self) -> DictRecordsFrameStub:
+        """Return self for simple reset-index test flows."""
+        return self
 
     def to_dict(
         self,
@@ -1706,6 +1727,23 @@ class RDataPandasStub:
     """
 
     DataFrame = DictRecordsFrameStub
+
+
+class ContextManagerSelfMixin:
+    """
+    Tiny mixin for stubs that act as context managers returning ``self``.
+    """
+
+    def __enter__(self) -> ContextManagerSelfMixin:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        tb: object,
+    ) -> None:
+        return None
 
 
 class RDataNoWriterStub:
