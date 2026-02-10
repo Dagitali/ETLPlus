@@ -53,6 +53,15 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
 class TestSas7bdatRead:
     """Unit tests for :func:`etlplus.file.sas7bdat.read`."""
 
+    @staticmethod
+    def _install_dependency_stubs(
+        monkeypatch: pytest.MonkeyPatch,
+        pandas: PandasReadSasStub,
+    ) -> None:
+        """Install deterministic dependency stubs for SAS7BDAT tests."""
+        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
+        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+
     def test_list_datasets_returns_default_key(self) -> None:
         """Test list_datasets exposing the single supported key."""
         assert mod.Sas7bdatFile().list_datasets(Path('ignored.sas7bdat')) == [
@@ -67,8 +76,7 @@ class TestSas7bdatRead:
         """Test read fallback when pandas rejects the format keyword."""
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        self._install_dependency_stubs(monkeypatch, pandas)
 
         result = mod.read(tmp_path / 'data.sas7bdat')
 
@@ -86,8 +94,7 @@ class TestSas7bdatRead:
         """Test option-based default dataset selection for read_dataset."""
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        self._install_dependency_stubs(monkeypatch, pandas)
 
         result = mod.Sas7bdatFile().read_dataset(
             tmp_path / 'data.sas7bdat',
@@ -104,8 +111,7 @@ class TestSas7bdatRead:
         """Test that read requests the SAS7BDAT format hint when supported."""
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        self._install_dependency_stubs(monkeypatch, pandas)
 
         result = mod.read(tmp_path / 'data.sas7bdat')
 

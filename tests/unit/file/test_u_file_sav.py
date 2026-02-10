@@ -39,14 +39,15 @@ class TestSav(SingleDatasetWritableContract):
             write_method_name='write_sav',
         )
         optional_module_stub({'pyreadstat': stub})
+        path = self.format_path(tmp_path)
 
         result = mod.SavFile().read_dataset(
-            tmp_path / 'data.sav',
+            path,
             options=ReadOptions(dataset='data'),
         )
 
         assert result == [{'id': 1}]
-        assert stub.read_calls == [str(tmp_path / 'data.sav')]
+        assert stub.read_calls == [str(path)]
 
     def test_write_dataset_uses_pyreadstat_writer(
         self,
@@ -60,7 +61,7 @@ class TestSav(SingleDatasetWritableContract):
             write_method_name='write_sav',
         )
         optional_module_stub({'pyreadstat': stub, 'pandas': RDataPandasStub()})
-        path = tmp_path / 'data.sav'
+        path = self.format_path(tmp_path)
 
         written = mod.SavFile().write_dataset(
             path,

@@ -73,14 +73,15 @@ class TestDta(SingleDatasetWritableContract):
         """Test DTA reads delegating to ``pandas.read_stata``."""
         pandas = _PandasStub(_Frame([{'id': 1}]))
         optional_module_stub({'pandas': pandas, 'pyreadstat': object()})
+        path = self.format_path(tmp_path)
 
         result = mod.DtaFile().read_dataset(
-            tmp_path / 'data.dta',
+            path,
             options=ReadOptions(dataset='data'),
         )
 
         assert result == [{'id': 1}]
-        assert pandas.read_calls == [tmp_path / 'data.dta']
+        assert pandas.read_calls == [path]
 
     def test_write_dataset_uses_to_stata_without_index(
         self,
@@ -97,7 +98,7 @@ class TestDta(SingleDatasetWritableContract):
             staticmethod(lambda _records: frame),
         )
         optional_module_stub({'pandas': pandas, 'pyreadstat': object()})
-        path = tmp_path / 'data.dta'
+        path = self.format_path(tmp_path)
 
         written = mod.DtaFile().write_dataset(
             path,

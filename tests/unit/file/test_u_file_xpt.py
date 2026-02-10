@@ -39,13 +39,14 @@ class TestXpt(SingleDatasetWritableContract):
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
         optional_module_stub({'pyreadstat': object(), 'pandas': pandas})
+        path = self.format_path(tmp_path)
 
-        result = mod.XptFile().read_dataset(tmp_path / 'data.xpt')
+        result = mod.XptFile().read_dataset(path)
 
         assert result == [{'id': 1}]
         assert pandas.read_calls == [
-            {'path': tmp_path / 'data.xpt', 'format': 'xport'},
-            {'path': tmp_path / 'data.xpt'},
+            {'path': path, 'format': 'xport'},
+            {'path': path},
         ]
 
     def test_read_prefers_pyreadstat_read_xport(
@@ -61,14 +62,15 @@ class TestXpt(SingleDatasetWritableContract):
         )
         pandas = PandasReadSasStub(frame)
         optional_module_stub({'pyreadstat': pyreadstat, 'pandas': pandas})
+        path = self.format_path(tmp_path)
 
         result = mod.XptFile().read_dataset(
-            tmp_path / 'data.xpt',
+            path,
             options=ReadOptions(dataset='data'),
         )
 
         assert result == [{'id': 1}]
-        assert pyreadstat.read_calls == [str(tmp_path / 'data.xpt')]
+        assert pyreadstat.read_calls == [str(path)]
         assert pandas.read_calls == []
 
     def test_write_raises_when_pyreadstat_writer_missing(
@@ -80,9 +82,10 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub(
             {'pyreadstat': object(), 'pandas': RDataPandasStub()},
         )
+        path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='write_xport'):
-            mod.XptFile().write_dataset(tmp_path / 'data.xpt', [{'id': 1}])
+            mod.XptFile().write_dataset(path, [{'id': 1}])
 
     def test_write_uses_pyreadstat_writer(
         self,
@@ -94,7 +97,7 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub(
             {'pyreadstat': pyreadstat, 'pandas': RDataPandasStub()},
         )
-        path = tmp_path / 'data.xpt'
+        path = self.format_path(tmp_path)
 
         written = mod.XptFile().write_dataset(
             path,

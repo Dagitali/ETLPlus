@@ -54,36 +54,52 @@ from etlplus.types import JSONList
 
 _NO_DEFAULT: object = object()
 
-
-def _assert_single_dataset_rejects_non_default_key(
-    handler: SingleDatasetScientificFileHandlerABC,
-    *,
-    suffix: str,
-) -> None:
-    """Assert single-dataset scientific handlers reject non-default keys."""
-    bad_dataset = 'not_default_dataset'
-    path = Path(f'ignored.{suffix}')
-    for operation in ('read', 'write'):
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            if operation == 'read':
-                handler.read_dataset(path, dataset=bad_dataset)
-            else:
-                handler.write_dataset(path, [], dataset=bad_dataset)
-
-
-_NAMING_METHOD_CASES: list[tuple[str, str, str]] = [
-    ('delimited_handlers', 'read_rows', 'write_rows'),
-    ('spreadsheet_handlers', 'read_sheet', 'write_sheet'),
-    ('embedded_db_handlers', 'read_table', 'write_table'),
-    ('scientific_handlers', 'read_dataset', 'write_dataset'),
+_DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+    CsvFile,
+    DatFile,
+    PsvFile,
+    TabFile,
+    TsvFile,
+    TxtFile,
+    FwfFile,
+)
+_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+    SqliteFile,
+)
+_SCIENTIFIC_HANDLER_CLASSES: tuple[
+    type[ScientificDatasetFileHandlerABC],
+    ...,
+] = (
+    DtaFile,
+    NcFile,
+    RdaFile,
+    RdsFile,
+    SavFile,
+    XptFile,
+)
+_SINGLE_DATASET_HANDLER_CLASSES: tuple[
+    type[SingleDatasetScientificFileHandlerABC],
+    ...,
+] = (
+    DtaFile,
+    NcFile,
+    SavFile,
+    XptFile,
+)
+_SPREADSHEET_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+    XlsFile,
+    XlsxFile,
+    XlsmFile,
+    OdsFile,
+)
+_NAMING_METHOD_CASES: list[
+    tuple[tuple[type[FileHandlerABC], ...], str, str]
+] = [
+    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
 ]
-
-_SINGLE_DATASET_SUFFIX_BY_FORMAT: dict[FileFormat, str] = {
-    FileFormat.DTA: 'dta',
-    FileFormat.NC: 'nc',
-    FileFormat.SAV: 'sav',
-    FileFormat.XPT: 'xpt',
-}
 
 
 class _ArchiveStub(ArchiveWrapperFileHandlerABC):
@@ -498,47 +514,18 @@ class TestBaseAbcContracts:
 class TestNamingConventions:
     """Unit tests for category-level internal naming conventions."""
 
-    delimited_handlers = [
-        CsvFile,
-        DatFile,
-        PsvFile,
-        TabFile,
-        TsvFile,
-        TxtFile,
-        FwfFile,
-    ]
-    spreadsheet_handlers = [
-        XlsFile,
-        XlsxFile,
-        XlsmFile,
-        OdsFile,
-    ]
-    embedded_db_handlers = [SqliteFile]
-    scientific_handlers = [
-        DtaFile,
-        NcFile,
-        RdaFile,
-        RdsFile,
-        SavFile,
-        XptFile,
-    ]
-
     @pytest.mark.parametrize(
-        ('handlers_attr', 'read_method', 'write_method'),
+        ('handlers', 'read_method', 'write_method'),
         _NAMING_METHOD_CASES,
         ids=['delimited', 'spreadsheet', 'embedded_db', 'scientific'],
     )
     def test_handlers_expose_category_methods(
         self,
-        handlers_attr: str,
+        handlers: tuple[type[FileHandlerABC], ...],
         read_method: str,
         write_method: str,
     ) -> None:
         """Test handlers exposing category-level read/write methods."""
-        handlers = cast(
-            list[type[FileHandlerABC]],
-            getattr(self, handlers_attr),
-        )
         for handler_cls in handlers:
             assert callable(getattr(handler_cls, 'read', None))
             assert callable(getattr(handler_cls, 'write', None))
@@ -734,24 +721,9 @@ class TestOptionsContracts:
 class TestScientificDatasetContracts:
     """Unit tests for scientific dataset handler contracts."""
 
-    scientific_handlers = [
-        DtaFile,
-        NcFile,
-        RdaFile,
-        RdsFile,
-        SavFile,
-        XptFile,
-    ]
-    single_dataset_handlers = [
-        DtaFile,
-        NcFile,
-        SavFile,
-        XptFile,
-    ]
-
     def test_handlers_use_scientific_dataset_abc(self) -> None:
         """Test scientific handlers inheriting ScientificDataset ABC."""
-        for handler_cls in self.scientific_handlers:
+        for handler_cls in _SCIENTIFIC_HANDLER_CLASSES:
             assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
             assert handler_cls.dataset_key == 'data'
 
@@ -759,7 +731,7 @@ class TestScientificDatasetContracts:
         self,
     ) -> None:
         """Test single-dataset handlers inheriting the subtype ABC."""
-        for handler_cls in self.single_dataset_handlers:
+        for handler_cls in _SINGLE_DATASET_HANDLER_CLASSES:
             assert issubclass(
                 handler_cls,
                 SingleDatasetScientificFileHandlerABC,
@@ -767,18 +739,16 @@ class TestScientificDatasetContracts:
 
     def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        for handler_cls in self.single_dataset_handlers:
-            concrete_cls = cast(type[Any], handler_cls)
-            handler = cast(
-                SingleDatasetScientificFileHandlerABC,
-                concrete_cls(),
-            )
-            file_format = cast(FileFormat, handler_cls.format)
-            suffix = _SINGLE_DATASET_SUFFIX_BY_FORMAT.get(
-                file_format,
-                file_format.value,
-            )
-            _assert_single_dataset_rejects_non_default_key(
-                handler,
-                suffix=suffix,
-            )
+        bad_dataset = 'not_default_dataset'
+        for handler_cls in _SINGLE_DATASET_HANDLER_CLASSES:
+            handler = handler_cls()
+            path = Path(f'ignored.{handler_cls.format.value}')
+            for operation in ('read', 'write'):
+                with pytest.raises(
+                    ValueError,
+                    match='supports only dataset key',
+                ):
+                    if operation == 'read':
+                        handler.read_dataset(path, dataset=bad_dataset)
+                    else:
+                        handler.write_dataset(path, [], dataset=bad_dataset)

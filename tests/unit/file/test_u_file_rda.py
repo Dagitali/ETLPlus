@@ -86,7 +86,7 @@ class TestRda(RDataModuleContract):
         """
         pyreadr = _PyreadrFallbackStub()
         optional_module_stub({'pyreadr': pyreadr, 'pandas': RDataPandasStub()})
-        path = tmp_path / 'data.rda'
+        path = self.format_path(tmp_path)
 
         written = mod.write(path, [{'id': 1}])
 
