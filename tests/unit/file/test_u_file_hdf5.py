@@ -16,6 +16,7 @@ from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
+from tests.unit.file.conftest import patch_dependency_resolver_value
 
 # SECTION: HELPERS ========================================================== #
 
@@ -97,7 +98,12 @@ class TestHdf5Read(PathMixin):
     ) -> None:
         """Test that reading raises when the HDF5 store has no tables."""
         pandas = _PandasStub(store=None)
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_pandas',
+            value=pandas,
+        )
         path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='tables'):

@@ -18,6 +18,7 @@ from tests.unit.file.conftest import PandasReadSasStub
 from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 from tests.unit.file.conftest import patch_dependency_resolver_unreachable
+from tests.unit.file.conftest import patch_dependency_resolver_value
 
 # SECTION: TESTS ============================================================ #
 
@@ -115,5 +116,14 @@ class TestSas7bdatRead(PathMixin):
         pandas: PandasReadSasStub,
     ) -> None:
         """Install deterministic dependency stubs for SAS7BDAT tests."""
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: object())
-        monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            value=object(),
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_pandas',
+            value=pandas,
+        )

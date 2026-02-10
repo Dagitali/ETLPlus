@@ -16,6 +16,7 @@ from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import RDataPandasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
+from tests.unit.file.conftest import patch_dependency_resolver_value
 
 # SECTION: HELPERS ========================================================== #
 
@@ -138,7 +139,11 @@ class TestNc(SingleDatasetWritableContract):
 
         xarray = _XarrayStub(_Dataset(DictRecordsFrameStub([])))
         xarray.open_dataset = _open_dataset  # type: ignore[assignment]
-        monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: xarray)
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            value=xarray,
+        )
         path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='NC support requires optional'):

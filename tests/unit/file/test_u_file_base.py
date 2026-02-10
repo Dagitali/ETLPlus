@@ -58,9 +58,7 @@ _DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     TxtFile,
     FwfFile,
 )
-_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
-    SqliteFile,
-)
+_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (SqliteFile,)
 _SCIENTIFIC_HANDLER_CLASSES: tuple[
     type[ScientificDatasetFileHandlerABC],
     ...,
