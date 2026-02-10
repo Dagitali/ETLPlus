@@ -121,20 +121,6 @@ def assert_stub_module_operation_raises(
         )
 
 
-def patch_dependency_resolver_unreachable(
-    monkeypatch: pytest.MonkeyPatch,
-    module: ModuleType,
-    *,
-    resolver_name: str = 'get_dependency',
-) -> None:
-    """Patch one dependency resolver to raise if a test triggers it."""
-    monkeypatch.setattr(
-        module,
-        resolver_name,
-        _raise_unexpected_dependency_call,
-    )
-
-
 def make_import_error_reader_module(
     method_name: str,
 ) -> object:
@@ -203,6 +189,38 @@ def make_payload(
             if (result := kwargs.get('result')) is not None:
                 return cast(JSONData, result)
             return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
+
+
+def patch_dependency_resolver_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    *,
+    resolver_name: str = 'get_dependency',
+) -> None:
+    """Patch one dependency resolver to raise if a test triggers it."""
+    monkeypatch.setattr(
+        module,
+        resolver_name,
+        _raise_unexpected_dependency_call,
+    )
+
+
+def patch_dependency_resolver_value(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    *,
+    resolver_name: str = 'get_dependency',
+    value: object,
+) -> None:
+    """Patch one dependency resolver to return a deterministic value."""
+
+    def _return_value(
+        *args: object,
+        **kwargs: object,
+    ) -> object:  # noqa: ARG001
+        return value
+
+    monkeypatch.setattr(module, resolver_name, _return_value)
 
 
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
