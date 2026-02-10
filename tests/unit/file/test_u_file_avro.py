@@ -203,6 +203,8 @@ class TestAvroHelpers:
 class TestAvroIo(BinaryDependencyModuleContract):
     """Unit tests for AVRO module-level read/write dispatch."""
 
+    # pylint: disable=protected-access
+
     module = mod
     format_name = 'avro'
     dependency_name = 'fastavro'
@@ -216,7 +218,7 @@ class TestAvroIo(BinaryDependencyModuleContract):
     def assert_dependency_after_read(
         self,
         dependency_stub: object,
-        path: Path,  # noqa: ARG002
+        _path: Path,
     ) -> None:
         """Assert fastavro read behavior."""
         stub = dependency_stub
@@ -225,7 +227,7 @@ class TestAvroIo(BinaryDependencyModuleContract):
     def assert_dependency_after_write(
         self,
         dependency_stub: object,
-        path: Path,  # noqa: ARG002
+        _path: Path,
     ) -> None:
         """Assert fastavro write behavior."""
         stub = dependency_stub

@@ -55,7 +55,7 @@ class TestProperties(
         self,
         tmp_path: Path,
     ) -> None:
-        path = tmp_path / 'config.properties'
+        path = self.format_path(tmp_path, stem='config')
 
         with pytest.raises(TypeError, match='PROPERTIES'):
             mod.write(path, cast(dict[str, Any], ['nope']))

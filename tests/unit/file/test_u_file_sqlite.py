@@ -30,7 +30,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
     def build_empty_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,  # noqa: ARG002
+        _optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build an empty SQLite database file."""
         path = self.format_path(tmp_path)
@@ -40,7 +40,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
     def build_multi_table_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,  # noqa: ARG002
+        _optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build a SQLite database with more than one table."""
         path = self.format_path(tmp_path)
