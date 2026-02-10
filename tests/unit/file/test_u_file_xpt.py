@@ -14,53 +14,11 @@ import pytest
 from etlplus.file import xpt as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import PandasReadSasStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub for XPT helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = list(records)
-
-    def to_dict(
-        self,
-        *,
-        orient: str,  # noqa: ARG002
-    ) -> list[dict[str, object]]:
-        """Simulate frame-to-record conversion."""
-        return list(self._records)
-
-
-class _PandasStub:
-    """Stub for pandas module used by XPT handlers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(
-        self,
-        frame: _Frame,
-        *,
-        fail_on_format_kwarg: bool = False,
-    ) -> None:
-        self._frame = frame
-        self._fail_on_format_kwarg = fail_on_format_kwarg
-        self.read_calls: list[dict[str, object]] = []
-
-    def read_sas(
-        self,
-        path: Path,
-        **kwargs: object,
-    ) -> _Frame:
-        """Simulate pandas.read_sas with optional format rejection."""
-        self.read_calls.append({'path': path, **kwargs})
-        if self._fail_on_format_kwarg and 'format' in kwargs:
-            raise TypeError('format not supported')
-        return self._frame
 
 
 class _PyreadstatReadStub:
@@ -68,14 +26,14 @@ class _PyreadstatReadStub:
 
     # pylint: disable=unused-argument
 
-    def __init__(self, frame: _Frame) -> None:
+    def __init__(self, frame: DictRecordsFrameStub) -> None:
         self._frame = frame
         self.read_calls: list[str] = []
 
     def read_xport(
         self,
         path: str,
-    ) -> tuple[_Frame, object]:
+    ) -> tuple[DictRecordsFrameStub, object]:
         """Simulate pyreadstat.read_xport behavior."""
         self.read_calls.append(path)
         return self._frame, object()
@@ -113,8 +71,8 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test XPT reads falling back to pandas when read_xport is absent."""
-        frame = _Frame([{'id': 1}])
-        pandas = _PandasStub(frame, fail_on_format_kwarg=True)
+        frame = DictRecordsFrameStub([{'id': 1}])
+        pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
         optional_module_stub({'pyreadstat': object(), 'pandas': pandas})
 
         result = mod.XptFile().read_dataset(tmp_path / 'data.xpt')
@@ -131,9 +89,9 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test XPT reads preferring pyreadstat's native reader."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         pyreadstat = _PyreadstatReadStub(frame)
-        pandas = _PandasStub(frame)
+        pandas = PandasReadSasStub(frame)
         optional_module_stub({'pyreadstat': pyreadstat, 'pandas': pandas})
 
         result = mod.XptFile().read_dataset(
@@ -151,11 +109,14 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test XPT writes requiring pyreadstat.write_xport."""
+
         class _PandasNoop:
             class DataFrame:  # noqa: D106
                 @staticmethod
-                def from_records(records: list[dict[str, object]]) -> _Frame:
-                    return _Frame(records)
+                def from_records(
+                    records: list[dict[str, object]],
+                ) -> DictRecordsFrameStub:
+                    return DictRecordsFrameStub(records)
 
         optional_module_stub({'pyreadstat': object(), 'pandas': _PandasNoop()})
 
@@ -168,12 +129,14 @@ class TestXpt(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test XPT writes delegating to pyreadstat.write_xport."""
-        frame = _Frame([])
+        frame = DictRecordsFrameStub([])
 
         class _PandasWriterStub:
             class DataFrame:  # noqa: D106
                 @staticmethod
-                def from_records(records: list[dict[str, object]]) -> _Frame:
+                def from_records(
+                    records: list[dict[str, object]],
+                ) -> DictRecordsFrameStub:
                     _ = records
                     return frame
 

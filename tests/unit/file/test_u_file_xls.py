@@ -10,26 +10,12 @@ from pathlib import Path
 
 from etlplus.file import xls as mod
 from etlplus.file.base import ReadOptions
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import ReadOnlyWriteGuardMixin
 from tests.unit.file.conftest import SpreadsheetCategoryContractBase
 from tests.unit.file.conftest import SpreadsheetReadImportErrorMixin
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub for XLS read tests."""
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = list(records)
-
-    def to_dict(
-        self,
-        *,
-        orient: str,  # noqa: ARG002
-    ) -> list[dict[str, object]]:
-        """Simulate frame-to-record conversion."""
-        return list(self._records)
 
 
 class _PandasStub:
@@ -39,7 +25,7 @@ class _PandasStub:
 
     def __init__(
         self,
-        frame: _Frame,
+        frame: DictRecordsFrameStub,
         *,
         fail_on_sheet_name: bool = False,
     ) -> None:
@@ -51,7 +37,7 @@ class _PandasStub:
         self,
         path: Path,
         **kwargs: object,
-    ) -> _Frame:
+    ) -> DictRecordsFrameStub:
         """Simulate pandas.read_excel with optional sheet-name failure."""
         call = {'path': path, **kwargs}
         self.calls.append(call)
@@ -79,7 +65,7 @@ class TestXls(
         monkeypatch,
     ) -> None:
         """Test read passing ``sheet`` options through to pandas."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         pandas = _PandasStub(frame)
         monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
         path = self.format_path(tmp_path)
@@ -96,7 +82,7 @@ class TestXls(
         monkeypatch,
     ) -> None:
         """Test sheet-name fallback when pandas rejects that keyword."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         pandas = _PandasStub(frame, fail_on_sheet_name=True)
         monkeypatch.setattr(mod, 'get_pandas', lambda *_: pandas)
         path = self.format_path(tmp_path)

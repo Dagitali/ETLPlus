@@ -12,26 +12,10 @@ from pathlib import Path
 from etlplus.file import sav as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub for SAV helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = list(records)
-
-    def to_dict(
-        self,
-        *,
-        orient: str,  # noqa: ARG002
-    ) -> list[dict[str, object]]:
-        """Simulate frame-to-record conversion."""
-        return list(self._records)
 
 
 class _PandasStub:
@@ -39,8 +23,10 @@ class _PandasStub:
 
     class DataFrame:  # noqa: D106
         @staticmethod
-        def from_records(records: list[dict[str, object]]) -> _Frame:
-            return _Frame(records)
+        def from_records(
+            records: list[dict[str, object]],
+        ) -> DictRecordsFrameStub:
+            return DictRecordsFrameStub(records)
 
 
 class _PyreadstatStub:
@@ -48,7 +34,7 @@ class _PyreadstatStub:
 
     # pylint: disable=unused-argument
 
-    def __init__(self, frame: _Frame) -> None:
+    def __init__(self, frame: DictRecordsFrameStub) -> None:
         self._frame = frame
         self.read_calls: list[str] = []
         self.write_calls: list[tuple[object, str]] = []
@@ -56,7 +42,7 @@ class _PyreadstatStub:
     def read_sav(
         self,
         path: str,
-    ) -> tuple[_Frame, object]:
+    ) -> tuple[DictRecordsFrameStub, object]:
         """Simulate reading SAV frames."""
         self.read_calls.append(path)
         return self._frame, object()
@@ -85,7 +71,7 @@ class TestSav(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test SAV reads delegating to ``pyreadstat.read_sav``."""
-        stub = _PyreadstatStub(_Frame([{'id': 1}]))
+        stub = _PyreadstatStub(DictRecordsFrameStub([{'id': 1}]))
         optional_module_stub({'pyreadstat': stub})
 
         result = mod.SavFile().read_dataset(
@@ -102,7 +88,7 @@ class TestSav(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test SAV writes delegating to ``pyreadstat.write_sav``."""
-        stub = _PyreadstatStub(_Frame([]))
+        stub = _PyreadstatStub(DictRecordsFrameStub([]))
         optional_module_stub({'pyreadstat': stub, 'pandas': _PandasStub()})
         path = tmp_path / 'data.sav'
 

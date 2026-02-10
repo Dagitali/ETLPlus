@@ -11,81 +11,13 @@ from pathlib import Path
 
 from etlplus.file import rda as mod
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import PyreadrStub
 from tests.unit.file.conftest import RDataModuleContract
+from tests.unit.file.conftest import RDataNoWriterStub
+from tests.unit.file.conftest import RDataPandasStub
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Frame:
-    """Minimal frame stub."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting to a dictionary with a specific orientation."""
-        return list(self._records)
-
-    @staticmethod
-    def from_records(
-        records: list[dict[str, object]],
-    ) -> _Frame:
-        """Simulate pandas.DataFrame.from_records."""
-        return _Frame(records)
-
-
-class _NoWriter:
-    """Stub exposing ``read_r`` without any write method."""
-
-    # pylint: disable=unused-argument
-
-    def read_r(
-        self,
-        path: str,
-    ) -> dict[str, object]:  # noqa: ARG002
-        """Simulate missing writer by only providing a reader."""
-        return {}
-
-
-class _PandasStub:
-    """Stub for :mod:`pandas` module."""
-
-    DataFrame = _Frame
-
-
-class _PyreadrStub:
-    """Stub for pyreadr module."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(
-        self,
-        result: dict[str, object],
-    ) -> None:
-        self._result = result
-        self.writes: list[tuple[str, object, dict[str, object]]] = []
-
-    def read_r(
-        self,
-        path: str,
-    ) -> dict[str, object]:  # noqa: ARG002
-        """Simulate reading an R data file by returning the preset result."""
-        return dict(self._result)
-
-    def write_rdata(
-        self,
-        path: str,
-        frame: object,
-        **kwargs: object,
-    ) -> None:
-        """Simulate writing an R data file by recording the call."""
-        self.writes.append((path, frame, kwargs))
 
 
 class _PyreadrFallbackStub:
@@ -125,24 +57,24 @@ class TestRda(RDataModuleContract):
     def build_frame(
         self,
         records: list[dict[str, object]],
-    ) -> _Frame:
+    ) -> DictRecordsFrameStub:
         """Build a frame-like stub."""
-        return _Frame(records)
+        return DictRecordsFrameStub(records)
 
-    def build_pandas_stub(self) -> _PandasStub:
+    def build_pandas_stub(self) -> object:
         """Build pandas stub."""
-        return _PandasStub()
+        return RDataPandasStub()
 
     def build_pyreadr_stub(
         self,
         result: dict[str, object],
-    ) -> _PyreadrStub:
+    ) -> PyreadrStub:
         """Build pyreadr stub exposing ``write_rdata``."""
-        return _PyreadrStub(result)
+        return PyreadrStub(result)
 
-    def build_reader_only_stub(self) -> _NoWriter:
+    def build_reader_only_stub(self) -> RDataNoWriterStub:
         """Build pyreadr-like stub without write methods."""
-        return _NoWriter()
+        return RDataNoWriterStub()
 
     def test_write_falls_back_to_write_rda(
         self,
@@ -153,7 +85,7 @@ class TestRda(RDataModuleContract):
         Test that :func:`write` falls back to :meth:`write_rda` when needed.
         """
         pyreadr = _PyreadrFallbackStub()
-        optional_module_stub({'pyreadr': pyreadr, 'pandas': _PandasStub()})
+        optional_module_stub({'pyreadr': pyreadr, 'pandas': RDataPandasStub()})
         path = tmp_path / 'data.rda'
 
         written = mod.write(path, [{'id': 1}])
@@ -168,9 +100,9 @@ class TestRda(RDataModuleContract):
     ) -> None:
         """Assert RDA write route using ``write_rdata`` with ``df_name``."""
         stub = pyreadr_stub
-        assert isinstance(stub, _PyreadrStub)
-        assert stub.writes
-        _, _, kwargs = stub.writes[0]
+        assert isinstance(stub, PyreadrStub)
+        assert stub.write_rdata_calls
+        _, _, kwargs = stub.write_rdata_calls[0]
         assert kwargs.get('df_name') == 'data'
 
     def test_list_datasets_returns_default_key_for_empty_payload(
@@ -226,7 +158,7 @@ class TestRda(RDataModuleContract):
         )
 
         assert written == 1
-        assert isinstance(pyreadr, _PyreadrStub)
-        assert pyreadr.writes
-        _, _, kwargs = pyreadr.writes[-1]
+        assert isinstance(pyreadr, PyreadrStub)
+        assert pyreadr.write_rdata_calls
+        _, _, kwargs = pyreadr.write_rdata_calls[-1]
         assert kwargs.get('df_name') == 'metrics'
