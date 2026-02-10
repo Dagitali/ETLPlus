@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.avro`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +14,7 @@ import pytest
 from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import BinaryDependencyModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 
@@ -78,7 +78,7 @@ class TestAvroHandlerClass:
 
     def test_dumps_and_loads_bytes(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test binary helper methods delegating to :mod:`fastavro`."""
         stub = _FastAvroStub()
@@ -110,8 +110,9 @@ class TestAvroHandlerClass:
             'get_dependency',
             lambda *_, **__: (_ for _ in ()).throw(AssertionError),
         )
+        path = tmp_path / f'data.{mod.AvroFile.format.value}'
 
-        written = handler.write(tmp_path / 'data.avro', [])
+        written = handler.write(path, [])
 
         assert written == 0
 

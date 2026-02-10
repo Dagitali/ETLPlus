@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file.cbor`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -15,6 +14,7 @@ import pytest
 
 from etlplus.file import cbor as mod
 from tests.unit.file.conftest import BinaryCodecModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 
@@ -36,7 +36,7 @@ class TestCbor(BinaryCodecModuleContract):
     def test_read_rejects_non_object_arrays(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test that :func:`read` raises when the CBOR payload is not an array of
@@ -49,7 +49,7 @@ class TestCbor(BinaryCodecModuleContract):
 
         cast(Any, codec).loads = _loads
         optional_module_stub({'cbor2': codec})
-        path = tmp_path / 'data.cbor'
+        path = self.format_path(tmp_path)
         path.write_bytes(b'payload')
 
         with pytest.raises(TypeError, match='CBOR array must contain'):

@@ -7,13 +7,13 @@ Unit tests for :mod:`etlplus.file.sqlite`.
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import sqlite as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 
@@ -30,27 +30,21 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
     def build_empty_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,  # noqa: ARG002
     ) -> Path:
         """Build an empty SQLite database file."""
-        path = tmp_path / 'empty.sqlite'
+        path = self.format_path(tmp_path)
         sqlite3.connect(path).close()
         return path
 
     def build_multi_table_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,  # noqa: ARG002
     ) -> Path:
         """Build a SQLite database with more than one table."""
-        path = tmp_path / 'multi.sqlite'
-        conn = sqlite3.connect(path)
-        try:
-            conn.execute('CREATE TABLE alpha (id INTEGER)')
-            conn.execute('CREATE TABLE beta (id INTEGER)')
-            conn.commit()
-        finally:
-            conn.close()
+        path = self.format_path(tmp_path)
+        self._create_multi_table_db(path)
         return path
 
     def test_read_uses_explicit_table_option_with_multiple_tables(
@@ -58,16 +52,14 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test explicit table selection bypassing multi-table ambiguity."""
-        path = tmp_path / 'multi.sqlite'
-        conn = sqlite3.connect(path)
-        try:
-            conn.execute('CREATE TABLE alpha (id INTEGER)')
-            conn.execute('CREATE TABLE beta (id INTEGER)')
-            conn.execute('INSERT INTO alpha (id) VALUES (1)')
-            conn.execute('INSERT INTO beta (id) VALUES (2)')
-            conn.commit()
-        finally:
-            conn.close()
+        path = self.format_path(tmp_path)
+        self._create_multi_table_db(
+            path,
+            rows={
+                'alpha': [(1,)],
+                'beta': [(2,)],
+            },
+        )
 
         result = mod.SqliteFile().read(
             path,
@@ -81,7 +73,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that writing and then reading returns the original data."""
-        path = tmp_path / 'data.sqlite'
+        path = self.format_path(tmp_path)
         payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
 
         written = mod.write(path, payload)
@@ -109,7 +101,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test writes honoring explicit table names via options."""
-        path = tmp_path / 'data.sqlite'
+        path = self.format_path(tmp_path)
         payload = [{'id': 1}]
 
         written = mod.SqliteFile().write(
@@ -130,5 +122,25 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
             assert tables == ['events']
             rows = conn.execute('SELECT id FROM events').fetchall()
             assert rows == [(1,)]
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _create_multi_table_db(
+        path: Path,
+        *,
+        rows: dict[str, list[tuple[object, ...]]] | None = None,
+    ) -> None:
+        """Create a deterministic two-table SQLite fixture database."""
+        conn = sqlite3.connect(path)
+        try:
+            conn.execute('CREATE TABLE alpha (id INTEGER)')
+            conn.execute('CREATE TABLE beta (id INTEGER)')
+            for table, values in (rows or {}).items():
+                conn.executemany(
+                    f'INSERT INTO {table} (id) VALUES (?)',
+                    values,
+                )
+            conn.commit()
         finally:
             conn.close()

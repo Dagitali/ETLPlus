@@ -6,13 +6,13 @@ Unit tests for :mod:`etlplus.file.bson`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from etlplus.file import bson as mod
 from tests.unit.file.conftest import BinaryDependencyModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 
@@ -178,14 +178,14 @@ class TestBsonIo(BinaryDependencyModuleContract):
     def test_read_uses_bson_class(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test that :func:`read` uses the :mod:`bson` module to read records.
         """
         stub = _BsonModuleWithClass()
         optional_module_stub({'bson': stub})
-        path = tmp_path / 'data.bson'
+        path = self.format_path(tmp_path)
         path.write_bytes(b'payload')
 
         result = mod.read(path)
@@ -196,14 +196,14 @@ class TestBsonIo(BinaryDependencyModuleContract):
     def test_write_uses_bson_class(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
         Test that :func:`write` uses the :mod:`bson` module to write records.
         """
         stub = _BsonModuleWithClass()
         optional_module_stub({'bson': stub})
-        path = tmp_path / 'data.bson'
+        path = self.format_path(tmp_path)
 
         written = mod.write(path, self.write_payload)
 
