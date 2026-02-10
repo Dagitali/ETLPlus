@@ -15,6 +15,7 @@ from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import BinaryDependencyModuleContract
 from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PathMixin
+from tests.unit.file.conftest import patch_dependency_resolver_unreachable
 
 # SECTION: HELPERS ========================================================== #
 
@@ -68,7 +69,7 @@ class TestAvroHandlerClass(PathMixin):
     ) -> None:
         """Test empty payload serialization short-circuiting to bytes."""
         handler = mod.AvroFile()
-        self._patch_dependency_missing(monkeypatch)
+        patch_dependency_resolver_unreachable(monkeypatch, mod)
 
         payload = handler.dumps_bytes([])
 
@@ -103,23 +104,12 @@ class TestAvroHandlerClass(PathMixin):
     ) -> None:
         """Test file writes short-circuiting on empty payloads."""
         handler = mod.AvroFile()
-        self._patch_dependency_missing(monkeypatch)
+        patch_dependency_resolver_unreachable(monkeypatch, mod)
         path = self.format_path(tmp_path)
 
         written = handler.write(path, [])
 
         assert written == 0
-
-    @staticmethod
-    def _patch_dependency_missing(
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Patch dependency resolution to fail if called."""
-        monkeypatch.setattr(
-            mod,
-            'get_dependency',
-            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
-        )
 
 
 class TestAvroHelpers:

@@ -41,9 +41,6 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
 
     module = mod
     format_name = 'zip'
-    valid_path_name = 'payload.json.zip'
-    missing_inner_path_name = 'payload.zip'
-    expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
 
     def assert_archive_payload(
         self,

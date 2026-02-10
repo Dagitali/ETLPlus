@@ -17,6 +17,7 @@ from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import PandasReadSasStub
 from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
+from tests.unit.file.conftest import patch_dependency_resolver_unreachable
 
 # SECTION: TESTS ============================================================ #
 
@@ -39,15 +40,11 @@ class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
     ) -> None:
         """Ensure dataset-key validation occurs before optional imports."""
         _ = tmp_path
-        monkeypatch.setattr(
+        patch_dependency_resolver_unreachable(monkeypatch, mod)
+        patch_dependency_resolver_unreachable(
+            monkeypatch,
             mod,
-            'get_dependency',
-            lambda *_, **__: (_ for _ in ()).throw(AssertionError),
-        )
-        monkeypatch.setattr(
-            mod,
-            'get_pandas',
-            lambda *_: (_ for _ in ()).throw(AssertionError),
+            resolver_name='get_pandas',
         )
 
 
