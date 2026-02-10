@@ -12,13 +12,14 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import hdf5 as mod
+from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _HDFStore:
+class _HDFStore(ContextManagerSelfMixin):
     """Stub for pandas.HDFStore."""
 
     def __init__(
@@ -28,12 +29,6 @@ class _HDFStore:
     ) -> None:
         self._keys = keys
         self._frames = frames
-
-    def __enter__(self) -> _HDFStore:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
-        return None
 
     def get(self, key: str) -> DictRecordsFrameStub:
         """Simulate retrieving a dataset by key."""

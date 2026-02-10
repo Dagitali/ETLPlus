@@ -12,78 +12,29 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import nc as mod
+from tests.unit.file.conftest import ContextManagerSelfMixin
+from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import SingleDatasetWritableContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _Frame:
-    """Minimal frame stub to support NC helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = list(records)
-        self.columns = list(records[0].keys()) if records else []
-
-    def __getitem__(self, key: str) -> list[object]:
-        return [row.get(key) for row in self._records]
-
-    def drop(
-        self,
-        columns: list[str],
-    ) -> _Frame:
-        """
-        Simulate dropping columns by returning a new frame with those keys
-        removed.
-        """
-        remaining = [
-            {k: v for k, v in row.items() if k not in columns}
-            for row in self._records
-        ]
-        return _Frame(remaining)
-
-    def reset_index(self) -> _Frame:
-        """
-        Simulate resetting the index by ignoring any 'index' column and
-        returning a new frame.
-        """
-        return self
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """
-        Simulate converting to a dictionary with a specific orientation.
-        """
-        return list(self._records)
-
-
-class _Dataset:
+class _Dataset(ContextManagerSelfMixin):
     """Stub dataset supporting context management."""
 
     # pylint: disable=unused-argument
 
-    def __init__(self, frame: _Frame, *, fail: bool = False) -> None:
+    def __init__(
+        self,
+        frame: DictRecordsFrameStub,
+        *,
+        fail: bool = False,
+    ) -> None:
         self._frame = frame
         self._fail = fail
         self.to_netcdf_calls: list[Path] = []
 
-    def __enter__(self) -> _Dataset:
-        return self
-
-    def __exit__(
-        self,
-        exc_type,
-        exc,
-        tb,
-    ) -> None:  # noqa: ANN001
-        """Support context management."""
-        return None
-
-    def to_dataframe(self) -> _Frame:
+    def to_dataframe(self) -> DictRecordsFrameStub:
         """
         Simulate converting to a DataFrame by returning the stored frame.
         """
@@ -135,9 +86,9 @@ class _PandasStub:
         @staticmethod
         def from_records(
             records: list[dict[str, object]],
-        ) -> _Frame:
+        ) -> DictRecordsFrameStub:
             """Simulate creating a DataFrame from records."""
-            return _Frame(records)
+            return DictRecordsFrameStub(records)
 
 
 # SECTION: TESTS ============================================================ #
@@ -156,7 +107,9 @@ class TestNc(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that reading drops a sequential index."""
-        frame = _Frame([{'index': 0, 'value': 1}, {'index': 1, 'value': 2}])
+        frame = DictRecordsFrameStub(
+            [{'index': 0, 'value': 1}, {'index': 1, 'value': 2}],
+        )
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
         optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
@@ -172,7 +125,9 @@ class TestNc(SingleDatasetWritableContract):
         optional_module_stub: Callable[[dict[str, object]], None],
     ) -> None:
         """Test that reading keeps a non-sequential index."""
-        frame = _Frame([{'index': 2, 'value': 10}, {'index': 4, 'value': 11}])
+        frame = DictRecordsFrameStub(
+            [{'index': 2, 'value': 10}, {'index': 4, 'value': 11}],
+        )
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
         optional_module_stub({'xarray': xarray, 'pandas': _PandasStub()})
@@ -194,7 +149,7 @@ class TestNc(SingleDatasetWritableContract):
         def _open_dataset(_: Path) -> _Dataset:
             raise ImportError('engine missing')
 
-        xarray = _XarrayStub(_Dataset(_Frame([])))
+        xarray = _XarrayStub(_Dataset(DictRecordsFrameStub([])))
         xarray.open_dataset = _open_dataset  # type: ignore[assignment]
         monkeypatch.setattr(mod, 'get_dependency', lambda *_, **__: xarray)
 
@@ -208,7 +163,7 @@ class TestNc(SingleDatasetWritableContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test the happy path of writing data to a NetCDF file."""
-        frame = _Frame([{'value': 1}])
+        frame = DictRecordsFrameStub([{'value': 1}])
         dataset = _Dataset(frame)
         xarray = _XarrayStub(dataset)
 
@@ -235,7 +190,7 @@ class TestNc(SingleDatasetWritableContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing raises an engine error."""
-        frame = _Frame([{'value': 1}])
+        frame = DictRecordsFrameStub([{'value': 1}])
         dataset = _Dataset(frame, fail=True)
         xarray = _XarrayStub(dataset)
 
