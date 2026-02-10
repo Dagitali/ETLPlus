@@ -44,10 +44,7 @@ class TestXpt(SingleDatasetWritableContract):
         result = mod.XptFile().read_dataset(path)
 
         assert result == [{'id': 1}]
-        assert pandas.read_calls == [
-            {'path': path, 'format': 'xport'},
-            {'path': path},
-        ]
+        pandas.assert_fallback_read_calls(path, format_name='xport')
 
     def test_read_prefers_pyreadstat_read_xport(
         self,
@@ -70,7 +67,7 @@ class TestXpt(SingleDatasetWritableContract):
         )
 
         assert result == [{'id': 1}]
-        assert pyreadstat.read_calls == [str(path)]
+        pyreadstat.assert_single_read_path(path)
         assert pandas.read_calls == []
 
     def test_write_raises_when_pyreadstat_writer_missing(
@@ -106,6 +103,4 @@ class TestXpt(SingleDatasetWritableContract):
         )
 
         assert written == 1
-        assert pyreadstat.write_calls
-        _, write_path = pyreadstat.write_calls[-1]
-        assert write_path == str(path)
+        pyreadstat.assert_last_write_path(path)

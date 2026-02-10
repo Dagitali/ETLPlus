@@ -73,10 +73,7 @@ class TestSas7bdatRead(PathMixin):
         result = mod.read(path)
 
         assert result == [{'id': 1}]
-        assert pandas.read_calls == [
-            {'path': path, 'format': 'sas7bdat'},
-            {'path': path},
-        ]
+        pandas.assert_fallback_read_calls(path, format_name='sas7bdat')
 
     def test_read_dataset_accepts_default_key_via_options(
         self,
@@ -110,9 +107,7 @@ class TestSas7bdatRead(PathMixin):
         result = mod.read(path)
 
         assert result == [{'id': 1}]
-        assert pandas.read_calls == [
-            {'path': path, 'format': 'sas7bdat'},
-        ]
+        pandas.assert_single_read_call(path, format_name='sas7bdat')
 
     @staticmethod
     def _install_dependency_stubs(

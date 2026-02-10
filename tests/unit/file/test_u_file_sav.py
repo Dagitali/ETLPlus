@@ -47,7 +47,7 @@ class TestSav(SingleDatasetWritableContract):
         )
 
         assert result == [{'id': 1}]
-        assert stub.read_calls == [str(path)]
+        stub.assert_single_read_path(path)
 
     def test_write_dataset_uses_pyreadstat_writer(
         self,
@@ -70,6 +70,4 @@ class TestSav(SingleDatasetWritableContract):
         )
 
         assert written == 1
-        assert stub.write_calls
-        _, write_path = stub.write_calls[-1]
-        assert write_path == str(path)
+        stub.assert_last_write_path(path)
