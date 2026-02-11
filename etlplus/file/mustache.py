@@ -23,8 +23,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubTemplateFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +42,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class MustacheFile(StubFileHandlerABC):
+class MustacheFile(StubTemplateFileHandlerABC):
     """
     Stub handler implementation for MUSTACHE files.
     """
@@ -49,10 +50,11 @@ class MustacheFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.MUSTACHE
+    template_engine = 'mustache'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubTemplateFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -68,7 +70,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return MUSTACHE content from *path*.
+    Deprecated wrapper. Use ``MustacheFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -80,6 +82,7 @@ def read(
     JSONList
         The list of dictionaries read from the MUSTACHE file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _MUSTACHE_HANDLER.read(coerce_path(path))
 
 
@@ -88,7 +91,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MUSTACHE at *path* and return record count.
+    Deprecated wrapper. Use ``MustacheFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -103,4 +106,5 @@ def write(
     int
         The number of rows written to the MUSTACHE file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _MUSTACHE_HANDLER.write(coerce_path(path), data)

@@ -23,8 +23,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubTemplateFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +42,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class Jinja2File(StubFileHandlerABC):
+class Jinja2File(StubTemplateFileHandlerABC):
     """
     Stub handler implementation for JINJA2 files.
     """
@@ -49,10 +50,11 @@ class Jinja2File(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.JINJA2
+    template_engine = 'jinja2'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubTemplateFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -68,7 +70,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return JINJA2 content from *path*.
+    Deprecated wrapper. Use ``Jinja2File().read(...)`` instead.
 
     Parameters
     ----------
@@ -80,6 +82,7 @@ def read(
     JSONList
         The list of dictionaries read from the JINJA2 file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _JINJA2_HANDLER.read(coerce_path(path))
 
 
@@ -88,7 +91,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to JINJA2 at *path* and return record count.
+    Deprecated wrapper. Use ``Jinja2File().write(...)`` instead.
 
     Parameters
     ----------
@@ -103,4 +106,5 @@ def write(
     int
         The number of rows written to the JINJA2 file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _JINJA2_HANDLER.write(coerce_path(path), data)

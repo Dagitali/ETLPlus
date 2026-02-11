@@ -160,7 +160,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             ),
         )
 
-        _ = mod.read(path)
+        _ = mod.DuckdbFile().read(path)
 
         assert conn.closed is True
 
@@ -191,7 +191,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             ),
         )
 
-        result = mod.read(path)
+        result = mod.DuckdbFile().read(path)
 
         assert result == [{'id': 1, 'name': 'Ada'}]
 

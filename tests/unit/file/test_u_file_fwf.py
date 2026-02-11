@@ -71,7 +71,7 @@ class TestFwf(TextRowModuleContract):
     ) -> None:
         """Test that :func:`read` uses pandas to read fixed-width files."""
         path, _ = self.prepare_read_case(tmp_path, optional_module_stub)
-        assert mod.read(path) == [{'id': 1}]
+        assert mod.FwfFile().read(path) == [{'id': 1}]
         assert self._pandas.read_calls
 
     def test_write_empty_fieldnames_returns_zero(
@@ -79,4 +79,4 @@ class TestFwf(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that writing with empty fieldnames returns zero."""
-        assert mod.write(self.format_path(tmp_path), [{}]) == 0
+        assert mod.FwfFile().write(self.format_path(tmp_path), [{}]) == 0

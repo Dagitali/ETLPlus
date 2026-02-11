@@ -20,8 +20,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,7 +39,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class NumbersFile(StubFileHandlerABC):
+class NumbersFile(StubSpreadsheetFileHandlerABC):
     """
     Stub handler implementation for NUMBERS files.
     """
@@ -46,10 +47,11 @@ class NumbersFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.NUMBERS
+    engine_name = 'numbers'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSpreadsheetFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -65,7 +67,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return NUMBERS content from *path*.
+    Deprecated wrapper. Use ``NumbersFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -77,6 +79,7 @@ def read(
     JSONList
         The list of dictionaries read from the NUMBERS file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _NUMBERS_HANDLER.read(coerce_path(path))
 
 
@@ -85,7 +88,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NUMBERS at *path* and return record count.
+    Deprecated wrapper. Use ``NumbersFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -100,4 +103,5 @@ def write(
     int
         The number of rows written to the NUMBERS file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _NUMBERS_HANDLER.write(coerce_path(path), data)

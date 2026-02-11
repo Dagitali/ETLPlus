@@ -80,7 +80,7 @@ class TestToml(
         monkeypatch.setattr(mod.tomllib, 'loads', lambda *_: ['bad'])
 
         with pytest.raises(TypeError, match='TOML root must be a table'):
-            mod.read(path)
+            mod.TomlFile().read(path)
 
     def test_write_falls_back_to_toml_when_tomli_w_missing(
         self,
@@ -103,7 +103,7 @@ class TestToml(
         monkeypatch.setattr(mod, 'get_optional_module', _get_optional_module)
         path = self.format_path(tmp_path, stem='config')
 
-        written = mod.write(path, {'name': 'etl'})
+        written = mod.TomlFile().write(path, {'name': 'etl'})
 
         assert written == 1
         assert path.read_text(encoding='utf-8') == 'toml_output'

@@ -71,7 +71,7 @@ class TestSas7bdatRead(PathMixin):
         self._install_dependency_stubs(monkeypatch, pandas)
         path = self.format_path(tmp_path)
 
-        result = mod.read(path)
+        result = mod.Sas7bdatFile().read(path)
 
         assert result == [{'id': 1}]
         pandas.assert_fallback_read_calls(path, format_name='sas7bdat')
@@ -105,7 +105,7 @@ class TestSas7bdatRead(PathMixin):
         self._install_dependency_stubs(monkeypatch, pandas)
         path = self.format_path(tmp_path)
 
-        result = mod.read(path)
+        result = mod.Sas7bdatFile().read(path)
 
         assert result == [{'id': 1}]
         pandas.assert_single_read_call(path, format_name='sas7bdat')

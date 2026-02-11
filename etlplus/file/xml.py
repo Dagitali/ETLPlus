@@ -27,6 +27,7 @@ from ..types import StrPath
 from ..utils import count_records
 from ._io import coerce_path
 from ._io import ensure_parent_dir
+from ._io import warn_deprecated_module_io
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -300,7 +301,7 @@ def read(
     path: StrPath,
 ) -> JSONDict:
     """
-    Read and return XML content from *path*.
+    Deprecated wrapper. Use ``XmlFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -312,6 +313,7 @@ def read(
     JSONDict
         Nested dictionary representation of the XML file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _XML_HANDLER.read(coerce_path(path))
 
 
@@ -322,7 +324,7 @@ def write(
     root_tag: str,
 ) -> int:
     """
-    Write *data* to XML at *path* and return record count.
+    Deprecated wrapper. Use ``XmlFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -338,6 +340,7 @@ def write(
     int
         The number of records written to the XML file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _XML_HANDLER.write(
         coerce_path(path),
         data,

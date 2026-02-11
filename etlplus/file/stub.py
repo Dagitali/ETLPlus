@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import ClassVar
+from typing import Never
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -45,6 +47,16 @@ class StubFileHandlerABC(FileHandlerABC):
     format: ClassVar[FileFormat]
     category: ClassVar[str] = 'placeholder_stub'
 
+    # -- Internal Instance Methods -- #
+
+    def _stub_path(
+        self,
+    ) -> Path:
+        """
+        Build a deterministic path used by non-path stub helper methods.
+        """
+        return Path(f'ignored.{self.format.value}')
+
     # -- Instance Methods -- #
 
     def read(
@@ -56,8 +68,9 @@ class StubFileHandlerABC(FileHandlerABC):
         """
         Raise :class:`NotImplementedError` for placeholder reads.
         """
+        _ = path
         _ = options
-        return read(path, format_name=self.format.value.upper())
+        _raise_not_implemented('read', format_name=self.format.value.upper())
 
     def write(
         self,
@@ -69,14 +82,55 @@ class StubFileHandlerABC(FileHandlerABC):
         """
         Raise :class:`NotImplementedError` for placeholder writes.
         """
+        _ = path
+        _ = data
         _ = options
-        return write(path, data, format_name=self.format.value.upper())
+        _raise_not_implemented('write', format_name=self.format.value.upper())
 
 
 class StubFile(StubFileHandlerABC):
     """Placeholder handler for STUB."""
 
     format = FileFormat.STUB
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_STUB_HANDLER = StubFile()
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_not_implemented(
+    operation: str,
+    *,
+    format_name: str,
+) -> Never:
+    """
+    Raise standardized placeholder NotImplementedError messages.
+
+    Parameters
+    ----------
+    operation : str
+        The operation being attempted (e.g., 'read' or 'write').
+    format_name : str
+        Human-readable format name.
+
+    Returns
+    -------
+    Never
+
+    Raises
+    ------
+    NotImplementedError
+        Always raised with a message indicating the unsupported operation and
+        format.
+    """
+    raise NotImplementedError(
+        f'{format_name} {operation} is not implemented yet',
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -87,28 +141,25 @@ def read(
     format_name: str = 'Stubbed',
 ) -> JSONList:
     """
-    Raise :class:`NotImplementedError` for stubbed reads.
+    Deprecated wrapper. Use ``StubFile().read(...)`` instead.
 
     Parameters
     ----------
     path : StrPath
         Path to the stubbed file on disk.
     format_name : str
-        Human-readable format name.
+        Deprecated override for human-readable format name.
 
     Returns
     -------
     JSONList
         The list of dictionaries read from the stubbed file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
     path = coerce_path(path)
-    _ = path
-    raise NotImplementedError(f'{format_name} read is not implemented yet')
+    warn_deprecated_module_io(__name__, 'read')
+    if format_name != 'Stubbed':
+        _raise_not_implemented('read', format_name=format_name)
+    return _STUB_HANDLER.read(path)
 
 
 def write(
@@ -117,7 +168,7 @@ def write(
     format_name: str = 'Stubbed',
 ) -> int:
     """
-    Raise :class:`NotImplementedError` for stubbed writes.
+    Deprecated wrapper. Use ``StubFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -127,19 +178,15 @@ def write(
         Data to write as stubbed file. Should be a list of dictionaries or a
         single dictionary.
     format_name : str
-        Human-readable format name.
+        Deprecated override for human-readable format name.
 
     Returns
     -------
     int
         The number of rows written to the stubbed file.
-
-    Raises
-    ------
-    NotImplementedError
-        Always, since this is a stub implementation.
     """
     path = coerce_path(path)
-    _ = path
-    _ = data
-    raise NotImplementedError(f'{format_name} write is not implemented yet')
+    warn_deprecated_module_io(__name__, 'write')
+    if format_name != 'Stubbed':
+        _raise_not_implemented('write', format_name=format_name)
+    return _STUB_HANDLER.write(path, data)

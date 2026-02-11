@@ -10,9 +10,7 @@ import math
 import numbers
 import sqlite3
 import zipfile
-from os import PathLike
 from pathlib import Path
-from pathlib import PurePath
 from types import SimpleNamespace
 from typing import Any
 from typing import cast
@@ -407,16 +405,6 @@ def require_optional_modules(*modules: str) -> None:
         pytest.importorskip(module)
 
 
-class _DummyPath(PathLike[str]):
-    """Simple PathLike wrapper for StrPath tests."""
-
-    def __init__(self, path: str) -> None:
-        self._path = path
-
-    def __fspath__(self) -> str:
-        return self._path
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -644,31 +632,29 @@ class TestFile:
             result = normalize_numeric_records(result)
         assert result == expected
 
-    def test_strpath_support_for_module_helpers(
+    def test_path_support_for_module_helpers(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Test module helpers accept ``StrPath`` inputs.
-
-        Uses ``str`` and ``PathLike`` inputs to validate normalization.
+        Test module helpers accept ``Path`` inputs.
         """
         csv_path = tmp_path / 'data.csv'
         json_path = tmp_path / 'data.json'
         xml_path = tmp_path / 'data.xml'
 
-        csv_file.write(str(csv_path), [{'name': 'Ada'}])
-        assert csv_file.read(str(csv_path)) == [{'name': 'Ada'}]
+        csv_file.CsvFile().write(csv_path, [{'name': 'Ada'}])
+        assert csv_file.CsvFile().read(csv_path) == [{'name': 'Ada'}]
 
-        json_file.write(_DummyPath(str(json_path)), {'name': 'Ada'})
-        assert json_file.read(_DummyPath(str(json_path))) == {'name': 'Ada'}
+        json_file.JsonFile().write(json_path, {'name': 'Ada'})
+        assert json_file.JsonFile().read(json_path) == {'name': 'Ada'}
 
-        xml_file.write(
-            PurePath(xml_path),
+        xml_file.XmlFile().write(
+            xml_path,
             {'root': {'text': 'hello'}},
-            root_tag='root',
+            options=WriteOptions(root_tag='root'),
         )
-        assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
+        assert xml_file.XmlFile().read(xml_path) == {'root': {'text': 'hello'}}
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),

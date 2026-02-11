@@ -26,6 +26,7 @@ from ._imports import get_yaml
 from ._io import coerce_path
 from ._io import coerce_record_payload
 from ._io import read_text
+from ._io import warn_deprecated_module_io
 from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
@@ -193,7 +194,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return YAML content from *path*.
+    Deprecated wrapper. Use ``YamlFile().read(...)`` instead.
 
     Validates that the YAML root is a dict or a list of dicts.
 
@@ -207,6 +208,7 @@ def read(
     JSONData
         The structured data read from the YAML file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _YAML_HANDLER.read(coerce_path(path))
 
 
@@ -215,7 +217,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to YAML at *path* and return record count.
+    Deprecated wrapper. Use ``YamlFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -229,4 +231,5 @@ def write(
     int
         The number of records written.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _YAML_HANDLER.write(coerce_path(path), data)

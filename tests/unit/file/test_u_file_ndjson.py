@@ -51,7 +51,7 @@ class TestNdjson(
         path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')
 
         with pytest.raises(json.JSONDecodeError):
-            mod.read(path)
+            mod.NdjsonFile().read(path)
 
     def test_read_rejects_non_dict_line(
         self,
@@ -67,7 +67,7 @@ class TestNdjson(
         )
 
         with pytest.raises(TypeError, match='line 2'):
-            mod.read(path)
+            mod.NdjsonFile().read(path)
 
     def test_write_empty_returns_zero(
         self,
@@ -78,7 +78,7 @@ class TestNdjson(
         """
         path = self.format_path(tmp_path)
 
-        assert mod.write(path, []) == 0
+        assert mod.NdjsonFile().write(path, []) == 0
         assert not path.exists()
 
     def test_write_rejects_non_dict_records(
@@ -89,7 +89,7 @@ class TestNdjson(
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='NDJSON payloads must contain'):
-            mod.write(path, cast(list[dict[str, Any]], [1]))
+            mod.NdjsonFile().write(path, cast(list[dict[str, Any]], [1]))
 
     def test_write_writes_each_record_on_its_own_line(
         self,
@@ -101,7 +101,7 @@ class TestNdjson(
         path = self.format_path(tmp_path)
         payload = [{'id': 1}, {'id': 2}]
 
-        written = mod.write(path, payload)
+        written = mod.NdjsonFile().write(path, payload)
 
         assert written == 2
         lines = path.read_text(encoding='utf-8').splitlines()

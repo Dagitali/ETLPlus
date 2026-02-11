@@ -18,16 +18,12 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from . import stub
 from ._io import coerce_path
-from .base import ReadOptions
-from .base import SingleDatasetScientificFileHandlerABC
-from .base import WriteOptions
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class ZsavFile(SingleDatasetScientificFileHandlerABC):
+class ZsavFile(StubSingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for ZSAV files.
     """
@@ -55,89 +51,9 @@ class ZsavFile(SingleDatasetScientificFileHandlerABC):
     format = FileFormat.ZSAV
     dataset_key = 'data'
 
-    # -- Instance Methods -- #
-
-    def read_dataset(
-        self,
-        path: Path,
-        *,
-        dataset: str | None = None,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return one dataset from ZSAV at *path*.
-        """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
-        return stub.read(path, format_name='ZSAV')
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read ZSAV content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ZSAV file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the ZSAV file.
-        """
-        return self.read_dataset(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to ZSAV file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ZSAV file on disk.
-        data : JSONData
-            Data to write as ZSAV file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the ZSAV file.
-        """
-        return self.write_dataset(path, data, options=options)
-
-    def write_dataset(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        dataset: str | None = None,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write one dataset to ZSAV at *path* and return record count.
-        """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
-        return stub.write(path, data, format_name='ZSAV')
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _ZSAV_HANDLER = ZsavFile()
 
@@ -149,7 +65,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ZSAV content from *path*.
+    Deprecated wrapper. Use ``ZsavFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -161,6 +77,7 @@ def read(
     JSONList
         The list of dictionaries read from the ZSAV file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _ZSAV_HANDLER.read(coerce_path(path))
 
 
@@ -169,7 +86,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ZSAV file at *path* and return record count.
+    Deprecated wrapper. Use ``ZsavFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -184,4 +101,5 @@ def write(
     int
         The number of rows written to the ZSAV file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _ZSAV_HANDLER.write(coerce_path(path), data)
