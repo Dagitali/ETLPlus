@@ -45,7 +45,10 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class MatFile(SingleDatasetScientificFileHandlerABC):
+class MatFile(
+    SingleDatasetScientificFileHandlerABC,
+    stub.StubFileHandlerABC,
+):
     """
     Handler implementation for MAT files.
     """
@@ -67,7 +70,7 @@ class MatFile(SingleDatasetScientificFileHandlerABC):
         """Read and return one dataset from MAT at *path*."""
         dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return stub.read(path, format_name='MAT')
+        return super().read(path, options=options)
 
     def read(
         self,
@@ -130,10 +133,11 @@ class MatFile(SingleDatasetScientificFileHandlerABC):
         """Write one dataset to MAT at *path* and return record count."""
         dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return stub.write(path, data, format_name='MAT')
+        return super().write(path, data, options=options)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _MAT_HANDLER = MatFile()
 

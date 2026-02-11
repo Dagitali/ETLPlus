@@ -45,7 +45,10 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class SylkFile(SingleDatasetScientificFileHandlerABC):
+class SylkFile(
+    SingleDatasetScientificFileHandlerABC,
+    stub.StubFileHandlerABC,
+):
     """
     Handler implementation for SYLK files.
     """
@@ -69,7 +72,7 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         """
         dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return stub.read(path, format_name='SYLK')
+        return super().read(path, options=options)
 
     def read(
         self,
@@ -134,10 +137,11 @@ class SylkFile(SingleDatasetScientificFileHandlerABC):
         """
         dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return stub.write(path, data, format_name='SYLK')
+        return super().write(path, data, options=options)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _SYLK_HANDLER = SylkFile()
 
