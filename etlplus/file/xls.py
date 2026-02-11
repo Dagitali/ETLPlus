@@ -7,7 +7,6 @@ Helpers for reading Excel XLS files (write is not supported).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
@@ -15,6 +14,7 @@ from ..types import StrPath
 from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
+from ._io import records_from_table
 from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
 from .enums import FileFormat
@@ -66,11 +66,6 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
         -------
         JSONList
             The list of dictionaries read from the XLS file.
-
-        Raises
-        ------
-        ImportError
-            If the optional dependency "xlrd" is not installed.
         """
         sheet = self.sheet_from_read_options(options)
         return self.read_sheet(path, sheet=sheet, options=options)
@@ -115,7 +110,7 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
                 'XLS support requires optional dependency "xlrd".\n'
                 'Install with: pip install xlrd',
             ) from e
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

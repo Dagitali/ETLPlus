@@ -7,7 +7,6 @@ Helpers for reading/writing Excel XLSX files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
@@ -17,6 +16,7 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import records_from_table
 from .base import ReadOptions
 from .base import SpreadsheetFileHandlerABC
 from .base import WriteOptions
@@ -113,7 +113,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
                 'XLSX support requires optional dependency "openpyxl".\n'
                 'Install with: pip install openpyxl',
             ) from err
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write(
         self,

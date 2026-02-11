@@ -18,7 +18,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
@@ -28,6 +27,7 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import records_from_table
 from ._io import stringify_value
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
@@ -106,7 +106,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         _ = options
         pandas = get_pandas('FWF')
         frame = pandas.read_fwf(path)
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write(
         self,
