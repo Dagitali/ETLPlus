@@ -7,7 +7,7 @@ Unit tests for :mod:`etlplus.file.duckdb`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 from typing import cast
 
 import pytest
@@ -17,6 +17,9 @@ from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 from tests.unit.file.conftest import OptionalModuleInstaller
+
+if TYPE_CHECKING:
+    import duckdb
 
 # SECTION: HELPERS ========================================================== #
 
@@ -248,7 +251,11 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         conn = _Connection()
         handler = mod.DuckdbFile()
 
-        written = handler.write_table(cast(Any, conn), 'data', [{}])
+        written = handler.write_table(
+            cast('duckdb.DuckDBPyConnection', conn),
+            'data',
+            [{}],
+        )
 
         assert written == 0
         assert not conn.executemany_calls
