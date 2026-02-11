@@ -6,25 +6,20 @@ Unit tests for :mod:`etlplus.file.base`.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-from typing import Any
 from typing import cast
 
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file.base import ArchiveWrapperFileHandlerABC
 from etlplus.file.base import DelimitedTextFileHandlerABC
-from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
-from etlplus.file.base import ReadOnlyFileHandlerABC
-from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
-from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.csv import CsvFile
@@ -45,50 +40,67 @@ from etlplus.file.xls import XlsFile
 from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
+from etlplus.file.zip import ZipFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
+from tests.unit.file.conftest import (
+    assert_single_dataset_rejects_non_default_key,
+)
 
 # SECTION: HELPERS ========================================================== #
 
 
 _NO_DEFAULT: object = object()
 
+_DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+    CsvFile,
+    DatFile,
+    PsvFile,
+    TabFile,
+    TsvFile,
+    TxtFile,
+    FwfFile,
+)
+_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (SqliteFile,)
+_SCIENTIFIC_HANDLER_CLASSES: tuple[
+    type[ScientificDatasetFileHandlerABC],
+    ...,
+] = (
+    DtaFile,
+    NcFile,
+    RdaFile,
+    RdsFile,
+    SavFile,
+    XptFile,
+)
+_SINGLE_DATASET_HANDLER_CLASSES: tuple[
+    type[SingleDatasetScientificFileHandlerABC],
+    ...,
+] = (
+    DtaFile,
+    NcFile,
+    SavFile,
+    XptFile,
+)
+_SPREADSHEET_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+    XlsFile,
+    XlsxFile,
+    XlsmFile,
+    OdsFile,
+)
+_NAMING_METHOD_CASES: tuple[
+    tuple[tuple[type[FileHandlerABC], ...], str, str],
+    ...,
+] = (
+    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
+)
 
-def _assert_single_dataset_rejects_non_default_key(
-    handler: SingleDatasetScientificFileHandlerABC,
-    *,
-    suffix: str,
-) -> None:
-    """Assert single-dataset scientific handlers reject non-default keys."""
-    bad_dataset = 'not_default_dataset'
-    path = Path(f'ignored.{suffix}')
-    for operation in ('read', 'write'):
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            if operation == 'read':
-                handler.read_dataset(path, dataset=bad_dataset)
-            else:
-                handler.write_dataset(path, [], dataset=bad_dataset)
 
-
-_NAMING_METHOD_CASES: list[tuple[str, str, str]] = [
-    ('delimited_handlers', 'read_rows', 'write_rows'),
-    ('spreadsheet_handlers', 'read_sheet', 'write_sheet'),
-    ('embedded_db_handlers', 'read_table', 'write_table'),
-    ('scientific_handlers', 'read_dataset', 'write_dataset'),
-]
-
-_SINGLE_DATASET_SUFFIX_BY_FORMAT: dict[FileFormat, str] = {
-    FileFormat.DTA: 'dta',
-    FileFormat.NC: 'nc',
-    FileFormat.SAV: 'sav',
-    FileFormat.XPT: 'xpt',
-}
-
-
-class _ArchiveStub(ArchiveWrapperFileHandlerABC):
-    """Concrete archive handler used for option helper tests."""
-
-    format = FileFormat.ZIP
+class _RowReadWriteMixin:
+    """Provide shared row-oriented read/write glue for contract stubs."""
 
     def read(
         self,
@@ -96,18 +108,12 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         *,
         options: ReadOptions | None = None,
     ) -> JSONData:
-        _ = path
-        return {'inner_name': self.inner_name_from_read_options(options)}
-
-    def read_inner_bytes(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> bytes:
-        _ = path
-        _ = options
-        return b''
+        """Provide a read implementation delegating to row-level methods."""
+        handler = cast(
+            DelimitedTextFileHandlerABC | TextFixedWidthFileHandlerABC,
+            self,
+        )
+        return handler.read_rows(path, options=options)
 
     def write(
         self,
@@ -116,46 +122,20 @@ class _ArchiveStub(ArchiveWrapperFileHandlerABC):
         *,
         options: WriteOptions | None = None,
     ) -> int:
-        _ = path
-        _ = data
-        _ = self.inner_name_from_write_options(options)
-        return 1
-
-    def write_inner_bytes(
-        self,
-        path: Path,
-        payload: bytes,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
-        _ = path
-        _ = payload
-        _ = options
+        """Provide a write implementation delegating to row-level methods."""
+        handler = cast(
+            DelimitedTextFileHandlerABC | TextFixedWidthFileHandlerABC,
+            self,
+        )
+        rows: JSONList = data if isinstance(data, list) else [data]
+        return handler.write_rows(path, rows, options=options)
 
 
-class _DelimitedStub(DelimitedTextFileHandlerABC):
+class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
     """Concrete delimited handler used for abstract contract tests."""
 
     format = FileFormat.CSV
     delimiter = ','
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
 
     def read_rows(
         self,
@@ -179,173 +159,26 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         return len(rows)
 
 
-class _EmbeddedDbStub(EmbeddedDatabaseFileHandlerABC):
-    """Concrete embedded-db handler used for option helper tests."""
+class _IncompleteDelimited(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
+    """Incomplete delimited handler used for abstract-method checks."""
 
-    format = FileFormat.SQLITE
-
-    def connect(
-        self,
-        path: Path,
-    ) -> Any:
-        _ = path
-        return object()
-
-    def list_tables(
-        self,
-        connection: Any,
-    ) -> list[str]:
-        _ = connection
-        return ['data']
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'table': self.table_from_read_options(options)}]
-
-    def read_table(
-        self,
-        connection: Any,
-        table: str,
-    ) -> JSONList:
-        _ = connection
-        _ = table
-        return []
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.table_from_write_options(options)
-        return 1
-
-    def write_table(
-        self,
-        connection: Any,
-        table: str,
-        rows: JSONList,
-    ) -> int:
-        _ = connection
-        _ = table
-        return len(rows)
+    format = FileFormat.CSV
+    delimiter = ','
 
 
-class _ReadOnlySpreadsheetStub(ReadOnlySpreadsheetFileHandlerABC):
-    """Minimal concrete read-only spreadsheet handler for contract checks."""
-
-    format = FileFormat.XLS
-    engine_name = 'xlrd'
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
-
-
-class _ReadOnlyStub(ReadOnlyFileHandlerABC):
-    """Minimal concrete read-only handler for contract checks."""
-
-    format = FileFormat.XLS
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        _ = options
-        return []
-
-
-class _SpreadsheetStub(SpreadsheetFileHandlerABC):
-    """Concrete spreadsheet handler used for option helper tests."""
-
-    format = FileFormat.XLSX
-    engine_name = 'stub'
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        return [{'sheet': self.sheet_from_read_options(options)}]
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
-        return [{'sheet': sheet}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = self.sheet_from_write_options(options)
-        return 1
-
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = sheet
-        _ = options
-        return len(rows)
-
-
-class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
-    """Concrete text/fixed-width handler used for abstract contract tests."""
+class _IncompleteTextFixedWidth(
+    _RowReadWriteMixin,
+    TextFixedWidthFileHandlerABC,
+):
+    """Incomplete text/fixed-width handler used for abstract checks."""
 
     format = FileFormat.TXT
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        return self.read_rows(path, options=options)
+
+class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
+    """Concrete text/fixed-width handler used for abstract contract tests."""
+
+    format = FileFormat.TXT
 
     def read_rows(
         self,
@@ -356,16 +189,6 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
         _ = path
         _ = options
         return [{'text': 'ok'}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,
@@ -385,155 +208,111 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_file_handler_abc_cannot_be_instantiated(self) -> None:
-        """Test FileHandlerABC remaining abstract."""
-        with pytest.raises(TypeError):
-            FileHandlerABC()  # type: ignore[abstract]
-
-    def test_delimited_abc_requires_row_methods(self) -> None:
-        """Test DelimitedTextFileHandlerABC requiring row-level methods."""
-
-        class _IncompleteDelimited(DelimitedTextFileHandlerABC):
-            format = FileFormat.CSV
-            delimiter = ','
-
-            def read(
-                self,
-                path: Path,
-                *,
-                options: ReadOptions | None = None,
-            ) -> JSONData:
-                _ = path
-                _ = options
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        with pytest.raises(TypeError):
-            _IncompleteDelimited()  # type: ignore[abstract]
-
-    def test_delimited_concrete_subclass_satisfies_contract(self) -> None:
-        """Test a concrete delimited subclass being fully instantiable."""
-        handler = _DelimitedStub()
-
-        assert handler.category == 'tabular_delimited_text'
-        assert handler.read(Path('ignored.csv')) == [{'id': 1}]
-        assert handler.write(Path('ignored.csv'), [{'id': 1}, {'id': 2}]) == 2
-
-    def test_read_only_handler_rejects_write(self) -> None:
-        """Test read-only handlers raising on write."""
-        handler = _ReadOnlyStub()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write(Path('ignored.xls'), [{'a': 1}])
-
-    def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
-        """Test read-only spreadsheet handlers rejecting write_sheet calls."""
-        handler = _ReadOnlySpreadsheetStub()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_sheet(
-                Path('ignored.xls'),
-                [{'a': 1}],
-                sheet=0,
-            )
-
-    def test_text_fixed_width_abc_requires_row_methods(self) -> None:
-        """Test TextFixedWidthFileHandlerABC requiring row-level methods."""
-
-        class _IncompleteText(TextFixedWidthFileHandlerABC):
-            format = FileFormat.TXT
-
-            def read(
-                self,
-                path: Path,
-                *,
-                options: ReadOptions | None = None,
-            ) -> JSONData:
-                _ = path
-                _ = options
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        with pytest.raises(TypeError):
-            _IncompleteText()  # type: ignore[abstract]
-
-    def test_text_fixed_width_concrete_subclass_satisfies_contract(
+    @pytest.mark.parametrize(
+        'incomplete_handler_cls',
+        (_IncompleteDelimited, _IncompleteTextFixedWidth),
+        ids=['delimited', 'text_fixed_width'],
+    )
+    def test_row_abcs_require_row_methods(
         self,
+        incomplete_handler_cls: type[FileHandlerABC],
     ) -> None:
-        """Test a concrete text/fixed-width subclass being instantiable."""
-        handler = _TextFixedWidthStub()
+        """Test row-oriented ABCs requiring row-level methods."""
+        assert inspect.isabstract(incomplete_handler_cls)
+        assert {'read_rows', 'write_rows'} <= (
+            incomplete_handler_cls.__abstractmethods__
+        )
 
-        assert handler.category == 'text_fixed_width'
-        assert handler.read(Path('ignored.txt')) == [{'text': 'ok'}]
-        assert handler.write(Path('ignored.txt'), [{'text': 'ok'}]) == 1
+    @pytest.mark.parametrize(
+        (
+            'handler_cls',
+            'path_name',
+            'expected_category',
+            'expected_read',
+            'write_payload',
+            'expected_written',
+        ),
+        [
+            (
+                _DelimitedStub,
+                'ignored.csv',
+                'tabular_delimited_text',
+                [{'id': 1}],
+                [{'id': 1}, {'id': 2}],
+                2,
+            ),
+            (
+                _TextFixedWidthStub,
+                'ignored.txt',
+                'text_fixed_width',
+                [{'text': 'ok'}],
+                [{'text': 'ok'}],
+                1,
+            ),
+        ],
+        ids=['delimited', 'text_fixed_width'],
+    )
+    def test_concrete_row_subclass_satisfies_contract(
+        self,
+        handler_cls: type[FileHandlerABC],
+        path_name: str,
+        expected_category: str,
+        expected_read: JSONData,
+        write_payload: JSONData,
+        expected_written: int,
+    ) -> None:
+        """Test concrete row-oriented subclasses being fully instantiable."""
+        handler = handler_cls()
+        path = Path(path_name)
+
+        assert handler.category == expected_category
+        assert handler.read(path) == expected_read
+        assert handler.write(path, write_payload) == expected_written
+
+    def test_file_handler_abc_declares_read_write_as_abstract(self) -> None:
+        """Test FileHandlerABC preserving read/write abstract methods."""
+        assert inspect.isabstract(FileHandlerABC)
+        assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
+
+    @pytest.mark.parametrize(
+        'operation',
+        ['write', 'write_sheet'],
+        ids=['module_write', 'sheet_write'],
+    )
+    def test_read_only_spreadsheet_handler_rejects_writes(
+        self,
+        operation: str,
+    ) -> None:
+        """Test read-only spreadsheet handlers rejecting write operations."""
+        handler = XlsFile()
+        path = Path('ignored.xls')
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            if operation == 'write':
+                handler.write(path, [{'a': 1}])
+            else:
+                handler.write_sheet(
+                    path,
+                    [{'a': 1}],
+                    sheet=0,
+                )
 
 
 class TestNamingConventions:
     """Unit tests for category-level internal naming conventions."""
 
-    delimited_handlers = [
-        CsvFile,
-        DatFile,
-        PsvFile,
-        TabFile,
-        TsvFile,
-        TxtFile,
-        FwfFile,
-    ]
-    spreadsheet_handlers = [
-        XlsFile,
-        XlsxFile,
-        XlsmFile,
-        OdsFile,
-    ]
-    embedded_db_handlers = [SqliteFile]
-    scientific_handlers = [
-        DtaFile,
-        NcFile,
-        RdaFile,
-        RdsFile,
-        SavFile,
-        XptFile,
-    ]
-
     @pytest.mark.parametrize(
-        ('handlers_attr', 'read_method', 'write_method'),
+        ('handlers', 'read_method', 'write_method'),
         _NAMING_METHOD_CASES,
-        ids=['delimited', 'spreadsheet', 'embedded_db', 'scientific'],
+        ids=['delimited', 'embedded_db', 'scientific', 'spreadsheet'],
     )
     def test_handlers_expose_category_methods(
         self,
-        handlers_attr: str,
+        handlers: tuple[type[FileHandlerABC], ...],
         read_method: str,
         write_method: str,
     ) -> None:
         """Test handlers exposing category-level read/write methods."""
-        handlers = cast(
-            list[type[FileHandlerABC]],
-            getattr(self, handlers_attr),
-        )
         for handler_cls in handlers:
             assert callable(getattr(handler_cls, 'read', None))
             assert callable(getattr(handler_cls, 'write', None))
@@ -543,23 +322,6 @@ class TestNamingConventions:
 
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
-
-    @staticmethod
-    def _make_handler(handler_kind: str) -> object:
-        """Build handler stubs used by option-helper contract tests."""
-        match handler_kind:
-            case 'delimited':
-                return _DelimitedStub()
-            case 'read_only':
-                return _ReadOnlyStub()
-            case 'archive':
-                return _ArchiveStub()
-            case 'spreadsheet':
-                return _SpreadsheetStub()
-            case 'embedded':
-                return _EmbeddedDbStub()
-            case _:
-                raise ValueError(f'Unknown handler kind: {handler_kind}')
 
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
@@ -588,7 +350,7 @@ class TestOptionsContracts:
 
     @pytest.mark.parametrize(
         (
-            'handler_kind',
+            'handler_cls',
             'read_method_name',
             'write_method_name',
             'read_options',
@@ -601,7 +363,7 @@ class TestOptionsContracts:
         ),
         [
             (
-                'delimited',
+                _DelimitedStub,
                 'delimiter_from_read_options',
                 'delimiter_from_write_options',
                 ReadOptions(extras={'delimiter': '|'}),
@@ -613,7 +375,7 @@ class TestOptionsContracts:
                 ':',
             ),
             (
-                'read_only',
+                XlsFile,
                 'encoding_from_read_options',
                 'encoding_from_write_options',
                 ReadOptions(encoding='latin-1'),
@@ -625,7 +387,7 @@ class TestOptionsContracts:
                 'ascii',
             ),
             (
-                'archive',
+                ZipFile,
                 'inner_name_from_read_options',
                 'inner_name_from_write_options',
                 ReadOptions(inner_name='data.json'),
@@ -637,7 +399,7 @@ class TestOptionsContracts:
                 _NO_DEFAULT,
             ),
             (
-                'spreadsheet',
+                XlsxFile,
                 'sheet_from_read_options',
                 'sheet_from_write_options',
                 ReadOptions(sheet='Sheet2'),
@@ -649,7 +411,7 @@ class TestOptionsContracts:
                 99,
             ),
             (
-                'embedded',
+                SqliteFile,
                 'table_from_read_options',
                 'table_from_write_options',
                 ReadOptions(table='events'),
@@ -665,7 +427,7 @@ class TestOptionsContracts:
     )
     def test_option_helper_pairs_use_override_then_default(
         self,
-        handler_kind: str,
+        handler_cls: type[object],
         read_method_name: str,
         write_method_name: str,
         read_options: ReadOptions,
@@ -677,7 +439,7 @@ class TestOptionsContracts:
         write_default: object,
     ) -> None:
         """Test paired read/write option helpers with override/default."""
-        handler = self._make_handler(handler_kind)
+        handler = handler_cls()
         read_call = cast(
             Callable[..., object],
             getattr(handler, read_method_name),
@@ -707,7 +469,7 @@ class TestOptionsContracts:
 
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
         """Test root-tag helper using explicit values then defaults."""
-        handler = _ReadOnlyStub()
+        handler = XlsFile()
         assert handler.root_tag_from_write_options(None) == 'root'
         assert (
             handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
@@ -729,51 +491,42 @@ class TestOptionsContracts:
 class TestScientificDatasetContracts:
     """Unit tests for scientific dataset handler contracts."""
 
-    scientific_handlers = [
-        DtaFile,
-        NcFile,
-        RdaFile,
-        RdsFile,
-        SavFile,
-        XptFile,
-    ]
-    single_dataset_handlers = [
-        DtaFile,
-        NcFile,
-        SavFile,
-        XptFile,
-    ]
-
-    def test_handlers_use_scientific_dataset_abc(self) -> None:
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SCIENTIFIC_HANDLER_CLASSES,
+    )
+    def test_handlers_use_scientific_dataset_abc(
+        self,
+        handler_cls: type[ScientificDatasetFileHandlerABC],
+    ) -> None:
         """Test scientific handlers inheriting ScientificDataset ABC."""
-        for handler_cls in self.scientific_handlers:
-            assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
-            assert handler_cls.dataset_key == 'data'
+        assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+        assert handler_cls.dataset_key == 'data'
 
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SINGLE_DATASET_HANDLER_CLASSES,
+    )
     def test_single_dataset_handlers_use_single_dataset_scientific_abc(
         self,
+        handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """Test single-dataset handlers inheriting the subtype ABC."""
-        for handler_cls in self.single_dataset_handlers:
-            assert issubclass(
-                handler_cls,
-                SingleDatasetScientificFileHandlerABC,
-            )
+        assert issubclass(
+            handler_cls,
+            SingleDatasetScientificFileHandlerABC,
+        )
 
-    def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SINGLE_DATASET_HANDLER_CLASSES,
+    )
+    def test_single_dataset_handlers_reject_unknown_dataset_key(
+        self,
+        handler_cls: type[SingleDatasetScientificFileHandlerABC],
+    ) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        for handler_cls in self.single_dataset_handlers:
-            concrete_cls = cast(type[Any], handler_cls)
-            handler = cast(
-                SingleDatasetScientificFileHandlerABC,
-                concrete_cls(),
-            )
-            file_format = cast(FileFormat, handler_cls.format)
-            suffix = _SINGLE_DATASET_SUFFIX_BY_FORMAT.get(
-                file_format,
-                file_format.value,
-            )
-            _assert_single_dataset_rejects_non_default_key(
-                handler,
-                suffix=suffix,
-            )
+        assert_single_dataset_rejects_non_default_key(
+            handler_cls(),
+            suffix=handler_cls.format.value,
+        )

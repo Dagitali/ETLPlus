@@ -61,7 +61,7 @@ class TestIni(
         self,
         tmp_path: Path,
     ) -> None:
-        path = tmp_path / 'config.ini'
+        path = self.format_path(tmp_path, stem='config')
 
         with pytest.raises(
             TypeError,
@@ -73,7 +73,7 @@ class TestIni(
         self,
         tmp_path: Path,
     ) -> None:
-        path = tmp_path / 'config.ini'
+        path = self.format_path(tmp_path, stem='config')
 
         with pytest.raises(TypeError, match='INI sections must map to dicts'):
             mod.write(path, {'alpha': 'nope'})

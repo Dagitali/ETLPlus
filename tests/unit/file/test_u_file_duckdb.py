@@ -6,30 +6,22 @@ Unit tests for :mod:`etlplus.file.duckdb`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
+from typing import cast
+
+import pytest
 
 from etlplus.file import duckdb as mod
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
+
+if TYPE_CHECKING:
+    import duckdb
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Cursor:
-    """Stub cursor for DuckDB queries."""
-
-    def __init__(
-        self,
-        rows: list[tuple[object, ...]],
-        *,
-        description: list[tuple[str, ...]] | None = None,
-    ) -> None:
-        self._rows = rows
-        self.description = description
-
-    def fetchall(self) -> list[tuple[object, ...]]:
-        """Simulate fetching all rows from a query."""
-        return list(self._rows)
 
 
 class _Connection:
@@ -47,8 +39,13 @@ class _Connection:
         self.rows = rows or []
         self.description = description
         self.pragma_info = pragma_info or []
+        self.closed = False
         self.executed: list[str] = []
         self.executemany_calls: list[tuple[str, list[tuple[object, ...]]]] = []
+
+    def close(self) -> None:  # noqa: D401 - simple stub
+        """Record close calls for lifecycle assertions."""
+        self.closed = True
 
     def execute(
         self,
@@ -70,8 +67,22 @@ class _Connection:
         """Simulate executing a SQL statement with multiple rows."""
         self.executemany_calls.append((sql, rows))
 
-    def close(self) -> None:  # noqa: D401 - simple stub
-        """No-op close."""
+
+class _Cursor:
+    """Stub cursor for DuckDB queries."""
+
+    def __init__(
+        self,
+        rows: list[tuple[object, ...]],
+        *,
+        description: list[tuple[str, ...]] | None = None,
+    ) -> None:
+        self._rows = rows
+        self.description = description
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        """Simulate fetching all rows from a query."""
+        return list(self._rows)
 
 
 class _DuckdbStub:
@@ -82,7 +93,8 @@ class _DuckdbStub:
     def __init__(self, connection: _Connection) -> None:
         self._connection = connection
 
-    def connect(self, path: str) -> _Connection:  # noqa: ARG002
+    def connect(self, path: str) -> _Connection:
+        """Simulate connecting to a DuckDB database."""
         return self._connection
 
 
@@ -96,73 +108,182 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     format_name = 'duckdb'
     multi_table_error_pattern = 'Multiple tables found in DuckDB'
 
+    def _prepare_connection(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        connection: _Connection | None = None,
+    ) -> tuple[_Connection, Path]:
+        """Install a DuckDB connection stub and return connection/path."""
+        conn = _Connection() if connection is None else connection
+        self._install_connection(optional_module_stub, conn)
+        return conn, self.format_path(tmp_path)
+
     def build_empty_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build a DuckDB fixture with no tables."""
-        conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
-        return tmp_path / 'data.duckdb'
+        _conn, path = self._prepare_connection(
+            tmp_path,
+            optional_module_stub,
+        )
+        return path
 
     def build_multi_table_database_path(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> Path:
         """Build a DuckDB fixture with multiple tables."""
-        conn = _Connection(tables=['a', 'b'])
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
-        return tmp_path / 'data.duckdb'
+        _conn, path = self._prepare_connection(
+            tmp_path,
+            optional_module_stub,
+            _Connection(tables=['a', 'b']),
+        )
+        return path
 
-    def test_read_uses_description_columns(
+    def test_read_closes_connection_after_query(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test that :func:`read` uses description columns when available."""
-        conn = _Connection(
-            tables=['data'],
-            rows=[(1, 'Ada')],
-            description=[('id',), ('name',)],
+        """Test reads always closing the DuckDB connection."""
+        conn, path = self._prepare_connection(
+            tmp_path,
+            optional_module_stub,
+            _Connection(
+                tables=['data'],
+                rows=[(1,)],
+                description=[('id',)],
+            ),
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
 
-        result = mod.read(tmp_path / 'data.duckdb')
+        _ = mod.read(path)
+
+        assert conn.closed is True
+
+    @pytest.mark.parametrize(
+        ('description', 'pragma_info'),
+        [
+            (None, [(0, 'id'), (1, 'name')]),
+            ([('id',), ('name',)], []),
+        ],
+        ids=['pragma_columns_fallback', 'description_columns'],
+    )
+    def test_read_maps_columns_from_description_or_pragma(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+        description: list[tuple[str, ...]] | None,
+        pragma_info: list[tuple[object, ...]],
+    ) -> None:
+        """Test read column mapping via description or pragma fallback."""
+        _conn, path = self._prepare_connection(
+            tmp_path,
+            optional_module_stub,
+            _Connection(
+                tables=['data'],
+                rows=[(1, 'Ada')],
+                description=description,
+                pragma_info=pragma_info,
+            ),
+        )
+
+        result = mod.read(path)
 
         assert result == [{'id': 1, 'name': 'Ada'}]
 
-    def test_read_falls_back_to_pragma_columns(
+    @pytest.mark.parametrize(
+        ('tables', 'table_option'),
+        [
+            (['a', 'b'], 'b'),
+            (['my table'], 'my table'),
+        ],
+        ids=['multiple_tables_explicit_selection', 'quoted_table_name'],
+    )
+    def test_read_uses_explicit_table_option(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
+        tables: list[str],
+        table_option: str,
     ) -> None:
-        """Test that :func:`read` falls back to pragma columns."""
-        conn = _Connection(
-            tables=['data'],
-            rows=[(1, 'Ada')],
-            description=None,
-            pragma_info=[(0, 'id'), (1, 'name')],
+        """
+        Test :meth:`read` honoring explicit table options, including quoting.
+        """
+        conn, path = self._prepare_connection(
+            tmp_path,
+            optional_module_stub,
+            _Connection(
+                tables=tables,
+                rows=[(1,)],
+                description=[('id',)],
+            ),
         )
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
+        handler = mod.DuckdbFile()
 
-        result = mod.read(tmp_path / 'data.duckdb')
+        result = handler.read(
+            path,
+            options=ReadOptions(table=table_option),
+        )
 
-        assert result == [{'id': 1, 'name': 'Ada'}]
+        assert result == [{'id': 1}]
+        assert f'SELECT * FROM "{table_option}"' in conn.executed
 
-    def test_write_inserts_records(
+    @pytest.mark.parametrize(
+        ('payload', 'options', 'expected_table'),
+        [
+            ([{'id': 1}, {'id': 2}], None, 'data'),
+            ([{'id': 1}], WriteOptions(table='events'), 'events'),
+        ],
+        ids=['default_table', 'explicit_table_option'],
+    )
+    def test_write_creates_table_inserts_records_and_closes_connection(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
+        payload: list[dict[str, object]],
+        options: WriteOptions | None,
+        expected_table: str,
     ) -> None:
-        """Test that :func:`write` creates a table and inserts records."""
-        conn = _Connection()
-        optional_module_stub({'duckdb': _DuckdbStub(conn)})
-        path = tmp_path / 'data.duckdb'
+        """
+        Test that :meth:`write` creates a table, inserts rows, and closes.
+        """
+        conn, path = self._prepare_connection(tmp_path, optional_module_stub)
+        handler = mod.DuckdbFile()
 
-        written = mod.write(path, [{'id': 1}, {'id': 2}])
+        written = handler.write(path, payload, options=options)
 
-        assert written == 2
-        assert any(stmt.startswith('CREATE TABLE') for stmt in conn.executed)
+        assert written == len(payload)
+        assert any(
+            f'CREATE TABLE "{expected_table}"' in stmt
+            for stmt in conn.executed
+        )
         assert conn.executemany_calls
+        assert conn.closed is True
+
+    def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
+        """
+        Test :meth:`write_table` short-circuiting rows that provide no columns.
+        """
+        conn = _Connection()
+        handler = mod.DuckdbFile()
+
+        written = handler.write_table(
+            cast('duckdb.DuckDBPyConnection', conn),
+            'data',
+            [{}],
+        )
+
+        assert written == 0
+        assert not conn.executemany_calls
+
+    @staticmethod
+    def _install_connection(
+        optional_module_stub: OptionalModuleInstaller,
+        connection: _Connection,
+    ) -> None:
+        """Install one DuckDB connection stub for a test case."""
+        optional_module_stub({'duckdb': _DuckdbStub(connection)})

@@ -11,12 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.file import core
 from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
-from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: HELPERS ========================================================== #
 
@@ -43,23 +41,6 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
 
     module = mod
     format_name = 'zip'
-    valid_path_name = 'payload.json.zip'
-    missing_inner_path_name = 'payload.zip'
-    expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
-
-    def install_core_file_stub(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        self._install_core_file_stub(monkeypatch)
-
-    def seed_archive_payload(
-        self,
-        path: Path,
-    ) -> None:
-        """Seed zip archive payload for read contract tests."""
-        _write_zip(path, {'payload.json': b'{}'})
 
     def assert_archive_payload(
         self,
@@ -70,41 +51,90 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
             assert archive.namelist() == ['payload.json']
             assert archive.read('payload.json') == b'payload'
 
-    def test_read_multiple_entries_respects_inner_name_option(
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Seed zip archive payload for read contract tests."""
+        _write_zip(path, {'payload.json': b'{}'})
+
+    @pytest.mark.parametrize(
+        ('reader_method', 'needs_core_stub'),
+        [('read_inner_bytes', False), ('read', True)],
+        ids=['inner_bytes', 'parsed_read'],
+    )
+    def test_read_raises_on_unknown_inner_name(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        reader_method: str,
+        needs_core_stub: bool,
+    ) -> None:
+        """Test read APIs erroring for unknown archive members."""
+        if needs_core_stub:
+            self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payloads')
+        _write_zip(path, {'a.json': b'first', 'b.json': b'second'})
+
+        with pytest.raises(ValueError, match='ZIP archive member not found'):
+            getattr(mod.ZipFile(), reader_method)(
+                path,
+                options=ReadOptions(inner_name='missing.json'),
+            )
+
+    def test_read_inner_bytes_requires_inner_name_for_multiple_entries(
+        self,
+        tmp_path: Path,
     ) -> None:
         """
-        Test that reading a multi-entry archive with ``inner_name`` returns
-        only the selected entry payload.
+        Test that reading raw bytes from multi-member ZIP requires
+        ``inner_name``.
         """
-        self._install_core_file_stub(monkeypatch)
-        path = tmp_path / 'payloads.zip'
+        path = self.archive_path(tmp_path, stem='payloads')
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
-        result = mod.ZipFile().read(
+        with pytest.raises(ValueError, match='multiple members'):
+            mod.ZipFile().read_inner_bytes(path)
+
+    @pytest.mark.parametrize(
+        ('reader_method', 'needs_core_stub', 'entries', 'expected'),
+        [
+            (
+                'read_inner_bytes',
+                False,
+                {'a.json': b'first', 'b.json': b'second'},
+                b'second',
+            ),
+            (
+                'read',
+                True,
+                {'a.json': b'{}', 'b.json': b'{}'},
+                {'fmt': 'json', 'name': 'b.json'},
+            ),
+        ],
+        ids=['inner_bytes', 'parsed_read'],
+    )
+    def test_read_respects_inner_name_option(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        reader_method: str,
+        needs_core_stub: bool,
+        entries: dict[str, bytes],
+        expected: object,
+    ) -> None:
+        """Test read APIs selecting the configured archive member."""
+        if needs_core_stub:
+            self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payloads')
+        _write_zip(path, entries)
+
+        result = getattr(mod.ZipFile(), reader_method)(
             path,
             options=ReadOptions(inner_name='b.json'),
         )
 
-        assert result == {'fmt': 'json', 'name': 'b.json'}
-
-    def test_read_multiple_entries_raises_on_unknown_inner_name(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that selecting an unknown archive member raises a clear error.
-        """
-        path = tmp_path / 'payloads.zip'
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
-
-        with pytest.raises(ValueError, match='ZIP archive member not found'):
-            mod.ZipFile().read(
-                path,
-                options=ReadOptions(inner_name='missing.json'),
-            )
+        assert result == expected
 
     def test_read_multiple_entries_returns_mapping(
         self,
@@ -115,8 +145,8 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         Test that reading a ZIP archive with multiple entries returns a mapping
         of file names to their contents.
         """
-        self._install_core_file_stub(monkeypatch)
-        path = tmp_path / 'payloads.zip'
+        self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payloads')
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
         result = mod.read(path)
@@ -126,44 +156,61 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
             'b.json': {'fmt': 'json', 'name': 'b.json'},
         }
 
-    def test_read_raises_on_empty_archive(
+    @pytest.mark.parametrize(
+        ('stem', 'entries', 'error_pattern'),
+        [
+            ('empty', {}, 'ZIP archive is empty'),
+            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
+            (
+                'payload',
+                {'payload.unknown': b'ignored'},
+                'Cannot infer file format',
+            ),
+        ],
+        ids=[
+            'empty_archive',
+            'unexpected_compression',
+            'unknown_inner_format',
+        ],
+    )
+    def test_read_invalid_archives_raise(
         self,
         tmp_path: Path,
+        stem: str,
+        entries: dict[str, bytes],
+        error_pattern: str,
     ) -> None:
-        """Test that reading an empty ZIP archive raises an error."""
-        path = tmp_path / 'empty.zip'
-        _write_zip(path, {})
+        """Test invalid ZIP structures raising clear read-time errors."""
+        path = self.archive_path(tmp_path, stem=stem)
+        _write_zip(path, entries)
 
-        with pytest.raises(ValueError, match='ZIP archive is empty'):
+        with pytest.raises(ValueError, match=error_pattern):
             mod.read(path)
 
-    def test_read_raises_on_unexpected_compression(
+    def test_write_raises_on_unexpected_output_compression(
         self,
         tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that reading a ZIP archive with unexpected compression raises an
-        error.
-        """
-        path = tmp_path / 'nested.zip'
-        _write_zip(path, {'data.csv.gz': b'ignored'})
+        """Test that writing to non-ZIP compressed suffixes fails early."""
+        self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payload.json', suffix='gz')
 
         with pytest.raises(ValueError, match='Unexpected compression'):
-            mod.read(path)
+            mod.write(path, [{'id': 1}])
 
-    def test_read_raises_on_unknown_inner_format(
+    def test_write_inner_bytes_uses_default_member_name(
         self,
         tmp_path: Path,
     ) -> None:
-        """
-        Test that reading a ZIP archive with unknown inner format raises an
-        error.
-        """
-        path = tmp_path / 'payload.zip'
-        _write_zip(path, {'payload.unknown': b'ignored'})
+        """Test ``write_inner_bytes`` default archive member naming."""
+        path = self.archive_path(tmp_path, stem='payload')
 
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.read(path)
+        mod.ZipFile().write_inner_bytes(path, b'data')
+
+        with zipfile.ZipFile(path, 'r') as archive:
+            assert archive.namelist() == ['payload']
+            assert archive.read('payload') == b'data'
 
     def test_write_supports_nested_inner_name(
         self,
@@ -171,8 +218,8 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that writing supports nested archive member names."""
-        self._install_core_file_stub(monkeypatch)
-        path = tmp_path / 'payload.json.zip'
+        self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payload.json')
 
         written = mod.ZipFile().write(
             path,
@@ -184,10 +231,3 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['nested/payload.json']
             assert archive.read('nested/payload.json') == b'payload'
-
-    @staticmethod
-    def _install_core_file_stub(
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
