@@ -98,11 +98,8 @@ _NAMING_METHOD_CASES: list[
 ]
 
 
-class _DelimitedStub(DelimitedTextFileHandlerABC):
-    """Concrete delimited handler used for abstract contract tests."""
-
-    format = FileFormat.CSV
-    delimiter = ','
+class _RowReadWriteMixin:
+    """Provide shared row-oriented read/write glue for contract stubs."""
 
     def read(
         self,
@@ -110,7 +107,12 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         *,
         options: ReadOptions | None = None,
     ) -> JSONData:
-        return self.read_rows(path, options=options)
+        """Provide a read implementation delegating to row-level methods."""
+        handler = cast(
+            DelimitedTextFileHandlerABC | TextFixedWidthFileHandlerABC,
+            self,
+        )
+        return handler.read_rows(path, options=options)
 
     def write(
         self,
@@ -119,8 +121,20 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         *,
         options: WriteOptions | None = None,
     ) -> int:
+        """Provide a write implementation delegating to row-level methods."""
+        handler = cast(
+            DelimitedTextFileHandlerABC | TextFixedWidthFileHandlerABC,
+            self,
+        )
         rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
+        return handler.write_rows(path, rows, options=options)
+
+
+class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
+    """Concrete delimited handler used for abstract contract tests."""
+
+    format = FileFormat.CSV
+    delimiter = ','
 
     def read_rows(
         self,
@@ -144,33 +158,7 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         return len(rows)
 
 
-class _NoopReadWriteMixin:
-    """Provide read/write defaults while leaving row methods abstract."""
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        _ = options
-        return []
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = options
-        return 0
-
-
-class _IncompleteDelimited(_NoopReadWriteMixin, DelimitedTextFileHandlerABC):
+class _IncompleteDelimited(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
     """Incomplete delimited handler used for abstract-method checks."""
 
     format = FileFormat.CSV
@@ -178,7 +166,7 @@ class _IncompleteDelimited(_NoopReadWriteMixin, DelimitedTextFileHandlerABC):
 
 
 class _IncompleteTextFixedWidth(
-    _NoopReadWriteMixin,
+    _RowReadWriteMixin,
     TextFixedWidthFileHandlerABC,
 ):
     """Incomplete text/fixed-width handler used for abstract checks."""
@@ -186,18 +174,10 @@ class _IncompleteTextFixedWidth(
     format = FileFormat.TXT
 
 
-class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
+class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
     """Concrete text/fixed-width handler used for abstract contract tests."""
 
     format = FileFormat.TXT
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        return self.read_rows(path, options=options)
 
     def read_rows(
         self,
@@ -208,16 +188,6 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
         _ = path
         _ = options
         return [{'text': 'ok'}]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        rows: JSONList = data if isinstance(data, list) else [data]
-        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,
