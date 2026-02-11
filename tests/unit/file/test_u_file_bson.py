@@ -164,7 +164,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
         path = self.format_path(tmp_path)
         path.write_bytes(b'payload')
 
-        result = mod.read(path)
+        result = mod.BsonFile().read(path)
 
         assert result == [{'decoded': True}]
         assert stub.BSON.decoded == [b'payload']
@@ -181,7 +181,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
         optional_module_stub({'bson': stub})
         path = self.format_path(tmp_path)
 
-        written = mod.write(path, self.write_payload)
+        written = mod.BsonFile().write(path, self.write_payload)
 
         assert written == 2
         assert stub.BSON.encoded == self.write_payload

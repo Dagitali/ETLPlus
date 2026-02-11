@@ -102,7 +102,7 @@ class TestNc(SingleDatasetWritableContract):
         optional_module_stub({'xarray': xarray})
         path = self.format_path(tmp_path)
 
-        result = mod.read(path)
+        result = mod.NcFile().read(path)
 
         assert result == [{'value': 1}, {'value': 2}]
 
@@ -120,7 +120,7 @@ class TestNc(SingleDatasetWritableContract):
         optional_module_stub({'xarray': xarray})
         path = self.format_path(tmp_path)
 
-        result = mod.read(path)
+        result = mod.NcFile().read(path)
 
         assert result == [
             {'index': 2, 'value': 10},
@@ -147,7 +147,7 @@ class TestNc(SingleDatasetWritableContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='NC support requires optional'):
-            mod.read(path)
+            mod.NcFile().read(path)
 
     def test_write_happy_path(
         self,
@@ -163,7 +163,7 @@ class TestNc(SingleDatasetWritableContract):
         optional_module_stub({'xarray': xarray, 'pandas': RDataPandasStub()})
         path = self.format_path(tmp_path)
 
-        written = mod.write(path, [{'value': 1}])
+        written = mod.NcFile().write(path, [{'value': 1}])
 
         assert written == 1
         assert dataset.to_netcdf_calls == [path]
@@ -183,7 +183,7 @@ class TestNc(SingleDatasetWritableContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='NC support requires optional'):
-            mod.write(path, [{'value': 1}])
+            mod.NcFile().write(path, [{'value': 1}])
 
     @staticmethod
     def _patch_from_dataframe(

@@ -207,7 +207,7 @@ class TestDat:
         """Test reading empty input returning an empty list."""
         path = _write_fixture_file(tmp_path, 'empty.dat', '')
 
-        assert not mod.read(path)
+        assert not mod.DatFile().read(path)
 
     @pytest.mark.parametrize(
         ('filename', 'content', 'has_header', 'expected'),
@@ -247,7 +247,7 @@ class TestDat:
         )
         path = _write_fixture_file(tmp_path, filename, content)
 
-        assert mod.read(path) == expected
+        assert mod.DatFile().read(path) == expected
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,
@@ -263,7 +263,7 @@ class TestDat:
             'a,b,c\n1,2\n3,4,5,6\n',
         )
 
-        assert mod.read(path) == [
+        assert mod.DatFile().read(path) == [
             {'a': '1', 'b': '2', 'c': None},
             {'a': '3', 'b': '4', 'c': '5'},
         ]
@@ -297,7 +297,7 @@ class TestDat:
 
         path = _write_fixture_file(tmp_path, filename, content)
 
-        assert mod.read(path) == [{'a': '1', 'b': '2'}]
+        assert mod.DatFile().read(path) == [{'a': '1', 'b': '2'}]
 
     def test_write_round_trip_returns_written_count(
         self,
@@ -310,8 +310,8 @@ class TestDat:
         ]
         path = tmp_path / 'out.dat'
 
-        written = mod.write(path, sample_records)
-        result = mod.read(path)
+        written = mod.DatFile().write(path, sample_records)
+        result = mod.DatFile().read(path)
 
         assert written == len(sample_records)
         assert len(result) == len(sample_records)

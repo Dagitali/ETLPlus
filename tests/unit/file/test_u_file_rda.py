@@ -88,7 +88,7 @@ class TestRda(RDataModuleContract):
         optional_module_stub({'pyreadr': pyreadr, 'pandas': RDataPandasStub()})
         path = self.format_path(tmp_path)
 
-        written = mod.write(path, [{'id': 1}])
+        written = mod.RdaFile().write(path, [{'id': 1}])
 
         assert written == 1
         assert pyreadr.writes

@@ -26,5 +26,5 @@ class TestArrow(PyarrowMissingDependencyMixin):
     ) -> None:
         """Test empty writes short-circuiting without file creation."""
         path = self.format_path(tmp_path)
-        assert self.module.write(path, []) == 0
+        assert self.module_handler.write(path, []) == 0
         assert not path.exists()

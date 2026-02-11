@@ -107,7 +107,7 @@ class TestHdf5Read(PathMixin):
         path = self.format_path(tmp_path)
 
         with pytest.raises(ImportError, match='tables'):
-            mod.read(path)
+            mod.Hdf5File().read(path)
 
     def test_read_returns_empty_when_no_keys(
         self,
@@ -119,7 +119,7 @@ class TestHdf5Read(PathMixin):
         self._install_store(optional_module_stub, store)
         path = self.format_path(tmp_path)
 
-        assert mod.read(path) == []
+        assert mod.Hdf5File().read(path) == []
 
     def test_read_prefers_default_key(
         self,
@@ -132,7 +132,7 @@ class TestHdf5Read(PathMixin):
         self._install_store(optional_module_stub, store)
         path = self.format_path(tmp_path)
 
-        assert mod.read(path) == [{'id': 1}]
+        assert mod.Hdf5File().read(path) == [{'id': 1}]
 
     def test_read_raises_on_multiple_keys(
         self,
@@ -146,7 +146,7 @@ class TestHdf5Read(PathMixin):
         path = self.format_path(tmp_path)
 
         with pytest.raises(ValueError, match='Multiple datasets'):
-            mod.read(path)
+            mod.Hdf5File().read(path)
 
     def test_read_uses_single_key(
         self,
@@ -159,7 +159,7 @@ class TestHdf5Read(PathMixin):
         self._install_store(optional_module_stub, store)
         path = self.format_path(tmp_path)
 
-        assert mod.read(path) == [{'id': 1}]
+        assert mod.Hdf5File().read(path) == [{'id': 1}]
 
     @staticmethod
     def _install_store(

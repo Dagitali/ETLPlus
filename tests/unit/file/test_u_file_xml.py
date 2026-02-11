@@ -29,15 +29,15 @@ class TestXml(PathMixin):
         """Test XML write using explicit root tag and readable output."""
         path = self.format_path(tmp_path)
 
-        written = self.module.write(
+        written = self.module_handler.write(
             path,
             [{'id': 1}],
-            root_tag=self.root_tag,
+            options=WriteOptions(root_tag=self.root_tag),
         )
 
         assert written == 1
         assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
         assert self.root_tag in result
 
     def test_dumps_defaults_to_root_tag_for_non_single_mapping(self) -> None:

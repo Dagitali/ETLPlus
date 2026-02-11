@@ -55,7 +55,7 @@ class TestTxt(TextRowModuleContract):
         """Test that :func:`write` accepts a single dictionary as payload."""
         path = self.format_path(tmp_path)
 
-        written = mod.write(path, {'text': 'alpha'})
+        written = mod.TxtFile().write(path, {'text': 'alpha'})
 
         assert written == 1
         assert path.read_text(encoding='utf-8') == 'alpha\n'
@@ -66,7 +66,7 @@ class TestTxt(TextRowModuleContract):
     ) -> None:
         """Test that :func:`write` returns zero when given an empty payload."""
         path = self.format_path(tmp_path)
-        assert mod.write(path, []) == 0
+        assert mod.TxtFile().write(path, []) == 0
         assert not path.exists()
 
     def test_write_rejects_missing_text_key(
@@ -77,7 +77,7 @@ class TestTxt(TextRowModuleContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT payloads must include'):
-            mod.write(path, [{'nope': 'value'}])
+            mod.TxtFile().write(path, [{'nope': 'value'}])
 
     def test_write_rejects_non_dict_payloads(
         self,
@@ -87,4 +87,4 @@ class TestTxt(TextRowModuleContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT payloads must contain'):
-            mod.write(path, cast(list[dict[str, Any]], [1]))
+            mod.TxtFile().write(path, cast(list[dict[str, Any]], [1]))

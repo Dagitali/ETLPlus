@@ -53,4 +53,4 @@ class TestCbor(BinaryCodecModuleContract):
         path.write_bytes(b'payload')
 
         with pytest.raises(TypeError, match='CBOR array must contain'):
-            mod.read(path)
+            mod.CborFile().read(path)
