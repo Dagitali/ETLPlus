@@ -89,7 +89,8 @@ _SPREADSHEET_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     OdsFile,
 )
 _NAMING_METHOD_CASES: tuple[
-    tuple[tuple[type[FileHandlerABC], ...], str, str], ...,
+    tuple[tuple[type[FileHandlerABC], ...], str, str],
+    ...,
 ] = (
     (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
     (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),

@@ -165,8 +165,12 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
 )
 
 
-def _clear_registry_caches() -> None:
-    """Clear memoized registry lookups used by tests."""
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='clear_registry_caches', autouse=True)
+def clear_registry_caches_fixture() -> Iterator[None]:
+    """Clear registry caches before and after each test."""
     # pylint: disable=protected-access
     for cacheable in (
         mod.get_handler,
@@ -175,33 +179,14 @@ def _clear_registry_caches() -> None:
         mod._module_for_format,
     ):
         cacheable.cache_clear()
-
-
-def _expected_handler_class(file_format: FileFormat) -> type[object]:
-    """Return the expected class for one mapped format from registry specs."""
-    spec = mod._HANDLER_CLASS_SPECS[file_format]
-    return _import_handler_class_from_spec(spec)
-
-
-def _import_handler_class_from_spec(spec: str) -> type[object]:
-    """Import one handler class from a ``module:symbol`` spec string."""
-    module_name, _, symbol_name = spec.partition(':')
-    module = importlib.import_module(module_name)
-    symbol = getattr(module, symbol_name)
-    if not isinstance(symbol, type):
-        raise TypeError(f'Expected class for spec {spec!r}')
-    return symbol
-
-
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(autouse=True)
-def clear_registry_caches() -> Iterator[None]:
-    """Clear registry caches before and after each test."""
-    _clear_registry_caches()
     yield
-    _clear_registry_caches()
+    for cacheable in (
+        mod.get_handler,
+        mod.get_handler_class,
+        mod._module_adapter_class_for_format,
+        mod._module_for_format,
+    ):
+        cacheable.cache_clear()
 
 
 # SECTION: TESTS ============================================================ #
@@ -267,13 +252,21 @@ class TestRegistryMappedResolution:
         file_format: FileFormat,
     ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        expected_class = _expected_handler_class(file_format)
+        expected_class = mod._coerce_handler_class(
+            mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
+            file_format=file_format,
+        )
         handler_class = mod.get_handler_class(file_format)
         assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
-        expected_class = _expected_handler_class(self.singleton_format)
+        expected_class = mod._coerce_handler_class(
+            mod._import_symbol(
+                mod._HANDLER_CLASS_SPECS[self.singleton_format],
+            ),
+            file_format=self.singleton_format,
+        )
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
