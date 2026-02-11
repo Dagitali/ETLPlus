@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -41,6 +42,20 @@ def _make_dialect(delimiter: str) -> csv.Dialect:
         },
     )
     return dialect_type()
+
+
+def _patch_sniff(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    dialect: object,
+    has_header: bool,
+) -> None:
+    """Patch DAT sniffing with deterministic dialect/header behavior."""
+    monkeypatch.setattr(
+        mod,
+        '_sniff',
+        lambda *_args, **_kwargs: (cast(csv.Dialect, dialect), has_header),
+    )
 
 
 def _write_fixture_file(
@@ -226,10 +241,10 @@ class TestDat:
         expected: list[dict[str, str]],
     ) -> None:
         """Test no-header fallback and blank-row filtering behavior."""
-        monkeypatch.setattr(
-            mod,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), has_header),
+        _patch_sniff(
+            monkeypatch,
+            dialect=csv.get_dialect('excel'),
+            has_header=has_header,
         )
         path = _write_fixture_file(tmp_path, filename, content)
 
@@ -275,11 +290,10 @@ class TestDat:
         Test that DAT supports common delimiters when present (tab, pipe,
         semicolon).
         """
-        dialect = _make_dialect(delimiter)
-        monkeypatch.setattr(
-            mod,
-            '_sniff',
-            lambda *_args, **_kwargs: (dialect, True),
+        _patch_sniff(
+            monkeypatch,
+            dialect=_make_dialect(delimiter),
+            has_header=True,
         )
 
         path = _write_fixture_file(tmp_path, filename, content)

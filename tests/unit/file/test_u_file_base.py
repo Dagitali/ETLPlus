@@ -237,27 +237,31 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_row_abcs_require_row_methods(self) -> None:
+    @pytest.mark.parametrize(
+        'incomplete_handler_cls',
+        (_IncompleteDelimited, _IncompleteTextFixedWidth),
+        ids=['delimited', 'text_fixed_width'],
+    )
+    def test_row_abcs_require_row_methods(
+        self,
+        incomplete_handler_cls: type[FileHandlerABC],
+    ) -> None:
         """Test row-oriented ABCs requiring row-level methods."""
-        for incomplete_handler_cls in [
-            _IncompleteDelimited,
-            _IncompleteTextFixedWidth,
-        ]:
-            assert inspect.isabstract(incomplete_handler_cls)
-            assert {'read_rows', 'write_rows'} <= (
-                incomplete_handler_cls.__abstractmethods__
-            )
+        assert inspect.isabstract(incomplete_handler_cls)
+        assert {'read_rows', 'write_rows'} <= (
+            incomplete_handler_cls.__abstractmethods__
+        )
 
-    def test_concrete_row_subclass_satisfies_contract(self) -> None:
-        """Test concrete row-oriented subclasses being fully instantiable."""
-        for (
-            handler_cls,
-            path_name,
-            expected_category,
-            expected_read,
-            write_payload,
-            expected_written,
-        ) in [
+    @pytest.mark.parametrize(
+        (
+            'handler_cls',
+            'path_name',
+            'expected_category',
+            'expected_read',
+            'write_payload',
+            'expected_written',
+        ),
+        [
             (
                 _DelimitedStub,
                 'ignored.csv',
@@ -274,16 +278,25 @@ class TestBaseAbcContracts:
                 [{'text': 'ok'}],
                 1,
             ),
-        ]:
-            handler = handler_cls()
-            path = Path(path_name)
+        ],
+        ids=['delimited', 'text_fixed_width'],
+    )
+    def test_concrete_row_subclass_satisfies_contract(
+        self,
+        handler_cls: type[FileHandlerABC],
+        path_name: str,
+        expected_category: str,
+        expected_read: JSONData,
+        write_payload: JSONData,
+        expected_written: int,
+    ) -> None:
+        """Test concrete row-oriented subclasses being fully instantiable."""
+        handler = handler_cls()
+        path = Path(path_name)
 
-            assert handler.category == expected_category
-            assert handler.read(path) == expected_read
-            assert (
-                handler.write(path, cast(JSONData, write_payload))
-                == expected_written
-            )
+        assert handler.category == expected_category
+        assert handler.read(path) == expected_read
+        assert handler.write(path, write_payload) == expected_written
 
     def test_file_handler_abc_declares_read_write_as_abstract(self) -> None:
         """Test FileHandlerABC preserving read/write abstract methods."""
