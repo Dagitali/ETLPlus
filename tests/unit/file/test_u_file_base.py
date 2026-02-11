@@ -502,26 +502,42 @@ class TestOptionsContracts:
 class TestScientificDatasetContracts:
     """Unit tests for scientific dataset handler contracts."""
 
-    def test_handlers_use_scientific_dataset_abc(self) -> None:
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SCIENTIFIC_HANDLER_CLASSES,
+    )
+    def test_handlers_use_scientific_dataset_abc(
+        self,
+        handler_cls: type[ScientificDatasetFileHandlerABC],
+    ) -> None:
         """Test scientific handlers inheriting ScientificDataset ABC."""
-        for handler_cls in _SCIENTIFIC_HANDLER_CLASSES:
-            assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
-            assert handler_cls.dataset_key == 'data'
+        assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+        assert handler_cls.dataset_key == 'data'
 
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SINGLE_DATASET_HANDLER_CLASSES,
+    )
     def test_single_dataset_handlers_use_single_dataset_scientific_abc(
         self,
+        handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """Test single-dataset handlers inheriting the subtype ABC."""
-        for handler_cls in _SINGLE_DATASET_HANDLER_CLASSES:
-            assert issubclass(
-                handler_cls,
-                SingleDatasetScientificFileHandlerABC,
-            )
+        assert issubclass(
+            handler_cls,
+            SingleDatasetScientificFileHandlerABC,
+        )
 
-    def test_single_dataset_handlers_reject_unknown_dataset_key(self) -> None:
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SINGLE_DATASET_HANDLER_CLASSES,
+    )
+    def test_single_dataset_handlers_reject_unknown_dataset_key(
+        self,
+        handler_cls: type[SingleDatasetScientificFileHandlerABC],
+    ) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        for handler_cls in _SINGLE_DATASET_HANDLER_CLASSES:
-            assert_single_dataset_rejects_non_default_key(
-                handler_cls(),
-                suffix=handler_cls.format.value,
-            )
+        assert_single_dataset_rejects_non_default_key(
+            handler_cls(),
+            suffix=handler_cls.format.value,
+        )
