@@ -12,6 +12,7 @@ Notes
 from __future__ import annotations
 
 import csv
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -88,42 +89,59 @@ class TestDatSniff:
 
     # pylint: disable=protected-access
 
-    def test_sniff_can_report_no_header(self) -> None:
-        """
-        The helper should preserve sniffer results when header detection
-        succeeds.
-        """
-        sniffer = _StubSniffer(dialect=_make_dialect('\t'), has_header=False)
+    @pytest.mark.parametrize(
+        (
+            'sniffer_factory',
+            'sample',
+            'expected_delimiter',
+            'expected_header',
+        ),
+        [
+            (
+                lambda: _StubSniffer(
+                    dialect=_make_dialect('\t'),
+                    has_header=False,
+                ),
+                '1\t2\n3\t4\n',
+                '\t',
+                False,
+            ),
+            (
+                lambda: _StubSniffer(
+                    dialect=_make_dialect('|'),
+                    has_header_error=csv.Error('boom'),
+                ),
+                'a|b\n1|2\n',
+                '|',
+                True,
+            ),
+            (
+                lambda: _StubSniffer(sniff_error=csv.Error('boom')),
+                'a,b\n1,2\n',
+                ',',
+                True,
+            ),
+        ],
+        ids=[
+            'no_header_preserved',
+            'header_error_defaults_true',
+            'sniff_error_falls_back_to_excel',
+        ],
+    )
+    def test_sniff_behaviors(
+        self,
+        sniffer_factory: Callable[[], _StubSniffer],
+        sample: str,
+        expected_delimiter: str,
+        expected_header: bool,
+    ) -> None:
+        """Test sniff behavior across success and fallback paths."""
+        sniffer = sniffer_factory()
 
-        dialect, has_header = mod._sniff('1\t2\n3\t4\n', sniffer=sniffer)
+        dialect, has_header = mod._sniff(sample, sniffer=sniffer)
 
-        assert dialect.delimiter == '\t'
-        assert has_header is False
-
-    def test_sniff_defaults_header_true_on_error(self) -> None:
-        """
-        Header detection errors should default to treating the first row as a
-        header.
-        """
-        sniffer = _StubSniffer(
-            dialect=_make_dialect('|'),
-            has_header_error=csv.Error('boom'),
-        )
-
-        dialect, has_header = mod._sniff('a|b\n1|2\n', sniffer=sniffer)
-
-        assert dialect.delimiter == '|'
-        assert has_header is True
-
-    def test_sniff_uses_excel_dialect_on_error(self) -> None:
-        """Dialect sniffing errors should fall back to the Excel dialect."""
-
-        sniffer = _StubSniffer(sniff_error=csv.Error('boom'))
-
-        dialect, has_header = mod._sniff('a,b\n1,2\n', sniffer=sniffer)
-
-        assert dialect.delimiter == ','
-        assert has_header is True
+        assert dialect.delimiter == expected_delimiter
+        assert has_header is expected_header
 
 
 class TestDat:
@@ -164,31 +182,46 @@ class TestDat:
 
         assert not mod.read(path)
 
-    def test_read_no_header_generates_col_names(
+    @pytest.mark.parametrize(
+        ('filename', 'content', 'has_header', 'expected'),
+        [
+            (
+                'no_header.dat',
+                '1,alice\n2,bob\n',
+                False,
+                [
+                    {'col_1': '1', 'col_2': 'alice'},
+                    {'col_1': '2', 'col_2': 'bob'},
+                ],
+            ),
+            (
+                'data.dat',
+                'a,b\n\n , \n1,2\n',
+                True,
+                [{'a': '1', 'b': '2'}],
+            ),
+        ],
+        ids=['no_header_generates_col_names', 'blank_rows_skipped'],
+    )
+    def test_read_header_and_blank_row_behavior(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        filename: str,
+        content: str,
+        has_header: bool,
+        expected: list[dict[str, str]],
     ) -> None:
-        """
-        Test that when the sniffer reports no header, column names are
-        generated.
-        """
+        """Test no-header fallback and blank-row filtering behavior."""
         monkeypatch.setattr(
             mod,
             '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), False),
+            lambda *_args, **_kwargs: (csv.get_dialect('excel'), has_header),
         )
+        path = tmp_path / filename
+        path.write_text(content, encoding='utf-8')
 
-        path = tmp_path / 'no_header.dat'
-        path.write_text(
-            '1,alice\n2,bob\n',
-            encoding='utf-8',
-        )
-
-        assert mod.read(path) == [
-            {'col_1': '1', 'col_2': 'alice'},
-            {'col_1': '2', 'col_2': 'bob'},
-        ]
+        assert mod.read(path) == expected
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,
@@ -208,25 +241,6 @@ class TestDat:
             {'a': '1', 'b': '2', 'c': None},
             {'a': '3', 'b': '4', 'c': '5'},
         ]
-
-    def test_read_skips_blank_rows(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test blank rows being ignored during reads."""
-        monkeypatch.setattr(
-            mod,
-            '_sniff',
-            lambda *_args, **_kwargs: (csv.get_dialect('excel'), True),
-        )
-        path = tmp_path / 'data.dat'
-        path.write_text(
-            'a,b\n\n , \n1,2\n',
-            encoding='utf-8',
-        )
-
-        assert mod.read(path) == [{'a': '1', 'b': '2'}]
 
     @pytest.mark.parametrize(
         ('filename', 'content', 'delimiter'),

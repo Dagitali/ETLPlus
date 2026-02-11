@@ -291,6 +291,17 @@ class TestRegistryFallbackPolicy:
 
     # pylint: disable=protected-access
 
+    def _remove_fallback_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Remove the explicit class mapping for fallback tests."""
+        monkeypatch.delitem(
+            mod._HANDLER_CLASS_SPECS,
+            self.fallback_format,
+            raising=False,
+        )
+
     def test_deprecated_fallback_builds_module_adapter_and_delegates_calls(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -313,11 +324,7 @@ class TestRegistryFallbackPolicy:
             calls['root_tag'] = root_tag
             return 7
 
-        monkeypatch.delitem(
-            mod._HANDLER_CLASS_SPECS,
-            self.fallback_format,
-            raising=False,
-        )
+        self._remove_fallback_mapping(monkeypatch)
         fake_module = SimpleNamespace(read=_read, write=_write)
         monkeypatch.setattr(
             mod,
@@ -354,11 +361,7 @@ class TestRegistryFallbackPolicy:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test strict mode rejecting unmapped formats by default."""
-        monkeypatch.delitem(
-            mod._HANDLER_CLASS_SPECS,
-            self.fallback_format,
-            raising=False,
-        )
+        self._remove_fallback_mapping(monkeypatch)
 
         with pytest.raises(ValueError, match='Unsupported format'):
             mod.get_handler_class(self.fallback_format)
@@ -372,11 +375,7 @@ class TestRegistryFallbackPolicy:
         def _raise_module_not_found(_file_format: FileFormat) -> object:
             raise ModuleNotFoundError('missing test module')
 
-        monkeypatch.delitem(
-            mod._HANDLER_CLASS_SPECS,
-            self.fallback_format,
-            raising=False,
-        )
+        self._remove_fallback_mapping(monkeypatch)
         monkeypatch.setattr(
             mod,
             '_module_for_format',
