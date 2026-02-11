@@ -190,6 +190,25 @@ def read_text(
         return handle.read()
 
 
+def records_from_table(
+    table: Any,
+) -> JSONList:
+    """
+    Convert a table/dataframe-like object to row records.
+
+    Parameters
+    ----------
+    table : Any
+        Object exposing ``to_dict(orient='records')``.
+
+    Returns
+    -------
+    JSONList
+        Converted row records.
+    """
+    return cast(JSONList, table.to_dict(orient='records'))
+
+
 def require_dict_payload(
     data: JSONData,
     *,
