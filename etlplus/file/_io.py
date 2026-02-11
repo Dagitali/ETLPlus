@@ -7,8 +7,10 @@ Shared helpers for record normalization and delimited text formats.
 from __future__ import annotations
 
 import csv
+import warnings
 from pathlib import Path
 from typing import Any
+from typing import Literal
 from typing import cast
 
 from ..types import JSONData
@@ -270,6 +272,30 @@ def stringify_value(value: Any) -> str:
     if value is None:
         return ''
     return str(value)
+
+
+def warn_deprecated_module_io(
+    module_name: str,
+    operation: Literal['read', 'write'],
+) -> None:
+    """
+    Emit a deprecation warning for module-level IO wrappers.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully-qualified module name containing the deprecated wrapper.
+    operation : Literal['read', 'write']
+        Deprecated module-level operation.
+    """
+    warnings.warn(
+        (
+            f'{module_name}.{operation}() is deprecated; use handler '
+            'instance methods instead.'
+        ),
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def write_delimited(

@@ -51,11 +51,12 @@ def _call_module_operation(
     path: Path,
     write_payload: JSONData | None = None,
 ) -> JSONData | int:
-    """Invoke ``read``/``write`` on a module-like object."""
+    """Invoke handler ``read``/``write`` without deprecated module wrappers."""
+    handler = _module_handler(module)
     if operation == 'read':
-        return cast(JSONData, module.read(path))
+        return cast(JSONData, handler.read(path))
     payload = make_payload('list') if write_payload is None else write_payload
-    return cast(int, module.write(path, payload))
+    return cast(int, handler.write(path, payload))
 
 
 def _call_scientific_dataset_operation(
@@ -69,6 +70,19 @@ def _call_scientific_dataset_operation(
     if operation == 'read':
         return cast(JSONData, handler.read_dataset(path, dataset=dataset))
     return cast(int, handler.write_dataset(path, [], dataset=dataset))
+
+
+def _module_handler(
+    module: ModuleType,
+) -> Any:
+    """Return the singleton handler instance defined by a file module."""
+    handlers = [
+        value
+        for name, value in vars(module).items()
+        if name.endswith('_HANDLER')
+    ]
+    assert len(handlers) == 1
+    return handlers[0]
 
 
 def _raise_unexpected_dependency_call(
@@ -230,6 +244,12 @@ class PathMixin:
     """Shared path helper for format-aligned contract classes."""
 
     format_name: str
+    module: ModuleType
+
+    @property
+    def module_handler(self) -> Any:
+        """Return the module's singleton handler instance."""
+        return _module_handler(self.module)
 
     def format_path(
         self,
@@ -258,7 +278,7 @@ class EmptyWriteReturnsZeroMixin(PathMixin):
     ) -> None:
         """Test writing empty payloads returning zero."""
         path = self.format_path(tmp_path)
-        assert self.module.write(path, []) == 0
+        assert self.module_handler.write(path, []) == 0
         if self.assert_file_not_created_on_empty_write:
             assert not path.exists()
 
@@ -294,7 +314,7 @@ class DelimitedReadWriteMixin(PathMixin):
 
         monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
 
-        result = self.module.read(self.format_path(tmp_path))
+        result = self.module_handler.read(self.format_path(tmp_path))
 
         assert result == make_payload('list', record={'ok': True})
         assert calls['delimiter'] == self.delimiter
@@ -322,7 +342,7 @@ class DelimitedReadWriteMixin(PathMixin):
 
         monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
 
-        written = self.module.write(
+        written = self.module_handler.write(
             self.format_path(tmp_path),
             self.sample_rows,
         )
@@ -364,7 +384,7 @@ class DelimitedTextRowsMixin(EmptyWriteReturnsZeroMixin):
         """Test reading representative row-oriented input."""
         path, expected = self.prepare_read_case(tmp_path, optional_module_stub)
 
-        assert self.module.read(path) == expected
+        assert self.module_handler.read(path) == expected
 
     def test_write_rows_contract(
         self,
@@ -373,7 +393,7 @@ class DelimitedTextRowsMixin(EmptyWriteReturnsZeroMixin):
         """Test writing representative row payloads."""
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, self.write_payload)
+        written = self.module_handler.write(path, self.write_payload)
 
         assert written == self.expected_written_count
         self.assert_write_contract_result(path)
@@ -461,7 +481,10 @@ class ReadOnlyWriteGuardMixin(PathMixin):
     ) -> None:
         """Test read-only handlers rejecting writes."""
         with pytest.raises(RuntimeError, match=self.read_only_error_pattern):
-            self.module.write(self.format_path(tmp_path), make_payload('list'))
+            self.module_handler.write(
+                self.format_path(tmp_path),
+                make_payload('list'),
+            )
 
 
 class SpreadsheetReadImportErrorMixin(PathMixin):
@@ -486,7 +509,7 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.read(self.format_path(tmp_path))
+            self.module_handler.read(self.format_path(tmp_path))
 
 
 class SemiStructuredReadMixin(PathMixin):
@@ -523,7 +546,7 @@ class SemiStructuredReadMixin(PathMixin):
         path = self.format_path(tmp_path)
         path.write_text(self.sample_read_text, encoding='utf-8')
 
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
 
         self.assert_read_contract_result(result)
 
@@ -559,7 +582,7 @@ class SemiStructuredWriteDictMixin(PathMixin):
         self.setup_write_dependencies(optional_module_stub)
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, self.dict_payload)
+        written = self.module_handler.write(path, self.dict_payload)
 
         assert written == 1
         self.assert_write_contract_result(path)
@@ -628,7 +651,7 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
 
         assert result == make_payload('list')
         assert pandas.read_calls
@@ -653,7 +676,7 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, make_payload('list'))
+        written = self.module_handler.write(path, make_payload('list'))
 
         assert written == 1
         assert pandas.last_frame is not None
@@ -679,7 +702,10 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module.write(self.format_path(tmp_path), make_payload('list'))
+            self.module_handler.write(
+                self.format_path(tmp_path),
+                make_payload('list'),
+            )
 
 
 # SECTION: CLASSES (BASES) ================================================== #
@@ -829,7 +855,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
         path = self.valid_archive_path(tmp_path)
         self.seed_archive_payload(path)
 
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
 
         assert result == self.expected_read_result()
 
@@ -842,7 +868,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
         self.install_core_file_stub(monkeypatch)
         path = self.valid_archive_path(tmp_path)
 
-        written = self.module.write(path, self.write_payload)
+        written = self.module_handler.write(path, self.write_payload)
 
         assert written == self.expected_written_count
         self.assert_archive_payload(path)
@@ -855,7 +881,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
         path = self.missing_inner_format_path(tmp_path)
 
         with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
-            self.module.write(path, self.write_payload)
+            self.module_handler.write(path, self.write_payload)
 
 
 class BinaryCodecModuleContract(PathMixin):
@@ -898,7 +924,7 @@ class BinaryCodecModuleContract(PathMixin):
         path = self.format_path(tmp_path)
         path.write_bytes(b'payload')
 
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
 
         assert result == self.loaded_result
         assert codec.reader_payloads == [b'payload']
@@ -926,7 +952,7 @@ class BinaryCodecModuleContract(PathMixin):
         payload = cast(JSONData, getattr(self, payload_attr))
         expected_dump = getattr(self, expected_attr)
 
-        written = self.module.write(path, payload)
+        written = self.module_handler.write(path, payload)
 
         assert written == 1
         assert codec.writer_payloads == [expected_dump]
@@ -973,7 +999,7 @@ class BinaryDependencyModuleContract(PathMixin):
         path = self.format_path(tmp_path)
         path.write_bytes(self.read_payload_bytes)
 
-        result = self.module.read(path)
+        result = self.module_handler.read(path)
 
         assert result == self.expected_read_result
         self.assert_dependency_after_read(dependency, path)
@@ -988,7 +1014,7 @@ class BinaryDependencyModuleContract(PathMixin):
         optional_module_stub({self.dependency_name: dependency})
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, self.write_payload)
+        written = self.module_handler.write(path, self.write_payload)
 
         assert written == self.expected_written_count
         self.assert_dependency_after_write(dependency, path)
@@ -1016,11 +1042,11 @@ class BinaryKeyedPayloadModuleContract(PathMixin):
         """Test write/read round-trip preserving payload bytes."""
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, sample_payload)
+        written = self.module_handler.write(path, sample_payload)
 
         assert written == 1
         assert path.read_bytes() == self.expected_bytes
-        assert self.module.read(path) == sample_payload
+        assert self.module_handler.read(path) == sample_payload
 
     def test_write_rejects_missing_required_key(
         self,
@@ -1030,7 +1056,7 @@ class BinaryKeyedPayloadModuleContract(PathMixin):
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match=self.payload_key):
-            self.module.write(path, self.invalid_payload)
+            self.module_handler.write(path, self.invalid_payload)
 
 
 class DelimitedModuleContract(
@@ -1071,7 +1097,7 @@ class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
     ) -> None:
         """Test reading empty embedded databases returning no records."""
         path = self.build_empty_database_path(tmp_path, optional_module_stub)
-        assert self.module.read(path) == []
+        assert self.module_handler.read(path) == []
 
     def test_read_raises_on_multiple_tables(
         self,
@@ -1084,7 +1110,7 @@ class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
             optional_module_stub,
         )
         with pytest.raises(ValueError, match=self.multi_table_error_pattern):
-            self.module.read(path)
+            self.module_handler.read(path)
 
 
 class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
@@ -1128,7 +1154,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         pandas = make_pandas_stub(frame)
         self._install_dependencies(optional_module_stub, pandas=pandas)
 
-        result = self.module.read(self.format_path(tmp_path))
+        result = self.module_handler.read(self.format_path(tmp_path))
 
         assert result == make_payload('list')
         assert pandas.read_calls
@@ -1149,7 +1175,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         self._install_dependencies(optional_module_stub, pandas=pandas)
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, make_payload('list'))
+        written = self.module_handler.write(path, make_payload('list'))
 
         assert written == 1
         assert pandas.last_frame is not None
@@ -1181,7 +1207,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         )
 
         with pytest.raises(ImportError, match=self.read_error_pattern):
-            self.module.read(self.format_path(tmp_path))
+            self.module_handler.read(self.format_path(tmp_path))
 
     def test_write_import_error_path(
         self,
@@ -1199,7 +1225,7 @@ class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
         )
 
         with pytest.raises(ImportError, match=self.write_error_pattern):
-            self.module.write(
+            self.module_handler.write(
                 self.format_path(tmp_path),
                 make_payload('list'),
             )
@@ -1311,7 +1337,7 @@ class RDataModuleContract(PathMixin):
             pyreadr_stub=self.build_pyreadr_stub({}),
         )
 
-        assert self.module.read(self.format_path(tmp_path)) == []
+        assert self.module_handler.read(self.format_path(tmp_path)) == []
 
     def test_read_single_value_coerces_to_records(
         self,
@@ -1325,7 +1351,7 @@ class RDataModuleContract(PathMixin):
             pyreadr_stub=self.build_pyreadr_stub({'data': frame}),
         )
 
-        assert self.module.read(self.format_path(tmp_path)) == [
+        assert self.module_handler.read(self.format_path(tmp_path)) == [
             {'id': 1},
         ]
 
@@ -1341,7 +1367,7 @@ class RDataModuleContract(PathMixin):
             pyreadr_stub=self.build_pyreadr_stub(result),
         )
 
-        assert self.module.read(self.format_path(tmp_path)) == result
+        assert self.module_handler.read(self.format_path(tmp_path)) == result
 
     def test_write_raises_when_writer_missing(
         self,
@@ -1355,7 +1381,7 @@ class RDataModuleContract(PathMixin):
         )
 
         with pytest.raises(ImportError, match=self.writer_missing_pattern):
-            self.module.write(
+            self.module_handler.write(
                 self.format_path(tmp_path),
                 self.write_payload,
             )
@@ -1373,7 +1399,7 @@ class RDataModuleContract(PathMixin):
         )
         path = self.format_path(tmp_path)
 
-        written = self.module.write(path, self.write_payload)
+        written = self.module_handler.write(path, self.write_payload)
 
         assert written == 1
         self.assert_write_success(pyreadr, path)

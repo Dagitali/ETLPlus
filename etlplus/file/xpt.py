@@ -29,6 +29,7 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -218,7 +219,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read XPT content from *path*.
+    Deprecated wrapper. Use ``XptFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -230,6 +231,7 @@ def read(
     JSONList
         The list of dictionaries read from the XPT file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _XPT_HANDLER.read(coerce_path(path))
 
 
@@ -238,7 +240,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to XPT file at *path* and return record count.
+    Deprecated wrapper. Use ``XptFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -253,4 +255,5 @@ def write(
     int
         The number of rows written to the XPT file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _XPT_HANDLER.write(coerce_path(path), data)

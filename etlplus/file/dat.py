@@ -29,6 +29,7 @@ from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -327,7 +328,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return DAT content from *path*.
+    Deprecated wrapper. Use ``DatFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -339,6 +340,7 @@ def read(
     JSONList
         The list of dictionaries read from the DAT file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _DAT_HANDLER.read(coerce_path(path))
 
 
@@ -347,7 +349,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to DAT at *path* and return record count.
+    Deprecated wrapper. Use ``DatFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -362,4 +364,5 @@ def write(
     int
         The number of rows written to the DAT file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _DAT_HANDLER.write(coerce_path(path), data)

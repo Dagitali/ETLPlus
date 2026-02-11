@@ -50,7 +50,7 @@ class TestJson(
         path = self.format_path(tmp_path)
         path.write_text(json.dumps([{'id': 1}]), encoding='utf-8')
 
-        assert mod.read(path) == [{'id': 1}]
+        assert mod.JsonFile().read(path) == [{'id': 1}]
 
     def test_read_rejects_non_object_root(
         self,
@@ -64,7 +64,7 @@ class TestJson(
         path.write_text(json.dumps([1, 2]), encoding='utf-8')
 
         with pytest.raises(TypeError, match='JSON array must contain'):
-            mod.read(path)
+            mod.JsonFile().read(path)
 
     def test_read_rejects_scalar_root(
         self,
@@ -75,7 +75,7 @@ class TestJson(
         path.write_text('42', encoding='utf-8')
 
         with pytest.raises(TypeError, match='JSON root must be'):
-            mod.read(path)
+            mod.JsonFile().read(path)
 
     def test_write_adds_newline_and_counts_records(
         self,
@@ -87,7 +87,7 @@ class TestJson(
         path = self.format_path(tmp_path)
         payload = [{'id': 1}, {'id': 2}]
 
-        written = mod.write(path, payload)
+        written = mod.JsonFile().write(path, payload)
 
         assert written == 2
         content = path.read_text(encoding='utf-8')

@@ -25,6 +25,7 @@ from ..utils import count_records
 from ._io import coerce_path
 from ._io import normalize_records
 from ._io import read_text
+from ._io import warn_deprecated_module_io
 from ._io import write_text
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
@@ -194,7 +195,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return TXT content from *path*.
+    Deprecated wrapper. Use ``TxtFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -206,6 +207,7 @@ def read(
     JSONList
         The list of dictionaries read from the TXT file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _TXT_HANDLER.read(coerce_path(path))
 
 
@@ -214,7 +216,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TXT at *path* and return record count.
+    Deprecated wrapper. Use ``TxtFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -228,4 +230,5 @@ def write(
     int
         Number of records written.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _TXT_HANDLER.write(coerce_path(path), data)

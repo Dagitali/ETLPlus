@@ -52,7 +52,7 @@ class TestIni(
         path: Path,
     ) -> None:
         """Assert INI write contract via read-back normalization."""
-        reloaded = mod.read(path)
+        reloaded = mod.IniFile().read(path)
         assert isinstance(reloaded, dict)
         assert reloaded['DEFAULT'] == {'shared': 'base', 'timeout': '5'}
         assert reloaded['alpha'] == {'value': '1'}
@@ -67,7 +67,7 @@ class TestIni(
             TypeError,
             match='INI DEFAULT section must be a dict',
         ):
-            mod.write(path, {'DEFAULT': 'nope'})
+            mod.IniFile().write(path, {'DEFAULT': 'nope'})
 
     def test_write_rejects_non_dict_section(
         self,
@@ -76,4 +76,4 @@ class TestIni(
         path = self.format_path(tmp_path, stem='config')
 
         with pytest.raises(TypeError, match='INI sections must map to dicts'):
-            mod.write(path, {'alpha': 'nope'})
+            mod.IniFile().write(path, {'alpha': 'nope'})

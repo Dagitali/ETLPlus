@@ -27,6 +27,7 @@ from ._io import coerce_path
 from ._io import coerce_record_payload
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -178,7 +179,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return MsgPack content from *path*.
+    Deprecated wrapper. Use ``MsgpackFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -190,6 +191,7 @@ def read(
     JSONData
         The structured data read from the MsgPack file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _MSGPACK_HANDLER.read(coerce_path(path))
 
 
@@ -198,7 +200,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MsgPack at *path* and return record count.
+    Deprecated wrapper. Use ``MsgpackFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -213,4 +215,5 @@ def write(
     int
         The number of rows written to the MsgPack file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _MSGPACK_HANDLER.write(coerce_path(path), data)

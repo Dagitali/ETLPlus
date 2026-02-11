@@ -77,10 +77,10 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         path = self.format_path(tmp_path)
         payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
 
-        written = mod.write(path, payload)
+        written = mod.SqliteFile().write(path, payload)
 
         assert written == 2
-        assert mod.read(path) == payload
+        assert mod.SqliteFile().read(path) == payload
 
     def test_write_table_returns_zero_for_rows_without_columns(self) -> None:
         """Test write_table short-circuiting records with no columns."""

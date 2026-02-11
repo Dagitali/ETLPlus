@@ -7,7 +7,7 @@ and writing data files.
 - Defines many formats in `FileFormat`; read/write support varies by format
 - Includes helpers for inferring file format and compression from filenames, extensions, or MIME
   types
-- Exposes a `File` class with instance methods for reading and writing data
+- Exposes format handler classes (for example, `CsvFile`, `JsonFile`) as the primary read/write path
 
 Some formats require optional dependencies. Install with:
 
@@ -18,13 +18,13 @@ pip install -e ".[file]"
 Back to project overview: see the top-level [README](../../README.md).
 
 - [`etlplus.file` Subpackage](#etlplusfile-subpackage)
-  - [Handler Architecture](#handler-architecture)
   - [Supported File Formats](#supported-file-formats)
+  - [Handler Architecture](#handler-architecture)
   - [Inferring File Format and Compression](#inferring-file-format-and-compression)
   - [Reading and Writing Files](#reading-and-writing-files)
-    - [Reading a File](#reading-a-file)
-    - [Writing a File](#writing-a-file)
-  - [File Instance Methods](#file-instance-methods)
+    - [Reading with a Handler](#reading-with-a-handler)
+    - [Writing with a Handler](#writing-with-a-handler)
+  - [Handler Instance Methods](#handler-instance-methods)
   - [Example: Reading and Writing](#example-reading-and-writing)
   - [See Also](#see-also)
 
@@ -99,7 +99,9 @@ Category contracts include:
 - Archive wrappers (`ArchiveWrapperFileHandlerABC`)
 - Placeholder stubs (`StubFileHandlerABC`)
 
-Format dispatch is registry-driven via explicit format-to-handler mappings.
+Format dispatch is registry-driven via explicit format-to-handler mappings. Module-level
+`etlplus.file.<format>.read()` and `write()` wrappers are deprecated compatibility shims.
+Documentation examples intentionally use handler instance methods only.
 
 ## Inferring File Format and Compression
 
@@ -109,33 +111,31 @@ compression_format)`.
 
 ## Reading and Writing Files
 
-The main entry point for file operations is the `File` class. To read or write files:
-
-### Reading a File
+### Reading with a Handler
 
 ```python
-from etlplus.file import File
+from pathlib import Path
+from etlplus.file.csv import CsvFile
 
-f = File("data/sample.csv")
-data = f.read()
+rows = CsvFile().read(Path("data/sample.csv"))
 ```
 
-- The `read()` method automatically detects the format and compression.
+- The handler `read()` method parses the format-specific payload.
 - Returns parsed data (e.g., list of dicts for tabular formats).
 
-### Writing a File
+### Writing with a Handler
 
 ```python
-from etlplus.file import File
+from pathlib import Path
+from etlplus.file.json import JsonFile
 
-f = File("output.json")
-f.write(data)
+JsonFile().write(Path("output.json"), data)
 ```
 
-- The `write()` method serializes and writes data in the appropriate format.
+- The handler `write()` method serializes and writes format-specific payloads.
 - Supports the implemented formats listed above.
 
-## File Instance Methods
+## Handler Instance Methods
 
 - `read()`: Reads and parses the file, returning structured data.
 - `write(data)`: Writes structured data to the file in the detected format.
@@ -143,15 +143,12 @@ f.write(data)
 ## Example: Reading and Writing
 
 ```python
-from etlplus.file import File
+from pathlib import Path
+from etlplus.file.csv import CsvFile
+from etlplus.file.json import JsonFile
 
-# Read CSV
-csv_file = File("data.csv")
-rows = csv_file.read()
-
-# Write JSON
-json_file = File("output.json")
-json_file.write(rows)
+rows = CsvFile().read(Path("data.csv"))
+JsonFile().write(Path("output.json"), rows)
 ```
 
 ## See Also

@@ -83,7 +83,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
             path.write_text(text_content, encoding='utf-8')
 
         with pytest.raises(ValueError, match=error_pattern):
-            mod.read(path)
+            mod.GzFile().read(path)
 
     def test_write_inner_bytes_writes_payload(
         self,
@@ -110,4 +110,4 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         path = self.archive_path(tmp_path, stem='payload')
 
         with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.write(path, [{'id': 1}])
+            mod.GzFile().write(path, [{'id': 1}])

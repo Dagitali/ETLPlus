@@ -7,18 +7,10 @@ Class-based file handler registry.
 from __future__ import annotations
 
 import importlib
-import inspect
-import warnings
-from collections.abc import Callable
 from functools import cache
-from pathlib import Path
-from types import ModuleType
 from typing import cast
 
-from ..types import JSONData
 from .base import FileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -99,32 +91,6 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _accepts_root_tag(handler: object) -> bool:
-    """
-    Return True when *handler* supports a ``root_tag`` argument.
-
-    Parameters
-    ----------
-    handler : object
-        Callable to inspect.
-
-    Returns
-    -------
-    bool
-        True if ``root_tag`` is accepted by the handler.
-    """
-    if not callable(handler):
-        return False
-    try:
-        signature = inspect.signature(handler)
-    except (TypeError, ValueError):
-        return False
-    for param in signature.parameters.values():
-        if param.kind is param.VAR_KEYWORD:
-            return True
-    return 'root_tag' in signature.parameters
-
-
 def _coerce_handler_class(
     symbol: object,
     *,
@@ -196,109 +162,12 @@ def _import_symbol(
         ) from err
 
 
-@cache
-def _module_for_format(file_format: FileFormat) -> ModuleType:
-    """
-    Import and return the module for *file_format*.
-
-    Parameters
-    ----------
-    file_format : FileFormat
-        File format enum value.
-
-    Returns
-    -------
-    ModuleType
-        The module implementing IO for the format.
-    """
-    return importlib.import_module(f'{__package__}.{file_format.value}')
-
-
-@cache
-def _module_adapter_class_for_format(
-    file_format: FileFormat,
-) -> type[FileHandlerABC]:
-    """
-    Build a handler class that adapts module-level read/write functions.
-
-    Parameters
-    ----------
-    file_format : FileFormat
-        File format enum value.
-
-    Returns
-    -------
-    type[FileHandlerABC]
-        Handler class wrapping the format module's ``read`` and ``write``
-        callables.
-
-    Raises
-    ------
-    ValueError
-        If required functions are missing.
-    """
-    module = _module_for_format(file_format)
-    reader = getattr(module, 'read', None)
-    writer = getattr(module, 'write', None)
-
-    if not callable(reader):
-        raise ValueError(
-            f'Module {module.__name__!r} does not implement callable read()',
-        )
-    if not callable(writer):
-        raise ValueError(
-            f'Module {module.__name__!r} does not implement callable write()',
-        )
-
-    typed_reader = cast(Callable[[Path], JSONData], reader)
-    typed_writer = cast(Callable[..., int], writer)
-
-    class_name = f'{file_format.value.upper()}ModuleHandler'
-
-    class ModuleHandler(FileHandlerABC):
-        """Auto-generated handler adapter for "{file_format.value}"."""
-
-        format = file_format
-        category = 'module_adapter'
-
-        def read(
-            self,
-            path: Path,
-            *,
-            options: ReadOptions | None = None,
-        ) -> JSONData:
-            _ = options
-            return typed_reader(path)
-
-        def write(
-            self,
-            path: Path,
-            data: JSONData,
-            *,
-            options: WriteOptions | None = None,
-        ) -> int:
-            if _accepts_root_tag(writer):
-                root_tag = (
-                    options.root_tag
-                    if options is not None
-                    else WriteOptions().root_tag
-                )
-                return typed_writer(path, data, root_tag=root_tag)
-            return typed_writer(path, data)
-
-    ModuleHandler.__name__ = class_name
-    ModuleHandler.__qualname__ = class_name
-    return cast(type[FileHandlerABC], ModuleHandler)
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
 @cache
 def get_handler_class(
     file_format: FileFormat,
-    *,
-    allow_module_adapter_fallback: bool = False,
 ) -> type[FileHandlerABC]:
     """
     Resolve a handler class for *file_format*.
@@ -307,10 +176,6 @@ def get_handler_class(
     ----------
     file_format : FileFormat
         File format enum value.
-    allow_module_adapter_fallback : bool, optional
-        Deprecated. Whether to allow legacy module-adapter fallback when no
-        explicit handler mapping exists. Defaults to ``False``.
-
     Returns
     -------
     type[FileHandlerABC]
@@ -329,27 +194,12 @@ def get_handler_class(
             raise ValueError(f'Unsupported format: {file_format}') from err
         return _coerce_handler_class(symbol, file_format=file_format)
 
-    if not allow_module_adapter_fallback:
-        raise ValueError(f'Unsupported format: {file_format}')
-
-    warnings.warn(
-        'allow_module_adapter_fallback=True is deprecated and will be '
-        'removed after explicit handler mappings are finalized.',
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    try:
-        return _module_adapter_class_for_format(file_format)
-    except (ModuleNotFoundError, ValueError) as err:
-        raise ValueError(f'Unsupported format: {file_format}') from err
+    raise ValueError(f'Unsupported format: {file_format}')
 
 
 @cache
 def get_handler(
     file_format: FileFormat,
-    *,
-    allow_module_adapter_fallback: bool = False,
 ) -> FileHandlerABC:
     """
     Return a singleton handler instance for *file_format*.
@@ -358,16 +208,9 @@ def get_handler(
     ----------
     file_format : FileFormat
         File format enum value.
-    allow_module_adapter_fallback : bool, optional
-        Deprecated. Whether to allow legacy module-adapter fallback when no
-        explicit handler mapping exists. Defaults to ``False``.
-
     Returns
     -------
     FileHandlerABC
         Singleton handler instance.
     """
-    return get_handler_class(
-        file_format,
-        allow_module_adapter_fallback=allow_module_adapter_fallback,
-    )()
+    return get_handler_class(file_format)()

@@ -22,8 +22,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class IonFile(StubFileHandlerABC):
+class IonFile(StubSemiStructuredTextFileHandlerABC):
     """
     Stub handler implementation for ION files.
     """
@@ -51,7 +52,7 @@ class IonFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSemiStructuredTextFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -67,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ION content from *path*.
+    Deprecated wrapper. Use ``IonFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -79,6 +80,7 @@ def read(
     JSONList
         The list of dictionaries read from the ION file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _ION_HANDLER.read(coerce_path(path))
 
 
@@ -87,7 +89,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ION at *path* and return record count.
+    Deprecated wrapper. Use ``IonFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -102,4 +104,5 @@ def write(
     int
         The number of rows written to the ION file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _ION_HANDLER.write(coerce_path(path), data)

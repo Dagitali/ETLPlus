@@ -23,6 +23,8 @@ from typing import Protocol
 
 import pytest
 
+from etlplus.file.base import WriteOptions
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
 
@@ -65,10 +67,9 @@ class TableSpec:
 
 
 class FileModule(Protocol):
-    """Protocol for file format modules exposing ``read``/``write`` helpers."""
+    """Protocol for file format modules exposing a singleton handler."""
 
-    read: Callable[..., Any]
-    write: Callable[..., Any]
+    __name__: str
 
 
 class PipelineConfigFactory(Protocol):
@@ -290,17 +291,37 @@ def run_file_smoke(
         Expected exception type for write failures.
     error_match : str | None, optional
         Regex message to assert when ``expect_write_error`` is provided.
+
+    Raises
+    ------
+    TypeError
+        If the payload is of an unexpected type for the file format.
     """
-    write_kwargs = write_kwargs or {}
+    write_kwargs = dict(write_kwargs or {})
+    handlers = [
+        value
+        for name, value in vars(module).items()
+        if name.endswith('_HANDLER')
+    ]
+    assert len(handlers) == 1
+    handler = handlers[0]
+
+    if 'root_tag' in write_kwargs and 'options' not in write_kwargs:
+        root_tag = write_kwargs.pop('root_tag')
+        if not isinstance(root_tag, str):
+            raise TypeError('root_tag must be a string')
+        write_kwargs['options'] = WriteOptions(
+            root_tag=root_tag,
+        )
     try:
         if expect_write_error is not None:
             match = error_match or ''
             with pytest.raises(expect_write_error, match=match):
-                module.write(path, payload, **write_kwargs)
+                handler.write(path, payload, **write_kwargs)
             return
-        written = module.write(path, payload, **write_kwargs)
+        written = handler.write(path, payload, **write_kwargs)
         assert written
-        result = module.read(path)
+        result = handler.read(path)
         assert result
     except ImportError as exc:
         pytest.skip(str(exc))

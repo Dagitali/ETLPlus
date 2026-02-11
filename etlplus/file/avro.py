@@ -31,6 +31,7 @@ from ._imports import get_dependency
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -281,7 +282,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return AVRO content from *path*.
+    Deprecated wrapper. Use ``AvroFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -293,6 +294,7 @@ def read(
     JSONList
         The list of dictionaries read from the AVRO file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _AVRO_HANDLER.read(coerce_path(path))
 
 
@@ -301,7 +303,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to AVRO at *path* and return record count.
+    Deprecated wrapper. Use ``AvroFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -315,4 +317,5 @@ def write(
     int
         Number of records written.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _AVRO_HANDLER.write(coerce_path(path), data)

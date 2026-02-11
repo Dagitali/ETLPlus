@@ -30,6 +30,7 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -223,7 +224,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ORC content from *path*.
+    Deprecated wrapper. Use ``OrcFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -235,6 +236,7 @@ def read(
     JSONList
         The list of dictionaries read from the ORC file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _ORC_HANDLER.read(coerce_path(path))
 
 
@@ -243,7 +245,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ORC at *path* and return record count.
+    Deprecated wrapper. Use ``OrcFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -257,4 +259,5 @@ def write(
     int
         Number of records written.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _ORC_HANDLER.write(coerce_path(path), data)

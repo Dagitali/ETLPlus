@@ -24,6 +24,7 @@ from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import require_str_key
+from ._io import warn_deprecated_module_io
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -177,7 +178,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return PB content from *path*.
+    Deprecated wrapper. Use ``PbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -189,6 +190,7 @@ def read(
     JSONData
         The structured data read from the PB file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _PB_HANDLER.read(coerce_path(path))
 
 
@@ -197,7 +199,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PB at *path* and return record count.
+    Deprecated wrapper. Use ``PbFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -211,4 +213,5 @@ def write(
     int
         The number of records written to the PB file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _PB_HANDLER.write(coerce_path(path), data)

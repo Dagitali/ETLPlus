@@ -149,7 +149,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         path = self.archive_path(tmp_path, stem='payloads')
         _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
 
-        result = mod.read(path)
+        result = mod.ZipFile().read(path)
 
         assert result == {
             'a.json': {'fmt': 'json', 'name': 'a.json'},
@@ -185,7 +185,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         _write_zip(path, entries)
 
         with pytest.raises(ValueError, match=error_pattern):
-            mod.read(path)
+            mod.ZipFile().read(path)
 
     def test_write_raises_on_unexpected_output_compression(
         self,
@@ -197,7 +197,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         path = self.archive_path(tmp_path, stem='payload.json', suffix='gz')
 
         with pytest.raises(ValueError, match='Unexpected compression'):
-            mod.write(path, [{'id': 1}])
+            mod.ZipFile().write(path, [{'id': 1}])
 
     def test_write_inner_bytes_uses_default_member_name(
         self,

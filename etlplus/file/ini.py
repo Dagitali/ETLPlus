@@ -29,6 +29,7 @@ from ._io import coerce_path
 from ._io import read_text
 from ._io import require_dict_payload
 from ._io import stringify_value
+from ._io import warn_deprecated_module_io
 from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
@@ -263,7 +264,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return INI content from *path*.
+    Deprecated wrapper. Use ``IniFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -275,6 +276,7 @@ def read(
     JSONData
         The structured data read from the INI file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _INI_HANDLER.read(coerce_path(path))
 
 
@@ -283,7 +285,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to INI at *path* and return record count.
+    Deprecated wrapper. Use ``IniFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -297,4 +299,5 @@ def write(
     int
         The number of records written to the INI file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _INI_HANDLER.write(coerce_path(path), data)

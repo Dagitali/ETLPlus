@@ -18,16 +18,12 @@ from etlplus.file import stub as mod
 class TestStubReadWrite:
     """Unit tests for :mod:`etlplus.file.stub` functions."""
 
-    def test_module_level_helpers_raise_not_implemented(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test module-level helper functions raising NotImplementedError."""
-        path = tmp_path / 'data.stub'
-        with pytest.raises(NotImplementedError, match='Stubbed read'):
-            mod.read(path)
-        with pytest.raises(NotImplementedError, match='Stubbed write'):
-            mod.write(path, [{'id': 1}])
+    def test_raise_not_implemented_supports_custom_format_name(self) -> None:
+        """Test custom format names in placeholder error messages."""
+        with pytest.raises(NotImplementedError, match='MAT read'):
+            mod._raise_not_implemented('read', format_name='MAT')
+        with pytest.raises(NotImplementedError, match='MAT write'):
+            mod._raise_not_implemented('write', format_name='MAT')
 
     def test_read_raises_not_implemented(
         self,

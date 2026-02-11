@@ -23,8 +23,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
+from ._stub_categories import StubEmbeddedDatabaseFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +42,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class AccdbFile(StubFileHandlerABC):
+class AccdbFile(StubEmbeddedDatabaseFileHandlerABC):
     """
     Stub handler implementation for ACCDB files.
     """
@@ -52,7 +53,7 @@ class AccdbFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubEmbeddedDatabaseFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -68,7 +69,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ACCDB content from *path*.
+    Deprecated wrapper. Use ``AccdbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -80,6 +81,7 @@ def read(
     JSONList
         The list of dictionaries read from the ACCDB file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _ACCDB_HANDLER.read(coerce_path(path))
 
 
@@ -88,7 +90,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ACCDB at *path* and return record count.
+    Deprecated wrapper. Use ``AccdbFile().write(...)`` instead.
 
     Parameters
     ----------
@@ -103,4 +105,5 @@ def write(
     int
         The number of rows written to the ACCDB file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _ACCDB_HANDLER.write(coerce_path(path), data)
