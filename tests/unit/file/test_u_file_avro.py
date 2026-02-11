@@ -60,17 +60,28 @@ class _FastAvroStub:
 class TestAvroHandlerClass:
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
 
-    def test_dumps_bytes_returns_empty_for_empty_payload(
+    @pytest.mark.parametrize(
+        ('operation', 'expected'),
+        [('dumps_bytes', b''), ('write', 0)],
+        ids=['dumps_bytes_empty', 'write_empty'],
+    )
+    def test_empty_payload_short_circuits(
         self,
+        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+        expected: bytes | int,
     ) -> None:
-        """Test empty payload serialization short-circuiting to bytes."""
+        """
+        Test empty payload operations short-circuiting without dependency.
+        """
         handler = mod.AvroFile()
         patch_dependency_resolver_unreachable(monkeypatch, mod)
-
-        payload = handler.dumps_bytes([])
-
-        assert payload == b''
+        if operation == 'dumps_bytes':
+            result: bytes | int = handler.dumps_bytes([])
+        else:
+            result = handler.write(tmp_path / 'sample.avro', [])
+        assert result == expected
 
     def test_dumps_and_loads_bytes(
         self,
@@ -93,20 +104,6 @@ class TestAvroHandlerClass:
     def test_format_constant(self) -> None:
         """Test :class:`AvroFile` exposing the expected format enum."""
         assert mod.AvroFile.format is FileFormat.AVRO
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test file writes short-circuiting on empty payloads."""
-        handler = mod.AvroFile()
-        patch_dependency_resolver_unreachable(monkeypatch, mod)
-        path = tmp_path / 'sample.avro'
-
-        written = handler.write(path, [])
-
-        assert written == 0
 
 
 class TestAvroHelpers:

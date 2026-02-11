@@ -18,8 +18,6 @@ import pytest
 import etlplus.file as file_pkg
 from etlplus.file import FileFormat
 from etlplus.file import registry as mod
-from etlplus.file.arrow import ArrowFile
-from etlplus.file.avro import AvroFile
 from etlplus.file.base import ArchiveWrapperFileHandlerABC
 from etlplus.file.base import BinarySerializationFileHandlerABC
 from etlplus.file.base import ColumnarFileHandlerABC
@@ -34,28 +32,7 @@ from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.base import WriteOptions
-from etlplus.file.dta import DtaFile
-from etlplus.file.duckdb import DuckdbFile
-from etlplus.file.feather import FeatherFile
-from etlplus.file.fwf import FwfFile
-from etlplus.file.json import JsonFile
-from etlplus.file.mat import MatFile
-from etlplus.file.nc import NcFile
-from etlplus.file.ods import OdsFile
-from etlplus.file.orc import OrcFile
-from etlplus.file.parquet import ParquetFile
-from etlplus.file.rda import RdaFile
-from etlplus.file.rds import RdsFile
-from etlplus.file.sas7bdat import Sas7bdatFile
-from etlplus.file.sav import SavFile
-from etlplus.file.sqlite import SqliteFile
 from etlplus.file.stub import StubFileHandlerABC
-from etlplus.file.sylk import SylkFile
-from etlplus.file.txt import TxtFile
-from etlplus.file.xlsm import XlsmFile
-from etlplus.file.xlsx import XlsxFile
-from etlplus.file.xpt import XptFile
-from etlplus.file.zsav import ZsavFile
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -145,31 +122,31 @@ _ABC_CASES: list[tuple[FileFormat, type[object]]] = [
     (FileFormat.XLS, ReadOnlySpreadsheetFileHandlerABC),
 ]
 
-_MAPPED_CLASS_CASES: list[tuple[FileFormat, type[object]]] = [
-    (FileFormat.AVRO, AvroFile),
-    (FileFormat.ARROW, ArrowFile),
-    (FileFormat.DTA, DtaFile),
-    (FileFormat.DUCKDB, DuckdbFile),
-    (FileFormat.FEATHER, FeatherFile),
-    (FileFormat.FWF, FwfFile),
-    (FileFormat.JSON, JsonFile),
-    (FileFormat.MAT, MatFile),
-    (FileFormat.NC, NcFile),
-    (FileFormat.ODS, OdsFile),
-    (FileFormat.ORC, OrcFile),
-    (FileFormat.PARQUET, ParquetFile),
-    (FileFormat.RDA, RdaFile),
-    (FileFormat.RDS, RdsFile),
-    (FileFormat.SAS7BDAT, Sas7bdatFile),
-    (FileFormat.SAV, SavFile),
-    (FileFormat.SQLITE, SqliteFile),
-    (FileFormat.SYLK, SylkFile),
-    (FileFormat.TXT, TxtFile),
-    (FileFormat.XLSM, XlsmFile),
-    (FileFormat.XLSX, XlsxFile),
-    (FileFormat.XPT, XptFile),
-    (FileFormat.ZSAV, ZsavFile),
-]
+_MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
+    FileFormat.AVRO,
+    FileFormat.ARROW,
+    FileFormat.DTA,
+    FileFormat.DUCKDB,
+    FileFormat.FEATHER,
+    FileFormat.FWF,
+    FileFormat.JSON,
+    FileFormat.MAT,
+    FileFormat.NC,
+    FileFormat.ODS,
+    FileFormat.ORC,
+    FileFormat.PARQUET,
+    FileFormat.RDA,
+    FileFormat.RDS,
+    FileFormat.SAS7BDAT,
+    FileFormat.SAV,
+    FileFormat.SQLITE,
+    FileFormat.SYLK,
+    FileFormat.TXT,
+    FileFormat.XLSM,
+    FileFormat.XLSX,
+    FileFormat.XPT,
+    FileFormat.ZSAV,
+)
 
 _PLACEHOLDER_SPEC_CASES: list[tuple[FileFormat, str]] = [
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
@@ -198,6 +175,22 @@ def _clear_registry_caches() -> None:
         mod._module_for_format,
     ):
         cacheable.cache_clear()
+
+
+def _expected_handler_class(file_format: FileFormat) -> type[object]:
+    """Return the expected class for one mapped format from registry specs."""
+    spec = mod._HANDLER_CLASS_SPECS[file_format]
+    return _import_handler_class_from_spec(spec)
+
+
+def _import_handler_class_from_spec(spec: str) -> type[object]:
+    """Import one handler class from a ``module:symbol`` spec string."""
+    module_name, _, symbol_name = spec.partition(':')
+    module = importlib.import_module(module_name)
+    symbol = getattr(module, symbol_name)
+    if not isinstance(symbol, type):
+        raise TypeError(f'Expected class for spec {spec!r}')
+    return symbol
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -234,10 +227,9 @@ class TestRegistryAbcConformance:
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
 
-    singleton_format = FileFormat.JSON
-    singleton_class = JsonFile
-
     # pylint: disable=protected-access
+
+    singleton_format = FileFormat.JSON
 
     def test_explicit_for_implemented_formats(self) -> None:
         """Test implemented handler class formats being explicitly mapped."""
@@ -269,26 +261,24 @@ class TestRegistryMappedResolution:
             )
             assert mapped_class.format == file_format
 
-    @pytest.mark.parametrize(
-        ('file_format', 'expected_class'),
-        _MAPPED_CLASS_CASES,
-    )
+    @pytest.mark.parametrize('file_format', _MAPPED_CLASS_FORMATS)
     def test_get_handler_class_uses_mapped_class(
         self,
         file_format: FileFormat,
-        expected_class: type[object],
     ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
+        expected_class = _expected_handler_class(file_format)
         handler_class = mod.get_handler_class(file_format)
         assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
+        expected_class = _expected_handler_class(self.singleton_format)
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
         assert first is second
-        assert isinstance(first, self.singleton_class)
+        assert first.__class__ is expected_class
 
     @pytest.mark.parametrize(
         ('file_format', 'expected_spec'),
