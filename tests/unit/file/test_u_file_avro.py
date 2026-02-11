@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.file.avro`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,9 @@ from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import patch_dependency_resolver_unreachable
 
 # SECTION: HELPERS ========================================================== #
+
+
+_TYPE_ERROR_PATTERN = 'AVRO payloads must contain'
 
 
 class _FastAvroStub:
@@ -143,13 +147,22 @@ class TestAvroHelpers:
         """
         assert mod._infer_value_type(value) == expected
 
-    def test_infer_value_type_rejects_complex(self) -> None:
-        """
-        Test that :func:`_infer_value_type` raises for unsupported complex
-        types.
-        """
-        with pytest.raises(TypeError, match='AVRO payloads must contain'):
-            mod._infer_value_type({'bad': 'value'})
+    @pytest.mark.parametrize(
+        ('operation', 'payload'),
+        [
+            (mod._infer_value_type, {'bad': 'value'}),
+            (mod._infer_schema, [{'bad': {'nested': True}}]),
+        ],
+        ids=['infer_value_type_complex', 'infer_schema_nested'],
+    )
+    def test_infer_helpers_reject_invalid_payloads(
+        self,
+        operation: Callable[[object], object],
+        payload: object,
+    ) -> None:
+        """Test infer helpers raising for unsupported complex payloads."""
+        with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
+            operation(payload)
 
     def test_merge_types_orders_null_first(self) -> None:
         """
@@ -160,11 +173,6 @@ class TestAvroHelpers:
         merged = mod._merge_types(types)
 
         assert merged == ['null', 'long', 'string']
-
-    def test_infer_schema_rejects_nested_values(self) -> None:
-        """Test that :func:`_infer_schema` raises for nested values."""
-        with pytest.raises(TypeError, match='AVRO payloads must contain'):
-            mod._infer_schema([{'bad': {'nested': True}}])
 
     def test_infer_schema_builds_fields(self) -> None:
         """Test that :func:`_infer_schema` builds expected fields."""

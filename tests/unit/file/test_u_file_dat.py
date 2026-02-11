@@ -14,7 +14,6 @@ from __future__ import annotations
 import csv
 from collections.abc import Callable
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -54,7 +53,7 @@ def _patch_sniff(
     monkeypatch.setattr(
         mod,
         '_sniff',
-        lambda *_args, **_kwargs: (cast(csv.Dialect, dialect), has_header),
+        lambda *_args, **_kwargs: (dialect, has_header),
     )
 
 

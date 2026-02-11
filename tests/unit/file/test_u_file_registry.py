@@ -335,11 +335,7 @@ class TestRegistryFallbackPolicy:
 
         self._remove_fallback_mapping(monkeypatch)
         fake_module = SimpleNamespace(read=_read, write=_write)
-        monkeypatch.setattr(
-            mod,
-            '_module_for_format',
-            lambda _fmt: fake_module,
-        )
+        self._patch_module_loader(monkeypatch, lambda _fmt: fake_module)
 
         with pytest.warns(DeprecationWarning, match='deprecated'):
             handler_class = mod.get_handler_class(
@@ -385,11 +381,15 @@ class TestRegistryFallbackPolicy:
             raise ModuleNotFoundError('missing test module')
 
         self._remove_fallback_mapping(monkeypatch)
-        monkeypatch.setattr(
-            mod,
-            '_module_for_format',
-            _raise_module_not_found,
-        )
+        self._patch_module_loader(monkeypatch, _raise_module_not_found)
 
         with pytest.raises(ModuleNotFoundError, match='missing test module'):
             mod._module_adapter_class_for_format(self.fallback_format)
+
+    @staticmethod
+    def _patch_module_loader(
+        monkeypatch: pytest.MonkeyPatch,
+        loader: object,
+    ) -> None:
+        """Patch ``_module_for_format`` with a deterministic loader."""
+        monkeypatch.setattr(mod, '_module_for_format', loader)
