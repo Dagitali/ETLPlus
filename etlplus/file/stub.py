@@ -47,6 +47,16 @@ class StubFileHandlerABC(FileHandlerABC):
     format: ClassVar[FileFormat]
     category: ClassVar[str] = 'placeholder_stub'
 
+    # -- Internal Instance Methods -- #
+
+    def _stub_path(
+        self,
+    ) -> Path:
+        """
+        Build a deterministic path used by non-path stub helper methods.
+        """
+        return Path(f'ignored.{self.format.value}')
+
     # -- Instance Methods -- #
 
     def read(
@@ -98,7 +108,26 @@ def _raise_not_implemented(
     *,
     format_name: str,
 ) -> Never:
-    """Raise standardized placeholder NotImplementedError messages."""
+    """
+    Raise standardized placeholder NotImplementedError messages.
+
+    Parameters
+    ----------
+    operation : str
+        The operation being attempted (e.g., 'read' or 'write').
+    format_name : str
+        Human-readable format name.
+
+    Returns
+    -------
+    Never
+
+    Raises
+    ------
+    NotImplementedError
+        Always raised with a message indicating the unsupported operation and
+        format.
+    """
     raise NotImplementedError(
         f'{format_name} {operation} is not implemented yet',
     )
@@ -125,13 +154,6 @@ def read(
     -------
     JSONList
         The list of dictionaries read from the stubbed file.
-
-    Raises
-    ------
-    DeprecationWarning
-        Always, since module-level wrappers are deprecated.
-    NotImplementedError
-        Always, since STUB is a placeholder implementation.
     """
     path = coerce_path(path)
     warnings.warn(
@@ -167,13 +189,6 @@ def write(
     -------
     int
         The number of rows written to the stubbed file.
-
-    Raises
-    ------
-    DeprecationWarning
-        Always, since module-level wrappers are deprecated.
-    NotImplementedError
-        Always, since STUB is a placeholder implementation.
     """
     path = coerce_path(path)
     warnings.warn(
