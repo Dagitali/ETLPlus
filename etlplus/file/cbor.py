@@ -23,11 +23,11 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import StrPath
 from ._imports import get_dependency
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import coerce_record_payload
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -191,8 +191,11 @@ def read(
     JSONData
         The structured data read from the CBOR file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _CBOR_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _CBOR_HANDLER.read,
+    )
 
 
 def write(
@@ -215,5 +218,9 @@ def write(
     int
         The number of rows written to the CBOR file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _CBOR_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _CBOR_HANDLER.write,
+    )

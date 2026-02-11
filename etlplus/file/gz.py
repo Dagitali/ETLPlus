@@ -13,9 +13,9 @@ from ..types import JSONData
 from ..types import StrPath
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import warn_deprecated_module_io
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -221,8 +221,11 @@ def read(
     JSONData
         Parsed payload.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _GZ_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _GZ_HANDLER.read,
+    )
 
 
 def write(
@@ -244,5 +247,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _GZ_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _GZ_HANDLER.write,
+    )

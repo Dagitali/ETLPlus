@@ -25,8 +25,8 @@ from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import warn_deprecated_module_io
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -161,8 +161,11 @@ def read(
     JSONList
         The list of dictionaries read from the SAS7BDAT file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _SAS7BDAT_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _SAS7BDAT_HANDLER.read,
+    )
 
 
 def write(
@@ -185,5 +188,9 @@ def write(
     int
         Never returns normally.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _SAS7BDAT_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _SAS7BDAT_HANDLER.write,
+    )

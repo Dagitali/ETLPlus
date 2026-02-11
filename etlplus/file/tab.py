@@ -25,10 +25,10 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import normalize_records
 from ._io import read_delimited
-from ._io import warn_deprecated_module_io
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -196,8 +196,11 @@ def read(
     JSONList
         The list of dictionaries read from the TAB file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _TAB_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _TAB_HANDLER.read,
+    )
 
 
 def write(
@@ -220,5 +223,9 @@ def write(
     int
         The number of rows written to the TAB file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _TAB_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _TAB_HANDLER.write,
+    )
