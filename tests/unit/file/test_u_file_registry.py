@@ -10,8 +10,6 @@ import importlib
 import inspect
 import pkgutil
 from collections.abc import Iterator
-from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -31,7 +29,6 @@ from etlplus.file.base import SemiStructuredTextFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
-from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -116,8 +113,6 @@ _ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = tuple(
 _CACHEABLES = (
     mod.get_handler,
     mod.get_handler_class,
-    mod._module_adapter_class_for_format,
-    mod._module_for_format,
 )
 
 _MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
@@ -277,8 +272,8 @@ class TestRegistryMappedResolution:
         assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
 
 
-class TestRegistryFallbackPolicy:
-    """Unit tests for registry fallback/deprecation and strict policies."""
+class TestRegistryStrictPolicy:
+    """Unit tests for strict explicit-map registry behavior."""
 
     fallback_format = FileFormat.GZ
 
@@ -288,92 +283,28 @@ class TestRegistryFallbackPolicy:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Remove the explicit class mapping for fallback tests."""
+        """Remove one explicit class mapping for strict-policy tests."""
         monkeypatch.delitem(
             mod._HANDLER_CLASS_SPECS,
             self.fallback_format,
             raising=False,
         )
 
-    def test_deprecated_fallback_builds_module_adapter_and_delegates_calls(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test deprecated fallback building an adapter and delegating I/O."""
-        calls: dict[str, object] = {}
-
-        def _read(path: Path) -> dict[str, object]:
-            calls['read_path'] = path
-            return {'ok': True}
-
-        def _write(
-            path: Path,
-            data: object,
-            *,
-            root_tag: str = 'root',
-        ) -> int:
-            calls['write_path'] = path
-            calls['write_data'] = data
-            calls['root_tag'] = root_tag
-            return 7
-
-        self._remove_fallback_mapping(monkeypatch)
-        fake_module = SimpleNamespace(read=_read, write=_write)
-        self._patch_module_loader(monkeypatch, lambda _fmt: fake_module)
-
-        with pytest.warns(DeprecationWarning, match='deprecated'):
-            handler_class = mod.get_handler_class(
-                self.fallback_format,
-                allow_module_adapter_fallback=True,
-            )
-
-        assert issubclass(handler_class, FileHandlerABC)
-        assert handler_class.category == 'module_adapter'
-
-        handler = handler_class()
-        path = Path('payload.gz')
-        assert handler.read(path) == {'ok': True}
-        written = handler.write(
-            path,
-            {'row': 1},
-            options=WriteOptions(root_tag='records'),
-        )
-
-        assert written == 7
-        assert calls['read_path'] == path
-        assert calls['write_path'] == path
-        assert calls['write_data'] == {'row': 1}
-        assert calls['root_tag'] == 'records'
-
     def test_get_handler_class_raises_without_explicit_mapping(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test strict mode rejecting unmapped formats by default."""
+        """Test strict mode rejecting unmapped formats for class lookup."""
         self._remove_fallback_mapping(monkeypatch)
 
         with pytest.raises(ValueError, match='Unsupported format'):
             mod.get_handler_class(self.fallback_format)
 
-    def test_module_adapter_builder_raises_for_missing_module(
+    def test_get_handler_raises_without_explicit_mapping(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test module-adapter builder raising when module import fails."""
-
-        def _raise_module_not_found(_file_format: FileFormat) -> object:
-            raise ModuleNotFoundError('missing test module')
-
+        """Test strict mode rejecting unmapped formats for instance lookup."""
         self._remove_fallback_mapping(monkeypatch)
-        self._patch_module_loader(monkeypatch, _raise_module_not_found)
-
-        with pytest.raises(ModuleNotFoundError, match='missing test module'):
-            mod._module_adapter_class_for_format(self.fallback_format)
-
-    @staticmethod
-    def _patch_module_loader(
-        monkeypatch: pytest.MonkeyPatch,
-        loader: object,
-    ) -> None:
-        """Patch ``_module_for_format`` with a deterministic loader."""
-        monkeypatch.setattr(mod, '_module_for_format', loader)
+        with pytest.raises(ValueError, match='Unsupported format'):
+            mod.get_handler(self.fallback_format)
