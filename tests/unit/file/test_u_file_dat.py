@@ -43,6 +43,17 @@ def _make_dialect(delimiter: str) -> csv.Dialect:
     return dialect_type()
 
 
+def _write_fixture_file(
+    tmp_path: Path,
+    filename: str,
+    content: str,
+) -> Path:
+    """Create a fixture file in ``tmp_path`` and return its path."""
+    path = tmp_path / filename
+    path.write_text(content, encoding='utf-8')
+    return path
+
+
 class _StubSniffer:
     """
     Simple sniffer stub for deterministic :func:`etlplus.file.dat._sniff`
@@ -157,8 +168,11 @@ class TestDat:
             dialect=_make_dialect('|'),
             has_header=False,
         )
-        path = tmp_path / 'custom_sniffer.dat'
-        path.write_text('1|alice\n2|bob\n', encoding='utf-8')
+        path = _write_fixture_file(
+            tmp_path,
+            'custom_sniffer.dat',
+            '1|alice\n2|bob\n',
+        )
 
         result = handler.read(
             path,
@@ -177,8 +191,7 @@ class TestDat:
         tmp_path: Path,
     ) -> None:
         """Test reading empty input returning an empty list."""
-        path = tmp_path / 'empty.dat'
-        path.write_text('', encoding='utf-8')
+        path = _write_fixture_file(tmp_path, 'empty.dat', '')
 
         assert not mod.read(path)
 
@@ -218,8 +231,7 @@ class TestDat:
             '_sniff',
             lambda *_args, **_kwargs: (csv.get_dialect('excel'), has_header),
         )
-        path = tmp_path / filename
-        path.write_text(content, encoding='utf-8')
+        path = _write_fixture_file(tmp_path, filename, content)
 
         assert mod.read(path) == expected
 
@@ -231,10 +243,10 @@ class TestDat:
         Test that rows shorter than the header are padded with ``None`` and
         extra fields beyond the header are ignored.
         """
-        path = tmp_path / 'ragged.dat'
-        path.write_text(
+        path = _write_fixture_file(
+            tmp_path,
+            'ragged.dat',
             'a,b,c\n1,2\n3,4,5,6\n',
-            encoding='utf-8',
         )
 
         assert mod.read(path) == [
@@ -270,8 +282,7 @@ class TestDat:
             lambda *_args, **_kwargs: (dialect, True),
         )
 
-        path = tmp_path / filename
-        path.write_text(content, encoding='utf-8')
+        path = _write_fixture_file(tmp_path, filename, content)
 
         assert mod.read(path) == [{'a': '1', 'b': '2'}]
 
