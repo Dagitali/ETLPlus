@@ -18,8 +18,8 @@ pip install -e ".[file]"
 Back to project overview: see the top-level [README](../../README.md).
 
 - [`etlplus.file` Subpackage](#etlplusfile-subpackage)
-  - [Handler Architecture](#handler-architecture)
   - [Supported File Formats](#supported-file-formats)
+  - [Handler Architecture](#handler-architecture)
   - [Inferring File Format and Compression](#inferring-file-format-and-compression)
   - [Reading and Writing Files](#reading-and-writing-files)
     - [Reading a File](#reading-a-file)
@@ -99,7 +99,9 @@ Category contracts include:
 - Archive wrappers (`ArchiveWrapperFileHandlerABC`)
 - Placeholder stubs (`StubFileHandlerABC`)
 
-Format dispatch is registry-driven via explicit format-to-handler mappings.
+Format dispatch is registry-driven via explicit format-to-handler mappings. Module-level
+`etlplus.file.<format>.read()` and `write()` wrappers are deprecated; prefer handler instance
+methods (or `File(...).read()/write()`).
 
 ## Inferring File Format and Compression
 
