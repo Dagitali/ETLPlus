@@ -66,14 +66,17 @@ class TestAvroHandlerClass:
 
     @pytest.mark.parametrize(
         ('operation', 'expected'),
-        [('dumps_bytes', b''), ('write', 0)],
+        [
+            (lambda h, _path: h.dumps_bytes([]), b''),
+            (lambda h, path: h.write(path, []), 0),
+        ],
         ids=['dumps_bytes_empty', 'write_empty'],
     )
     def test_empty_payload_short_circuits(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        operation: str,
+        operation: Callable[[mod.AvroFile, Path], bytes | int],
         expected: bytes | int,
     ) -> None:
         """
@@ -81,10 +84,7 @@ class TestAvroHandlerClass:
         """
         handler = mod.AvroFile()
         patch_dependency_resolver_unreachable(monkeypatch, mod)
-        if operation == 'dumps_bytes':
-            result: bytes | int = handler.dumps_bytes([])
-        else:
-            result = handler.write(tmp_path / 'sample.avro', [])
+        result = operation(handler, tmp_path / 'sample.avro')
         assert result == expected
 
     def test_dumps_and_loads_bytes(

@@ -37,7 +37,7 @@ from etlplus.file.stub import StubFileHandlerABC
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_ABC_CASES: list[tuple[FileFormat, type[object]]] = [
+_ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = (
     # Delimited text
     (FileFormat.CSV, DelimitedTextFileHandlerABC),
     (FileFormat.DAT, DelimitedTextFileHandlerABC),
@@ -120,7 +120,7 @@ _ABC_CASES: list[tuple[FileFormat, type[object]]] = [
     (FileFormat.XLS, ReadOnlyFileHandlerABC),
     # Read-only spreadsheets
     (FileFormat.XLS, ReadOnlySpreadsheetFileHandlerABC),
-]
+)
 
 _MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
     FileFormat.AVRO,
@@ -148,7 +148,7 @@ _MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
     FileFormat.ZSAV,
 )
 
-_PLACEHOLDER_SPEC_CASES: list[tuple[FileFormat, str]] = [
+_PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
     (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
     (FileFormat.CONF, 'etlplus.file.conf:ConfFile'),
@@ -162,7 +162,7 @@ _PLACEHOLDER_SPEC_CASES: list[tuple[FileFormat, str]] = [
     (FileFormat.PBF, 'etlplus.file.pbf:PbfFile'),
     (FileFormat.VM, 'etlplus.file.vm:VmFile'),
     (FileFormat.WKS, 'etlplus.file.wks:WksFile'),
-]
+)
 
 
 def _clear_registry_caches() -> None:
