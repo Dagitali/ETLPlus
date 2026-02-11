@@ -249,7 +249,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return BSON content from *path*.
+    Deprecated wrapper. Use ``BsonFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -270,7 +270,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to BSON at *path* and return record count.
+    Deprecated wrapper. Use ``BsonFile().write(...)`` instead.
 
     Parameters
     ----------

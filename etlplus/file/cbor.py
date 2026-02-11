@@ -179,7 +179,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return CBOR content from *path*.
+    Deprecated wrapper. Use ``CborFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -200,7 +200,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CBOR at *path* and return record count.
+    Deprecated wrapper. Use ``CborFile().write(...)`` instead.
 
     Parameters
     ----------

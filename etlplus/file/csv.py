@@ -182,7 +182,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return CSV content from *path*.
+    Deprecated wrapper. Use ``CsvFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -203,7 +203,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CSV at *path* and return record count.
+    Deprecated wrapper. Use ``CsvFile().write(...)`` instead.
 
     Parameters
     ----------

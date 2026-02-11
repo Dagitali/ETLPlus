@@ -201,7 +201,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read DTA content from *path*.
+    Deprecated wrapper. Use ``DtaFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -222,7 +222,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to DTA file at *path* and return record count.
+    Deprecated wrapper. Use ``DtaFile().write(...)`` instead.
 
     Parameters
     ----------

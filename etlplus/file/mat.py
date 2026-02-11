@@ -65,7 +65,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read MAT content from *path*.
+    Deprecated wrapper. Use ``MatFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -86,7 +86,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MAT file at *path* and return record count.
+    Deprecated wrapper. Use ``MatFile().write(...)`` instead.
 
     Parameters
     ----------

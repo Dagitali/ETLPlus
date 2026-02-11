@@ -183,7 +183,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return TSV content from *path*.
+    Deprecated wrapper. Use ``TsvFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -204,7 +204,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TSV at *path* and return record count.
+    Deprecated wrapper. Use ``TsvFile().write(...)`` instead.
 
     Parameters
     ----------

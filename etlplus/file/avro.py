@@ -282,7 +282,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return AVRO content from *path*.
+    Deprecated wrapper. Use ``AvroFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -303,7 +303,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to AVRO at *path* and return record count.
+    Deprecated wrapper. Use ``AvroFile().write(...)`` instead.
 
     Parameters
     ----------

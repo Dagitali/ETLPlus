@@ -68,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ION content from *path*.
+    Deprecated wrapper. Use ``IonFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -89,7 +89,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ION at *path* and return record count.
+    Deprecated wrapper. Use ``IonFile().write(...)`` instead.
 
     Parameters
     ----------

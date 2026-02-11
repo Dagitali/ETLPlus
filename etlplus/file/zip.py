@@ -337,7 +337,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read ZIP content from *path* and parse the inner payload(s).
+    Deprecated wrapper. Use ``ZipFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -358,7 +358,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ZIP at *path* and return record count.
+    Deprecated wrapper. Use ``ZipFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -178,7 +178,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return PB content from *path*.
+    Deprecated wrapper. Use ``PbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -199,7 +199,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PB at *path* and return record count.
+    Deprecated wrapper. Use ``PbFile().write(...)`` instead.
 
     Parameters
     ----------

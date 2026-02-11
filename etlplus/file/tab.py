@@ -184,7 +184,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return TAB content from *path*.
+    Deprecated wrapper. Use ``TabFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -205,7 +205,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TAB at *path* and return record count.
+    Deprecated wrapper. Use ``TabFile().write(...)`` instead.
 
     Parameters
     ----------

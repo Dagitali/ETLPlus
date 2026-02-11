@@ -239,7 +239,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read NC content from *path*.
+    Deprecated wrapper. Use ``NcFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -260,7 +260,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NC file at *path* and return record count.
+    Deprecated wrapper. Use ``NcFile().write(...)`` instead.
 
     Parameters
     ----------

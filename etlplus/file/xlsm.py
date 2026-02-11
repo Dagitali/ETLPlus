@@ -220,7 +220,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return XLSM content from *path*.
+    Deprecated wrapper. Use ``XlsmFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -241,7 +241,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to XLSM at *path* and return record count.
+    Deprecated wrapper. Use ``XlsmFile().write(...)`` instead.
 
     Parameters
     ----------

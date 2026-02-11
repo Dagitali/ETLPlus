@@ -264,7 +264,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return INI content from *path*.
+    Deprecated wrapper. Use ``IniFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -285,7 +285,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to INI at *path* and return record count.
+    Deprecated wrapper. Use ``IniFile().write(...)`` instead.
 
     Parameters
     ----------

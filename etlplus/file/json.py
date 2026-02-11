@@ -181,7 +181,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return JSON content from *path*.
+    Deprecated wrapper. Use ``JsonFile().read(...)`` instead.
 
     Validates that the JSON root is a dict or a list of dicts.
 
@@ -204,7 +204,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to JSON at *path* and return record count.
+    Deprecated wrapper. Use ``JsonFile().write(...)`` instead.
 
     Parameters
     ----------

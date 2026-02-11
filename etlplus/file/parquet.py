@@ -247,7 +247,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return Parquet content from *path*.
+    Deprecated wrapper. Use ``ParquetFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -268,7 +268,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to Parquet at *path* and return record count.
+    Deprecated wrapper. Use ``ParquetFile().write(...)`` instead.
 
     Parameters
     ----------

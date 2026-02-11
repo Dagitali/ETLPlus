@@ -70,7 +70,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return HBS content from *path*.
+    Deprecated wrapper. Use ``HbsFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to HBS at *path* and return record count.
+    Deprecated wrapper. Use ``HbsFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -212,7 +212,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return TOML content from *path*.
+    Deprecated wrapper. Use ``TomlFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -233,7 +233,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TOML at *path* and return record count.
+    Deprecated wrapper. Use ``TomlFile().write(...)`` instead.
 
     Parameters
     ----------

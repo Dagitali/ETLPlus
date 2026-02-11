@@ -205,7 +205,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return FWF content from *path*.
+    Deprecated wrapper. Use ``FwfFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -226,7 +226,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to FWF at *path* and return record count.
+    Deprecated wrapper. Use ``FwfFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -69,7 +69,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return MDB content from *path*.
+    Deprecated wrapper. Use ``MdbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MDB at *path* and return record count.
+    Deprecated wrapper. Use ``MdbFile().write(...)`` instead.
 
     Parameters
     ----------

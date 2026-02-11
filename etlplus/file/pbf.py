@@ -68,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return PBF content from *path*.
+    Deprecated wrapper. Use ``PbfFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -89,7 +89,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PBF at *path* and return record count.
+    Deprecated wrapper. Use ``PbfFile().write(...)`` instead.
 
     Parameters
     ----------

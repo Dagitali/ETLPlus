@@ -224,7 +224,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ORC content from *path*.
+    Deprecated wrapper. Use ``OrcFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -245,7 +245,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ORC at *path* and return record count.
+    Deprecated wrapper. Use ``OrcFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -69,7 +69,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return WKS content from *path*.
+    Deprecated wrapper. Use ``WksFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to WKS at *path* and return record count.
+    Deprecated wrapper. Use ``WksFile().write(...)`` instead.
 
     Parameters
     ----------

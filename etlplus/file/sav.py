@@ -198,7 +198,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read SAV content from *path*.
+    Deprecated wrapper. Use ``SavFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -219,7 +219,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to SAV at *path* and return record count.
+    Deprecated wrapper. Use ``SavFile().write(...)`` instead.
 
     Parameters
     ----------

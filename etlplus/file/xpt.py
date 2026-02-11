@@ -219,7 +219,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read XPT content from *path*.
+    Deprecated wrapper. Use ``XptFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -240,7 +240,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to XPT file at *path* and return record count.
+    Deprecated wrapper. Use ``XptFile().write(...)`` instead.
 
     Parameters
     ----------

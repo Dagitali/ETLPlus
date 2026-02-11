@@ -65,7 +65,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read ZSAV content from *path*.
+    Deprecated wrapper. Use ``ZsavFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -86,7 +86,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ZSAV file at *path* and return record count.
+    Deprecated wrapper. Use ``ZsavFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -130,7 +130,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return XLS content from *path*.
+    Deprecated wrapper. Use ``XlsFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -151,7 +151,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to XLS at *path* and return record count.
+    Deprecated wrapper. Use ``XlsFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -172,7 +172,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return PROTO content from *path*.
+    Deprecated wrapper. Use ``ProtoFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -193,7 +193,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PROTO at *path* and return record count.
+    Deprecated wrapper. Use ``ProtoFile().write(...)`` instead.
 
     Parameters
     ----------

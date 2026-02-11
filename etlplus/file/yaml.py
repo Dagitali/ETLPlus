@@ -194,7 +194,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return YAML content from *path*.
+    Deprecated wrapper. Use ``YamlFile().read(...)`` instead.
 
     Validates that the YAML root is a dict or a list of dicts.
 
@@ -217,7 +217,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to YAML at *path* and return record count.
+    Deprecated wrapper. Use ``YamlFile().write(...)`` instead.
 
     Parameters
     ----------

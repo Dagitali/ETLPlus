@@ -69,7 +69,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ACCDB content from *path*.
+    Deprecated wrapper. Use ``AccdbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ACCDB at *path* and return record count.
+    Deprecated wrapper. Use ``AccdbFile().write(...)`` instead.
 
     Parameters
     ----------

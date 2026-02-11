@@ -224,7 +224,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read HDF5 content from *path*.
+    Deprecated wrapper. Use ``Hdf5File().read(...)`` instead.
 
     Parameters
     ----------
@@ -245,7 +245,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to HDF5 file at *path* and return record count.
+    Deprecated wrapper. Use ``Hdf5File().write(...)`` instead.
 
     Parameters
     ----------

@@ -62,7 +62,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read SYLK content from *path*.
+    Deprecated wrapper. Use ``SylkFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -83,7 +83,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to SYLK file at *path* and return record count.
+    Deprecated wrapper. Use ``SylkFile().write(...)`` instead.
 
     Parameters
     ----------

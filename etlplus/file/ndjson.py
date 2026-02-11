@@ -206,7 +206,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return NDJSON content from *path*.
+    Deprecated wrapper. Use ``NdjsonFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -227,7 +227,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NDJSON at *path* and return record count.
+    Deprecated wrapper. Use ``NdjsonFile().write(...)`` instead.
 
     Parameters
     ----------

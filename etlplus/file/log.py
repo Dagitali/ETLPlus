@@ -68,7 +68,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return LOG content from *path*.
+    Deprecated wrapper. Use ``LogFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -89,7 +89,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to LOG at *path* and return record count.
+    Deprecated wrapper. Use ``LogFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -183,7 +183,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return PSV content from *path*.
+    Deprecated wrapper. Use ``PsvFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -204,7 +204,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PSV at *path* and return record count.
+    Deprecated wrapper. Use ``PsvFile().write(...)`` instead.
 
     Parameters
     ----------

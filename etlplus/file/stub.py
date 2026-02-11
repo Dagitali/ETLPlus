@@ -141,7 +141,7 @@ def read(
     format_name: str = 'Stubbed',
 ) -> JSONList:
     """
-    Deprecated shim that delegates to :class:`StubFile`.
+    Deprecated wrapper. Use ``StubFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -168,7 +168,7 @@ def write(
     format_name: str = 'Stubbed',
 ) -> int:
     """
-    Deprecated shim that delegates to :class:`StubFile`.
+    Deprecated wrapper. Use ``StubFile().write(...)`` instead.
 
     Parameters
     ----------

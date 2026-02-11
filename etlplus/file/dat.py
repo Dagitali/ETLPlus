@@ -328,7 +328,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return DAT content from *path*.
+    Deprecated wrapper. Use ``DatFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -349,7 +349,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to DAT at *path* and return record count.
+    Deprecated wrapper. Use ``DatFile().write(...)`` instead.
 
     Parameters
     ----------

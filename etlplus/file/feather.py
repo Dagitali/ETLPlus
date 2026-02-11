@@ -224,7 +224,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return Feather content from *path*.
+    Deprecated wrapper. Use ``FeatherFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -245,7 +245,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to Feather at *path* and return record count.
+    Deprecated wrapper. Use ``FeatherFile().write(...)`` instead.
 
     Parameters
     ----------

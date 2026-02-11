@@ -149,7 +149,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read SAS7BDAT content from *path*.
+    Deprecated wrapper. Use ``Sas7bdatFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -170,7 +170,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to SAS7BDAT file at *path* and return record count.
+    Deprecated wrapper. Use ``Sas7bdatFile().write(...)`` instead.
 
     Parameters
     ----------

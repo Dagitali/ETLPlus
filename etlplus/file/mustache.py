@@ -70,7 +70,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return MUSTACHE content from *path*.
+    Deprecated wrapper. Use ``MustacheFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MUSTACHE at *path* and return record count.
+    Deprecated wrapper. Use ``MustacheFile().write(...)`` instead.
 
     Parameters
     ----------

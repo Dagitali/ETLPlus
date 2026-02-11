@@ -216,7 +216,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return PROPERTIES content from *path*.
+    Deprecated wrapper. Use ``PropertiesFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -237,7 +237,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to PROPERTIES at *path* and return record count.
+    Deprecated wrapper. Use ``PropertiesFile().write(...)`` instead.
 
     Parameters
     ----------

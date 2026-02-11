@@ -70,7 +70,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return CONF content from *path*.
+    Deprecated wrapper. Use ``ConfFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to CONF at *path* and return record count.
+    Deprecated wrapper. Use ``ConfFile().write(...)`` instead.
 
     Parameters
     ----------

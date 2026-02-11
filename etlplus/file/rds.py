@@ -228,7 +228,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read RDS content from *path*.
+    Deprecated wrapper. Use ``RdsFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -249,7 +249,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to RDS file at *path* and return record count.
+    Deprecated wrapper. Use ``RdsFile().write(...)`` instead.
 
     Parameters
     ----------

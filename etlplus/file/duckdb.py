@@ -281,7 +281,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return DUCKDB content from *path*.
+    Deprecated wrapper. Use ``DuckdbFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -302,7 +302,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to DUCKDB at *path* and return record count.
+    Deprecated wrapper. Use ``DuckdbFile().write(...)`` instead.
 
     Parameters
     ----------

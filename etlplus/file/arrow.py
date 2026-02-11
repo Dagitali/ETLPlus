@@ -226,7 +226,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ARROW content from *path*.
+    Deprecated wrapper. Use ``ArrowFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -247,7 +247,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ARROW at *path* and return record count.
+    Deprecated wrapper. Use ``ArrowFile().write(...)`` instead.
 
     Parameters
     ----------

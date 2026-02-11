@@ -257,7 +257,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read RDA content from *path*.
+    Deprecated wrapper. Use ``RdaFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -278,7 +278,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to RDA file at *path* and return record count.
+    Deprecated wrapper. Use ``RdaFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -67,7 +67,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return NUMBERS content from *path*.
+    Deprecated wrapper. Use ``NumbersFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -88,7 +88,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to NUMBERS at *path* and return record count.
+    Deprecated wrapper. Use ``NumbersFile().write(...)`` instead.
 
     Parameters
     ----------

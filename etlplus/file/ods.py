@@ -231,7 +231,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return ODS content from *path*.
+    Deprecated wrapper. Use ``OdsFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -252,7 +252,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to ODS at *path* and return record count.
+    Deprecated wrapper. Use ``OdsFile().write(...)`` instead.
 
     Parameters
     ----------

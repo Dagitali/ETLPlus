@@ -179,7 +179,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read and return MsgPack content from *path*.
+    Deprecated wrapper. Use ``MsgpackFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -200,7 +200,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to MsgPack at *path* and return record count.
+    Deprecated wrapper. Use ``MsgpackFile().write(...)`` instead.
 
     Parameters
     ----------

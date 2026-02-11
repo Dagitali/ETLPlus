@@ -195,7 +195,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return TXT content from *path*.
+    Deprecated wrapper. Use ``TxtFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -216,7 +216,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to TXT at *path* and return record count.
+    Deprecated wrapper. Use ``TxtFile().write(...)`` instead.
 
     Parameters
     ----------

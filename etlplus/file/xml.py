@@ -301,7 +301,7 @@ def read(
     path: StrPath,
 ) -> JSONDict:
     """
-    Read and return XML content from *path*.
+    Deprecated wrapper. Use ``XmlFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -324,7 +324,7 @@ def write(
     root_tag: str,
 ) -> int:
     """
-    Write *data* to XML at *path* and return record count.
+    Deprecated wrapper. Use ``XmlFile().write(...)`` instead.
 
     Parameters
     ----------

@@ -277,7 +277,7 @@ def read(
     path: StrPath,
 ) -> JSONList:
     """
-    Read and return SQLITE content from *path*.
+    Deprecated wrapper. Use ``SqliteFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -298,7 +298,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to SQLITE at *path* and return record count.
+    Deprecated wrapper. Use ``SqliteFile().write(...)`` instead.
 
     Parameters
     ----------

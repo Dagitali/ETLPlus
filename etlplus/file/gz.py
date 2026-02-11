@@ -209,7 +209,7 @@ def read(
     path: StrPath,
 ) -> JSONData:
     """
-    Read GZ content from *path* and parse the inner payload.
+    Deprecated wrapper. Use ``GzFile().read(...)`` instead.
 
     Parameters
     ----------
@@ -230,7 +230,7 @@ def write(
     data: JSONData,
 ) -> int:
     """
-    Write *data* to GZ at *path* and return record count.
+    Deprecated wrapper. Use ``GzFile().write(...)`` instead.
 
     Parameters
     ----------
