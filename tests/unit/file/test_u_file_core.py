@@ -417,15 +417,6 @@ class _DummyPath(PathLike[str]):
         return self._path
 
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='stubbed_formats')
-def stubbed_formats_fixture() -> list[tuple[FileFormat, str]]:
-    """Return a list of stubbed file formats for testing."""
-    return list(STUBBED_FORMATS)
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -439,48 +430,36 @@ class TestFile:
     """
 
     @pytest.mark.parametrize(
-        ('filename', 'contents', 'error_pattern'),
+        ('file_format', 'filename'),
         [
-            ('data.gz', 'compressed', 'compressed file'),
-            ('weird.data', '{}', 'Cannot infer file format'),
+            (FileFormat.DUCKDB, 'multi.duckdb'),
+            (FileFormat.SQLITE, 'multi.sqlite'),
         ],
-        ids=['compression_only_suffix', 'unknown_extension'],
+        ids=['duckdb', 'sqlite'],
     )
-    def test_read_unknown_formats_defer_error(
+    def test_embedded_db_read_fails_with_multiple_tables(
         self,
         tmp_path: Path,
+        file_format: FileFormat,
         filename: str,
-        contents: str,
-        error_pattern: str,
     ) -> None:
-        """Test unresolved formats deferring failure until read dispatch."""
-        # path = tmp_path / filename
-        path = tmp_path / 'data.gz'
-        path.write_text(contents, encoding='utf-8')
-        file = File(path)
-
-        assert file.file_format is None
-        with pytest.raises(ValueError, match=error_pattern):
-            file.read()
-
-    def test_duckdb_read_fails_with_multiple_tables(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test DuckDB reader rejects multiple table databases.
-        """
-        duckdb = pytest.importorskip('duckdb')
-        path = tmp_path / 'multi.duckdb'
-        conn = duckdb.connect(str(path))
+        """Test embedded DB readers rejecting multi-table files."""
+        path = tmp_path / filename
+        if file_format is FileFormat.DUCKDB:
+            duckdb = pytest.importorskip('duckdb')
+            conn = duckdb.connect(str(path))
+        else:
+            conn = sqlite3.connect(path)
         try:
             conn.execute('CREATE TABLE one (id INTEGER)')
             conn.execute('CREATE TABLE two (id INTEGER)')
+            if file_format is FileFormat.SQLITE:
+                conn.commit()
         finally:
             conn.close()
 
         with pytest.raises(ValueError, match='Multiple tables'):
-            File(path, FileFormat.DUCKDB).read()
+            File(path, file_format).read()
 
     def test_explicit_string_file_format_is_coerced(
         self,
@@ -594,6 +573,30 @@ class TestFile:
             file.read()
 
     @pytest.mark.parametrize(
+        ('filename', 'contents', 'error_pattern'),
+        [
+            ('data.gz', 'compressed', 'compressed file'),
+            ('weird.data', '{}', 'Cannot infer file format'),
+        ],
+        ids=['compression_only_suffix', 'unknown_extension'],
+    )
+    def test_read_unknown_formats_defer_error(
+        self,
+        tmp_path: Path,
+        filename: str,
+        contents: str,
+        error_pattern: str,
+    ) -> None:
+        """Test unresolved formats deferring failure until read dispatch."""
+        path = tmp_path / filename
+        path.write_text(contents, encoding='utf-8')
+        file = File(path)
+
+        assert file.file_format is None
+        with pytest.raises(ValueError, match=error_pattern):
+            file.read()
+
+    @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
         [
             pytest.param(
@@ -641,25 +644,6 @@ class TestFile:
             result = normalize_numeric_records(result)
         assert result == expected
 
-    def test_sqlite_read_fails_with_multiple_tables(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test SQLite reader rejects multiple table databases.
-        """
-        path = tmp_path / 'multi.sqlite'
-        conn = sqlite3.connect(path)
-        try:
-            conn.execute('CREATE TABLE one (id INTEGER)')
-            conn.execute('CREATE TABLE two (id INTEGER)')
-            conn.commit()
-        finally:
-            conn.close()
-
-        with pytest.raises(ValueError, match='Multiple tables'):
-            File(path, FileFormat.SQLITE).read()
-
     def test_strpath_support_for_module_helpers(
         self,
         tmp_path: Path,
@@ -686,26 +670,35 @@ class TestFile:
         )
         assert xml_file.read(PurePath(xml_path)) == {'root': {'text': 'hello'}}
 
+    @pytest.mark.parametrize(
+        ('file_format', 'filename'),
+        [
+            pytest.param(
+                file_format,
+                filename,
+                id=file_format.value,
+            )
+            for file_format, filename in STUBBED_FORMATS
+        ],
+    )
     @pytest.mark.parametrize('operation', ['read', 'write'])
     def test_stub_formats_raise_on_operations(
         self,
         tmp_path: Path,
-        stubbed_formats: list[tuple[FileFormat, str]],
+        file_format: FileFormat,
+        filename: str,
         operation: str,
     ) -> None:
         """Test stub formats raising NotImplementedError on read/write."""
-        if not stubbed_formats:
-            pytest.skip('No stubbed formats to test')
-        for file_format, filename in stubbed_formats:
-            path = tmp_path / filename
-            if operation == 'read':
-                path.write_text('stub', encoding='utf-8')
+        path = tmp_path / filename
+        if operation == 'read':
+            path.write_text('stub', encoding='utf-8')
 
-            with pytest.raises(NotImplementedError):
-                if operation == 'read':
-                    File(path, file_format).read()
-                else:
-                    File(path, file_format).write({'stub': True})
+        with pytest.raises(NotImplementedError):
+            if operation == 'read':
+                File(path, file_format).read()
+            else:
+                File(path, file_format).write({'stub': True})
 
     def test_write_csv_rejects_non_dicts(
         self,

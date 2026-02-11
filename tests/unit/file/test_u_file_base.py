@@ -144,6 +144,48 @@ class _DelimitedStub(DelimitedTextFileHandlerABC):
         return len(rows)
 
 
+class _NoopReadWriteMixin:
+    """Provide read/write defaults while leaving row methods abstract."""
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        _ = options
+        return []
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = options
+        return 0
+
+
+class _IncompleteDelimited(_NoopReadWriteMixin, DelimitedTextFileHandlerABC):
+    """Incomplete delimited handler used for abstract-method checks."""
+
+    format = FileFormat.CSV
+    delimiter = ','
+
+
+class _IncompleteTextFixedWidth(
+    _NoopReadWriteMixin,
+    TextFixedWidthFileHandlerABC,
+):
+    """Incomplete text/fixed-width handler used for abstract checks."""
+
+    format = FileFormat.TXT
+
+
 class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
     """Concrete text/fixed-width handler used for abstract contract tests."""
 
@@ -195,47 +237,53 @@ class _TextFixedWidthStub(TextFixedWidthFileHandlerABC):
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_delimited_abc_requires_row_methods(self) -> None:
-        """Test DelimitedTextFileHandlerABC requiring row-level methods."""
+    def test_row_abcs_require_row_methods(self) -> None:
+        """Test row-oriented ABCs requiring row-level methods."""
+        for incomplete_handler_cls in [
+            _IncompleteDelimited,
+            _IncompleteTextFixedWidth,
+        ]:
+            assert inspect.isabstract(incomplete_handler_cls)
+            assert {'read_rows', 'write_rows'} <= (
+                incomplete_handler_cls.__abstractmethods__
+            )
 
-        class _IncompleteDelimited(DelimitedTextFileHandlerABC):
-            format = FileFormat.CSV
-            delimiter = ','
+    def test_concrete_row_subclass_satisfies_contract(self) -> None:
+        """Test concrete row-oriented subclasses being fully instantiable."""
+        for (
+            handler_cls,
+            path_name,
+            expected_category,
+            expected_read,
+            write_payload,
+            expected_written,
+        ) in [
+            (
+                _DelimitedStub,
+                'ignored.csv',
+                'tabular_delimited_text',
+                [{'id': 1}],
+                [{'id': 1}, {'id': 2}],
+                2,
+            ),
+            (
+                _TextFixedWidthStub,
+                'ignored.txt',
+                'text_fixed_width',
+                [{'text': 'ok'}],
+                [{'text': 'ok'}],
+                1,
+            ),
+        ]:
+            handler = handler_cls()
+            path = Path(path_name)
 
-            def read(
-                self,
-                path: Path,
-                *,
-                options: ReadOptions | None = None,
-            ) -> JSONData:
-                _ = path
-                _ = options
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        assert inspect.isabstract(_IncompleteDelimited)
-        assert {'read_rows', 'write_rows'} <= (
-            _IncompleteDelimited.__abstractmethods__
-        )
-
-    def test_delimited_concrete_subclass_satisfies_contract(self) -> None:
-        """Test a concrete delimited subclass being fully instantiable."""
-        handler = _DelimitedStub()
-
-        assert handler.category == 'tabular_delimited_text'
-        assert handler.read(Path('ignored.csv')) == [{'id': 1}]
-        assert handler.write(Path('ignored.csv'), [{'id': 1}, {'id': 2}]) == 2
+            assert handler.category == expected_category
+            assert handler.read(path) == expected_read
+            assert (
+                handler.write(path, cast(JSONData, write_payload))
+                == expected_written
+            )
 
     def test_file_handler_abc_declares_read_write_as_abstract(self) -> None:
         """Test FileHandlerABC preserving read/write abstract methods."""
@@ -259,49 +307,6 @@ class TestBaseAbcContracts:
                 [{'a': 1}],
                 sheet=0,
             )
-
-    def test_text_fixed_width_abc_requires_row_methods(self) -> None:
-        """Test TextFixedWidthFileHandlerABC requiring row-level methods."""
-
-        class _IncompleteText(TextFixedWidthFileHandlerABC):
-            format = FileFormat.TXT
-
-            def read(
-                self,
-                path: Path,
-                *,
-                options: ReadOptions | None = None,
-            ) -> JSONData:
-                _ = path
-                _ = options
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                _ = path
-                _ = data
-                _ = options
-                return 0
-
-        assert inspect.isabstract(_IncompleteText)
-        assert {'read_rows', 'write_rows'} <= (
-            _IncompleteText.__abstractmethods__
-        )
-
-    def test_text_fixed_width_concrete_subclass_satisfies_contract(
-        self,
-    ) -> None:
-        """Test a concrete text/fixed-width subclass being instantiable."""
-        handler = _TextFixedWidthStub()
-
-        assert handler.category == 'text_fixed_width'
-        assert handler.read(Path('ignored.txt')) == [{'text': 'ok'}]
-        assert handler.write(Path('ignored.txt'), [{'text': 'ok'}]) == 1
 
 
 class TestNamingConventions:

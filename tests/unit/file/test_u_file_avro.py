@@ -14,7 +14,6 @@ from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import BinaryDependencyModuleContract
 from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import PathMixin
 from tests.unit.file.conftest import patch_dependency_resolver_unreachable
 
 # SECTION: HELPERS ========================================================== #
@@ -58,10 +57,8 @@ class _FastAvroStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestAvroHandlerClass(PathMixin):
+class TestAvroHandlerClass:
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
-
-    format_name = 'avro'
 
     def test_dumps_bytes_returns_empty_for_empty_payload(
         self,
@@ -105,7 +102,7 @@ class TestAvroHandlerClass(PathMixin):
         """Test file writes short-circuiting on empty payloads."""
         handler = mod.AvroFile()
         patch_dependency_resolver_unreachable(monkeypatch, mod)
-        path = self.format_path(tmp_path)
+        path = tmp_path / 'sample.avro'
 
         written = handler.write(path, [])
 
@@ -200,6 +197,17 @@ class TestAvroIo(BinaryDependencyModuleContract):
     expected_read_result = [{'id': 1}, {'id': 2}]
     write_payload = [{'id': 1, 'name': 'Ada'}]
 
+    def assert_dependency_after_write(
+        self,
+        dependency_stub: object,
+        _path: Path,
+    ) -> None:
+        """Assert fastavro write behavior."""
+        stub = self._assert_fastavro_stub(dependency_stub)
+        assert stub.parsed_schema is not None
+        assert stub.writes
+        assert stub.writes[0]['records'] == self.write_payload
+
     def make_dependency_stub(self) -> _FastAvroStub:
         """Build a fastavro dependency stub."""
         return _FastAvroStub()
@@ -210,17 +218,13 @@ class TestAvroIo(BinaryDependencyModuleContract):
         _path: Path,
     ) -> None:
         """Assert fastavro read behavior."""
-        stub = dependency_stub
-        assert isinstance(stub, _FastAvroStub)
+        self._assert_fastavro_stub(dependency_stub)
 
-    def assert_dependency_after_write(
-        self,
+    @staticmethod
+    def _assert_fastavro_stub(
         dependency_stub: object,
-        _path: Path,
-    ) -> None:
-        """Assert fastavro write behavior."""
+    ) -> _FastAvroStub:
+        """Assert and return the expected fastavro stub."""
         stub = dependency_stub
         assert isinstance(stub, _FastAvroStub)
-        assert stub.parsed_schema is not None
-        assert stub.writes
-        assert stub.writes[0]['records'] == self.write_payload
+        return stub

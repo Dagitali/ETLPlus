@@ -188,23 +188,27 @@ _PLACEHOLDER_SPEC_CASES: list[tuple[FileFormat, str]] = [
 ]
 
 
+def _clear_registry_caches() -> None:
+    """Clear memoized registry lookups used by tests."""
+    # pylint: disable=protected-access
+    for cacheable in (
+        mod.get_handler,
+        mod.get_handler_class,
+        mod._module_adapter_class_for_format,
+        mod._module_for_format,
+    ):
+        cacheable.cache_clear()
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(autouse=True)
 def clear_registry_caches() -> Iterator[None]:
     """Clear registry caches before and after each test."""
-    # pylint: disable=protected-access
-
-    mod.get_handler.cache_clear()
-    mod.get_handler_class.cache_clear()
-    mod._module_adapter_class_for_format.cache_clear()
-    mod._module_for_format.cache_clear()
+    _clear_registry_caches()
     yield
-    mod.get_handler.cache_clear()
-    mod.get_handler_class.cache_clear()
-    mod._module_adapter_class_for_format.cache_clear()
-    mod._module_for_format.cache_clear()
+    _clear_registry_caches()
 
 
 # SECTION: TESTS ============================================================ #
