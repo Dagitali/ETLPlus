@@ -9,7 +9,9 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
+import re
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -192,14 +194,105 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.WKS, 'etlplus.file.wks:WksFile'),
 )
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_README_MATRIX_PATH = _REPO_ROOT / 'README.md'
+_DOCS_MATRIX_PATH = _REPO_ROOT / 'docs' / 'file-handler-matrix.md'
+_MATRIX_ROW_PATTERN = re.compile(
+    r'^\| `(?P<format>[^`]+)` \| `(?P<handler>[^`]+)` \| '
+    r'`(?P<base>[^`]+)` \| `(?P<support>[^`]+)` \| '
+    r'`(?P<status>[^`]+)` \|$',
+)
 
-# SECTION: FIXTURES ========================================================= #
+type MatrixRow = tuple[str, str, str, str]
+type MatrixRowsByFormat = dict[FileFormat, MatrixRow]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _clear_registry_caches() -> None:
     """Clear all cached registry resolution helpers."""
     for cacheable in _CACHEABLES:
         cacheable.cache_clear()
+
+
+def _expected_matrix_row(
+    file_format: FileFormat,
+) -> MatrixRow:
+    """Build expected matrix metadata for one mapped format."""
+    handler_class = mod._coerce_handler_class(
+        mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
+        file_format=file_format,
+    )
+    return (
+        handler_class.__name__,
+        _matrix_base_abc_name(handler_class),
+        _matrix_support_text(handler_class),
+        (
+            'stub'
+            if issubclass(handler_class, StubFileHandlerABC)
+            else 'implemented'
+        ),
+    )
+
+
+def _matrix_base_abc_name(
+    handler_class: type[FileHandlerABC],
+) -> str:
+    """Return the first category ABC name in one handler class MRO."""
+    first_category_abc: str | None = None
+    for base in handler_class.mro()[1:]:
+        if base is FileHandlerABC:
+            continue
+        if base.__name__.endswith('FileHandlerABC'):
+            first_category_abc = base.__name__
+            break
+    if first_category_abc is None:
+        raise AssertionError(
+            f'No category ABC found for handler {handler_class.__name__!r}',
+        )
+    if (
+        first_category_abc == 'ReadOnlyFileHandlerABC'
+        and issubclass(handler_class, ScientificDatasetFileHandlerABC)
+    ):
+        if issubclass(handler_class, SingleDatasetScientificFileHandlerABC):
+            return 'SingleDatasetScientificFileHandlerABC'
+        return 'ScientificDatasetFileHandlerABC'
+    return first_category_abc
+
+
+def _matrix_support_text(
+    handler_class: type[FileHandlerABC],
+) -> str:
+    """Return matrix read/write support text for one handler class."""
+    supports_read = bool(getattr(handler_class, 'supports_read', True))
+    supports_write = bool(getattr(handler_class, 'supports_write', True))
+    if supports_read and not supports_write:
+        return 'read-only'
+    return 'read/write'
+
+
+def _parse_matrix_rows(
+    path: Path,
+) -> MatrixRowsByFormat:
+    """Parse handler-matrix rows from one markdown document."""
+    rows: MatrixRowsByFormat = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        if (match := _MATRIX_ROW_PATTERN.match(line)) is None:
+            continue
+        file_format = FileFormat(match.group('format'))
+        row: MatrixRow = (
+            match.group('handler'),
+            match.group('base'),
+            match.group('support'),
+            match.group('status'),
+        )
+        assert file_format not in rows
+        rows[file_format] = row
+    return rows
+
+
+# SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='clear_registry_caches', autouse=True)
@@ -343,3 +436,36 @@ class TestRegistryStrictPolicy:
         self._remove_fallback_mapping(monkeypatch)
         with pytest.raises(ValueError, match='Unsupported format'):
             mod.get_handler(self.fallback_format)
+
+
+class TestRegistryDocsMatrixGuardrail:
+    """Unit tests for registry/documentation matrix consistency."""
+
+    @pytest.mark.parametrize(
+        'path',
+        (_README_MATRIX_PATH, _DOCS_MATRIX_PATH),
+        ids=['readme', 'docs'],
+    )
+    def test_matrix_rows_cover_explicit_registry_mappings(
+        self,
+        path: Path,
+    ) -> None:
+        """Test matrix rows covering every explicitly mapped format."""
+        rows = _parse_matrix_rows(path)
+        assert set(rows) == set(mod._HANDLER_CLASS_SPECS)
+
+    @pytest.mark.parametrize(
+        'file_format',
+        tuple(mod._HANDLER_CLASS_SPECS),
+    )
+    def test_matrix_rows_match_registry_metadata(
+        self,
+        file_format: FileFormat,
+    ) -> None:
+        """Test matrix rows matching registry-resolved handler metadata."""
+        expected = _expected_matrix_row(file_format)
+        readme_rows = _parse_matrix_rows(_README_MATRIX_PATH)
+        docs_rows = _parse_matrix_rows(_DOCS_MATRIX_PATH)
+        assert readme_rows[file_format] == expected
+        assert docs_rows[file_format] == expected
+        assert readme_rows[file_format] == docs_rows[file_format]
