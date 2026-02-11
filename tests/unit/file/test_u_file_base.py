@@ -15,6 +15,9 @@ from typing import cast
 import pytest
 
 from etlplus.file import FileFormat
+from etlplus.file._stub_categories import (
+    StubSingleDatasetScientificFileHandlerABC,
+)
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOptions
@@ -26,6 +29,7 @@ from etlplus.file.csv import CsvFile
 from etlplus.file.dat import DatFile
 from etlplus.file.dta import DtaFile
 from etlplus.file.fwf import FwfFile
+from etlplus.file.mat import MatFile
 from etlplus.file.nc import NcFile
 from etlplus.file.ods import OdsFile
 from etlplus.file.psv import PsvFile
@@ -33,6 +37,7 @@ from etlplus.file.rda import RdaFile
 from etlplus.file.rds import RdsFile
 from etlplus.file.sav import SavFile
 from etlplus.file.sqlite import SqliteFile
+from etlplus.file.sylk import SylkFile
 from etlplus.file.tab import TabFile
 from etlplus.file.tsv import TsvFile
 from etlplus.file.txt import TxtFile
@@ -41,6 +46,7 @@ from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
+from etlplus.file.zsav import ZsavFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
 from tests.unit.file.conftest import (
@@ -72,6 +78,14 @@ _SCIENTIFIC_HANDLER_CLASSES: tuple[
     RdsFile,
     SavFile,
     XptFile,
+)
+_SCIENTIFIC_STUB_HANDLER_CLASSES: tuple[
+    type[StubSingleDatasetScientificFileHandlerABC],
+    ...,
+] = (
+    MatFile,
+    SylkFile,
+    ZsavFile,
 )
 _SINGLE_DATASET_HANDLER_CLASSES: tuple[
     type[SingleDatasetScientificFileHandlerABC],
@@ -529,4 +543,23 @@ class TestScientificDatasetContracts:
         assert_single_dataset_rejects_non_default_key(
             handler_cls(),
             suffix=handler_cls.format.value,
+        )
+
+
+class TestScientificStubConventions:
+    """Unit tests for scientific placeholder handler conventions."""
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SCIENTIFIC_STUB_HANDLER_CLASSES,
+        ids=['mat', 'sylk', 'zsav'],
+    )
+    def test_scientific_stubs_inherit_stub_single_dataset_abc(
+        self,
+        handler_cls: type[StubSingleDatasetScientificFileHandlerABC],
+    ) -> None:
+        """Test scientific stubs inheriting the unified stub base."""
+        assert issubclass(
+            handler_cls,
+            StubSingleDatasetScientificFileHandlerABC,
         )
