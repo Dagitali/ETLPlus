@@ -6,40 +6,24 @@ Unit tests for :mod:`etlplus.file.fwf`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from etlplus.file import fwf as mod
+from tests.unit.file.conftest import DictRecordsFrameStub
+from tests.unit.file.conftest import OptionalModuleInstaller
 from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
 
-class _Frame:
-    """Minimal frame stub for FWF helpers."""
-
-    # pylint: disable=unused-argument
-
-    def __init__(self, records: list[dict[str, object]]) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate converting a frame to a list of records."""
-        return list(self._records)
-
-
 class _PandasStub:
     """Stub for pandas module."""
 
-    def __init__(self, frame: _Frame) -> None:
+    def __init__(self, frame: DictRecordsFrameStub) -> None:
         self._frame = frame
         self.read_calls: list[dict[str, object]] = []
 
-    def read_fwf(self, path: Path) -> _Frame:
+    def read_fwf(self, path: Path) -> DictRecordsFrameStub:
         """Simulate reading a fixed-width file into a frame."""
         self.read_calls.append({'path': path})
         return self._frame
@@ -60,13 +44,13 @@ class TestFwf(TextRowModuleContract):
     def prepare_read_case(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> tuple[Path, list[dict[str, object]]]:
         """Prepare representative FWF read input and dependency stubs."""
-        frame = _Frame([{'id': 1}])
+        frame = DictRecordsFrameStub([{'id': 1}])
         self._pandas = _PandasStub(frame)
         optional_module_stub({'pandas': self._pandas})
-        path = tmp_path / 'data.fwf'
+        path = self.format_path(tmp_path)
         return path, [{'id': 1}]
 
     def assert_write_contract_result(
@@ -83,7 +67,7 @@ class TestFwf(TextRowModuleContract):
     def test_read_uses_pandas(
         self,
         tmp_path: Path,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test that :func:`read` uses pandas to read fixed-width files."""
         path, _ = self.prepare_read_case(tmp_path, optional_module_stub)
@@ -95,4 +79,4 @@ class TestFwf(TextRowModuleContract):
         tmp_path: Path,
     ) -> None:
         """Test that writing with empty fieldnames returns zero."""
-        assert mod.write(tmp_path / 'data.fwf', [{}]) == 0
+        assert mod.write(self.format_path(tmp_path), [{}]) == 0

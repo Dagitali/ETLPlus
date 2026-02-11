@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.file import core
 from etlplus.file import gz as mod
+from etlplus.file.base import ReadOptions
+from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
-from tests.unit.file.conftest import CoreDispatchFileStub
 
 # SECTION: TESTS ============================================================ #
 
@@ -24,24 +24,6 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
 
     module = mod
     format_name = 'gz'
-    valid_path_name = 'payload.json.gz'
-    missing_inner_path_name = 'payload.gz'
-    expected_read_result = {'fmt': 'json', 'name': 'payload.json'}
-
-    def install_core_file_stub(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Install deterministic core file stub."""
-        monkeypatch.setattr(core, 'File', CoreDispatchFileStub)
-
-    def seed_archive_payload(
-        self,
-        path: Path,
-    ) -> None:
-        """Seed gzip archive payload for read contract tests."""
-        with gzip.open(path, 'wb') as handle:
-            handle.write(b'payload')
 
     def assert_archive_payload(
         self,
@@ -51,23 +33,81 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         with gzip.open(path, 'rb') as handle:
             assert handle.read() == b'payload'
 
-    def test_read_raises_on_missing_inner_format(
+    def seed_archive_payload(
+        self,
+        path: Path,
+    ) -> None:
+        """Seed gzip archive payload for read contract tests."""
+        with gzip.open(path, 'wb') as handle:
+            handle.write(b'payload')
+
+    def test_read_inner_bytes_returns_payload(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that reading a gzip file without an inner format fails."""
-        path = tmp_path / 'payload.gz'
+        """Test reading decompressed bytes via ``read_inner_bytes``."""
+        path = self.archive_path(tmp_path, stem='payload.json')
+        expected = b'{"ok": true}'
+        with gzip.open(path, 'wb') as handle:
+            handle.write(expected)
+
+        result = mod.GzFile().read_inner_bytes(
+            path,
+            options=ReadOptions(inner_name='ignored'),
+        )
+
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        ('stem', 'suffix', 'text_content', 'error_pattern'),
+        [
+            ('payload', None, None, 'Cannot infer file format'),
+            ('payload', 'json', 'irrelevant', 'Not a gzip file'),
+        ],
+        ids=['missing_inner_format', 'non_gzip_payload'],
+    )
+    def test_read_invalid_inputs_raise(
+        self,
+        tmp_path: Path,
+        stem: str,
+        suffix: str | None,
+        text_content: str | None,
+        error_pattern: str,
+    ) -> None:
+        """Test invalid gzip read inputs raising clear errors."""
+        if suffix is None:
+            path = self.archive_path(tmp_path, stem=stem)
+        else:
+            path = self.archive_path(tmp_path, stem=stem, suffix=suffix)
+        if text_content is not None:
+            path.write_text(text_content, encoding='utf-8')
+
+        with pytest.raises(ValueError, match=error_pattern):
+            mod.read(path)
+
+    def test_write_inner_bytes_writes_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing compressed bytes via ``write_inner_bytes``."""
+        path = self.archive_path(tmp_path, stem='payload.json')
+        payload = b'{"written": true}'
+
+        mod.GzFile().write_inner_bytes(
+            path,
+            payload,
+            options=WriteOptions(inner_name='ignored'),
+        )
+
+        with gzip.open(path, 'rb') as handle:
+            assert handle.read() == payload
+
+    def test_write_raises_on_missing_inner_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that writing without an inferable inner format fails."""
+        path = self.archive_path(tmp_path, stem='payload')
 
         with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.read(path)
-
-    def test_read_raises_on_non_gzip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that reading a non-gzip file raises an error."""
-        path = tmp_path / 'payload.json'
-        path.write_text('irrelevant', encoding='utf-8')
-
-        with pytest.raises(ValueError, match='Not a gzip file'):
-            mod.read(path)
+            mod.write(path, [{'id': 1}])

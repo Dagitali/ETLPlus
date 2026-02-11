@@ -8,15 +8,19 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
 from tests.unit.file.conftest import BinaryDependencyModuleContract
+from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.conftest import patch_dependency_resolver_unreachable
 
 # SECTION: HELPERS ========================================================== #
+
+
+_TYPE_ERROR_PATTERN = 'AVRO payloads must contain'
 
 
 class _FastAvroStub:
@@ -60,13 +64,32 @@ class _FastAvroStub:
 class TestAvroHandlerClass:
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
 
-    def test_format_constant(self) -> None:
-        """Test :class:`AvroFile` exposing the expected format enum."""
-        assert mod.AvroFile.format is FileFormat.AVRO
+    @pytest.mark.parametrize(
+        ('operation', 'expected'),
+        [
+            (lambda h, _path: h.dumps_bytes([]), b''),
+            (lambda h, path: h.write(path, []), 0),
+        ],
+        ids=['dumps_bytes_empty', 'write_empty'],
+    )
+    def test_empty_payload_short_circuits(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: Callable[[mod.AvroFile, Path], bytes | int],
+        expected: bytes | int,
+    ) -> None:
+        """
+        Test empty payload operations short-circuiting without dependency.
+        """
+        handler = mod.AvroFile()
+        patch_dependency_resolver_unreachable(monkeypatch, mod)
+        result = operation(handler, tmp_path / 'sample.avro')
+        assert result == expected
 
     def test_dumps_and_loads_bytes(
         self,
-        optional_module_stub: Callable[[dict[str, object]], None],
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test binary helper methods delegating to :mod:`fastavro`."""
         stub = _FastAvroStub()
@@ -81,6 +104,10 @@ class TestAvroHandlerClass:
         assert stub.parsed_schema is not None
         assert stub.writes
         assert result == stub.records
+
+    def test_format_constant(self) -> None:
+        """Test :class:`AvroFile` exposing the expected format enum."""
+        assert mod.AvroFile.format is FileFormat.AVRO
 
 
 class TestAvroHelpers:
@@ -120,13 +147,22 @@ class TestAvroHelpers:
         """
         assert mod._infer_value_type(value) == expected
 
-    def test_infer_value_type_rejects_complex(self) -> None:
-        """
-        Test that :func:`_infer_value_type` raises for unsupported complex
-        types.
-        """
-        with pytest.raises(TypeError, match='AVRO payloads must contain'):
-            mod._infer_value_type({'bad': 'value'})
+    @pytest.mark.parametrize(
+        ('operation', 'payload'),
+        [
+            (mod._infer_value_type, {'bad': 'value'}),
+            (mod._infer_schema, [{'bad': {'nested': True}}]),
+        ],
+        ids=['infer_value_type_complex', 'infer_schema_nested'],
+    )
+    def test_infer_helpers_reject_invalid_payloads(
+        self,
+        operation: Callable[[object], object],
+        payload: object,
+    ) -> None:
+        """Test infer helpers raising for unsupported complex payloads."""
+        with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
+            operation(payload)
 
     def test_merge_types_orders_null_first(self) -> None:
         """
@@ -138,14 +174,9 @@ class TestAvroHelpers:
 
         assert merged == ['null', 'long', 'string']
 
-    def test_infer_schema_rejects_nested_values(self) -> None:
-        """Test that :func:`_infer_schema` raises for nested values."""
-        with pytest.raises(TypeError, match='AVRO payloads must contain'):
-            mod._infer_schema([{'bad': {'nested': True}}])
-
     def test_infer_schema_builds_fields(self) -> None:
         """Test that :func:`_infer_schema` builds expected fields."""
-        records: list[dict[str, Any]] = [
+        records: list[dict[str, object]] = [
             {'b': 'text', 'a': 1},
             {'b': None},
         ]
@@ -163,11 +194,25 @@ class TestAvroHelpers:
 class TestAvroIo(BinaryDependencyModuleContract):
     """Unit tests for AVRO module-level read/write dispatch."""
 
+    # pylint: disable=protected-access
+
     module = mod
     format_name = 'avro'
     dependency_name = 'fastavro'
     expected_read_result = [{'id': 1}, {'id': 2}]
     write_payload = [{'id': 1, 'name': 'Ada'}]
+
+    def assert_dependency_after_write(
+        self,
+        dependency_stub: object,
+        _path: Path,
+    ) -> None:
+        """Assert fastavro write behavior."""
+        stub = dependency_stub
+        assert isinstance(stub, _FastAvroStub)
+        assert stub.parsed_schema is not None
+        assert stub.writes
+        assert stub.writes[0]['records'] == self.write_payload
 
     def make_dependency_stub(self) -> _FastAvroStub:
         """Build a fastavro dependency stub."""
@@ -176,20 +221,7 @@ class TestAvroIo(BinaryDependencyModuleContract):
     def assert_dependency_after_read(
         self,
         dependency_stub: object,
-        path: Path,  # noqa: ARG002
+        _path: Path,
     ) -> None:
         """Assert fastavro read behavior."""
-        stub = dependency_stub
-        assert isinstance(stub, _FastAvroStub)
-
-    def assert_dependency_after_write(
-        self,
-        dependency_stub: object,
-        path: Path,  # noqa: ARG002
-    ) -> None:
-        """Assert fastavro write behavior."""
-        stub = dependency_stub
-        assert isinstance(stub, _FastAvroStub)
-        assert stub.parsed_schema is not None
-        assert stub.writes
-        assert stub.writes[0]['records'] == self.write_payload
+        assert isinstance(dependency_stub, _FastAvroStub)

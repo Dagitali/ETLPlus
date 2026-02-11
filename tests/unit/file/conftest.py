@@ -71,6 +71,14 @@ def _call_scientific_dataset_operation(
     return cast(int, handler.write_dataset(path, [], dataset=dataset))
 
 
+def _raise_unexpected_dependency_call(
+    *args: object,
+    **kwargs: object,
+) -> object:  # noqa: ARG001
+    """Raise when a dependency resolver is called unexpectedly in tests."""
+    raise AssertionError('dependency resolver should not be called')
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -130,6 +138,8 @@ def make_import_error_reader_module(
 def make_import_error_writer_module() -> object:
     """Build a pandas-like module whose DataFrame writes raise ImportError."""
 
+    # pylint: disable=unused-argument
+
     class _FailFrame:
         """Frame stub whose write-like attributes raise ImportError."""
 
@@ -179,6 +189,38 @@ def make_payload(
             if (result := kwargs.get('result')) is not None:
                 return cast(JSONData, result)
             return cast(JSONData, {'ok': bool(kwargs.get('ok', True))})
+
+
+def patch_dependency_resolver_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    *,
+    resolver_name: str = 'get_dependency',
+) -> None:
+    """Patch one dependency resolver to raise if a test triggers it."""
+    monkeypatch.setattr(
+        module,
+        resolver_name,
+        _raise_unexpected_dependency_call,
+    )
+
+
+def patch_dependency_resolver_value(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    *,
+    resolver_name: str = 'get_dependency',
+    value: object,
+) -> None:
+    """Patch one dependency resolver to return a deterministic value."""
+
+    def _return_value(
+        *args: object,
+        **kwargs: object,
+    ) -> object:  # noqa: ARG001
+        return value
+
+    monkeypatch.setattr(module, resolver_name, _return_value)
 
 
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
@@ -452,19 +494,23 @@ class SemiStructuredReadMixin(PathMixin):
     Parametrized read contract mixin for semi-structured modules.
     """
 
+    # pylint: disable=unused-argument
+
     module: ModuleType
     sample_read_text: str
-
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        raise NotImplementedError
 
     def assert_read_contract_result(
         self,
         result: JSONData,
     ) -> None:
+        """Assert module-specific read contract expectations."""
+        raise NotImplementedError
+
+    def setup_read_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install optional dependencies needed for read tests."""
         raise NotImplementedError
 
     def test_read_parses_expected_payload(
@@ -494,12 +540,14 @@ class SemiStructuredWriteDictMixin(PathMixin):
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
+        """Install optional dependencies needed for write tests."""
         raise NotImplementedError
 
     def assert_write_contract_result(
         self,
         path: Path,
     ) -> None:
+        """Assert module-specific write contract behavior."""
         raise NotImplementedError
 
     def test_write_accepts_single_dict_payload(
@@ -708,16 +756,44 @@ class SemiStructuredCategoryContractBase(PathMixin):
 # SECTION: CLASSES (CONTRACTS) ============================================== #
 
 
-class ArchiveWrapperCoreDispatchModuleContract:
+class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     """Reusable contract suite for archive wrappers using core dispatch."""
 
     module: ModuleType
-    valid_path_name: str
-    missing_inner_path_name: str
-    expected_read_result: JSONData
     write_payload: JSONData = make_payload('list')
     expected_written_count: int = 1
     missing_inner_error_pattern: str = 'Cannot infer file format'
+
+    def archive_path(
+        self,
+        tmp_path: Path,
+        *,
+        stem: str,
+        suffix: str | None = None,
+    ) -> Path:
+        """Build deterministic archive paths for ad hoc test cases."""
+        extension = self.format_name if suffix is None else suffix
+        return tmp_path / f'{stem}.{extension}'
+
+    def valid_archive_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build the canonical archive path for core-dispatch tests."""
+        return self.archive_path(tmp_path, stem='payload.json')
+
+    def missing_inner_format_path(
+        self,
+        tmp_path: Path,
+    ) -> Path:
+        """Build an archive path with no inferable inner file format."""
+        return self.archive_path(tmp_path, stem='payload')
+
+    def expected_read_result(
+        self,
+    ) -> JSONData:
+        """Build the expected core-dispatch payload for archive reads."""
+        return {'fmt': 'json', 'name': 'payload.json'}
 
     def seed_archive_payload(
         self,
@@ -738,6 +814,10 @@ class ArchiveWrapperCoreDispatchModuleContract:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Patch core file dispatch for deterministic archive tests."""
+        monkeypatch.setattr(
+            'etlplus.file.core.File',
+            CoreDispatchFileStub,
+        )
 
     def test_read_uses_core_dispatch(
         self,
@@ -746,12 +826,12 @@ class ArchiveWrapperCoreDispatchModuleContract:
     ) -> None:
         """Test read delegating payload parsing through core dispatch."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / self.valid_path_name
+        path = self.valid_archive_path(tmp_path)
         self.seed_archive_payload(path)
 
         result = self.module.read(path)
 
-        assert result == self.expected_read_result
+        assert result == self.expected_read_result()
 
     def test_write_creates_wrapped_payload(
         self,
@@ -760,7 +840,7 @@ class ArchiveWrapperCoreDispatchModuleContract:
     ) -> None:
         """Test write persisting wrapped payload through core dispatch."""
         self.install_core_file_stub(monkeypatch)
-        path = tmp_path / self.valid_path_name
+        path = self.valid_archive_path(tmp_path)
 
         written = self.module.write(path, self.write_payload)
 
@@ -772,7 +852,7 @@ class ArchiveWrapperCoreDispatchModuleContract:
         tmp_path: Path,
     ) -> None:
         """Test writes requiring a resolvable inner file format."""
-        path = tmp_path / self.missing_inner_path_name
+        path = self.missing_inner_format_path(tmp_path)
 
         with pytest.raises(ValueError, match=self.missing_inner_error_pattern):
             self.module.write(path, self.write_payload)
@@ -1497,6 +1577,56 @@ class CoreDispatchFileStub:
         return 1
 
 
+class DictRecordsFrameStub:
+    """
+    Minimal records-only frame stub shared by scientific format tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        records: list[dict[str, object]],
+    ) -> None:
+        self._records = list(records)
+        self.columns = list(records[0].keys()) if records else []
+
+    def __getitem__(self, key: str) -> list[object]:
+        """Return one column as a list of row values."""
+        return [row.get(key) for row in self._records]
+
+    def drop(
+        self,
+        columns: list[str],
+    ) -> DictRecordsFrameStub:
+        """Return a new frame with selected columns removed."""
+        return DictRecordsFrameStub(
+            [
+                {k: v for k, v in row.items() if k not in columns}
+                for row in self._records
+            ],
+        )
+
+    def reset_index(self) -> DictRecordsFrameStub:
+        """Return self for simple reset-index test flows."""
+        return self
+
+    def to_dict(
+        self,
+        *,
+        orient: str,
+    ) -> list[dict[str, object]]:  # noqa: ARG002
+        """Return record payloads in ``records`` orientation."""
+        return list(self._records)
+
+    @staticmethod
+    def from_records(
+        records: list[dict[str, object]],
+    ) -> DictRecordsFrameStub:
+        """Construct a frame from row records."""
+        return DictRecordsFrameStub(records)
+
+
 class PandasModuleStub:
     """Minimal pandas-module stub with reader and DataFrame helpers."""
 
@@ -1553,6 +1683,202 @@ class PandasModuleStub:
     read_parquet = _read_table
     read_feather = _read_table
     read_orc = _read_table
+
+
+class PandasReadSasStub:
+    """
+    Minimal pandas stub for ``read_sas``-based handlers.
+    """
+
+    def __init__(
+        self,
+        frame: DictRecordsFrameStub,
+        *,
+        fail_on_format_kwarg: bool = False,
+    ) -> None:
+        self._frame = frame
+        self._fail_on_format_kwarg = fail_on_format_kwarg
+        self.read_calls: list[dict[str, object]] = []
+
+    def assert_fallback_read_calls(
+        self,
+        path: Path,
+        *,
+        format_name: str,
+    ) -> None:
+        """Assert fallback behavior after a rejected format keyword read."""
+        assert self.read_calls == [
+            {'path': path, 'format': format_name},
+            {'path': path},
+        ]
+
+    def assert_single_read_call(
+        self,
+        path: Path,
+        *,
+        format_name: str | None = None,
+    ) -> None:
+        """
+        Assert one pandas :meth:`read_sas` call with optional format hint.
+        """
+        expected: dict[str, object] = {'path': path}
+        if format_name is not None:
+            expected['format'] = format_name
+        assert self.read_calls == [expected]
+
+    def read_sas(
+        self,
+        path: Path,
+        **kwargs: object,
+    ) -> DictRecordsFrameStub:
+        """Simulate pandas.read_sas with optional format rejection."""
+        self.read_calls.append({'path': path, **kwargs})
+        if self._fail_on_format_kwarg and 'format' in kwargs:
+            raise TypeError('format not supported')
+        return self._frame
+
+
+class PyreadrStub:
+    """
+    Shared pyreadr-style stub for RDA/RDS tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        result: dict[str, object],
+    ) -> None:
+        self._result = result
+        self.write_rds_calls: list[tuple[str, object]] = []
+        self.write_rdata_calls: list[
+            tuple[str, object, dict[str, object]]
+        ] = []
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:
+        """Return configured R object mapping."""
+        return dict(self._result)
+
+    def write_rds(
+        self,
+        path: str,
+        frame: object,
+    ) -> None:
+        """Record one RDS write call."""
+        self.write_rds_calls.append((path, frame))
+
+    def write_rdata(
+        self,
+        path: str,
+        frame: object,
+        **kwargs: object,
+    ) -> None:
+        """Record one RDA write call."""
+        self.write_rdata_calls.append((path, frame, dict(kwargs)))
+
+
+class PyreadstatTabularStub:
+    """
+    Configurable pyreadstat-style stub for SAV/XPT tabular handlers.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        *,
+        frame: DictRecordsFrameStub | None = None,
+        read_method_name: str | None = None,
+        write_method_name: str | None = None,
+    ) -> None:
+        self._frame = frame if frame is not None else DictRecordsFrameStub([])
+        self._read_method_name = read_method_name
+        self._write_method_name = write_method_name
+        self.read_calls: list[str] = []
+        self.write_calls: list[tuple[object, str]] = []
+
+    def __getattr__(
+        self,
+        name: str,
+    ) -> object:
+        if name == self._read_method_name:
+            return self._read_method
+        if name == self._write_method_name:
+            return self._write_method
+        raise AttributeError(name)
+
+    def _read_method(
+        self,
+        path: str,
+    ) -> tuple[DictRecordsFrameStub, object]:
+        self.read_calls.append(path)
+        return self._frame, object()
+
+    def _write_method(
+        self,
+        frame: object,
+        path: str,
+    ) -> None:
+        self.write_calls.append((frame, path))
+
+    def assert_single_read_path(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert one pyreadstat read call using the provided path."""
+        assert self.read_calls == [str(path)]
+
+    def assert_last_write_path(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert the most recent pyreadstat write call path."""
+        assert self.write_calls
+        _, write_path = self.write_calls[-1]
+        assert write_path == str(path)
+
+
+class RDataPandasStub:
+    """
+    Minimal pandas stub for R-data tests using record-frame conversion.
+    """
+
+    DataFrame = DictRecordsFrameStub
+
+
+class ContextManagerSelfMixin:
+    """
+    Tiny mixin for stubs that act as context managers returning ``self``.
+    """
+
+    def __enter__(self) -> ContextManagerSelfMixin:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        tb: object,
+    ) -> None:
+        return None
+
+
+class RDataNoWriterStub:
+    """
+    Minimal pyreadr-like stub exposing only ``read_r``.
+    """
+
+    # pylint: disable=unused-argument
+
+    def read_r(
+        self,
+        path: str,
+    ) -> dict[str, object]:
+        """Return an empty mapping for reader-only flows."""
+        return {}
 
 
 class RecordsFrameStub:
