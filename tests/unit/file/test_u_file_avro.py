@@ -203,7 +203,8 @@ class TestAvroIo(BinaryDependencyModuleContract):
         _path: Path,
     ) -> None:
         """Assert fastavro write behavior."""
-        stub = self._assert_fastavro_stub(dependency_stub)
+        stub = dependency_stub
+        assert isinstance(stub, _FastAvroStub)
         assert stub.parsed_schema is not None
         assert stub.writes
         assert stub.writes[0]['records'] == self.write_payload
@@ -218,13 +219,4 @@ class TestAvroIo(BinaryDependencyModuleContract):
         _path: Path,
     ) -> None:
         """Assert fastavro read behavior."""
-        self._assert_fastavro_stub(dependency_stub)
-
-    @staticmethod
-    def _assert_fastavro_stub(
-        dependency_stub: object,
-    ) -> _FastAvroStub:
-        """Assert and return the expected fastavro stub."""
-        stub = dependency_stub
-        assert isinstance(stub, _FastAvroStub)
-        return stub
+        assert isinstance(dependency_stub, _FastAvroStub)
