@@ -290,23 +290,28 @@ class TestBaseAbcContracts:
         assert inspect.isabstract(FileHandlerABC)
         assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
 
-    def test_read_only_handler_rejects_write(self) -> None:
-        """Test read-only handlers raising on write."""
+    @pytest.mark.parametrize(
+        'operation',
+        ['write', 'write_sheet'],
+        ids=['module_write', 'sheet_write'],
+    )
+    def test_read_only_spreadsheet_handler_rejects_writes(
+        self,
+        operation: str,
+    ) -> None:
+        """Test read-only spreadsheet handlers rejecting write operations."""
         handler = XlsFile()
+        path = Path('ignored.xls')
 
         with pytest.raises(RuntimeError, match='read-only'):
-            handler.write(Path('ignored.xls'), [{'a': 1}])
-
-    def test_read_only_spreadsheet_handler_rejects_sheet_write(self) -> None:
-        """Test read-only spreadsheet handlers rejecting write_sheet calls."""
-        handler = XlsFile()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_sheet(
-                Path('ignored.xls'),
-                [{'a': 1}],
-                sheet=0,
-            )
+            if operation == 'write':
+                handler.write(path, [{'a': 1}])
+            else:
+                handler.write_sheet(
+                    path,
+                    [{'a': 1}],
+                    sheet=0,
+                )
 
 
 class TestNamingConventions:

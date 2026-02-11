@@ -210,7 +210,9 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         tables: list[str],
         table_option: str,
     ) -> None:
-        """Test read honoring explicit table options, including quoting."""
+        """
+        Test :meth:`read` honoring explicit table options, including quoting.
+        """
         conn, path = self._prepare_connection(
             tmp_path,
             optional_module_stub,
@@ -230,24 +232,42 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         assert result == [{'id': 1}]
         assert f'SELECT * FROM "{table_option}"' in conn.executed
 
-    def test_write_inserts_records(
+    @pytest.mark.parametrize(
+        ('payload', 'options', 'expected_table'),
+        [
+            ([{'id': 1}, {'id': 2}], None, 'data'),
+            ([{'id': 1}], WriteOptions(table='events'), 'events'),
+        ],
+        ids=['default_table', 'explicit_table_option'],
+    )
+    def test_write_creates_table_inserts_records_and_closes_connection(
         self,
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
+        payload: list[dict[str, object]],
+        options: WriteOptions | None,
+        expected_table: str,
     ) -> None:
-        """Test that :func:`write` creates a table and inserts records."""
+        """
+        Test that :meth:`write` creates a table, inserts rows, and closes.
+        """
         conn, path = self._prepare_connection(tmp_path, optional_module_stub)
+        handler = mod.DuckdbFile()
 
-        written = mod.write(path, [{'id': 1}, {'id': 2}])
+        written = handler.write(path, payload, options=options)
 
-        assert written == 2
+        assert written == len(payload)
         assert any(
-            stmt.startswith('CREATE TABLE "data"') for stmt in conn.executed
+            f'CREATE TABLE "{expected_table}"' in stmt
+            for stmt in conn.executed
         )
         assert conn.executemany_calls
+        assert conn.closed is True
 
     def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
-        """Test write_table short-circuiting rows that provide no columns."""
+        """
+        Test :meth:`write_table` short-circuiting rows that provide no columns.
+        """
         conn = _Connection()
         handler = mod.DuckdbFile()
 
@@ -259,27 +279,6 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
         assert written == 0
         assert not conn.executemany_calls
-
-    def test_write_uses_table_option_and_closes_connection(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """
-        Test writes honoring explicit table names and closing connections.
-        """
-        conn, path = self._prepare_connection(tmp_path, optional_module_stub)
-        handler = mod.DuckdbFile()
-
-        written = handler.write(
-            path,
-            [{'id': 1}],
-            options=WriteOptions(table='events'),
-        )
-
-        assert written == 1
-        assert any('CREATE TABLE "events"' in stmt for stmt in conn.executed)
-        assert conn.closed is True
 
     @staticmethod
     def _install_connection(
