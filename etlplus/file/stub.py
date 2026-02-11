@@ -6,8 +6,10 @@ Helpers for reading/writing intentionally unsupported (stubbed) formats.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import ClassVar
+from typing import Never
 
 from ..types import JSONData
 from ..types import JSONList
@@ -56,8 +58,9 @@ class StubFileHandlerABC(FileHandlerABC):
         """
         Raise :class:`NotImplementedError` for placeholder reads.
         """
+        _ = path
         _ = options
-        return read(path, format_name=self.format.value.upper())
+        _raise_not_implemented('read', format_name=self.format.value.upper())
 
     def write(
         self,
@@ -69,14 +72,36 @@ class StubFileHandlerABC(FileHandlerABC):
         """
         Raise :class:`NotImplementedError` for placeholder writes.
         """
+        _ = path
+        _ = data
         _ = options
-        return write(path, data, format_name=self.format.value.upper())
+        _raise_not_implemented('write', format_name=self.format.value.upper())
 
 
 class StubFile(StubFileHandlerABC):
     """Placeholder handler for STUB."""
 
     format = FileFormat.STUB
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_STUB_HANDLER = StubFile()
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_not_implemented(
+    operation: str,
+    *,
+    format_name: str,
+) -> Never:
+    """Raise standardized placeholder NotImplementedError messages."""
+    raise NotImplementedError(
+        f'{format_name} {operation} is not implemented yet',
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -87,14 +112,14 @@ def read(
     format_name: str = 'Stubbed',
 ) -> JSONList:
     """
-    Raise :class:`NotImplementedError` for stubbed reads.
+    Deprecated shim that delegates to :class:`StubFile`.
 
     Parameters
     ----------
     path : StrPath
         Path to the stubbed file on disk.
     format_name : str
-        Human-readable format name.
+        Deprecated override for human-readable format name.
 
     Returns
     -------
@@ -103,12 +128,21 @@ def read(
 
     Raises
     ------
+    DeprecationWarning
+        Always, since module-level wrappers are deprecated.
     NotImplementedError
-        Always, since this is a stub implementation.
+        Always, since STUB is a placeholder implementation.
     """
     path = coerce_path(path)
-    _ = path
-    raise NotImplementedError(f'{format_name} read is not implemented yet')
+    warnings.warn(
+        'etlplus.file.stub.read() is deprecated; use StubFile().read() '
+        'or other handler instance methods.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if format_name != 'Stubbed':
+        _raise_not_implemented('read', format_name=format_name)
+    return _STUB_HANDLER.read(path)
 
 
 def write(
@@ -117,7 +151,7 @@ def write(
     format_name: str = 'Stubbed',
 ) -> int:
     """
-    Raise :class:`NotImplementedError` for stubbed writes.
+    Deprecated shim that delegates to :class:`StubFile`.
 
     Parameters
     ----------
@@ -127,7 +161,7 @@ def write(
         Data to write as stubbed file. Should be a list of dictionaries or a
         single dictionary.
     format_name : str
-        Human-readable format name.
+        Deprecated override for human-readable format name.
 
     Returns
     -------
@@ -136,10 +170,18 @@ def write(
 
     Raises
     ------
+    DeprecationWarning
+        Always, since module-level wrappers are deprecated.
     NotImplementedError
-        Always, since this is a stub implementation.
+        Always, since STUB is a placeholder implementation.
     """
     path = coerce_path(path)
-    _ = path
-    _ = data
-    raise NotImplementedError(f'{format_name} write is not implemented yet')
+    warnings.warn(
+        'etlplus.file.stub.write() is deprecated; use StubFile().write() '
+        'or other handler instance methods.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if format_name != 'Stubbed':
+        _raise_not_implemented('write', format_name=format_name)
+    return _STUB_HANDLER.write(path, data)
