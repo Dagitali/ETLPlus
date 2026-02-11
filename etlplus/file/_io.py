@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import warnings
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -371,3 +372,58 @@ def write_text(
     path = coerce_path(path)
     with path.open('w', encoding=encoding, newline='') as handle:
         handle.write(payload)
+
+
+def call_deprecated_module_read[T](
+    path: StrPath,
+    module_name: str,
+    reader: Callable[[Path], T],
+) -> T:
+    """
+    Delegate deprecated module :func:`read` wrappers to handler methods.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path-like wrapper argument to normalize.
+    module_name : str
+        Fully-qualified module name containing the deprecated wrapper.
+    reader : Callable[[Path], T]
+        Bound handler read method.
+
+    Returns
+    -------
+    T
+        Parsed payload returned by the handler read method.
+    """
+    warn_deprecated_module_io(module_name, 'read')
+    return reader(coerce_path(path))
+
+
+def call_deprecated_module_write(
+    path: StrPath,
+    data: JSONData,
+    module_name: str,
+    writer: Callable[[Path, JSONData], int],
+) -> int:
+    """
+    Delegate deprecated module :func:`write` wrappers to handler methods.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path-like wrapper argument to normalize.
+    data : JSONData
+        Payload forwarded to the handler write method.
+    module_name : str
+        Fully-qualified module name containing the deprecated wrapper.
+    writer : Callable[[Path, JSONData], int]
+        Bound handler write method.
+
+    Returns
+    -------
+    int
+        Number of records written by the handler.
+    """
+    warn_deprecated_module_io(module_name, 'write')
+    return writer(coerce_path(path), data)
