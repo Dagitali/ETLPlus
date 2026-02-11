@@ -5,18 +5,19 @@ This page is the file-handler guardrail for migration tracking and asymmetry che
 Update this page after each `etlplus/file` migration batch.
 
 - Source of truth: `etlplus/file/registry.py` explicit handler map.
-- `status = stub` means the handler inherits `StubFileHandlerABC` (read/write raise `NotImplementedError`).
+- `status = stub` means the handler inherits `StubFileHandlerABC` directly or via internal category
+  stubs in `etlplus/file/_stub_categories.py` (read/write raise `NotImplementedError`).
 - `read/write support` reflects handler contract (`read/write` or `read-only`).
 
 | Format | Handler Class | Base ABC | Read/Write Support | Status |
 | --- | --- | --- | --- | --- |
-| `accdb` | `AccdbFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `accdb` | `AccdbFile` | `StubEmbeddedDatabaseFileHandlerABC` | `read/write` | `stub` |
 | `arrow` | `ArrowFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
 | `avro` | `AvroFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
 | `bson` | `BsonFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
 | `cbor` | `CborFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
-| `cfg` | `CfgFile` | `StubFileHandlerABC` | `read/write` | `stub` |
-| `conf` | `ConfFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `cfg` | `CfgFile` | `StubSemiStructuredTextFileHandlerABC` | `read/write` | `stub` |
+| `conf` | `ConfFile` | `StubSemiStructuredTextFileHandlerABC` | `read/write` | `stub` |
 | `csv` | `CsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
 | `dat` | `DatFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
 | `dta` | `DtaFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
@@ -24,25 +25,25 @@ Update this page after each `etlplus/file` migration batch.
 | `feather` | `FeatherFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
 | `fwf` | `FwfFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
 | `gz` | `GzFile` | `ArchiveWrapperFileHandlerABC` | `read/write` | `implemented` |
-| `hbs` | `HbsFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `hbs` | `HbsFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
 | `hdf5` | `Hdf5File` | `ScientificDatasetFileHandlerABC` | `read-only` | `implemented` |
 | `ini` | `IniFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
-| `ion` | `IonFile` | `StubFileHandlerABC` | `read/write` | `stub` |
-| `jinja2` | `Jinja2File` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `ion` | `IonFile` | `StubSemiStructuredTextFileHandlerABC` | `read/write` | `stub` |
+| `jinja2` | `Jinja2File` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
 | `json` | `JsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
-| `log` | `LogFile` | `StubFileHandlerABC` | `read/write` | `stub` |
-| `mat` | `MatFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
-| `mdb` | `MdbFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `log` | `LogFile` | `StubLogEventFileHandlerABC` | `read/write` | `stub` |
+| `mat` | `MatFile` | `StubSingleDatasetScientificFileHandlerABC` | `read/write` | `stub` |
+| `mdb` | `MdbFile` | `StubEmbeddedDatabaseFileHandlerABC` | `read/write` | `stub` |
 | `msgpack` | `MsgpackFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
-| `mustache` | `MustacheFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `mustache` | `MustacheFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
 | `nc` | `NcFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
 | `ndjson` | `NdjsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
-| `numbers` | `NumbersFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `numbers` | `NumbersFile` | `StubSpreadsheetFileHandlerABC` | `read/write` | `stub` |
 | `ods` | `OdsFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
 | `orc` | `OrcFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
 | `parquet` | `ParquetFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
 | `pb` | `PbFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
-| `pbf` | `PbfFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `pbf` | `PbfFile` | `StubBinarySerializationFileHandlerABC` | `read/write` | `stub` |
 | `properties` | `PropertiesFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `proto` | `ProtoFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
 | `psv` | `PsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
@@ -52,13 +53,13 @@ Update this page after each `etlplus/file` migration batch.
 | `sav` | `SavFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
 | `sqlite` | `SqliteFile` | `EmbeddedDatabaseFileHandlerABC` | `read/write` | `implemented` |
 | `stub` | `StubFile` | `StubFileHandlerABC` | `read/write` | `stub` |
-| `sylk` | `SylkFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `sylk` | `SylkFile` | `StubSingleDatasetScientificFileHandlerABC` | `read/write` | `stub` |
 | `tab` | `TabFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
 | `toml` | `TomlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `tsv` | `TsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
 | `txt` | `TxtFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
-| `vm` | `VmFile` | `StubFileHandlerABC` | `read/write` | `stub` |
-| `wks` | `WksFile` | `StubFileHandlerABC` | `read/write` | `stub` |
+| `vm` | `VmFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
+| `wks` | `WksFile` | `StubSpreadsheetFileHandlerABC` | `read/write` | `stub` |
 | `xls` | `XlsFile` | `ReadOnlySpreadsheetFileHandlerABC` | `read-only` | `implemented` |
 | `xlsm` | `XlsmFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
 | `xlsx` | `XlsxFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
@@ -66,4 +67,4 @@ Update this page after each `etlplus/file` migration batch.
 | `xpt` | `XptFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
 | `yaml` | `YamlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `zip` | `ZipFile` | `ArchiveWrapperFileHandlerABC` | `read/write` | `implemented` |
-| `zsav` | `ZsavFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
+| `zsav` | `ZsavFile` | `StubSingleDatasetScientificFileHandlerABC` | `read/write` | `stub` |
