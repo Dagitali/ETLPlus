@@ -14,6 +14,7 @@ from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
 from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
 from .enums import FileFormat
@@ -141,6 +142,7 @@ def read(
     JSONList
         The list of dictionaries read from the XLS file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _XLS_HANDLER.read(coerce_path(path))
 
 
@@ -163,4 +165,5 @@ def write(
     int
         Number of records written.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _XLS_HANDLER.write(coerce_path(path), data)

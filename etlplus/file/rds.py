@@ -28,6 +28,7 @@ from ._imports import get_pandas
 from ._io import coerce_path
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import warn_deprecated_module_io
 from ._r import coerce_r_object
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -239,6 +240,7 @@ def read(
     JSONData
         The structured data read from the RDS file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _RDS_HANDLER.read(coerce_path(path))
 
 
@@ -262,4 +264,5 @@ def write(
     int
         The number of rows written to the RDS file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _RDS_HANDLER.write(coerce_path(path), data)

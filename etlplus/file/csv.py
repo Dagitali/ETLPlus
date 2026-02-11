@@ -26,6 +26,7 @@ from ..types import StrPath
 from ._io import coerce_path
 from ._io import normalize_records
 from ._io import read_delimited
+from ._io import warn_deprecated_module_io
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -193,6 +194,7 @@ def read(
     JSONList
         The list of dictionaries read from the CSV file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _CSV_HANDLER.read(coerce_path(path))
 
 
@@ -216,4 +218,5 @@ def write(
     int
         The number of rows written to the CSV file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _CSV_HANDLER.write(coerce_path(path), data)

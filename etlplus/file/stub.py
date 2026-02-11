@@ -6,7 +6,6 @@ Helpers for reading/writing intentionally unsupported (stubbed) formats.
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import ClassVar
 from typing import Never
@@ -15,6 +14,7 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -156,12 +156,7 @@ def read(
         The list of dictionaries read from the stubbed file.
     """
     path = coerce_path(path)
-    warnings.warn(
-        'etlplus.file.stub.read() is deprecated; use StubFile().read() '
-        'or other handler instance methods.',
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    warn_deprecated_module_io(__name__, 'read')
     if format_name != 'Stubbed':
         _raise_not_implemented('read', format_name=format_name)
     return _STUB_HANDLER.read(path)
@@ -191,12 +186,7 @@ def write(
         The number of rows written to the stubbed file.
     """
     path = coerce_path(path)
-    warnings.warn(
-        'etlplus.file.stub.write() is deprecated; use StubFile().write() '
-        'or other handler instance methods.',
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    warn_deprecated_module_io(__name__, 'write')
     if format_name != 'Stubbed':
         _raise_not_implemented('write', format_name=format_name)
     return _STUB_HANDLER.write(path, data)

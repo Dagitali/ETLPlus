@@ -22,6 +22,7 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -50,6 +51,7 @@ class MatFile(StubSingleDatasetScientificFileHandlerABC):
     format = FileFormat.MAT
     dataset_key = 'data'
 
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -75,6 +77,7 @@ def read(
     JSONList
         The list of dictionaries read from the MAT file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _MAT_HANDLER.read(coerce_path(path))
 
 
@@ -98,4 +101,5 @@ def write(
     int
         The number of rows written to the MAT file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _MAT_HANDLER.write(coerce_path(path), data)

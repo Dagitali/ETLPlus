@@ -27,6 +27,7 @@ from ..utils import count_records
 from ._io import coerce_path
 from ._io import coerce_record_payload
 from ._io import read_text
+from ._io import warn_deprecated_module_io
 from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
@@ -194,6 +195,7 @@ def read(
     JSONData
         The structured data read from the JSON file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _JSON_HANDLER.read(coerce_path(path))
 
 
@@ -216,4 +218,5 @@ def write(
     int
         The number of records written to the JSON file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _JSON_HANDLER.write(coerce_path(path), data)

@@ -23,6 +23,7 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._io import warn_deprecated_module_io
 from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
 
@@ -80,6 +81,7 @@ def read(
     JSONList
         The list of dictionaries read from the CFG file.
     """
+    warn_deprecated_module_io(__name__, 'read')
     return _CFG_HANDLER.read(coerce_path(path))
 
 
@@ -103,4 +105,5 @@ def write(
     int
         The number of rows written to the CFG file.
     """
+    warn_deprecated_module_io(__name__, 'write')
     return _CFG_HANDLER.write(coerce_path(path), data)
