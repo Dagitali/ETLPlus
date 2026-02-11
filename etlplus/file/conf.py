@@ -24,8 +24,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -42,7 +42,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class ConfFile(StubFileHandlerABC):
+class ConfFile(StubSemiStructuredTextFileHandlerABC):
     """
     Stub handler implementation for CONF files.
     """
@@ -53,7 +53,7 @@ class ConfFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSemiStructuredTextFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

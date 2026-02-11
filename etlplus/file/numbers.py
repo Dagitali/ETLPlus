@@ -20,8 +20,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,7 +38,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class NumbersFile(StubFileHandlerABC):
+class NumbersFile(StubSpreadsheetFileHandlerABC):
     """
     Stub handler implementation for NUMBERS files.
     """
@@ -46,10 +46,11 @@ class NumbersFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.NUMBERS
+    engine_name = 'numbers'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSpreadsheetFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

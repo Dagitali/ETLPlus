@@ -23,8 +23,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubTemplateFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class Jinja2File(StubFileHandlerABC):
+class Jinja2File(StubTemplateFileHandlerABC):
     """
     Stub handler implementation for JINJA2 files.
     """
@@ -49,10 +49,11 @@ class Jinja2File(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.JINJA2
+    template_engine = 'jinja2'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubTemplateFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

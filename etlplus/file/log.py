@@ -22,8 +22,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubLogEventFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +40,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class LogFile(StubFileHandlerABC):
+class LogFile(StubLogEventFileHandlerABC):
     """
     Stub handler implementation for LOG files.
     """
@@ -51,7 +51,7 @@ class LogFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubLogEventFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

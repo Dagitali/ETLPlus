@@ -22,8 +22,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +40,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class IonFile(StubFileHandlerABC):
+class IonFile(StubSemiStructuredTextFileHandlerABC):
     """
     Stub handler implementation for ION files.
     """
@@ -51,7 +51,7 @@ class IonFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSemiStructuredTextFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

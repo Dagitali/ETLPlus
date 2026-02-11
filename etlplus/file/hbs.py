@@ -23,8 +23,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubTemplateFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class HbsFile(StubFileHandlerABC):
+class HbsFile(StubTemplateFileHandlerABC):
     """
     Stub handler implementation for HBS files.
     """
@@ -49,10 +49,11 @@ class HbsFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.HBS
+    template_engine = 'handlebars'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubTemplateFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

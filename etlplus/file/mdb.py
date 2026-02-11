@@ -23,8 +23,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubEmbeddedDatabaseFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class MdbFile(StubFileHandlerABC):
+class MdbFile(StubEmbeddedDatabaseFileHandlerABC):
     """
     Stub handler implementation for MDB files.
     """
@@ -52,7 +52,7 @@ class MdbFile(StubFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubEmbeddedDatabaseFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

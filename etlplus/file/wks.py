@@ -22,8 +22,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import coerce_path
+from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
-from .stub import StubFileHandlerABC
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,7 +40,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class WksFile(StubFileHandlerABC):
+class WksFile(StubSpreadsheetFileHandlerABC):
     """
     Stub handler implementation for WKS files.
     """
@@ -48,10 +48,11 @@ class WksFile(StubFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.WKS
+    engine_name = 'lotus123'
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubFileHandlerABC.
+    # Inherits read() and write() from StubSpreadsheetFileHandlerABC.
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
