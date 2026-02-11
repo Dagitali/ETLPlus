@@ -251,9 +251,8 @@ def _matrix_base_abc_name(
         raise AssertionError(
             f'No category ABC found for handler {handler_class.__name__!r}',
         )
-    if (
-        first_category_abc == 'ReadOnlyFileHandlerABC'
-        and issubclass(handler_class, ScientificDatasetFileHandlerABC)
+    if first_category_abc == 'ReadOnlyFileHandlerABC' and issubclass(
+        handler_class, ScientificDatasetFileHandlerABC,
     ):
         if issubclass(handler_class, SingleDatasetScientificFileHandlerABC):
             return 'SingleDatasetScientificFileHandlerABC'
@@ -440,6 +439,8 @@ class TestRegistryStrictPolicy:
 
 class TestRegistryDocsMatrixGuardrail:
     """Unit tests for registry/documentation matrix consistency."""
+
+    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         'path',
