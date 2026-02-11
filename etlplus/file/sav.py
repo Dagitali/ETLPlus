@@ -18,7 +18,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
@@ -29,6 +28,7 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
+from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -82,10 +82,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             The list of dictionaries read from the SAV file.
         """
-        return cast(
-            JSONList,
-            self.read_dataset(path, options=options),
-        )
+        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -115,7 +112,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         self.validate_single_dataset_key(dataset)
         pyreadstat = get_dependency('pyreadstat', format_name='SAV')
         frame, _meta = pyreadstat.read_sav(str(path))
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write(
         self,

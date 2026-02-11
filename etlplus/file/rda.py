@@ -21,7 +21,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
@@ -29,7 +28,8 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from ._r import coerce_r_object
+from ._r import coerce_r_result
+from ._r import list_r_dataset_keys
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
@@ -81,9 +81,10 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         """
         pyreadr = get_dependency('pyreadr', format_name='RDA')
         result = pyreadr.read_r(str(path))
-        if not result:
-            return [self.dataset_key]
-        return [str(key) for key in result]
+        return list_r_dataset_keys(
+            result,
+            default_key=self.dataset_key,
+        )
 
     def read(
         self,
@@ -141,24 +142,13 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         pyreadr = get_dependency('pyreadr', format_name='RDA')
         pandas = get_pandas('RDA')
         result = pyreadr.read_r(str(path))
-        if not result:
-            return []
-
-        if dataset is not None:
-            if dataset in result:
-                return coerce_r_object(result[dataset], pandas)
-            if dataset == self.dataset_key and len(result) == 1:
-                value = next(iter(result.values()))
-                return coerce_r_object(value, pandas)
-            raise ValueError(f'RDA dataset {dataset!r} not found')
-
-        if len(result) == 1:
-            value = next(iter(result.values()))
-            return coerce_r_object(value, pandas)
-        payload: JSONDict = {}
-        for key, value in result.items():
-            payload[str(key)] = coerce_r_object(value, pandas)
-        return payload
+        return coerce_r_result(
+            result,
+            dataset=dataset,
+            dataset_key=self.dataset_key,
+            format_name='RDA',
+            pandas=pandas,
+        )
 
     def write(
         self,

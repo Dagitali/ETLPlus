@@ -18,7 +18,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
@@ -27,6 +26,7 @@ from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
+from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -118,7 +118,7 @@ class Sas7bdatFile(
             frame = pandas.read_sas(path, format='sas7bdat')
         except TypeError:
             frame = pandas.read_sas(path)
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write_dataset(
         self,
