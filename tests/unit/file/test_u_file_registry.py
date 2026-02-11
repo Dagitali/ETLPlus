@@ -37,89 +37,87 @@ from etlplus.file.stub import StubFileHandlerABC
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = (
-    # Delimited text
-    (FileFormat.CSV, DelimitedTextFileHandlerABC),
-    (FileFormat.DAT, DelimitedTextFileHandlerABC),
-    (FileFormat.PSV, DelimitedTextFileHandlerABC),
-    (FileFormat.TAB, DelimitedTextFileHandlerABC),
-    (FileFormat.TSV, DelimitedTextFileHandlerABC),
-    # Semi-structured
-    (FileFormat.INI, SemiStructuredTextFileHandlerABC),
-    (FileFormat.JSON, SemiStructuredTextFileHandlerABC),
-    (FileFormat.NDJSON, SemiStructuredTextFileHandlerABC),
-    (FileFormat.PROPERTIES, SemiStructuredTextFileHandlerABC),
-    (FileFormat.TOML, SemiStructuredTextFileHandlerABC),
-    (FileFormat.XML, SemiStructuredTextFileHandlerABC),
-    (FileFormat.YAML, SemiStructuredTextFileHandlerABC),
-    # Columnar
-    (FileFormat.ARROW, ColumnarFileHandlerABC),
-    (FileFormat.FEATHER, ColumnarFileHandlerABC),
-    (FileFormat.ORC, ColumnarFileHandlerABC),
-    (FileFormat.PARQUET, ColumnarFileHandlerABC),
-    # Binary serialization/interchange
-    (FileFormat.AVRO, BinarySerializationFileHandlerABC),
-    (FileFormat.BSON, BinarySerializationFileHandlerABC),
-    (FileFormat.CBOR, BinarySerializationFileHandlerABC),
-    (FileFormat.MSGPACK, BinarySerializationFileHandlerABC),
-    (FileFormat.PB, BinarySerializationFileHandlerABC),
-    (FileFormat.PROTO, BinarySerializationFileHandlerABC),
-    # Embedded databases
-    (FileFormat.DUCKDB, EmbeddedDatabaseFileHandlerABC),
-    (FileFormat.SQLITE, EmbeddedDatabaseFileHandlerABC),
-    # Spreadsheets
-    (FileFormat.ODS, SpreadsheetFileHandlerABC),
-    (FileFormat.XLS, SpreadsheetFileHandlerABC),
-    (FileFormat.XLSM, SpreadsheetFileHandlerABC),
-    (FileFormat.XLSX, SpreadsheetFileHandlerABC),
-    # Plain text/fixed-width text
-    (FileFormat.FWF, TextFixedWidthFileHandlerABC),
-    (FileFormat.TXT, TextFixedWidthFileHandlerABC),
-    # Archives
-    (FileFormat.GZ, ArchiveWrapperFileHandlerABC),
-    (FileFormat.ZIP, ArchiveWrapperFileHandlerABC),
-    # Scientific/statistical
-    (FileFormat.DTA, ScientificDatasetFileHandlerABC),
-    (FileFormat.HDF5, ScientificDatasetFileHandlerABC),
-    (FileFormat.MAT, ScientificDatasetFileHandlerABC),
-    (FileFormat.NC, ScientificDatasetFileHandlerABC),
-    (FileFormat.RDA, ScientificDatasetFileHandlerABC),
-    (FileFormat.RDS, ScientificDatasetFileHandlerABC),
-    (FileFormat.SAS7BDAT, ScientificDatasetFileHandlerABC),
-    (FileFormat.SAV, ScientificDatasetFileHandlerABC),
-    (FileFormat.SYLK, ScientificDatasetFileHandlerABC),
-    (FileFormat.XPT, ScientificDatasetFileHandlerABC),
-    (FileFormat.ZSAV, ScientificDatasetFileHandlerABC),
-    # Single-dataset scientific subtype
-    (FileFormat.DTA, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.MAT, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.NC, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.SAS7BDAT, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.SAV, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.SYLK, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.XPT, SingleDatasetScientificFileHandlerABC),
-    (FileFormat.ZSAV, SingleDatasetScientificFileHandlerABC),
-    # Placeholder/stubbed module-owned formats
-    (FileFormat.STUB, StubFileHandlerABC),
-    (FileFormat.ACCDB, StubFileHandlerABC),
-    (FileFormat.CFG, StubFileHandlerABC),
-    (FileFormat.CONF, StubFileHandlerABC),
-    (FileFormat.HBS, StubFileHandlerABC),
-    (FileFormat.ION, StubFileHandlerABC),
-    (FileFormat.JINJA2, StubFileHandlerABC),
-    (FileFormat.LOG, StubFileHandlerABC),
-    (FileFormat.MDB, StubFileHandlerABC),
-    (FileFormat.MUSTACHE, StubFileHandlerABC),
-    (FileFormat.NUMBERS, StubFileHandlerABC),
-    (FileFormat.PBF, StubFileHandlerABC),
-    (FileFormat.VM, StubFileHandlerABC),
-    (FileFormat.WKS, StubFileHandlerABC),
-    # Read-only
-    (FileFormat.HDF5, ReadOnlyFileHandlerABC),
-    (FileFormat.SAS7BDAT, ReadOnlyFileHandlerABC),
-    (FileFormat.XLS, ReadOnlyFileHandlerABC),
-    # Read-only spreadsheets
-    (FileFormat.XLS, ReadOnlySpreadsheetFileHandlerABC),
+_ABC_GROUPS: tuple[tuple[type[object], tuple[FileFormat, ...]], ...] = (
+    (
+        DelimitedTextFileHandlerABC,
+        (
+            FileFormat.CSV, FileFormat.DAT, FileFormat.PSV,
+            FileFormat.TAB, FileFormat.TSV,
+        ),
+    ),
+    (
+        SemiStructuredTextFileHandlerABC,
+        (
+            FileFormat.INI, FileFormat.JSON, FileFormat.NDJSON,
+            FileFormat.PROPERTIES, FileFormat.TOML, FileFormat.XML,
+            FileFormat.YAML,
+        ),
+    ),
+    (
+        ColumnarFileHandlerABC,
+        (
+            FileFormat.ARROW, FileFormat.FEATHER, FileFormat.ORC,
+            FileFormat.PARQUET,
+        ),
+    ),
+    (
+        BinarySerializationFileHandlerABC,
+        (
+            FileFormat.AVRO, FileFormat.BSON, FileFormat.CBOR,
+            FileFormat.MSGPACK, FileFormat.PB, FileFormat.PROTO,
+        ),
+    ),
+    (EmbeddedDatabaseFileHandlerABC, (FileFormat.DUCKDB, FileFormat.SQLITE)),
+    (
+        SpreadsheetFileHandlerABC,
+        (FileFormat.ODS, FileFormat.XLS, FileFormat.XLSM, FileFormat.XLSX),
+    ),
+    (TextFixedWidthFileHandlerABC, (FileFormat.FWF, FileFormat.TXT)),
+    (ArchiveWrapperFileHandlerABC, (FileFormat.GZ, FileFormat.ZIP)),
+    (
+        ScientificDatasetFileHandlerABC,
+        (
+            FileFormat.DTA, FileFormat.HDF5, FileFormat.MAT, FileFormat.NC,
+            FileFormat.RDA, FileFormat.RDS, FileFormat.SAS7BDAT,
+            FileFormat.SAV, FileFormat.SYLK, FileFormat.XPT, FileFormat.ZSAV,
+        ),
+    ),
+    (
+        SingleDatasetScientificFileHandlerABC,
+        (
+            FileFormat.DTA, FileFormat.MAT, FileFormat.NC,
+            FileFormat.SAS7BDAT, FileFormat.SAV, FileFormat.SYLK,
+            FileFormat.XPT, FileFormat.ZSAV,
+        ),
+    ),
+    (
+        StubFileHandlerABC,
+        (
+            FileFormat.STUB, FileFormat.ACCDB, FileFormat.CFG,
+            FileFormat.CONF, FileFormat.HBS, FileFormat.ION,
+            FileFormat.JINJA2, FileFormat.LOG, FileFormat.MDB,
+            FileFormat.MUSTACHE, FileFormat.NUMBERS, FileFormat.PBF,
+            FileFormat.VM, FileFormat.WKS,
+        ),
+    ),
+    (
+        ReadOnlyFileHandlerABC,
+        (FileFormat.HDF5, FileFormat.SAS7BDAT, FileFormat.XLS),
+    ),
+    (ReadOnlySpreadsheetFileHandlerABC, (FileFormat.XLS,)),
+)
+
+_ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = tuple(
+    (file_format, expected_abc)
+    for expected_abc, file_formats in _ABC_GROUPS
+    for file_format in file_formats
+)
+
+_CACHEABLES = (
+    mod.get_handler,
+    mod.get_handler_class,
+    mod._module_adapter_class_for_format,
+    mod._module_for_format,
 )
 
 _MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
@@ -168,25 +166,18 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
 # SECTION: FIXTURES ========================================================= #
 
 
+def _clear_registry_caches() -> None:
+    """Clear all cached registry resolution helpers."""
+    for cacheable in _CACHEABLES:
+        cacheable.cache_clear()
+
+
 @pytest.fixture(name='clear_registry_caches', autouse=True)
 def clear_registry_caches_fixture() -> Iterator[None]:
     """Clear registry caches before and after each test."""
-    # pylint: disable=protected-access
-    for cacheable in (
-        mod.get_handler,
-        mod.get_handler_class,
-        mod._module_adapter_class_for_format,
-        mod._module_for_format,
-    ):
-        cacheable.cache_clear()
+    _clear_registry_caches()
     yield
-    for cacheable in (
-        mod.get_handler,
-        mod.get_handler_class,
-        mod._module_adapter_class_for_format,
-        mod._module_for_format,
-    ):
-        cacheable.cache_clear()
+    _clear_registry_caches()
 
 
 # SECTION: TESTS ============================================================ #
