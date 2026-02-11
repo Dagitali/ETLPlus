@@ -217,11 +217,18 @@ def clear_registry_caches() -> Iterator[None]:
 class TestRegistryAbcConformance:
     """Unit tests for category-to-ABC inheritance conformance."""
 
-    def test_mapped_handler_class_inherits_expected_abc(self) -> None:
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_abc'),
+        _ABC_CASES,
+    )
+    def test_mapped_handler_class_inherits_expected_abc(
+        self,
+        file_format: FileFormat,
+        expected_abc: type[object],
+    ) -> None:
         """Test mapped handlers inheriting each expected category ABC."""
-        for file_format, expected_abc in _ABC_CASES:
-            handler_class = mod.get_handler_class(file_format)
-            assert issubclass(handler_class, expected_abc)
+        handler_class = mod.get_handler_class(file_format)
+        assert issubclass(handler_class, expected_abc)
 
 
 class TestRegistryMappedResolution:
@@ -262,11 +269,18 @@ class TestRegistryMappedResolution:
             )
             assert mapped_class.format == file_format
 
-    def test_get_handler_class_uses_mapped_class(self) -> None:
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_class'),
+        _MAPPED_CLASS_CASES,
+    )
+    def test_get_handler_class_uses_mapped_class(
+        self,
+        file_format: FileFormat,
+        expected_class: type[object],
+    ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        for file_format, expected_class in _MAPPED_CLASS_CASES:
-            handler_class = mod.get_handler_class(file_format)
-            assert handler_class is expected_class
+        handler_class = mod.get_handler_class(file_format)
+        assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
@@ -276,12 +290,17 @@ class TestRegistryMappedResolution:
         assert first is second
         assert isinstance(first, self.singleton_class)
 
+    @pytest.mark.parametrize(
+        ('file_format', 'expected_spec'),
+        _PLACEHOLDER_SPEC_CASES,
+    )
     def test_unstubbed_placeholder_modules_use_module_owned_classes(
         self,
+        file_format: FileFormat,
+        expected_spec: str,
     ) -> None:
         """Test placeholder modules mapping to their own class symbols."""
-        for file_format, expected_spec in _PLACEHOLDER_SPEC_CASES:
-            assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
+        assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
 
 
 class TestRegistryFallbackPolicy:
