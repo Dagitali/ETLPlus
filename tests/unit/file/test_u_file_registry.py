@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
+from collections.abc import Callable
 from collections.abc import Iterator
 
 import pytest
@@ -243,23 +244,23 @@ class TestRegistryInternalHelpers:
 
     # pylint: disable=protected-access
 
-    def test_coerce_handler_class_rejects_non_class(self) -> None:
-        """Test non-class symbols being rejected by class coercion."""
-        with pytest.raises(ValueError, match='must be a class'):
+    @pytest.mark.parametrize(
+        ('symbol', 'error_pattern'),
+        (
+            (object(), 'must be a class'),
+            (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
+        ),
+        ids=('non_class', 'wrong_base_class'),
+    )
+    def test_coerce_handler_class_rejects_invalid_symbols(
+        self,
+        symbol: object,
+        error_pattern: str,
+    ) -> None:
+        """Test class coercion rejecting invalid symbols."""
+        with pytest.raises(ValueError, match=error_pattern):
             mod._coerce_handler_class(
-                object(),
-                file_format=FileFormat.JSON,
-            )
-
-    def test_coerce_handler_class_rejects_non_handler_subclass(self) -> None:
-        """Test classes not inheriting FileHandlerABC are rejected."""
-
-        class _NotAHandler:
-            pass
-
-        with pytest.raises(ValueError, match='must inherit FileHandlerABC'):
-            mod._coerce_handler_class(
-                _NotAHandler,
+                symbol,
                 file_format=FileFormat.JSON,
             )
 
@@ -367,21 +368,20 @@ class TestRegistryStrictPolicy:
             raising=False,
         )
 
-    def test_get_handler_class_raises_without_explicit_mapping(
+    @pytest.mark.parametrize(
+        'resolver',
+        (
+            mod.get_handler_class,
+            mod.get_handler,
+        ),
+        ids=('class_lookup', 'instance_lookup'),
+    )
+    def test_lookups_raise_without_explicit_mapping(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        resolver: Callable[[FileFormat], object],
     ) -> None:
-        """Test strict mode rejecting unmapped formats for class lookup."""
-        self._remove_fallback_mapping(monkeypatch)
-
-        with pytest.raises(ValueError, match='Unsupported format'):
-            mod.get_handler_class(self.fallback_format)
-
-    def test_get_handler_raises_without_explicit_mapping(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test strict mode rejecting unmapped formats for instance lookup."""
+        """Test strict mode rejecting unmapped formats across lookups."""
         self._remove_fallback_mapping(monkeypatch)
         with pytest.raises(ValueError, match='Unsupported format'):
-            mod.get_handler(self.fallback_format)
+            resolver(self.fallback_format)
