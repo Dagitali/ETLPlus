@@ -87,6 +87,34 @@ class MustacheFile(TemplateFileHandlerABC):
         encoding = self.encoding_from_read_options(options)
         return [{'template': path.read_text(encoding=encoding)}]
 
+    def render(
+        self,
+        template: str,
+        context: JSONDict,
+    ) -> str:
+        """
+        Render Mustache template text using context data.
+
+        Parameters
+        ----------
+        template : str
+            Template text to render.
+        context : JSONDict
+            Context dictionary for rendering.
+
+        Returns
+        -------
+        str
+            Rendered template output.
+        """
+
+        def _replace(match: re.Match[str]) -> str:
+            key = match.group('key')
+            value = context.get(key)
+            return stringify_value(value)
+
+        return _MUSTACHE_TOKEN_PATTERN.sub(_replace, template)
+
     def write(
         self,
         path: Path,
@@ -135,34 +163,6 @@ class MustacheFile(TemplateFileHandlerABC):
             encoding=self.encoding_from_write_options(options),
         )
         return 1
-
-    def render(
-        self,
-        template: str,
-        context: JSONDict,
-    ) -> str:
-        """
-        Render Mustache template text using context data.
-
-        Parameters
-        ----------
-        template : str
-            Template text to render.
-        context : JSONDict
-            Context dictionary for rendering.
-
-        Returns
-        -------
-        str
-            Rendered template output.
-        """
-
-        def _replace(match: re.Match[str]) -> str:
-            key = match.group('key')
-            value = context.get(key)
-            return stringify_value(value)
-
-        return _MUSTACHE_TOKEN_PATTERN.sub(_replace, template)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
