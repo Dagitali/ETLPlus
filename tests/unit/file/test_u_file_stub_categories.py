@@ -7,7 +7,7 @@ Unit tests for :mod:`etlplus.file._stub_categories`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
+from typing import Any
 
 import pytest
 
@@ -31,7 +31,7 @@ OK_DICT: JSONData = {'ok': True}
 def _patch_stub_read(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    result: object,
+    result: Any,
     expected_path: Path | None = None,
 ) -> list[tuple[Path, ReadOptions | None]]:
     """Patch ``StubFileHandlerABC.read`` and collect read call metadata."""
@@ -46,7 +46,7 @@ def _patch_stub_read(
         if expected_path is not None:
             assert path == expected_path
         read_calls.append((path, options))
-        return cast(JSONData, result)
+        return result
 
     monkeypatch.setattr(StubFileHandlerABC, 'read', _read)
     return read_calls
