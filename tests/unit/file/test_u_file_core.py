@@ -29,6 +29,9 @@ from etlplus.types import JSONData
 # SECTION: HELPERS ========================================================== #
 
 
+type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
+
+
 FORMAT_CASES: list[FormatCase] = [
     # Tabular & delimited text
     (
@@ -319,9 +322,6 @@ STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
 )
 
 
-type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
-
-
 def _coerce_numeric_value(value: object) -> object:
     """Coerce numeric scalars into stable Python numeric types."""
     if isinstance(value, numbers.Real):
@@ -397,12 +397,6 @@ def normalize_xml_payload(payload: JSONData) -> JSONData:
         root = {**root, 'items': [items]}
         return {**payload, 'root': root}
     return payload
-
-
-def require_optional_modules(*modules: str) -> None:
-    """Skip the test when optional dependencies are missing."""
-    for module in modules:
-        pytest.importorskip(module)
 
 
 # SECTION: TESTS ============================================================ #
@@ -638,7 +632,8 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        require_optional_modules(*requires)
+        for module in requires:
+            pytest.importorskip(module)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
@@ -784,45 +779,15 @@ class TestFile:
     ) -> None:
         """Test default XML root tag routing in class-based dispatch."""
         path = tmp_path / 'export.xml'
-        calls: dict[str, object] = {}
-
-        class _StubHandler:
-            def read(
-                self,
-                path: Path,
-            ) -> JSONData:
-                """
-                Stub read method that records the path and returns an empty
-                list.
-                """
-                _ = path
-                return []
-
-            def write(
-                self,
-                path: Path,
-                data: JSONData,
-                *,
-                options: WriteOptions | None = None,
-            ) -> int:
-                """
-                Stub write method that records the path, data, and options.
-                """
-                calls['path'] = path
-                calls['data'] = data
-                calls['options'] = options
-                return 1
-
-        def _get_handler(file_format: FileFormat) -> _StubHandler:
-            assert file_format is FileFormat.XML
-            return _StubHandler()
-
-        monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
+        calls = _install_core_handler_stub(monkeypatch, write_result=1)
 
         written = File(path, FileFormat.XML).write([{'name': 'Ada'}])
 
         assert written == 1
-        options = cast(WriteOptions, calls['options'])
+        assert calls['format'] is FileFormat.XML
+        assert calls['write_path'] == path
+        assert calls['write_data'] == [{'name': 'Ada'}]
+        options = cast(WriteOptions, calls['write_options'])
         assert options.root_tag == xml_file.DEFAULT_XML_ROOT
 
     def test_zip_multi_file_read(
