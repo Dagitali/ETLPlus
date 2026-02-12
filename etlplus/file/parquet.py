@@ -62,30 +62,6 @@ class ParquetFile(ColumnarFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return Parquet content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the Parquet file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the Parquet file.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
     def read_table(
         self,
         path: Path,

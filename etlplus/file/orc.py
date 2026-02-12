@@ -63,30 +63,6 @@ class OrcFile(ColumnarFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return ORC content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ORC file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the ORC file.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
     def read_table(
         self,
         path: Path,

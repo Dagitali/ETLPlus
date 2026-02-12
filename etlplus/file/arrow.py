@@ -83,30 +83,6 @@ class ArrowFile(ColumnarFileHandlerABC):
         pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
         return pyarrow_mod.Table.from_pylist(records)
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return ARROW content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the Apache Arrow file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the Apache Arrow file.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
     def read_table(
         self,
         path: Path,

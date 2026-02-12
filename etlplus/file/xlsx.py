@@ -48,30 +48,6 @@ class XlsxFile(SpreadsheetFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return XLSX content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSX file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLSX file.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
     def read_sheet(
         self,
         path: Path,

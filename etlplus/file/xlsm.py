@@ -61,30 +61,6 @@ class XlsmFile(SpreadsheetFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return XLSM content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSM file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLSM file.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
     def read_sheet(
         self,
         path: Path,

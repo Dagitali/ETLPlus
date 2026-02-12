@@ -480,6 +480,30 @@ class ColumnarFileHandlerABC(FileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return columnar content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the columnar file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records parsed from the columnar table.
+        """
+        table = self.read_table(path, options=options)
+        return self.table_to_records(table)
+
     @abstractmethod
     def read_table(
         self,
@@ -968,6 +992,30 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
     default_sheet: ClassVar[str | int] = 0
 
     # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return spreadsheet content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the selected sheet.
+        """
+        sheet = self.sheet_from_read_options(options)
+        return self.read_sheet(path, sheet=sheet, options=options)
 
     @abstractmethod
     def read_sheet(
