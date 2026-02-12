@@ -29,7 +29,6 @@ from ..types import StrPath
 from ._imports import get_dependency
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
 from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
@@ -128,39 +127,6 @@ class ArrowFile(ColumnarFileHandlerABC):
             Parsed records.
         """
         return cast(JSONList, table.to_pylist())
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to ARROW at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ARROW file on disk.
-        data : JSONData
-            Data to write as ARROW.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the ARROW file.
-        """
-        records = normalize_records(data, 'ARROW')
-        if not records:
-            return 0
-
-        ensure_parent_dir(path)
-        table = self.records_to_table(records)
-        self.write_table(path, table, options=options)
-        return len(records)
 
     def write_table(
         self,

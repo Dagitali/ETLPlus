@@ -504,6 +504,38 @@ class ColumnarFileHandlerABC(FileHandlerABC):
         table = self.read_table(path, options=options)
         return self.table_to_records(table)
 
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write columnar content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the columnar file on disk.
+        data : JSONData
+            Row-oriented data to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        table = self.records_to_table(data)
+        records = self.table_to_records(table)
+        if not records:
+            return 0
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.write_table(path, table, options=options)
+        return len(records)
+
     @abstractmethod
     def read_table(
         self,
@@ -1016,6 +1048,38 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         """
         sheet = self.sheet_from_read_options(options)
         return self.read_sheet(path, sheet=sheet, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write spreadsheet content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        data : JSONData
+            Row-oriented data to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        from ._io import normalize_records
+
+        rows = normalize_records(data, self.format.value.upper())
+        if not rows:
+            return 0
+        sheet = self.sheet_from_write_options(options)
+        return self.write_sheet(path, rows, sheet=sheet, options=options)
 
     @abstractmethod
     def read_sheet(

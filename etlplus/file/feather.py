@@ -29,7 +29,6 @@ from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -129,39 +128,6 @@ class FeatherFile(ColumnarFileHandlerABC):
             Parsed records.
         """
         return records_from_table(table)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to Feather at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the Feather file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        records = normalize_records(data, 'Feather')
-        if not records:
-            return 0
-
-        ensure_parent_dir(path)
-        table = self.records_to_table(records)
-        self.write_table(path, table, options=options)
-        return len(records)
 
     def write_table(
         self,

@@ -28,7 +28,6 @@ from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SpreadsheetFileHandlerABC
@@ -102,36 +101,6 @@ class XlsmFile(SpreadsheetFileHandlerABC):
                 'Install with: pip install openpyxl',
             ) from err
         return records_from_table(frame)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to XLSM at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSM file on disk.
-        data : JSONData
-            Data to write as XLSM file.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the XLSM file.
-        """
-        records = normalize_records(data, 'XLSM')
-        if not records:
-            return 0
-        sheet = self.sheet_from_write_options(options)
-        return self.write_sheet(path, records, sheet=sheet, options=options)
 
     def write_sheet(
         self,
