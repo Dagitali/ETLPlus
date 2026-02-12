@@ -20,6 +20,7 @@ from etlplus.file._stub_categories import (
 )
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
+from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -121,7 +122,7 @@ class _RowReadWriteMixin:
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> JSONList:
         """Provide a read implementation delegating to row-level methods."""
         handler = cast(
             DelimitedTextFileHandlerABC | TextFixedWidthFileHandlerABC,
@@ -214,6 +215,90 @@ class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
         _ = path
         _ = options
         return len(rows)
+
+
+class _ReadOnlyScientificStub(
+    ReadOnlyFileHandlerABC,
+    ScientificDatasetFileHandlerABC,
+):
+    """Concrete read-only scientific handler for base-contract tests."""
+
+    format = FileFormat.HDF5
+    dataset_key = 'data'
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        _ = path
+        return [self.dataset_key]
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        _ = dataset
+        _ = options
+        return []
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        _ = dataset
+        _ = options
+        raise RuntimeError(
+            f'{self.format.value.upper()} is read-only and does not support '
+            'write operations',
+        )
+
+
+class _ReadOnlySingleScientificStub(
+    ReadOnlyFileHandlerABC,
+    SingleDatasetScientificFileHandlerABC,
+):
+    """Concrete read-only single-dataset handler for base-contract tests."""
+
+    format = FileFormat.SAS7BDAT
+    dataset_key = 'data'
+
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        _ = path
+        self.resolve_single_read_dataset(dataset, options=options)
+        return []
+
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        _ = path
+        _ = data
+        self.resolve_single_write_dataset(dataset, options=options)
+        _ = options
+        raise RuntimeError(
+            f'{self.format.value.upper()} is read-only and does not support '
+            'write operations',
+        )
 
 
 # SECTION: TESTS ============================================================ #
@@ -310,6 +395,45 @@ class TestBaseAbcContracts:
                     [{'a': 1}],
                     sheet=0,
                 )
+
+    def test_read_only_scientific_write_dataset_rejects_writes(
+        self,
+    ) -> None:
+        """Test read-only scientific handlers rejecting dataset writes."""
+        handler = _ReadOnlyScientificStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write_dataset(
+                Path('ignored.hdf5'),
+                [{'id': 1}],
+                dataset='other',
+            )
+
+    def test_read_only_single_scientific_rejects_invalid_dataset_key(
+        self,
+    ) -> None:
+        """Test single-dataset read-only handlers validating dataset keys."""
+        handler = _ReadOnlySingleScientificStub()
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write_dataset(
+                Path('ignored.sas7bdat'),
+                [{'id': 1}],
+                dataset='other',
+            )
+
+    def test_read_only_single_scientific_rejects_default_dataset_writes(
+        self,
+    ) -> None:
+        """Test read-only guard still applied for valid single dataset keys."""
+        handler = _ReadOnlySingleScientificStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write_dataset(
+                Path('ignored.sas7bdat'),
+                [{'id': 1}],
+                dataset='data',
+            )
 
 
 class TestNamingConventions:
