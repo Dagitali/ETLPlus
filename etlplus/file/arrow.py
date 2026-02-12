@@ -19,9 +19,8 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 from typing import cast
-
-import pyarrow  # type: ignore[import]
 
 from ..types import JSONData
 from ..types import JSONList
@@ -64,7 +63,7 @@ class ArrowFile(ColumnarFileHandlerABC):
     def records_to_table(
         self,
         data: JSONData,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Convert row-oriented records into an Arrow table object.
 
@@ -75,8 +74,8 @@ class ArrowFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            PyArrow table object.
+        Any
+            Columnar table object.
         """
         records = normalize_records(data, 'ARROW')
         pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
@@ -111,15 +110,15 @@ class ArrowFile(ColumnarFileHandlerABC):
 
     def table_to_records(
         self,
-        table: pyarrow.Table,
+        table: Any,
     ) -> JSONList:
         """
         Convert an Arrow table object into row-oriented records.
 
         Parameters
         ----------
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
 
         Returns
         -------
@@ -131,7 +130,7 @@ class ArrowFile(ColumnarFileHandlerABC):
     def write_table(
         self,
         path: Path,
-        table: pyarrow.Table,
+        table: Any,
         *,
         options: WriteOptions | None = None,
     ) -> None:
@@ -142,8 +141,8 @@ class ArrowFile(ColumnarFileHandlerABC):
         ----------
         path : Path
             Path to the Arrow file on disk.
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
         options : WriteOptions | None, optional
             Optional write parameters.
         """

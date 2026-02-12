@@ -19,8 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-
-import pyarrow  # type: ignore[import]
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -66,7 +65,7 @@ class ParquetFile(ColumnarFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Read a Parquet table object from *path*.
 
@@ -79,8 +78,8 @@ class ParquetFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            PyArrow table object.
+        Any
+            Columnar table object.
 
         Raises
         ------
@@ -102,7 +101,7 @@ class ParquetFile(ColumnarFileHandlerABC):
     def records_to_table(
         self,
         data: JSONData,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Convert row-oriented records into a Parquet table object.
 
@@ -113,8 +112,8 @@ class ParquetFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            PyArrow table object.
+        Any
+            Columnar table object.
         """
         records = normalize_records(data, 'Parquet')
         pandas = get_pandas('Parquet')
@@ -122,15 +121,15 @@ class ParquetFile(ColumnarFileHandlerABC):
 
     def table_to_records(
         self,
-        table: pyarrow.Table,
+        table: Any,
     ) -> JSONList:
         """
         Convert a Parquet table object into row-oriented records.
 
         Parameters
         ----------
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
 
         Returns
         -------
@@ -142,7 +141,7 @@ class ParquetFile(ColumnarFileHandlerABC):
     def write_table(
         self,
         path: Path,
-        table: pyarrow.Table,
+        table: Any,
         *,
         options: WriteOptions | None = None,
     ) -> None:
@@ -153,8 +152,8 @@ class ParquetFile(ColumnarFileHandlerABC):
         ----------
         path : Path
             Path to the Parquet file on disk.
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
         options : WriteOptions | None, optional
             Optional write parameters.
 

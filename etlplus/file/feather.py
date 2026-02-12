@@ -19,8 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-
-import pyarrow  # type: ignore[import]
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -67,7 +66,7 @@ class FeatherFile(ColumnarFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Read a Feather table object from *path*.
 
@@ -80,8 +79,8 @@ class FeatherFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            Pandas DataFrame-like object.
+        Any
+            Columnar table object.
         """
         _ = options
         get_dependency('pyarrow', format_name='Feather')
@@ -91,7 +90,7 @@ class FeatherFile(ColumnarFileHandlerABC):
     def records_to_table(
         self,
         data: JSONData,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Convert row-oriented records into a Feather table object.
 
@@ -102,8 +101,8 @@ class FeatherFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            Pandas DataFrame-like object.
+        Any
+            Columnar table object.
         """
         records = normalize_records(data, 'Feather')
         get_dependency('pyarrow', format_name='Feather')
@@ -112,15 +111,15 @@ class FeatherFile(ColumnarFileHandlerABC):
 
     def table_to_records(
         self,
-        table: pyarrow.Table,
+        table: Any,
     ) -> JSONList:
         """
         Convert a Feather table object into row-oriented records.
 
         Parameters
         ----------
-        table : pyarrow.Table
-            Pandas DataFrame-like object.
+        table : Any
+            Columnar table object.
 
         Returns
         -------
@@ -132,7 +131,7 @@ class FeatherFile(ColumnarFileHandlerABC):
     def write_table(
         self,
         path: Path,
-        table: pyarrow.Table,
+        table: Any,
         *,
         options: WriteOptions | None = None,
     ) -> None:
@@ -143,8 +142,8 @@ class FeatherFile(ColumnarFileHandlerABC):
         ----------
         path : Path
             Path to the Feather file on disk.
-        table : pyarrow.Table
-            Pandas DataFrame-like object.
+        table : Any
+            Columnar table object.
         options : WriteOptions | None, optional
             Optional write parameters.
         """
