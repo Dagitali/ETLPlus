@@ -315,6 +315,17 @@ class StubSpreadsheetFileHandlerABC(
 
     # -- Instance Methods -- #
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Raise :class:`NotImplementedError` for spreadsheet reads.
+        """
+        return StubFileHandlerABC.read(self, path, options=options)
+
     def read_sheet(
         self,
         path: Path,
@@ -327,6 +338,18 @@ class StubSpreadsheetFileHandlerABC(
         """
         _ = sheet
         return StubFileHandlerABC.read(self, path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Raise :class:`NotImplementedError` for spreadsheet writes.
+        """
+        return StubFileHandlerABC.write(self, path, data, options=options)
 
     def write_sheet(
         self,
