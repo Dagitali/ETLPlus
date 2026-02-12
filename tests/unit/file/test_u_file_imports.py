@@ -20,27 +20,38 @@ class TestImportsHelpers:
 
     # pylint: disable=protected-access, unused-argument
 
-    def test_get_dependency_routes_through_standard_message(
+    @pytest.mark.parametrize(
+        ('method_name', 'method_args', 'expected_call'),
+        [
+            ('get_pandas', ('CSV',), ('pandas', 'CSV', None)),
+            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML')),
+        ],
+        ids=['pandas', 'yaml'],
+    )
+    def test_dependency_helpers_delegate_to_get_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        method_name: str,
+        method_args: tuple[object, ...],
+        expected_call: tuple[str, str, str | None],
     ) -> None:
-        """Test dependency resolution with normalized format messages."""
-        calls: list[tuple[str, str]] = []
+        """Test dependency helper wrappers forwarding expected arguments."""
+        calls: list[tuple[str, str, str | None]] = []
         sentinel = object()
 
-        def _optional(module_name: str, *, error_message: str) -> object:
-            calls.append((module_name, error_message))
+        def _dependency(
+            module_name: str,
+            *,
+            format_name: str,
+            pip_name: str | None = None,
+        ) -> object:
+            calls.append((module_name, format_name, pip_name))
             return sentinel
 
-        monkeypatch.setattr(mod, 'get_optional_module', _optional)
-        assert mod.get_dependency('duckdb', format_name='DUCKDB') is sentinel
-        assert calls == [
-            (
-                'duckdb',
-                'DUCKDB support requires optional dependency "duckdb".\n'
-                'Install with: pip install duckdb',
-            ),
-        ]
+        monkeypatch.setattr(mod, 'get_dependency', _dependency)
+        method = getattr(mod, method_name)
+        assert method(*method_args) is sentinel
+        assert calls == [expected_call]
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
@@ -68,6 +79,28 @@ class TestImportsHelpers:
             f'"{dependency_name}"' in message
         )
         assert f'pip install {dependency_name}' in message
+
+    def test_get_dependency_routes_through_standard_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test dependency resolution with normalized format messages."""
+        calls: list[tuple[str, str]] = []
+        sentinel = object()
+
+        def _optional(module_name: str, *, error_message: str) -> object:
+            calls.append((module_name, error_message))
+            return sentinel
+
+        monkeypatch.setattr(mod, 'get_optional_module', _optional)
+        assert mod.get_dependency('duckdb', format_name='DUCKDB') is sentinel
+        assert calls == [
+            (
+                'duckdb',
+                'DUCKDB support requires optional dependency "duckdb".\n'
+                'Install with: pip install duckdb',
+            ),
+        ]
 
     def test_get_optional_module_imports_and_caches(
         self,
@@ -120,36 +153,3 @@ class TestImportsHelpers:
             is sentinel
         )
         mod._MODULE_CACHE.pop('cached_mod', None)
-
-    @pytest.mark.parametrize(
-        ('method_name', 'method_args', 'expected_call'),
-        [
-            ('get_pandas', ('CSV',), ('pandas', 'CSV', None)),
-            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML')),
-        ],
-        ids=['pandas', 'yaml'],
-    )
-    def test_dependency_helpers_delegate_to_get_dependency(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        method_name: str,
-        method_args: tuple[object, ...],
-        expected_call: tuple[str, str, str | None],
-    ) -> None:
-        """Test dependency helper wrappers forwarding expected arguments."""
-        calls: list[tuple[str, str, str | None]] = []
-        sentinel = object()
-
-        def _dependency(
-            module_name: str,
-            *,
-            format_name: str,
-            pip_name: str | None = None,
-        ) -> object:
-            calls.append((module_name, format_name, pip_name))
-            return sentinel
-
-        monkeypatch.setattr(mod, 'get_dependency', _dependency)
-        method = getattr(mod, method_name)
-        assert method(*method_args) is sentinel
-        assert calls == [expected_call]
