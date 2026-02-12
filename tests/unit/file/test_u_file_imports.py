@@ -20,6 +20,29 @@ class TestImportsHelpers:
 
     # pylint: disable=protected-access, unused-argument
 
+    def test_get_dependency_routes_through_standard_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test dependency resolution with normalized format messages."""
+        calls: list[tuple[str, str]] = []
+        sentinel = object()
+
+        def _optional(module_name: str, *, error_message: str) -> object:
+            calls.append((module_name, error_message))
+            return sentinel
+
+        monkeypatch.setattr(mod, 'get_optional_module', _optional)
+        result = mod.get_dependency('duckdb', format_name='DUCKDB')
+        assert result is sentinel
+        assert calls == [
+            (
+                'duckdb',
+                'DUCKDB support requires optional dependency "duckdb".\n'
+                'Install with: pip install duckdb',
+            ),
+        ]
+
     def test_error_message_defaults_to_module_name(self) -> None:
         """Test default pip package suggestion in import errors."""
         message = mod._error_message('pyarrow', format_name='PARQUET')
@@ -59,6 +82,22 @@ class TestImportsHelpers:
         assert mod._MODULE_CACHE['example_dep'] is result
         mod._MODULE_CACHE.pop('example_dep', None)
 
+    def test_get_optional_module_raises_custom_error_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test missing dependency error propagation."""
+        monkeypatch.setattr(
+            mod,
+            'import_module',
+            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
+        )
+        with pytest.raises(ImportError, match='custom import failure'):
+            mod.get_optional_module(
+                'missing_dep',
+                error_message='custom import failure',
+            )
+
     def test_get_optional_module_uses_cache_when_available(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -79,45 +118,6 @@ class TestImportsHelpers:
             is sentinel
         )
         mod._MODULE_CACHE.pop('cached_mod', None)
-
-    def test_get_optional_module_raises_custom_error_message(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test missing dependency error propagation."""
-        monkeypatch.setattr(
-            mod,
-            'import_module',
-            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
-        )
-        with pytest.raises(ImportError, match='custom import failure'):
-            mod.get_optional_module(
-                'missing_dep',
-                error_message='custom import failure',
-            )
-
-    def test_get_dependency_routes_through_standard_message(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test dependency resolution with normalized format messages."""
-        calls: list[tuple[str, str]] = []
-        sentinel = object()
-
-        def _optional(module_name: str, *, error_message: str) -> object:
-            calls.append((module_name, error_message))
-            return sentinel
-
-        monkeypatch.setattr(mod, 'get_optional_module', _optional)
-        result = mod.get_dependency('duckdb', format_name='DUCKDB')
-        assert result is sentinel
-        assert calls == [
-            (
-                'duckdb',
-                'DUCKDB support requires optional dependency "duckdb".\n'
-                'Install with: pip install duckdb',
-            ),
-        ]
 
     def test_get_pandas_uses_dependency_helper(
         self,
