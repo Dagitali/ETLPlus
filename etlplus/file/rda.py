@@ -21,15 +21,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
-from ._r import coerce_r_object
+from ._r import coerce_r_result
+from ._r import list_r_dataset_keys
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
@@ -79,34 +79,12 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         list[str]
             Available dataset keys.
         """
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
         result = pyreadr.read_r(str(path))
-        if not result:
-            return [self.dataset_key]
-        return [str(key) for key in result]
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read RDA content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDA file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the RDA file.
-        """
-        return self.read_dataset(path, options=options)
+        return list_r_dataset_keys(
+            result,
+            default_key=self.dataset_key,
+        )
 
     def read_dataset(
         self,
@@ -131,61 +109,19 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         -------
         JSONData
             Parsed dataset payload.
-
-        Raises
-        ------
-        ValueError
-            If an explicit dataset key is not present.
         """
+        format_name = self.format_name
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
-        pandas = get_pandas('RDA')
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
         result = pyreadr.read_r(str(path))
-        if not result:
-            return []
-
-        if dataset is not None:
-            if dataset in result:
-                return coerce_r_object(result[dataset], pandas)
-            if dataset == self.dataset_key and len(result) == 1:
-                value = next(iter(result.values()))
-                return coerce_r_object(value, pandas)
-            raise ValueError(f'RDA dataset {dataset!r} not found')
-
-        if len(result) == 1:
-            value = next(iter(result.values()))
-            return coerce_r_object(value, pandas)
-        payload: JSONDict = {}
-        for key, value in result.items():
-            payload[str(key)] = coerce_r_object(value, pandas)
-        return payload
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to RDA file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDA file on disk.
-        data : JSONData
-            Data to write as RDA file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the RDA file.
-        """
-        return self.write_dataset(path, data, options=options)
+        return coerce_r_result(
+            result,
+            dataset=dataset,
+            dataset_key=self.dataset_key,
+            format_name=format_name,
+            pandas=pandas,
+        )
 
     def write_dataset(
         self,
@@ -219,10 +155,11 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
+        format_name = self.format_name
         dataset = self.resolve_write_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
-        pandas = get_pandas('RDA')
-        records = normalize_records(data, 'RDA')
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
+        records = normalize_records(data, format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
         target_dataset = dataset if dataset is not None else self.dataset_key
@@ -269,8 +206,11 @@ def read(
     JSONData
         The structured data read from the RDA file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _RDA_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _RDA_HANDLER.read,
+    )
 
 
 def write(
@@ -293,5 +233,9 @@ def write(
     int
         The number of rows written to the RDA file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _RDA_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _RDA_HANDLER.write,
+    )

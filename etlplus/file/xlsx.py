@@ -7,16 +7,15 @@ Helpers for reading/writing Excel XLSX files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
-from ._io import warn_deprecated_module_io
+from ._io import records_from_table
 from .base import ReadOptions
 from .base import SpreadsheetFileHandlerABC
 from .base import WriteOptions
@@ -47,30 +46,6 @@ class XlsxFile(SpreadsheetFileHandlerABC):
     engine_name = 'openpyxl'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return XLSX content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSX file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLSX file.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
 
     def read_sheet(
         self,
@@ -113,37 +88,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
                 'XLSX support requires optional dependency "openpyxl".\n'
                 'Install with: pip install openpyxl',
             ) from err
-        return cast(JSONList, frame.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to XLSX at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSX file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        records = normalize_records(data, 'XLSX')
-        if not records:
-            return 0
-        sheet = self.sheet_from_write_options(options)
-        return self.write_sheet(path, records, sheet=sheet, options=options)
+        return records_from_table(frame)
 
     def write_sheet(
         self,
@@ -220,8 +165,11 @@ def read(
     JSONList
         The list of dictionaries read from the XLSX file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _XLSX_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _XLSX_HANDLER.read,
+    )
 
 
 def write(
@@ -243,5 +191,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _XLSX_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _XLSX_HANDLER.write,
+    )

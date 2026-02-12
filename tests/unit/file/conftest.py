@@ -1483,11 +1483,19 @@ class StubModuleContract(PathMixin):
         assert issubclass(self.handler_cls, StubFileHandlerABC)
         assert self.handler_cls.format.value == self.format_name
 
-    @pytest.mark.parametrize('operation', ['read', 'write'])
+    @pytest.mark.parametrize(
+        ('operation', 'write_payload'),
+        [
+            ('read', None),
+            ('write', None),
+            ('write', []),
+        ],
+    )
     def test_module_operations_raise_not_implemented(
         self,
         tmp_path: Path,
         operation: Operation,
+        write_payload: JSONData | None,
     ) -> None:
         """Test module-level read/write placeholder behavior."""
         assert_stub_module_operation_raises(
@@ -1495,6 +1503,7 @@ class StubModuleContract(PathMixin):
             format_name=self.format_name,
             operation=operation,
             path=self.format_path(tmp_path),
+            write_payload=write_payload,
         )
 
 

@@ -19,24 +19,20 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import cast
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import ensure_parent_dir
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
+from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
-
-if TYPE_CHECKING:
-    import pyarrow
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -64,36 +60,12 @@ class ParquetFile(ColumnarFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return Parquet content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the Parquet file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the Parquet file.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
     def read_table(
         self,
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Read a Parquet table object from *path*.
 
@@ -106,8 +78,8 @@ class ParquetFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            PyArrow table object.
+        Any
+            Columnar table object.
 
         Raises
         ------
@@ -129,7 +101,7 @@ class ParquetFile(ColumnarFileHandlerABC):
     def records_to_table(
         self,
         data: JSONData,
-    ) -> pyarrow.Table:
+    ) -> Any:
         """
         Convert row-oriented records into a Parquet table object.
 
@@ -140,8 +112,8 @@ class ParquetFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        pyarrow.Table
-            PyArrow table object.
+        Any
+            Columnar table object.
         """
         records = normalize_records(data, 'Parquet')
         pandas = get_pandas('Parquet')
@@ -149,60 +121,27 @@ class ParquetFile(ColumnarFileHandlerABC):
 
     def table_to_records(
         self,
-        table: pyarrow.Table,
+        table: Any,
     ) -> JSONList:
         """
         Convert a Parquet table object into row-oriented records.
 
         Parameters
         ----------
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
 
         Returns
         -------
         JSONList
             Parsed records.
         """
-        return cast(JSONList, table.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to Parquet at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the Parquet file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        records = normalize_records(data, 'Parquet')
-        if not records:
-            return 0
-
-        ensure_parent_dir(path)
-        table = self.records_to_table(records)
-        self.write_table(path, table, options=options)
-        return len(records)
+        return records_from_table(table)
 
     def write_table(
         self,
         path: Path,
-        table: pyarrow.Table,
+        table: Any,
         *,
         options: WriteOptions | None = None,
     ) -> None:
@@ -213,8 +152,8 @@ class ParquetFile(ColumnarFileHandlerABC):
         ----------
         path : Path
             Path to the Parquet file on disk.
-        table : pyarrow.Table
-            PyArrow table object.
+        table : Any
+            Columnar table object.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -259,8 +198,11 @@ def read(
     JSONList
         The list of dictionaries read from the Parquet file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _PARQUET_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _PARQUET_HANDLER.read,
+    )
 
 
 def write(
@@ -282,5 +224,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _PARQUET_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _PARQUET_HANDLER.write,
+    )

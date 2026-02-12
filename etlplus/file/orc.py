@@ -19,25 +19,21 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import cast
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import ensure_parent_dir
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
+from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
-
-if TYPE_CHECKING:
-    import pyarrow
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -65,36 +61,12 @@ class OrcFile(ColumnarFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return ORC content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ORC file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the ORC file.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
     def read_table(
         self,
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> object:
+    ) -> Any:
         """
         Read an ORC table object from *path*.
 
@@ -107,8 +79,8 @@ class OrcFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        object
-            Pandas DataFrame-like object.
+        Any
+            Columnar table object.
         """
         _ = options
         get_dependency('pyarrow', format_name='ORC')
@@ -118,7 +90,7 @@ class OrcFile(ColumnarFileHandlerABC):
     def records_to_table(
         self,
         data: JSONData,
-    ) -> object:
+    ) -> Any:
         """
         Convert row-oriented records into an ORC table object.
 
@@ -129,8 +101,8 @@ class OrcFile(ColumnarFileHandlerABC):
 
         Returns
         -------
-        object
-            Pandas DataFrame-like object.
+        Any
+            Columnar table object.
         """
         records = normalize_records(data, 'ORC')
         get_dependency('pyarrow', format_name='ORC')
@@ -139,60 +111,27 @@ class OrcFile(ColumnarFileHandlerABC):
 
     def table_to_records(
         self,
-        table: pyarrow.Table,
+        table: Any,
     ) -> JSONList:
         """
         Convert an ORC table object into row-oriented records.
 
         Parameters
         ----------
-        table : pyarrow.Table
-            Pandas DataFrame-like object.
+        table : Any
+            Columnar table object.
 
         Returns
         -------
         JSONList
             Parsed records.
         """
-        return cast(JSONList, table.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to ORC at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ORC file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        records = normalize_records(data, 'ORC')
-        if not records:
-            return 0
-
-        ensure_parent_dir(path)
-        table = self.records_to_table(records)
-        self.write_table(path, table, options=options)
-        return len(records)
+        return records_from_table(table)
 
     def write_table(
         self,
         path: Path,
-        table: pyarrow.Table,
+        table: Any,
         *,
         options: WriteOptions | None = None,
     ) -> None:
@@ -203,8 +142,8 @@ class OrcFile(ColumnarFileHandlerABC):
         ----------
         path : Path
             Path to the ORC file on disk.
-        table : pyarrow.Table
-            Pandas DataFrame-like object.
+        table : Any
+            Columnar table object.
         options : WriteOptions | None, optional
             Optional write parameters.
         """
@@ -236,8 +175,11 @@ def read(
     JSONList
         The list of dictionaries read from the ORC file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _ORC_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _ORC_HANDLER.read,
+    )
 
 
 def write(
@@ -259,5 +201,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _ORC_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _ORC_HANDLER.write,
+    )

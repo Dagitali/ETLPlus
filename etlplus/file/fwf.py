@@ -18,17 +18,16 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
+from ._io import records_from_table
 from ._io import stringify_value
-from ._io import warn_deprecated_module_io
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
 from .base import WriteOptions
@@ -59,29 +58,6 @@ class FwfFile(TextFixedWidthFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return FWF content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the FWF file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the FWF file.
-        """
-        return self.read_rows(path, options=options)
-
     def read_rows(
         self,
         path: Path,
@@ -106,35 +82,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         _ = options
         pandas = get_pandas('FWF')
         frame = pandas.read_fwf(path)
-        return cast(JSONList, frame.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to FWF at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the FWF file on disk.
-        data : JSONData
-            Data to write as FWF file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the FWF file.
-        """
-        rows = normalize_records(data, 'FWF')
-        return self.write_rows(path, rows, options=options)
+        return records_from_table(frame)
 
     def write_rows(
         self,
@@ -217,8 +165,11 @@ def read(
     JSONList
         The list of dictionaries read from the FWF file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _FWF_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _FWF_HANDLER.read,
+    )
 
 
 def write(
@@ -241,5 +192,9 @@ def write(
     int
         The number of rows written to the FWF file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _FWF_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _FWF_HANDLER.write,
+    )

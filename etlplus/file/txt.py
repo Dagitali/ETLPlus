@@ -22,10 +22,9 @@ from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ..utils import count_records
-from ._io import coerce_path
-from ._io import normalize_records
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import read_text
-from ._io import warn_deprecated_module_io
 from ._io import write_text
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
@@ -57,29 +56,6 @@ class TxtFile(TextFixedWidthFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return TXT content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TXT file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the TXT file.
-        """
-        return self.read_rows(path, options=options)
-
     def read_rows(
         self,
         path: Path,
@@ -110,33 +86,6 @@ class TxtFile(TextFixedWidthFileHandlerABC):
             for line in read_text(path, encoding=encoding).splitlines()
             if line != ''
         ]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to TXT at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TXT file on disk.
-        data : JSONData
-            Data to write. Expects ``{'text': '...'} `` or a list of those.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        rows = normalize_records(data, 'TXT')
-        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,
@@ -207,8 +156,11 @@ def read(
     JSONList
         The list of dictionaries read from the TXT file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _TXT_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _TXT_HANDLER.read,
+    )
 
 
 def write(
@@ -230,5 +182,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _TXT_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _TXT_HANDLER.write,
+    )

@@ -19,17 +19,17 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
+from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -62,32 +62,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read DTA content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the DTA file.
-        """
-        return cast(
-            JSONList,
-            self.read_dataset(path, options=options),
-        )
-
     def read_dataset(
         self,
         path: Path,
@@ -112,39 +86,15 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
-        get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
+        format_name = self.format_name
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         frame = pandas.read_stata(path)
-        return cast(JSONList, frame.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to DTA file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-        data : JSONData
-            Data to write as DTA file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the DTA file.
-        """
-        return self.write_dataset(path, data, options=options)
+        return records_from_table(frame)
 
     def write_dataset(
         self,
@@ -173,15 +123,18 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
 
-        records = normalize_records(data, 'DTA')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
@@ -199,7 +152,7 @@ _DTA_HANDLER = DtaFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``DtaFile().read(...)`` instead.
 
@@ -210,11 +163,14 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the DTA file.
+    JSONData
+        The structured data read from the DTA file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _DTA_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _DTA_HANDLER.read,
+    )
 
 
 def write(
@@ -237,5 +193,9 @@ def write(
     int
         The number of rows written to the DTA file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _DTA_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _DTA_HANDLER.write,
+    )
