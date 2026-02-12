@@ -98,7 +98,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for connection creation.
         """
-        return cast(Any, super().read(path))
+        return cast(Any, StubFileHandlerABC.read(self, path))
 
     def list_tables(
         self,
@@ -108,7 +108,10 @@ class StubEmbeddedDatabaseFileHandlerABC(
         Raise :class:`NotImplementedError` for table listing.
         """
         _ = connection
-        return cast(list[str], super().read(self._stub_path()))
+        return cast(
+            list[str],
+            StubFileHandlerABC.read(self, self._stub_path()),
+        )
 
     def read_table(
         self,
@@ -120,7 +123,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         _ = connection
         _ = table
-        return super().read(self._stub_path())
+        return StubFileHandlerABC.read(self, self._stub_path())
 
     def write_table(
         self,
@@ -133,7 +136,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         _ = connection
         _ = table
-        return super().write(self._stub_path(), rows)
+        return StubFileHandlerABC.write(self, self._stub_path(), rows)
 
 
 class StubLogEventFileHandlerABC(
@@ -239,7 +242,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         dataset = self.resolve_read_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return super().read(path, options=options)
+        return StubFileHandlerABC.read(self, path, options=options)
 
     def write(
         self,
@@ -272,7 +275,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         dataset = self.resolve_write_dataset(dataset, options=options)
         self.validate_single_dataset_key(dataset)
-        return super().write(path, data, options=options)
+        return StubFileHandlerABC.write(self, path, data, options=options)
 
 
 class StubSpreadsheetFileHandlerABC(
