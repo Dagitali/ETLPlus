@@ -31,7 +31,7 @@ OK_DICT: JSONData = {'ok': True}
 def _patch_stub_read(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    result: JSONData,
+    result: object,
     expected_path: Path | None = None,
 ) -> list[tuple[Path, ReadOptions | None]]:
     """Patch ``StubFileHandlerABC.read`` and collect read call metadata."""
@@ -46,7 +46,7 @@ def _patch_stub_read(
         if expected_path is not None:
             assert path == expected_path
         read_calls.append((path, options))
-        return result
+        return cast(JSONData, result)
 
     monkeypatch.setattr(StubFileHandlerABC, 'read', _read)
     return read_calls
@@ -179,7 +179,7 @@ class TestStubCategoryHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test log-event parse/serialize methods delegating to stub IO."""
-        _ = _patch_stub_read(
+        _patch_stub_read(
             monkeypatch,
             result=EVENT_DICT,
             expected_path=Path('ignored.log'),
@@ -286,9 +286,9 @@ class TestStubCategoryHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test template stub rendering delegating to stub read behavior."""
-        _ = _patch_stub_read(
+        _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, 'rendered'),
+            result='rendered',
             expected_path=Path('ignored.jinja2'),
         )
         handler = _TemplateStub()
