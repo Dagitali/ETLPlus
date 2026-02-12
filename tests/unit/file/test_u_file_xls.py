@@ -33,38 +33,37 @@ class TestXls(
     format_name = 'xls'
     dependency_hint = 'xlrd'
 
-    def test_read_routes_sheet_option_to_pandas(
+    @pytest.mark.parametrize(
+        ('sheet', 'read_supports_sheet_name', 'expected_read_calls'),
+        [
+            (
+                'Sheet2',
+                True,
+                [{'engine': 'xlrd', 'sheet_name': 'Sheet2'}],
+            ),
+            (
+                'Main',
+                False,
+                [
+                    {'engine': 'xlrd', 'sheet_name': 'Main'},
+                    {'engine': 'xlrd'},
+                ],
+            ),
+        ],
+        ids=['sheet_name_supported', 'sheet_name_fallback'],
+    )
+    def test_read_sheet_option_routing(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        sheet: str,
+        read_supports_sheet_name: bool,
+        expected_read_calls: list[dict[str, object]],
     ) -> None:
-        """Test read passing ``sheet`` options through to pandas."""
-        frame = SpreadsheetSheetFrameStub([{'id': 1}])
-        pandas = SpreadsheetSheetPandasStub(frame)
-        patch_dependency_resolver_value(
-            monkeypatch,
-            mod,
-            resolver_name='get_pandas',
-            value=pandas,
-        )
-        path = self.format_path(tmp_path)
-
-        result = mod.XlsFile().read(path, options=ReadOptions(sheet='Sheet2'))
-
-        assert result == [{'id': 1}]
-        assert pandas.read_calls[-1]['sheet_name'] == 'Sheet2'
-        assert pandas.read_calls[-1]['engine'] == 'xlrd'
-
-    def test_read_sheet_falls_back_when_sheet_name_not_supported(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test sheet-name fallback when pandas rejects that keyword."""
-        frame = SpreadsheetSheetFrameStub([{'id': 1}])
+        """Test read sheet routing and fallback behavior."""
         pandas = SpreadsheetSheetPandasStub(
-            frame,
-            read_supports_sheet_name=False,
+            SpreadsheetSheetFrameStub([{'id': 1}]),
+            read_supports_sheet_name=read_supports_sheet_name,
         )
         patch_dependency_resolver_value(
             monkeypatch,
@@ -74,10 +73,10 @@ class TestXls(
         )
         path = self.format_path(tmp_path)
 
-        result = mod.XlsFile().read(path, options=ReadOptions(sheet='Main'))
+        result = mod.XlsFile().read(path, options=ReadOptions(sheet=sheet))
 
         assert result == [{'id': 1}]
         assert pandas.read_calls == [
-            {'path': path, 'engine': 'xlrd', 'sheet_name': 'Main'},
-            {'path': path, 'engine': 'xlrd'},
+            {'path': path, **call}
+            for call in expected_read_calls
         ]
