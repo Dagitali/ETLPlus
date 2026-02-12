@@ -151,33 +151,6 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
                 frame = frame.drop(columns=['index'])
         return records_from_table(frame)
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to NC file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the NC file on disk.
-        data : JSONData
-            Data to write as NC file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the NC file.
-        """
-        return self.write_dataset(path, data, options=options)
-
     def write_dataset(
         self,
         path: Path,

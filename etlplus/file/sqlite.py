@@ -26,18 +26,13 @@ from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._sql import DEFAULT_TABLE
 from ._sql import SQLITE_DIALECT
 from ._sql import coerce_sql_value
 from ._sql import collect_column_values
 from ._sql import infer_column_type
 from ._sql import quote_identifier
-from ._sql import resolve_table
 from .base import EmbeddedDatabaseFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -62,6 +57,7 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.SQLITE
+    engine_name = 'SQLite'
     default_table = DEFAULT_TABLE
 
     # -- Instance Methods -- #
@@ -111,39 +107,6 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         )
         return [row[0] for row in cursor.fetchall()]
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return SQLITE content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SQLITE file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters. ``table`` can override auto-detection.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the SQLITE file.
-        """
-        conn = self.connect(path)
-        try:
-            tables = self.list_tables(conn)
-            table = self.table_from_read_options(options)
-            if table is None:
-                table = resolve_table(tables, engine_name='SQLite')
-            if table is None:
-                return []
-            return self.read_table(conn, table)
-        finally:
-            conn.close()
-
     def read_table(
         self,
         connection: sqlite3.Connection,
@@ -167,47 +130,6 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         query = f'SELECT * FROM {quote_identifier(table)}'
         rows = connection.execute(query).fetchall()
         return [dict(row) for row in rows]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to SQLITE at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SQLITE file on disk.
-        data : JSONData
-            Data to write as SQLITE.
-        options : WriteOptions | None, optional
-            Optional write parameters. ``table`` can override the table name.
-
-        Returns
-        -------
-        int
-            The number of rows written to the SQLITE file.
-        """
-        records = normalize_records(data, 'SQLITE')
-        if not records:
-            return 0
-
-        table = self.table_from_write_options(
-            options,
-            default=self.default_table,
-        )
-        if table is None:  # pragma: no cover - guarded by default
-            raise ValueError('SQLITE write requires a table name')
-        ensure_parent_dir(path)
-        conn = self.connect(path)
-        try:
-            return self.write_table(conn, table, records)
-        finally:
-            conn.close()
 
     def write_table(
         self,

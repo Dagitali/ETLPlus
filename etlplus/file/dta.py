@@ -116,33 +116,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         frame = pandas.read_stata(path)
         return records_from_table(frame)
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to DTA file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-        data : JSONData
-            Data to write as DTA file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the DTA file.
-        """
-        return self.write_dataset(path, data, options=options)
-
     def write_dataset(
         self,
         path: Path,

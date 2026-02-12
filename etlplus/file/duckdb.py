@@ -27,18 +27,13 @@ from ..types import StrPath
 from ._imports import get_dependency
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
 from ._sql import coerce_sql_value
 from ._sql import collect_column_values
 from ._sql import infer_column_type
 from ._sql import quote_identifier
-from ._sql import resolve_table
 from .base import EmbeddedDatabaseFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 
 if TYPE_CHECKING:
@@ -66,6 +61,7 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.DUCKDB
+    engine_name = 'DuckDB'
     default_table = DEFAULT_TABLE
 
     # -- Instance Methods -- #
@@ -109,39 +105,6 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         """
         return [row[0] for row in connection.execute('SHOW TABLES').fetchall()]
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return DUCKDB content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DUCKDB file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters. ``table`` can override auto-detection.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the DUCKDB file.
-        """
-        conn = self.connect(path)
-        try:
-            tables = self.list_tables(conn)
-            table = self.table_from_read_options(options)
-            if table is None:
-                table = resolve_table(tables, engine_name='DuckDB')
-            if table is None:
-                return []
-            return self.read_table(conn, table)
-        finally:
-            conn.close()
-
     def read_table(
         self,
         connection: duckdb.DuckDBPyConnection,
@@ -172,47 +135,6 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
             ).fetchall()
             columns = [row[1] for row in info]
         return [dict(zip(columns, row, strict=True)) for row in rows]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to DUCKDB at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DUCKDB file on disk.
-        data : JSONData
-            Data to write as DUCKDB.
-        options : WriteOptions | None, optional
-            Optional write parameters. ``table`` can override the table name.
-
-        Returns
-        -------
-        int
-            The number of rows written to the DUCKDB file.
-        """
-        records = normalize_records(data, 'DUCKDB')
-        if not records:
-            return 0
-
-        table = self.table_from_write_options(
-            options,
-            default=self.default_table,
-        )
-        if table is None:  # pragma: no cover - guarded by default
-            raise ValueError('DUCKDB write requires a table name')
-        ensure_parent_dir(path)
-        conn = self.connect(path)
-        try:
-            return self.write_table(conn, table, records)
-        finally:
-            conn.close()
 
     def write_table(
         self,

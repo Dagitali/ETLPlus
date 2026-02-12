@@ -92,6 +92,29 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read HDF5 content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the HDF5 file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the HDF5 file.
+        """
+        return self.read_dataset(path, options=options)
+
     def list_datasets(
         self,
         path: Path,
@@ -116,29 +139,6 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             _raise_tables_error(err)
         with store:
             return [key.lstrip('/') for key in store.keys()]
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read HDF5 content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the HDF5 file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the HDF5 file.
-        """
-        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,

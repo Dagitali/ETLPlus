@@ -61,29 +61,6 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read RDS content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDS file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the RDS file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -124,33 +101,6 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             format_name='RDS',
             pandas=pandas,
         )
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to RDS file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDS file on disk.
-        data : JSONData
-            Data to write as RDS file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the RDS file.
-        """
-        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,

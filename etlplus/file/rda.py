@@ -86,29 +86,6 @@ class RdaFile(ScientificDatasetFileHandlerABC):
             default_key=self.dataset_key,
         )
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read RDA content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDA file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the RDA file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -149,33 +126,6 @@ class RdaFile(ScientificDatasetFileHandlerABC):
             format_name='RDA',
             pandas=pandas,
         )
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to RDA file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the RDA file on disk.
-        data : JSONData
-            Data to write as RDA file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the RDA file.
-        """
-        return self.write_dataset(path, data, options=options)
 
     def write_dataset(
         self,

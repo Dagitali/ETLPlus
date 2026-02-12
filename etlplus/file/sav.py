@@ -114,33 +114,6 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         frame, _meta = pyreadstat.read_sav(str(path))
         return records_from_table(frame)
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to SAV at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAV file on disk.
-        data : JSONData
-            Data to write as SAV. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the SAV file.
-        """
-        return self.write_dataset(path, data, options=options)
-
     def write_dataset(
         self,
         path: Path,
