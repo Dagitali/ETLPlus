@@ -97,7 +97,7 @@ def _raise_unexpected_dependency_call(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def _assert_single_dataset_rejects_non_default_key(
+def assert_single_dataset_rejects_non_default_key(
     handler: SingleDatasetScientificFileHandlerABC,
     *,
     suffix: str,
@@ -619,7 +619,7 @@ class ScientificSingleDatasetHandlerMixin:
         handler: SingleDatasetScientificFileHandlerABC,
     ) -> None:
         """Test non-default dataset keys are rejected."""
-        _assert_single_dataset_rejects_non_default_key(
+        assert_single_dataset_rejects_non_default_key(
             handler,
             suffix=self.format_name,
         )
