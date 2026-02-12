@@ -18,7 +18,10 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..utils import count_records
 from ._io import normalize_records
+from ._io import read_text
+from ._io import write_text
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -942,6 +945,7 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'semi_structured_text'
     allow_dict_root: ClassVar[bool] = True
     allow_list_root: ClassVar[bool] = True
+    write_trailing_newline: ClassVar[bool] = False
 
     # -- Instance Methods -- #
 
@@ -966,6 +970,75 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
         """
         Serialize *data* into a text payload.
         """
+
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return the default record count for write operations.
+        """
+        return count_records(data)
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and return semi-structured text content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the semi-structured text file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed payload.
+        """
+        encoding = self.encoding_from_read_options(options)
+        return self.loads(
+            read_text(path, encoding=encoding),
+            options=options,
+        )
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write semi-structured text content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the semi-structured text file on disk.
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        encoding = self.encoding_from_write_options(options)
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=encoding,
+            trailing_newline=self.write_trailing_newline,
+        )
+        return self.count_written_records(data)
 
 
 class ScientificDatasetFileHandlerABC(FileHandlerABC):
