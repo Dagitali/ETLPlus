@@ -83,12 +83,10 @@ class _PandasStub:
     ) -> _FrameStub:
         """Simulate pandas.read_excel with optional sheet-name rejection."""
         self.read_calls.append({'path': path, **kwargs})
-        if (
-            not self.read_supports_sheet_name
-            and 'sheet_name' in kwargs
-        ):
+        if not self.read_supports_sheet_name and 'sheet_name' in kwargs:
             raise TypeError('sheet_name not supported')
         return self.frame
+
 
 # SECTION: TESTS ============================================================ #
 
