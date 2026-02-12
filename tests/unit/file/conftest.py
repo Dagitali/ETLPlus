@@ -60,19 +60,6 @@ def _call_module_operation(
     return cast(int, handler.write(path, payload))
 
 
-def _call_scientific_dataset_operation(
-    handler: SingleDatasetScientificFileHandlerABC,
-    *,
-    operation: Operation,
-    path: Path,
-    dataset: str,
-) -> JSONData | int:
-    """Invoke scientific ``read_dataset``/``write_dataset`` by operation."""
-    if operation == 'read':
-        return cast(JSONData, handler.read_dataset(path, dataset=dataset))
-    return cast(int, handler.write_dataset(path, [], dataset=dataset))
-
-
 def _module_handler(
     module: ModuleType,
 ) -> Any:
@@ -105,14 +92,10 @@ def assert_single_dataset_rejects_non_default_key(
     """Assert single-dataset scientific handlers reject non-default keys."""
     bad_dataset = 'not_default_dataset'
     path = Path(f'ignored.{suffix}')
-    for operation in ('read', 'write'):
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            _call_scientific_dataset_operation(
-                handler,
-                operation=cast(Operation, operation),
-                path=path,
-                dataset=bad_dataset,
-            )
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.read_dataset(path, dataset=bad_dataset)
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.write_dataset(path, [], dataset=bad_dataset)
 
 
 def assert_stub_module_operation_raises(
