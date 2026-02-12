@@ -346,6 +346,10 @@ def _install_core_handler_stub(
     """Install a configurable core handler stub and return call metadata."""
     calls: dict[str, object] = {}
 
+    def _get_handler(file_format: FileFormat) -> object:
+        calls['format'] = file_format
+        return handler
+
     def _read(path: Path) -> JSONData:
         calls['read_path'] = path
         return [] if read_result is None else read_result
@@ -362,10 +366,6 @@ def _install_core_handler_stub(
         return write_result
 
     handler = SimpleNamespace(read=_read, write=_write)
-
-    def _get_handler(file_format: FileFormat) -> object:
-        calls['format'] = file_format
-        return handler
 
     monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
     return calls
@@ -524,6 +524,30 @@ class TestFile:
         with pytest.raises(ValueError):
             File(path, cast(Any, 'not-a-real-format'))
 
+    def test_path_support_for_module_helpers(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test module helpers accept ``Path`` inputs.
+        """
+        csv_path = tmp_path / 'data.csv'
+        json_path = tmp_path / 'data.json'
+        xml_path = tmp_path / 'data.xml'
+
+        csv_file.CsvFile().write(csv_path, [{'name': 'Ada'}])
+        assert csv_file.CsvFile().read(csv_path) == [{'name': 'Ada'}]
+
+        json_file.JsonFile().write(json_path, {'name': 'Ada'})
+        assert json_file.JsonFile().read(json_path) == {'name': 'Ada'}
+
+        xml_file.XmlFile().write(
+            xml_path,
+            {'root': {'text': 'hello'}},
+            options=WriteOptions(root_tag='root'),
+        )
+        assert xml_file.XmlFile().read(xml_path) == {'root': {'text': 'hello'}}
+
     def test_read_csv_skips_blank_rows(
         self,
         tmp_path: Path,
@@ -631,30 +655,6 @@ class TestFile:
         if file_format is FileFormat.XLS:
             result = normalize_numeric_records(result)
         assert result == expected
-
-    def test_path_support_for_module_helpers(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test module helpers accept ``Path`` inputs.
-        """
-        csv_path = tmp_path / 'data.csv'
-        json_path = tmp_path / 'data.json'
-        xml_path = tmp_path / 'data.xml'
-
-        csv_file.CsvFile().write(csv_path, [{'name': 'Ada'}])
-        assert csv_file.CsvFile().read(csv_path) == [{'name': 'Ada'}]
-
-        json_file.JsonFile().write(json_path, {'name': 'Ada'})
-        assert json_file.JsonFile().read(json_path) == {'name': 'Ada'}
-
-        xml_file.XmlFile().write(
-            xml_path,
-            {'root': {'text': 'hello'}},
-            options=WriteOptions(root_tag='root'),
-        )
-        assert xml_file.XmlFile().read(xml_path) == {'root': {'text': 'hello'}}
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
