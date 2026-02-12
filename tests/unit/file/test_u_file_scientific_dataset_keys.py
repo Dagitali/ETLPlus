@@ -83,6 +83,15 @@ class TestScientificStubDatasetKeys:
                 self._raise_stub_called,
             )
 
+    def test_list_datasets_returns_single_default_key(
+        self,
+        scientific_module_case: ScientificModuleCase,
+    ) -> None:
+        """Test list_datasets exposing only the default dataset key."""
+        handler_cls, _ = scientific_module_case
+        handler = handler_cls()
+        assert handler.list_datasets(Path('ignored.file')) == ['data']
+
     @pytest.mark.parametrize(
         ('operation', 'method_name', 'selector_mode'),
         [
@@ -132,15 +141,6 @@ class TestScientificStubDatasetKeys:
 
         with pytest.raises(ValueError, match='supports only dataset key'):
             method(*args, **kwargs)
-
-    def test_list_datasets_returns_single_default_key(
-        self,
-        scientific_module_case: ScientificModuleCase,
-    ) -> None:
-        """Test list_datasets exposing only the default dataset key."""
-        handler_cls, _ = scientific_module_case
-        handler = handler_cls()
-        assert handler.list_datasets(Path('ignored.file')) == ['data']
 
     @staticmethod
     def _raise_stub_called(
