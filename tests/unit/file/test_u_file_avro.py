@@ -33,13 +33,6 @@ class _FastAvroStub:
         self.writes: list[dict[str, object]] = []
         self.records: list[dict[str, object]] = [{'id': 1}, {'id': 2}]
 
-    def reader(
-        self,
-        handle: object,
-    ) -> list[dict[str, object]]:  # noqa: ARG002
-        """Simulate reading records from a file handle."""
-        return list(self.records)
-
     def parse_schema(
         self,
         schema: dict[str, object],
@@ -47,6 +40,13 @@ class _FastAvroStub:
         """Simulate parsing an Avro schema."""
         self.parsed_schema = schema
         return schema
+
+    def reader(
+        self,
+        handle: object,
+    ) -> list[dict[str, object]]:  # noqa: ARG002
+        """Simulate reading records from a file handle."""
+        return list(self.records)
 
     def writer(
         self,
@@ -63,6 +63,24 @@ class _FastAvroStub:
 
 class TestAvroHandlerClass:
     """Unit tests for :class:`etlplus.file.avro.AvroFile`."""
+
+    def test_dumps_and_loads_bytes(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test binary helper methods delegating to :mod:`fastavro`."""
+        stub = _FastAvroStub()
+        optional_module_stub({'fastavro': stub})
+        handler = mod.AvroFile()
+        records = [{'id': 1, 'name': 'Ada'}]
+
+        payload = handler.dumps_bytes(records)
+        result = handler.loads_bytes(payload)
+
+        assert isinstance(payload, bytes)
+        assert stub.parsed_schema is not None
+        assert stub.writes
+        assert result == stub.records
 
     @pytest.mark.parametrize(
         ('operation', 'expected'),
@@ -87,24 +105,6 @@ class TestAvroHandlerClass:
         result = operation(handler, tmp_path / 'sample.avro')
         assert result == expected
 
-    def test_dumps_and_loads_bytes(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test binary helper methods delegating to :mod:`fastavro`."""
-        stub = _FastAvroStub()
-        optional_module_stub({'fastavro': stub})
-        handler = mod.AvroFile()
-        records = [{'id': 1, 'name': 'Ada'}]
-
-        payload = handler.dumps_bytes(records)
-        result = handler.loads_bytes(payload)
-
-        assert isinstance(payload, bytes)
-        assert stub.parsed_schema is not None
-        assert stub.writes
-        assert result == stub.records
-
     def test_format_constant(self) -> None:
         """Test :class:`AvroFile` exposing the expected format enum."""
         assert mod.AvroFile.format is FileFormat.AVRO
@@ -114,6 +114,39 @@ class TestAvroHelpers:
     """Unit tests for :mod:`etlplus.file.avro` helpers."""
 
     # pylint: disable=protected-access
+
+    @pytest.mark.parametrize(
+        ('operation', 'payload'),
+        [
+            (mod._infer_value_type, {'bad': 'value'}),
+            (mod._infer_schema, [{'bad': {'nested': True}}]),
+        ],
+        ids=['infer_value_type_complex', 'infer_schema_nested'],
+    )
+    def test_infer_helpers_reject_invalid_payloads(
+        self,
+        operation: Callable[[object], object],
+        payload: object,
+    ) -> None:
+        """Test infer helpers raising for unsupported complex payloads."""
+        with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
+            operation(payload)
+
+    def test_infer_schema_builds_fields(self) -> None:
+        """Test that :func:`_infer_schema` builds expected fields."""
+        records: list[dict[str, object]] = [
+            {'b': 'text', 'a': 1},
+            {'b': None},
+        ]
+
+        schema = mod._infer_schema(records)
+
+        assert schema['type'] == 'record'
+        assert schema['name'] == 'etlplus_record'
+        assert schema['fields'] == [
+            {'name': 'a', 'type': ['null', 'long']},
+            {'name': 'b', 'type': ['null', 'string']},
+        ]
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
@@ -147,23 +180,6 @@ class TestAvroHelpers:
         """
         assert mod._infer_value_type(value) == expected
 
-    @pytest.mark.parametrize(
-        ('operation', 'payload'),
-        [
-            (mod._infer_value_type, {'bad': 'value'}),
-            (mod._infer_schema, [{'bad': {'nested': True}}]),
-        ],
-        ids=['infer_value_type_complex', 'infer_schema_nested'],
-    )
-    def test_infer_helpers_reject_invalid_payloads(
-        self,
-        operation: Callable[[object], object],
-        payload: object,
-    ) -> None:
-        """Test infer helpers raising for unsupported complex payloads."""
-        with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
-            operation(payload)
-
     def test_merge_types_orders_null_first(self) -> None:
         """
         Test that :func:`_merge_types` orders 'null' first when present.
@@ -173,22 +189,6 @@ class TestAvroHelpers:
         merged = mod._merge_types(types)
 
         assert merged == ['null', 'long', 'string']
-
-    def test_infer_schema_builds_fields(self) -> None:
-        """Test that :func:`_infer_schema` builds expected fields."""
-        records: list[dict[str, object]] = [
-            {'b': 'text', 'a': 1},
-            {'b': None},
-        ]
-
-        schema = mod._infer_schema(records)
-
-        assert schema['type'] == 'record'
-        assert schema['name'] == 'etlplus_record'
-        assert schema['fields'] == [
-            {'name': 'a', 'type': ['null', 'long']},
-            {'name': 'b', 'type': ['null', 'string']},
-        ]
 
 
 class TestAvroIo(BinaryDependencyModuleContract):
@@ -214,10 +214,6 @@ class TestAvroIo(BinaryDependencyModuleContract):
         assert stub.writes
         assert stub.writes[0]['records'] == self.write_payload
 
-    def make_dependency_stub(self) -> _FastAvroStub:
-        """Build a fastavro dependency stub."""
-        return _FastAvroStub()
-
     def assert_dependency_after_read(
         self,
         dependency_stub: object,
@@ -225,3 +221,7 @@ class TestAvroIo(BinaryDependencyModuleContract):
     ) -> None:
         """Assert fastavro read behavior."""
         assert isinstance(dependency_stub, _FastAvroStub)
+
+    def make_dependency_stub(self) -> _FastAvroStub:
+        """Build a fastavro dependency stub."""
+        return _FastAvroStub()

@@ -60,22 +60,6 @@ class TestSas7bdatRead(PathMixin):
             'data',
         ]
 
-    def test_read_falls_back_when_format_kwarg_not_supported(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test read fallback when pandas rejects the format keyword."""
-        frame = DictRecordsFrameStub([{'id': 1}])
-        pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
-        self._install_dependency_stubs(monkeypatch, pandas)
-        path = self.format_path(tmp_path)
-
-        result = mod.Sas7bdatFile().read(path)
-
-        assert result == [{'id': 1}]
-        pandas.assert_fallback_read_calls(path, format_name='sas7bdat')
-
     def test_read_dataset_accepts_default_key_via_options(
         self,
         tmp_path: Path,
@@ -93,6 +77,22 @@ class TestSas7bdatRead(PathMixin):
         )
 
         assert result == [{'id': 1}]
+
+    def test_read_falls_back_when_format_kwarg_not_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test read fallback when pandas rejects the format keyword."""
+        frame = DictRecordsFrameStub([{'id': 1}])
+        pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
+        self._install_dependency_stubs(monkeypatch, pandas)
+        path = self.format_path(tmp_path)
+
+        result = mod.Sas7bdatFile().read(path)
+
+        assert result == [{'id': 1}]
+        pandas.assert_fallback_read_calls(path, format_name='sas7bdat')
 
     def test_read_uses_format_hint(
         self,

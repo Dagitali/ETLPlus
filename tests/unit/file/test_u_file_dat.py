@@ -89,6 +89,12 @@ class _StubSniffer:
         self._has_header = has_header
         self._has_header_error = has_header_error
 
+    def has_header(self, sample: str) -> bool:  # noqa: ARG002
+        """Simulate detecting whether *sample* has a header row."""
+        if self._has_header_error is not None:
+            raise self._has_header_error
+        return self._has_header
+
     def sniff(
         self,
         sample: str,  # noqa: ARG002
@@ -98,12 +104,6 @@ class _StubSniffer:
         if self._sniff_error is not None:
             raise self._sniff_error
         return self._dialect
-
-    def has_header(self, sample: str) -> bool:  # noqa: ARG002
-        """Simulate detecting whether *sample* has a header row."""
-        if self._has_header_error is not None:
-            raise self._has_header_error
-        return self._has_header
 
 
 # SECTION: TESTS ============================================================ #
