@@ -6,8 +6,6 @@ Unit tests for :mod:`etlplus.file._imports`.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from etlplus.file import _imports as mod
@@ -107,18 +105,14 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test first import path storing module in cache."""
-        loaded: dict[str, Any] = {}
+        cache: dict[str, object] = {}
+        sentinel = object()
 
-        def _import(name: str) -> object:
-            result = object()
-            loaded[name] = result
-            return result
-
-        monkeypatch.setattr(mod, 'import_module', _import)
+        monkeypatch.setattr(mod, '_MODULE_CACHE', cache)
+        monkeypatch.setattr(mod, 'import_module', lambda _name: sentinel)
         result = mod.get_optional_module('example_dep', error_message='unused')
-        assert result is loaded['example_dep']
-        assert mod._MODULE_CACHE['example_dep'] is result
-        mod._MODULE_CACHE.pop('example_dep', None)
+        assert result is sentinel
+        assert cache['example_dep'] is sentinel
 
     def test_get_optional_module_raises_custom_error_message(
         self,
@@ -152,4 +146,3 @@ class TestImportsHelpers:
             mod.get_optional_module('cached_mod', error_message='ignored')
             is sentinel
         )
-        mod._MODULE_CACHE.pop('cached_mod', None)
