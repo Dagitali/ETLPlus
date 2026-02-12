@@ -20,14 +20,14 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import warn_deprecated_module_io
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
+from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
@@ -109,36 +109,13 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = get_pandas('HDF5')
+        pandas = get_pandas(self.format_name)
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
             _raise_tables_error(err)
         with store:
             return [key.lstrip('/') for key in store.keys()]
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read HDF5 content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the HDF5 file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the HDF5 file.
-        """
-        return self.read_dataset(path, options=options)
 
     def read_dataset(
         self,
@@ -170,7 +147,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pandas = get_pandas('HDF5')
+        pandas = get_pandas(self.format_name)
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
@@ -194,7 +171,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
                     'a single dataset',
                 )
             frame = store.get(key)
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write_dataset(
         self,
@@ -222,7 +199,7 @@ _HDF5_HANDLER = Hdf5File()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``Hdf5File().read(...)`` instead.
 
@@ -233,11 +210,14 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the HDF5 file.
+    JSONData
+        The structured data read from the HDF5 file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _HDF5_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _HDF5_HANDLER.read,
+    )
 
 
 def write(
@@ -260,5 +240,9 @@ def write(
     int
         The number of rows written to the HDF5 file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _HDF5_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _HDF5_HANDLER.write,
+    )

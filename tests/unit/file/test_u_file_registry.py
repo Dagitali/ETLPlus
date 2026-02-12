@@ -220,6 +220,8 @@ def _expected_matrix_row(
     file_format: FileFormat,
 ) -> MatrixRow:
     """Build expected matrix metadata for one mapped format."""
+    # pylint: disable=protected-access
+
     handler_class = mod._coerce_handler_class(
         mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
         file_format=file_format,

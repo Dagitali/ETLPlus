@@ -18,15 +18,15 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import warn_deprecated_module_io
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
+from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -63,29 +63,6 @@ class Sas7bdatFile(
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read SAS7BDAT content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAS7BDAT file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the SAS7BDAT file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -110,15 +87,18 @@ class Sas7bdatFile(
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
-        get_dependency('pyreadstat', format_name='SAS7BDAT')
-        pandas = get_pandas('SAS7BDAT')
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
+        format_name = self.format_name
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         try:
             frame = pandas.read_sas(path, format='sas7bdat')
         except TypeError:
             frame = pandas.read_sas(path)
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
     def write_dataset(
         self,
@@ -132,8 +112,10 @@ class Sas7bdatFile(
         Reject writes for SAS7BDAT while preserving scientific dataset
         contract.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
         return self.write(path, data, options=options)
 
 
@@ -147,7 +129,7 @@ _SAS7BDAT_HANDLER = Sas7bdatFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``Sas7bdatFile().read(...)`` instead.
 
@@ -158,11 +140,14 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the SAS7BDAT file.
+    JSONData
+        The structured data read from the SAS7BDAT file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _SAS7BDAT_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _SAS7BDAT_HANDLER.read,
+    )
 
 
 def write(
@@ -185,5 +170,9 @@ def write(
     int
         Never returns normally.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _SAS7BDAT_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _SAS7BDAT_HANDLER.write,
+    )

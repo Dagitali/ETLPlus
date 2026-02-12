@@ -7,14 +7,14 @@ Helpers for reading Excel XLS files (write is not supported).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_pandas
-from ._io import coerce_path
-from ._io import warn_deprecated_module_io
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
+from ._io import records_from_table
 from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
 from .enums import FileFormat
@@ -45,35 +45,6 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
     engine_name = 'xlrd'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return XLS content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLS file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLS file.
-
-        Raises
-        ------
-        ImportError
-            If the optional dependency "xlrd" is not installed.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
 
     def read_sheet(
         self,
@@ -115,7 +86,7 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
                 'XLS support requires optional dependency "xlrd".\n'
                 'Install with: pip install xlrd',
             ) from e
-        return cast(JSONList, frame.to_dict(orient='records'))
+        return records_from_table(frame)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -142,8 +113,11 @@ def read(
     JSONList
         The list of dictionaries read from the XLS file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _XLS_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _XLS_HANDLER.read,
+    )
 
 
 def write(
@@ -165,5 +139,9 @@ def write(
     int
         Number of records written.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _XLS_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _XLS_HANDLER.write,
+    )

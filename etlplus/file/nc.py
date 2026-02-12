@@ -19,17 +19,17 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import coerce_path
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
 from ._io import normalize_records
-from ._io import warn_deprecated_module_io
+from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -89,32 +89,6 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read NC content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the NC file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the NC file.
-        """
-        return cast(
-            JSONList,
-            self.read_dataset(path, options=options),
-        )
-
     def read_dataset(
         self,
         path: Path,
@@ -139,9 +113,12 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
-        xarray = get_dependency('xarray', format_name='NC')
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
+        format_name = self.format_name
+        xarray = get_dependency('xarray', format_name=format_name)
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
@@ -152,34 +129,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             values = list(frame['index'])
             if values == list(range(len(values))):
                 frame = frame.drop(columns=['index'])
-        return cast(JSONList, frame.to_dict(orient='records'))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to NC file at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the NC file on disk.
-        data : JSONData
-            Data to write as NC file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the NC file.
-        """
-        return self.write_dataset(path, data, options=options)
+        return records_from_table(frame)
 
     def write_dataset(
         self,
@@ -208,15 +158,18 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
 
-        records = normalize_records(data, 'NC')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name='NC')
-        pandas = get_pandas('NC')
+        xarray = get_dependency('xarray', format_name=format_name)
+        pandas = get_pandas(format_name)
         frame = pandas.DataFrame.from_records(records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
@@ -237,7 +190,7 @@ _NC_HANDLER = NcFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``NcFile().read(...)`` instead.
 
@@ -248,11 +201,14 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the NC file.
+    JSONData
+        The structured data read from the NC file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _NC_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _NC_HANDLER.read,
+    )
 
 
 def write(
@@ -275,5 +231,9 @@ def write(
     int
         The number of rows written to the NC file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _NC_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _NC_HANDLER.write,
+    )

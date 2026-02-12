@@ -25,10 +25,9 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from ._io import coerce_path
-from ._io import normalize_records
+from ._io import call_deprecated_module_read
+from ._io import call_deprecated_module_write
 from ._io import read_delimited
-from ._io import warn_deprecated_module_io
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -61,56 +60,6 @@ class TabFile(DelimitedTextFileHandlerABC):
     delimiter = '\t'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return TAB content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the TAB file.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to TAB at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        data : JSONData
-            Data to write as TAB file.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the TAB file.
-        """
-        rows = normalize_records(data, 'TAB')
-        return self.write_rows(path, rows, options=options)
 
     def read_rows(
         self,
@@ -196,8 +145,11 @@ def read(
     JSONList
         The list of dictionaries read from the TAB file.
     """
-    warn_deprecated_module_io(__name__, 'read')
-    return _TAB_HANDLER.read(coerce_path(path))
+    return call_deprecated_module_read(
+        path,
+        __name__,
+        _TAB_HANDLER.read,
+    )
 
 
 def write(
@@ -220,5 +172,9 @@ def write(
     int
         The number of rows written to the TAB file.
     """
-    warn_deprecated_module_io(__name__, 'write')
-    return _TAB_HANDLER.write(coerce_path(path), data)
+    return call_deprecated_module_write(
+        path,
+        data,
+        __name__,
+        _TAB_HANDLER.write,
+    )
