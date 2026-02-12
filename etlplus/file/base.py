@@ -18,6 +18,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ._io import normalize_records
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -528,13 +529,13 @@ class ColumnarFileHandlerABC(FileHandlerABC):
         int
             Number of records written.
         """
-        table = self.records_to_table(data)
-        records = self.table_to_records(table)
-        if not records:
+        rows = normalize_records(data, self.format.value.upper())
+        if not rows:
             return 0
+        table = self.records_to_table(rows)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.write_table(path, table, options=options)
-        return len(records)
+        return len(rows)
 
     @abstractmethod
     def read_table(
@@ -802,9 +803,12 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         -------
         int
             Number of records written.
-        """
-        from ._io import normalize_records
 
+        Raises
+        ------
+        ValueError
+            If table selection is ambiguous.
+        """
         rows = normalize_records(data, self.format.value.upper())
         if not rows:
             return 0
