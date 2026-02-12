@@ -300,7 +300,7 @@ class StubSpreadsheetFileHandlerABC(
         Raise :class:`NotImplementedError` for sheet reads.
         """
         _ = sheet
-        return super().read(path, options=options)
+        return StubFileHandlerABC.read(self, path, options=options)
 
     def write_sheet(
         self,
@@ -314,7 +314,7 @@ class StubSpreadsheetFileHandlerABC(
         Raise :class:`NotImplementedError` for sheet writes.
         """
         _ = sheet
-        return super().write(path, rows, options=options)
+        return StubFileHandlerABC.write(self, path, rows, options=options)
 
 
 class StubTemplateFileHandlerABC(
