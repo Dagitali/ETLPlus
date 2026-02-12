@@ -1323,6 +1323,56 @@ class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
         _ = path
         return [self.dataset_key]
 
+    def resolve_single_read_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | None = None,
+    ) -> str | None:
+        """
+        Resolve and validate single-dataset read selection.
+
+        Parameters
+        ----------
+        dataset : str | None, optional
+            Explicit dataset selector.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        str | None
+            Validated dataset key or ``None``.
+        """
+        resolved = self.resolve_read_dataset(dataset, options=options)
+        self.validate_single_dataset_key(resolved)
+        return resolved
+
+    def resolve_single_write_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str | None:
+        """
+        Resolve and validate single-dataset write selection.
+
+        Parameters
+        ----------
+        dataset : str | None, optional
+            Explicit dataset selector.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        str | None
+            Validated dataset key or ``None``.
+        """
+        resolved = self.resolve_write_dataset(dataset, options=options)
+        self.validate_single_dataset_key(resolved)
+        return resolved
+
     def validate_single_dataset_key(
         self,
         dataset: str | None,
