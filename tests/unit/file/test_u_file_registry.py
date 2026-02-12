@@ -146,11 +146,6 @@ _ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = tuple(
     for file_format in file_formats
 )
 
-_CACHEABLES = (
-    mod.get_handler,
-    mod.get_handler_class,
-)
-
 _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
     (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
@@ -169,12 +164,6 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _clear_registry_caches() -> None:
-    """Clear all cached registry resolution helpers."""
-    for cacheable in _CACHEABLES:
-        cacheable.cache_clear()
 
 
 def _mapped_handler_class(file_format: FileFormat) -> type[FileHandlerABC]:
@@ -214,9 +203,11 @@ def _implemented_handler_formats() -> set[FileFormat]:
 @pytest.fixture(name='clear_registry_caches', autouse=True)
 def clear_registry_caches_fixture() -> Iterator[None]:
     """Clear registry caches before and after each test."""
-    _clear_registry_caches()
+    mod.get_handler.cache_clear()
+    mod.get_handler_class.cache_clear()
     yield
-    _clear_registry_caches()
+    mod.get_handler.cache_clear()
+    mod.get_handler_class.cache_clear()
 
 
 # SECTION: TESTS ============================================================ #
