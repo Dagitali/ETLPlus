@@ -125,38 +125,6 @@ class TestOds(WritableSpreadsheetModuleContract):
             {'path': path, 'engine': 'odf', 'sheet_name': 'Sheet2'},
         ]
 
-    def test_write_uses_sheet_name_when_supported(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test write forwarding string sheet selectors to pandas."""
-        pandas = _PandasStub(_FrameStub([{'id': 1}], allow_sheet_name=True))
-        patch_dependency_resolver_value(
-            monkeypatch,
-            mod,
-            resolver_name='get_pandas',
-            value=pandas,
-        )
-        path = self.format_path(tmp_path)
-
-        written = mod.OdsFile().write(
-            path,
-            [{'id': 1}],
-            options=WriteOptions(sheet='Sheet2'),
-        )
-
-        assert written == 1
-        assert pandas.last_frame is not None
-        assert pandas.last_frame.to_excel_calls == [
-            {
-                'path': path,
-                'index': False,
-                'engine': 'odf',
-                'sheet_name': 'Sheet2',
-            },
-        ]
-
     def test_write_falls_back_when_sheet_name_not_supported(
         self,
         tmp_path: Path,
@@ -188,4 +156,36 @@ class TestOds(WritableSpreadsheetModuleContract):
                 'sheet_name': 'Sheet2',
             },
             {'path': path, 'index': False, 'engine': 'odf'},
+        ]
+
+    def test_write_uses_sheet_name_when_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write forwarding string sheet selectors to pandas."""
+        pandas = _PandasStub(_FrameStub([{'id': 1}], allow_sheet_name=True))
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_pandas',
+            value=pandas,
+        )
+        path = self.format_path(tmp_path)
+
+        written = mod.OdsFile().write(
+            path,
+            [{'id': 1}],
+            options=WriteOptions(sheet='Sheet2'),
+        )
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        assert pandas.last_frame.to_excel_calls == [
+            {
+                'path': path,
+                'index': False,
+                'engine': 'odf',
+                'sheet_name': 'Sheet2',
+            },
         ]
