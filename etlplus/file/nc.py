@@ -113,8 +113,10 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
         xarray = get_dependency('xarray', format_name='NC')
         try:
             xarray_dataset = xarray.open_dataset(path)
@@ -155,8 +157,10 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
 
         records = normalize_records(data, 'NC')
         if not records:

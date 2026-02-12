@@ -86,8 +86,10 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
 
         pandas = get_pandas('XPT')
         pyreadstat = get_dependency('pyreadstat', format_name='XPT')
@@ -133,8 +135,10 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadstat" is not installed with write support.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
 
         records = normalize_records(data, 'XPT')
         if not records:

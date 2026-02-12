@@ -87,8 +87,10 @@ class Sas7bdatFile(
         JSONList
             Parsed records.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
         get_dependency('pyreadstat', format_name='SAS7BDAT')
         pandas = get_pandas('SAS7BDAT')
         try:
@@ -109,8 +111,10 @@ class Sas7bdatFile(
         Reject writes for SAS7BDAT while preserving scientific dataset
         contract.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
         return self.write(path, data, options=options)
 
 
