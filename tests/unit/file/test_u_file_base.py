@@ -51,25 +51,14 @@ from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
+from tests.unit.file.conftest import (
+    assert_single_dataset_rejects_non_default_key,
+)
 
 # SECTION: HELPERS ========================================================== #
 
 
 _NO_DEFAULT: object = object()
-
-
-def _assert_single_dataset_rejects_non_default_key(
-    handler: SingleDatasetScientificFileHandlerABC,
-    *,
-    suffix: str,
-) -> None:
-    """Assert single-dataset handlers reject unsupported dataset keys."""
-    bad_dataset = 'not_default_dataset'
-    path = Path(f'ignored.{suffix}')
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.read_dataset(path, dataset=bad_dataset)
-    with pytest.raises(ValueError, match='supports only dataset key'):
-        handler.write_dataset(path, [], dataset=bad_dataset)
 
 
 def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
@@ -663,7 +652,7 @@ class TestScientificDatasetContracts:
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        _assert_single_dataset_rejects_non_default_key(
+        assert_single_dataset_rejects_non_default_key(
             handler_cls(),
             suffix=handler_cls.format.value,
         )
