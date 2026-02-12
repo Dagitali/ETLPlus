@@ -295,8 +295,10 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Read and return one dataset from *path*.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_read_dataset(
+            dataset,
+            options=options,
+        )
         return StubFileHandlerABC.read(self, path, options=options)
 
     def write(
@@ -328,8 +330,10 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Write one dataset to *path* and return record count.
         """
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(dataset)
+        self.resolve_single_write_dataset(
+            dataset,
+            options=options,
+        )
         return StubFileHandlerABC.write(self, path, data, options=options)
 
 
