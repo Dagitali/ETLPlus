@@ -159,6 +159,8 @@ class _RowReadWriteMixin:
 class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
     """Concrete delimited handler used for abstract contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.CSV
     delimiter = ','
 
@@ -167,9 +169,7 @@ class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
+    ) -> JSONList:  # noqa: ARG002
         return [{'id': 1}]
 
     def write_rows(
@@ -178,9 +178,7 @@ class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
         rows: JSONList,
         *,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = options
+    ) -> int:  # noqa: ARG002
         return len(rows)
 
 
@@ -203,6 +201,8 @@ class _IncompleteTextFixedWidth(
 class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
     """Concrete text/fixed-width handler used for abstract contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.TXT
 
     def read_rows(
@@ -210,9 +210,7 @@ class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
+    ) -> JSONList:  # noqa: ARG002
         return [{'text': 'ok'}]
 
     def write_rows(
@@ -221,9 +219,7 @@ class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
         rows: JSONList,
         *,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = options
+    ) -> int:  # noqa: ARG002
         return len(rows)
 
 
@@ -233,14 +229,15 @@ class _ReadOnlyScientificStub(
 ):
     """Concrete read-only scientific handler for base-contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.HDF5
     dataset_key = 'data'
 
     def list_datasets(
         self,
         path: Path,
-    ) -> list[str]:
-        _ = path
+    ) -> list[str]:  # noqa: ARG002
         return [self.dataset_key]
 
     def read_dataset(
@@ -249,10 +246,7 @@ class _ReadOnlyScientificStub(
         *,
         dataset: str | None = None,
         options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        _ = dataset
-        _ = options
+    ) -> JSONData:  # noqa: ARG002
         return []
 
     def write_dataset(
@@ -262,11 +256,7 @@ class _ReadOnlyScientificStub(
         *,
         dataset: str | None = None,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = dataset
-        _ = options
+    ) -> int:  # noqa: ARG002
         _raise_read_only_write(self.format)
 
 
@@ -275,6 +265,8 @@ class _ReadOnlySingleScientificStub(
     SingleDatasetScientificFileHandlerABC,
 ):
     """Concrete read-only single-dataset handler for base-contract tests."""
+
+    # pylint: disable=unused-argument
 
     format = FileFormat.SAS7BDAT
     dataset_key = 'data'
@@ -285,8 +277,7 @@ class _ReadOnlySingleScientificStub(
         *,
         dataset: str | None = None,
         options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
+    ) -> JSONData:  # noqa: ARG002
         self.resolve_single_read_dataset(dataset, options=options)
         return []
 
@@ -297,11 +288,8 @@ class _ReadOnlySingleScientificStub(
         *,
         dataset: str | None = None,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
+    ) -> int:  # noqa: ARG002
         self.resolve_single_write_dataset(dataset, options=options)
-        _ = options
         _raise_read_only_write(self.format)
 
 
