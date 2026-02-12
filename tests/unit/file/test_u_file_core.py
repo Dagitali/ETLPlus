@@ -791,6 +791,10 @@ class TestFile:
                 self,
                 path: Path,
             ) -> JSONData:
+                """
+                Stub read method that records the path and returns an empty
+                list.
+                """
                 _ = path
                 return []
 
@@ -801,6 +805,9 @@ class TestFile:
                 *,
                 options: WriteOptions | None = None,
             ) -> int:
+                """
+                Stub write method that records the path, data, and options.
+                """
                 calls['path'] = path
                 calls['data'] = data
                 calls['options'] = options
