@@ -48,20 +48,6 @@ class TestRHelpers:
         assert mod.coerce_r_object([1, 2], pandas) == {'value': [1, 2]}
         assert mod.coerce_r_object('x', pandas) == {'value': 'x'}
 
-    def test_coerce_r_result_empty_returns_empty_list(self) -> None:
-        """Test empty R result normalization."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
-        assert (
-            mod.coerce_r_result(
-                {},
-                dataset=None,
-                dataset_key='data',
-                format_name='RDS',
-                pandas=pandas,
-            )
-            == []
-        )
-
     def test_coerce_r_result_dataset_selection_and_alias(self) -> None:
         """Test explicit and alias dataset key resolution."""
         pandas = SimpleNamespace(DataFrame=_DataFrameStub)
@@ -84,6 +70,20 @@ class TestRHelpers:
             pandas=pandas,
         )
         assert aliased == [{'id': 1}]
+
+    def test_coerce_r_result_empty_returns_empty_list(self) -> None:
+        """Test empty R result normalization."""
+        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
+        assert (
+            mod.coerce_r_result(
+                {},
+                dataset=None,
+                dataset_key='data',
+                format_name='RDS',
+                pandas=pandas,
+            )
+            == []
+        )
 
     def test_coerce_r_result_rejects_unknown_dataset(self) -> None:
         """Test missing explicit dataset selection."""
