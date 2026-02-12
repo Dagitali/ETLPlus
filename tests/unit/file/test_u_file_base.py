@@ -10,6 +10,7 @@ import inspect
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from typing import NoReturn
 from typing import cast
 
 import pytest
@@ -58,6 +59,15 @@ from tests.unit.file.conftest import (
 
 
 _NO_DEFAULT: object = object()
+
+
+def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
+    """Raise the canonical read-only write error for one format."""
+    raise RuntimeError(
+        f'{format_name.value.upper()} is read-only and does not support '
+        'write operations',
+    )
+
 
 _DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     CsvFile,
@@ -149,6 +159,8 @@ class _RowReadWriteMixin:
 class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
     """Concrete delimited handler used for abstract contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.CSV
     delimiter = ','
 
@@ -157,9 +169,7 @@ class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
+    ) -> JSONList:  # noqa: ARG002
         return [{'id': 1}]
 
     def write_rows(
@@ -168,9 +178,7 @@ class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
         rows: JSONList,
         *,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = options
+    ) -> int:  # noqa: ARG002
         return len(rows)
 
 
@@ -193,6 +201,8 @@ class _IncompleteTextFixedWidth(
 class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
     """Concrete text/fixed-width handler used for abstract contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.TXT
 
     def read_rows(
@@ -200,9 +210,7 @@ class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONList:
-        _ = path
-        _ = options
+    ) -> JSONList:  # noqa: ARG002
         return [{'text': 'ok'}]
 
     def write_rows(
@@ -211,9 +219,7 @@ class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
         rows: JSONList,
         *,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = options
+    ) -> int:  # noqa: ARG002
         return len(rows)
 
 
@@ -223,14 +229,15 @@ class _ReadOnlyScientificStub(
 ):
     """Concrete read-only scientific handler for base-contract tests."""
 
+    # pylint: disable=unused-argument
+
     format = FileFormat.HDF5
     dataset_key = 'data'
 
     def list_datasets(
         self,
         path: Path,
-    ) -> list[str]:
-        _ = path
+    ) -> list[str]:  # noqa: ARG002
         return [self.dataset_key]
 
     def read_dataset(
@@ -239,10 +246,7 @@ class _ReadOnlyScientificStub(
         *,
         dataset: str | None = None,
         options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
-        _ = dataset
-        _ = options
+    ) -> JSONData:  # noqa: ARG002
         return []
 
     def write_dataset(
@@ -252,15 +256,8 @@ class _ReadOnlyScientificStub(
         *,
         dataset: str | None = None,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
-        _ = dataset
-        _ = options
-        raise RuntimeError(
-            f'{self.format.value.upper()} is read-only and does not support '
-            'write operations',
-        )
+    ) -> int:  # noqa: ARG002
+        _raise_read_only_write(self.format)
 
 
 class _ReadOnlySingleScientificStub(
@@ -268,6 +265,8 @@ class _ReadOnlySingleScientificStub(
     SingleDatasetScientificFileHandlerABC,
 ):
     """Concrete read-only single-dataset handler for base-contract tests."""
+
+    # pylint: disable=unused-argument
 
     format = FileFormat.SAS7BDAT
     dataset_key = 'data'
@@ -278,8 +277,7 @@ class _ReadOnlySingleScientificStub(
         *,
         dataset: str | None = None,
         options: ReadOptions | None = None,
-    ) -> JSONData:
-        _ = path
+    ) -> JSONData:  # noqa: ARG002
         self.resolve_single_read_dataset(dataset, options=options)
         return []
 
@@ -290,15 +288,9 @@ class _ReadOnlySingleScientificStub(
         *,
         dataset: str | None = None,
         options: WriteOptions | None = None,
-    ) -> int:
-        _ = path
-        _ = data
+    ) -> int:  # noqa: ARG002
         self.resolve_single_write_dataset(dataset, options=options)
-        _ = options
-        raise RuntimeError(
-            f'{self.format.value.upper()} is read-only and does not support '
-            'write operations',
-        )
+        _raise_read_only_write(self.format)
 
 
 # SECTION: TESTS ============================================================ #
@@ -371,30 +363,28 @@ class TestBaseAbcContracts:
                 dataset='other',
             )
 
-    def test_read_only_single_scientific_rejects_default_dataset_writes(
+    @pytest.mark.parametrize(
+        ('dataset', 'expected_error', 'error_pattern'),
+        [
+            ('data', RuntimeError, 'read-only'),
+            ('other', ValueError, 'supports only dataset key'),
+        ],
+        ids=['default_dataset_write', 'invalid_dataset_key'],
+    )
+    def test_read_only_single_scientific_write_dataset_contract(
         self,
+        dataset: str,
+        expected_error: type[Exception],
+        error_pattern: str,
     ) -> None:
-        """Test read-only guard still applied for valid single dataset keys."""
+        """Test single-dataset read-only write validation and guardrails."""
         handler = _ReadOnlySingleScientificStub()
 
-        with pytest.raises(RuntimeError, match='read-only'):
+        with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
                 Path('ignored.sas7bdat'),
                 [{'id': 1}],
-                dataset='data',
-            )
-
-    def test_read_only_single_scientific_rejects_invalid_dataset_key(
-        self,
-    ) -> None:
-        """Test single-dataset read-only handlers validating dataset keys."""
-        handler = _ReadOnlySingleScientificStub()
-
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(
-                Path('ignored.sas7bdat'),
-                [{'id': 1}],
-                dataset='other',
+                dataset=dataset,
             )
 
     @pytest.mark.parametrize(
@@ -650,23 +640,13 @@ class TestScientificDatasetContracts:
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        assert_single_dataset_rejects_non_default_key(
-            handler_cls(),
-            suffix=handler_cls.format.value,
-        )
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        _SINGLE_DATASET_HANDLER_CLASSES,
-    )
-    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
-        self,
-        handler_cls: type[SingleDatasetScientificFileHandlerABC],
-    ) -> None:
-        """Test single-dataset handlers inheriting the subtype ABC."""
         assert issubclass(
             handler_cls,
             SingleDatasetScientificFileHandlerABC,
+        )
+        assert_single_dataset_rejects_non_default_key(
+            handler_cls(),
+            suffix=handler_cls.format.value,
         )
 
 

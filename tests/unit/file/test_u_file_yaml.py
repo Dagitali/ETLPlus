@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.file.yaml`.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -21,19 +23,22 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 # SECTION: HELPERS ========================================================== #
 
 
+type DumpCall = dict[str, object]
+
+
+@dataclass
 class _StubYaml:
     """Minimal PyYAML substitute."""
 
-    def __init__(self, loaded: object | None = None) -> None:
-        self._loaded = loaded if loaded is not None else {'loaded': 'value'}
-        self.load_calls = 0
-        self.dump_calls: list[dict[str, object]] = []
+    loaded: object = field(default_factory=lambda: {'loaded': 'value'})
+    load_calls: int = 0
+    dump_calls: list[DumpCall] = field(default_factory=list)
 
     def safe_load(self, handle: Any) -> object:
         """Return configured loaded data."""
         self.load_calls += 1
-        _ = handle.read()
-        return self._loaded
+        handle.read()
+        return self.loaded
 
     def safe_dump(
         self,
@@ -54,6 +59,9 @@ class TestYaml(
     SemiStructuredWriteDictModuleContract,
 ):
     """Unit tests for :mod:`etlplus.file.yaml`."""
+
+    _read_yaml_stub: _StubYaml
+    _write_yaml_stub: _StubYaml
 
     module = mod
     format_name = 'yaml'
@@ -90,7 +98,7 @@ class TestYaml(
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install YAML dependency stub for read tests."""
-        self._read_yaml_stub = _StubYaml(self.expected_read_payload)
+        self._read_yaml_stub = _StubYaml(loaded=self.expected_read_payload)
         optional_module_stub({'yaml': self._read_yaml_stub})
 
     def setup_write_dependencies(
@@ -106,7 +114,7 @@ class TestYaml(
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test YAML loads rejecting scalar roots."""
-        optional_module_stub({'yaml': _StubYaml('scalar')})
+        optional_module_stub({'yaml': _StubYaml(loaded='scalar')})
         handler = mod.YamlFile()
 
         with pytest.raises(
@@ -121,7 +129,7 @@ class TestYaml(
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test YAML reads honoring explicit text encoding options."""
-        optional_module_stub({'yaml': _StubYaml({'name': 'José'})})
+        optional_module_stub({'yaml': _StubYaml(loaded={'name': 'José'})})
         path = self.format_path(tmp_path, stem='latin1')
         path.write_bytes('name: José\n'.encode('latin-1'))
         handler = mod.YamlFile()

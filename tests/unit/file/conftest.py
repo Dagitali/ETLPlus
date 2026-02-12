@@ -22,6 +22,7 @@ from etlplus.file import FileFormat
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
+from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
@@ -59,19 +60,6 @@ def _call_module_operation(
     return cast(int, handler.write(path, payload))
 
 
-def _call_scientific_dataset_operation(
-    handler: SingleDatasetScientificFileHandlerABC,
-    *,
-    operation: Operation,
-    path: Path,
-    dataset: str,
-) -> JSONData | int:
-    """Invoke scientific ``read_dataset``/``write_dataset`` by operation."""
-    if operation == 'read':
-        return cast(JSONData, handler.read_dataset(path, dataset=dataset))
-    return cast(int, handler.write_dataset(path, [], dataset=dataset))
-
-
 def _module_handler(
     module: ModuleType,
 ) -> Any:
@@ -104,14 +92,10 @@ def assert_single_dataset_rejects_non_default_key(
     """Assert single-dataset scientific handlers reject non-default keys."""
     bad_dataset = 'not_default_dataset'
     path = Path(f'ignored.{suffix}')
-    for operation in ('read', 'write'):
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            _call_scientific_dataset_operation(
-                handler,
-                operation=cast(Operation, operation),
-                path=path,
-                dataset=bad_dataset,
-            )
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.read_dataset(path, dataset=bad_dataset)
+    with pytest.raises(ValueError, match='supports only dataset key'):
+        handler.write_dataset(path, [], dataset=bad_dataset)
 
 
 def assert_stub_module_operation_raises(
@@ -227,6 +211,7 @@ def patch_dependency_resolver_value(
     value: object,
 ) -> None:
     """Patch one dependency resolver to return a deterministic value."""
+    # pylint: disable=unused-argument
 
     def _return_value(
         *args: object,
@@ -706,6 +691,127 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
                 self.format_path(tmp_path),
                 make_payload('list'),
             )
+
+
+class SpreadsheetSheetNameRoutingMixin(PathMixin):
+    """
+    Parametrized mixin for spreadsheet ``sheet_name`` option routing.
+    """
+
+    module: ModuleType
+    read_engine: str | None
+    write_engine: str | None
+
+    def _read_sheet_kwargs(self, path: Path) -> dict[str, object]:
+        kwargs: dict[str, object] = {'path': path, 'sheet_name': 'Sheet2'}
+        if self.read_engine is not None:
+            kwargs['engine'] = self.read_engine
+        return kwargs
+
+    def _write_fallback_kwargs(self, path: Path) -> dict[str, object]:
+        kwargs: dict[str, object] = {'path': path, 'index': False}
+        if self.write_engine is not None:
+            kwargs['engine'] = self.write_engine
+        return kwargs
+
+    def _write_sheet_kwargs(self, path: Path) -> dict[str, object]:
+        kwargs: dict[str, object] = {
+            'path': path,
+            'index': False,
+            'sheet_name': 'Sheet2',
+        }
+        if self.write_engine is not None:
+            kwargs['engine'] = self.write_engine
+        return kwargs
+
+    def test_read_uses_sheet_name_when_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test reads forwarding string sheet selectors to pandas."""
+        rows = cast(list[dict[str, object]], make_payload('list'))
+        pandas = SpreadsheetSheetPandasStub(
+            SpreadsheetSheetFrameStub(rows),
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_pandas',
+            value=pandas,
+        )
+        path = self.format_path(tmp_path)
+
+        result = self.module_handler.read(
+            path,
+            options=ReadOptions(sheet='Sheet2'),
+        )
+
+        assert result == make_payload('list')
+        assert pandas.read_calls == [self._read_sheet_kwargs(path)]
+
+    def test_write_falls_back_when_sheet_name_not_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test write fallback when pandas rejects ``sheet_name``."""
+        pandas = SpreadsheetSheetPandasStub(
+            SpreadsheetSheetFrameStub(
+                cast(list[dict[str, object]], make_payload('list')),
+                allow_sheet_name=False,
+            ),
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_pandas',
+            value=pandas,
+        )
+        path = self.format_path(tmp_path)
+
+        written = self.module_handler.write(
+            path,
+            make_payload('list'),
+            options=WriteOptions(sheet='Sheet2'),
+        )
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        assert pandas.last_frame.to_excel_calls == [
+            self._write_sheet_kwargs(path),
+            self._write_fallback_kwargs(path),
+        ]
+
+    def test_write_uses_sheet_name_when_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test writes forwarding string sheet selectors to pandas."""
+        rows = cast(list[dict[str, object]], make_payload('list'))
+        pandas = SpreadsheetSheetPandasStub(
+            SpreadsheetSheetFrameStub(rows),
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_pandas',
+            value=pandas,
+        )
+        path = self.format_path(tmp_path)
+
+        written = self.module_handler.write(
+            path,
+            make_payload('list'),
+            options=WriteOptions(sheet='Sheet2'),
+        )
+
+        assert written == 1
+        assert pandas.last_frame is not None
+        assert pandas.last_frame.to_excel_calls == [
+            self._write_sheet_kwargs(path),
+        ]
 
 
 # SECTION: CLASSES (BASES) ================================================== #
@@ -1519,6 +1625,7 @@ class TextRowModuleContract(
 class WritableSpreadsheetModuleContract(
     SpreadsheetCategoryContractBase,
     SpreadsheetReadImportErrorMixin,
+    SpreadsheetSheetNameRoutingMixin,
     SpreadsheetWritableMixin,
 ):
     """
@@ -1985,6 +2092,77 @@ class RecordsFrameStub:
     ) -> None:
         """Append one writer-call record with path and keyword payload."""
         calls.append({'path': path, **kwargs})
+
+
+class SpreadsheetSheetFrameStub(RecordsFrameStub):
+    """Frame stub with optional support for ``sheet_name`` on writes."""
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        records: list[dict[str, object]],
+        *,
+        allow_sheet_name: bool = True,
+    ) -> None:
+        super().__init__(records)
+        self.allow_sheet_name = allow_sheet_name
+
+    def to_excel(
+        self,
+        path: Path,
+        **kwargs: object,
+    ) -> None:
+        """
+        Record ``to_excel`` writes with optional ``sheet_name`` rejection.
+        """
+        self.to_excel_calls.append({'path': path, **kwargs})
+        if not self.allow_sheet_name and 'sheet_name' in kwargs:
+            raise TypeError('sheet_name not supported')
+
+
+class SpreadsheetSheetPandasStub:
+    """Pandas-like stub with configurable ``sheet_name`` support."""
+
+    # pylint: disable=invalid-name, unused-argument
+
+    def __init__(
+        self,
+        frame: SpreadsheetSheetFrameStub,
+        *,
+        read_supports_sheet_name: bool = True,
+    ) -> None:
+        self.frame = frame
+        self.read_supports_sheet_name = read_supports_sheet_name
+        self.read_calls: list[dict[str, object]] = []
+        self.last_frame: SpreadsheetSheetFrameStub | None = None
+        self.DataFrame = type(
+            'DataFrame',
+            (),
+            {'from_records': staticmethod(self._from_records)},
+        )
+
+    def _from_records(
+        self,
+        records: list[dict[str, object]],
+    ) -> SpreadsheetSheetFrameStub:
+        created = SpreadsheetSheetFrameStub(
+            records,
+            allow_sheet_name=self.frame.allow_sheet_name,
+        )
+        self.last_frame = created
+        return created
+
+    def read_excel(
+        self,
+        path: Path,
+        **kwargs: object,
+    ) -> SpreadsheetSheetFrameStub:
+        """Simulate ``pandas.read_excel`` with sheet-name support toggles."""
+        self.read_calls.append({'path': path, **kwargs})
+        if not self.read_supports_sheet_name and 'sheet_name' in kwargs:
+            raise TypeError('sheet_name not supported')
+        return self.frame
 
 
 # SECTION: FIXTURES ========================================================= #
