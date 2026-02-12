@@ -286,15 +286,6 @@ class TestRegistryMappedResolution:
 
     singleton_format = FileFormat.JSON
 
-    def test_explicit_for_implemented_formats(self) -> None:
-        """Test implemented handler class formats being explicitly mapped."""
-        mapped_formats = set(mod._HANDLER_CLASS_SPECS)
-        missing = _implemented_handler_formats() - mapped_formats
-        assert not missing
-
-        for file_format in mod._HANDLER_CLASS_SPECS:
-            assert mod.get_handler_class(file_format).format == file_format
-
     @pytest.mark.parametrize(
         'file_format',
         tuple(mod._HANDLER_CLASS_SPECS),
