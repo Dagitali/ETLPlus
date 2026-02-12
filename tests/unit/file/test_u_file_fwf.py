@@ -41,6 +41,17 @@ class TestFwf(TextRowModuleContract):
     expected_written_count = 2
     _pandas: _PandasStub
 
+    def assert_write_contract_result(
+        self,
+        path: Path,
+    ) -> None:
+        """Assert FWF fixed-width formatting contract output."""
+        assert path.read_text(encoding='utf-8').splitlines() == [
+            'id name',
+            '1  Ada ',
+            '2  Bob ',
+        ]
+
     def prepare_read_case(
         self,
         tmp_path: Path,
@@ -52,17 +63,6 @@ class TestFwf(TextRowModuleContract):
         optional_module_stub({'pandas': self._pandas})
         path = self.format_path(tmp_path)
         return path, [{'id': 1}]
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert FWF fixed-width formatting contract output."""
-        assert path.read_text(encoding='utf-8').splitlines() == [
-            'id name',
-            '1  Ada ',
-            '2  Bob ',
-        ]
 
     def test_read_uses_pandas(
         self,
