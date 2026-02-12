@@ -308,21 +308,6 @@ class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
     @pytest.mark.parametrize(
-        'incomplete_handler_cls',
-        (_IncompleteDelimited, _IncompleteTextFixedWidth),
-        ids=['delimited', 'text_fixed_width'],
-    )
-    def test_row_abcs_require_row_methods(
-        self,
-        incomplete_handler_cls: type[FileHandlerABC],
-    ) -> None:
-        """Test row-oriented ABCs requiring row-level methods."""
-        assert inspect.isabstract(incomplete_handler_cls)
-        assert {'read_rows', 'write_rows'} <= (
-            incomplete_handler_cls.__abstractmethods__
-        )
-
-    @pytest.mark.parametrize(
         (
             'handler_cls',
             'path_name',
@@ -373,6 +358,45 @@ class TestBaseAbcContracts:
         assert inspect.isabstract(FileHandlerABC)
         assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
 
+    def test_read_only_scientific_write_dataset_rejects_writes(
+        self,
+    ) -> None:
+        """Test read-only scientific handlers rejecting dataset writes."""
+        handler = _ReadOnlyScientificStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write_dataset(
+                Path('ignored.hdf5'),
+                [{'id': 1}],
+                dataset='other',
+            )
+
+    def test_read_only_single_scientific_rejects_default_dataset_writes(
+        self,
+    ) -> None:
+        """Test read-only guard still applied for valid single dataset keys."""
+        handler = _ReadOnlySingleScientificStub()
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            handler.write_dataset(
+                Path('ignored.sas7bdat'),
+                [{'id': 1}],
+                dataset='data',
+            )
+
+    def test_read_only_single_scientific_rejects_invalid_dataset_key(
+        self,
+    ) -> None:
+        """Test single-dataset read-only handlers validating dataset keys."""
+        handler = _ReadOnlySingleScientificStub()
+
+        with pytest.raises(ValueError, match='supports only dataset key'):
+            handler.write_dataset(
+                Path('ignored.sas7bdat'),
+                [{'id': 1}],
+                dataset='other',
+            )
+
     @pytest.mark.parametrize(
         'operation',
         ['write', 'write_sheet'],
@@ -396,44 +420,20 @@ class TestBaseAbcContracts:
                     sheet=0,
                 )
 
-    def test_read_only_scientific_write_dataset_rejects_writes(
+    @pytest.mark.parametrize(
+        'incomplete_handler_cls',
+        (_IncompleteDelimited, _IncompleteTextFixedWidth),
+        ids=['delimited', 'text_fixed_width'],
+    )
+    def test_row_abcs_require_row_methods(
         self,
+        incomplete_handler_cls: type[FileHandlerABC],
     ) -> None:
-        """Test read-only scientific handlers rejecting dataset writes."""
-        handler = _ReadOnlyScientificStub()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_dataset(
-                Path('ignored.hdf5'),
-                [{'id': 1}],
-                dataset='other',
-            )
-
-    def test_read_only_single_scientific_rejects_invalid_dataset_key(
-        self,
-    ) -> None:
-        """Test single-dataset read-only handlers validating dataset keys."""
-        handler = _ReadOnlySingleScientificStub()
-
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(
-                Path('ignored.sas7bdat'),
-                [{'id': 1}],
-                dataset='other',
-            )
-
-    def test_read_only_single_scientific_rejects_default_dataset_writes(
-        self,
-    ) -> None:
-        """Test read-only guard still applied for valid single dataset keys."""
-        handler = _ReadOnlySingleScientificStub()
-
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_dataset(
-                Path('ignored.sas7bdat'),
-                [{'id': 1}],
-                dataset='data',
-            )
+        """Test row-oriented ABCs requiring row-level methods."""
+        assert inspect.isabstract(incomplete_handler_cls)
+        assert {'read_rows', 'write_rows'} <= (
+            incomplete_handler_cls.__abstractmethods__
+        )
 
 
 class TestNamingConventions:
@@ -645,20 +645,6 @@ class TestScientificDatasetContracts:
         'handler_cls',
         _SINGLE_DATASET_HANDLER_CLASSES,
     )
-    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
-        self,
-        handler_cls: type[SingleDatasetScientificFileHandlerABC],
-    ) -> None:
-        """Test single-dataset handlers inheriting the subtype ABC."""
-        assert issubclass(
-            handler_cls,
-            SingleDatasetScientificFileHandlerABC,
-        )
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        _SINGLE_DATASET_HANDLER_CLASSES,
-    )
     def test_single_dataset_handlers_reject_unknown_dataset_key(
         self,
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
@@ -667,6 +653,20 @@ class TestScientificDatasetContracts:
         assert_single_dataset_rejects_non_default_key(
             handler_cls(),
             suffix=handler_cls.format.value,
+        )
+
+    @pytest.mark.parametrize(
+        'handler_cls',
+        _SINGLE_DATASET_HANDLER_CLASSES,
+    )
+    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
+        self,
+        handler_cls: type[SingleDatasetScientificFileHandlerABC],
+    ) -> None:
+        """Test single-dataset handlers inheriting the subtype ABC."""
+        assert issubclass(
+            handler_cls,
+            SingleDatasetScientificFileHandlerABC,
         )
 
 
