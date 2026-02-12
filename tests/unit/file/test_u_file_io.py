@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -83,42 +84,47 @@ class TestIoHelpers:
         assert mod.coerce_path(str(value)) == value
         assert mod.coerce_path(value) == value
 
-    def test_coerce_record_payload_accepts_object_or_object_array(
-        self,
-    ) -> None:
-        """Test record payload coercion for supported shapes."""
-        assert mod.coerce_record_payload(
-            {'a': 1},
-            format_name='JSON',
-        ) == {'a': 1}
-        assert mod.coerce_record_payload(
-            [{'a': 1}, {'a': 2}],
-            format_name='JSON',
-        ) == [{'a': 1}, {'a': 2}]
-
-    def test_coerce_record_payload_rejects_invalid_shapes(self) -> None:
-        """Test record payload coercion failures for invalid shapes."""
-        with pytest.raises(TypeError, match='array must contain only objects'):
-            mod.coerce_record_payload([{'a': 1}, 2], format_name='JSON')
-        with pytest.raises(TypeError, match='root must be an object'):
-            mod.coerce_record_payload('bad', format_name='JSON')
-
-    def test_normalize_records_accepts_dict_and_list(self) -> None:
-        """Test record normalization for dict and list payloads."""
-        assert mod.normalize_records({'id': 1}, 'CSV') == [{'id': 1}]
-        records = [{'id': 1}, {'id': 2}]
-        assert mod.normalize_records(records, 'CSV') == records
-
-    def test_normalize_records_rejects_non_object_payloads(self) -> None:
-        """Test record normalization failures."""
-        with pytest.raises(TypeError, match='must be an object or an array'):
-            mod.normalize_records(1, 'CSV')  # type: ignore[arg-type]
-        with pytest.raises(TypeError, match='contain only objects'):
-            invalid_rows: Any = [{'id': 1}, 'x']
-            mod.normalize_records(
-                invalid_rows,
-                'CSV',
+    def test_coerce_record_payload_contract(self) -> None:
+        """Test record payload coercion for supported and invalid shapes."""
+        for valid_payload, expected in (
+            ({'a': 1}, {'a': 1}),
+            ([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}]),
+        ):
+            assert (
+                mod.coerce_record_payload(valid_payload, format_name='JSON')
+                == expected
             )
+
+        for invalid_payload, pattern in cast(
+            tuple[tuple[Any, str], ...],
+            (
+                ([{'a': 1}, 2], 'array must contain only objects'),
+                ('bad', 'root must be an object'),
+            ),
+        ):
+            with pytest.raises(TypeError, match=pattern):
+                mod.coerce_record_payload(
+                    invalid_payload,
+                    format_name='JSON',
+                )
+
+    def test_normalize_records_contract(self) -> None:
+        """Test record normalization for valid and invalid payloads."""
+        for valid_payload, expected in (
+            ({'id': 1}, [{'id': 1}]),
+            ([{'id': 1}, {'id': 2}], [{'id': 1}, {'id': 2}]),
+        ):
+            assert mod.normalize_records(valid_payload, 'CSV') == expected
+
+        for invalid_payload, pattern in cast(
+            tuple[tuple[Any, str], ...],
+            (
+                (1, 'must be an object or an array'),
+                ([{'id': 1}, 'x'], 'contain only objects'),
+            ),
+        ):
+            with pytest.raises(TypeError, match=pattern):
+                mod.normalize_records(invalid_payload, 'CSV')
 
     def test_read_and_write_delimited(
         self,
@@ -171,9 +177,8 @@ class TestIoHelpers:
 
     def test_stringify_value(self) -> None:
         """Test scalar stringification rules."""
-        assert mod.stringify_value(None) == ''
-        assert mod.stringify_value(12) == '12'
-        assert mod.stringify_value('abc') == 'abc'
+        for value, expected in ((None, ''), (12, '12'), ('abc', 'abc')):
+            assert mod.stringify_value(value) == expected
 
     def test_warn_deprecated_module_io(self) -> None:
         """Test direct deprecation warning helper."""

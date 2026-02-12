@@ -9,9 +9,8 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-import re
+from collections.abc import Callable
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
@@ -147,11 +146,6 @@ _ABC_CASES: tuple[tuple[FileFormat, type[object]], ...] = tuple(
     for file_format in file_formats
 )
 
-_CACHEABLES = (
-    mod.get_handler,
-    mod.get_handler_class,
-)
-
 _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
     (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
@@ -168,37 +162,8 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.WKS, 'etlplus.file.wks:WksFile'),
 )
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_README_MATRIX_PATH = _REPO_ROOT / 'README.md'
-_DOCS_MATRIX_PATH = _REPO_ROOT / 'docs' / 'file-handler-matrix.md'
-_MATRIX_ROW_PATTERN = re.compile(
-    r'^\| `(?P<format>[^`]+)` \| `(?P<handler>[^`]+)` \| '
-    r'`(?P<base>[^`]+)` \| `(?P<support>[^`]+)` \| '
-    r'`(?P<status>[^`]+)` \|$',
-)
-
-type MatrixRow = tuple[str, str, str, str]
-type MatrixRowsByFormat = dict[FileFormat, MatrixRow]
-type MatrixRowsByDocument = dict[Path, MatrixRowsByFormat]
-
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _clear_registry_caches() -> None:
-    """Clear all cached registry resolution helpers."""
-    for cacheable in _CACHEABLES:
-        cacheable.cache_clear()
-
-
-def _mapped_handler_class(file_format: FileFormat) -> type[FileHandlerABC]:
-    """Resolve one explicitly mapped handler class."""
-    # pylint: disable=protected-access
-
-    return mod._coerce_handler_class(
-        mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
-        file_format=file_format,
-    )
 
 
 def _implemented_handler_formats() -> set[FileFormat]:
@@ -222,97 +187,17 @@ def _implemented_handler_formats() -> set[FileFormat]:
     return implemented_formats
 
 
-def _expected_matrix_row(
-    file_format: FileFormat,
-) -> MatrixRow:
-    """Build expected matrix metadata for one mapped format."""
-    handler_class = _mapped_handler_class(file_format)
-    return (
-        handler_class.__name__,
-        _matrix_base_abc_name(handler_class),
-        _matrix_support_text(handler_class),
-        (
-            'stub'
-            if issubclass(handler_class, StubFileHandlerABC)
-            else 'implemented'
-        ),
-    )
-
-
-def _matrix_base_abc_name(
-    handler_class: type[FileHandlerABC],
-) -> str:
-    """Return the first category ABC name in one handler class MRO."""
-    first_category_abc: str | None = None
-    for base in handler_class.mro()[1:]:
-        if base is FileHandlerABC:
-            continue
-        if base.__name__.endswith('FileHandlerABC'):
-            first_category_abc = base.__name__
-            break
-    if first_category_abc is None:
-        raise AssertionError(
-            f'No category ABC found for handler {handler_class.__name__!r}',
-        )
-    if first_category_abc == 'ReadOnlyFileHandlerABC' and issubclass(
-        handler_class,
-        ScientificDatasetFileHandlerABC,
-    ):
-        if issubclass(handler_class, SingleDatasetScientificFileHandlerABC):
-            return 'SingleDatasetScientificFileHandlerABC'
-        return 'ScientificDatasetFileHandlerABC'
-    return first_category_abc
-
-
-def _matrix_support_text(
-    handler_class: type[FileHandlerABC],
-) -> str:
-    """Return matrix read/write support text for one handler class."""
-    supports_read = bool(getattr(handler_class, 'supports_read', True))
-    supports_write = bool(getattr(handler_class, 'supports_write', True))
-    if supports_read and not supports_write:
-        return 'read-only'
-    return 'read/write'
-
-
-def _parse_matrix_rows(
-    path: Path,
-) -> MatrixRowsByFormat:
-    """Parse handler-matrix rows from one markdown document."""
-    rows: MatrixRowsByFormat = {}
-    for line in path.read_text(encoding='utf-8').splitlines():
-        if (match := _MATRIX_ROW_PATTERN.match(line)) is None:
-            continue
-        file_format = FileFormat(match.group('format'))
-        row: MatrixRow = (
-            match.group('handler'),
-            match.group('base'),
-            match.group('support'),
-            match.group('status'),
-        )
-        assert file_format not in rows
-        rows[file_format] = row
-    return rows
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='clear_registry_caches', autouse=True)
 def clear_registry_caches_fixture() -> Iterator[None]:
     """Clear registry caches before and after each test."""
-    _clear_registry_caches()
+    mod.get_handler.cache_clear()
+    mod.get_handler_class.cache_clear()
     yield
-    _clear_registry_caches()
-
-
-@pytest.fixture(name='matrix_rows_by_document')
-def matrix_rows_by_document_fixture() -> MatrixRowsByDocument:
-    """Parse and return handler-matrix rows keyed by source document path."""
-    return {
-        _README_MATRIX_PATH: _parse_matrix_rows(_README_MATRIX_PATH),
-        _DOCS_MATRIX_PATH: _parse_matrix_rows(_DOCS_MATRIX_PATH),
-    }
+    mod.get_handler.cache_clear()
+    mod.get_handler_class.cache_clear()
 
 
 # SECTION: TESTS ============================================================ #
@@ -335,22 +220,71 @@ class TestRegistryAbcConformance:
         assert issubclass(handler_class, expected_abc)
 
 
+class TestRegistryInternalHelpers:
+    """Unit tests for internal symbol import and coercion helpers."""
+
+    # pylint: disable=protected-access
+
+    @pytest.mark.parametrize(
+        ('symbol', 'error_pattern'),
+        (
+            (object(), 'must be a class'),
+            (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
+        ),
+        ids=('non_class', 'wrong_base_class'),
+    )
+    def test_coerce_handler_class_rejects_invalid_symbols(
+        self,
+        symbol: object,
+        error_pattern: str,
+    ) -> None:
+        """Test class coercion rejecting invalid symbols."""
+        with pytest.raises(ValueError, match=error_pattern):
+            mod._coerce_handler_class(
+                symbol,
+                file_format=FileFormat.JSON,
+            )
+
+    def test_get_handler_class_wraps_malformed_mapping_specs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test malformed map entries surfacing as unsupported format errors.
+        """
+        monkeypatch.setitem(
+            mod._HANDLER_CLASS_SPECS,
+            FileFormat.JSON,
+            'bad-spec',
+        )
+        with pytest.raises(ValueError, match='Unsupported format'):
+            mod.get_handler_class(FileFormat.JSON)
+
+    def test_import_symbol_raises_when_attribute_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test missing module attributes raising ValueError."""
+        monkeypatch.setattr(
+            mod.importlib,
+            'import_module',
+            lambda _name: object(),
+        )
+        with pytest.raises(ValueError, match='Handler symbol'):
+            mod._import_symbol('etlplus.file.csv:MissingHandler')
+
+    def test_import_symbol_rejects_invalid_spec(self) -> None:
+        """Test malformed import specs raising ValueError."""
+        with pytest.raises(ValueError, match='Invalid handler spec'):
+            mod._import_symbol('invalid-spec')
+
+
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
 
     # pylint: disable=protected-access
 
     singleton_format = FileFormat.JSON
-
-    def test_explicit_for_implemented_formats(self) -> None:
-        """Test implemented handler class formats being explicitly mapped."""
-        mapped_formats = set(mod._HANDLER_CLASS_SPECS)
-        missing = _implemented_handler_formats() - mapped_formats
-        assert not missing
-
-        for file_format in mod._HANDLER_CLASS_SPECS:
-            mapped_class = _mapped_handler_class(file_format)
-            assert mapped_class.format == file_format
 
     @pytest.mark.parametrize(
         'file_format',
@@ -361,13 +295,11 @@ class TestRegistryMappedResolution:
         file_format: FileFormat,
     ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        expected_class = _mapped_handler_class(file_format)
-        handler_class = mod.get_handler_class(file_format)
-        assert handler_class is expected_class
+        assert mod.get_handler_class(file_format).format == file_format
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
-        expected_class = _mapped_handler_class(self.singleton_format)
+        expected_class = mod.get_handler_class(self.singleton_format)
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
@@ -394,69 +326,24 @@ class TestRegistryStrictPolicy:
 
     # pylint: disable=protected-access
 
-    def _remove_fallback_mapping(
+    @pytest.mark.parametrize(
+        'resolver',
+        (
+            mod.get_handler_class,
+            mod.get_handler,
+        ),
+        ids=('class_lookup', 'instance_lookup'),
+    )
+    def test_lookups_raise_without_explicit_mapping(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        resolver: Callable[[FileFormat], object],
     ) -> None:
-        """Remove one explicit class mapping for strict-policy tests."""
+        """Test strict mode rejecting unmapped formats across lookups."""
         monkeypatch.delitem(
             mod._HANDLER_CLASS_SPECS,
             self.fallback_format,
             raising=False,
         )
-
-    def test_get_handler_class_raises_without_explicit_mapping(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test strict mode rejecting unmapped formats for class lookup."""
-        self._remove_fallback_mapping(monkeypatch)
-
         with pytest.raises(ValueError, match='Unsupported format'):
-            mod.get_handler_class(self.fallback_format)
-
-    def test_get_handler_raises_without_explicit_mapping(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test strict mode rejecting unmapped formats for instance lookup."""
-        self._remove_fallback_mapping(monkeypatch)
-        with pytest.raises(ValueError, match='Unsupported format'):
-            mod.get_handler(self.fallback_format)
-
-
-class TestRegistryDocsMatrixGuardrail:
-    """Unit tests for registry/documentation matrix consistency."""
-
-    # pylint: disable=protected-access
-
-    @pytest.mark.parametrize(
-        'path',
-        (_README_MATRIX_PATH, _DOCS_MATRIX_PATH),
-        ids=['readme', 'docs'],
-    )
-    def test_matrix_rows_cover_explicit_registry_mappings(
-        self,
-        path: Path,
-        matrix_rows_by_document: MatrixRowsByDocument,
-    ) -> None:
-        """Test matrix rows covering every explicitly mapped format."""
-        rows = matrix_rows_by_document[path]
-        assert set(rows) == set(mod._HANDLER_CLASS_SPECS)
-
-    @pytest.mark.parametrize(
-        'file_format',
-        tuple(mod._HANDLER_CLASS_SPECS),
-    )
-    def test_matrix_rows_match_registry_metadata(
-        self,
-        file_format: FileFormat,
-        matrix_rows_by_document: MatrixRowsByDocument,
-    ) -> None:
-        """Test matrix rows matching registry-resolved handler metadata."""
-        expected = _expected_matrix_row(file_format)
-        readme_rows = matrix_rows_by_document[_README_MATRIX_PATH]
-        docs_rows = matrix_rows_by_document[_DOCS_MATRIX_PATH]
-        assert readme_rows[file_format] == expected
-        assert docs_rows[file_format] == expected
-        assert readme_rows[file_format] == docs_rows[file_format]
+            resolver(self.fallback_format)

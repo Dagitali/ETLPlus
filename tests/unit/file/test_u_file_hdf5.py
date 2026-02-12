@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import hdf5 as mod
+from etlplus.file.base import ReadOptions
 from tests.unit.file.conftest import ContextManagerSelfMixin
 from tests.unit.file.conftest import DictRecordsFrameStub
 from tests.unit.file.conftest import OptionalModuleInstaller
@@ -65,25 +66,93 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
-    """Read-only scientific contract tests for :mod:`etlplus.file.hdf5`."""
+class TestHdf5Datasets(PathMixin):
+    """Unit tests for dataset-specific HDF5 handler methods."""
 
-    module = mod
-    handler_cls = mod.Hdf5File
     format_name = 'hdf5'
-    unknown_dataset_error_pattern = 'not found'
 
-    def prepare_unknown_dataset_env(
+    def test_list_datasets_raises_when_tables_missing(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,  # noqa: ARG002
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test list_datasets raising a tables dependency ImportError."""
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_pandas',
+            value=_PandasStub(store=None),
+        )
+        with pytest.raises(ImportError, match='tables'):
+            mod.Hdf5File().list_datasets(self.format_path(tmp_path))
+
+    def test_list_datasets_strips_leading_slashes(
+        self,
+        tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Install a pandas store stub for unknown-dataset checks."""
-        _ = tmp_path
+        """Test list_datasets returning normalized dataset keys."""
         frame = DictRecordsFrameStub([{'id': 1}])
-        store = _HDFStore(['data'], {'data': frame})
-        optional_module_stub({'pandas': _PandasStub(store)})
+        store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
+        TestHdf5Read._install_store(optional_module_stub, store)
+
+        result = mod.Hdf5File().list_datasets(self.format_path(tmp_path))
+
+        assert result == ['data', 'other']
+
+    def test_read_dataset_uses_explicit_dataset_argument(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read_dataset honoring explicit dataset selection."""
+        default_frame = DictRecordsFrameStub([{'id': 1}])
+        other_frame = DictRecordsFrameStub([{'id': 2}])
+        store = _HDFStore(
+            ['data', 'other'],
+            {'data': default_frame, 'other': other_frame},
+        )
+        TestHdf5Read._install_store(optional_module_stub, store)
+
+        result = mod.Hdf5File().read_dataset(
+            self.format_path(tmp_path),
+            dataset='other',
+        )
+
+        assert result == [{'id': 2}]
+
+    def test_read_dataset_uses_options_dataset(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test read_dataset honoring dataset selector from read options."""
+        default_frame = DictRecordsFrameStub([{'id': 1}])
+        other_frame = DictRecordsFrameStub([{'id': 2}])
+        store = _HDFStore(
+            ['data', 'other'],
+            {'data': default_frame, 'other': other_frame},
+        )
+        TestHdf5Read._install_store(optional_module_stub, store)
+
+        result = mod.Hdf5File().read_dataset(
+            self.format_path(tmp_path),
+            options=ReadOptions(dataset='other'),
+        )
+
+        assert result == [{'id': 2}]
+
+    def test_write_dataset_uses_read_only_write_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write_dataset still raising the read-only RuntimeError."""
+        with pytest.raises(RuntimeError, match='read-only'):
+            mod.Hdf5File().write_dataset(
+                self.format_path(tmp_path),
+                [{'id': 1}],
+                dataset='other',
+            )
 
 
 class TestHdf5Read(PathMixin):
@@ -167,4 +236,25 @@ class TestHdf5Read(PathMixin):
         store: _HDFStore,
     ) -> None:
         """Install one HDFStore-backed pandas stub."""
+        optional_module_stub({'pandas': _PandasStub(store)})
+
+
+class TestHdf5ReadOnly(ReadOnlyScientificDatasetModuleContract):
+    """Read-only scientific contract tests for :mod:`etlplus.file.hdf5`."""
+
+    module = mod
+    handler_cls = mod.Hdf5File
+    format_name = 'hdf5'
+    unknown_dataset_error_pattern = 'not found'
+
+    def prepare_unknown_dataset_env(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,  # noqa: ARG002
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install a pandas store stub for unknown-dataset checks."""
+        _ = tmp_path
+        frame = DictRecordsFrameStub([{'id': 1}])
+        store = _HDFStore(['data'], {'data': frame})
         optional_module_stub({'pandas': _PandasStub(store)})
