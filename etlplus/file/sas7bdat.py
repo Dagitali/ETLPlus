@@ -63,29 +63,6 @@ class Sas7bdatFile(
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read SAS7BDAT content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAS7BDAT file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the SAS7BDAT file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -147,7 +124,7 @@ _SAS7BDAT_HANDLER = Sas7bdatFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``Sas7bdatFile().read(...)`` instead.
 
@@ -158,8 +135,8 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the SAS7BDAT file.
+    JSONData
+        The structured data read from the SAS7BDAT file.
     """
     return call_deprecated_module_read(
         path,

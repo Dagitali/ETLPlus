@@ -89,29 +89,6 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read NC content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the NC file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the NC file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -207,7 +184,7 @@ _NC_HANDLER = NcFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``NcFile().read(...)`` instead.
 
@@ -218,8 +195,8 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the NC file.
+    JSONData
+        The structured data read from the NC file.
     """
     return call_deprecated_module_read(
         path,

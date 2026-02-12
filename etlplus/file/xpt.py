@@ -62,29 +62,6 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read XPT content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XPT file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XPT file.
-        """
-        return self.read_dataset(path, options=options)
-
     def read_dataset(
         self,
         path: Path,
@@ -187,7 +164,7 @@ _XPT_HANDLER = XptFile()
 
 def read(
     path: StrPath,
-) -> JSONList:
+) -> JSONData:
     """
     Deprecated wrapper. Use ``XptFile().read(...)`` instead.
 
@@ -198,8 +175,8 @@ def read(
 
     Returns
     -------
-    JSONList
-        The list of dictionaries read from the XPT file.
+    JSONData
+        The structured data read from the XPT file.
     """
     return call_deprecated_module_read(
         path,
