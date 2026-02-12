@@ -113,6 +113,17 @@ class StubEmbeddedDatabaseFileHandlerABC(
             StubFileHandlerABC.read(self, self._stub_path()),
         )
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Raise :class:`NotImplementedError` for embedded-database reads.
+        """
+        return StubFileHandlerABC.read(self, path, options=options)
+
     def read_table(
         self,
         connection: Any,
@@ -124,6 +135,18 @@ class StubEmbeddedDatabaseFileHandlerABC(
         _ = connection
         _ = table
         return StubFileHandlerABC.read(self, self._stub_path())
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Raise :class:`NotImplementedError` for embedded-database writes.
+        """
+        return StubFileHandlerABC.write(self, path, data, options=options)
 
     def write_table(
         self,
