@@ -228,6 +228,7 @@ def patch_dependency_resolver_value(
     value: object,
 ) -> None:
     """Patch one dependency resolver to return a deterministic value."""
+    # pylint: disable=unused-argument
 
     def _return_value(
         *args: object,
