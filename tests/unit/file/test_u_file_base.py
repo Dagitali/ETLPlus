@@ -10,6 +10,7 @@ import inspect
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from typing import NoReturn
 from typing import cast
 
 import pytest
@@ -58,6 +59,15 @@ from tests.unit.file.conftest import (
 
 
 _NO_DEFAULT: object = object()
+
+
+def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
+    """Raise the canonical read-only write error for one format."""
+    raise RuntimeError(
+        f'{format_name.value.upper()} is read-only and does not support '
+        'write operations',
+    )
+
 
 _DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     CsvFile,
@@ -257,10 +267,7 @@ class _ReadOnlyScientificStub(
         _ = data
         _ = dataset
         _ = options
-        raise RuntimeError(
-            f'{self.format.value.upper()} is read-only and does not support '
-            'write operations',
-        )
+        _raise_read_only_write(self.format)
 
 
 class _ReadOnlySingleScientificStub(
@@ -295,10 +302,7 @@ class _ReadOnlySingleScientificStub(
         _ = data
         self.resolve_single_write_dataset(dataset, options=options)
         _ = options
-        raise RuntimeError(
-            f'{self.format.value.upper()} is read-only and does not support '
-            'write operations',
-        )
+        _raise_read_only_write(self.format)
 
 
 # SECTION: TESTS ============================================================ #
@@ -371,30 +375,28 @@ class TestBaseAbcContracts:
                 dataset='other',
             )
 
-    def test_read_only_single_scientific_rejects_default_dataset_writes(
+    @pytest.mark.parametrize(
+        ('dataset', 'expected_error', 'error_pattern'),
+        [
+            ('data', RuntimeError, 'read-only'),
+            ('other', ValueError, 'supports only dataset key'),
+        ],
+        ids=['default_dataset_write', 'invalid_dataset_key'],
+    )
+    def test_read_only_single_scientific_write_dataset_contract(
         self,
+        dataset: str,
+        expected_error: type[Exception],
+        error_pattern: str,
     ) -> None:
-        """Test read-only guard still applied for valid single dataset keys."""
+        """Test single-dataset read-only write validation and guardrails."""
         handler = _ReadOnlySingleScientificStub()
 
-        with pytest.raises(RuntimeError, match='read-only'):
+        with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
                 Path('ignored.sas7bdat'),
                 [{'id': 1}],
-                dataset='data',
-            )
-
-    def test_read_only_single_scientific_rejects_invalid_dataset_key(
-        self,
-    ) -> None:
-        """Test single-dataset read-only handlers validating dataset keys."""
-        handler = _ReadOnlySingleScientificStub()
-
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(
-                Path('ignored.sas7bdat'),
-                [{'id': 1}],
-                dataset='other',
+                dataset=dataset,
             )
 
     @pytest.mark.parametrize(
