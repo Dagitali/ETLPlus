@@ -254,7 +254,8 @@ def _matrix_base_abc_name(
             f'No category ABC found for handler {handler_class.__name__!r}',
         )
     if first_category_abc == 'ReadOnlyFileHandlerABC' and issubclass(
-        handler_class, ScientificDatasetFileHandlerABC,
+        handler_class,
+        ScientificDatasetFileHandlerABC,
     ):
         if issubclass(handler_class, SingleDatasetScientificFileHandlerABC):
             return 'SingleDatasetScientificFileHandlerABC'

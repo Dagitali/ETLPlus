@@ -91,6 +91,33 @@ class TestHdf5Read(PathMixin):
 
     format_name = 'hdf5'
 
+    def test_read_prefers_default_key(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test that reading prefers the default key when present."""
+        frame = DictRecordsFrameStub([{'id': 1}])
+        store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
+        self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
+
+        assert mod.Hdf5File().read(path) == [{'id': 1}]
+
+    def test_read_raises_on_multiple_keys(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test that reading raises when multiple keys are present."""
+        frame = DictRecordsFrameStub([{'id': 1}])
+        store = _HDFStore(['a', 'b'], {'a': frame, 'b': frame})
+        self._install_store(optional_module_stub, store)
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(ValueError, match='Multiple datasets'):
+            mod.Hdf5File().read(path)
+
     def test_read_raises_when_tables_missing(
         self,
         tmp_path: Path,
@@ -120,33 +147,6 @@ class TestHdf5Read(PathMixin):
         path = self.format_path(tmp_path)
 
         assert mod.Hdf5File().read(path) == []
-
-    def test_read_prefers_default_key(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test that reading prefers the default key when present."""
-        frame = DictRecordsFrameStub([{'id': 1}])
-        store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
-        self._install_store(optional_module_stub, store)
-        path = self.format_path(tmp_path)
-
-        assert mod.Hdf5File().read(path) == [{'id': 1}]
-
-    def test_read_raises_on_multiple_keys(
-        self,
-        tmp_path: Path,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Test that reading raises when multiple keys are present."""
-        frame = DictRecordsFrameStub([{'id': 1}])
-        store = _HDFStore(['a', 'b'], {'a': frame, 'b': frame})
-        self._install_store(optional_module_stub, store)
-        path = self.format_path(tmp_path)
-
-        with pytest.raises(ValueError, match='Multiple datasets'):
-            mod.Hdf5File().read(path)
 
     def test_read_uses_single_key(
         self,

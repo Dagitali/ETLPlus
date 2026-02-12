@@ -125,10 +125,6 @@ class TestBsonIo(BinaryDependencyModuleContract):
     write_payload = [{'id': 1}, {'id': 2}]
     expected_written_count = 2
 
-    def make_dependency_stub(self) -> _BsonCodecStub:
-        """Build a bson dependency stub exposing module-level helpers."""
-        return _BsonCodecStub()
-
     def assert_dependency_after_read(
         self,
         dependency_stub: object,
@@ -150,6 +146,10 @@ class TestBsonIo(BinaryDependencyModuleContract):
         assert isinstance(stub, _BsonCodecStub)
         assert stub.encoded == self.write_payload
         assert path.read_bytes() == b'docdoc'
+
+    def make_dependency_stub(self) -> _BsonCodecStub:
+        """Build a bson dependency stub exposing module-level helpers."""
+        return _BsonCodecStub()
 
     def test_read_uses_bson_class(
         self,
