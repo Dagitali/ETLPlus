@@ -205,6 +205,7 @@ _MATRIX_ROW_PATTERN = re.compile(
 
 type MatrixRow = tuple[str, str, str, str]
 type MatrixRowsByFormat = dict[FileFormat, MatrixRow]
+type MatrixRowsByDocument = dict[Path, MatrixRowsByFormat]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -216,16 +217,42 @@ def _clear_registry_caches() -> None:
         cacheable.cache_clear()
 
 
+def _mapped_handler_class(file_format: FileFormat) -> type[FileHandlerABC]:
+    """Resolve one explicitly mapped handler class."""
+    # pylint: disable=protected-access
+
+    return mod._coerce_handler_class(
+        mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
+        file_format=file_format,
+    )
+
+
+def _implemented_handler_formats() -> set[FileFormat]:
+    """Collect all implemented handler formats from non-private modules."""
+    implemented_formats: set[FileFormat] = set()
+    for module_info in pkgutil.iter_modules(file_pkg.__path__):
+        if module_info.ispkg or module_info.name.startswith('_'):
+            continue
+        module_name = f'{file_pkg.__name__}.{module_info.name}'
+        module = importlib.import_module(module_name)
+        for _, symbol in inspect.getmembers(module, inspect.isclass):
+            if symbol.__module__ != module_name:
+                continue
+            if not issubclass(symbol, FileHandlerABC):
+                continue
+            if not symbol.__name__.endswith('File'):
+                continue
+            format_value = getattr(symbol, 'format', None)
+            if isinstance(format_value, FileFormat):
+                implemented_formats.add(format_value)
+    return implemented_formats
+
+
 def _expected_matrix_row(
     file_format: FileFormat,
 ) -> MatrixRow:
     """Build expected matrix metadata for one mapped format."""
-    # pylint: disable=protected-access
-
-    handler_class = mod._coerce_handler_class(
-        mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
-        file_format=file_format,
-    )
+    handler_class = _mapped_handler_class(file_format)
     return (
         handler_class.__name__,
         _matrix_base_abc_name(handler_class),
@@ -305,6 +332,15 @@ def clear_registry_caches_fixture() -> Iterator[None]:
     _clear_registry_caches()
 
 
+@pytest.fixture(name='matrix_rows_by_document')
+def matrix_rows_by_document_fixture() -> MatrixRowsByDocument:
+    """Parse and return handler-matrix rows keyed by source document path."""
+    return {
+        _README_MATRIX_PATH: _parse_matrix_rows(_README_MATRIX_PATH),
+        _DOCS_MATRIX_PATH: _parse_matrix_rows(_DOCS_MATRIX_PATH),
+    }
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -334,32 +370,12 @@ class TestRegistryMappedResolution:
 
     def test_explicit_for_implemented_formats(self) -> None:
         """Test implemented handler class formats being explicitly mapped."""
-        implemented_formats: set[FileFormat] = set()
-        for module_info in pkgutil.iter_modules(file_pkg.__path__):
-            if module_info.ispkg or module_info.name.startswith('_'):
-                continue
-            module_name = f'{file_pkg.__name__}.{module_info.name}'
-            module = importlib.import_module(module_name)
-            for _, symbol in inspect.getmembers(module, inspect.isclass):
-                if symbol.__module__ != module_name:
-                    continue
-                if not issubclass(symbol, FileHandlerABC):
-                    continue
-                if not symbol.__name__.endswith('File'):
-                    continue
-                format_value = getattr(symbol, 'format', None)
-                if isinstance(format_value, FileFormat):
-                    implemented_formats.add(format_value)
-
-        mapped_formats = set(mod._HANDLER_CLASS_SPECS.keys())
-        missing = implemented_formats - mapped_formats
+        mapped_formats = set(mod._HANDLER_CLASS_SPECS)
+        missing = _implemented_handler_formats() - mapped_formats
         assert not missing
 
-        for file_format, spec in mod._HANDLER_CLASS_SPECS.items():
-            mapped_class = mod._coerce_handler_class(
-                mod._import_symbol(spec),
-                file_format=file_format,
-            )
+        for file_format in mod._HANDLER_CLASS_SPECS:
+            mapped_class = _mapped_handler_class(file_format)
             assert mapped_class.format == file_format
 
     @pytest.mark.parametrize('file_format', _MAPPED_CLASS_FORMATS)
@@ -368,21 +384,13 @@ class TestRegistryMappedResolution:
         file_format: FileFormat,
     ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        expected_class = mod._coerce_handler_class(
-            mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
-            file_format=file_format,
-        )
+        expected_class = _mapped_handler_class(file_format)
         handler_class = mod.get_handler_class(file_format)
         assert handler_class is expected_class
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
-        expected_class = mod._coerce_handler_class(
-            mod._import_symbol(
-                mod._HANDLER_CLASS_SPECS[self.singleton_format],
-            ),
-            file_format=self.singleton_format,
-        )
+        expected_class = _mapped_handler_class(self.singleton_format)
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
@@ -453,9 +461,10 @@ class TestRegistryDocsMatrixGuardrail:
     def test_matrix_rows_cover_explicit_registry_mappings(
         self,
         path: Path,
+        matrix_rows_by_document: MatrixRowsByDocument,
     ) -> None:
         """Test matrix rows covering every explicitly mapped format."""
-        rows = _parse_matrix_rows(path)
+        rows = matrix_rows_by_document[path]
         assert set(rows) == set(mod._HANDLER_CLASS_SPECS)
 
     @pytest.mark.parametrize(
@@ -465,11 +474,12 @@ class TestRegistryDocsMatrixGuardrail:
     def test_matrix_rows_match_registry_metadata(
         self,
         file_format: FileFormat,
+        matrix_rows_by_document: MatrixRowsByDocument,
     ) -> None:
         """Test matrix rows matching registry-resolved handler metadata."""
         expected = _expected_matrix_row(file_format)
-        readme_rows = _parse_matrix_rows(_README_MATRIX_PATH)
-        docs_rows = _parse_matrix_rows(_DOCS_MATRIX_PATH)
+        readme_rows = matrix_rows_by_document[_README_MATRIX_PATH]
+        docs_rows = matrix_rows_by_document[_DOCS_MATRIX_PATH]
         assert readme_rows[file_format] == expected
         assert docs_rows[file_format] == expected
         assert readme_rows[file_format] == docs_rows[file_format]
