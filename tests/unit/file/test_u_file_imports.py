@@ -33,8 +33,7 @@ class TestImportsHelpers:
             return sentinel
 
         monkeypatch.setattr(mod, 'get_optional_module', _optional)
-        result = mod.get_dependency('duckdb', format_name='DUCKDB')
-        assert result is sentinel
+        assert mod.get_dependency('duckdb', format_name='DUCKDB') is sentinel
         assert calls == [
             (
                 'duckdb',
@@ -43,23 +42,32 @@ class TestImportsHelpers:
             ),
         ]
 
-    def test_error_message_defaults_to_module_name(self) -> None:
-        """Test default pip package suggestion in import errors."""
-        message = mod._error_message('pyarrow', format_name='PARQUET')
-        assert (
-            'PARQUET support requires optional dependency "pyarrow"' in message
-        )
-        assert 'pip install pyarrow' in message
-
-    def test_error_message_uses_explicit_pip_name(self) -> None:
-        """Test explicit pip package suggestion in import errors."""
+    @pytest.mark.parametrize(
+        ('module_name', 'format_name', 'pip_name', 'dependency_name'),
+        [
+            ('pyarrow', 'PARQUET', None, 'pyarrow'),
+            ('yaml', 'YAML', 'PyYAML', 'PyYAML'),
+        ],
+        ids=['default_pip_name', 'explicit_pip_name'],
+    )
+    def test_error_message_uses_expected_dependency_name(
+        self,
+        module_name: str,
+        format_name: str,
+        pip_name: str | None,
+        dependency_name: str,
+    ) -> None:
+        """Test import error messages rendering dependency and pip hints."""
         message = mod._error_message(
-            'yaml',
-            format_name='YAML',
-            pip_name='PyYAML',
+            module_name,
+            format_name=format_name,
+            pip_name=pip_name,
         )
-        assert '"PyYAML"' in message
-        assert 'pip install PyYAML' in message
+        assert (
+            f'{format_name} support requires optional dependency '
+            f'"{dependency_name}"' in message
+        )
+        assert f'pip install {dependency_name}' in message
 
     def test_get_optional_module_imports_and_caches(
         self,
@@ -74,10 +82,7 @@ class TestImportsHelpers:
             return result
 
         monkeypatch.setattr(mod, 'import_module', _import)
-        result = mod.get_optional_module(
-            'example_dep',
-            error_message='unused',
-        )
+        result = mod.get_optional_module('example_dep', error_message='unused')
         assert result is loaded['example_dep']
         assert mod._MODULE_CACHE['example_dep'] is result
         mod._MODULE_CACHE.pop('example_dep', None)
@@ -111,19 +116,27 @@ class TestImportsHelpers:
             lambda _name: (_ for _ in ()).throw(AssertionError('unexpected')),
         )
         assert (
-            mod.get_optional_module(
-                'cached_mod',
-                error_message='ignored',
-            )
+            mod.get_optional_module('cached_mod', error_message='ignored')
             is sentinel
         )
         mod._MODULE_CACHE.pop('cached_mod', None)
 
-    def test_get_pandas_uses_dependency_helper(
+    @pytest.mark.parametrize(
+        ('method_name', 'method_args', 'expected_call'),
+        [
+            ('get_pandas', ('CSV',), ('pandas', 'CSV', None)),
+            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML')),
+        ],
+        ids=['pandas', 'yaml'],
+    )
+    def test_dependency_helpers_delegate_to_get_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        method_name: str,
+        method_args: tuple[object, ...],
+        expected_call: tuple[str, str, str | None],
     ) -> None:
-        """Test pandas helper delegation."""
+        """Test dependency helper wrappers forwarding expected arguments."""
         calls: list[tuple[str, str, str | None]] = []
         sentinel = object()
 
@@ -137,26 +150,6 @@ class TestImportsHelpers:
             return sentinel
 
         monkeypatch.setattr(mod, 'get_dependency', _dependency)
-        assert mod.get_pandas('CSV') is sentinel
-        assert calls == [('pandas', 'CSV', None)]
-
-    def test_get_yaml_uses_dependency_helper(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test PyYAML helper delegation."""
-        calls: list[tuple[str, str, str | None]] = []
-        sentinel = object()
-
-        def _dependency(
-            module_name: str,
-            *,
-            format_name: str,
-            pip_name: str | None = None,
-        ) -> object:
-            calls.append((module_name, format_name, pip_name))
-            return sentinel
-
-        monkeypatch.setattr(mod, 'get_dependency', _dependency)
-        assert mod.get_yaml() is sentinel
-        assert calls == [('yaml', 'YAML', 'PyYAML')]
+        method = getattr(mod, method_name)
+        assert method(*method_args) is sentinel
+        assert calls == [expected_call]
