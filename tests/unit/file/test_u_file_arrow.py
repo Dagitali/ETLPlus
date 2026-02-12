@@ -39,59 +39,6 @@ class _ContextStub:
         return False
 
 
-class _TableStub:
-    """Arrow-like table stub with schema and pylist conversion."""
-
-    def __init__(
-        self,
-        rows: list[dict[str, object]],
-        *,
-        schema: object | None = None,
-    ) -> None:
-        self._rows = rows
-        self.schema = schema if schema is not None else object()
-
-    def to_pylist(self) -> list[dict[str, object]]:
-        """Return row payload for ``table_to_records``."""
-        return list(self._rows)
-
-
-class _ReaderStub:
-    """IPC reader stub returning one prepared table."""
-
-    def __init__(self, table: object) -> None:
-        self._table = table
-
-    def read_all(self) -> object:
-        """Return prepared table."""
-        return self._table
-
-
-class _WriterStub:
-    """IPC writer stub tracking written tables."""
-
-    def __init__(self) -> None:
-        self.tables: list[object] = []
-
-    def write_table(self, table: object) -> None:
-        """Record a table write call."""
-        self.tables.append(table)
-
-    def __enter__(self) -> _WriterStub:
-        return self
-
-    def __exit__(
-        self,
-        exc_type: object,
-        exc: object,
-        tb: object,
-    ) -> Literal[False]:
-        _ = exc_type
-        _ = exc
-        _ = tb
-        return False
-
-
 class _PyarrowStub:
     """Minimal pyarrow-like module for Arrow handler tests."""
 
@@ -125,6 +72,23 @@ class _PyarrowStub:
         self.from_pylist_calls.append(rows)
         return _TableStub(rows)
 
+    def _new_file(
+        self,
+        sink: object,
+        schema: object,
+    ) -> _WriterStub:
+        self.new_file_calls.append((sink, schema))
+        writer = _WriterStub()
+        self.last_writer = writer
+        return writer
+
+    def _open_file(
+        self,
+        source: object,
+    ) -> _ReaderStub:
+        _ = source
+        return _ReaderStub(self.read_table)
+
     def memory_map(
         self,
         path: str,
@@ -133,13 +97,6 @@ class _PyarrowStub:
         """Return context for mapped source."""
         self.memory_map_calls.append((path, mode))
         return _ContextStub(object())
-
-    def _open_file(
-        self,
-        source: object,
-    ) -> _ReaderStub:
-        _ = source
-        return _ReaderStub(self.read_table)
 
     def OSFile(
         self,
@@ -150,15 +107,58 @@ class _PyarrowStub:
         self.osfile_calls.append((path, mode))
         return _ContextStub(object())
 
-    def _new_file(
+
+class _ReaderStub:
+    """IPC reader stub returning one prepared table."""
+
+    def __init__(self, table: object) -> None:
+        self._table = table
+
+    def read_all(self) -> object:
+        """Return prepared table."""
+        return self._table
+
+
+class _TableStub:
+    """Arrow-like table stub with schema and pylist conversion."""
+
+    def __init__(
         self,
-        sink: object,
-        schema: object,
-    ) -> _WriterStub:
-        self.new_file_calls.append((sink, schema))
-        writer = _WriterStub()
-        self.last_writer = writer
-        return writer
+        rows: list[dict[str, object]],
+        *,
+        schema: object | None = None,
+    ) -> None:
+        self._rows = rows
+        self.schema = schema if schema is not None else object()
+
+    def to_pylist(self) -> list[dict[str, object]]:
+        """Return row payload for ``table_to_records``."""
+        return list(self._rows)
+
+
+class _WriterStub:
+    """IPC writer stub tracking written tables."""
+
+    def __init__(self) -> None:
+        self.tables: list[object] = []
+
+    def write_table(self, table: object) -> None:
+        """Record a table write call."""
+        self.tables.append(table)
+
+    def __enter__(self) -> _WriterStub:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        tb: object,
+    ) -> Literal[False]:
+        _ = exc_type
+        _ = exc
+        _ = tb
+        return False
 
 
 # SECTION: TESTS ============================================================ #
