@@ -26,7 +26,6 @@ from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import normalize_records
 from ._io import read_delimited
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
@@ -60,56 +59,6 @@ class TsvFile(DelimitedTextFileHandlerABC):
     delimiter = '\t'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return TSV content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TSV file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the TSV file.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to TSV at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TSV file on disk.
-        data : JSONData
-            Data to write as TSV.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the TSV file.
-        """
-        rows = normalize_records(data, 'TSV')
-        return self.write_rows(path, rows, options=options)
 
     def read_rows(
         self,

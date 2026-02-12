@@ -27,7 +27,6 @@ from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import normalize_records
 from ._io import read_delimited
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
@@ -61,56 +60,6 @@ class TabFile(DelimitedTextFileHandlerABC):
     delimiter = '\t'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return TAB content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the TAB file.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to TAB at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        data : JSONData
-            Data to write as TAB file.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the TAB file.
-        """
-        rows = normalize_records(data, 'TAB')
-        return self.write_rows(path, rows, options=options)
 
     def read_rows(
         self,

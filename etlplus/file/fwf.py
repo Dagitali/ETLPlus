@@ -26,7 +26,6 @@ from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import records_from_table
 from ._io import stringify_value
 from .base import ReadOptions
@@ -59,29 +58,6 @@ class FwfFile(TextFixedWidthFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return FWF content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the FWF file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the FWF file.
-        """
-        return self.read_rows(path, options=options)
-
     def read_rows(
         self,
         path: Path,
@@ -107,34 +83,6 @@ class FwfFile(TextFixedWidthFileHandlerABC):
         pandas = get_pandas('FWF')
         frame = pandas.read_fwf(path)
         return records_from_table(frame)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to FWF at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the FWF file on disk.
-        data : JSONData
-            Data to write as FWF file. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the FWF file.
-        """
-        rows = normalize_records(data, 'FWF')
-        return self.write_rows(path, rows, options=options)
 
     def write_rows(
         self,

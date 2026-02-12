@@ -623,6 +623,56 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return delimited text content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the delimited text file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed rows.
+        """
+        return self.read_rows(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write delimited text content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the delimited text file on disk.
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of rows written.
+        """
+        rows = normalize_records(data, self.format.value.upper())
+        return self.write_rows(path, rows, options=options)
+
     def delimiter_from_read_options(
         self,
         options: ReadOptions | None,
@@ -718,6 +768,56 @@ class TextFixedWidthFileHandlerABC(FileHandlerABC):
         """
         Write text-backed *rows* to *path*.
         """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return text/fixed-width content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the text/fixed-width file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed rows.
+        """
+        return self.read_rows(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write text/fixed-width content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the text/fixed-width file on disk.
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of rows written.
+        """
+        rows = normalize_records(data, self.format.value.upper())
+        return self.write_rows(path, rows, options=options)
 
 
 class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
