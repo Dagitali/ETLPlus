@@ -640,23 +640,13 @@ class TestScientificDatasetContracts:
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """Test single-dataset scientific handlers rejecting unknown keys."""
-        assert_single_dataset_rejects_non_default_key(
-            handler_cls(),
-            suffix=handler_cls.format.value,
-        )
-
-    @pytest.mark.parametrize(
-        'handler_cls',
-        _SINGLE_DATASET_HANDLER_CLASSES,
-    )
-    def test_single_dataset_handlers_use_single_dataset_scientific_abc(
-        self,
-        handler_cls: type[SingleDatasetScientificFileHandlerABC],
-    ) -> None:
-        """Test single-dataset handlers inheriting the subtype ABC."""
         assert issubclass(
             handler_cls,
             SingleDatasetScientificFileHandlerABC,
+        )
+        assert_single_dataset_rejects_non_default_key(
+            handler_cls(),
+            suffix=handler_cls.format.value,
         )
 
 
