@@ -152,32 +152,6 @@ _CACHEABLES = (
     mod.get_handler_class,
 )
 
-_MAPPED_CLASS_FORMATS: tuple[FileFormat, ...] = (
-    FileFormat.AVRO,
-    FileFormat.ARROW,
-    FileFormat.DTA,
-    FileFormat.DUCKDB,
-    FileFormat.FEATHER,
-    FileFormat.FWF,
-    FileFormat.JSON,
-    FileFormat.MAT,
-    FileFormat.NC,
-    FileFormat.ODS,
-    FileFormat.ORC,
-    FileFormat.PARQUET,
-    FileFormat.RDA,
-    FileFormat.RDS,
-    FileFormat.SAS7BDAT,
-    FileFormat.SAV,
-    FileFormat.SQLITE,
-    FileFormat.SYLK,
-    FileFormat.TXT,
-    FileFormat.XLSM,
-    FileFormat.XLSX,
-    FileFormat.XPT,
-    FileFormat.ZSAV,
-)
-
 _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
     (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
@@ -378,7 +352,10 @@ class TestRegistryMappedResolution:
             mapped_class = _mapped_handler_class(file_format)
             assert mapped_class.format == file_format
 
-    @pytest.mark.parametrize('file_format', _MAPPED_CLASS_FORMATS)
+    @pytest.mark.parametrize(
+        'file_format',
+        tuple(mod._HANDLER_CLASS_SPECS),
+    )
     def test_get_handler_class_uses_mapped_class(
         self,
         file_format: FileFormat,
