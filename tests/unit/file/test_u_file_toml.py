@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.file.toml`.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 
 import pytest
@@ -18,12 +20,15 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 # SECTION: HELPERS ========================================================== #
 
 
+type DumpCall = dict[str, object]
+
+
+@dataclass
 class _TomlDumperStub:
     """Stub for TOML dumper modules exposing ``dumps``."""
 
-    def __init__(self, output: str) -> None:
-        self._output = output
-        self.calls: list[dict[str, object]] = []
+    output: str
+    calls: list[DumpCall] = field(default_factory=list)
 
     def dumps(
         self,
@@ -33,7 +38,7 @@ class _TomlDumperStub:
         Simulate dumping by recording the payload and returning a fixed string.
         """
         self.calls.append(payload)
-        return self._output
+        return self.output
 
 
 # SECTION: TESTS ============================================================ #
@@ -44,6 +49,8 @@ class TestToml(
     SemiStructuredWriteDictModuleContract,
 ):
     """Unit tests for :mod:`etlplus.file.toml`."""
+
+    _tomli_w_stub: _TomlDumperStub
 
     module = mod
     format_name = 'toml'
