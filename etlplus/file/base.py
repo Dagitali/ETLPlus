@@ -1228,8 +1228,6 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         int
             Number of records written.
         """
-        from ._io import normalize_records
-
         rows = normalize_records(data, self.format.value.upper())
         if not rows:
             return 0
