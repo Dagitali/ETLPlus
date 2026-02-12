@@ -203,6 +203,29 @@ class StubSemiStructuredTextFileHandlerABC(
 
     # -- Instance Methods -- #
 
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Raise :class:`NotImplementedError` for semi-structured reads.
+        """
+        return StubFileHandlerABC.read(self, path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Raise :class:`NotImplementedError` for semi-structured writes.
+        """
+        return StubFileHandlerABC.write(self, path, data, options=options)
+
     def loads(
         self,
         text: str,
@@ -215,7 +238,11 @@ class StubSemiStructuredTextFileHandlerABC(
         _ = text
         return cast(
             JSONData,
-            super().read(self._stub_path(), options=options),
+            StubFileHandlerABC.read(
+                self,
+                self._stub_path(),
+                options=options,
+            ),
         )
 
     def dumps(
@@ -227,7 +254,12 @@ class StubSemiStructuredTextFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for text payload serialization.
         """
-        super().write(self._stub_path(), data, options=options)
+        StubFileHandlerABC.write(
+            self,
+            self._stub_path(),
+            data,
+            options=options,
+        )
         return ''
 
 
