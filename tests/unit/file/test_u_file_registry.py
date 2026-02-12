@@ -166,16 +166,6 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _mapped_handler_class(file_format: FileFormat) -> type[FileHandlerABC]:
-    """Resolve one explicitly mapped handler class."""
-    # pylint: disable=protected-access
-
-    return mod._coerce_handler_class(
-        mod._import_symbol(mod._HANDLER_CLASS_SPECS[file_format]),
-        file_format=file_format,
-    )
-
-
 def _implemented_handler_formats() -> set[FileFormat]:
     """Collect all implemented handler formats from non-private modules."""
     implemented_formats: set[FileFormat] = set()
@@ -303,8 +293,7 @@ class TestRegistryMappedResolution:
         assert not missing
 
         for file_format in mod._HANDLER_CLASS_SPECS:
-            mapped_class = _mapped_handler_class(file_format)
-            assert mapped_class.format == file_format
+            assert mod.get_handler_class(file_format).format == file_format
 
     @pytest.mark.parametrize(
         'file_format',
@@ -315,13 +304,11 @@ class TestRegistryMappedResolution:
         file_format: FileFormat,
     ) -> None:
         """Test mapped formats resolving to concrete handler classes."""
-        expected_class = _mapped_handler_class(file_format)
-        handler_class = mod.get_handler_class(file_format)
-        assert handler_class is expected_class
+        assert mod.get_handler_class(file_format).format == file_format
 
     def test_get_handler_returns_singleton_instance(self) -> None:
         """Test get_handler returning a cached singleton for mapped formats."""
-        expected_class = _mapped_handler_class(self.singleton_format)
+        expected_class = mod.get_handler_class(self.singleton_format)
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
@@ -348,17 +335,6 @@ class TestRegistryStrictPolicy:
 
     # pylint: disable=protected-access
 
-    def _remove_fallback_mapping(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Remove one explicit class mapping for strict-policy tests."""
-        monkeypatch.delitem(
-            mod._HANDLER_CLASS_SPECS,
-            self.fallback_format,
-            raising=False,
-        )
-
     @pytest.mark.parametrize(
         'resolver',
         (
@@ -373,6 +349,10 @@ class TestRegistryStrictPolicy:
         resolver: Callable[[FileFormat], object],
     ) -> None:
         """Test strict mode rejecting unmapped formats across lookups."""
-        self._remove_fallback_mapping(monkeypatch)
+        monkeypatch.delitem(
+            mod._HANDLER_CLASS_SPECS,
+            self.fallback_format,
+            raising=False,
+        )
         with pytest.raises(ValueError, match='Unsupported format'):
             resolver(self.fallback_format)
