@@ -58,6 +58,71 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         """Seed zip archive payload for read contract tests."""
         _write_zip(path, {'payload.json': b'{}'})
 
+    def test_read_inner_bytes_requires_inner_name_for_multiple_entries(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that reading raw bytes from multi-member ZIP requires
+        ``inner_name``.
+        """
+        path = self.archive_path(tmp_path, stem='payloads')
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        with pytest.raises(ValueError, match='multiple members'):
+            mod.ZipFile().read_inner_bytes(path)
+
+    @pytest.mark.parametrize(
+        ('stem', 'entries', 'error_pattern'),
+        [
+            ('empty', {}, 'ZIP archive is empty'),
+            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
+            (
+                'payload',
+                {'payload.unknown': b'ignored'},
+                'Cannot infer file format',
+            ),
+        ],
+        ids=[
+            'empty_archive',
+            'unexpected_compression',
+            'unknown_inner_format',
+        ],
+    )
+    def test_read_invalid_archives_raise(
+        self,
+        tmp_path: Path,
+        stem: str,
+        entries: dict[str, bytes],
+        error_pattern: str,
+    ) -> None:
+        """Test invalid ZIP structures raising clear read-time errors."""
+        path = self.archive_path(tmp_path, stem=stem)
+        _write_zip(path, entries)
+
+        with pytest.raises(ValueError, match=error_pattern):
+            mod.ZipFile().read(path)
+
+    def test_read_multiple_entries_returns_mapping(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that reading a ZIP archive with multiple entries returns a mapping
+        of file names to their contents.
+        """
+        self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payloads')
+        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
+
+        result = mod.ZipFile().read(path)
+
+        assert result == {
+            'a.json': {'fmt': 'json', 'name': 'a.json'},
+            'b.json': {'fmt': 'json', 'name': 'b.json'},
+        }
+
     @pytest.mark.parametrize(
         ('reader_method', 'needs_core_stub'),
         [('read_inner_bytes', False), ('read', True)],
@@ -81,20 +146,6 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
                 path,
                 options=ReadOptions(inner_name='missing.json'),
             )
-
-    def test_read_inner_bytes_requires_inner_name_for_multiple_entries(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that reading raw bytes from multi-member ZIP requires
-        ``inner_name``.
-        """
-        path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
-
-        with pytest.raises(ValueError, match='multiple members'):
-            mod.ZipFile().read_inner_bytes(path)
 
     @pytest.mark.parametrize(
         ('reader_method', 'needs_core_stub', 'entries', 'expected'),
@@ -136,69 +187,6 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
 
         assert result == expected
 
-    def test_read_multiple_entries_returns_mapping(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that reading a ZIP archive with multiple entries returns a mapping
-        of file names to their contents.
-        """
-        self.install_core_file_stub(monkeypatch)
-        path = self.archive_path(tmp_path, stem='payloads')
-        _write_zip(path, {'a.json': b'{}', 'b.json': b'{}'})
-
-        result = mod.ZipFile().read(path)
-
-        assert result == {
-            'a.json': {'fmt': 'json', 'name': 'a.json'},
-            'b.json': {'fmt': 'json', 'name': 'b.json'},
-        }
-
-    @pytest.mark.parametrize(
-        ('stem', 'entries', 'error_pattern'),
-        [
-            ('empty', {}, 'ZIP archive is empty'),
-            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
-            (
-                'payload',
-                {'payload.unknown': b'ignored'},
-                'Cannot infer file format',
-            ),
-        ],
-        ids=[
-            'empty_archive',
-            'unexpected_compression',
-            'unknown_inner_format',
-        ],
-    )
-    def test_read_invalid_archives_raise(
-        self,
-        tmp_path: Path,
-        stem: str,
-        entries: dict[str, bytes],
-        error_pattern: str,
-    ) -> None:
-        """Test invalid ZIP structures raising clear read-time errors."""
-        path = self.archive_path(tmp_path, stem=stem)
-        _write_zip(path, entries)
-
-        with pytest.raises(ValueError, match=error_pattern):
-            mod.ZipFile().read(path)
-
-    def test_write_raises_on_unexpected_output_compression(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that writing to non-ZIP compressed suffixes fails early."""
-        self.install_core_file_stub(monkeypatch)
-        path = self.archive_path(tmp_path, stem='payload.json', suffix='gz')
-
-        with pytest.raises(ValueError, match='Unexpected compression'):
-            mod.ZipFile().write(path, [{'id': 1}])
-
     def test_write_inner_bytes_uses_default_member_name(
         self,
         tmp_path: Path,
@@ -211,6 +199,18 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with zipfile.ZipFile(path, 'r') as archive:
             assert archive.namelist() == ['payload']
             assert archive.read('payload') == b'data'
+
+    def test_write_raises_on_unexpected_output_compression(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that writing to non-ZIP compressed suffixes fails early."""
+        self.install_core_file_stub(monkeypatch)
+        path = self.archive_path(tmp_path, stem='payload.json', suffix='gz')
+
+        with pytest.raises(ValueError, match='Unexpected compression'):
+            mod.ZipFile().write(path, [{'id': 1}])
 
     def test_write_supports_nested_inner_name(
         self,
