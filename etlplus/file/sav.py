@@ -89,7 +89,8 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
             dataset,
             options=options,
         )
-        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
+        format_name = self.format_name
+        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
         frame, _meta = pyreadstat.read_sav(str(path))
         return records_from_table(frame)
 
@@ -125,12 +126,13 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        records = normalize_records(data, 'SAV')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
-        pandas = get_pandas('SAV')
+        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         pyreadstat.write_sav(frame, str(path))

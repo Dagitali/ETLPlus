@@ -117,7 +117,8 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             dataset,
             options=options,
         )
-        xarray = get_dependency('xarray', format_name='NC')
+        format_name = self.format_name
+        xarray = get_dependency('xarray', format_name=format_name)
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
@@ -162,12 +163,13 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        records = normalize_records(data, 'NC')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name='NC')
-        pandas = get_pandas('NC')
+        xarray = get_dependency('xarray', format_name=format_name)
+        pandas = get_pandas(format_name)
         frame = pandas.DataFrame.from_records(records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)

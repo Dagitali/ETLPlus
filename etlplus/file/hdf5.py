@@ -109,7 +109,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = get_pandas('HDF5')
+        pandas = get_pandas(self.format_name)
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
@@ -147,7 +147,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pandas = get_pandas('HDF5')
+        pandas = get_pandas(self.format_name)
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover

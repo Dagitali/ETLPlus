@@ -133,6 +133,22 @@ class FileHandlerABC(ABC):
     supports_read: ClassVar[bool] = True
     supports_write: ClassVar[bool] = True
 
+    # -- Instance Properties -- #
+
+    @property
+    def format_name(
+        self,
+    ) -> str:
+        """
+        Return the normalized human-readable format name.
+
+        Returns
+        -------
+        str
+            Uppercase enum value for :attr:`format`.
+        """
+        return self.format.value.upper()
+
     # -- Abstract Instance Methods -- #
 
     @abstractmethod

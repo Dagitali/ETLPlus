@@ -79,7 +79,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         list[str]
             Available dataset keys.
         """
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
         result = pyreadr.read_r(str(path))
         return list_r_dataset_keys(
             result,
@@ -109,21 +109,17 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         -------
         JSONData
             Parsed dataset payload.
-
-        Raises
-        ------
-        ValueError
-            If an explicit dataset key is not present.
         """
+        format_name = self.format_name
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
-        pandas = get_pandas('RDA')
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
             dataset=dataset,
             dataset_key=self.dataset_key,
-            format_name='RDA',
+            format_name=format_name,
             pandas=pandas,
         )
 
@@ -159,10 +155,11 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
+        format_name = self.format_name
         dataset = self.resolve_write_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDA')
-        pandas = get_pandas('RDA')
-        records = normalize_records(data, 'RDA')
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
+        records = normalize_records(data, format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
         target_dataset = dataset if dataset is not None else self.dataset_key

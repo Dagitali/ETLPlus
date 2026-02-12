@@ -84,21 +84,17 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         -------
         JSONData
             Parsed dataset payload.
-
-        Raises
-        ------
-        ValueError
-            If an explicit dataset key is not present.
         """
+        format_name = self.format_name
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDS')
-        pandas = get_pandas('RDS')
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
             dataset=dataset,
             dataset_key=self.dataset_key,
-            format_name='RDS',
+            format_name=format_name,
             pandas=pandas,
         )
 
@@ -139,9 +135,10 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        pyreadr = get_dependency('pyreadr', format_name='RDS')
-        pandas = get_pandas('RDS')
-        records = normalize_records(data, 'RDS')
+        format_name = self.format_name
+        pyreadr = get_dependency('pyreadr', format_name=format_name)
+        pandas = get_pandas(format_name)
+        records = normalize_records(data, format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
 

@@ -91,8 +91,9 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        pandas = get_pandas('XPT')
-        pyreadstat = get_dependency('pyreadstat', format_name='XPT')
+        format_name = self.format_name
+        pandas = get_pandas(format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
         reader = getattr(pyreadstat, 'read_xport', None)
         if reader is not None:
             frame, _meta = reader(str(path))
@@ -140,12 +141,13 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        records = normalize_records(data, 'XPT')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        pandas = get_pandas('XPT')
-        pyreadstat = get_dependency('pyreadstat', format_name='XPT')
+        pandas = get_pandas(format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
         writer = getattr(pyreadstat, 'write_xport', None)
         if writer is None:
             raise ImportError(

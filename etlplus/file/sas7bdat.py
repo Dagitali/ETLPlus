@@ -91,8 +91,9 @@ class Sas7bdatFile(
             dataset,
             options=options,
         )
-        get_dependency('pyreadstat', format_name='SAS7BDAT')
-        pandas = get_pandas('SAS7BDAT')
+        format_name = self.format_name
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         try:
             frame = pandas.read_sas(path, format='sas7bdat')
         except TypeError:

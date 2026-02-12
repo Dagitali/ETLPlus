@@ -90,8 +90,9 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
             dataset,
             options=options,
         )
-        get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        format_name = self.format_name
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         frame = pandas.read_stata(path)
         return records_from_table(frame)
 
@@ -127,12 +128,13 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        records = normalize_records(data, 'DTA')
+        format_name = self.format_name
+        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
