@@ -355,7 +355,6 @@ class TestBaseAbcContracts:
     ) -> None:
         """Test read-only scientific handlers rejecting dataset writes."""
         handler = _ReadOnlyScientificStub()
-
         with pytest.raises(RuntimeError, match='read-only'):
             handler.write_dataset(
                 Path('ignored.hdf5'),
@@ -379,7 +378,6 @@ class TestBaseAbcContracts:
     ) -> None:
         """Test single-dataset read-only write validation and guardrails."""
         handler = _ReadOnlySingleScientificStub()
-
         with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
                 Path('ignored.sas7bdat'),
@@ -399,7 +397,6 @@ class TestBaseAbcContracts:
         """Test read-only spreadsheet handlers rejecting write operations."""
         handler = XlsFile()
         path = Path('ignored.xls')
-
         with pytest.raises(RuntimeError, match='read-only'):
             if operation == 'write':
                 handler.write(path, [{'a': 1}])

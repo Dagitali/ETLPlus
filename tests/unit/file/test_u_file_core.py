@@ -295,6 +295,12 @@ FORMAT_CASES: list[FormatCase] = [
     ),
 ]
 
+FORMAT_INFERENCE_CASES: tuple[tuple[str, FileFormat], ...] = (
+    ('data.json', FileFormat.JSON),
+    ('data.csv.gz', FileFormat.CSV),
+    ('data.jsonl.gz', FileFormat.NDJSON),
+)
+
 STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
     # Permanent stub as formality
     (FileFormat.STUB, 'data.stub'),
@@ -320,6 +326,22 @@ STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
     # (FileFormat.WSV, 'data.wsv'),
     (FileFormat.ZSAV, 'data.zsav'),
 )
+
+
+def _assert_core_write_dispatch(
+    calls: dict[str, object],
+    *,
+    expected_format: FileFormat,
+    expected_path: Path,
+    expected_data: JSONData,
+    expected_root_tag: str,
+) -> None:
+    """Assert core write dispatch metadata with routed XML root tag."""
+    assert calls['format'] is expected_format
+    assert calls['write_path'] == expected_path
+    assert calls['write_data'] == expected_data
+    options = cast(WriteOptions, calls['write_options'])
+    assert options.root_tag == expected_root_tag
 
 
 def _coerce_numeric_value(value: object) -> object:
@@ -403,13 +425,7 @@ def normalize_xml_payload(payload: JSONData) -> JSONData:
 
 
 class TestFile:
-    """
-    Unit tests for :class:`etlplus.file.File`.
-
-    Notes
-    -----
-    - Exercises JSON detection and defers errors for unknown extensions.
-    """
+    """Unit tests for :class:`etlplus.file.File`."""
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
@@ -443,23 +459,31 @@ class TestFile:
         with pytest.raises(ValueError, match='Multiple tables'):
             File(path, file_format).read()
 
-    def test_explicit_string_file_format_is_coerced(
+    @pytest.mark.parametrize(
+        ('raw_format', 'expected'),
+        (('json', FileFormat.JSON), ('not-a-real-format', None)),
+        ids=('valid_string_format', 'invalid_string_format'),
+    )
+    def test_explicit_string_file_format_validation(
         self,
         tmp_path: Path,
+        raw_format: str,
+        expected: FileFormat | None,
     ) -> None:
-        """Test that string file-format arguments are normalized."""
+        """Test explicit string file-format coercion and validation."""
         path = tmp_path / 'data.json'
-        file = File(path, cast(Any, 'json'))
-
-        assert file.file_format is FileFormat.JSON
+        if expected is None:
+            with pytest.raises(ValueError):
+                File(path, cast(Any, raw_format))
+            return
+        file = File(path, cast(Any, raw_format))
+        assert file.file_format is expected
 
     def test_gz_round_trip_json(
         self,
         tmp_path: Path,
     ) -> None:
-        """
-        Test JSON round-trip inside a gzip archive.
-        """
+        """Test JSON round-trip inside a gzip archive."""
         path = tmp_path / 'data.json.gz'
         payload = [{'name': 'Ada'}]
 
@@ -469,54 +493,23 @@ class TestFile:
         assert result == payload
 
     @pytest.mark.parametrize(
-        'filename,expected_format',
-        [
-            ('data.csv.gz', FileFormat.CSV),
-            ('data.jsonl.gz', FileFormat.NDJSON),
-        ],
+        ('filename', 'expected_format'),
+        FORMAT_INFERENCE_CASES,
+        ids=('json', 'csv_gz', 'jsonl_gz'),
     )
-    def test_infers_format_from_compressed_suffixes(
+    def test_infers_format_from_extension_patterns(
         self,
         tmp_path: Path,
         filename: str,
         expected_format: FileFormat,
     ) -> None:
-        """
-        Test format inference from multi-suffix compressed filenames.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory path.
-        filename : str
-            Name of the file to create.
-        expected_format : FileFormat
-            Expected file format.
-        """
+        """Test inference from standard and compressed filename patterns."""
         path = tmp_path / filename
         path.write_text('{}', encoding='utf-8')
 
         file = File(path)
 
         assert file.file_format == expected_format
-
-    def test_infers_json_from_extension(self, tmp_path: Path) -> None:
-        """Test JSON file inference from extension and read behavior."""
-        path = tmp_path / 'data.json'
-        path.write_text('{}', encoding='utf-8')
-        file = File(path)
-        assert file.file_format == FileFormat.JSON
-        assert file.read() == {}
-
-    def test_invalid_explicit_string_file_format_raises(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that invalid explicit format strings fail fast."""
-        path = tmp_path / 'data.json'
-
-        with pytest.raises(ValueError):
-            File(path, cast(Any, 'not-a-real-format'))
 
     def test_path_support_for_module_helpers(
         self,
@@ -785,11 +778,13 @@ class TestFile:
         written = File(path, FileFormat.XML).write([{'name': 'Ada'}])
 
         assert written == 1
-        assert calls['format'] is FileFormat.XML
-        assert calls['write_path'] == path
-        assert calls['write_data'] == [{'name': 'Ada'}]
-        options = cast(WriteOptions, calls['write_options'])
-        assert options.root_tag == xml_file.DEFAULT_XML_ROOT
+        _assert_core_write_dispatch(
+            calls,
+            expected_format=FileFormat.XML,
+            expected_path=path,
+            expected_data=[{'name': 'Ada'}],
+            expected_root_tag=xml_file.DEFAULT_XML_ROOT,
+        )
 
     def test_zip_multi_file_read(
         self,
@@ -844,9 +839,10 @@ class TestFileCoreDispatch:
         written = File(path, FileFormat.XML).write(payload, root_tag='records')
 
         assert written == 3
-        assert calls['format'] is FileFormat.XML
-        assert calls['write_path'] == path
-        assert calls['write_data'] == payload
-        assert isinstance(calls['write_options'], WriteOptions)
-        options = cast(WriteOptions, calls['write_options'])
-        assert options.root_tag == 'records'
+        _assert_core_write_dispatch(
+            calls,
+            expected_format=FileFormat.XML,
+            expected_path=path,
+            expected_data=payload,
+            expected_root_tag='records',
+        )
