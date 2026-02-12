@@ -256,10 +256,17 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         Raises
         ------
         ValueError
+            If the output path indicates a non-ZIP compression format.
             If the inner file format cannot be inferred from the provided
             options.
         """
-        fmt = _resolve_format(path.name)
+        _fmt, output_compression = infer_file_format_and_compression(path)
+        if (
+            output_compression is not None
+            and output_compression is not CompressionFormat.ZIP
+        ):
+            raise ValueError(f'Unexpected compression in archive: {path}')
+
         default_inner_name = Path(path.name).with_suffix('').name
         inner_name = self.inner_name_from_write_options(
             options,
@@ -267,6 +274,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         )
         if inner_name is None:  # pragma: no cover
             raise ValueError('ZIP inner archive member name is required')
+        fmt = _resolve_format(inner_name)
 
         count, payload = write_payload_with_core(
             filename=inner_name,
@@ -277,10 +285,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         self.write_inner_bytes(
             path,
             payload,
-            options=WriteOptions(
-                inner_name=inner_name,
-                encoding=self.encoding_from_write_options(options),
-            ),
+            options=WriteOptions(inner_name=inner_name),
         )
         return count
 

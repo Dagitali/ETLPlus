@@ -20,17 +20,14 @@ Notes
 from __future__ import annotations
 
 import configparser
-from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import read_text
 from ._io import require_dict_payload
 from ._io import stringify_value
-from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -135,6 +132,16 @@ class IniFile(SemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return one record for dictionary-shaped INI payload writes.
+        """
+        _ = data
+        return 1
+
     def dumps(
         self,
         data: JSONData,
@@ -191,65 +198,6 @@ class IniFile(SemiStructuredTextFileHandlerABC):
         parser = configparser.ConfigParser()
         parser.read_string(text)
         return _payload_from_parser(parser)
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return INI content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the INI file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the INI file.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(
-            read_text(path, encoding=encoding),
-            options=options,
-        )
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to INI at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the INI file on disk.
-        data : JSONData
-            Data to write as INI. Should be a dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the INI file.
-        """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-        )
-        return 1
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

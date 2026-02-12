@@ -19,7 +19,6 @@ Notes
 from __future__ import annotations
 
 import tomllib
-from pathlib import Path
 from typing import Any
 from typing import cast
 
@@ -29,9 +28,7 @@ from ..types import StrPath
 from ._imports import get_optional_module
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import read_text
 from ._io import require_dict_payload
-from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -64,6 +61,16 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
     allow_list_root = False
 
     # -- Instance Methods -- #
+
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return one record for dictionary-shaped TOML payload writes.
+        """
+        _ = data
+        return 1
 
     def dumps(
         self,
@@ -142,62 +149,6 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
         if isinstance(payload, dict):
             return payload
         raise TypeError('TOML root must be a table (dict)')
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return TOML content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TOML file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the TOML file.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(read_text(path, encoding=encoding), options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to TOML at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TOML file on disk.
-        data : JSONData
-            Data to write as TOML. Should be a dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the TOML file.
-        """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-        )
-        return 1
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

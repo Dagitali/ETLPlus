@@ -18,17 +18,13 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import read_text
 from ._io import require_dict_payload
 from ._io import stringify_value
-from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -92,63 +88,14 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def read(
+    def count_written_records(
         self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return PROPERTIES content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PROPERTIES file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the PROPERTIES file.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(
-            read_text(path, encoding=encoding),
-            options=options,
-        )
-
-    def write(
-        self,
-        path: Path,
         data: JSONData,
-        *,
-        options: WriteOptions | None = None,
     ) -> int:
         """
-        Write *data* to PROPERTIES at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PROPERTIES file on disk.
-        data : JSONData
-            Data to write as PROPERTIES. Should be a dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the PROPERTIES file.
+        Return one record for dictionary-shaped PROPERTIES payload writes.
         """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-        )
+        _ = data
         return 1
 
     def dumps(

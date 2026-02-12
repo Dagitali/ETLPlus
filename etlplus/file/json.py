@@ -19,16 +19,12 @@ Notes
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from ..types import JSONData
 from ..types import StrPath
-from ..utils import count_records
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import coerce_record_payload
-from ._io import read_text
-from ._io import write_text
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -57,6 +53,7 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.JSON
+    write_trailing_newline = True
 
     # -- Instance Methods -- #
 
@@ -107,66 +104,6 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         """
         _ = options
         return coerce_record_payload(json.loads(text), format_name='JSON')
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return JSON content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the JSON file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the JSON file.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(
-            read_text(path, encoding=encoding),
-            options=options,
-        )
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to JSON at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the JSON file on disk.
-        data : JSONData
-            Data to serialize as JSON.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the JSON file.
-        """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-            trailing_newline=True,
-        )
-        return count_records(data)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
