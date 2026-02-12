@@ -493,20 +493,20 @@ class TestFile:
         expected_format : FileFormat
             Expected file format.
         """
-        p = tmp_path / filename
-        p.write_text('{}', encoding='utf-8')
+        path = tmp_path / filename
+        path.write_text('{}', encoding='utf-8')
 
-        f = File(p)
+        file = File(path)
 
-        assert f.file_format == expected_format
+        assert file.file_format == expected_format
 
     def test_infers_json_from_extension(self, tmp_path: Path) -> None:
         """Test JSON file inference from extension and read behavior."""
-        p = tmp_path / 'data.json'
-        p.write_text('{}', encoding='utf-8')
-        f = File(p)
-        assert f.file_format == FileFormat.JSON
-        assert f.read() == {}
+        path = tmp_path / 'data.json'
+        path.write_text('{}', encoding='utf-8')
+        file = File(path)
+        assert file.file_format == FileFormat.JSON
+        assert file.read() == {}
 
     def test_invalid_explicit_string_file_format_raises(
         self,
@@ -644,12 +644,13 @@ class TestFile:
                 pytest.skip('ORC read failed due to sysctl limitations')
             raise
 
+        expected_result = expected
         if file_format is FileFormat.XML:
             result = normalize_xml_payload(result)
-            expected = normalize_xml_payload(expected)
+            expected_result = normalize_xml_payload(expected_result)
         if file_format is FileFormat.XLS:
             result = normalize_numeric_records(result)
-        assert result == expected
+        assert result == expected_result
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
