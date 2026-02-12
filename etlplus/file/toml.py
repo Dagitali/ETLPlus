@@ -20,10 +20,8 @@ from __future__ import annotations
 
 import tomllib
 from typing import Any
-from typing import cast
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import StrPath
 from ._imports import get_optional_module
 from ._io import call_deprecated_module_read
@@ -62,16 +60,6 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return one record for dictionary-shaped TOML payload writes.
-        """
-        _ = data
-        return 1
-
     def dumps(
         self,
         data: JSONData,
@@ -106,7 +94,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
                     'Install with: pip install tomli-w'
                 ),
             )
-            return str(toml_writer.dumps(cast(JSONDict, payload)))
+            return str(toml_writer.dumps(payload))
         except ImportError:
             toml = get_optional_module(
                 'toml',
@@ -116,7 +104,7 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
                     'Install with: pip install tomli-w'
                 ),
             )
-            return str(toml.dumps(cast(JSONDict, payload)))
+            return str(toml.dumps(payload))
 
     def loads(
         self,

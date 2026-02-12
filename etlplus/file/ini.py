@@ -132,16 +132,6 @@ class IniFile(SemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return one record for dictionary-shaped INI payload writes.
-        """
-        _ = data
-        return 1
-
     def dumps(
         self,
         data: JSONData,

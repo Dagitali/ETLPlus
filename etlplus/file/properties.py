@@ -88,16 +88,6 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return one record for dictionary-shaped PROPERTIES payload writes.
-        """
-        _ = data
-        return 1
-
     def dumps(
         self,
         data: JSONData,
