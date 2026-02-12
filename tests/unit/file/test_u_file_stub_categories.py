@@ -17,8 +17,15 @@ from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
+from etlplus.types import JSONList
 
 # SECTION: HELPERS ========================================================== #
+
+
+RECORD_LIST: JSONData = [{'id': 1}]
+RECORD_ROWS: JSONList = [{'id': 1}]
+EVENT_DICT: JSONData = {'event': 'ok'}
+OK_DICT: JSONData = {'ok': True}
 
 
 def _patch_stub_read(
@@ -124,7 +131,7 @@ class TestStubCategoryHandlers:
         """Test binary payload methods delegating to StubFileHandlerABC."""
         read_calls = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, [{'id': 1}]),
+            result=RECORD_LIST,
         )
         write_calls = _patch_stub_write(monkeypatch, result=1)
         handler = _BinaryStub()
@@ -142,7 +149,7 @@ class TestStubCategoryHandlers:
         source_path = Path('data.accdb')
         read_calls = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, [{'id': 1}]),
+            result=RECORD_LIST,
         )
         write_calls = _patch_stub_write(monkeypatch, result=3)
         handler = _EmbeddedStub()
@@ -163,8 +170,8 @@ class TestStubCategoryHandlers:
             (path, data)
             for path, data, _ in write_calls
         ] == [
-            (source_path, cast(JSONData, [{'id': 1}])),
-            (Path('ignored.accdb'), cast(JSONData, [{'id': 1}])),
+            (source_path, RECORD_LIST),
+            (Path('ignored.accdb'), RECORD_LIST),
         ]
 
     def test_log_stub_parse_and_serialize_delegate_to_stub_io(
@@ -174,7 +181,7 @@ class TestStubCategoryHandlers:
         """Test log-event parse/serialize methods delegating to stub IO."""
         _ = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, {'event': 'ok'}),
+            result=EVENT_DICT,
             expected_path=Path('ignored.log'),
         )
         write_calls = _patch_stub_write(monkeypatch, result=1)
@@ -185,7 +192,7 @@ class TestStubCategoryHandlers:
         assert [
             (path, data)
             for path, data, _ in write_calls
-        ] == [(Path('ignored.log'), {'event': 'ok'})]
+        ] == [(Path('ignored.log'), EVENT_DICT)]
 
     def test_semistructured_stub_methods_delegate_to_stub_io(
         self,
@@ -195,15 +202,15 @@ class TestStubCategoryHandlers:
         source_path = Path('data.conf')
         read_calls = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, {'ok': True}),
+            result=OK_DICT,
         )
         write_calls = _patch_stub_write(monkeypatch, result=2)
         handler = _SemiStructuredStub()
 
-        assert handler.read(source_path) == {'ok': True}
-        assert handler.loads('ignored') == {'ok': True}
-        assert handler.write(source_path, {'ok': True}) == 2
-        assert handler.dumps({'ok': True}) == ''
+        assert handler.read(source_path) == OK_DICT
+        assert handler.loads('ignored') == OK_DICT
+        assert handler.write(source_path, OK_DICT) == 2
+        assert handler.dumps(OK_DICT) == ''
         assert [path for path, _ in read_calls] == [
             source_path,
             Path('ignored.conf'),
@@ -212,8 +219,8 @@ class TestStubCategoryHandlers:
             (path, data)
             for path, data, _ in write_calls
         ] == [
-            (source_path, {'ok': True}),
-            (Path('ignored.conf'), {'ok': True}),
+            (source_path, OK_DICT),
+            (Path('ignored.conf'), OK_DICT),
         ]
 
     def test_single_dataset_stub_validates_dataset_key(
@@ -234,7 +241,7 @@ class TestStubCategoryHandlers:
         """Test single-dataset stub read/write delegation for valid dataset."""
         read_calls = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, [{'id': 1}]),
+            result=RECORD_LIST,
         )
         write_calls = _patch_stub_write(monkeypatch, result=1)
         handler = _SingleScientificStub()
@@ -242,10 +249,10 @@ class TestStubCategoryHandlers:
         read_options = ReadOptions(dataset='data')
         write_options = WriteOptions(dataset='data')
 
-        assert handler.read(path, options=read_options) == [{'id': 1}]
-        assert handler.write(path, [{'id': 1}], options=write_options) == 1
+        assert handler.read(path, options=read_options) == RECORD_LIST
+        assert handler.write(path, RECORD_LIST, options=write_options) == 1
         assert read_calls == [(path, read_options)]
-        assert write_calls == [(path, [{'id': 1}], write_options)]
+        assert write_calls == [(path, RECORD_LIST, write_options)]
 
     def test_spreadsheet_stub_methods_delegate_to_stub_io(
         self,
@@ -255,23 +262,23 @@ class TestStubCategoryHandlers:
         path = Path('book.wks')
         read_calls = _patch_stub_read(
             monkeypatch,
-            result=cast(JSONData, [{'id': 1}]),
+            result=RECORD_LIST,
         )
         write_calls = _patch_stub_write(monkeypatch, result=4)
         handler = _SpreadsheetStub()
 
         assert handler.engine_name == 'stub'
-        assert handler.read(path) == [{'id': 1}]
-        assert handler.read_sheet(path, sheet='Sheet1') == [{'id': 1}]
-        assert handler.write(path, [{'id': 1}]) == 4
-        assert handler.write_sheet(path, [{'id': 1}], sheet='Sheet1') == 4
+        assert handler.read(path) == RECORD_LIST
+        assert handler.read_sheet(path, sheet='Sheet1') == RECORD_LIST
+        assert handler.write(path, RECORD_ROWS) == 4
+        assert handler.write_sheet(path, RECORD_ROWS, sheet='Sheet1') == 4
         assert [read_path for read_path, _ in read_calls] == [path, path]
         assert [
             (write_path, write_data)
             for write_path, write_data, _ in write_calls
         ] == [
-            (path, cast(JSONData, [{'id': 1}])),
-            (path, cast(JSONData, [{'id': 1}])),
+            (path, RECORD_LIST),
+            (path, RECORD_LIST),
         ]
 
     def test_template_stub_render_delegates_to_stub_read(
