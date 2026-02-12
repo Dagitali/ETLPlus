@@ -41,6 +41,42 @@ class _TableStub:
 class TestIoHelpers:
     """Unit tests for shared file IO helpers."""
 
+    def test_call_deprecated_module_read_and_write(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test deprecated wrapper delegates coerce paths and warn."""
+        read_calls: list[Path] = []
+        write_calls: list[tuple[Path, Any]] = []
+
+        def _reader(path: Path) -> dict[str, object]:
+            read_calls.append(path)
+            return {'ok': True}
+
+        def _writer(path: Path, data: Any) -> int:
+            write_calls.append((path, data))
+            return 3
+
+        target = tmp_path / 'legacy.json'
+        with pytest.warns(DeprecationWarning, match='deprecated'):
+            read_result = mod.call_deprecated_module_read(
+                str(target),
+                'etlplus.file.json',
+                _reader,
+            )
+        with pytest.warns(DeprecationWarning, match='deprecated'):
+            write_result = mod.call_deprecated_module_write(
+                str(target),
+                {'x': 1},
+                'etlplus.file.json',
+                _writer,
+            )
+
+        assert read_result == {'ok': True}
+        assert write_result == 3
+        assert read_calls == [target]
+        assert write_calls == [(target, {'x': 1})]
+
     def test_coerce_path_accepts_str_and_path(self, tmp_path: Path) -> None:
         """Test path coercion from strings and existing Path objects."""
         value = tmp_path / 'file.txt'
@@ -84,6 +120,39 @@ class TestIoHelpers:
                 'CSV',
             )
 
+    def test_read_and_write_delimited(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test delimited writer/reader round trip."""
+        file_path = tmp_path / 'out' / 'rows.csv'
+        count = mod.write_delimited(
+            file_path,
+            [{'b': 2, 'a': 1}],
+            delimiter=',',
+            format_name='CSV',
+        )
+        assert count == 1
+        assert mod.read_delimited(
+            file_path,
+            delimiter=',',
+        ) == [{'a': '1', 'b': '2'}]
+
+    def test_read_and_write_text(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test text writing/reading, including trailing newline behavior."""
+        file_path = tmp_path / 'out' / 'data.txt'
+        mod.write_text(file_path, 'line', trailing_newline=True)
+        assert file_path.read_text(encoding='utf-8') == 'line\n'
+        assert mod.read_text(file_path) == 'line\n'
+
+    def test_records_from_table(self) -> None:
+        """Test conversion from dataframe-like objects."""
+        table = _TableStub([{'id': 1}, {'id': 2}])
+        assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
+
     def test_require_dict_payload_and_require_str_key(self) -> None:
         """Test dict/string key payload validators."""
         payload = mod.require_dict_payload({'key': 'value'}, format_name='INI')
@@ -106,39 +175,6 @@ class TestIoHelpers:
         assert mod.stringify_value(12) == '12'
         assert mod.stringify_value('abc') == 'abc'
 
-    def test_records_from_table(self) -> None:
-        """Test conversion from dataframe-like objects."""
-        table = _TableStub([{'id': 1}, {'id': 2}])
-        assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
-
-    def test_read_and_write_text(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test text writing/reading, including trailing newline behavior."""
-        file_path = tmp_path / 'out' / 'data.txt'
-        mod.write_text(file_path, 'line', trailing_newline=True)
-        assert file_path.read_text(encoding='utf-8') == 'line\n'
-        assert mod.read_text(file_path) == 'line\n'
-
-    def test_read_and_write_delimited(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test delimited writer/reader round trip."""
-        file_path = tmp_path / 'out' / 'rows.csv'
-        count = mod.write_delimited(
-            file_path,
-            [{'b': 2, 'a': 1}],
-            delimiter=',',
-            format_name='CSV',
-        )
-        assert count == 1
-        assert mod.read_delimited(
-            file_path,
-            delimiter=',',
-        ) == [{'a': '1', 'b': '2'}]
-
     def test_warn_deprecated_module_io(self) -> None:
         """Test direct deprecation warning helper."""
         with pytest.warns(
@@ -146,39 +182,3 @@ class TestIoHelpers:
             match='etlplus.file.csv.read\\(\\) is deprecated',
         ):
             mod.warn_deprecated_module_io('etlplus.file.csv', 'read')
-
-    def test_call_deprecated_module_read_and_write(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test deprecated wrapper delegates coerce paths and warn."""
-        read_calls: list[Path] = []
-        write_calls: list[tuple[Path, Any]] = []
-
-        def _reader(path: Path) -> dict[str, object]:
-            read_calls.append(path)
-            return {'ok': True}
-
-        def _writer(path: Path, data: Any) -> int:
-            write_calls.append((path, data))
-            return 3
-
-        target = tmp_path / 'legacy.json'
-        with pytest.warns(DeprecationWarning, match='deprecated'):
-            read_result = mod.call_deprecated_module_read(
-                str(target),
-                'etlplus.file.json',
-                _reader,
-            )
-        with pytest.warns(DeprecationWarning, match='deprecated'):
-            write_result = mod.call_deprecated_module_write(
-                str(target),
-                {'x': 1},
-                'etlplus.file.json',
-                _writer,
-            )
-
-        assert read_result == {'ok': True}
-        assert write_result == 3
-        assert read_calls == [target]
-        assert write_calls == [(target, {'x': 1})]
