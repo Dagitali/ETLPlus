@@ -726,9 +726,104 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
     # -- Class Attributes -- #
 
     category: ClassVar[str] = 'embedded_database'
+    engine_name: ClassVar[str] = 'database'
     default_table: ClassVar[str] = 'data'
 
     # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return embedded-database content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the embedded database file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            The list of dictionaries read from the selected table.
+
+        Raises
+        ------
+        ValueError
+            If table selection is ambiguous.
+        """
+        connection = self.connect(path)
+        try:
+            tables = self.list_tables(connection)
+            table = self.table_from_read_options(options)
+            if table is None:
+                if not tables:
+                    return []
+                if self.default_table in tables:
+                    table = self.default_table
+                elif len(tables) == 1:
+                    table = tables[0]
+                else:
+                    raise ValueError(
+                        f'Multiple tables found in {self.engine_name} file; '
+                        f'expected "{self.default_table}" or a single table',
+                    )
+            return self.read_table(connection, table)
+        finally:
+            closer = getattr(connection, 'close', None)
+            if callable(closer):
+                closer()
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write embedded-database content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the embedded database file on disk.
+        data : JSONData
+            Row-oriented data to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        from ._io import normalize_records
+
+        rows = normalize_records(data, self.format.value.upper())
+        if not rows:
+            return 0
+        table = self.table_from_write_options(
+            options,
+            default=self.default_table,
+        )
+        if table is None:  # pragma: no cover - guarded by default
+            raise ValueError(
+                f'{self.format.value.upper()} write requires a table name',
+            )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = self.connect(path)
+        try:
+            return self.write_table(connection, table, rows)
+        finally:
+            closer = getattr(connection, 'close', None)
+            if callable(closer):
+                closer()
 
     @abstractmethod
     def connect(
@@ -918,6 +1013,62 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
         """
 
     # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and return scientific dataset content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the scientific dataset file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Parsed dataset payload.
+        """
+        dataset = self.dataset_from_read_options(options)
+        return self.read_dataset(path, dataset=dataset, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write scientific dataset content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the scientific dataset file on disk.
+        data : JSONData
+            Dataset payload to write.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        dataset = self.dataset_from_write_options(options)
+        return self.write_dataset(
+            path,
+            data,
+            dataset=dataset,
+            options=options,
+        )
 
     def dataset_from_read_options(
         self,
