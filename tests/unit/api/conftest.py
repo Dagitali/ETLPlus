@@ -6,8 +6,7 @@ Define shared fixtures and helpers for pytest-based unit tests of
 
 Notes
 -----
-- Fixtures are designed for reuse and DRY test setup across API-focused unit
-    tests.
+- Fixtures are designed for reuse and DRY test setup.
 """
 
 from __future__ import annotations

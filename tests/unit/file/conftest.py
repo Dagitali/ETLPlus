@@ -2,6 +2,10 @@
 :mod:`tests.unit.file.conftest` module.
 
 Shared fixtures and helpers for pytest-based unit tests of :mod:`etlplus.file`.
+
+Notes
+-----
+- Fixtures are designed for reuse and DRY test setup.
 """
 
 from __future__ import annotations
