@@ -11,7 +11,6 @@ from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
-from typing import TypeVar
 
 from .types import JSONData
 from .types import StrAnyMap
@@ -44,13 +43,6 @@ __all__ = [
     'normalize_choice',
     'normalize_str',
 ]
-
-
-# SECTION: TYPE VARS ======================================================== #
-
-
-Num = TypeVar('Num', int, float)
-# type Num = int | float
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -474,7 +466,7 @@ def normalize_choice(
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _clamp(
+def _clamp[Num: (int, float)](
     value: Num,
     minimum: Num | None,
     maximum: Num | None,
@@ -653,7 +645,7 @@ def _integral_from_float(
     return int(candidate)
 
 
-def _normalize_number(
+def _normalize_number[Num: (int, float)](
     coercer: Callable[[object], Num | None],
     value: object,
     *,
@@ -690,7 +682,7 @@ def _normalize_number(
     return _clamp(result, minimum, maximum)
 
 
-def _validate_bounds(
+def _validate_bounds[Num: (int, float)](
     minimum: Num | None,
     maximum: Num | None,
 ) -> tuple[Num | None, Num | None]:
@@ -719,7 +711,7 @@ def _validate_bounds(
     return minimum, maximum
 
 
-def _value_or_default(
+def _value_or_default[Num: (int, float)](
     value: Num | None,
     default: Num,
 ) -> Num:
