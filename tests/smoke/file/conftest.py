@@ -8,12 +8,15 @@ Define shared fixtures and helpers for pytest-based smoke tests of
 from __future__ import annotations
 
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 from typing import Protocol
+from typing import cast
 
 import pytest
 
-from etlplus.file.base import WriteOptions
+from tests.pytest_file_common import normalize_write_kwargs
+from tests.pytest_file_common import resolve_module_handler
 
 # SECTION: MARKERS ========================================================== #
 
@@ -107,22 +110,8 @@ def run_file_smoke(
     error_match : str | None, optional
         Regex message to assert when ``expect_write_error`` is provided.
     """
-    write_kwargs = dict(write_kwargs or {})
-    handlers = [
-        value
-        for name, value in vars(module).items()
-        if name.endswith('_HANDLER')
-    ]
-    assert len(handlers) == 1
-    handler = handlers[0]
-
-    if 'root_tag' in write_kwargs and 'options' not in write_kwargs:
-        root_tag = write_kwargs.pop('root_tag')
-        if not isinstance(root_tag, str):
-            raise TypeError('root_tag must be a string')
-        write_kwargs['options'] = WriteOptions(
-            root_tag=root_tag,
-        )
+    write_kwargs = normalize_write_kwargs(write_kwargs)
+    handler = resolve_module_handler(cast(ModuleType, module))
     try:
         if expect_write_error is not None:
             match = error_match or ''
