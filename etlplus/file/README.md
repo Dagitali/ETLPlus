@@ -33,48 +33,53 @@ Back to project overview: see the top-level [README](../../README.md).
 The following formats are implemented for reading/writing (unless noted). For the full support
 matrix across all `FileFormat` values, see the top-level [README](../../README.md).
 
-| Format    | Description                                 |
-|-----------|---------------------------------------------|
-| avro      | Apache Avro binary serialization            |
-| arrow     | Apache Arrow IPC                            |
-| bson      | Binary JSON (BSON)                          |
-| cbor      | Concise Binary Object Representation        |
-| csv       | Comma-separated values text files           |
-| dat       | Generic data files (delimited)              |
-| dta       | Stata datasets                              |
-| duckdb    | DuckDB database file                        |
-| feather   | Apache Arrow Feather columnar format        |
-| fwf       | Fixed-width formatted text files            |
-| gz        | Gzip-compressed files (see Compression)     |
-| hdf5      | Hierarchical Data Format                    |
-| ini       | INI config files                            |
-| json      | Standard JSON files                         |
-| msgpack   | MessagePack binary serialization            |
-| nc        | NetCDF datasets                             |
-| ndjson    | Newline-delimited JSON (JSON Lines)         |
-| ods       | OpenDocument spreadsheets                   |
-| orc       | Apache ORC columnar format                  |
-| parquet   | Apache Parquet columnar format              |
-| pb        | Protocol Buffers binary                     |
-| properties | Java-style properties                     |
-| proto     | Protocol Buffers schema                     |
-| psv       | Pipe-separated values text files            |
-| rda       | RData workspace bundles                     |
-| rds       | RDS datasets                                |
-| sas7bdat  | SAS datasets                                |
-| sav       | SPSS datasets                               |
-| sqlite    | SQLite database file                        |
-| tab       | Tab-delimited text files                    |
-| toml      | TOML config files                           |
-| tsv       | Tab-separated values text files             |
-| txt       | Plain text files                            |
-| xls       | Microsoft Excel (legacy .xls; read-only)    |
-| xlsm      | Microsoft Excel Macro-Enabled (XLSM)        |
-| xlsx      | Microsoft Excel (modern .xlsx)              |
-| xpt       | SAS transport files                         |
-| zip       | ZIP-compressed files (see Compression)      |
-| xml       | XML files                                   |
-| yaml      | YAML files                                  |
+| Format     | Description                                |
+|------------|--------------------------------------------|
+| avro       | Apache Avro binary serialization           |
+| arrow      | Apache Arrow IPC                           |
+| bson       | Binary JSON (BSON)                         |
+| cbor       | Concise Binary Object Representation       |
+| csv        | Comma-separated values text files          |
+| dat        | Generic data files (delimited)             |
+| dta        | Stata datasets                             |
+| duckdb     | DuckDB database file                       |
+| feather    | Apache Arrow Feather columnar format       |
+| fwf        | Fixed-width formatted text files           |
+| gz         | Gzip-compressed files (see Compression)    |
+| hbs        | Handlebars template files                  |
+| hdf5       | Hierarchical Data Format                   |
+| ini        | INI config files                           |
+| jinja2     | Jinja2 template files                      |
+| json       | Standard JSON files                        |
+| log        | Generic log/event stream files             |
+| msgpack    | MessagePack binary serialization           |
+| mustache   | Mustache template files                    |
+| nc         | NetCDF datasets                            |
+| ndjson     | Newline-delimited JSON (JSON Lines)        |
+| ods        | OpenDocument spreadsheets                  |
+| orc        | Apache ORC columnar format                 |
+| parquet    | Apache Parquet columnar format             |
+| pb         | Protocol Buffers binary                    |
+| properties | Java-style properties                      |
+| proto      | Protocol Buffers schema                    |
+| psv        | Pipe-separated values text files           |
+| rda        | RData workspace bundles                    |
+| rds        | RDS datasets                               |
+| sas7bdat   | SAS datasets                               |
+| sav        | SPSS datasets                              |
+| sqlite     | SQLite database file                       |
+| tab        | Tab-delimited text files                   |
+| toml       | TOML config files                          |
+| tsv        | Tab-separated values text files            |
+| txt        | Plain text files                           |
+| vm         | Apache Velocity template files             |
+| xls        | Microsoft Excel (legacy .xls; read-only)   |
+| xlsm       | Microsoft Excel Macro-Enabled (XLSM)       |
+| xlsx       | Microsoft Excel (modern .xlsx)             |
+| xpt        | SAS transport files                        |
+| zip        | ZIP-compressed files (see Compression)     |
+| xml        | XML files                                  |
+| yaml       | YAML files                                 |
 
 Note: HDF5 support is read-only; writing is currently disabled.
 
@@ -97,6 +102,8 @@ Category contracts include:
 - Scientific/statistical datasets (`ScientificDatasetFileHandlerABC` and
   `SingleDatasetScientificFileHandlerABC`)
 - Archive wrappers (`ArchiveWrapperFileHandlerABC`)
+- Log/event streams (`LogEventFileHandlerABC`)
+- Templates (`TemplateFileHandlerABC`)
 - Placeholder stubs (`StubFileHandlerABC`)
 
 Format dispatch is registry-driven via explicit format-to-handler mappings. Module-level

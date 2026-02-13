@@ -77,6 +77,5 @@ class TestXls(
 
         assert result == [{'id': 1}]
         assert pandas.read_calls == [
-            {'path': path, **call}
-            for call in expected_read_calls
+            {'path': path, **call} for call in expected_read_calls
         ]

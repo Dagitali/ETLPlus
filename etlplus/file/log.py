@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file.log` module.
 
-Stub helpers for reading/writing generic log (LOG) files (not implemented yet).
+Helpers for reading/writing generic log (LOG) files.
 
 Notes
 -----
@@ -18,12 +18,20 @@ Notes
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ..types import JSONData
+from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._stub_categories import StubLogEventFileHandlerABC
+from ._io import normalize_records
+from ._io import write_text
+from .base import LogEventFileHandlerABC
+from .base import ReadOptions
+from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,9 +49,9 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class LogFile(StubLogEventFileHandlerABC):
+class LogFile(LogEventFileHandlerABC):
     """
-    Stub handler implementation for LOG files.
+    Handler implementation for LOG files.
     """
 
     # -- Class Attributes -- #
@@ -52,7 +60,116 @@ class LogFile(StubLogEventFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    # Inherits read() and write() from StubLogEventFileHandlerABC.
+    def parse_line(
+        self,
+        line: str,
+    ) -> JSONDict:
+        """
+        Parse one LOG line into one event object.
+
+        Parameters
+        ----------
+        line : str
+            One log line.
+
+        Returns
+        -------
+        JSONDict
+            Parsed event dictionary.
+        """
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError:
+            return {'message': line}
+        if isinstance(parsed, dict):
+            return parsed
+        return {'message': line}
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return LOG events from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the LOG file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed event dictionaries.
+        """
+        encoding = self.encoding_from_read_options(options)
+        rows: JSONList = []
+        with path.open('r', encoding=encoding) as handle:
+            for raw_line in handle:
+                line = raw_line.rstrip('\n')
+                if not line.strip():
+                    continue
+                rows.append(self.parse_line(line))
+        return rows
+
+    def serialize_event(
+        self,
+        event: JSONDict,
+    ) -> str:
+        """
+        Serialize one event object into one LOG line.
+
+        Parameters
+        ----------
+        event : JSONDict
+            Event dictionary to serialize.
+
+        Returns
+        -------
+        str
+            Serialized log line.
+        """
+        return json.dumps(event, ensure_ascii=False)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write LOG events to *path* and return event count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the LOG file on disk.
+        data : JSONData
+            Event payload as one object or an array of objects.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of events written.
+        """
+        rows = normalize_records(data, self.format_name)
+        if not rows:
+            return 0
+        payload = '\n'.join(self.serialize_event(event) for event in rows)
+        write_text(
+            path,
+            payload,
+            encoding=self.encoding_from_write_options(options),
+            trailing_newline=True,
+        )
+        return len(rows)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
