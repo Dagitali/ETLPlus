@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Generator
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
+from etlplus.utils import count_records
 
 # SECTION: MARKERS ========================================================== #
 
@@ -41,6 +43,23 @@ pytestmark = pytest.mark.unit
 type HandlerCase = tuple[FileFormat, type[Any]]
 type OptionalModuleInstaller = Callable[[dict[str, object]], None]
 type Operation = Literal['read', 'write']
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class RoundtripSpec:
+    """
+    Declarative roundtrip case for one format-aligned unit contract.
+    """
+
+    payload: JSONData
+    expected: JSONData
+    stem: str = 'roundtrip'
+    read_options: ReadOptions | None = None
+    write_options: WriteOptions | None = None
+    expected_written_count: int | None = None
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -247,6 +266,52 @@ class PathMixin:
 
 
 # SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
+
+
+class RoundtripUnitModuleContract(PathMixin):
+    """
+    Reusable unit-level write/read roundtrip contract.
+    """
+
+    module: ModuleType
+    roundtrip_spec: RoundtripSpec
+
+    def normalize_roundtrip_result(
+        self,
+        result: JSONData,
+    ) -> JSONData:
+        """Normalize actual read results before assertions."""
+        return result
+
+    def normalize_roundtrip_expected(
+        self,
+        expected: JSONData,
+    ) -> JSONData:
+        """Normalize expected roundtrip payloads before assertions."""
+        return expected
+
+    def test_roundtrip_unit(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write/read roundtrip behavior for one handler module."""
+        spec = self.roundtrip_spec
+        path = self.format_path(tmp_path, stem=spec.stem)
+
+        written = self.module_handler.write(
+            path,
+            spec.payload,
+            options=spec.write_options,
+        )
+        expected_written = spec.expected_written_count
+        if expected_written is None:
+            expected_written = count_records(spec.payload)
+        assert written == expected_written
+
+        result = self.module_handler.read(path, options=spec.read_options)
+        assert self.normalize_roundtrip_result(result) == (
+            self.normalize_roundtrip_expected(spec.expected)
+        )
 
 
 class EmptyWriteReturnsZeroMixin(PathMixin):
