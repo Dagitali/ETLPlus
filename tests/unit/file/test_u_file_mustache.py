@@ -11,16 +11,21 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import mustache as mod
-from tests.unit.file.conftest import PathMixin
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestMustache(PathMixin):
+class TestMustache(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.mustache`."""
 
     module = mod
     format_name = 'mustache'
+    roundtrip_spec = RoundtripSpec(
+        payload={'template': 'Hi {{name}}'},
+        expected=[{'template': 'Hi {{name}}'}],
+    )
 
     def test_read_returns_template_payload(
         self,
@@ -33,19 +38,6 @@ class TestMustache(PathMixin):
         assert self.module_handler.read(path) == [
             {'template': 'Hello {{name}}'},
         ]
-
-    def test_write_and_read_round_trip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test template payload write/read round trip."""
-        path = self.format_path(tmp_path)
-        payload = {'template': 'Hi {{name}}'}
-
-        written = self.module_handler.write(path, payload)
-
-        assert written == 1
-        assert self.module_handler.read(path) == [payload]
 
     def test_write_requires_single_template_object(
         self,

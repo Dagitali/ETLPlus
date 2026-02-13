@@ -8,13 +8,22 @@ from __future__ import annotations
 
 from etlplus.file import csv as mod
 from tests.unit.file.conftest import DelimitedModuleContract
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestCsv(DelimitedModuleContract):
+class TestCsv(
+    DelimitedModuleContract,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.csv`."""
 
     module = mod
     format_name = 'csv'
     delimiter = ','
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'id': 1, 'name': 'Ada'}],
+        expected=[{'id': '1', 'name': 'Ada'}],
+    )

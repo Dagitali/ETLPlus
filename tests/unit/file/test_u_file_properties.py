@@ -13,6 +13,8 @@ from typing import cast
 import pytest
 
 from etlplus.file import properties as mod
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 from tests.unit.file.conftest import SemiStructuredReadModuleContract
 from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
@@ -20,6 +22,7 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 
 class TestProperties(
+    RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
 ):
@@ -43,6 +46,10 @@ class TestProperties(
         'spaced': 'value',
     }
     dict_payload = {'b': 2, 'a': 1}
+    roundtrip_spec = RoundtripSpec(
+        payload={'b': 2, 'a': 1},
+        expected={'a': '1', 'b': '2'},
+    )
 
     def assert_write_contract_result(
         self,
