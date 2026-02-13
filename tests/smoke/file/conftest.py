@@ -128,10 +128,7 @@ def run_file_smoke(
         result = handler.read(path)
         assert result
     except OSError as exc:
-        if (
-            module.__name__.endswith('.orc')
-            and 'sysctlbyname' in str(exc)
-        ):
+        if module.__name__.endswith('.orc') and 'sysctlbyname' in str(exc):
             pytest.skip('ORC read failed due to sysctl limitations')
         raise
     except ImportError as exc:
