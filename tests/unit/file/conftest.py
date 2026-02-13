@@ -276,6 +276,13 @@ class RoundtripUnitModuleContract(PathMixin):
     module: ModuleType
     roundtrip_spec: RoundtripSpec
 
+    def setup_roundtrip_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,  # noqa: ARG002
+    ) -> None:
+        """Install optional dependencies required by a roundtrip case."""
+        return None
+
     def normalize_roundtrip_result(
         self,
         result: JSONData,
@@ -293,9 +300,11 @@ class RoundtripUnitModuleContract(PathMixin):
     def test_roundtrip_unit(
         self,
         tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Test write/read roundtrip behavior for one handler module."""
         spec = self.roundtrip_spec
+        self.setup_roundtrip_dependencies(optional_module_stub)
         path = self.format_path(tmp_path, stem=spec.stem)
 
         written = self.module_handler.write(

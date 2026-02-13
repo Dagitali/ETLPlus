@@ -81,6 +81,52 @@ class PipelineConfigFactory(Protocol):
     ) -> PipelineConfig: ...
 
 
+class SmokeRoundtripModuleContract:
+    """Reusable write/read smoke contract for file-format modules."""
+
+    module: FileModule
+    file_name: str
+    payload: object | None = None
+    use_sample_record: bool = False
+    write_kwargs: dict[str, object] | None = None
+    expect_write_error: type[Exception] | None = None
+    error_match: str | None = None
+
+    def build_payload(
+        self,
+        *,
+        sample_record: dict[str, Any],
+        sample_records: list[dict[str, Any]],
+    ) -> object:
+        """Return the roundtrip payload for one smoke test module."""
+        if self.payload is not None:
+            return self.payload
+        if self.use_sample_record:
+            return sample_record
+        return sample_records
+
+    def test_roundtrip_smoke(
+        self,
+        tmp_path: Path,
+        sample_record: dict[str, Any],
+        sample_records: list[dict[str, Any]],
+    ) -> None:
+        """Test that read/write can be invoked with minimal payloads."""
+        path = tmp_path / self.file_name
+        payload = self.build_payload(
+            sample_record=sample_record,
+            sample_records=sample_records,
+        )
+        run_file_smoke(
+            self.module,
+            path,
+            payload,
+            write_kwargs=self.write_kwargs,
+            expect_write_error=self.expect_write_error,
+            error_match=self.error_match,
+        )
+
+
 type CaptureHandler = Callable[[object, str], dict[str, object]]
 
 
@@ -294,6 +340,8 @@ def run_file_smoke(
 
     Raises
     ------
+    OSError
+        If the file operation fails due to OS-level issues (e.g., permissions).
     TypeError
         If the payload is of an unexpected type for the file format.
     """
@@ -323,5 +371,12 @@ def run_file_smoke(
         assert written
         result = handler.read(path)
         assert result
+    except OSError as exc:
+        if (
+            module.__name__.endswith('.orc')
+            and 'sysctlbyname' in str(exc)
+        ):
+            pytest.skip('ORC read failed due to sysctl limitations')
+        raise
     except ImportError as exc:
         pytest.skip(str(exc))
