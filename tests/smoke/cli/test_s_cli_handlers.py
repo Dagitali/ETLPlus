@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from etlplus.cli import handlers
-from tests.smoke.conftest import CaptureHandler
+from tests.conftest import CaptureHandler
 
 # SECTION: TESTS ============================================================ #
 
