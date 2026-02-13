@@ -89,7 +89,7 @@ repos:
       - id: mixed-line-ending
       - id: name-tests-test
         args: [--pytest-test-first]
-        exclude: ^tests/.*/pytest_.*\.py$
+        exclude: ^tests/(?:.*/)?pytest_.*\.py$
       - id: no-commit-to-branch
       # - id: pretty-format-json
       #   args: [--autofix, --no-sort-keys]
