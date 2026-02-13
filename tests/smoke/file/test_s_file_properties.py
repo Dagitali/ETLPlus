@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from etlplus.file import properties as mod
-from tests.smoke.conftest import SmokeRoundtripModuleContract
+from tests.smoke.file.conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 

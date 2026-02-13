@@ -5,7 +5,7 @@ Smoke tests for etlplus.file.feather.
 from __future__ import annotations
 
 from etlplus.file import feather as mod
-from tests.smoke.conftest import SmokeRoundtripModuleContract
+from tests.smoke.file.conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
