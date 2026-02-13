@@ -23,12 +23,14 @@ from etlplus.file.base import ColumnarFileHandlerABC
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
+from etlplus.file.base import LogEventFileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SemiStructuredTextFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import SpreadsheetFileHandlerABC
+from etlplus.file.base import TemplateFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 
@@ -85,6 +87,16 @@ _ABC_GROUPS: tuple[tuple[type[object], tuple[FileFormat, ...]], ...] = (
     ),
     (TextFixedWidthFileHandlerABC, (FileFormat.FWF, FileFormat.TXT)),
     (ArchiveWrapperFileHandlerABC, (FileFormat.GZ, FileFormat.ZIP)),
+    (LogEventFileHandlerABC, (FileFormat.LOG,)),
+    (
+        TemplateFileHandlerABC,
+        (
+            FileFormat.HBS,
+            FileFormat.JINJA2,
+            FileFormat.MUSTACHE,
+            FileFormat.VM,
+        ),
+    ),
     (
         ScientificDatasetFileHandlerABC,
         (
@@ -121,15 +133,10 @@ _ABC_GROUPS: tuple[tuple[type[object], tuple[FileFormat, ...]], ...] = (
             FileFormat.ACCDB,
             FileFormat.CFG,
             FileFormat.CONF,
-            FileFormat.HBS,
             FileFormat.ION,
-            FileFormat.JINJA2,
-            FileFormat.LOG,
             FileFormat.MDB,
-            FileFormat.MUSTACHE,
             FileFormat.NUMBERS,
             FileFormat.PBF,
-            FileFormat.VM,
             FileFormat.WKS,
         ),
     ),
@@ -150,15 +157,10 @@ _PLACEHOLDER_SPEC_CASES: tuple[tuple[FileFormat, str], ...] = (
     (FileFormat.ACCDB, 'etlplus.file.accdb:AccdbFile'),
     (FileFormat.CFG, 'etlplus.file.cfg:CfgFile'),
     (FileFormat.CONF, 'etlplus.file.conf:ConfFile'),
-    (FileFormat.HBS, 'etlplus.file.hbs:HbsFile'),
     (FileFormat.ION, 'etlplus.file.ion:IonFile'),
-    (FileFormat.JINJA2, 'etlplus.file.jinja2:Jinja2File'),
-    (FileFormat.LOG, 'etlplus.file.log:LogFile'),
     (FileFormat.MDB, 'etlplus.file.mdb:MdbFile'),
-    (FileFormat.MUSTACHE, 'etlplus.file.mustache:MustacheFile'),
     (FileFormat.NUMBERS, 'etlplus.file.numbers:NumbersFile'),
     (FileFormat.PBF, 'etlplus.file.pbf:PbfFile'),
-    (FileFormat.VM, 'etlplus.file.vm:VmFile'),
     (FileFormat.WKS, 'etlplus.file.wks:WksFile'),
 )
 
