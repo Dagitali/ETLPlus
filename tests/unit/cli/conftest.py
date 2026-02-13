@@ -41,7 +41,6 @@ pytestmark = pytest.mark.unit
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
 
-type CaptureHandler = Callable[[object, str], dict[str, object]]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
 type InvokeCli = Callable[..., Result]
 type StubCommand = Callable[[Callable[..., object]], None]
@@ -168,37 +167,6 @@ class DummyCfg:
 
 
 # SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='capture_handler')
-def capture_handler_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-) -> CaptureHandler:
-    """
-    Patch a handler function and capture the kwargs it receives.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    CaptureHandler
-        Callable that records handler keyword arguments.
-    """
-
-    def _capture(module: object, attr: str) -> dict[str, object]:
-        calls: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(module, attr, _stub)
-        return calls
-
-    return _capture
 
 
 @pytest.fixture(name='capture_io')
