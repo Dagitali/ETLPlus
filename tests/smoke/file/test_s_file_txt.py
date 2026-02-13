@@ -1,42 +1,27 @@
-"""
-:mod:`tests.smoke.file.test_s_file_txt` module.
-
-Smoke tests for :mod:`etlplus.file.txt`.
-"""
+"""Smoke tests for etlplus.file.txt."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import Any
 
 from etlplus.file import txt as mod
-from tests.smoke.conftest import run_file_smoke
+from tests.smoke.conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestTxt:
-    """
-    Smoke tests for :mod:`etlplus.file.txt`.
-    """
+class TestTxt(SmokeRoundtripModuleContract):
+    """Smoke tests for etlplus.file.txt."""
 
-    def test_read_write(
+    module = mod
+    file_name = 'data.txt'
+
+    def build_payload(
         self,
-        tmp_path: Path,
-        sample_record: dict[str, object],
-    ) -> None:
-        """
-        Test that :func:`read`/:func:`write` can be invoked with minimal
-        payloads.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest temporary directory.
-        sample_record : dict[str, object]
-            Sample record payload.
-        """
-        path = tmp_path / 'data.txt'
-        payload = {
-            'text': '\n'.join(str(value) for value in sample_record.values()),
-        }
-        run_file_smoke(mod, path, payload)
+        *,
+        sample_record: dict[str, Any],
+        sample_records: list[dict[str, Any]],  # noqa: ARG002
+    ) -> object:
+        """Build a text payload from sample record values."""
+        text = '\n'.join(str(value) for value in sample_record.values())
+        return {'text': text}

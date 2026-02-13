@@ -1,40 +1,17 @@
 """
-:mod:`tests.smoke.file.test_s_file_zip` module.
-
-Smoke tests for :mod:`etlplus.file.zip`.
+Smoke tests for etlplus.file.zip.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from etlplus.file import zip as mod
-from tests.smoke.conftest import run_file_smoke
+from tests.smoke.conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestZip:
-    """
-    Smoke tests for :mod:`etlplus.file.zip`.
-    """
+class TestZip(SmokeRoundtripModuleContract):
+    """Smoke tests for etlplus.file.zip."""
 
-    def test_read_write(
-        self,
-        tmp_path: Path,
-        sample_records: list[dict[str, object]],
-    ) -> None:
-        """
-        Test that :func:`read`/:func:`write` can be invoked with minimal
-        payloads.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest temporary directory.
-        sample_records : list[dict[str, object]]
-            Sample record payload.
-        """
-        path = tmp_path / 'data.json.zip'
-        payload = sample_records
-        run_file_smoke(mod, path, payload)
+    module = mod
+    file_name = 'data.json.zip'
