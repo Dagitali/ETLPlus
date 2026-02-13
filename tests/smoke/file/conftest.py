@@ -109,6 +109,11 @@ def run_file_smoke(
         Expected exception type for write failures.
     error_match : str | None, optional
         Regex message to assert when ``expect_write_error`` is provided.
+
+    Raises
+    ------
+    OSError
+        If the smoke test encounters unexpected file system errors.
     """
     write_kwargs = normalize_write_kwargs(write_kwargs)
     handler = resolve_module_handler(cast(ModuleType, module))
