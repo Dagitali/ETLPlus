@@ -120,7 +120,7 @@ class TestJinja2(PathMixin):
         with pytest.raises(TypeError, match='"template" string'):
             self.module_handler.write(path, [{'name': 'missing'}])
 
-    def test_write_and_read_round_trip(
+    def test_write_and_read_roundtrip(
         self,
         tmp_path: Path,
     ) -> None:

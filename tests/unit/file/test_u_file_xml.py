@@ -22,7 +22,7 @@ class TestXml(PathMixin):
     format_name = 'xml'
     root_tag = 'rows'
 
-    def test_write_uses_root_tag_and_read_round_trip(
+    def test_write_uses_root_tag_and_read_roundtrip(
         self,
         tmp_path: Path,
     ) -> None:

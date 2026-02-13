@@ -41,7 +41,7 @@ class TestVm(PathMixin):
 
         assert result == 'Hello Ada from Paris.'
 
-    def test_write_and_read_round_trip(
+    def test_write_and_read_roundtrip(
         self,
         tmp_path: Path,
     ) -> None:

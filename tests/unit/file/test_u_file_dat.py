@@ -299,11 +299,11 @@ class TestDat:
 
         assert mod.DatFile().read(path) == [{'a': '1', 'b': '2'}]
 
-    def test_write_round_trip_returns_written_count(
+    def test_write_roundtrip_returns_written_count(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test write/read round-trip preserving the written row count."""
+        """Test write/read round trip, preserving the written row count."""
         sample_records: list[dict[str, object]] = [
             {'id': 1, 'name': 'Alice'},
             {'id': 2, 'name': 'Bob'},

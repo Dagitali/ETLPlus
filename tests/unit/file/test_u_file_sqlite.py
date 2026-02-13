@@ -69,7 +69,7 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
 
         assert result == [{'id': 2}]
 
-    def test_write_round_trip(
+    def test_write_roundtrip(
         self,
         tmp_path: Path,
     ) -> None:
