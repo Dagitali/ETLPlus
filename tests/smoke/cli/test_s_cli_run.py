@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
-    from tests.smoke.conftest import PipelineConfigFactory
+    from tests.smoke.cli.conftest import PipelineConfigFactory
 
 # SECTION: TESTS ============================================================ #
 
