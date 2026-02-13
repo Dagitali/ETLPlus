@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import itertools
 import json
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
@@ -127,41 +126,7 @@ class SmokeRoundtripModuleContract:
         )
 
 
-type CaptureHandler = Callable[[object, str], dict[str, object]]
-
-
 # SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='capture_handler')
-def capture_handler_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-) -> CaptureHandler:
-    """
-    Patch a handler function and capture the kwargs it receives.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    CaptureHandler
-        Callable that records handler keyword arguments.
-    """
-
-    def _capture(module: object, attr: str) -> dict[str, object]:
-        calls: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            calls.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(module, attr, _stub)
-        return calls
-
-    return _capture
 
 
 @pytest.fixture(name='pipeline_config_factory')
