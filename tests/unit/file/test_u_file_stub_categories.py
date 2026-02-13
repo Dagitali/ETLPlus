@@ -166,10 +166,7 @@ class TestStubCategoryHandlers:
             source_path,
             Path('ignored.accdb'),
         ]
-        assert [
-            (path, data)
-            for path, data, _ in write_calls
-        ] == [
+        assert [(path, data) for path, data, _ in write_calls] == [
             (source_path, RECORD_LIST),
             (Path('ignored.accdb'), RECORD_LIST),
         ]
@@ -189,10 +186,9 @@ class TestStubCategoryHandlers:
 
         assert handler.parse_line('hello') == {'event': 'ok'}
         assert handler.serialize_event({'event': 'ok'}) == ''
-        assert [
-            (path, data)
-            for path, data, _ in write_calls
-        ] == [(Path('ignored.log'), EVENT_DICT)]
+        assert [(path, data) for path, data, _ in write_calls] == [
+            (Path('ignored.log'), EVENT_DICT),
+        ]
 
     def test_semistructured_stub_methods_delegate_to_stub_io(
         self,
@@ -215,10 +211,7 @@ class TestStubCategoryHandlers:
             source_path,
             Path('ignored.conf'),
         ]
-        assert [
-            (path, data)
-            for path, data, _ in write_calls
-        ] == [
+        assert [(path, data) for path, data, _ in write_calls] == [
             (source_path, OK_DICT),
             (Path('ignored.conf'), OK_DICT),
         ]
