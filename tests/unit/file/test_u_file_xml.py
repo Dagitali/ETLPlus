@@ -10,19 +10,34 @@ from pathlib import Path
 
 from etlplus.file import xml as mod
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import PathMixin
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestXml(PathMixin):
+class TestXml(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.xml`."""
 
     module = mod
     format_name = 'xml'
     root_tag = 'rows'
+    roundtrip_spec = RoundtripSpec(
+        payload={
+            'root': {
+                '@id': '42',
+                'item': {'@lang': 'en', 'text': 'Hello'},
+            },
+        },
+        expected={
+            'root': {
+                '@id': '42',
+                'item': {'@lang': 'en', 'text': 'Hello'},
+            },
+        },
+    )
 
-    def test_write_uses_root_tag_and_read_round_trip(
+    def test_write_uses_root_tag_and_read_roundtrip(
         self,
         tmp_path: Path,
     ) -> None:

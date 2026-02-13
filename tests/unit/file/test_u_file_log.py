@@ -14,16 +14,21 @@ import pytest
 
 from etlplus.file import log as mod
 from etlplus.types import JSONData
-from tests.unit.file.conftest import PathMixin
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestLog(PathMixin):
+class TestLog(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.log`."""
 
     module = mod
     format_name = 'log'
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'id': 1}, {'id': 2}],
+        expected=[{'id': 1}, {'id': 2}],
+    )
 
     def test_parse_line_falls_back_for_non_object_json(self) -> None:
         """Test line parser falling back for non-object JSON values."""

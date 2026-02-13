@@ -15,12 +15,17 @@ import pytest
 from etlplus.file import txt as mod
 from etlplus.types import JSONData
 from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 from tests.unit.file.conftest import TextRowModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestTxt(TextRowModuleContract):
+class TestTxt(
+    TextRowModuleContract,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.txt`."""
 
     # pylint: disable=unused-variable
@@ -29,6 +34,10 @@ class TestTxt(TextRowModuleContract):
     format_name = 'txt'
     write_payload = [{'text': 'alpha'}, {'text': 'beta'}]
     expected_written_count = 2
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'text': 'alpha'}, {'text': 'beta'}],
+        expected=[{'text': 'alpha'}, {'text': 'beta'}],
+    )
 
     def assert_write_contract_result(
         self,

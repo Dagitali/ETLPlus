@@ -14,6 +14,8 @@ from typing import cast
 import pytest
 
 from etlplus.file import ndjson as mod
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 from tests.unit.file.conftest import SemiStructuredReadModuleContract
 from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
@@ -21,6 +23,7 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 
 class TestNdjson(
+    RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
 ):
@@ -31,6 +34,10 @@ class TestNdjson(
     sample_read_text = '{"id": 1}\n\n   \n{"id": 2}\n'
     expected_read_payload = [{'id': 1}, {'id': 2}]
     dict_payload = {'id': 1}
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'id': 1}, {'id': 2}],
+        expected=[{'id': 1}, {'id': 2}],
+    )
 
     def assert_write_contract_result(
         self,

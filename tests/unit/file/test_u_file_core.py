@@ -475,11 +475,11 @@ class TestFile:
         file = File(path, cast(Any, raw_format))
         assert file.file_format is expected
 
-    def test_gz_round_trip_json(
+    def test_gz_roundtrip_json(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test JSON round-trip inside a gzip archive."""
+        """Test JSON round trip inside a gzip archive."""
         path = tmp_path / 'data.json.gz'
         payload = [{'name': 'Ada'}]
 
@@ -611,7 +611,7 @@ class TestFile:
             ) in FORMAT_CASES
         ],
     )
-    def test_round_trip_by_format(
+    def test_roundtrip_by_format(
         self,
         tmp_path: Path,
         file_format: FileFormat,
@@ -742,7 +742,7 @@ class TestFile:
         assert text.startswith('<?xml')
         assert '<records>' in text
 
-    def test_xml_round_trip_with_attributes(
+    def test_xml_roundtrip_with_attributes(
         self,
         tmp_path: Path,
     ) -> None:
