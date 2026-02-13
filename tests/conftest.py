@@ -26,6 +26,11 @@ from requests import PreparedRequest  # type: ignore[import]
 
 from etlplus.cli import main
 
+pytest_plugins = [
+    'tests.unit.file.pytest_file_stubs',
+    'tests.unit.pytest_unit_api',
+]
+
 # SECTION: TYPES ============================================================ #
 
 
