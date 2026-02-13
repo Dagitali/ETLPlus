@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import ini as mod
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 from tests.unit.file.conftest import SemiStructuredReadModuleContract
 from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
@@ -18,6 +20,7 @@ from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
 
 
 class TestIni(
+    RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
 ):
@@ -46,6 +49,16 @@ class TestIni(
         'DEFAULT': {'shared': 'base', 'timeout': 5},
         'alpha': {'value': 1},
     }
+    roundtrip_spec = RoundtripSpec(
+        payload={
+            'DEFAULT': {'shared': 'base', 'timeout': 5},
+            'alpha': {'value': 1},
+        },
+        expected={
+            'DEFAULT': {'shared': 'base', 'timeout': '5'},
+            'alpha': {'value': '1'},
+        },
+    )
 
     def assert_write_contract_result(
         self,

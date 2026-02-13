@@ -20,6 +20,8 @@ import pytest
 from etlplus.file import dat as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -169,8 +171,21 @@ class TestDatSniff:
         assert has_header is expected_header
 
 
-class TestDat:
+class TestDat(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.dat`."""
+
+    module = mod
+    format_name = 'dat'
+    roundtrip_spec = RoundtripSpec(
+        payload=[
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ],
+        expected=[
+            {'id': '1', 'name': 'Alice'},
+            {'id': '2', 'name': 'Bob'},
+        ],
+    )
 
     def test_read_accepts_custom_sniffer_via_read_options(
         self,
@@ -298,23 +313,6 @@ class TestDat:
         path = _write_fixture_file(tmp_path, filename, content)
 
         assert mod.DatFile().read(path) == [{'a': '1', 'b': '2'}]
-
-    def test_write_roundtrip_returns_written_count(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write/read round trip, preserving the written row count."""
-        sample_records: list[dict[str, object]] = [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ]
-        path = tmp_path / 'out.dat'
-
-        written = mod.DatFile().write(path, sample_records)
-        result = mod.DatFile().read(path)
-
-        assert written == len(sample_records)
-        assert len(result) == len(sample_records)
 
     def test_write_uses_delimiter_override_from_write_options(
         self,

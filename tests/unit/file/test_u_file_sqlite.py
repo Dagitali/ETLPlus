@@ -14,11 +14,16 @@ from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
 from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestSqlite(EmbeddedDatabaseModuleContract):
+class TestSqlite(
+    EmbeddedDatabaseModuleContract,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.sqlite`."""
 
     # pylint: disable=unused-variable
@@ -26,6 +31,10 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
     module = mod
     format_name = 'sqlite'
     multi_table_error_pattern = 'Multiple tables found in SQLite'
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
+        expected=[{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
+    )
 
     def build_empty_database_path(
         self,
@@ -68,19 +77,6 @@ class TestSqlite(EmbeddedDatabaseModuleContract):
         )
 
         assert result == [{'id': 2}]
-
-    def test_write_roundtrip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing and then reading returns the original data."""
-        path = self.format_path(tmp_path)
-        payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
-
-        written = mod.SqliteFile().write(path, payload)
-
-        assert written == 2
-        assert mod.SqliteFile().read(path) == payload
 
     def test_write_table_returns_zero_for_rows_without_columns(self) -> None:
         """Test write_table short-circuiting records with no columns."""

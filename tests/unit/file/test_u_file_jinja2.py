@@ -14,7 +14,8 @@ import pytest
 
 from etlplus.file import jinja2 as mod
 from etlplus.file.base import ReadOptions
-from tests.unit.file.conftest import PathMixin
+from tests.unit.file.conftest import RoundtripSpec
+from tests.unit.file.conftest import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 
@@ -47,11 +48,15 @@ class _Jinja2Stub:
         return stub
 
 
-class TestJinja2(PathMixin):
+class TestJinja2(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.jinja2`."""
 
     module = mod
     format_name = 'jinja2'
+    roundtrip_spec = RoundtripSpec(
+        payload={'template': 'Hello {{ name }}'},
+        expected=[{'template': 'Hello {{ name }}'}],
+    )
 
     def test_read_honors_encoding_options(
         self,
@@ -119,19 +124,6 @@ class TestJinja2(PathMixin):
 
         with pytest.raises(TypeError, match='"template" string'):
             self.module_handler.write(path, [{'name': 'missing'}])
-
-    def test_write_and_read_roundtrip(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test template payload write/read round trip."""
-        path = self.format_path(tmp_path)
-        payload = {'template': 'Hello {{ name }}'}
-
-        written = self.module_handler.write(path, payload)
-
-        assert written == 1
-        assert self.module_handler.read(path) == [payload]
 
     def test_write_returns_zero_for_empty_payload(
         self,
