@@ -1140,12 +1140,12 @@ class BinaryKeyedPayloadModuleContract(PathMixin):
         """Create a representative keyed payload dictionary."""
         return {self.payload_key: self.sample_payload_value}
 
-    def test_read_write_round_trip(
+    def test_read_write_roundtrip(
         self,
         tmp_path: Path,
         sample_payload: JSONDict,
     ) -> None:
-        """Test write/read round-trip preserving payload bytes."""
+        """Test write/read round trip, preserving payload bytes."""
         path = self.format_path(tmp_path)
 
         written = self.module_handler.write(path, sample_payload)
