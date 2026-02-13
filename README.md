@@ -209,8 +209,10 @@ Recognized file formats are listed in the tables below. Support for reading to o
 - Scientific/statistical: `dta`, `nc`, `rda`, `rds`, `sav`, `xpt`, `sas7bdat` (read-only), plus
   single-dataset scientific stubs `mat`, `sylk`, `zsav`
 - Archive wrappers: `gz`, `zip`
+- Log/event streams: `log`
+- Templates: `hbs`, `jinja2`, `mustache`, `vm`
 - Explicit module-owned stub handlers (via `stub.py` + `_stub_categories.py`): `stub`, `accdb`,
-  `cfg`, `conf`, `hbs`, `ion`, `jinja2`, `log`, `mdb`, `mustache`, `numbers`, `pbf`, `vm`, `wks`
+  `cfg`, `conf`, `ion`, `mdb`, `numbers`, `pbf`, `wks`
 
 #### Handler Matrix Guardrail
 
@@ -234,17 +236,17 @@ batch-by-batch maintenance notes and the same matrix in docs, see
 | `feather` | `FeatherFile` | `ColumnarFileHandlerABC` | `read/write` | `implemented` |
 | `fwf` | `FwfFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
 | `gz` | `GzFile` | `ArchiveWrapperFileHandlerABC` | `read/write` | `implemented` |
-| `hbs` | `HbsFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
+| `hbs` | `HbsFile` | `TemplateFileHandlerABC` | `read/write` | `implemented` |
 | `hdf5` | `Hdf5File` | `ScientificDatasetFileHandlerABC` | `read-only` | `implemented` |
 | `ini` | `IniFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `ion` | `IonFile` | `StubSemiStructuredTextFileHandlerABC` | `read/write` | `stub` |
-| `jinja2` | `Jinja2File` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
+| `jinja2` | `Jinja2File` | `TemplateFileHandlerABC` | `read/write` | `implemented` |
 | `json` | `JsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
-| `log` | `LogFile` | `StubLogEventFileHandlerABC` | `read/write` | `stub` |
+| `log` | `LogFile` | `LogEventFileHandlerABC` | `read/write` | `implemented` |
 | `mat` | `MatFile` | `StubSingleDatasetScientificFileHandlerABC` | `read/write` | `stub` |
 | `mdb` | `MdbFile` | `StubEmbeddedDatabaseFileHandlerABC` | `read/write` | `stub` |
 | `msgpack` | `MsgpackFile` | `BinarySerializationFileHandlerABC` | `read/write` | `implemented` |
-| `mustache` | `MustacheFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
+| `mustache` | `MustacheFile` | `TemplateFileHandlerABC` | `read/write` | `implemented` |
 | `nc` | `NcFile` | `SingleDatasetScientificFileHandlerABC` | `read/write` | `implemented` |
 | `ndjson` | `NdjsonFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `numbers` | `NumbersFile` | `StubSpreadsheetFileHandlerABC` | `read/write` | `stub` |
@@ -267,7 +269,7 @@ batch-by-batch maintenance notes and the same matrix in docs, see
 | `toml` | `TomlFile` | `SemiStructuredTextFileHandlerABC` | `read/write` | `implemented` |
 | `tsv` | `TsvFile` | `DelimitedTextFileHandlerABC` | `read/write` | `implemented` |
 | `txt` | `TxtFile` | `TextFixedWidthFileHandlerABC` | `read/write` | `implemented` |
-| `vm` | `VmFile` | `StubTemplateFileHandlerABC` | `read/write` | `stub` |
+| `vm` | `VmFile` | `TemplateFileHandlerABC` | `read/write` | `implemented` |
 | `wks` | `WksFile` | `StubSpreadsheetFileHandlerABC` | `read/write` | `stub` |
 | `xls` | `XlsFile` | `ReadOnlySpreadsheetFileHandlerABC` | `read-only` | `implemented` |
 | `xlsm` | `XlsmFile` | `SpreadsheetFileHandlerABC` | `read/write` | `implemented` |
@@ -372,7 +374,7 @@ batch-by-batch maintenance notes and the same matrix in docs, see
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
-| `log` | N | N | Generic log file |
+| `log` | Y | Y | Generic log file |
 
 #### Data Archives
 
@@ -385,10 +387,10 @@ batch-by-batch maintenance notes and the same matrix in docs, see
 
 | Format | Read | Write | Description |
 | --- | --- | --- | --- |
-| `hbs` | N | N | Handlebars |
-| `jinja2` | N | N | Jinja2 |
-| `mustache` | N | N | Mustache |
-| `vm` | N | N | Apache Velocity |
+| `hbs` | Y | Y | Handlebars |
+| `jinja2` | Y | Y | Jinja2 |
+| `mustache` | Y | Y | Mustache |
+| `vm` | Y | Y | Apache Velocity |
 
 ## Usage
 
