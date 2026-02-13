@@ -99,6 +99,7 @@ class RoundtripSpec:
     write_options: WriteOptions | None = None
     expected_written_count: int | None = None
 
+
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
 
 
