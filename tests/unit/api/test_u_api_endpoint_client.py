@@ -32,7 +32,8 @@ from etlplus.api import PaginationType
 from etlplus.api import RequestOptions
 from etlplus.api import RetryPolicyDict
 from etlplus.api import errors as api_errors
-from tests.unit.api.test_u_api_mocks import MockSession
+
+from .test_u_api_mocks import MockSession
 
 # SECTION: HELPERS ========================================================== #
 
