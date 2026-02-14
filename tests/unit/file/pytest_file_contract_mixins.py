@@ -34,8 +34,8 @@ from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
 
-# Shared callable used by dependency-stubbing fixtures/contracts.
-type OptionalModuleInstaller = Callable[[dict[str, object]], None]
+# SECTION: EXPORTS ========================================================== #
+
 
 __all__ = [
     'PathMixin',
@@ -57,6 +57,16 @@ __all__ = [
     'SemiStructuredCategoryContractBase',
     'OptionalModuleInstaller',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+# Shared callable used by dependency-stubbing fixtures/contracts.
+type OptionalModuleInstaller = Callable[[dict[str, object]], None]
+
+
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(frozen=True, slots=True)

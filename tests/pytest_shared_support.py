@@ -15,6 +15,8 @@ from typing import Protocol
 
 from requests import PreparedRequest  # type: ignore[import]
 
+# SECTION: PROTOCOLS ======================================================== #
+
 
 class CliInvoke(Protocol):
     """Protocol describing the :func:`cli_invoke` fixture."""

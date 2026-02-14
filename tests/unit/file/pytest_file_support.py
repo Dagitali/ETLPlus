@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 from etlplus.file import FileFormat
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def make_import_error_reader_module(

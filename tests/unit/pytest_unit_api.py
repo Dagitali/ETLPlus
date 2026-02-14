@@ -22,7 +22,7 @@ from etlplus.api import PagePaginationConfigDict
 
 from .api.test_u_api_mocks import MockSession
 
-# SECTION: TYPES ============================================================ #
+# SECTION: TYPED DICTS ====================================================== #
 
 
 class _CursorKwDict(TypedDict, total=False):
@@ -45,7 +45,7 @@ class _PageKwDict(TypedDict, total=False):
     max_records: int
 
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _freeze(
@@ -241,6 +241,7 @@ def extract_stub_factory() -> Callable[..., Any]:
         return_value: Any | None = None,
     ) -> Any:
         # pylint: disable=protected-access
+
         import contextlib
 
         import etlplus.api.request_manager as rm_module

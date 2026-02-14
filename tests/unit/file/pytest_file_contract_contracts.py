@@ -45,6 +45,9 @@ from .pytest_file_support import CoreDispatchFileStub
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 
+# SECTION: EXPORTS ========================================================== #
+
+
 __all__ = [
     'ArchiveWrapperCoreDispatchModuleContract',
     'BinaryCodecModuleContract',
@@ -65,7 +68,8 @@ __all__ = [
     'WritableSpreadsheetModuleContract',
 ]
 
-# SECTION: CLASSES (CONTRACTS) ============================================== #
+
+# SECTION: CLASSES ========================================================== #
 
 
 class ArchiveWrapperCoreDispatchModuleContract(PathMixin):

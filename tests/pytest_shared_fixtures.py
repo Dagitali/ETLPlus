@@ -25,6 +25,8 @@ from .pytest_shared_support import JsonOutputParser
 from .pytest_shared_support import coerce_cli_args
 from .pytest_shared_support import parse_json
 
+# SECTION: FIXTURES ========================================================= #
+
 
 @pytest.fixture(name='base_url')
 def base_url_fixture() -> str:

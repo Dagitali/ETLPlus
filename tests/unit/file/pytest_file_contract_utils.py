@@ -25,6 +25,17 @@ from ...pytest_file_common import resolve_module_handler
 type Operation = Literal['read', 'write']
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_unexpected_dependency_call(
+    *args: object,
+    **kwargs: object,
+) -> object:  # noqa: ARG001
+    """Raise when a dependency resolver is called unexpectedly in tests."""
+    raise AssertionError('dependency resolver should not be called')
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -140,11 +151,3 @@ def patch_dependency_resolver_value(
         return value
 
     monkeypatch.setattr(module, resolver_name, _return_value)
-
-
-def _raise_unexpected_dependency_call(
-    *args: object,
-    **kwargs: object,
-) -> object:  # noqa: ARG001
-    """Raise when a dependency resolver is called unexpectedly in tests."""
-    raise AssertionError('dependency resolver should not be called')

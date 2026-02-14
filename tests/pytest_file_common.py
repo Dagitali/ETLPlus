@@ -11,6 +11,8 @@ from typing import Any
 
 from etlplus.file.base import WriteOptions
 
+# SECTION: FUNCTIONS ======================================================== #
+
 
 def resolve_module_handler(
     module: ModuleType,
