@@ -7,7 +7,9 @@ Unit tests for :mod:`etlplus.file.orc`.
 from __future__ import annotations
 
 from etlplus.file import orc as mod
-from tests.unit.file.conftest import PyarrowGatedPandasColumnarModuleContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    PyarrowGatedPandasColumnarModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

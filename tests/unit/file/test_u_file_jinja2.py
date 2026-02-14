@@ -14,8 +14,10 @@ import pytest
 
 from etlplus.file import jinja2 as mod
 from etlplus.file.base import ReadOptions
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
+from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
+from tests.unit.file.pytest_file_contract_mixins import (
+    RoundtripUnitModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

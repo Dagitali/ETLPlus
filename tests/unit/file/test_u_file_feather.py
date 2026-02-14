@@ -7,7 +7,9 @@ Unit tests for :mod:`etlplus.file.feather`.
 from __future__ import annotations
 
 from etlplus.file import feather as mod
-from tests.unit.file.conftest import PyarrowGatedPandasColumnarModuleContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    PyarrowGatedPandasColumnarModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

@@ -13,12 +13,14 @@ import pytest
 from etlplus.file import xpt as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import DictRecordsFrameStub
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import PandasReadSasStub
-from tests.unit.file.conftest import PyreadstatTabularStub
-from tests.unit.file.conftest import RDataPandasStub
-from tests.unit.file.conftest import SingleDatasetWritableContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    SingleDatasetWritableContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
+from tests.unit.file.pytest_file_support import DictRecordsFrameStub
+from tests.unit.file.pytest_file_support import PandasReadSasStub
+from tests.unit.file.pytest_file_support import PyreadstatTabularStub
+from tests.unit.file.pytest_file_support import RDataPandasStub
 
 # SECTION: TESTS ============================================================ #
 

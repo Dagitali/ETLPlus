@@ -18,8 +18,6 @@ from tests.pytest_shared_support import parse_json
 
 pytest_plugins = [
     'tests.pytest_shared_fixtures',
-    'tests.unit.file.pytest_file_stubs',
-    'tests.unit.pytest_unit_api',
 ]
 
 __all__ = [

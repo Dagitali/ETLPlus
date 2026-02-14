@@ -7,7 +7,7 @@ Unit tests for :mod:`etlplus.file.conf`.
 from __future__ import annotations
 
 from etlplus.file import conf as mod
-from tests.unit.file.conftest import StubModuleContract
+from tests.unit.file.pytest_file_contract_contracts import StubModuleContract
 
 # SECTION: TESTS ============================================================ #
 

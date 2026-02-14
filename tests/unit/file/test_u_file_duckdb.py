@@ -15,8 +15,10 @@ import pytest
 from etlplus.file import duckdb as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import EmbeddedDatabaseModuleContract
-from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.pytest_file_contract_contracts import (
+    EmbeddedDatabaseModuleContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
 
 if TYPE_CHECKING:
     import duckdb

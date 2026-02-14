@@ -12,10 +12,16 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import json as mod
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
-from tests.unit.file.conftest import SemiStructuredReadModuleContract
-from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    SemiStructuredReadModuleContract,
+)
+from tests.unit.file.pytest_file_contract_contracts import (
+    SemiStructuredWriteDictModuleContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
+from tests.unit.file.pytest_file_contract_mixins import (
+    RoundtripUnitModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

@@ -13,8 +13,10 @@ from typing import cast
 import pytest
 
 from etlplus.file import cbor as mod
-from tests.unit.file.conftest import BinaryCodecModuleContract
-from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.pytest_file_contract_contracts import (
+    BinaryCodecModuleContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 

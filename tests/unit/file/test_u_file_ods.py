@@ -7,7 +7,9 @@ Unit tests for :mod:`etlplus.file.ods`.
 from __future__ import annotations
 
 from etlplus.file import ods as mod
-from tests.unit.file.conftest import WritableSpreadsheetModuleContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    WritableSpreadsheetModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

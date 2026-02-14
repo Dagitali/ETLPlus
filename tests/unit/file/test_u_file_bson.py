@@ -11,8 +11,10 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import bson as mod
-from tests.unit.file.conftest import BinaryDependencyModuleContract
-from tests.unit.file.conftest import OptionalModuleInstaller
+from tests.unit.file.pytest_file_contract_contracts import (
+    BinaryDependencyModuleContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 

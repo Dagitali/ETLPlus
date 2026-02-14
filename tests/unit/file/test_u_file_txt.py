@@ -14,10 +14,14 @@ import pytest
 
 from etlplus.file import txt as mod
 from etlplus.types import JSONData
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
-from tests.unit.file.conftest import TextRowModuleContract
+from tests.unit.file.pytest_file_contract_contracts import (
+    TextRowModuleContract,
+)
+from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
+from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
+from tests.unit.file.pytest_file_contract_mixins import (
+    RoundtripUnitModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

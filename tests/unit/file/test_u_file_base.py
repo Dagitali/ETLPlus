@@ -51,7 +51,7 @@ from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
 from etlplus.types import JSONData
 from etlplus.types import JSONList
-from tests.unit.file.conftest import (
+from tests.unit.file.pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,
 )
 
