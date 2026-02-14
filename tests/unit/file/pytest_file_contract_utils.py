@@ -16,7 +16,8 @@ import pytest
 
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.types import JSONData
-from tests.pytest_file_common import resolve_module_handler
+
+from ...pytest_file_common import resolve_module_handler
 
 # SECTION: TYPE ALIASES ===================================================== #
 

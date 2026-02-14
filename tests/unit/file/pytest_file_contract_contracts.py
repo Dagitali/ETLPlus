@@ -16,57 +16,34 @@ import pytest
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
-from tests.unit.file.pytest_file_contract_mixins import (
-    DelimitedCategoryContractBase,
-)
-from tests.unit.file.pytest_file_contract_mixins import DelimitedReadWriteMixin
-from tests.unit.file.pytest_file_contract_mixins import DelimitedTextRowsMixin
-from tests.unit.file.pytest_file_contract_mixins import (
-    EmptyWriteReturnsZeroMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
-from tests.unit.file.pytest_file_contract_mixins import PathMixin
-from tests.unit.file.pytest_file_contract_mixins import ReadOnlyWriteGuardMixin
-from tests.unit.file.pytest_file_contract_mixins import (
-    ScientificCategoryContractBase,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    ScientificReadOnlyUnknownDatasetMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    ScientificSingleDatasetHandlerMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    SemiStructuredCategoryContractBase,
-)
-from tests.unit.file.pytest_file_contract_mixins import SemiStructuredReadMixin
-from tests.unit.file.pytest_file_contract_mixins import (
-    SemiStructuredWriteDictMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    SpreadsheetCategoryContractBase,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    SpreadsheetReadImportErrorMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    SpreadsheetSheetNameRoutingMixin,
-)
-from tests.unit.file.pytest_file_contract_mixins import (
-    SpreadsheetWritableMixin,
-)
-from tests.unit.file.pytest_file_contract_utils import Operation
-from tests.unit.file.pytest_file_contract_utils import (
-    assert_stub_module_operation_raises,
-)
-from tests.unit.file.pytest_file_contract_utils import (
+
+from .pytest_file_contract_mixins import DelimitedCategoryContractBase
+from .pytest_file_contract_mixins import DelimitedReadWriteMixin
+from .pytest_file_contract_mixins import DelimitedTextRowsMixin
+from .pytest_file_contract_mixins import EmptyWriteReturnsZeroMixin
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import PathMixin
+from .pytest_file_contract_mixins import ReadOnlyWriteGuardMixin
+from .pytest_file_contract_mixins import ScientificCategoryContractBase
+from .pytest_file_contract_mixins import ScientificReadOnlyUnknownDatasetMixin
+from .pytest_file_contract_mixins import ScientificSingleDatasetHandlerMixin
+from .pytest_file_contract_mixins import SemiStructuredCategoryContractBase
+from .pytest_file_contract_mixins import SemiStructuredReadMixin
+from .pytest_file_contract_mixins import SemiStructuredWriteDictMixin
+from .pytest_file_contract_mixins import SpreadsheetCategoryContractBase
+from .pytest_file_contract_mixins import SpreadsheetReadImportErrorMixin
+from .pytest_file_contract_mixins import SpreadsheetSheetNameRoutingMixin
+from .pytest_file_contract_mixins import SpreadsheetWritableMixin
+from .pytest_file_contract_utils import Operation
+from .pytest_file_contract_utils import assert_stub_module_operation_raises
+from .pytest_file_contract_utils import (
     call_module_operation as _call_module_operation,
 )
-from tests.unit.file.pytest_file_contract_utils import make_payload
-from tests.unit.file.pytest_file_support import BinaryCodecStub
-from tests.unit.file.pytest_file_support import CoreDispatchFileStub
-from tests.unit.file.pytest_file_support import PandasModuleStub
-from tests.unit.file.pytest_file_support import RecordsFrameStub
+from .pytest_file_contract_utils import make_payload
+from .pytest_file_support import BinaryCodecStub
+from .pytest_file_support import CoreDispatchFileStub
+from .pytest_file_support import PandasModuleStub
+from .pytest_file_support import RecordsFrameStub
 
 __all__ = [
     'ArchiveWrapperCoreDispatchModuleContract',

@@ -22,20 +22,17 @@ from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 from etlplus.utils import count_records
-from tests.unit.file.pytest_file_contract_utils import (
+
+from .pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,
 )
-from tests.unit.file.pytest_file_contract_utils import make_payload
-from tests.unit.file.pytest_file_contract_utils import (
-    module_handler as _module_handler,
-)
-from tests.unit.file.pytest_file_contract_utils import (
-    patch_dependency_resolver_value,
-)
-from tests.unit.file.pytest_file_support import PandasModuleStub
-from tests.unit.file.pytest_file_support import RecordsFrameStub
-from tests.unit.file.pytest_file_support import SpreadsheetSheetFrameStub
-from tests.unit.file.pytest_file_support import SpreadsheetSheetPandasStub
+from .pytest_file_contract_utils import make_payload
+from .pytest_file_contract_utils import module_handler as _module_handler
+from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_support import PandasModuleStub
+from .pytest_file_support import RecordsFrameStub
+from .pytest_file_support import SpreadsheetSheetFrameStub
+from .pytest_file_support import SpreadsheetSheetPandasStub
 
 # Shared callable used by dependency-stubbing fixtures/contracts.
 type OptionalModuleInstaller = Callable[[dict[str, object]], None]

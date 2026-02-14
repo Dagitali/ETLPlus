@@ -12,10 +12,11 @@ from collections.abc import Generator
 import pytest
 
 import etlplus.file._imports as import_helpers
-from tests.unit.file.pytest_file_support import PandasModuleStub
-from tests.unit.file.pytest_file_support import RecordsFrameStub
-from tests.unit.file.pytest_file_support import make_import_error_reader_module
-from tests.unit.file.pytest_file_support import make_import_error_writer_module
+
+from .pytest_file_support import PandasModuleStub
+from .pytest_file_support import RecordsFrameStub
+from .pytest_file_support import make_import_error_reader_module
+from .pytest_file_support import make_import_error_writer_module
 
 # SECTION: TYPE ALIAS ======================================================= #
 
