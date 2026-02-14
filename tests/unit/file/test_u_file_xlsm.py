@@ -7,9 +7,8 @@ Unit tests for :mod:`etlplus.file.xlsm`.
 from __future__ import annotations
 
 from etlplus.file import xlsm as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    WritableSpreadsheetModuleContract,
-)
+
+from .pytest_file_contract_contracts import WritableSpreadsheetModuleContract
 
 # SECTION: TESTS ============================================================ #
 

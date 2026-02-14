@@ -14,10 +14,9 @@ import pytest
 
 from etlplus.file import log as mod
 from etlplus.types import JSONData
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
+
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

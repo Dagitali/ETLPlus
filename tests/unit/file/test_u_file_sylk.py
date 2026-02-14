@@ -7,9 +7,8 @@ Unit tests for :mod:`etlplus.file.sylk`.
 from __future__ import annotations
 
 from etlplus.file import sylk as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    SingleDatasetPlaceholderContract,
-)
+
+from .pytest_file_contract_contracts import SingleDatasetPlaceholderContract
 
 # SECTION: TESTS ============================================================ #
 

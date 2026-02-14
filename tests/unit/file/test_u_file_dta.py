@@ -13,12 +13,11 @@ import pytest
 from etlplus.file import dta as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.pytest_file_contract_contracts import (
-    SingleDatasetWritableContract,
-)
-from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
-from tests.unit.file.pytest_file_support import DictRecordsFrameStub
-from tests.unit.file.pytest_file_support import RDataPandasStub
+
+from .pytest_file_contract_contracts import SingleDatasetWritableContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_support import DictRecordsFrameStub
+from .pytest_file_support import RDataPandasStub
 
 # SECTION: HELPERS ========================================================== #
 

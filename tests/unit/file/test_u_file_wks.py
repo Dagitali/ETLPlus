@@ -7,7 +7,8 @@ Unit tests for :mod:`etlplus.file.wks`.
 from __future__ import annotations
 
 from etlplus.file import wks as mod
-from tests.unit.file.pytest_file_contract_contracts import StubModuleContract
+
+from .pytest_file_contract_contracts import StubModuleContract
 
 # SECTION: TESTS ============================================================ #
 

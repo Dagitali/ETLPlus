@@ -12,14 +12,11 @@ from pathlib import Path
 from etlplus.file import sqlite as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.pytest_file_contract_contracts import (
-    EmbeddedDatabaseModuleContract,
-)
-from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
+
+from .pytest_file_contract_contracts import EmbeddedDatabaseModuleContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

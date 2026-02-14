@@ -13,16 +13,13 @@ from typing import cast
 import pytest
 
 from etlplus.file import properties as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    SemiStructuredReadModuleContract,
-)
-from tests.unit.file.pytest_file_contract_contracts import (
+
+from .pytest_file_contract_contracts import SemiStructuredReadModuleContract
+from .pytest_file_contract_contracts import (
     SemiStructuredWriteDictModuleContract,
 )
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

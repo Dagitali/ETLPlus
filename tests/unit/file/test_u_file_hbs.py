@@ -11,10 +11,9 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import hbs as mod
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
+
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

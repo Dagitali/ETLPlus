@@ -7,9 +7,8 @@ Unit tests for :mod:`etlplus.file.msgpack`.
 from __future__ import annotations
 
 from etlplus.file import msgpack as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    BinaryCodecModuleContract,
-)
+
+from .pytest_file_contract_contracts import BinaryCodecModuleContract
 
 # SECTION: TESTS ============================================================ #
 

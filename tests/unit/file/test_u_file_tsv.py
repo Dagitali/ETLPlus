@@ -7,13 +7,10 @@ Unit tests for :mod:`etlplus.file.tsv`.
 from __future__ import annotations
 
 from etlplus.file import tsv as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    DelimitedModuleContract,
-)
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
+
+from .pytest_file_contract_contracts import DelimitedModuleContract
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

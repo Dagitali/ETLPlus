@@ -9,15 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from etlplus.file import fwf as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    TextRowModuleContract,
-)
-from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
-from tests.unit.file.pytest_file_contract_mixins import RoundtripSpec
-from tests.unit.file.pytest_file_contract_mixins import (
-    RoundtripUnitModuleContract,
-)
-from tests.unit.file.pytest_file_support import DictRecordsFrameStub
+
+from .pytest_file_contract_contracts import TextRowModuleContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_support import DictRecordsFrameStub
 
 # SECTION: HELPERS ========================================================== #
 

@@ -11,16 +11,13 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import nc as mod
-from tests.unit.file.pytest_file_contract_contracts import (
-    SingleDatasetWritableContract,
-)
-from tests.unit.file.pytest_file_contract_mixins import OptionalModuleInstaller
-from tests.unit.file.pytest_file_contract_utils import (
-    patch_dependency_resolver_value,
-)
-from tests.unit.file.pytest_file_support import ContextManagerSelfMixin
-from tests.unit.file.pytest_file_support import DictRecordsFrameStub
-from tests.unit.file.pytest_file_support import RDataPandasStub
+
+from .pytest_file_contract_contracts import SingleDatasetWritableContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_support import ContextManagerSelfMixin
+from .pytest_file_support import DictRecordsFrameStub
+from .pytest_file_support import RDataPandasStub
 
 # SECTION: HELPERS ========================================================== #
 
