@@ -14,8 +14,8 @@ from typing import cast
 
 import pytest
 
-from tests.pytest_file_common import normalize_write_kwargs
-from tests.pytest_file_common import resolve_module_handler
+from ...pytest_file_common import normalize_write_kwargs
+from ...pytest_file_common import resolve_module_handler
 
 __all__ = [
     'FileModule',
