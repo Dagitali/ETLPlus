@@ -19,7 +19,8 @@ import requests  # type: ignore[import]
 from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
-from tests.unit.api.test_u_api_mocks import MockSession
+
+from .api.test_u_api_mocks import MockSession
 
 # SECTION: TYPES ============================================================ #
 
