@@ -9,7 +9,8 @@ from __future__ import annotations
 import pytest
 
 from etlplus.cli import handlers
-from tests.conftest import CaptureHandler
+
+from ...conftest import CaptureHandler
 
 # SECTION: TESTS ============================================================ #
 
