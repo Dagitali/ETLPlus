@@ -1,40 +1,18 @@
 """
-:mod:`tests.smoke.file.test_s_file_duckdb` module.
-
-Smoke tests for :mod:`etlplus.file.duckdb`.
+Smoke tests for etlplus.file.duckdb.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from etlplus.file import duckdb as mod
-from tests.smoke.conftest import run_file_smoke
+
+from .conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestDuckdb:
-    """
-    Smoke tests for :mod:`etlplus.file.duckdb`.
-    """
+class TestDuckdb(SmokeRoundtripModuleContract):
+    """Smoke tests for etlplus.file.duckdb."""
 
-    def test_read_write(
-        self,
-        tmp_path: Path,
-        sample_records: list[dict[str, object]],
-    ) -> None:
-        """
-        Test that :func:`read`/:func:`write` can be invoked with minimal
-        payloads.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest temporary directory.
-        sample_records : list[dict[str, object]]
-            Sample record payload.
-        """
-        path = tmp_path / 'data.duckdb'
-        payload = sample_records
-        run_file_smoke(mod, path, payload)
+    module = mod
+    file_name = 'data.duckdb'

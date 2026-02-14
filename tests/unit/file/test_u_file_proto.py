@@ -7,7 +7,8 @@ Unit tests for :mod:`etlplus.file.proto`.
 from __future__ import annotations
 
 from etlplus.file import proto as mod
-from tests.unit.file.conftest import BinaryKeyedPayloadModuleContract
+
+from .pytest_file_contract_contracts import BinaryKeyedPayloadModuleContract
 
 # SECTION: TESTS ============================================================ #
 

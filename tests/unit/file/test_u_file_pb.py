@@ -9,7 +9,8 @@ from __future__ import annotations
 import base64
 
 from etlplus.file import pb as mod
-from tests.unit.file.conftest import BinaryKeyedPayloadModuleContract
+
+from .pytest_file_contract_contracts import BinaryKeyedPayloadModuleContract
 
 # SECTION: TESTS ============================================================ #
 

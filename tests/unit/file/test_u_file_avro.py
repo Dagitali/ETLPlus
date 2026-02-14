@@ -13,9 +13,10 @@ import pytest
 
 from etlplus.file import avro as mod
 from etlplus.file.enums import FileFormat
-from tests.unit.file.conftest import BinaryDependencyModuleContract
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import patch_dependency_resolver_unreachable
+
+from .pytest_file_contract_contracts import BinaryDependencyModuleContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_utils import patch_dependency_resolver_unreachable
 
 # SECTION: HELPERS ========================================================== #
 

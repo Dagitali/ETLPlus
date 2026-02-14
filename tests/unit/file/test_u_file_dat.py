@@ -20,8 +20,9 @@ import pytest
 from etlplus.file import dat as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
+
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: HELPERS ========================================================== #
 

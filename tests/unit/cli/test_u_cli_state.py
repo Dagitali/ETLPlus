@@ -14,9 +14,10 @@ import typer
 import etlplus
 import etlplus.cli.handlers as handlers
 import etlplus.cli.state as cli_state_module
-from tests.unit.cli.conftest import CaptureHandler
-from tests.unit.cli.conftest import InvokeCli
-from tests.unit.cli.conftest import assert_mapping_contains
+
+from ...conftest import CaptureHandler
+from .conftest import InvokeCli
+from .conftest import assert_mapping_contains
 
 # SECTION: TESTS ============================================================ #
 

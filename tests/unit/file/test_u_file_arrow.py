@@ -13,7 +13,8 @@ from typing import Literal
 import pytest
 
 from etlplus.file import arrow as mod
-from tests.unit.file.conftest import PyarrowMissingDependencyMixin
+
+from .pytest_file_contract_contracts import PyarrowMissingDependencyMixin
 
 # SECTION: HELPERS ========================================================== #
 

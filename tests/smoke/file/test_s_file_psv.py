@@ -1,40 +1,18 @@
 """
-:mod:`tests.smoke.file.test_s_file_psv` module.
-
-Smoke tests for :mod:`etlplus.file.psv`.
+Smoke tests for etlplus.file.psv.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from etlplus.file import psv as mod
-from tests.smoke.conftest import run_file_smoke
+
+from .conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestPsv:
-    """
-    Smoke tests for :mod:`etlplus.file.psv`.
-    """
+class TestPsv(SmokeRoundtripModuleContract):
+    """Smoke tests for etlplus.file.psv."""
 
-    def test_read_write(
-        self,
-        tmp_path: Path,
-        sample_records: list[dict[str, object]],
-    ) -> None:
-        """
-        Test that :func:`read`/:func:`write` can be invoked with minimal
-        payloads.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest temporary directory.
-        sample_records : list[dict[str, object]]
-            Sample record payload.
-        """
-        path = tmp_path / 'data.psv'
-        payload = sample_records
-        run_file_smoke(mod, path, payload)
+    module = mod
+    file_name = 'data.psv'

@@ -7,7 +7,8 @@ Unit tests for :mod:`etlplus.file.mat`.
 from __future__ import annotations
 
 from etlplus.file import mat as mod
-from tests.unit.file.conftest import SingleDatasetPlaceholderContract
+
+from .pytest_file_contract_contracts import SingleDatasetPlaceholderContract
 
 # SECTION: TESTS ============================================================ #
 

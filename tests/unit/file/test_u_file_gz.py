@@ -14,7 +14,10 @@ import pytest
 from etlplus.file import gz as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import ArchiveWrapperCoreDispatchModuleContract
+
+from .pytest_file_contract_contracts import (
+    ArchiveWrapperCoreDispatchModuleContract,
+)
 
 # SECTION: TESTS ============================================================ #
 

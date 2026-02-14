@@ -16,9 +16,14 @@ import pytest
 from etlplus.file import yaml as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import SemiStructuredReadModuleContract
-from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
+
+from .pytest_file_contract_contracts import SemiStructuredReadModuleContract
+from .pytest_file_contract_contracts import (
+    SemiStructuredWriteDictModuleContract,
+)
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -55,6 +60,7 @@ class _StubYaml:
 
 
 class TestYaml(
+    RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
 ):
@@ -68,6 +74,10 @@ class TestYaml(
     sample_read_text = 'name: etl\n'
     expected_read_payload = {'name': 'etl'}
     dict_payload = {'name': 'etl'}
+    roundtrip_spec = RoundtripSpec(
+        payload={'name': 'etl'},
+        expected={'name': 'etl'},
+    )
 
     def assert_read_contract_result(
         self,
@@ -100,6 +110,13 @@ class TestYaml(
         """Install YAML dependency stub for read tests."""
         self._read_yaml_stub = _StubYaml(loaded=self.expected_read_payload)
         optional_module_stub({'yaml': self._read_yaml_stub})
+
+    def setup_roundtrip_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install YAML stub for roundtrip contract tests."""
+        optional_module_stub({'yaml': _StubYaml(loaded={'name': 'etl'})})
 
     def setup_write_dependencies(
         self,

@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.smoke.conftest import PipelineSchema
-    from tests.smoke.conftest import TableSpec
+    from tests.smoke.cli.conftest import PipelineSchema
+    from tests.smoke.cli.conftest import TableSpec
 
 # SECTION: TESTS ============================================================ #
 

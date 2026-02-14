@@ -12,12 +12,15 @@ import pytest
 
 from etlplus.file import hdf5 as mod
 from etlplus.file.base import ReadOptions
-from tests.unit.file.conftest import ContextManagerSelfMixin
-from tests.unit.file.conftest import DictRecordsFrameStub
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import PathMixin
-from tests.unit.file.conftest import ReadOnlyScientificDatasetModuleContract
-from tests.unit.file.conftest import patch_dependency_resolver_value
+
+from .pytest_file_contract_contracts import (
+    ReadOnlyScientificDatasetModuleContract,
+)
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import PathMixin
+from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_support import ContextManagerSelfMixin
+from .pytest_file_support import DictRecordsFrameStub
 
 # SECTION: HELPERS ========================================================== #
 

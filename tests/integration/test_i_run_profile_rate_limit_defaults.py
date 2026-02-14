@@ -23,7 +23,8 @@ import pytest
 
 from etlplus import Config
 from etlplus.api import RateLimitConfig
-from tests.integration.conftest import FakeEndpointClientProtocol
+
+from .conftest import FakeEndpointClientProtocol
 
 # SECTION: TESTS ============================================================ #
 

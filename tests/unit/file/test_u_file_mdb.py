@@ -7,7 +7,8 @@ Unit tests for :mod:`etlplus.file.mdb`.
 from __future__ import annotations
 
 from etlplus.file import mdb as mod
-from tests.unit.file.conftest import StubModuleContract
+
+from .pytest_file_contract_contracts import StubModuleContract
 
 # SECTION: TESTS ============================================================ #
 

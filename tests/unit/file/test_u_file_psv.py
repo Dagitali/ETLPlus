@@ -7,9 +7,10 @@ Unit tests for :mod:`etlplus.file.psv`.
 from __future__ import annotations
 
 from etlplus.file import psv as mod
-from tests.unit.file.conftest import DelimitedModuleContract
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
+
+from .pytest_file_contract_contracts import DelimitedModuleContract
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

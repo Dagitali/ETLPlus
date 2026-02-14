@@ -34,7 +34,8 @@ import etlplus.api.request_manager as rm_module
 import etlplus.cli.handlers as cli_handlers
 from etlplus import Config
 from etlplus.cli import main
-from tests.integration.conftest import FakeEndpointClientProtocol
+
+from .conftest import FakeEndpointClientProtocol
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
