@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from tests.smoke.file.pytest_smoke_file_contracts import FileModule
-from tests.smoke.file.pytest_smoke_file_contracts import (
-    SmokeRoundtripModuleContract,
-)
-from tests.smoke.file.pytest_smoke_file_contracts import run_file_smoke
+from .pytest_smoke_file_contracts import FileModule
+from .pytest_smoke_file_contracts import SmokeRoundtripModuleContract
+from .pytest_smoke_file_contracts import run_file_smoke
 
 # Directory-level marker for smoke tests.
 pytestmark = pytest.mark.smoke

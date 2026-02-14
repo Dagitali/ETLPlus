@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from tests.unit.file.pytest_file_stubs import make_import_error_reader_fixture
-from tests.unit.file.pytest_file_stubs import make_import_error_writer_fixture
-from tests.unit.file.pytest_file_stubs import make_pandas_stub_fixture
-from tests.unit.file.pytest_file_stubs import make_records_frame_fixture
-from tests.unit.file.pytest_file_stubs import optional_module_stub_fixture
+from .pytest_file_stubs import make_import_error_reader_fixture
+from .pytest_file_stubs import make_import_error_writer_fixture
+from .pytest_file_stubs import make_pandas_stub_fixture
+from .pytest_file_stubs import make_records_frame_fixture
+from .pytest_file_stubs import optional_module_stub_fixture
 
 # Directory-level marker for unit tests.
 pytestmark = pytest.mark.unit
