@@ -26,7 +26,8 @@ import requests  # type: ignore[import]
 
 from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
-from tests.conftest import RequestFactory
+
+from ...conftest import RequestFactory
 
 # SECTION: TYPES ============================================================ #
 

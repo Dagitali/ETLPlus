@@ -20,7 +20,8 @@ from typing import Any
 from etlplus import Config
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
-from tests.integration.conftest import FakeEndpointClientProtocol as Client
+
+from .conftest import FakeEndpointClientProtocol as Client
 
 # SECTION: TESTS ============================================================ #
 

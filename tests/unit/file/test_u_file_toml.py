@@ -13,9 +13,14 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import toml as mod
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import SemiStructuredReadModuleContract
-from tests.unit.file.conftest import SemiStructuredWriteDictModuleContract
+
+from .pytest_file_contract_contracts import SemiStructuredReadModuleContract
+from .pytest_file_contract_contracts import (
+    SemiStructuredWriteDictModuleContract,
+)
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: HELPERS ========================================================== #
 
@@ -45,6 +50,7 @@ class _TomlDumperStub:
 
 
 class TestToml(
+    RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
 ):
@@ -57,6 +63,10 @@ class TestToml(
     sample_read_text = 'name = "etl"'
     expected_read_payload = {'name': 'etl'}
     dict_payload = {'name': 'etl'}
+    roundtrip_spec = RoundtripSpec(
+        payload={'name': 'etl'},
+        expected={'name': 'etl'},
+    )
 
     def assert_write_contract_result(
         self,
@@ -80,6 +90,13 @@ class TestToml(
 
         with pytest.raises(TypeError, match='TOML root must be a table'):
             mod.TomlFile().read(path)
+
+    def setup_roundtrip_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install ``tomli_w`` stub for roundtrip contract tests."""
+        optional_module_stub({'tomli_w': _TomlDumperStub('name = "etl"\n')})
 
     def setup_write_dependencies(
         self,

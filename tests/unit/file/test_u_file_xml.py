@@ -10,8 +10,9 @@ from pathlib import Path
 
 from etlplus.file import xml as mod
 from etlplus.file.base import WriteOptions
-from tests.unit.file.conftest import RoundtripSpec
-from tests.unit.file.conftest import RoundtripUnitModuleContract
+
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 
 # SECTION: TESTS ============================================================ #
 

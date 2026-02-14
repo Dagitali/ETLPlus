@@ -14,9 +14,10 @@ import pytest
 
 import etlplus.cli.handlers as handlers
 from etlplus import Config
-from tests.unit.cli.conftest import CaptureIo
-from tests.unit.cli.conftest import assert_emit_json
-from tests.unit.cli.conftest import assert_emit_or_write
+
+from .conftest import CaptureIo
+from .conftest import assert_emit_json
+from .conftest import assert_emit_or_write
 
 # SECTION: TESTS ============================================================ #
 

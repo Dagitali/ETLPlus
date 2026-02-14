@@ -9,9 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from etlplus.file import fwf as mod
-from tests.unit.file.conftest import DictRecordsFrameStub
-from tests.unit.file.conftest import OptionalModuleInstaller
-from tests.unit.file.conftest import TextRowModuleContract
+
+from .pytest_file_contract_contracts import TextRowModuleContract
+from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_support import DictRecordsFrameStub
 
 # SECTION: HELPERS ========================================================== #
 
@@ -32,13 +35,20 @@ class _PandasStub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestFwf(TextRowModuleContract):
+class TestFwf(
+    TextRowModuleContract,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.fwf`."""
 
     module = mod
     format_name = 'fwf'
     write_payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
     expected_written_count = 2
+    roundtrip_spec = RoundtripSpec(
+        payload=[{'id': 1}],
+        expected=[{'id': 1}],
+    )
     _pandas: _PandasStub
 
     def assert_write_contract_result(
@@ -63,6 +73,15 @@ class TestFwf(TextRowModuleContract):
         optional_module_stub({'pandas': self._pandas})
         path = self.format_path(tmp_path)
         return path, [{'id': 1}]
+
+    def setup_roundtrip_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install pandas stub for roundtrip contract tests."""
+        optional_module_stub(
+            {'pandas': _PandasStub(DictRecordsFrameStub([{'id': 1}]))},
+        )
 
     def test_read_uses_pandas(
         self,
