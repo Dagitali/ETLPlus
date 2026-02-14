@@ -5,7 +5,8 @@ Smoke tests for etlplus.file.xlsm.
 from __future__ import annotations
 
 from etlplus.file import xlsm as mod
-from tests.smoke.file.conftest import SmokeRoundtripModuleContract
+
+from .conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 

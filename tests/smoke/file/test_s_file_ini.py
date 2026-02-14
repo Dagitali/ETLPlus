@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from etlplus.file import ini as mod
-from tests.smoke.file.conftest import SmokeRoundtripModuleContract
+
+from .conftest import SmokeRoundtripModuleContract
 
 # SECTION: TESTS ============================================================ #
 
