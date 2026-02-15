@@ -6,14 +6,15 @@ Shared helpers for file-focused tests.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 from typing import Literal
 from typing import cast
 
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.types import JSONData
 
 # SECTION: TYPE ALIASES ===================================================== #
 
@@ -23,37 +24,52 @@ type Operation = Literal['read', 'write']
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def _resolve_write_options(
+    write_kwargs: Mapping[str, object] | None = None,
+) -> WriteOptions | None:
+    """
+    Normalize optional write kwargs into a ``WriteOptions`` instance.
+    """
+    if write_kwargs is None:
+        return None
+
+    kwargs = dict(write_kwargs)
+    root_tag = kwargs.pop('root_tag', None)
+    options = kwargs.pop('options', None)
+
+    if kwargs:
+        invalid = ', '.join(sorted(kwargs))
+        raise TypeError(f'unsupported write kwargs: {invalid}')
+
+    if root_tag is not None:
+        if not isinstance(root_tag, str):
+            raise TypeError('root_tag must be a string')
+        if options is None:
+            options = WriteOptions(root_tag=root_tag)
+
+    if options is None:
+        return None
+    if not isinstance(options, WriteOptions):
+        raise TypeError('options must be a WriteOptions instance')
+    return options
+
+
 def call_handler_operation(
     module: ModuleType,
     *,
     operation: Operation,
     path: Path,
-    payload: object | None = None,
-    write_kwargs: dict[str, object] | None = None,
-) -> object | int:
-    """Call one module handler operation with normalized write kwargs."""
+    payload: JSONData | None = None,
+    write_kwargs: Mapping[str, object] | None = None,
+) -> JSONData | int:
+    """Call one module handler operation with normalized write options."""
     handler = resolve_module_handler(module)
     if operation == 'read':
         return handler.read(path)
-    kwargs = normalize_write_kwargs(write_kwargs)
-    return cast(Any, handler).write(path, payload, **kwargs)
-
-
-def normalize_write_kwargs(
-    write_kwargs: dict[str, object] | None = None,
-) -> dict[str, object]:
-    """
-    Normalize smoke/unit write kwargs to handler-compatible options.
-
-    Supports converting ``root_tag=...`` into ``options=WriteOptions(...)``.
-    """
-    kwargs = dict(write_kwargs or {})
-    if 'root_tag' in kwargs and 'options' not in kwargs:
-        root_tag = kwargs.pop('root_tag')
-        if not isinstance(root_tag, str):
-            raise TypeError('root_tag must be a string')
-        kwargs['options'] = WriteOptions(root_tag=root_tag)
-    return kwargs
+    if payload is None:
+        raise TypeError('payload is required for write operations')
+    options = _resolve_write_options(write_kwargs)
+    return handler.write(path, payload, options=options)
 
 
 def resolve_module_handler(

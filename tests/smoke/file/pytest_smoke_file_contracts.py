@@ -12,6 +12,8 @@ from typing import Any
 
 import pytest
 
+from etlplus.types import JSONData
+
 from ...pytest_file_common import call_handler_operation
 
 __all__ = [
@@ -25,7 +27,7 @@ class SmokeRoundtripModuleContract:
 
     module: ModuleType
     file_name: str
-    payload: object | None = None
+    payload: JSONData | None = None
     use_sample_record: bool = False
     write_kwargs: dict[str, object] | None = None
     expect_write_error: type[Exception] | None = None
@@ -36,7 +38,7 @@ class SmokeRoundtripModuleContract:
         *,
         sample_record: dict[str, Any],
         sample_records: list[dict[str, Any]],
-    ) -> object:
+    ) -> JSONData:
         """Return the roundtrip payload for one smoke test module."""
         if self.payload is not None:
             return self.payload
@@ -69,7 +71,7 @@ class SmokeRoundtripModuleContract:
 def run_file_smoke(
     module: ModuleType,
     path: Path,
-    payload: object,
+    payload: JSONData,
     *,
     write_kwargs: dict[str, object] | None = None,
     expect_write_error: type[Exception] | None = None,
