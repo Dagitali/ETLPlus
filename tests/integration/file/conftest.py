@@ -1,7 +1,7 @@
 """
-:mod:`tests.smoke.file.conftest` module.
+:mod:`tests.integration.file.conftest` module.
 
-Shared smoke contracts for pytest-based tests of :mod:`etlplus.file`.
+Shared integration tests for :mod:`etlplus.file`.
 """
 
 from __future__ import annotations
@@ -11,9 +11,15 @@ import pytest
 from .pytest_smoke_file_contracts import SmokeRoundtripModuleContract
 from .pytest_smoke_file_contracts import run_file_smoke
 
-# Directory-level marker for smoke tests.
-# Legacy-path smoke tests here are integration-scope checks.
+# SECTION: MARKS ============================================================ #
+
+
+# Directory-level markers for integration tests.
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
+
+
+# SECTION: EXPORTS ========================================================== #
+
 
 __all__ = [
     'SmokeRoundtripModuleContract',
