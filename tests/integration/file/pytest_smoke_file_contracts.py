@@ -1,5 +1,5 @@
 """
-:mod:`tests.smoke.file.pytest_smoke_file_contracts` module.
+:mod:`tests.integration.file.pytest_smoke_file_contracts` module.
 
 Reusable smoke-test contracts for :mod:`etlplus.file` modules.
 """
