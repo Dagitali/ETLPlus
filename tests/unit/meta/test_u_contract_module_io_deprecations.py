@@ -16,10 +16,7 @@ import pytest
 
 from etlplus.file import registry as file_registry
 
-# SECTION: INTERNAL TYPES =================================================== #
-
-
-type HandlerInstance = Any
+# SECTION: MARKS ============================================================ #
 
 
 pytestmark = pytest.mark.filterwarnings(
@@ -30,6 +27,12 @@ pytestmark = pytest.mark.filterwarnings(
 )
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HandlerInstance = Any
+
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -37,6 +40,7 @@ _MODULE_NAMES: tuple[str, ...] = tuple(
     sorted(
         {
             spec.partition(':')[0]
+            # pylint: disable-next=protected-access
             for spec in file_registry._HANDLER_CLASS_SPECS.values()
         },
     ),
@@ -44,7 +48,8 @@ _MODULE_NAMES: tuple[str, ...] = tuple(
 _MODULE_SHORT_NAMES: frozenset[str] = frozenset(
     name.rsplit('.', maxsplit=1)[-1] for name in _MODULE_NAMES
 )
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
 
 
