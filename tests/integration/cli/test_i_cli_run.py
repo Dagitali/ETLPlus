@@ -1,8 +1,7 @@
 """
-:mod:`tests.smoke.test_s_cli_run` module.
+:mod:`tests.integration.cli.test_i_cli_run` module.
 
-Smoke test suite exercising a minimal file→file job via the CLI. Parametrized
-to verify both empty and non-empty inputs.
+Integration-scope smoke test suite for a minimal file→file CLI job.
 
 Notes
 -----
@@ -15,11 +14,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
-    from tests.smoke.cli.conftest import PipelineConfigFactory
+    from tests.integration.cli.conftest import PipelineConfigFactory
+
+# SECTION: MARKS ============================================================ #
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: TESTS ============================================================ #
 

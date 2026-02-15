@@ -1,7 +1,7 @@
 """
-:mod:`tests.smoke.cli.test_s_cli_handlers` module.
+:mod:`tests.integration.cli.test_i_cli_handlers` module.
 
-Smoke tests for CLI handler wiring.
+Integration-scope smoke tests for CLI handler wiring.
 """
 
 from __future__ import annotations
@@ -11,6 +11,11 @@ import pytest
 from etlplus.cli import handlers
 
 from ...conftest import CaptureHandler
+
+# SECTION: MARKS ============================================================ #
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: TESTS ============================================================ #
 
