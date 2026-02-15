@@ -13,6 +13,7 @@ from typing import Literal
 from typing import cast
 from typing import overload
 
+from etlplus.file import FileFormat
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
@@ -120,3 +121,20 @@ def resolve_module_handler(
     handler = handlers[0]
     assert isinstance(handler, FileHandlerABC)
     return cast(FileHandlerABC, handler)
+
+
+def should_skip_known_file_io_error(
+    *,
+    error: OSError,
+    file_format: FileFormat | None = None,
+    module_name: str | None = None,
+) -> bool:
+    """Return whether one file I/O error should be skipped in tests."""
+    is_orc_failure = (
+        file_format is FileFormat.ORC
+        or (
+            module_name is not None
+            and module_name.endswith('.orc')
+        )
+    )
+    return is_orc_failure and is_orc_sysctl_error(error)

@@ -16,7 +16,7 @@ from etlplus.types import JSONData
 
 from ...pytest_file_common import ORC_SYSCTL_SKIP_REASON
 from ...pytest_file_common import call_handler_operation
-from ...pytest_file_common import is_orc_sysctl_error
+from ...pytest_file_common import should_skip_known_file_io_error
 
 __all__ = [
     'SmokeRoundtripModuleContract',
@@ -129,7 +129,10 @@ def run_file_smoke(
         )
         assert result
     except OSError as exc:
-        if module.__name__.endswith('.orc') and is_orc_sysctl_error(exc):
+        if should_skip_known_file_io_error(
+            error=exc,
+            module_name=module.__name__,
+        ):
             pytest.skip(ORC_SYSCTL_SKIP_REASON)
         raise
     except ImportError as exc:
