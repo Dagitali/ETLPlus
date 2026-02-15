@@ -13,6 +13,8 @@ from typing import Literal
 from typing import cast
 from typing import overload
 
+import pytest
+
 from etlplus.file import FileFormat
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
@@ -138,3 +140,19 @@ def should_skip_known_file_io_error(
         )
     )
     return is_orc_failure and is_orc_sysctl_error(error)
+
+
+def skip_on_known_file_io_error(
+    *,
+    error: OSError,
+    file_format: FileFormat | None = None,
+    module_name: str | None = None,
+) -> None:
+    """Skip current test if one known file I/O error condition is met."""
+    if should_skip_known_file_io_error(
+        error=error,
+        file_format=file_format,
+        module_name=module_name,
+    ):
+        __tracebackhide__ = True
+        pytest.skip(ORC_SYSCTL_SKIP_REASON)
