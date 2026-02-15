@@ -9,31 +9,21 @@ from __future__ import annotations
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-from typing import Protocol
-from typing import cast
 
 import pytest
 
-from ...pytest_file_common import normalize_write_kwargs
-from ...pytest_file_common import resolve_module_handler
+from ...pytest_file_common import call_handler_operation
 
 __all__ = [
-    'FileModule',
     'SmokeRoundtripModuleContract',
     'run_file_smoke',
 ]
 
 
-class FileModule(Protocol):
-    """Protocol for file format modules exposing a singleton handler."""
-
-    __name__: str
-
-
 class SmokeRoundtripModuleContract:
     """Reusable write/read smoke contract for file-format modules."""
 
-    module: FileModule
+    module: ModuleType
     file_name: str
     payload: object | None = None
     use_sample_record: bool = False
@@ -77,7 +67,7 @@ class SmokeRoundtripModuleContract:
 
 
 def run_file_smoke(
-    module: FileModule,
+    module: ModuleType,
     path: Path,
     payload: object,
     *,
@@ -90,7 +80,7 @@ def run_file_smoke(
 
     Parameters
     ----------
-    module : FileModule
+    module : ModuleType
         File module exposing ``read``/``write`` functions.
     path : Path
         Target path for the test file.
@@ -108,18 +98,31 @@ def run_file_smoke(
     OSError
         If the smoke test encounters unexpected file system errors.
     """
-    write_kwargs = normalize_write_kwargs(write_kwargs)
-    handler = resolve_module_handler(cast(ModuleType, module))
-    untyped_handler = cast(Any, handler)
     try:
         if expect_write_error is not None:
             match = error_match or ''
             with pytest.raises(expect_write_error, match=match):
-                untyped_handler.write(path, payload, **write_kwargs)
+                call_handler_operation(
+                    module,
+                    operation='write',
+                    path=path,
+                    payload=payload,
+                    write_kwargs=write_kwargs,
+                )
             return
-        written = untyped_handler.write(path, payload, **write_kwargs)
+        written = call_handler_operation(
+            module,
+            operation='write',
+            path=path,
+            payload=payload,
+            write_kwargs=write_kwargs,
+        )
         assert written
-        result = handler.read(path)
+        result = call_handler_operation(
+            module,
+            operation='read',
+            path=path,
+        )
         assert result
     except OSError as exc:
         if module.__name__.endswith('.orc') and 'sysctlbyname' in str(exc):
