@@ -14,7 +14,9 @@ import pytest
 
 from etlplus.types import JSONData
 
+from ...pytest_file_common import ORC_SYSCTL_SKIP_REASON
 from ...pytest_file_common import call_handler_operation
+from ...pytest_file_common import is_orc_sysctl_error
 
 __all__ = [
     'SmokeRoundtripModuleContract',
@@ -86,7 +88,7 @@ def run_file_smoke(
         File module exposing ``read``/``write`` functions.
     path : Path
         Target path for the test file.
-    payload : object
+    payload : JSONData
         Payload passed to ``write``.
     write_kwargs : dict[str, object] | None, optional
         Keyword arguments forwarded to ``write``.
@@ -127,8 +129,8 @@ def run_file_smoke(
         )
         assert result
     except OSError as exc:
-        if module.__name__.endswith('.orc') and 'sysctlbyname' in str(exc):
-            pytest.skip('ORC read failed due to sysctl limitations')
+        if module.__name__.endswith('.orc') and is_orc_sysctl_error(exc):
+            pytest.skip(ORC_SYSCTL_SKIP_REASON)
         raise
     except ImportError as exc:
         pytest.skip(str(exc))
