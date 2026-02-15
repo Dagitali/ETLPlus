@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from etlplus.file import properties as mod
+from etlplus.types import JSONData
+from etlplus.types import JSONDict
+from etlplus.types import JSONList
 
 from .conftest import SmokeRoundtripModuleContract
 
@@ -20,8 +21,8 @@ class TestProperties(SmokeRoundtripModuleContract):
     def build_payload(
         self,
         *,
-        sample_record: dict[str, Any],
-        sample_records: list[dict[str, Any]],  # noqa: ARG002
-    ) -> object:
+        sample_record: JSONDict,
+        sample_records: JSONList,  # noqa: ARG002
+    ) -> JSONData:
         """Build string-only properties payload from one sample record."""
         return {key: str(value) for key, value in sample_record.items()}
