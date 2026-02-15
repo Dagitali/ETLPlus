@@ -26,6 +26,7 @@ from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 
+from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error
 
 # SECTION: HELPERS ========================================================== #
@@ -342,6 +343,14 @@ def _assert_core_write_dispatch(
     assert options.root_tag == expected_root_tag
 
 
+def _require_optional_modules(
+    requires: tuple[str, ...],
+) -> None:
+    """Import optional dependencies for one format case or skip."""
+    for module_name in requires:
+        pytest.importorskip(module_name)
+
+
 def _coerce_numeric_value(value: object) -> object:
     """Coerce numeric scalars into stable Python numeric types."""
     if isinstance(value, numbers.Real):
@@ -417,6 +426,39 @@ def normalize_xml_payload(payload: JSONData) -> JSONData:
         root = {**root, 'items': [items]}
         return {**payload, 'root': root}
     return payload
+
+
+def _normalize_roundtrip_values(
+    *,
+    file_format: FileFormat,
+    result: JSONData,
+    expected: JSONData,
+) -> tuple[JSONData, JSONData]:
+    """Normalize roundtrip values for format-specific assertion behavior."""
+    normalized_result = result
+    normalized_expected = expected
+    if file_format is FileFormat.XML:
+        normalized_result = normalize_xml_payload(normalized_result)
+        normalized_expected = normalize_xml_payload(normalized_expected)
+    if file_format is FileFormat.XLS:
+        normalized_result = normalize_numeric_records(normalized_result)
+    return normalized_result, normalized_expected
+
+
+def _read_with_known_io_skip(
+    *,
+    path: Path,
+    file_format: FileFormat,
+) -> JSONData:
+    """Read one file while applying shared known I/O skip policy."""
+    try:
+        return File(path, file_format).read()
+    except OSError as err:
+        skip_on_known_file_io_error(
+            error=err,
+            file_format=file_format,
+        )
+        raise
 
 
 # SECTION: TESTS ============================================================ #
@@ -623,27 +665,20 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        for module in requires:
-            pytest.importorskip(module)
+        _require_optional_modules(requires)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
-        try:
-            result = File(path, file_format).read()
-        except OSError as err:
-            skip_on_known_file_io_error(
-                error=err,
-                file_format=file_format,
-            )
-            raise
-
-        expected_result = expected
-        if file_format is FileFormat.XML:
-            result = normalize_xml_payload(result)
-            expected_result = normalize_xml_payload(expected_result)
-        if file_format is FileFormat.XLS:
-            result = normalize_numeric_records(result)
-        assert result == expected_result
+        result = _read_with_known_io_skip(
+            path=path,
+            file_format=file_format,
+        )
+        normalized_result, normalized_expected = _normalize_roundtrip_values(
+            file_format=file_format,
+            result=result,
+            expected=expected,
+        )
+        assert normalized_result == normalized_expected
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
@@ -662,7 +697,7 @@ class TestFile:
         tmp_path: Path,
         file_format: FileFormat,
         filename: str,
-        operation: str,
+        operation: Operation,
     ) -> None:
         """Test stub formats raising NotImplementedError on read/write."""
         path = tmp_path / filename
@@ -670,10 +705,11 @@ class TestFile:
             path.write_text('stub', encoding='utf-8')
 
         with pytest.raises(NotImplementedError):
-            if operation == 'read':
-                File(path, file_format).read()
-            else:
-                File(path, file_format).write({'stub': True})
+            match operation:
+                case 'read':
+                    File(path, file_format).read()
+                case _:
+                    File(path, file_format).write({'stub': True})
 
     def test_write_csv_rejects_non_dicts(
         self,
