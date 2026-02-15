@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-from .pytest_smoke_file_contracts import FileModule
 from .pytest_smoke_file_contracts import SmokeRoundtripModuleContract
 from .pytest_smoke_file_contracts import run_file_smoke
 
@@ -17,7 +16,6 @@ from .pytest_smoke_file_contracts import run_file_smoke
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 __all__ = [
-    'FileModule',
     'SmokeRoundtripModuleContract',
     'run_file_smoke',
 ]
