@@ -53,6 +53,9 @@ explicitly pass that path.
 ## Common Commands
 
 ```bash
+# Default discovery from pytest.ini (unit + integration + e2e)
+pytest
+
 # Scope folders
 pytest tests/unit
 pytest tests/integration
