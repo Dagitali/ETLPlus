@@ -192,6 +192,9 @@ Recognized file formats are listed in the tables below. Support for reading to o
   category ABCs, and `ReadOnlyFileHandlerABC`).
 - `etlplus/file/registry.py` resolves handlers using an explicit `FileFormat -> handler class` map.
 - Dispatch is explicit-only: unmapped formats raise `Unsupported format`.
+- Module-level `etlplus.file.<format>.read()` / `write()` shims are deprecated in favor of handler
+  instance methods and may be removed in a future major release.
+- Documentation and examples intentionally use handler class methods, not deprecated module wrappers.
 - Placeholder handlers are split into:
   - `etlplus/file/stub.py` for generic stub behavior
   - `etlplus/file/_stub_categories.py` for category-aware internal stub ABCs
