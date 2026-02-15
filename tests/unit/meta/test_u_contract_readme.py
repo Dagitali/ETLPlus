@@ -20,9 +20,9 @@ from etlplus.file.stub import StubFileHandlerABC
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+_DOCS_MATRIX_PATH = _REPO_ROOT / 'docs' / 'file-handler-matrix.md'
 _FILE_PACKAGE_README_PATH = _REPO_ROOT / 'etlplus' / 'file' / 'README.md'
 _README_MATRIX_PATH = _REPO_ROOT / 'README.md'
-_DOCS_MATRIX_PATH = _REPO_ROOT / 'docs' / 'file-handler-matrix.md'
 _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
 _SUPPORTED_FORMAT_ROW_PATTERN = re.compile(r'^\| (?P<format>[a-z0-9]+)\s+\|')
 _MATRIX_ROW_PATTERN = re.compile(
