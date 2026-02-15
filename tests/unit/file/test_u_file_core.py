@@ -10,6 +10,7 @@ import math
 import numbers
 import sqlite3
 import zipfile
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -35,265 +36,164 @@ from ...pytest_file_common import skip_on_known_file_io_error
 type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 
 
+COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
+COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
+COMMON_ROWS_TXT: JSONData = [{'text': 'hello'}, {'text': 'world'}]
+COMMON_INI: JSONData = {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}
+COMMON_TOML: JSONData = {'name': 'Ada', 'age': 36}
+COMMON_PROPERTIES: JSONData = {'name': 'Ada', 'age': '36'}
+COMMON_PROTO: JSONData = {
+    'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n',
+}
+COMMON_PB: JSONData = {'payload_base64': 'aGVsbG8='}
+COMMON_XML: JSONData = {'root': {'items': [{'text': 'one'}]}}
+
+
+def _format_case(
+    file_format: FileFormat,
+    filename: str,
+    payload: JSONData,
+    requires: tuple[str, ...] = (),
+    *,
+    expected: JSONData | None = None,
+) -> FormatCase:
+    """Create one roundtrip format case with defensive payload copies."""
+    expected_payload = payload if expected is None else expected
+    return (
+        file_format,
+        filename,
+        cast(JSONData, deepcopy(payload)),
+        cast(JSONData, deepcopy(expected_payload)),
+        requires,
+    )
+
+
 FORMAT_CASES: list[FormatCase] = [
     # Tabular & delimited text
-    (
-        FileFormat.CSV,
-        'sample.csv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.DAT,
-        'sample.dat',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.CSV, 'sample.csv', COMMON_ROWS_STR),
+    _format_case(FileFormat.DAT, 'sample.dat', COMMON_ROWS_STR),
+    _format_case(
         FileFormat.FWF,
         'sample.fwf',
         [{'name': 'Ada', 'age': '36x'}],
-        [{'name': 'Ada', 'age': '36x'}],
         ('pandas',),
     ),
-    (
-        FileFormat.PSV,
-        'sample.psv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.TAB,
-        'sample.tab',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.TSV,
-        'sample.tsv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    # (
-    #     FileFormat.TXT,
-    #     'sample.txt',
-    #     [{'name': 'Ada', 'age': '36'}],
-    #     [{'name': 'Ada', 'age': '36'}],
-    #     (),
-    # ),
-    (
-        FileFormat.TXT,
-        'sample.txt',
-        [{'text': 'hello'}, {'text': 'world'}],
-        [{'text': 'hello'}, {'text': 'world'}],
-        (),
-    ),
-    (
-        FileFormat.BSON,
-        'sample.bson',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('bson',),
-    ),
-    (
-        FileFormat.CBOR,
-        'sample.cbor',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('cbor2',),
-    ),
-    (
-        FileFormat.JSON,
-        'sample.json',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.PSV, 'sample.psv', COMMON_ROWS_STR),
+    _format_case(FileFormat.TAB, 'sample.tab', COMMON_ROWS_STR),
+    _format_case(FileFormat.TSV, 'sample.tsv', COMMON_ROWS_STR),
+    # _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_STR),
+    _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_TXT),
+    # Semi-structured and interchange
+    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM, ('bson',)),
+    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM, ('cbor2',)),
+    _format_case(FileFormat.JSON, 'sample.json', COMMON_ROWS_NUM),
+    _format_case(
         FileFormat.MSGPACK,
         'sample.msgpack',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('msgpack',),
     ),
-    (
-        FileFormat.NDJSON,
-        'sample.ndjson',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
-        FileFormat.YAML,
-        'sample.yaml',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('yaml',),
-    ),
-    (
-        FileFormat.INI,
-        'sample.ini',
-        {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}},
-        {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}},
-        (),
-    ),
-    (
-        FileFormat.TOML,
-        'sample.toml',
-        {'name': 'Ada', 'age': 36},
-        {'name': 'Ada', 'age': 36},
-        ('tomli_w',),
-    ),
-    (
+    _format_case(FileFormat.NDJSON, 'sample.ndjson', COMMON_ROWS_NUM),
+    _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM, ('yaml',)),
+    _format_case(FileFormat.INI, 'sample.ini', COMMON_INI),
+    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML, ('tomli_w',)),
+    _format_case(
         FileFormat.PROPERTIES,
         'sample.properties',
-        {'name': 'Ada', 'age': '36'},
-        {'name': 'Ada', 'age': '36'},
-        (),
+        COMMON_PROPERTIES,
     ),
-    (
-        FileFormat.PROTO,
-        'sample.proto',
-        {'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n'},
-        {'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n'},
-        (),
-    ),
-    (
-        FileFormat.PB,
-        'sample.pb',
-        {'payload_base64': 'aGVsbG8='},
-        {'payload_base64': 'aGVsbG8='},
-        (),
-    ),
-    (
-        FileFormat.XML,
-        'sample.xml',
-        {'root': {'items': [{'text': 'one'}]}},
-        {'root': {'items': [{'text': 'one'}]}},
-        (),
-    ),
-    (
-        FileFormat.GZ,
-        'sample.json.gz',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
-        FileFormat.ZIP,
-        'sample.json.zip',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.PROTO, 'sample.proto', COMMON_PROTO),
+    _format_case(FileFormat.PB, 'sample.pb', COMMON_PB),
+    _format_case(FileFormat.XML, 'sample.xml', COMMON_XML),
+    # Compression wrappers
+    _format_case(FileFormat.GZ, 'sample.json.gz', COMMON_ROWS_NUM),
+    _format_case(FileFormat.ZIP, 'sample.json.zip', COMMON_ROWS_NUM),
+    # Columnar
+    _format_case(
         FileFormat.PARQUET,
         'sample.parquet',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'pyarrow'),
     ),
-    (
+    _format_case(
         FileFormat.FEATHER,
         'sample.feather',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'pyarrow'),
     ),
-    (
+    _format_case(
         FileFormat.ORC,
         'sample.orc',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'pyarrow'),
     ),
-    (
+    _format_case(
         FileFormat.AVRO,
         'sample.avro',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('fastavro',),
     ),
-    (
+    _format_case(
         FileFormat.ARROW,
         'sample.arrow',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pyarrow',),
     ),
-    (
+    # Databases / spreadsheets
+    _format_case(
         FileFormat.DUCKDB,
         'sample.duckdb',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('duckdb',),
     ),
-    (
+    _format_case(
         FileFormat.ODS,
         'sample.ods',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'odf'),
     ),
-    (
+    _format_case(
         FileFormat.XLSX,
         'sample.xlsx',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'openpyxl'),
     ),
-    (
-        FileFormat.SQLITE,
-        'sample.sqlite',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.SQLITE, 'sample.sqlite', COMMON_ROWS_STR),
+    # Scientific/statistical
+    _format_case(
         FileFormat.DTA,
         'sample.dta',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'pyreadstat'),
     ),
-    (
+    _format_case(
         FileFormat.SAV,
         'sample.sav',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'pyreadstat'),
     ),
-    (
+    _format_case(
         FileFormat.XPT,
         'sample.xpt',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'pyreadstat'),
     ),
-    (
+    _format_case(
         FileFormat.RDS,
         'sample.rds',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'pyreadr'),
     ),
-    (
+    _format_case(
         FileFormat.RDA,
         'sample.rda',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'pyreadr'),
     ),
-    (
+    _format_case(
         FileFormat.NC,
         'sample.nc',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'xarray', 'netCDF4'),
     ),
 ]
