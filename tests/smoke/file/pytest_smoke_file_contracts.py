@@ -36,19 +36,6 @@ class SmokeRoundtripModuleContract:
     expect_write_error: type[Exception] | None = None
     error_match: str | None = None
 
-    def build_payload(
-        self,
-        *,
-        sample_record: JSONDict,
-        sample_records: JSONList,
-    ) -> JSONData:
-        """Return the roundtrip payload for one smoke test module."""
-        if self.payload is not None:
-            return self.payload
-        if self.use_sample_record:
-            return sample_record
-        return sample_records
-
     def test_roundtrip_smoke(
         self,
         tmp_path: Path,
@@ -57,10 +44,13 @@ class SmokeRoundtripModuleContract:
     ) -> None:
         """Test that read/write can be invoked with minimal payloads."""
         path = tmp_path / self.file_name
-        payload = self.build_payload(
-            sample_record=sample_record,
-            sample_records=sample_records,
-        )
+        payload: JSONData
+        if self.payload is not None:
+            payload = self.payload
+        elif self.use_sample_record:
+            payload = sample_record
+        else:
+            payload = sample_records
         run_file_smoke(
             self.module,
             path,
