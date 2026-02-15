@@ -26,6 +26,9 @@ from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 
+from ...pytest_file_common import ORC_SYSCTL_SKIP_REASON
+from ...pytest_file_common import is_orc_sysctl_error
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -629,8 +632,8 @@ class TestFile:
         try:
             result = File(path, file_format).read()
         except OSError as err:
-            if file_format is FileFormat.ORC and 'sysctlbyname' in str(err):
-                pytest.skip('ORC read failed due to sysctl limitations')
+            if file_format is FileFormat.ORC and is_orc_sysctl_error(err):
+                pytest.skip(ORC_SYSCTL_SKIP_REASON)
             raise
 
         expected_result = expected
