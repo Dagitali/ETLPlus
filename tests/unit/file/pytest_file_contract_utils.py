@@ -41,18 +41,22 @@ def call_module_operation(
     write_payload: JSONData | None = None,
 ) -> JSONData | int:
     """Invoke handler ``read``/``write`` without deprecated module wrappers."""
-    payload = None if operation == 'read' else (
-        make_payload('list') if write_payload is None else write_payload
-    )
-    result = call_handler_operation(
-        module,
-        operation=operation,
-        path=path,
-        payload=payload,
-    )
     if operation == 'read':
-        return cast(JSONData, result)
-    return cast(int, result)
+        return call_handler_operation(
+            module,
+            operation='read',
+            path=path,
+        )
+    return call_handler_operation(
+        module,
+        operation='write',
+        path=path,
+        payload=(
+            make_payload('list')
+            if write_payload is None
+            else write_payload
+        ),
+    )
 
 
 def make_payload(
