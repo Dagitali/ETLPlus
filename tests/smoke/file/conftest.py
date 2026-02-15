@@ -13,7 +13,8 @@ from .pytest_smoke_file_contracts import SmokeRoundtripModuleContract
 from .pytest_smoke_file_contracts import run_file_smoke
 
 # Directory-level marker for smoke tests.
-pytestmark = pytest.mark.smoke
+# Legacy-path smoke tests here are integration-scope checks.
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 __all__ = [
     'FileModule',
