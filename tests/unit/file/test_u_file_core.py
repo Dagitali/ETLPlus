@@ -26,8 +26,7 @@ from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 
-from ...pytest_file_common import ORC_SYSCTL_SKIP_REASON
-from ...pytest_file_common import should_skip_known_file_io_error
+from ...pytest_file_common import skip_on_known_file_io_error
 
 # SECTION: HELPERS ========================================================== #
 
@@ -632,11 +631,10 @@ class TestFile:
         try:
             result = File(path, file_format).read()
         except OSError as err:
-            if should_skip_known_file_io_error(
+            skip_on_known_file_io_error(
                 error=err,
                 file_format=file_format,
-            ):
-                pytest.skip(ORC_SYSCTL_SKIP_REASON)
+            )
             raise
 
         expected_result = expected
