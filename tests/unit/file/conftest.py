@@ -14,8 +14,8 @@ from .pytest_file_stubs import make_pandas_stub_fixture
 from .pytest_file_stubs import make_records_frame_fixture
 from .pytest_file_stubs import optional_module_stub_fixture
 
-# Directory-level marker for unit tests.
-pytestmark = pytest.mark.unit
+# SECCION: EXPORT =========================================================== #
+
 
 __all__ = [
     'make_import_error_reader_fixture',
@@ -24,3 +24,9 @@ __all__ = [
     'make_records_frame_fixture',
     'optional_module_stub_fixture',
 ]
+
+
+# SECTION: MA
+
+# Directory-level marker for unit tests.
+pytestmark = [pytest.mark.unit]
