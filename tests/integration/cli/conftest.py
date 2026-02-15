@@ -1,7 +1,7 @@
 """
-:mod:`tests.smoke.cli.conftest` module.
+:mod:`tests.integration.cli.conftest` module.
 
-Define shared fixtures and helpers for pytest-based smoke tests of
+Define shared fixtures and helpers for pytest-based integration tests of
 :mod:`etlplus.cli`.
 """
 
@@ -24,8 +24,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: MARKERS ========================================================== #
 
 
-# Directory-level marker for smoke tests.
-pytestmark = pytest.mark.smoke
+# Directory-level marker for integration tests.
+pytestmark = pytest.mark.integration
 
 
 # SECTION: TYPES ============================================================ #

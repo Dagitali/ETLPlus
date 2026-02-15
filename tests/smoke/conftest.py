@@ -1,8 +1,7 @@
 """
 :mod:`tests.smoke.conftest` module.
 
-Define shared fixtures and helpers for pytest-based smoke tests of
-:mod:`etlplus`.
+Define shared fixtures and helpers for legacy-path smoke tests.
 
 Notes
 -----
@@ -16,5 +15,5 @@ import pytest
 # SECTION: MARKERS ========================================================== #
 
 
-# Directory-level marker for smoke tests.
+# Directory-level marker for legacy smoke-path tests.
 pytestmark = pytest.mark.smoke

@@ -1,12 +1,7 @@
 """
 :mod:`tests` package.
 
-Test suites for the :mod:`etlplus` package.
-
-Notes
------
-This package contains unit tests for CLI, extraction, validation,
-transformation, and loading functionality.
+Tests for the :mod:`etlplus` package.
 """
 
 from __future__ import annotations

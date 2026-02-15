@@ -54,7 +54,7 @@ package and command-line interface for data extraction, validation, transformati
     - [API Client Docs](#api-client-docs)
     - [Runner Internals and Connectors](#runner-internals-and-connectors)
     - [Running Tests](#running-tests)
-      - [Test Layers](#test-layers)
+      - [Test Scope and Intent](#test-scope-and-intent)
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
     - [Updating Demo Snippets](#updating-demo-snippets)
@@ -192,6 +192,9 @@ Recognized file formats are listed in the tables below. Support for reading to o
   category ABCs, and `ReadOnlyFileHandlerABC`).
 - `etlplus/file/registry.py` resolves handlers using an explicit `FileFormat -> handler class` map.
 - Dispatch is explicit-only: unmapped formats raise `Unsupported format`.
+- Module-level `etlplus.file.<format>.read()` / `write()` shims are deprecated in favor of handler
+  instance methods and may be removed in a future major release.
+- Documentation and examples intentionally use handler class methods, not deprecated module wrappers.
 - Placeholder handlers are split into:
   - `etlplus/file/stub.py` for generic stub behavior
   - `etlplus/file/_stub_categories.py` for category-aware internal stub ABCs
@@ -767,28 +770,35 @@ Curious how the pipeline runner composes API requests, pagination, and load call
 ### Running Tests
 
 ```bash
-pytest tests/ -v
+pytest
 ```
 
-#### Test Layers
+#### Test Scope and Intent
 
-We split tests into three layers:
+ETLPlus organizes tests by scope and uses markers for cross-cutting intent.
 
-- **Unit (`tests/unit/`)**: single function or class, no real I/O, fast, uses stubs/monkeypatch
-  (e.g. small helpers in `etlplus.utils`, transform + validate helpers).
-- **Smoke (`tests/smoke/`)**: minimal end-to-end checks for core flows; may touch temp files but
-  avoids external network calls.
-- **Integration (`tests/integration/`)**: end-to-end flows (CLI `main()`, pipeline `run()`,
-  pagination + rate limit defaults, file/API connector interactions) may touch temp files and use
-  fake clients.
+- **Scope folders**:
+  - Unit (`tests/unit/`): isolated function/class behavior, no external services.
+  - Integration (`tests/integration/`): cross-module and boundary behavior.
+  - E2E (`tests/e2e/`): full workflow/system-boundary behavior.
+- **Intent markers**:
+  - `smoke`: go/no-go viability checks.
+  - `contract`: interface/metadata compatibility checks.
 
-If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()` it’s integration by default. Full
-criteria: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing).
+Smoke tests are now treated as an intent marker rather than a primary folder. The legacy
+`tests/smoke/` path is transitional and should be migrated over time.
+
+If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
+Detailed criteria and marker conventions: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing),
+[`tests/README.md`](tests/README.md).
 
 ### Code Coverage
 
 ```bash
-pytest tests/ --cov=etlplus --cov-report=html
+pytest tests/unit tests/integration tests/e2e --cov=etlplus --cov-report=html
+
+# Optional transitional legacy path coverage
+pytest tests/smoke --cov=etlplus --cov-report=html
 ```
 
 ### Linting

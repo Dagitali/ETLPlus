@@ -1,7 +1,7 @@
 """
-:mod:`tests.smoke.test_s_cli_validate` module.
+:mod:`tests.integration.cli.test_i_cli_validate` module.
 
-Smoke tests for the ``etlplus validate`` CLI command.
+Integration-scope smoke tests for the ``etlplus validate`` CLI command.
 """
 
 from __future__ import annotations
@@ -15,6 +15,11 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
+
+# SECTION: MARKS ============================================================ #
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: TESTS ============================================================ #
 
