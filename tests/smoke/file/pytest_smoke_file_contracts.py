@@ -9,11 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 
 import pytest
 
 from etlplus.types import JSONData
+from etlplus.types import JSONDict
+from etlplus.types import JSONList
 
 from ...pytest_file_common import call_handler_operation
 from ...pytest_file_common import skip_on_known_file_io_error
@@ -38,8 +39,8 @@ class SmokeRoundtripModuleContract:
     def build_payload(
         self,
         *,
-        sample_record: dict[str, Any],
-        sample_records: list[dict[str, Any]],
+        sample_record: JSONDict,
+        sample_records: JSONList,
     ) -> JSONData:
         """Return the roundtrip payload for one smoke test module."""
         if self.payload is not None:
@@ -51,8 +52,8 @@ class SmokeRoundtripModuleContract:
     def test_roundtrip_smoke(
         self,
         tmp_path: Path,
-        sample_record: dict[str, Any],
-        sample_records: list[dict[str, Any]],
+        sample_record: JSONDict,
+        sample_records: JSONList,
     ) -> None:
         """Test that read/write can be invoked with minimal payloads."""
         path = tmp_path / self.file_name
