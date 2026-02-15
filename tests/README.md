@@ -1,53 +1,67 @@
 # Tests Overview
 
-ETLPlus organizes tests primarily by scope-aligned folders, with intent markers applied
-orthogonally.
+ETLPlus organizes tests by **scope** and labels cross-cutting test **intent**
+with pytest markers.
 
-## Folders
+- [Tests Overview](#tests-overview)
+  - [Scope Markers / Directory Layout](#scope-markers--directory-layout)
+  - [Intent Markers](#intent-markers)
+  - [Legacy Transitional Path](#legacy-transitional-path)
+  - [Discovery and Selection](#discovery-and-selection)
+  - [Common Commands](#common-commands)
 
-### Unit tests (`tests/unit/`)
+## Scope Markers / Directory Layout
 
-- Scope: single function or class in isolation
-- I/O: no real file system or network I/O (use stubs/monkeypatch)
-- Speed: fast, deterministic
-- Marker: `unit`
+| Marker | Path | Scope | Meaning |
+| --- | --- | --- | --- |
+| `unit` | `tests/unit/` | Isolated function/class behavior | Fast, deterministic, minimal external I/O |
+| `integration` | `tests/integration/` | Cross-module behavior and boundary wiring | May use temp files and fakes/mocks |
+| `e2e` | `tests/e2e/` | Full workflow/system-boundary behavior | Slowest, broadest confidence checks |
 
-### Integration tests (`tests/integration/`)
+## Intent Markers
 
-- Scope: cross-module workflows and CLI/pipeline paths
-- I/O: may touch temp files; may use fakes/mocks for HTTP clients
-- Speed: slower than unit
-- Marker: `integration`
+Intent markers are orthogonal to scope. A test can be both `integration` and
+`smoke`, for example.
 
-### End-to-end tests (`tests/e2e/`)
+| Marker | Meaning |
+| --- | --- |
+| `smoke` | Go/no-go viability checks (broad and shallow) |
+| `contract` | Compatibility checks for stable interfaces and metadata |
+| `acceptance` | User-facing behavior checks |
+| `data_quality` | Output semantic invariants |
+| `resilience` | Failure/retry/recovery behavior |
+| `perf` | Throughput/latency performance checks |
 
-- Scope: full system-boundary validation
-- I/O: real-ish boundary interactions and orchestration flows
-- Speed: slowest in the regular matrix
-- Marker: `e2e`
+See `pytest.ini` for the complete marker registry.
 
-## Intent markers
+## Legacy Transitional Path
 
-- `smoke`: go/no-go viability checks (broad, shallow)
-- `contract`: compatibility tests for stable interfaces and metadata
+- `tests/smoke/` is a legacy location being phased out.
+- New tests should be placed under scope folders (`tests/unit/`,
+  `tests/integration/`, `tests/e2e/`) and labeled with `@pytest.mark.smoke`
+  when appropriate.
 
-## Transitional legacy path
+## Discovery and Selection
 
-- `tests/smoke/` is being phased out as a top-level scope folder.
-- Keep existing tests there until migrated; place new smoke tests in scope
-  folders and mark them with `@pytest.mark.smoke`.
+Default test discovery is controlled by `pytest.ini`:
 
-## Running tests
+- `testpaths = tests/unit tests/integration tests/e2e`
+
+This means plain `pytest` does **not** collect `tests/smoke/` unless you
+explicitly pass that path.
+
+## Common Commands
 
 ```bash
+# Scope folders
 pytest tests/unit
 pytest tests/integration
 pytest tests/e2e
 
-# Transitional legacy run
+# Legacy smoke folder (explicit path required)
 pytest tests/smoke
 
-# Marker-based selection by scope
+# Marker-based selection by scope (within configured testpaths)
 pytest -m unit
 pytest -m integration
 pytest -m e2e
