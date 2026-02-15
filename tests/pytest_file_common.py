@@ -7,8 +7,9 @@ Shared helpers for file-focused tests.
 from __future__ import annotations
 
 from types import ModuleType
-from typing import Any
+from typing import cast
 
+from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -16,7 +17,7 @@ from etlplus.file.base import WriteOptions
 
 def resolve_module_handler(
     module: ModuleType,
-) -> Any:
+) -> FileHandlerABC:
     """Return the singleton handler instance defined by a file module."""
     handlers = [
         value
@@ -24,7 +25,9 @@ def resolve_module_handler(
         if name.endswith('_HANDLER')
     ]
     assert len(handlers) == 1
-    return handlers[0]
+    handler = handlers[0]
+    assert isinstance(handler, FileHandlerABC)
+    return cast(FileHandlerABC, handler)
 
 
 def normalize_write_kwargs(

@@ -110,13 +110,14 @@ def run_file_smoke(
     """
     write_kwargs = normalize_write_kwargs(write_kwargs)
     handler = resolve_module_handler(cast(ModuleType, module))
+    untyped_handler = cast(Any, handler)
     try:
         if expect_write_error is not None:
             match = error_match or ''
             with pytest.raises(expect_write_error, match=match):
-                handler.write(path, payload, **write_kwargs)
+                untyped_handler.write(path, payload, **write_kwargs)
             return
-        written = handler.write(path, payload, **write_kwargs)
+        written = untyped_handler.write(path, payload, **write_kwargs)
         assert written
         result = handler.read(path)
         assert result

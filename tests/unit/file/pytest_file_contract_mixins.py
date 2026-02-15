@@ -23,11 +23,11 @@ from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 from etlplus.utils import count_records
 
+from ...pytest_file_common import resolve_module_handler
 from .pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,
 )
 from .pytest_file_contract_utils import make_payload
-from .pytest_file_contract_utils import module_handler as _module_handler
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
@@ -95,7 +95,7 @@ class PathMixin:
     @property
     def module_handler(self) -> Any:
         """Return the module's singleton handler instance."""
-        return _module_handler(self.module)
+        return resolve_module_handler(self.module)
 
     def format_path(
         self,
