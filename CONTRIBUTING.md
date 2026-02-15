@@ -13,9 +13,10 @@ email, or any other method with the owners of this repository before making a ch
   - [Code of Conduct](#code-of-conduct)
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
+  - [Documentation Style](#documentation-style)
   - [Testing](#testing)
-    - [Unit vs. Smoke vs. Integration](#unit-vs-smoke-vs-integration)
-    - [Configuring Tests](#configuring-tests)
+    - [Scope and Intent](#scope-and-intent)
+    - [Test Configuration](#test-configuration)
     - [Running Tests](#running-tests)
     - [Common Patterns](#common-patterns)
 
@@ -97,6 +98,19 @@ class ExampleConfig:
             ...
 ```
 
+## Documentation Style
+
+Use NumPy-style docstrings for public APIs.
+
+- Keep full sections for public functions and methods: `Parameters`, `Returns`, and `Raises` when
+  applicable.
+- Do not collapse public API docstrings to one-liners solely because the function is a thin
+  delegator.
+- For deprecated wrappers, include an explicit deprecation sentence near the top, while still
+  keeping the full structured sections.
+- For `etlplus/file` module-level wrappers (`read`/`write`) specifically, preserve full
+  `Parameters` and `Returns` sections.
+
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [owner]: https://dagitali.com
 [pull request]: https://github.com/Dagitali/ETLPlus/pulls
@@ -105,9 +119,9 @@ class ExampleConfig:
 
 ## Testing
 
-### Unit vs. Smoke vs. Integration
+### Scope and Intent
 
-Use these guidelines to decide whether a test belongs in the unit, smoke, or integration suite:
+Use these guidelines to decide where tests live and how to label intent.
 
 - Unit tests (put under `tests/unit/`):
   - Exercise a single function or class directly in isolation (no orchestration across modules).
@@ -116,12 +130,6 @@ Use these guidelines to decide whether a test belongs in the unit, smoke, or int
   - Examples in this repo:
     - Small helpers in `etlplus.utils`
     - Validation and transform functions.
-
-- Smoke tests (put under `tests/smoke/`):
-  - Minimal end-to-end checks for core flows; very fast and stable.
-  - May touch temporary files but avoid external network calls.
-  - Examples in this repo:
-    - End-to-end CLI/pipeline checks
 
 - Integration tests (put under `tests/integration/`):
   - Exercise end-to-end flows across modules and boundaries.
@@ -134,15 +142,25 @@ Use these guidelines to decide whether a test belongs in the unit, smoke, or int
     - Runner defaults for pagination/rate limits
     - Target URL composition.
 
+- E2E tests (put under `tests/e2e/`):
+  - Validate full system-boundary workflows.
+  - Keep slower, higher-scope checks here.
+
+- Smoke tests are an intent marker, not a scope folder:
+  - Place smoke tests in `tests/unit/`, `tests/integration/`, or `tests/e2e/`
+    based on scope.
+  - Mark them with `@pytest.mark.smoke`.
+  - `tests/smoke/` is a transitional legacy path during migration.
+
 If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
 
 ### Test Configuration
 
-- Each test folder should include a `conftest.py`. At minimum, it should define the folder-wide marker:
-  - `pytestmark = pytest.mark.unit` for `tests/unit/`
-  - `pytestmark = pytest.mark.smoke` for `tests/smoke/`
-  - `pytestmark = pytest.mark.integration` for `tests/integration/`
-- You don’t need to add the same marker per test or per test module.
+- Each test folder should include a `conftest.py` for shared fixtures.
+- Use scope markers (`unit`, `integration`, `e2e`) and intent markers
+  (`smoke`, `contract`) from `pytest.ini`.
+- Add `@pytest.mark.smoke` and `@pytest.mark.contract` directly on modules/tests
+  where intent applies.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
 - For optional dependencies, prefer `pytest.importorskip("module")` so tests skip cleanly when the extra isn’t installed.
 
@@ -154,13 +172,15 @@ Common commands:
   - `pytest`
 - Run a specific suite:
   - `pytest -m unit`
-  - `pytest -m smoke`
   - `pytest -m integration`
+  - `pytest -m e2e`
+  - `pytest -m smoke`
+  - `pytest -m contract`
 - Run a specific file or test:
   - `pytest tests/unit/file/test_u_file_core.py`
-  - `pytest tests/unit/file/test_u_file_core.py::TestFile::test_round_trip_by_format`
+  - `pytest tests/unit/file/test_u_file_core.py::TestFile::test_roundtrip_by_format`
 - Run by keyword:
-  - `pytest -k "round_trip"`
+  - `pytest -k "roundtrip"`
 
 ### Common Patterns
 

@@ -1,17 +1,24 @@
 """
-:mod:`tests.smoke.test_s_cli_render` module.
+:mod:`tests.integration.cli.test_i_cli_render` module.
 
-Smoke tests for the ``etlplus render`` CLI command.
+Integration-scope smoke tests for the ``etlplus render`` CLI command.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.smoke.cli.conftest import PipelineSchema
-    from tests.smoke.cli.conftest import TableSpec
+    from tests.integration.cli.conftest import PipelineSchema
+    from tests.integration.cli.conftest import TableSpec
+
+# SECTION: MARKS ============================================================ #
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: TESTS ============================================================ #
 

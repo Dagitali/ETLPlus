@@ -144,8 +144,8 @@ JsonFile().write(Path("output.json"), data)
 
 ## Handler Instance Methods
 
-- `read()`: Reads and parses the file, returning structured data.
-- `write(data)`: Writes structured data to the file in the detected format.
+- `read(path, options=None)`: Reads and parses one file path, returning structured data.
+- `write(path, data, options=None)`: Serializes and writes data to one file path.
 
 ## Example: Reading and Writing
 
