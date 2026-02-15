@@ -6,6 +6,7 @@ Reusable smoke-test contracts for :mod:`etlplus.file` modules.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -14,9 +15,8 @@ import pytest
 
 from etlplus.types import JSONData
 
-from ...pytest_file_common import ORC_SYSCTL_SKIP_REASON
 from ...pytest_file_common import call_handler_operation
-from ...pytest_file_common import should_skip_known_file_io_error
+from ...pytest_file_common import skip_on_known_file_io_error
 
 __all__ = [
     'SmokeRoundtripModuleContract',
@@ -31,7 +31,7 @@ class SmokeRoundtripModuleContract:
     file_name: str
     payload: JSONData | None = None
     use_sample_record: bool = False
-    write_kwargs: dict[str, object] | None = None
+    write_kwargs: Mapping[str, object] | None = None
     expect_write_error: type[Exception] | None = None
     error_match: str | None = None
 
@@ -75,7 +75,7 @@ def run_file_smoke(
     path: Path,
     payload: JSONData,
     *,
-    write_kwargs: dict[str, object] | None = None,
+    write_kwargs: Mapping[str, object] | None = None,
     expect_write_error: type[Exception] | None = None,
     error_match: str | None = None,
 ) -> None:
@@ -90,7 +90,7 @@ def run_file_smoke(
         Target path for the test file.
     payload : JSONData
         Payload passed to ``write``.
-    write_kwargs : dict[str, object] | None, optional
+    write_kwargs : Mapping[str, object] | None, optional
         Keyword arguments forwarded to ``write``.
     expect_write_error : type[Exception] | None, optional
         Expected exception type for write failures.
@@ -129,11 +129,10 @@ def run_file_smoke(
         )
         assert result
     except OSError as exc:
-        if should_skip_known_file_io_error(
+        skip_on_known_file_io_error(
             error=exc,
             module_name=module.__name__,
-        ):
-            pytest.skip(ORC_SYSCTL_SKIP_REASON)
+        )
         raise
     except ImportError as exc:
         pytest.skip(str(exc))
