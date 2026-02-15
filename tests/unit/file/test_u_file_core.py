@@ -36,6 +36,10 @@ from ...pytest_file_common import skip_on_known_file_io_error
 type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 
 
+PYARROW_DEPS = ('pandas', 'pyarrow')
+PYREADR_DEPS = ('pandas', 'pyreadr')
+PYREADSTAT_DEPS = ('pandas', 'pyreadstat')
+
 COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
 COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
 COMMON_ROWS_TXT: JSONData = [{'text': 'hello'}, {'text': 'world'}]
@@ -62,8 +66,8 @@ def _format_case(
     return (
         file_format,
         filename,
-        cast(JSONData, deepcopy(payload)),
-        cast(JSONData, deepcopy(expected_payload)),
+        deepcopy(payload),
+        deepcopy(expected_payload),
         requires,
     )
 
@@ -113,19 +117,19 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.PARQUET,
         'sample.parquet',
         COMMON_ROWS_NUM,
-        ('pandas', 'pyarrow'),
+        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.FEATHER,
         'sample.feather',
         COMMON_ROWS_NUM,
-        ('pandas', 'pyarrow'),
+        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.ORC,
         'sample.orc',
         COMMON_ROWS_NUM,
-        ('pandas', 'pyarrow'),
+        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.AVRO,
@@ -164,31 +168,31 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.DTA,
         'sample.dta',
         COMMON_ROWS_STR,
-        ('pandas', 'pyreadstat'),
+        PYREADSTAT_DEPS,
     ),
     _format_case(
         FileFormat.SAV,
         'sample.sav',
         COMMON_ROWS_STR,
-        ('pandas', 'pyreadstat'),
+        PYREADSTAT_DEPS,
     ),
     _format_case(
         FileFormat.XPT,
         'sample.xpt',
         COMMON_ROWS_STR,
-        ('pandas', 'pyreadstat'),
+        PYREADSTAT_DEPS,
     ),
     _format_case(
         FileFormat.RDS,
         'sample.rds',
         COMMON_ROWS_STR,
-        ('pandas', 'pyreadr'),
+        PYREADR_DEPS,
     ),
     _format_case(
         FileFormat.RDA,
         'sample.rda',
         COMMON_ROWS_STR,
-        ('pandas', 'pyreadr'),
+        PYREADR_DEPS,
     ),
     _format_case(
         FileFormat.NC,
