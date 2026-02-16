@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.file.pytest_file_contract_contracts` module.
+:mod:`tests.unit.file.pytest_file_contracts` module.
 
 Reusable concrete contract suites for unit tests of :mod:`etlplus.file`.
 """
