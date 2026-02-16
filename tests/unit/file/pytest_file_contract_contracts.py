@@ -12,6 +12,7 @@ from typing import cast
 
 import pytest
 
+from etlplus.file import FileFormat
 from etlplus.file.stub import StubFileHandlerABC
 from etlplus.types import JSONData
 from etlplus.types import JSONDict
@@ -39,8 +40,6 @@ from .pytest_file_contract_utils import (
     call_module_operation as _call_module_operation,
 )
 from .pytest_file_contract_utils import make_payload
-from .pytest_file_support import BinaryCodecStub
-from .pytest_file_support import CoreDispatchFileStub
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 
@@ -68,7 +67,93 @@ __all__ = [
 ]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: CLASSES (STUBS) ================================================== #
+
+
+class BinaryCodecStub:
+    """
+    Generic codec stub for binary serialization module tests.
+
+    Supports configurable reader/writer method names to cover modules like
+    :mod:`msgpack` and :mod:`cbor2` with one reusable implementation.
+    """
+
+    def __init__(
+        self,
+        *,
+        reader_method_name: str,
+        writer_method_name: str,
+        loaded_result: object,
+        emitted_bytes: bytes,
+    ) -> None:
+        self.reader_method_name = reader_method_name
+        self.writer_method_name = writer_method_name
+        self.loaded_result = loaded_result
+        self.emitted_bytes = emitted_bytes
+        self.reader_payloads: list[bytes] = []
+        self.reader_kwargs: list[dict[str, object]] = []
+        self.writer_payloads: list[object] = []
+        self.writer_kwargs: list[dict[str, object]] = []
+
+    def _reader(
+        self,
+        payload: bytes,
+        **kwargs: object,
+    ) -> object:
+        self.reader_payloads.append(payload)
+        self.reader_kwargs.append(dict(kwargs))
+        return self.loaded_result
+
+    def _writer(
+        self,
+        payload: object,
+        **kwargs: object,
+    ) -> bytes:
+        self.writer_payloads.append(payload)
+        self.writer_kwargs.append(dict(kwargs))
+        return self.emitted_bytes
+
+    def __getattr__(
+        self,
+        name: str,
+    ) -> object:
+        if name == self.reader_method_name:
+            return self._reader
+        if name == self.writer_method_name:
+            return self._writer
+        raise AttributeError(name)
+
+
+class CoreDispatchFileStub:
+    """
+    Minimal stand-in for :class:`etlplus.file.core.File` in archive tests.
+    """
+
+    # pylint: disable=unused-argument
+
+    def __init__(
+        self,
+        path: Path,
+        fmt: FileFormat,
+    ) -> None:
+        self.path = Path(path)
+        self.fmt = fmt
+
+    def read(self) -> dict[str, str]:
+        """Return deterministic payload for archive-wrapper read tests."""
+        return {'fmt': self.fmt.value, 'name': self.path.name}
+
+    def write(
+        self,
+        data: object,
+    ) -> int:
+        """Persist deterministic content so wrapper tests can assert bytes."""
+        _ = data
+        self.path.write_text('payload', encoding='utf-8')
+        return 1
+
+
+# SECTION: CLASSES (CONTRACTS) ============================================== #
 
 
 class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
