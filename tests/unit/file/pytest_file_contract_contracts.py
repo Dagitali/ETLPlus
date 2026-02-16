@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from types import ModuleType
 from typing import cast
 
 import pytest
@@ -75,7 +74,6 @@ __all__ = [
 class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     """Reusable contract suite for archive wrappers using core dispatch."""
 
-    module: ModuleType
     write_payload: JSONData = make_payload('list')
     expected_written_count: int = 1
     missing_inner_error_pattern: str = 'Cannot infer file format'
@@ -177,7 +175,6 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
 class BinaryCodecModuleContract(PathMixin):
     """Reusable contract suite for binary codec wrapper modules."""
 
-    module: ModuleType
     dependency_name: str
     reader_method_name: str
     writer_method_name: str
@@ -253,7 +250,6 @@ class BinaryCodecModuleContract(PathMixin):
 class BinaryDependencyModuleContract(PathMixin):
     """Reusable contract suite for binary modules backed by one dependency."""
 
-    module: ModuleType
     dependency_name: str
     expected_read_result: JSONData
     write_payload: JSONData
@@ -313,7 +309,6 @@ class BinaryDependencyModuleContract(PathMixin):
 class BinaryKeyedPayloadModuleContract(PathMixin):
     """Reusable contract suite for keyed binary payload wrapper modules."""
 
-    module: ModuleType
     payload_key: str
     sample_payload_value: str
     expected_bytes: bytes
@@ -361,7 +356,6 @@ class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
 
     # pylint: disable=unused-argument
 
-    module: ModuleType
     multi_table_error_pattern: str
 
     def build_empty_database_path(
@@ -406,7 +400,6 @@ class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
 class PandasColumnarModuleContract(EmptyWriteReturnsZeroMixin):
     """Reusable contract suite for pandas-backed columnar format modules."""
 
-    module: ModuleType
     read_method_name: str
     write_calls_attr: str
     write_uses_index: bool = False
@@ -526,7 +519,6 @@ class PyarrowMissingDependencyMixin(PathMixin):
     Shared mixin for pyarrow-gated read/write dependency checks.
     """
 
-    module: ModuleType
     missing_dependency_pattern: str = 'missing pyarrow'
 
     @pytest.mark.parametrize('operation', ['read', 'write'])
@@ -567,7 +559,6 @@ class PyarrowGatedPandasColumnarModuleContract(
 class RDataModuleContract(PathMixin):
     """Reusable contract suite for R-data wrapper modules (RDA/RDS)."""
 
-    module: ModuleType
     writer_missing_pattern: str
     write_payload: JSONData = make_payload('list')
 
@@ -765,7 +756,6 @@ class SingleDatasetPlaceholderContract(SingleDatasetHandlerContract):
 class StubModuleContract(PathMixin):
     """Reusable contract suite for placeholder/stub format modules."""
 
-    module: ModuleType
     handler_cls: type[StubFileHandlerABC]
 
     def test_handler_inherits_stub_abc(self) -> None:

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 from typing import Literal
 from typing import cast
 
@@ -17,13 +16,8 @@ import pytest
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.types import JSONData
 
-from ...pytest_file_common import resolve_module_handler
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type Operation = Literal['read', 'write']
-
+from ...pytest_file_common import Operation
+from ...pytest_file_common import call_handler_operation
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -39,13 +33,6 @@ def _raise_unexpected_dependency_call(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def module_handler(
-    module: ModuleType,
-) -> Any:
-    """Return the singleton handler instance defined by a file module."""
-    return resolve_module_handler(module)
-
-
 def call_module_operation(
     module: ModuleType,
     *,
@@ -54,11 +41,20 @@ def call_module_operation(
     write_payload: JSONData | None = None,
 ) -> JSONData | int:
     """Invoke handler ``read``/``write`` without deprecated module wrappers."""
-    handler = module_handler(module)
     if operation == 'read':
-        return cast(JSONData, handler.read(path))
-    payload = make_payload('list') if write_payload is None else write_payload
-    return cast(int, handler.write(path, payload))
+        return call_handler_operation(
+            module,
+            operation='read',
+            path=path,
+        )
+    return call_handler_operation(
+        module,
+        operation='write',
+        path=path,
+        payload=(
+            make_payload('list') if write_payload is None else write_payload
+        ),
+    )
 
 
 def make_payload(

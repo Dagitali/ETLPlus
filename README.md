@@ -785,8 +785,8 @@ ETLPlus organizes tests by scope and uses markers for cross-cutting intent.
   - `smoke`: go/no-go viability checks.
   - `contract`: interface/metadata compatibility checks.
 
-Smoke tests are now treated as an intent marker rather than a primary folder. The legacy
-`tests/smoke/` path is transitional and should be migrated over time.
+Smoke tests are now treated as an intent marker rather than a primary folder. The legacy path
+migration is complete; smoke tests live under scope folders and are selected by marker.
 
 If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integration by default.
 Detailed criteria and marker conventions: [`CONTRIBUTING.md#testing`](CONTRIBUTING.md#testing),
@@ -796,9 +796,6 @@ Detailed criteria and marker conventions: [`CONTRIBUTING.md#testing`](CONTRIBUTI
 
 ```bash
 pytest tests/unit tests/integration tests/e2e --cov=etlplus --cov-report=html
-
-# Optional transitional legacy path coverage
-pytest tests/smoke --cov=etlplus --cov-report=html
 ```
 
 ### Linting

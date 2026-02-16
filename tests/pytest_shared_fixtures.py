@@ -15,6 +15,8 @@ from typing import Any
 import pytest
 
 from etlplus.cli import main
+from etlplus.types import JSONDict
+from etlplus.types import JSONList
 
 from .pytest_shared_support import CaptureHandler
 from .pytest_shared_support import CliInvoke
@@ -88,7 +90,7 @@ def json_file_factory_fixture(
 )
 def sample_record_fixture(
     request: pytest.FixtureRequest,
-) -> dict[str, Any]:
+) -> JSONDict:
     """Return a representative record payload for tests."""
     return request.param
 
@@ -113,14 +115,14 @@ def sample_record_fixture(
 )
 def sample_records_fixture(
     request: pytest.FixtureRequest,
-) -> list[dict[str, Any]]:
+) -> JSONList:
     """Return representative record payloads for tests."""
     return list(request.param)
 
 
 @pytest.fixture(name='sample_records_json')
 def sample_records_json_fixture(
-    sample_records: list[dict[str, Any]],
+    sample_records: JSONList,
 ) -> str:
     """Return sample records serialized as JSON."""
     return json.dumps(sample_records)
@@ -129,7 +131,7 @@ def sample_records_json_fixture(
 @pytest.fixture(name='json_payload_file')
 def json_payload_file_fixture(
     json_file_factory: JsonFactory,
-    sample_records: list[dict[str, Any]],
+    sample_records: JSONList,
 ) -> Path:
     """Persist ``sample_records`` as JSON and return the file path."""
     return json_file_factory(sample_records, filename='records.json')

@@ -6,17 +6,113 @@ Shared helpers for file-focused tests.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Literal
+from typing import cast
+from typing import overload
 
+import pytest
+
+from etlplus.file import FileFormat
+from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
+from etlplus.types import JSONData
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+ORC_SYSCTL_SKIP_REASON = 'ORC read failed due to sysctl limitations'
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type Operation = Literal['read', 'write']
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def _resolve_write_options(
+    write_kwargs: Mapping[str, object] | None = None,
+) -> WriteOptions | None:
+    """
+    Normalize optional write kwargs into a ``WriteOptions`` instance.
+    """
+    if write_kwargs is None:
+        return None
+
+    kwargs = dict(write_kwargs)
+    root_tag = kwargs.pop('root_tag', None)
+    options = kwargs.pop('options', None)
+
+    if kwargs:
+        invalid = ', '.join(sorted(kwargs))
+        raise TypeError(f'unsupported write kwargs: {invalid}')
+
+    if root_tag is not None:
+        if not isinstance(root_tag, str):
+            raise TypeError('root_tag must be a string')
+        if options is None:
+            options = WriteOptions(root_tag=root_tag)
+
+    if options is None:
+        return None
+    if not isinstance(options, WriteOptions):
+        raise TypeError('options must be a WriteOptions instance')
+    return options
+
+
+@overload
+def call_handler_operation(
+    module: ModuleType,
+    *,
+    operation: Literal['read'],
+    path: Path,
+    payload: None = None,
+    write_kwargs: Mapping[str, object] | None = None,
+) -> JSONData: ...
+
+
+@overload
+def call_handler_operation(
+    module: ModuleType,
+    *,
+    operation: Literal['write'],
+    path: Path,
+    payload: JSONData,
+    write_kwargs: Mapping[str, object] | None = None,
+) -> int: ...
+
+
+def call_handler_operation(
+    module: ModuleType,
+    *,
+    operation: Operation,
+    path: Path,
+    payload: JSONData | None = None,
+    write_kwargs: Mapping[str, object] | None = None,
+) -> JSONData | int:
+    """Call one module handler operation with normalized write options."""
+    handler = resolve_module_handler(module)
+    if operation == 'read':
+        return handler.read(path)
+    if payload is None:
+        raise TypeError('payload is required for write operations')
+    options = _resolve_write_options(write_kwargs)
+    return handler.write(path, payload, options=options)
+
+
+def is_orc_sysctl_error(error: OSError) -> bool:
+    """Return whether one ORC I/O failure matches known sysctl constraints."""
+    return 'sysctlbyname' in str(error)
+
+
 def resolve_module_handler(
     module: ModuleType,
-) -> Any:
+) -> FileHandlerABC:
     """Return the singleton handler instance defined by a file module."""
     handlers = [
         value
@@ -24,21 +120,35 @@ def resolve_module_handler(
         if name.endswith('_HANDLER')
     ]
     assert len(handlers) == 1
-    return handlers[0]
+    handler = handlers[0]
+    assert isinstance(handler, FileHandlerABC)
+    return cast(FileHandlerABC, handler)
 
 
-def normalize_write_kwargs(
-    write_kwargs: dict[str, object] | None = None,
-) -> dict[str, object]:
-    """
-    Normalize smoke/unit write kwargs to handler-compatible options.
+def should_skip_known_file_io_error(
+    *,
+    error: OSError,
+    file_format: FileFormat | None = None,
+    module_name: str | None = None,
+) -> bool:
+    """Return whether one file I/O error should be skipped in tests."""
+    is_orc_failure = file_format is FileFormat.ORC or (
+        module_name is not None and module_name.endswith('.orc')
+    )
+    return is_orc_failure and is_orc_sysctl_error(error)
 
-    Supports converting ``root_tag=...`` into ``options=WriteOptions(...)``.
-    """
-    kwargs = dict(write_kwargs or {})
-    if 'root_tag' in kwargs and 'options' not in kwargs:
-        root_tag = kwargs.pop('root_tag')
-        if not isinstance(root_tag, str):
-            raise TypeError('root_tag must be a string')
-        kwargs['options'] = WriteOptions(root_tag=root_tag)
-    return kwargs
+
+def skip_on_known_file_io_error(
+    *,
+    error: OSError,
+    file_format: FileFormat | None = None,
+    module_name: str | None = None,
+) -> None:
+    """Skip current test if one known file I/O error condition is met."""
+    if should_skip_known_file_io_error(
+        error=error,
+        file_format=file_format,
+        module_name=module_name,
+    ):
+        __tracebackhide__ = True
+        pytest.skip(ORC_SYSCTL_SKIP_REASON)
