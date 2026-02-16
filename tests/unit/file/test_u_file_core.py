@@ -462,22 +462,39 @@ class TestFile:
         """
         Test module helpers accept ``Path`` inputs.
         """
-        csv_path = tmp_path / 'data.csv'
-        json_path = tmp_path / 'data.json'
-        xml_path = tmp_path / 'data.xml'
-
-        csv_file.CsvFile().write(csv_path, [{'name': 'Ada'}])
-        assert csv_file.CsvFile().read(csv_path) == [{'name': 'Ada'}]
-
-        json_file.JsonFile().write(json_path, {'name': 'Ada'})
-        assert json_file.JsonFile().read(json_path) == {'name': 'Ada'}
-
-        xml_file.XmlFile().write(
-            xml_path,
-            {'root': {'text': 'hello'}},
-            options=WriteOptions(root_tag='root'),
+        cases: tuple[
+            tuple[Any, str, JSONData, JSONData, WriteOptions | None],
+            ...,
+        ] = (
+            (
+                csv_file.CsvFile(),
+                'data.csv',
+                [{'name': 'Ada'}],
+                [{'name': 'Ada'}],
+                None,
+            ),
+            (
+                json_file.JsonFile(),
+                'data.json',
+                {'name': 'Ada'},
+                {'name': 'Ada'},
+                None,
+            ),
+            (
+                xml_file.XmlFile(),
+                'data.xml',
+                {'root': {'text': 'hello'}},
+                {'root': {'text': 'hello'}},
+                WriteOptions(root_tag='root'),
+            ),
         )
-        assert xml_file.XmlFile().read(xml_path) == {'root': {'text': 'hello'}}
+        for handler, filename, payload, expected, options in cases:
+            path = tmp_path / filename
+            if options is None:
+                handler.write(path, payload)
+            else:
+                handler.write(path, payload, options=options)
+            assert handler.read(path) == expected
 
     def test_read_csv_skips_blank_rows(
         self,
@@ -516,28 +533,38 @@ class TestFile:
             file.read()
 
     @pytest.mark.parametrize(
-        ('filename', 'contents', 'error_pattern'),
+        ('filename', 'contents', 'operation', 'error_pattern'),
         [
-            ('data.gz', 'compressed', 'compressed file'),
-            ('weird.data', '{}', 'Cannot infer file format'),
+            ('data.gz', 'compressed', 'read', 'compressed file'),
+            ('weird.data', '{}', 'read', 'Cannot infer file format'),
+            ('output.unknown', None, 'write', 'Cannot infer file format'),
         ],
-        ids=['compression_only_suffix', 'unknown_extension'],
+        ids=[
+            'compression_only_suffix',
+            'read_unknown_extension',
+            'write_unknown',
+        ],
     )
-    def test_read_unknown_formats_defer_error(
+    def test_unknown_formats_defer_error(
         self,
         tmp_path: Path,
         filename: str,
-        contents: str,
+        contents: str | None,
+        operation: Operation,
         error_pattern: str,
     ) -> None:
-        """Test unresolved formats deferring failure until read dispatch."""
+        """Test unresolved formats deferring failure until dispatch."""
         path = tmp_path / filename
-        path.write_text(contents, encoding='utf-8')
+        if contents is not None:
+            path.write_text(contents, encoding='utf-8')
         file = File(path)
 
         assert file.file_format is None
         with pytest.raises(ValueError, match=error_pattern):
-            file.read()
+            if operation == 'read':
+                file.read()
+            else:
+                file.write({'ok': True})
 
     @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
@@ -644,17 +671,6 @@ class TestFile:
         json_content = path.read_text(encoding='utf-8')
         assert json_content
         assert json_content.count('\n') >= 2
-
-    def test_write_unknown_extension_without_format_raises(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write fails when format cannot be inferred."""
-        path = tmp_path / 'output.unknown'
-        file = File(path)
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            file.write({'ok': True})
 
     def test_xls_write_not_supported(
         self,
