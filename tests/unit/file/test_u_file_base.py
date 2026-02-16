@@ -282,6 +282,13 @@ class _ReadOnlySingleScientificStub(
         _raise_read_only_write(self.format)
 
 
+# Shared type for read-only scientific stub handler classes.
+type _ReadOnlyScientificHandlerClass = (
+    type[_ReadOnlyScientificStub]
+    | type[_ReadOnlySingleScientificStub]
+)
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -339,37 +346,56 @@ class TestBaseAbcContracts:
         assert inspect.isabstract(FileHandlerABC)
         assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
 
-    def test_read_only_scientific_write_dataset_rejects_writes(
-        self,
-    ) -> None:
-        """Test read-only scientific handlers rejecting dataset writes."""
-        handler = _ReadOnlyScientificStub()
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_dataset(
-                Path('ignored.hdf5'),
-                [{'id': 1}],
-                dataset='other',
-            )
-
     @pytest.mark.parametrize(
-        ('dataset', 'expected_error', 'error_pattern'),
+        (
+            'handler_cls',
+            'path_name',
+            'dataset',
+            'expected_error',
+            'error_pattern',
+        ),
         [
-            ('data', RuntimeError, 'read-only'),
-            ('other', ValueError, 'supports only dataset key'),
+            (
+                _ReadOnlyScientificStub,
+                'ignored.hdf5',
+                'other',
+                RuntimeError,
+                'read-only',
+            ),
+            (
+                _ReadOnlySingleScientificStub,
+                'ignored.sas7bdat',
+                'data',
+                RuntimeError,
+                'read-only',
+            ),
+            (
+                _ReadOnlySingleScientificStub,
+                'ignored.sas7bdat',
+                'other',
+                ValueError,
+                'supports only dataset key',
+            ),
         ],
-        ids=['default_dataset_write', 'invalid_dataset_key'],
+        ids=[
+            'scientific_read_only',
+            'single_default_dataset_write',
+            'single_invalid_dataset_key',
+        ],
     )
-    def test_read_only_single_scientific_write_dataset_contract(
+    def test_read_only_scientific_write_dataset_contract(
         self,
+        handler_cls: _ReadOnlyScientificHandlerClass,
+        path_name: str,
         dataset: str,
         expected_error: type[Exception],
         error_pattern: str,
     ) -> None:
-        """Test single-dataset read-only write validation and guardrails."""
-        handler = _ReadOnlySingleScientificStub()
+        """Test read-only scientific write validation and guardrails."""
+        handler = handler_cls()
         with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
-                Path('ignored.sas7bdat'),
+                Path(path_name),
                 [{'id': 1}],
                 dataset=dataset,
             )
