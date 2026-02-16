@@ -243,7 +243,9 @@ def _assert_core_write_dispatch(
     assert calls['format'] is expected_format
     assert calls['write_path'] == expected_path
     assert calls['write_data'] == expected_data
-    options = cast(WriteOptions, calls['write_options'])
+
+    options = calls['write_options']
+    assert isinstance(options, WriteOptions)
     assert options.root_tag == expected_root_tag
 
 

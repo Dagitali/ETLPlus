@@ -469,10 +469,13 @@ class TestOptionsContracts:
             handler.resolve_read_dataset('explicit', options=read_options)
             == 'explicit'
         )
-        assert handler.resolve_read_dataset(
-            None,
-            default='fallback',
-        ) == 'fallback'
+        assert (
+            handler.resolve_read_dataset(
+                None,
+                default='fallback',
+            )
+            == 'fallback'
+        )
 
         assert handler.dataset_from_write_options(None) is None
         assert handler.dataset_from_write_options(write_options) == 'labels'
