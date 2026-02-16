@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.conftest` module.
 
-Shared integration tests for :mod:`etlplus.file`.
+Shared integration smoke tests for :mod:`etlplus.file`.
 """
 
 from __future__ import annotations
