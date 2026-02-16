@@ -6,6 +6,7 @@ with pytest markers.
 - [Tests Overview](#tests-overview)
   - [Scope Markers / Directory Layout](#scope-markers--directory-layout)
   - [Intent Markers](#intent-markers)
+  - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
   - [Discovery and Selection](#discovery-and-selection)
   - [Common Commands](#common-commands)
   - [Post-Move Validation Checklist](#post-move-validation-checklist)
@@ -36,6 +37,19 @@ Intent markers are orthogonal to scope. A test can be both `integration` and
 | `perf` | Throughput/latency performance checks |
 
 See `pytest.ini` for the complete marker registry.
+
+## Integration File Smoke Pattern
+
+Integration file smoke tests default to
+`SmokeRoundtripModuleContract` with convention-based paths:
+
+- `data.<format>`
+
+Structural exceptions are intentionally limited to:
+
+- `test_i_file_gz.py` (`file_name = "data.json.gz"`)
+- `test_i_file_zip.py` (`file_name = "data.json.zip"`)
+- `test_i_file_xls.py` (`expect_write_error` / `error_match` for read-only write)
 
 ## Discovery and Selection
 
@@ -78,7 +92,8 @@ python -m pytest -q \
   tests/unit/meta/test_u_test_layout.py \
   tests/unit/meta/test_u_test_filenames.py \
   tests/unit/meta/test_u_marker_coverage.py \
-  tests/unit/meta/test_u_integration_file_conventions.py
+  tests/unit/meta/test_u_integration_file_conventions.py \
+  tests/unit/meta/test_u_contract_readme.py
 
 # 3) Scope-focused smoke run (catches broken imports quickly)
 python -m pytest -q tests/unit tests/integration
