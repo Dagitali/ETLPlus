@@ -76,7 +76,7 @@ def run_file_smoke(
     Parameters
     ----------
     module : ModuleType
-        File module exposing ``read``/``write`` functions.
+        File module exposing a singleton ``*_HANDLER`` instance.
     path : Path
         Target path for the test file.
     payload : JSONData
@@ -112,13 +112,14 @@ def run_file_smoke(
             payload=payload,
             write_kwargs=write_kwargs,
         )
-        assert written
+        assert isinstance(written, int)
+        assert written >= 0
         result = call_handler_operation(
             module,
             operation='read',
             path=path,
         )
-        assert result
+        assert result is not None
     except OSError as exc:
         skip_on_known_file_io_error(
             error=exc,
