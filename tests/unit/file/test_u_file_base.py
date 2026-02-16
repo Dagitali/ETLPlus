@@ -393,26 +393,23 @@ class TestBaseAbcContracts:
             )
 
     @pytest.mark.parametrize(
-        'operation',
-        ['write', 'write_sheet'],
+        ('operation', 'kwargs'),
+        [
+            ('write', {'data': [{'a': 1}]}),
+            ('write_sheet', {'rows': [{'a': 1}], 'sheet': 0}),
+        ],
         ids=['module_write', 'sheet_write'],
     )
     def test_read_only_spreadsheet_handler_rejects_writes(
         self,
         operation: str,
+        kwargs: dict[str, object],
     ) -> None:
         """Test read-only spreadsheet handlers rejecting write operations."""
         handler = XlsFile()
         path = Path('ignored.xls')
         with pytest.raises(RuntimeError, match='read-only'):
-            if operation == 'write':
-                handler.write(path, [{'a': 1}])
-            else:
-                handler.write_sheet(
-                    path,
-                    [{'a': 1}],
-                    sheet=0,
-                )
+            getattr(handler, operation)(path, **kwargs)
 
     @pytest.mark.parametrize(
         'incomplete_handler_cls',

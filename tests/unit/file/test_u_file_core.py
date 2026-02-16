@@ -465,7 +465,7 @@ class TestFile:
         Test module helpers accept ``Path`` inputs.
         """
         cases: tuple[
-            tuple[Any, str, JSONData, JSONData, WriteOptions | None],
+            tuple[Any, str, JSONData, JSONData, dict[str, object]],
             ...,
         ] = (
             (
@@ -473,29 +473,26 @@ class TestFile:
                 'data.csv',
                 [{'name': 'Ada'}],
                 [{'name': 'Ada'}],
-                None,
+                {},
             ),
             (
                 json_file.JsonFile(),
                 'data.json',
                 {'name': 'Ada'},
                 {'name': 'Ada'},
-                None,
+                {},
             ),
             (
                 xml_file.XmlFile(),
                 'data.xml',
                 {'root': {'text': 'hello'}},
                 {'root': {'text': 'hello'}},
-                WriteOptions(root_tag='root'),
+                {'options': WriteOptions(root_tag='root')},
             ),
         )
-        for handler, filename, payload, expected, options in cases:
+        for handler, filename, payload, expected, write_kwargs in cases:
             path = tmp_path / filename
-            if options is None:
-                handler.write(path, payload)
-            else:
-                handler.write(path, payload, options=options)
+            handler.write(path, payload, **write_kwargs)
             assert handler.read(path) == expected
 
     def test_read_csv_skips_blank_rows(
