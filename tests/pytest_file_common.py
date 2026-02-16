@@ -132,12 +132,8 @@ def should_skip_known_file_io_error(
     module_name: str | None = None,
 ) -> bool:
     """Return whether one file I/O error should be skipped in tests."""
-    is_orc_failure = (
-        file_format is FileFormat.ORC
-        or (
-            module_name is not None
-            and module_name.endswith('.orc')
-        )
+    is_orc_failure = file_format is FileFormat.ORC or (
+        module_name is not None and module_name.endswith('.orc')
     )
     return is_orc_failure and is_orc_sysctl_error(error)
 

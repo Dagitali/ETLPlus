@@ -52,9 +52,7 @@ def call_module_operation(
         operation='write',
         path=path,
         payload=(
-            make_payload('list')
-            if write_payload is None
-            else write_payload
+            make_payload('list') if write_payload is None else write_payload
         ),
     )
 
