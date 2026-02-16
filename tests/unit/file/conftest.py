@@ -17,12 +17,7 @@ from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import make_import_error_reader_module
 from .pytest_file_support import make_import_error_writer_module
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type OptionalModuleInstaller = Callable[[dict[str, object]], None]
-
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: EXPORTS ========================================================== #
 
