@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file.base`.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import NoReturn
@@ -282,13 +281,6 @@ class _ReadOnlySingleScientificStub(
         _raise_read_only_write(self.format)
 
 
-# Shared type for read-only scientific stub handler classes.
-type _ReadOnlyScientificHandlerClass = (
-    type[_ReadOnlyScientificStub]
-    | type[_ReadOnlySingleScientificStub]
-)
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -385,7 +377,7 @@ class TestBaseAbcContracts:
     )
     def test_read_only_scientific_write_dataset_contract(
         self,
-        handler_cls: _ReadOnlyScientificHandlerClass,
+        handler_cls: type[ScientificDatasetFileHandlerABC],
         path_name: str,
         dataset: str,
         expected_error: type[Exception],
@@ -454,10 +446,8 @@ class TestNamingConventions:
     ) -> None:
         """Test handlers exposing category-level read/write methods."""
         for handler_cls in handlers:
-            assert callable(getattr(handler_cls, 'read', None))
-            assert callable(getattr(handler_cls, 'write', None))
-            assert callable(getattr(handler_cls, read_method, None))
-            assert callable(getattr(handler_cls, write_method, None))
+            for method_name in ('read', 'write', read_method, write_method):
+                assert callable(getattr(handler_cls, method_name, None))
 
 
 class TestOptionsContracts:
@@ -466,27 +456,37 @@ class TestOptionsContracts:
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
         handler = DtaFile()
-        cases = (
-            (
-                handler.dataset_from_read_options,
-                handler.resolve_read_dataset,
-                ReadOptions(dataset='features'),
-            ),
-            (
-                handler.dataset_from_write_options,
-                handler.resolve_write_dataset,
-                WriteOptions(dataset='labels'),
-            ),
+        read_options = ReadOptions(dataset='features')
+        write_options = WriteOptions(dataset='labels')
+
+        assert handler.dataset_from_read_options(None) is None
+        assert handler.dataset_from_read_options(read_options) == 'features'
+        assert (
+            handler.resolve_read_dataset(None, options=read_options)
+            == 'features'
         )
-        for from_options, resolve, options in cases:
-            expected = cast(str, options.dataset)
-            from_options_method = cast(Callable[..., object], from_options)
-            resolve_method = cast(Callable[..., object], resolve)
-            assert from_options_method(None) is None
-            assert from_options_method(options) == expected
-            assert resolve_method(None, options=options) == expected
-            assert resolve_method('explicit', options=options) == 'explicit'
-            assert resolve_method(None, default='fallback') == 'fallback'
+        assert (
+            handler.resolve_read_dataset('explicit', options=read_options)
+            == 'explicit'
+        )
+        assert handler.resolve_read_dataset(
+            None,
+            default='fallback',
+        ) == 'fallback'
+
+        assert handler.dataset_from_write_options(None) is None
+        assert handler.dataset_from_write_options(write_options) == 'labels'
+        assert (
+            handler.resolve_write_dataset(None, options=write_options)
+            == 'labels'
+        )
+        assert (
+            handler.resolve_write_dataset('explicit', options=write_options)
+            == 'explicit'
+        )
+        assert handler.resolve_write_dataset(None, default='fallback') == (
+            'fallback'
+        )
 
     @pytest.mark.parametrize(
         (
@@ -580,14 +580,8 @@ class TestOptionsContracts:
     ) -> None:
         """Test paired read/write option helpers with override/default."""
         handler = handler_cls()
-        read_call = cast(
-            Callable[..., object],
-            getattr(handler, read_method_name),
-        )
-        write_call = cast(
-            Callable[..., object],
-            getattr(handler, write_method_name),
-        )
+        read_call = getattr(handler, read_method_name)
+        write_call = getattr(handler, write_method_name)
 
         assert read_call(None) == baseline
         assert write_call(None) == baseline
