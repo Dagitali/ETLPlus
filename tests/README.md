@@ -77,7 +77,8 @@ python -m pytest --collect-only -q tests/unit tests/integration tests/e2e
 python -m pytest -q \
   tests/unit/meta/test_u_test_layout.py \
   tests/unit/meta/test_u_test_filenames.py \
-  tests/unit/meta/test_u_marker_coverage.py
+  tests/unit/meta/test_u_marker_coverage.py \
+  tests/unit/meta/test_u_integration_file_conventions.py
 
 # 3) Scope-focused smoke run (catches broken imports quickly)
 python -m pytest -q tests/unit tests/integration
