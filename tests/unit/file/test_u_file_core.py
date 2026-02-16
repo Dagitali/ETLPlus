@@ -29,15 +29,10 @@ from etlplus.types import JSONData
 from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error
 from .pytest_file_core_cases import FORMAT_CASES
+from .pytest_file_core_cases import FORMAT_INFERENCE_CASES
 from .pytest_file_core_cases import STUBBED_FORMATS
 
 # SECTION: HELPERS ========================================================== #
-
-FORMAT_INFERENCE_CASES = (
-    ('data.json', FileFormat.JSON),
-    ('data.csv.gz', FileFormat.CSV),
-    ('data.jsonl.gz', FileFormat.NDJSON),
-)
 
 
 def _assert_core_write_dispatch(
