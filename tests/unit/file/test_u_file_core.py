@@ -202,13 +202,13 @@ FORMAT_CASES: list[FormatCase] = [
     ),
 ]
 
-FORMAT_INFERENCE_CASES: tuple[tuple[str, FileFormat], ...] = (
+FORMAT_INFERENCE_CASES = (
     ('data.json', FileFormat.JSON),
     ('data.csv.gz', FileFormat.CSV),
     ('data.jsonl.gz', FileFormat.NDJSON),
 )
 
-STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
+STUBBED_FORMATS = (
     # Permanent stub as formality
     (FileFormat.STUB, 'data.stub'),
     # Temporary stubs until implemented
@@ -560,11 +560,12 @@ class TestFile:
         file = File(path)
 
         assert file.file_format is None
+        operation_kwargs = {
+            'read': {},
+            'write': {'data': {'ok': True}},
+        }[operation]
         with pytest.raises(ValueError, match=error_pattern):
-            if operation == 'read':
-                file.read()
-            else:
-                file.write({'ok': True})
+            getattr(file, operation)(**operation_kwargs)
 
     @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
@@ -632,14 +633,17 @@ class TestFile:
     ) -> None:
         """Test stub formats raising NotImplementedError on read/write."""
         path = tmp_path / filename
-        if operation == 'read':
-            path.write_text('stub', encoding='utf-8')
+        seed_content = {'read': 'stub', 'write': None}[operation]
+        if seed_content is not None:
+            path.write_text(seed_content, encoding='utf-8')
 
+        file = File(path, file_format)
+        operation_kwargs = {
+            'read': {},
+            'write': {'data': {'stub': True}},
+        }[operation]
         with pytest.raises(NotImplementedError):
-            if operation == 'read':
-                File(path, file_format).read()
-            else:
-                File(path, file_format).write({'stub': True})
+            getattr(file, operation)(**operation_kwargs)
 
     def test_write_csv_rejects_non_dicts(
         self,
