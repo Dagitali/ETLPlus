@@ -15,12 +15,10 @@ import pytest
 
 from etlplus.file import ndjson as mod
 
-from .pytest_file_contract_contracts import SemiStructuredReadModuleContract
-from .pytest_file_contract_contracts import (
-    SemiStructuredWriteDictModuleContract,
-)
 from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import SemiStructuredReadModuleContract
+from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
 
 # SECTION: TESTS ============================================================ #
 

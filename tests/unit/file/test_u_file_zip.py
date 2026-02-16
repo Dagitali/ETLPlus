@@ -15,9 +15,7 @@ from etlplus.file import zip as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_contracts import (
-    ArchiveWrapperCoreDispatchModuleContract,
-)
+from .pytest_file_contracts import ArchiveWrapperCoreDispatchModuleContract
 
 # SECTION: HELPERS ========================================================== #
 

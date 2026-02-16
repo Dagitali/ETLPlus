@@ -15,10 +15,10 @@ import pytest
 from etlplus.file import txt as mod
 from etlplus.types import JSONData
 
-from .pytest_file_contract_contracts import TextRowModuleContract
 from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import TextRowModuleContract
 
 # SECTION: TESTS ============================================================ #
 

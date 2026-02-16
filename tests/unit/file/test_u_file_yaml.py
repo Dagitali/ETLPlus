@@ -17,13 +17,11 @@ from etlplus.file import yaml as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_contracts import SemiStructuredReadModuleContract
-from .pytest_file_contract_contracts import (
-    SemiStructuredWriteDictModuleContract,
-)
 from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import SemiStructuredReadModuleContract
+from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
 
 # SECTION: HELPERS ========================================================== #
 

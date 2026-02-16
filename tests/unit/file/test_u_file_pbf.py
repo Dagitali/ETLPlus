@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import pbf as mod
 
-from .pytest_file_contract_contracts import StubModuleContract
+from .pytest_file_contracts import StubModuleContract
 
 # SECTION: TESTS ============================================================ #
 

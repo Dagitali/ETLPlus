@@ -14,8 +14,8 @@ from etlplus.file import xpt as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_contracts import SingleDatasetWritableContract
 from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contracts import SingleDatasetWritableContract
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
 from .pytest_file_support import PyreadstatTabularStub

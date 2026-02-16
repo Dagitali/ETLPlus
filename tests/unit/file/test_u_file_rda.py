@@ -11,8 +11,8 @@ from pathlib import Path
 from etlplus.file import rda as mod
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_contracts import RDataModuleContract
 from .pytest_file_contract_mixins import OptionalModuleInstaller
+from .pytest_file_contracts import RDataModuleContract
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PyreadrStub
 from .pytest_file_support import RDataNoWriterStub

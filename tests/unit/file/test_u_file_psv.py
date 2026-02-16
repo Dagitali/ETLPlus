@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from etlplus.file import psv as mod
 
-from .pytest_file_contract_contracts import DelimitedModuleContract
 from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import DelimitedModuleContract
 
 # SECTION: TESTS ============================================================ #
 

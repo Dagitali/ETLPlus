@@ -10,10 +10,10 @@ from pathlib import Path
 
 from etlplus.file import fwf as mod
 
-from .pytest_file_contract_contracts import TextRowModuleContract
 from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import TextRowModuleContract
 from .pytest_file_support import DictRecordsFrameStub
 
 # SECTION: HELPERS ========================================================== #

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import parquet as mod
 
-from .pytest_file_contract_contracts import PandasColumnarModuleContract
+from .pytest_file_contracts import PandasColumnarModuleContract
 
 # SECTION: TESTS ============================================================ #
 
