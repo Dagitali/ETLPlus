@@ -70,7 +70,7 @@ def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
     )
 
 
-_DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+_DELIMITED_HANDLER_CLASSES = (
     CsvFile,
     DatFile,
     PsvFile,
@@ -79,11 +79,8 @@ _DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     TxtFile,
     FwfFile,
 )
-_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (SqliteFile,)
-_SCIENTIFIC_HANDLER_CLASSES: tuple[
-    type[ScientificDatasetFileHandlerABC],
-    ...,
-] = (
+_EMBEDDED_DB_HANDLER_CLASSES = (SqliteFile,)
+_SCIENTIFIC_HANDLER_CLASSES = (
     DtaFile,
     NcFile,
     RdaFile,
@@ -91,33 +88,24 @@ _SCIENTIFIC_HANDLER_CLASSES: tuple[
     SavFile,
     XptFile,
 )
-_SCIENTIFIC_STUB_HANDLER_CLASSES: tuple[
-    type[StubSingleDatasetScientificFileHandlerABC],
-    ...,
-] = (
+_SCIENTIFIC_STUB_HANDLER_CLASSES = (
     MatFile,
     SylkFile,
     ZsavFile,
 )
-_SINGLE_DATASET_HANDLER_CLASSES: tuple[
-    type[SingleDatasetScientificFileHandlerABC],
-    ...,
-] = (
+_SINGLE_DATASET_HANDLER_CLASSES = (
     DtaFile,
     NcFile,
     SavFile,
     XptFile,
 )
-_SPREADSHEET_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+_SPREADSHEET_HANDLER_CLASSES = (
     XlsFile,
     XlsxFile,
     XlsmFile,
     OdsFile,
 )
-_NAMING_METHOD_CASES: tuple[
-    tuple[tuple[type[FileHandlerABC], ...], str, str],
-    ...,
-] = (
+_NAMING_METHOD_CASES = (
     (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
     (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
     (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),

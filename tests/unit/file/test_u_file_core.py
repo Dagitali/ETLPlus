@@ -609,11 +609,10 @@ class TestFile:
             path.write_text('stub', encoding='utf-8')
 
         with pytest.raises(NotImplementedError):
-            match operation:
-                case 'read':
-                    File(path, file_format).read()
-                case _:
-                    File(path, file_format).write({'stub': True})
+            if operation == 'read':
+                File(path, file_format).read()
+            else:
+                File(path, file_format).write({'stub': True})
 
     def test_write_csv_rejects_non_dicts(
         self,
@@ -706,26 +705,6 @@ class TestFile:
 
         assert result == payload
 
-    def test_xml_write_uses_default_root_tag_when_not_provided(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test default XML root tag routing in class-based dispatch."""
-        path = tmp_path / 'export.xml'
-        calls = _install_core_handler_stub(monkeypatch, write_result=1)
-
-        written = File(path, FileFormat.XML).write([{'name': 'Ada'}])
-
-        assert written == 1
-        _assert_core_write_dispatch(
-            calls,
-            expected_format=FileFormat.XML,
-            expected_path=path,
-            expected_data=[{'name': 'Ada'}],
-            expected_root_tag=xml_file.DEFAULT_XML_ROOT,
-        )
-
     def test_zip_multi_file_read(
         self,
         tmp_path: Path,
@@ -766,23 +745,50 @@ class TestFileCoreDispatch:
         assert calls['format'] is FileFormat.CSV
         assert calls['read_path'] == path
 
+    @pytest.mark.parametrize(
+        ('root_tag', 'expected_root_tag', 'write_result'),
+        [
+            pytest.param(
+                None,
+                xml_file.DEFAULT_XML_ROOT,
+                1,
+                id='default_root_tag',
+            ),
+            pytest.param(
+                'records',
+                'records',
+                3,
+                id='custom_root_tag',
+            ),
+        ],
+    )
     def test_write_uses_class_based_handler_and_root_tag(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        root_tag: str | None,
+        expected_root_tag: str,
+        write_result: int,
     ) -> None:
         """Test write dispatch preserving XML ``root_tag`` in options."""
         path = tmp_path / 'export.xml'
         payload: JSONData = [{'name': 'Ada'}]
-        calls = _install_core_handler_stub(monkeypatch, write_result=3)
+        calls = _install_core_handler_stub(
+            monkeypatch,
+            write_result=write_result,
+        )
 
-        written = File(path, FileFormat.XML).write(payload, root_tag='records')
+        file = File(path, FileFormat.XML)
+        if root_tag is None:
+            written = file.write(payload)
+        else:
+            written = file.write(payload, root_tag=root_tag)
 
-        assert written == 3
+        assert written == write_result
         _assert_core_write_dispatch(
             calls,
             expected_format=FileFormat.XML,
             expected_path=path,
             expected_data=payload,
-            expected_root_tag='records',
+            expected_root_tag=expected_root_tag,
         )
