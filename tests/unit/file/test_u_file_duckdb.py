@@ -16,8 +16,8 @@ from etlplus.file import duckdb as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contracts import EmbeddedDatabaseModuleContract
+from .pytest_file_types import OptionalModuleInstaller
 
 if TYPE_CHECKING:
     import duckdb

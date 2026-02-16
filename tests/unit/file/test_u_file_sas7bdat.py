@@ -13,13 +13,13 @@ import pytest
 from etlplus.file import sas7bdat as mod
 from etlplus.file.base import ReadOptions
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import patch_dependency_resolver_unreachable
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_contracts import ReadOnlyScientificDatasetModuleContract
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 

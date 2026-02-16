@@ -31,6 +31,7 @@ from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -52,16 +53,7 @@ __all__ = [
     'SpreadsheetWritableMixin',
     # Data Classes
     'RoundtripSpec',
-    # Type Aliases
-    'OptionalModuleInstaller',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# Shared callable used by dependency-stubbing fixtures/contracts.
-type OptionalModuleInstaller = Callable[[dict[str, object]], None]
 
 
 # SECTION: DATA CLASSES ===================================================== #

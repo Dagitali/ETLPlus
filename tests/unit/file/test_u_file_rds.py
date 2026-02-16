@@ -10,12 +10,12 @@ from pathlib import Path
 
 from etlplus.file import rds as mod
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contracts import RDataModuleContract
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PyreadrStub
 from .pytest_file_support import RDataNoWriterStub
 from .pytest_file_support import RDataPandasStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 

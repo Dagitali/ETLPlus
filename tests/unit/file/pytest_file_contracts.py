@@ -24,7 +24,6 @@ from .pytest_file_contract_bases import SpreadsheetCategoryContractBase
 from .pytest_file_contract_mixins import DelimitedReadWriteMixin
 from .pytest_file_contract_mixins import DelimitedTextRowsMixin
 from .pytest_file_contract_mixins import EmptyWriteReturnsZeroMixin
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_mixins import ReadOnlyWriteGuardMixin
 from .pytest_file_contract_mixins import ScientificReadOnlyUnknownDatasetMixin
@@ -42,6 +41,7 @@ from .pytest_file_contract_utils import (
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: EXPORTS ========================================================== #
 

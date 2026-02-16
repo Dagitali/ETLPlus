@@ -10,9 +10,9 @@ from pathlib import Path
 
 from etlplus.types import JSONData
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import make_payload
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: EXPORTS ========================================================== #
 

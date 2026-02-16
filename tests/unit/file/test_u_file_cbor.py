@@ -14,8 +14,8 @@ import pytest
 
 from etlplus.file import cbor as mod
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contracts import BinaryCodecModuleContract
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 

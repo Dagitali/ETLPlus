@@ -12,8 +12,8 @@ import pytest
 
 from etlplus.file import bson as mod
 
-from .pytest_file_contract_mixins import OptionalModuleInstaller
 from .pytest_file_contracts import BinaryDependencyModuleContract
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 
