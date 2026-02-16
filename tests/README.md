@@ -6,7 +6,6 @@ with pytest markers.
 - [Tests Overview](#tests-overview)
   - [Scope Markers / Directory Layout](#scope-markers--directory-layout)
   - [Intent Markers](#intent-markers)
-  - [Legacy Transitional Path](#legacy-transitional-path)
   - [Discovery and Selection](#discovery-and-selection)
   - [Common Commands](#common-commands)
 
@@ -34,21 +33,11 @@ Intent markers are orthogonal to scope. A test can be both `integration` and
 
 See `pytest.ini` for the complete marker registry.
 
-## Legacy Transitional Path
-
-- `tests/smoke/` is a legacy location being phased out.
-- New tests should be placed under scope folders (`tests/unit/`,
-  `tests/integration/`, `tests/e2e/`) and labeled with `@pytest.mark.smoke`
-  when appropriate.
-
 ## Discovery and Selection
 
 Default test discovery is controlled by `pytest.ini`:
 
-- `testpaths = tests/unit tests/integration tests/e2e`
-
-This means plain `pytest` does **not** collect `tests/smoke/` unless you
-explicitly pass that path.
+- `testpaths = tests/e2e tests/integration tests/unit`
 
 ## Common Commands
 
@@ -60,9 +49,6 @@ pytest
 pytest tests/unit
 pytest tests/integration
 pytest tests/e2e
-
-# Legacy smoke folder (explicit path required)
-pytest tests/smoke
 
 # Marker-based selection by scope (within configured testpaths)
 pytest -m unit
