@@ -9,6 +9,44 @@ from .pytest_file_contract_mixins import RoundtripSpec
 # SECTION: FUNCTIONS ======================================================== #
 
 
+ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
+    'dat_records': (
+        [
+            {'id': 1, 'name': 'Alice'},
+            {'id': 2, 'name': 'Bob'},
+        ],
+        [
+            {'id': '1', 'name': 'Alice'},
+            {'id': '2', 'name': 'Bob'},
+        ],
+    ),
+    'ini_default_alpha': (
+        {
+            'DEFAULT': {'shared': 'base', 'timeout': 5},
+            'alpha': {'value': 1},
+        },
+        {
+            'DEFAULT': {'shared': 'base', 'timeout': '5'},
+            'alpha': {'value': '1'},
+        },
+    ),
+    'xml_nested_attributes': (
+        {
+            'root': {
+                '@id': '42',
+                'item': {'@lang': 'en', 'text': 'Hello'},
+            },
+        },
+        {
+            'root': {
+                '@id': '42',
+                'item': {'@lang': 'en', 'text': 'Hello'},
+            },
+        },
+    ),
+}
+
+
 def build_delimited_roundtrip_spec() -> RoundtripSpec:
     """
     Build a simple roundtrip spec for delimited formats.
