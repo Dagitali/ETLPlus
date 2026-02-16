@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file.base`.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import NoReturn
@@ -70,7 +69,7 @@ def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
     )
 
 
-_DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+_DELIMITED_HANDLER_CLASSES = (
     CsvFile,
     DatFile,
     PsvFile,
@@ -79,11 +78,8 @@ _DELIMITED_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
     TxtFile,
     FwfFile,
 )
-_EMBEDDED_DB_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (SqliteFile,)
-_SCIENTIFIC_HANDLER_CLASSES: tuple[
-    type[ScientificDatasetFileHandlerABC],
-    ...,
-] = (
+_EMBEDDED_DB_HANDLER_CLASSES = (SqliteFile,)
+_SCIENTIFIC_HANDLER_CLASSES = (
     DtaFile,
     NcFile,
     RdaFile,
@@ -91,33 +87,24 @@ _SCIENTIFIC_HANDLER_CLASSES: tuple[
     SavFile,
     XptFile,
 )
-_SCIENTIFIC_STUB_HANDLER_CLASSES: tuple[
-    type[StubSingleDatasetScientificFileHandlerABC],
-    ...,
-] = (
+_SCIENTIFIC_STUB_HANDLER_CLASSES = (
     MatFile,
     SylkFile,
     ZsavFile,
 )
-_SINGLE_DATASET_HANDLER_CLASSES: tuple[
-    type[SingleDatasetScientificFileHandlerABC],
-    ...,
-] = (
+_SINGLE_DATASET_HANDLER_CLASSES = (
     DtaFile,
     NcFile,
     SavFile,
     XptFile,
 )
-_SPREADSHEET_HANDLER_CLASSES: tuple[type[FileHandlerABC], ...] = (
+_SPREADSHEET_HANDLER_CLASSES = (
     XlsFile,
     XlsxFile,
     XlsmFile,
     OdsFile,
 )
-_NAMING_METHOD_CASES: tuple[
-    tuple[tuple[type[FileHandlerABC], ...], str, str],
-    ...,
-] = (
+_NAMING_METHOD_CASES = (
     (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
     (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
     (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
@@ -351,37 +338,56 @@ class TestBaseAbcContracts:
         assert inspect.isabstract(FileHandlerABC)
         assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
 
-    def test_read_only_scientific_write_dataset_rejects_writes(
-        self,
-    ) -> None:
-        """Test read-only scientific handlers rejecting dataset writes."""
-        handler = _ReadOnlyScientificStub()
-        with pytest.raises(RuntimeError, match='read-only'):
-            handler.write_dataset(
-                Path('ignored.hdf5'),
-                [{'id': 1}],
-                dataset='other',
-            )
-
     @pytest.mark.parametrize(
-        ('dataset', 'expected_error', 'error_pattern'),
+        (
+            'handler_cls',
+            'path_name',
+            'dataset',
+            'expected_error',
+            'error_pattern',
+        ),
         [
-            ('data', RuntimeError, 'read-only'),
-            ('other', ValueError, 'supports only dataset key'),
+            (
+                _ReadOnlyScientificStub,
+                'ignored.hdf5',
+                'other',
+                RuntimeError,
+                'read-only',
+            ),
+            (
+                _ReadOnlySingleScientificStub,
+                'ignored.sas7bdat',
+                'data',
+                RuntimeError,
+                'read-only',
+            ),
+            (
+                _ReadOnlySingleScientificStub,
+                'ignored.sas7bdat',
+                'other',
+                ValueError,
+                'supports only dataset key',
+            ),
         ],
-        ids=['default_dataset_write', 'invalid_dataset_key'],
+        ids=[
+            'scientific_read_only',
+            'single_default_dataset_write',
+            'single_invalid_dataset_key',
+        ],
     )
-    def test_read_only_single_scientific_write_dataset_contract(
+    def test_read_only_scientific_write_dataset_contract(
         self,
+        handler_cls: type[ScientificDatasetFileHandlerABC],
+        path_name: str,
         dataset: str,
         expected_error: type[Exception],
         error_pattern: str,
     ) -> None:
-        """Test single-dataset read-only write validation and guardrails."""
-        handler = _ReadOnlySingleScientificStub()
+        """Test read-only scientific write validation and guardrails."""
+        handler = handler_cls()
         with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
-                Path('ignored.sas7bdat'),
+                Path(path_name),
                 [{'id': 1}],
                 dataset=dataset,
             )
@@ -440,10 +446,8 @@ class TestNamingConventions:
     ) -> None:
         """Test handlers exposing category-level read/write methods."""
         for handler_cls in handlers:
-            assert callable(getattr(handler_cls, 'read', None))
-            assert callable(getattr(handler_cls, 'write', None))
-            assert callable(getattr(handler_cls, read_method, None))
-            assert callable(getattr(handler_cls, write_method, None))
+            for method_name in ('read', 'write', read_method, write_method):
+                assert callable(getattr(handler_cls, method_name, None))
 
 
 class TestOptionsContracts:
@@ -452,27 +456,40 @@ class TestOptionsContracts:
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
         handler = DtaFile()
-        cases = (
-            (
-                handler.dataset_from_read_options,
-                handler.resolve_read_dataset,
-                ReadOptions(dataset='features'),
-            ),
-            (
-                handler.dataset_from_write_options,
-                handler.resolve_write_dataset,
-                WriteOptions(dataset='labels'),
-            ),
+        read_options = ReadOptions(dataset='features')
+        write_options = WriteOptions(dataset='labels')
+
+        assert handler.dataset_from_read_options(None) is None
+        assert handler.dataset_from_read_options(read_options) == 'features'
+        assert (
+            handler.resolve_read_dataset(None, options=read_options)
+            == 'features'
         )
-        for from_options, resolve, options in cases:
-            expected = cast(str, options.dataset)
-            from_options_method = cast(Callable[..., object], from_options)
-            resolve_method = cast(Callable[..., object], resolve)
-            assert from_options_method(None) is None
-            assert from_options_method(options) == expected
-            assert resolve_method(None, options=options) == expected
-            assert resolve_method('explicit', options=options) == 'explicit'
-            assert resolve_method(None, default='fallback') == 'fallback'
+        assert (
+            handler.resolve_read_dataset('explicit', options=read_options)
+            == 'explicit'
+        )
+        assert (
+            handler.resolve_read_dataset(
+                None,
+                default='fallback',
+            )
+            == 'fallback'
+        )
+
+        assert handler.dataset_from_write_options(None) is None
+        assert handler.dataset_from_write_options(write_options) == 'labels'
+        assert (
+            handler.resolve_write_dataset(None, options=write_options)
+            == 'labels'
+        )
+        assert (
+            handler.resolve_write_dataset('explicit', options=write_options)
+            == 'explicit'
+        )
+        assert handler.resolve_write_dataset(None, default='fallback') == (
+            'fallback'
+        )
 
     @pytest.mark.parametrize(
         (
@@ -566,14 +583,8 @@ class TestOptionsContracts:
     ) -> None:
         """Test paired read/write option helpers with override/default."""
         handler = handler_cls()
-        read_call = cast(
-            Callable[..., object],
-            getattr(handler, read_method_name),
-        )
-        write_call = cast(
-            Callable[..., object],
-            getattr(handler, write_method_name),
-        )
+        read_call = getattr(handler, read_method_name)
+        write_call = getattr(handler, write_method_name)
 
         assert read_call(None) == baseline
         assert write_call(None) == baseline

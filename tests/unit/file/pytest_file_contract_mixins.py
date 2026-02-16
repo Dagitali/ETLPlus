@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -23,11 +22,11 @@ from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 from etlplus.utils import count_records
 
+from ...pytest_file_common import resolve_module_handler
 from .pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,
 )
 from .pytest_file_contract_utils import make_payload
-from .pytest_file_contract_utils import module_handler as _module_handler
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
@@ -95,7 +94,7 @@ class PathMixin:
     @property
     def module_handler(self) -> Any:
         """Return the module's singleton handler instance."""
-        return _module_handler(self.module)
+        return resolve_module_handler(self.module)
 
     def format_path(
         self,
@@ -117,7 +116,6 @@ class RoundtripUnitModuleContract(PathMixin):
 
     # pylint: disable=unused-argument
 
-    module: ModuleType
     roundtrip_spec: RoundtripSpec
 
     def setup_roundtrip_dependencies(
@@ -125,7 +123,7 @@ class RoundtripUnitModuleContract(PathMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install optional dependencies required by a roundtrip case."""
-        return None
+        _ = optional_module_stub
 
     def normalize_roundtrip_result(
         self,
@@ -172,7 +170,6 @@ class EmptyWriteReturnsZeroMixin(PathMixin):
     Shared mixin for contracts where empty writes should return ``0``.
     """
 
-    module: ModuleType
     assert_file_not_created_on_empty_write: bool = False
 
     def test_write_empty_payload_returns_zero(
@@ -191,7 +188,6 @@ class DelimitedReadWriteMixin(PathMixin):
     Parametrized mixin for delimiter-forwarding read/write wrappers.
     """
 
-    module: ModuleType
     delimiter: str
     sample_rows: JSONData
 
@@ -202,6 +198,7 @@ class DelimitedReadWriteMixin(PathMixin):
     ) -> None:
         """Test module read delegating with the expected delimiter."""
         calls: dict[str, object] = {}
+        expected_rows: list[dict[str, object]] = [{'ok': True}]
 
         def _read_delimited(
             path: object,
@@ -210,16 +207,13 @@ class DelimitedReadWriteMixin(PathMixin):
         ) -> list[dict[str, object]]:
             calls['path'] = path
             calls['delimiter'] = delimiter
-            return cast(
-                list[dict[str, object]],
-                make_payload('list', record={'ok': True}),
-            )
+            return expected_rows
 
         monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
 
         result = self.module_handler.read(self.format_path(tmp_path))
 
-        assert result == make_payload('list', record={'ok': True})
+        assert result == expected_rows
         assert calls['delimiter'] == self.delimiter
 
     def test_write_uses_expected_delimiter_and_format_name(
@@ -260,7 +254,6 @@ class DelimitedTextRowsMixin(EmptyWriteReturnsZeroMixin):
     Parametrized mixin for text/fixed-width row-oriented modules.
     """
 
-    module: ModuleType
     write_payload: JSONData
     expected_written_count: int = 1
 
@@ -375,7 +368,6 @@ class ReadOnlyWriteGuardMixin(PathMixin):
     Shared mixin for read-only handlers rejecting module-level writes.
     """
 
-    module: ModuleType
     read_only_error_pattern: str = 'read-only'
 
     def test_write_not_supported(
@@ -395,7 +387,6 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
     Shared mixin for spreadsheet read dependency error behavior.
     """
 
-    module: ModuleType
     dependency_hint: str
 
     def test_read_wraps_import_error(
@@ -422,7 +413,6 @@ class SemiStructuredReadMixin(PathMixin):
 
     # pylint: disable=unused-argument
 
-    module: ModuleType
     sample_read_text: str
 
     def assert_read_contract_result(
@@ -459,7 +449,6 @@ class SemiStructuredWriteDictMixin(PathMixin):
     Parametrized write contract mixin for semi-structured modules.
     """
 
-    module: ModuleType
     dict_payload: JSONData
 
     def setup_write_dependencies(
@@ -531,7 +520,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     Parametrized mixin for writable spreadsheet module contracts.
     """
 
-    module: ModuleType
     dependency_hint: str
     read_engine: str | None
     write_engine: str | None
@@ -549,14 +537,15 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test read returning row records via pandas."""
-        frame = make_records_frame([{'id': 1}])
+        rows: list[dict[str, object]] = [{'id': 1}]
+        frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
         result = self.module_handler.read(path)
 
-        assert result == make_payload('list')
+        assert result == rows
         assert pandas.read_calls
         call = pandas.read_calls[-1]
         assert call.get('path') == path
@@ -574,16 +563,17 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         make_pandas_stub: Callable[[RecordsFrameStub], PandasModuleStub],
     ) -> None:
         """Test write delegating to DataFrame.to_excel with expected args."""
-        frame = make_records_frame([{'id': 1}])
+        rows: list[dict[str, object]] = [{'id': 1}]
+        frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
         optional_module_stub({'pandas': pandas})
         path = self.format_path(tmp_path)
 
-        written = self.module_handler.write(path, make_payload('list'))
+        written = self.module_handler.write(path, rows)
 
         assert written == 1
-        assert pandas.last_frame is not None
-        frame_stub = cast(RecordsFrameStub, pandas.last_frame)
+        assert isinstance(pandas.last_frame, RecordsFrameStub)
+        frame_stub = pandas.last_frame
         assert frame_stub.to_excel_calls
         call = frame_stub.to_excel_calls[-1]
         assert call.get('path') == path
@@ -607,7 +597,7 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module_handler.write(
                 self.format_path(tmp_path),
-                make_payload('list'),
+                [{'id': 1}],
             )
 
 
@@ -616,7 +606,6 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
     Parametrized mixin for spreadsheet ``sheet_name`` option routing.
     """
 
-    module: ModuleType
     read_engine: str | None
     write_engine: str | None
 
@@ -648,7 +637,7 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test reads forwarding string sheet selectors to pandas."""
-        rows = cast(list[dict[str, object]], make_payload('list'))
+        rows: list[dict[str, object]] = [{'id': 1}]
         pandas = SpreadsheetSheetPandasStub(
             SpreadsheetSheetFrameStub(rows),
         )
@@ -665,7 +654,7 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
             options=ReadOptions(sheet='Sheet2'),
         )
 
-        assert result == make_payload('list')
+        assert result == rows
         assert pandas.read_calls == [self._read_sheet_kwargs(path)]
 
     def test_write_falls_back_when_sheet_name_not_supported(
@@ -674,9 +663,10 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test write fallback when pandas rejects ``sheet_name``."""
+        rows: list[dict[str, object]] = [{'id': 1}]
         pandas = SpreadsheetSheetPandasStub(
             SpreadsheetSheetFrameStub(
-                cast(list[dict[str, object]], make_payload('list')),
+                rows,
                 allow_sheet_name=False,
             ),
         )
@@ -690,7 +680,7 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
 
         written = self.module_handler.write(
             path,
-            make_payload('list'),
+            rows,
             options=WriteOptions(sheet='Sheet2'),
         )
 
@@ -707,7 +697,7 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test writes forwarding string sheet selectors to pandas."""
-        rows = cast(list[dict[str, object]], make_payload('list'))
+        rows: list[dict[str, object]] = [{'id': 1}]
         pandas = SpreadsheetSheetPandasStub(
             SpreadsheetSheetFrameStub(rows),
         )
@@ -721,7 +711,7 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
 
         written = self.module_handler.write(
             path,
-            make_payload('list'),
+            rows,
             options=WriteOptions(sheet='Sheet2'),
         )
 
@@ -740,8 +730,7 @@ class DelimitedCategoryContractBase(PathMixin):
     Shared base contract for delimited/text category modules.
     """
 
-    module: ModuleType
-    sample_rows: JSONData = make_payload('list')
+    sample_rows: JSONData = [{'id': 1}]
 
 
 class ScientificCategoryContractBase(PathMixin):
@@ -749,7 +738,6 @@ class ScientificCategoryContractBase(PathMixin):
     Shared base contract for scientific dataset handlers/modules.
     """
 
-    module: ModuleType
     dataset_key: str = 'data'
 
 
@@ -758,7 +746,6 @@ class SpreadsheetCategoryContractBase(PathMixin):
     Shared base contract for spreadsheet format handlers.
     """
 
-    module: ModuleType
     dependency_hint: str
     read_engine: str | None = None
     write_engine: str | None = None
@@ -771,7 +758,6 @@ class SemiStructuredCategoryContractBase(PathMixin):
 
     # pylint: disable=unused-argument
 
-    module: ModuleType
     sample_read_text: str = ''
     expected_read_payload: JSONData = make_payload('dict')
     dict_payload: JSONData = make_payload('dict')

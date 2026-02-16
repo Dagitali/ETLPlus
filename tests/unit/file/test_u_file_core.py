@@ -10,6 +10,7 @@ import math
 import numbers
 import sqlite3
 import zipfile
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -26,282 +27,188 @@ from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
 
+from ...pytest_file_common import Operation
+from ...pytest_file_common import skip_on_known_file_io_error
+
 # SECTION: HELPERS ========================================================== #
 
 
 type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 
 
+PYARROW_DEPS = ('pandas', 'pyarrow')
+PYREADR_DEPS = ('pandas', 'pyreadr')
+PYREADSTAT_DEPS = ('pandas', 'pyreadstat')
+
+COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
+COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
+COMMON_ROWS_TXT: JSONData = [{'text': 'hello'}, {'text': 'world'}]
+COMMON_INI: JSONData = {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}
+COMMON_TOML: JSONData = {'name': 'Ada', 'age': 36}
+COMMON_PROPERTIES: JSONData = {'name': 'Ada', 'age': '36'}
+COMMON_PROTO: JSONData = {
+    'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n',
+}
+COMMON_PB: JSONData = {'payload_base64': 'aGVsbG8='}
+COMMON_XML: JSONData = {'root': {'items': [{'text': 'one'}]}}
+
+
+def _format_case(
+    file_format: FileFormat,
+    filename: str,
+    payload: JSONData,
+    requires: tuple[str, ...] = (),
+    *,
+    expected: JSONData | None = None,
+) -> FormatCase:
+    """Create one roundtrip format case with defensive payload copies."""
+    expected_payload = payload if expected is None else expected
+    return (
+        file_format,
+        filename,
+        deepcopy(payload),
+        deepcopy(expected_payload),
+        requires,
+    )
+
+
 FORMAT_CASES: list[FormatCase] = [
     # Tabular & delimited text
-    (
-        FileFormat.CSV,
-        'sample.csv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.DAT,
-        'sample.dat',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.CSV, 'sample.csv', COMMON_ROWS_STR),
+    _format_case(FileFormat.DAT, 'sample.dat', COMMON_ROWS_STR),
+    _format_case(
         FileFormat.FWF,
         'sample.fwf',
         [{'name': 'Ada', 'age': '36x'}],
-        [{'name': 'Ada', 'age': '36x'}],
         ('pandas',),
     ),
-    (
-        FileFormat.PSV,
-        'sample.psv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.TAB,
-        'sample.tab',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
-        FileFormat.TSV,
-        'sample.tsv',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    # (
-    #     FileFormat.TXT,
-    #     'sample.txt',
-    #     [{'name': 'Ada', 'age': '36'}],
-    #     [{'name': 'Ada', 'age': '36'}],
-    #     (),
-    # ),
-    (
-        FileFormat.TXT,
-        'sample.txt',
-        [{'text': 'hello'}, {'text': 'world'}],
-        [{'text': 'hello'}, {'text': 'world'}],
-        (),
-    ),
-    (
-        FileFormat.BSON,
-        'sample.bson',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('bson',),
-    ),
-    (
-        FileFormat.CBOR,
-        'sample.cbor',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('cbor2',),
-    ),
-    (
-        FileFormat.JSON,
-        'sample.json',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.PSV, 'sample.psv', COMMON_ROWS_STR),
+    _format_case(FileFormat.TAB, 'sample.tab', COMMON_ROWS_STR),
+    _format_case(FileFormat.TSV, 'sample.tsv', COMMON_ROWS_STR),
+    # _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_STR),
+    _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_TXT),
+    # Semi-structured and interchange
+    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM, ('bson',)),
+    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM, ('cbor2',)),
+    _format_case(FileFormat.JSON, 'sample.json', COMMON_ROWS_NUM),
+    _format_case(
         FileFormat.MSGPACK,
         'sample.msgpack',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('msgpack',),
     ),
-    (
-        FileFormat.NDJSON,
-        'sample.ndjson',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
-        FileFormat.YAML,
-        'sample.yaml',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('yaml',),
-    ),
-    (
-        FileFormat.INI,
-        'sample.ini',
-        {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}},
-        {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}},
-        (),
-    ),
-    (
-        FileFormat.TOML,
-        'sample.toml',
-        {'name': 'Ada', 'age': 36},
-        {'name': 'Ada', 'age': 36},
-        ('tomli_w',),
-    ),
-    (
+    _format_case(FileFormat.NDJSON, 'sample.ndjson', COMMON_ROWS_NUM),
+    _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM, ('yaml',)),
+    _format_case(FileFormat.INI, 'sample.ini', COMMON_INI),
+    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML, ('tomli_w',)),
+    _format_case(
         FileFormat.PROPERTIES,
         'sample.properties',
-        {'name': 'Ada', 'age': '36'},
-        {'name': 'Ada', 'age': '36'},
-        (),
+        COMMON_PROPERTIES,
     ),
-    (
-        FileFormat.PROTO,
-        'sample.proto',
-        {'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n'},
-        {'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n'},
-        (),
-    ),
-    (
-        FileFormat.PB,
-        'sample.pb',
-        {'payload_base64': 'aGVsbG8='},
-        {'payload_base64': 'aGVsbG8='},
-        (),
-    ),
-    (
-        FileFormat.XML,
-        'sample.xml',
-        {'root': {'items': [{'text': 'one'}]}},
-        {'root': {'items': [{'text': 'one'}]}},
-        (),
-    ),
-    (
-        FileFormat.GZ,
-        'sample.json.gz',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
-        FileFormat.ZIP,
-        'sample.json.zip',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.PROTO, 'sample.proto', COMMON_PROTO),
+    _format_case(FileFormat.PB, 'sample.pb', COMMON_PB),
+    _format_case(FileFormat.XML, 'sample.xml', COMMON_XML),
+    # Compression wrappers
+    _format_case(FileFormat.GZ, 'sample.json.gz', COMMON_ROWS_NUM),
+    _format_case(FileFormat.ZIP, 'sample.json.zip', COMMON_ROWS_NUM),
+    # Columnar
+    _format_case(
         FileFormat.PARQUET,
         'sample.parquet',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('pandas', 'pyarrow'),
+        COMMON_ROWS_NUM,
+        PYARROW_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.FEATHER,
         'sample.feather',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('pandas', 'pyarrow'),
+        COMMON_ROWS_NUM,
+        PYARROW_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.ORC,
         'sample.orc',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
-        ('pandas', 'pyarrow'),
+        COMMON_ROWS_NUM,
+        PYARROW_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.AVRO,
         'sample.avro',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('fastavro',),
     ),
-    (
+    _format_case(
         FileFormat.ARROW,
         'sample.arrow',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pyarrow',),
     ),
-    (
+    # Databases / spreadsheets
+    _format_case(
         FileFormat.DUCKDB,
         'sample.duckdb',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('duckdb',),
     ),
-    (
+    _format_case(
         FileFormat.ODS,
         'sample.ods',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'odf'),
     ),
-    (
+    _format_case(
         FileFormat.XLSX,
         'sample.xlsx',
-        [{'name': 'Ada', 'age': 36}],
-        [{'name': 'Ada', 'age': 36}],
+        COMMON_ROWS_NUM,
         ('pandas', 'openpyxl'),
     ),
-    (
-        FileFormat.SQLITE,
-        'sample.sqlite',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        (),
-    ),
-    (
+    _format_case(FileFormat.SQLITE, 'sample.sqlite', COMMON_ROWS_STR),
+    # Scientific/statistical
+    _format_case(
         FileFormat.DTA,
         'sample.dta',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        ('pandas', 'pyreadstat'),
+        COMMON_ROWS_STR,
+        PYREADSTAT_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.SAV,
         'sample.sav',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        ('pandas', 'pyreadstat'),
+        COMMON_ROWS_STR,
+        PYREADSTAT_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.XPT,
         'sample.xpt',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        ('pandas', 'pyreadstat'),
+        COMMON_ROWS_STR,
+        PYREADSTAT_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.RDS,
         'sample.rds',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        ('pandas', 'pyreadr'),
+        COMMON_ROWS_STR,
+        PYREADR_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.RDA,
         'sample.rda',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
-        ('pandas', 'pyreadr'),
+        COMMON_ROWS_STR,
+        PYREADR_DEPS,
     ),
-    (
+    _format_case(
         FileFormat.NC,
         'sample.nc',
-        [{'name': 'Ada', 'age': '36'}],
-        [{'name': 'Ada', 'age': '36'}],
+        COMMON_ROWS_STR,
         ('pandas', 'xarray', 'netCDF4'),
     ),
 ]
 
-FORMAT_INFERENCE_CASES: tuple[tuple[str, FileFormat], ...] = (
+FORMAT_INFERENCE_CASES = (
     ('data.json', FileFormat.JSON),
     ('data.csv.gz', FileFormat.CSV),
     ('data.jsonl.gz', FileFormat.NDJSON),
 )
 
-STUBBED_FORMATS: tuple[tuple[FileFormat, str], ...] = (
+STUBBED_FORMATS = (
     # Permanent stub as formality
     (FileFormat.STUB, 'data.stub'),
     # Temporary stubs until implemented
@@ -336,8 +243,18 @@ def _assert_core_write_dispatch(
     assert calls['format'] is expected_format
     assert calls['write_path'] == expected_path
     assert calls['write_data'] == expected_data
-    options = cast(WriteOptions, calls['write_options'])
+
+    options = calls['write_options']
+    assert isinstance(options, WriteOptions)
     assert options.root_tag == expected_root_tag
+
+
+def _require_optional_modules(
+    requires: tuple[str, ...],
+) -> None:
+    """Import optional dependencies for one format case or skip."""
+    for module_name in requires:
+        pytest.importorskip(module_name)
 
 
 def _coerce_numeric_value(value: object) -> object:
@@ -415,6 +332,39 @@ def normalize_xml_payload(payload: JSONData) -> JSONData:
         root = {**root, 'items': [items]}
         return {**payload, 'root': root}
     return payload
+
+
+def _normalize_roundtrip_values(
+    *,
+    file_format: FileFormat,
+    result: JSONData,
+    expected: JSONData,
+) -> tuple[JSONData, JSONData]:
+    """Normalize roundtrip values for format-specific assertion behavior."""
+    normalized_result = result
+    normalized_expected = expected
+    if file_format is FileFormat.XML:
+        normalized_result = normalize_xml_payload(normalized_result)
+        normalized_expected = normalize_xml_payload(normalized_expected)
+    if file_format is FileFormat.XLS:
+        normalized_result = normalize_numeric_records(normalized_result)
+    return normalized_result, normalized_expected
+
+
+def _read_with_known_io_skip(
+    *,
+    path: Path,
+    file_format: FileFormat,
+) -> JSONData:
+    """Read one file while applying shared known I/O skip policy."""
+    try:
+        return File(path, file_format).read()
+    except OSError as err:
+        skip_on_known_file_io_error(
+            error=err,
+            file_format=file_format,
+        )
+        raise
 
 
 # SECTION: TESTS ============================================================ #
@@ -514,22 +464,39 @@ class TestFile:
         """
         Test module helpers accept ``Path`` inputs.
         """
-        csv_path = tmp_path / 'data.csv'
-        json_path = tmp_path / 'data.json'
-        xml_path = tmp_path / 'data.xml'
-
-        csv_file.CsvFile().write(csv_path, [{'name': 'Ada'}])
-        assert csv_file.CsvFile().read(csv_path) == [{'name': 'Ada'}]
-
-        json_file.JsonFile().write(json_path, {'name': 'Ada'})
-        assert json_file.JsonFile().read(json_path) == {'name': 'Ada'}
-
-        xml_file.XmlFile().write(
-            xml_path,
-            {'root': {'text': 'hello'}},
-            options=WriteOptions(root_tag='root'),
+        cases: tuple[
+            tuple[Any, str, JSONData, JSONData, WriteOptions | None],
+            ...,
+        ] = (
+            (
+                csv_file.CsvFile(),
+                'data.csv',
+                [{'name': 'Ada'}],
+                [{'name': 'Ada'}],
+                None,
+            ),
+            (
+                json_file.JsonFile(),
+                'data.json',
+                {'name': 'Ada'},
+                {'name': 'Ada'},
+                None,
+            ),
+            (
+                xml_file.XmlFile(),
+                'data.xml',
+                {'root': {'text': 'hello'}},
+                {'root': {'text': 'hello'}},
+                WriteOptions(root_tag='root'),
+            ),
         )
-        assert xml_file.XmlFile().read(xml_path) == {'root': {'text': 'hello'}}
+        for handler, filename, payload, expected, options in cases:
+            path = tmp_path / filename
+            if options is None:
+                handler.write(path, payload)
+            else:
+                handler.write(path, payload, options=options)
+            assert handler.read(path) == expected
 
     def test_read_csv_skips_blank_rows(
         self,
@@ -568,28 +535,39 @@ class TestFile:
             file.read()
 
     @pytest.mark.parametrize(
-        ('filename', 'contents', 'error_pattern'),
+        ('filename', 'contents', 'operation', 'error_pattern'),
         [
-            ('data.gz', 'compressed', 'compressed file'),
-            ('weird.data', '{}', 'Cannot infer file format'),
+            ('data.gz', 'compressed', 'read', 'compressed file'),
+            ('weird.data', '{}', 'read', 'Cannot infer file format'),
+            ('output.unknown', None, 'write', 'Cannot infer file format'),
         ],
-        ids=['compression_only_suffix', 'unknown_extension'],
+        ids=[
+            'compression_only_suffix',
+            'read_unknown_extension',
+            'write_unknown',
+        ],
     )
-    def test_read_unknown_formats_defer_error(
+    def test_unknown_formats_defer_error(
         self,
         tmp_path: Path,
         filename: str,
-        contents: str,
+        contents: str | None,
+        operation: Operation,
         error_pattern: str,
     ) -> None:
-        """Test unresolved formats deferring failure until read dispatch."""
+        """Test unresolved formats deferring failure until dispatch."""
         path = tmp_path / filename
-        path.write_text(contents, encoding='utf-8')
+        if contents is not None:
+            path.write_text(contents, encoding='utf-8')
         file = File(path)
 
         assert file.file_format is None
+        operation_kwargs = {
+            'read': {},
+            'write': {'data': {'ok': True}},
+        }[operation]
         with pytest.raises(ValueError, match=error_pattern):
-            file.read()
+            getattr(file, operation)(**operation_kwargs)
 
     @pytest.mark.parametrize(
         'file_format,filename,payload,expected,requires',
@@ -621,25 +599,20 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        for module in requires:
-            pytest.importorskip(module)
+        _require_optional_modules(requires)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
-        try:
-            result = File(path, file_format).read()
-        except OSError as err:
-            if file_format is FileFormat.ORC and 'sysctlbyname' in str(err):
-                pytest.skip('ORC read failed due to sysctl limitations')
-            raise
-
-        expected_result = expected
-        if file_format is FileFormat.XML:
-            result = normalize_xml_payload(result)
-            expected_result = normalize_xml_payload(expected_result)
-        if file_format is FileFormat.XLS:
-            result = normalize_numeric_records(result)
-        assert result == expected_result
+        result = _read_with_known_io_skip(
+            path=path,
+            file_format=file_format,
+        )
+        normalized_result, normalized_expected = _normalize_roundtrip_values(
+            file_format=file_format,
+            result=result,
+            expected=expected,
+        )
+        assert normalized_result == normalized_expected
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
@@ -658,18 +631,21 @@ class TestFile:
         tmp_path: Path,
         file_format: FileFormat,
         filename: str,
-        operation: str,
+        operation: Operation,
     ) -> None:
         """Test stub formats raising NotImplementedError on read/write."""
         path = tmp_path / filename
-        if operation == 'read':
-            path.write_text('stub', encoding='utf-8')
+        seed_content = {'read': 'stub', 'write': None}[operation]
+        if seed_content is not None:
+            path.write_text(seed_content, encoding='utf-8')
 
+        file = File(path, file_format)
+        operation_kwargs = {
+            'read': {},
+            'write': {'data': {'stub': True}},
+        }[operation]
         with pytest.raises(NotImplementedError):
-            if operation == 'read':
-                File(path, file_format).read()
-            else:
-                File(path, file_format).write({'stub': True})
+            getattr(file, operation)(**operation_kwargs)
 
     def test_write_csv_rejects_non_dicts(
         self,
@@ -701,17 +677,6 @@ class TestFile:
         json_content = path.read_text(encoding='utf-8')
         assert json_content
         assert json_content.count('\n') >= 2
-
-    def test_write_unknown_extension_without_format_raises(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test write fails when format cannot be inferred."""
-        path = tmp_path / 'output.unknown'
-        file = File(path)
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            file.write({'ok': True})
 
     def test_xls_write_not_supported(
         self,
@@ -762,26 +727,6 @@ class TestFile:
 
         assert result == payload
 
-    def test_xml_write_uses_default_root_tag_when_not_provided(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test default XML root tag routing in class-based dispatch."""
-        path = tmp_path / 'export.xml'
-        calls = _install_core_handler_stub(monkeypatch, write_result=1)
-
-        written = File(path, FileFormat.XML).write([{'name': 'Ada'}])
-
-        assert written == 1
-        _assert_core_write_dispatch(
-            calls,
-            expected_format=FileFormat.XML,
-            expected_path=path,
-            expected_data=[{'name': 'Ada'}],
-            expected_root_tag=xml_file.DEFAULT_XML_ROOT,
-        )
-
     def test_zip_multi_file_read(
         self,
         tmp_path: Path,
@@ -822,23 +767,50 @@ class TestFileCoreDispatch:
         assert calls['format'] is FileFormat.CSV
         assert calls['read_path'] == path
 
+    @pytest.mark.parametrize(
+        ('root_tag', 'expected_root_tag', 'write_result'),
+        [
+            pytest.param(
+                None,
+                xml_file.DEFAULT_XML_ROOT,
+                1,
+                id='default_root_tag',
+            ),
+            pytest.param(
+                'records',
+                'records',
+                3,
+                id='custom_root_tag',
+            ),
+        ],
+    )
     def test_write_uses_class_based_handler_and_root_tag(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        root_tag: str | None,
+        expected_root_tag: str,
+        write_result: int,
     ) -> None:
         """Test write dispatch preserving XML ``root_tag`` in options."""
         path = tmp_path / 'export.xml'
         payload: JSONData = [{'name': 'Ada'}]
-        calls = _install_core_handler_stub(monkeypatch, write_result=3)
+        calls = _install_core_handler_stub(
+            monkeypatch,
+            write_result=write_result,
+        )
 
-        written = File(path, FileFormat.XML).write(payload, root_tag='records')
+        file = File(path, FileFormat.XML)
+        if root_tag is None:
+            written = file.write(payload)
+        else:
+            written = file.write(payload, root_tag=root_tag)
 
-        assert written == 3
+        assert written == write_result
         _assert_core_write_dispatch(
             calls,
             expected_format=FileFormat.XML,
             expected_path=path,
             expected_data=payload,
-            expected_root_tag='records',
+            expected_root_tag=expected_root_tag,
         )
