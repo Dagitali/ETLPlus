@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_orc` module.
 
-Integration tests for :mod:`etlplus.file.orc`.
+Integration smoke tests for :mod:`etlplus.file.orc`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestOrc(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.orc`."""
+    """Integration smoke tests for :mod:`etlplus.file.orc`."""
 
     module = mod
-    file_name = 'data.orc'

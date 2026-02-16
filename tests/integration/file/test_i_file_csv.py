@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_csv` module.
 
-Integration tests for :mod:`etlplus.file.csv`.
+Integration smoke tests for :mod:`etlplus.file.csv`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestCsv(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.csv`."""
+    """Integration smoke tests for :mod:`etlplus.file.csv`."""
 
     module = mod
-    file_name = 'data.csv'

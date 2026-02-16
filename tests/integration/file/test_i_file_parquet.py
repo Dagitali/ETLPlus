@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_parquet` module.
 
-Integration tests for :mod:`etlplus.file.parquet`.
+Integration smoke tests for :mod:`etlplus.file.parquet`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestParquet(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.parquet`."""
+    """Integration smoke tests for :mod:`etlplus.file.parquet`."""
 
     module = mod
-    file_name = 'data.parquet'

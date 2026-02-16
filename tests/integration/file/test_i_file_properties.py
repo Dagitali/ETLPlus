@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_properties` module.
 
-Integration tests for :mod:`etlplus.file.properties`.
+Integration smoke tests for :mod:`etlplus.file.properties`.
 """
 
 from __future__ import annotations
@@ -14,8 +14,7 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestProperties(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.properties`."""
+    """Integration smoke tests for :mod:`etlplus.file.properties`."""
 
     module = mod
-    file_name = 'data.properties'
     payload = {'id': '99', 'name': 'Grace'}

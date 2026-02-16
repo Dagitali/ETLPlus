@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_proto` module.
 
-Integration tests for :mod:`etlplus.file.proto`.
+Integration smoke tests for :mod:`etlplus.file.proto`.
 """
 
 from __future__ import annotations
@@ -14,10 +14,9 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestProto(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.proto`."""
+    """Integration smoke tests for :mod:`etlplus.file.proto`."""
 
     module = mod
-    file_name = 'data.proto'
     payload = {
         'schema': """syntax = "proto3";
 message Test { string name = 1; }

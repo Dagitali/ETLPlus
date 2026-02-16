@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_psv` module.
 
-Integration tests for :mod:`etlplus.file.psv`.
+Integration smoke tests for :mod:`etlplus.file.psv`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestPsv(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.psv`."""
+    """Integration smoke tests for :mod:`etlplus.file.psv`."""
 
     module = mod
-    file_name = 'data.psv'

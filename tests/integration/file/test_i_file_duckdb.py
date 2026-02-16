@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_duckdb` module.
 
-Integration tests for :mod:`etlplus.file.duckdb`.
+Integration smoke tests for :mod:`etlplus.file.duckdb`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestDuckdb(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.duckdb`."""
+    """Integration smoke tests for :mod:`etlplus.file.duckdb`."""
 
     module = mod
-    file_name = 'data.duckdb'

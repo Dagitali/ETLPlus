@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_xlsm` module.
 
-Integration tests for :mod:`etlplus.file.xlsm`.
+Integration smoke tests for :mod:`etlplus.file.xlsm`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestXlsm(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.xlsm`."""
+    """Integration smoke tests for :mod:`etlplus.file.xlsm`."""
 
     module = mod
-    file_name = 'data.xlsm'

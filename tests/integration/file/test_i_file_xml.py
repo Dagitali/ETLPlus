@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_xml` module.
 
-Integration tests for :mod:`etlplus.file.xml`.
+Integration smoke tests for :mod:`etlplus.file.xml`.
 """
 
 from __future__ import annotations
@@ -14,9 +14,8 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestXml(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.xml`."""
+    """Integration smoke tests for :mod:`etlplus.file.xml`."""
 
     module = mod
-    file_name = 'data.xml'
     payload = {'root': {'text': 'hello'}}
     write_kwargs = {'root_tag': 'root'}

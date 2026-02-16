@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_fwf` module.
 
-Integration tests for :mod:`etlplus.file.fwf`.
+Integration smoke tests for :mod:`etlplus.file.fwf`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestFwf(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.fwf`."""
+    """Integration smoke tests for :mod:`etlplus.file.fwf`."""
 
     module = mod
-    file_name = 'data.fwf'

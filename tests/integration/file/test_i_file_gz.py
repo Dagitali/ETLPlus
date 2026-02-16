@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_gz` module.
 
-Integration tests for :mod:`etlplus.file.gz`.
+Integration smoke tests for :mod:`etlplus.file.gz`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestGz(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.gz`."""
+    """Integration smoke tests for :mod:`etlplus.file.gz`."""
 
     module = mod
     file_name = 'data.json.gz'

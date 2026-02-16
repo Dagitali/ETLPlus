@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_ini` module.
 
-Integration tests for :mod:`etlplus.file.ini`.
+Integration smoke tests for :mod:`etlplus.file.ini`.
 """
 
 from __future__ import annotations
@@ -14,8 +14,7 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestIni(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.ini`."""
+    """Integration smoke tests for :mod:`etlplus.file.ini`."""
 
     module = mod
-    file_name = 'data.ini'
     payload = {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}

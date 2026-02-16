@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_avro` module.
 
-Integration tests for :mod:`etlplus.file.avro`.
+Integration smoke tests for :mod:`etlplus.file.avro`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestAvro(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.avro`."""
+    """Integration smoke tests for :mod:`etlplus.file.avro`."""
 
     module = mod
-    file_name = 'data.avro'

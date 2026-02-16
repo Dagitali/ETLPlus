@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_zip` module.
 
-Integration tests for :mod:`etlplus.file.zip`.
+Integration smoke tests for :mod:`etlplus.file.zip`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestZip(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.zip`."""
+    """Integration smoke tests for :mod:`etlplus.file.zip`."""
 
     module = mod
     file_name = 'data.json.zip'

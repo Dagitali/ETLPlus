@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_rda` module.
 
-Integration tests for :mod:`etlplus.file.rda`.
+Integration smoke tests for :mod:`etlplus.file.rda`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestRda(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.rda`."""
+    """Integration smoke tests for :mod:`etlplus.file.rda`."""
 
     module = mod
-    file_name = 'data.rda'

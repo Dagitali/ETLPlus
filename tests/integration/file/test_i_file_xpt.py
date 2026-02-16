@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_xpt` module.
 
-Integration tests for :mod:`etlplus.file.xpt`.
+Integration smoke tests for :mod:`etlplus.file.xpt`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestXpt(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.xpt`."""
+    """Integration smoke tests for :mod:`etlplus.file.xpt`."""
 
     module = mod
-    file_name = 'data.xpt'

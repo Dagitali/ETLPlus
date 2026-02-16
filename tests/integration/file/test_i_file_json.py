@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_json` module.
 
-Integration tests for :mod:`etlplus.file.json`.
+Integration smoke tests for :mod:`etlplus.file.json`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestJson(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.json`."""
+    """Integration smoke tests for :mod:`etlplus.file.json`."""
 
     module = mod
-    file_name = 'data.json'

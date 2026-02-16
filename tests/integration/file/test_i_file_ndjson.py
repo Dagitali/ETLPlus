@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_ndjson` module.
 
-Integration tests for :mod:`etlplus.file.ndjson`.
+Integration smoke tests for :mod:`etlplus.file.ndjson`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestNdjson(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.ndjson`."""
+    """Integration smoke tests for :mod:`etlplus.file.ndjson`."""
 
     module = mod
-    file_name = 'data.ndjson'

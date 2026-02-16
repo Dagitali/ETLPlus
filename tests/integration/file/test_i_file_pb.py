@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.file.test_i_file_pb` module.
 
-Integration tests for :mod:`etlplus.file.pb`.
+Integration smoke tests for :mod:`etlplus.file.pb`.
 """
 
 from __future__ import annotations
@@ -14,8 +14,7 @@ from .conftest import SmokeRoundtripModuleContract
 
 
 class TestPb(SmokeRoundtripModuleContract):
-    """Integration tests for :mod:`etlplus.file.pb`."""
+    """Integration smoke tests for :mod:`etlplus.file.pb`."""
 
     module = mod
-    file_name = 'data.pb'
     payload = {'payload_base64': 'aGVsbG8='}
