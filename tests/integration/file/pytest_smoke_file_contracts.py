@@ -17,6 +17,7 @@ from etlplus.types import JSONDict
 from etlplus.types import JSONList
 
 from ...pytest_file_common import call_handler_operation
+from ...pytest_file_common import resolve_module_handler
 from ...pytest_file_common import skip_on_known_file_io_error
 
 __all__ = [
@@ -29,12 +30,19 @@ class SmokeRoundtripModuleContract:
     """Reusable write/read smoke contract for file-format modules."""
 
     module: ModuleType
-    file_name: str
+    file_name: str | None = None
     payload: JSONData | None = None
     use_sample_record: bool = False
     write_kwargs: Mapping[str, object] | None = None
     expect_write_error: type[Exception] | None = None
     error_match: str | None = None
+
+    def smoke_file_name(self) -> str:
+        """Return the integration smoke-file name for this module."""
+        if self.file_name is not None:
+            return self.file_name
+        suffix = resolve_module_handler(self.module).format.value
+        return f'data.{suffix}'
 
     def test_roundtrip_smoke(
         self,
@@ -43,7 +51,7 @@ class SmokeRoundtripModuleContract:
         sample_records: JSONList,
     ) -> None:
         """Test that read/write can be invoked with minimal payloads."""
-        path = tmp_path / self.file_name
+        path = tmp_path / self.smoke_file_name()
         payload: JSONData
         if self.payload is not None:
             payload = self.payload
