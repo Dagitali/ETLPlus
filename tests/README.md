@@ -18,6 +18,9 @@ with pytest markers.
 | `integration` | `tests/integration/` | Cross-module behavior and boundary wiring | May use temp files and fakes/mocks |
 | `e2e` | `tests/e2e/` | Full workflow/system-boundary behavior | Slowest, broadest confidence checks |
 
+File-format integration smoke conventions are documented in
+[`tests/integration/file/README.md`](integration/file/README.md).
+
 ## Intent Markers
 
 Intent markers are orthogonal to scope. A test can be both `integration` and
