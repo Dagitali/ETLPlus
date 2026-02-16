@@ -14,10 +14,10 @@ import pytest
 
 from etlplus.file import toml as mod
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import SemiStructuredReadModuleContract
 from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
@@ -61,10 +61,7 @@ class TestToml(
     sample_read_text = 'name = "etl"'
     expected_read_payload = {'name': 'etl'}
     dict_payload = {'name': 'etl'}
-    roundtrip_spec = RoundtripSpec(
-        payload={'name': 'etl'},
-        expected={'name': 'etl'},
-    )
+    roundtrip_spec = build_roundtrip_spec({'name': 'etl'}, {'name': 'etl'})
 
     def assert_write_contract_result(
         self,

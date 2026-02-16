@@ -12,8 +12,8 @@ import pytest
 
 from etlplus.file import mustache as mod
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_roundtrip_cases import build_template_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -23,10 +23,7 @@ class TestMustache(RoundtripUnitModuleContract):
 
     module = mod
     format_name = 'mustache'
-    roundtrip_spec = RoundtripSpec(
-        payload={'template': 'Hi {{name}}'},
-        expected=[{'template': 'Hi {{name}}'}],
-    )
+    roundtrip_spec = build_template_roundtrip_spec('Hi {{name}}')
 
     def test_read_returns_template_payload(
         self,

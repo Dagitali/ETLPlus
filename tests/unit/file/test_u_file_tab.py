@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from etlplus.file import tab as mod
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import DelimitedModuleContract
+from .pytest_file_roundtrip_cases import build_delimited_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -24,7 +24,4 @@ class TestTab(
     module = mod
     format_name = 'tab'
     delimiter = '\t'
-    roundtrip_spec = RoundtripSpec(
-        payload=[{'id': 1, 'name': 'Ada'}],
-        expected=[{'id': '1', 'name': 'Ada'}],
-    )
+    roundtrip_spec = build_delimited_roundtrip_spec()

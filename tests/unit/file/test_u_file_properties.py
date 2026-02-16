@@ -14,10 +14,10 @@ import pytest
 
 from etlplus.file import properties as mod
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import SemiStructuredReadModuleContract
 from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -47,9 +47,8 @@ class TestProperties(
         'spaced': 'value',
     }
     dict_payload = {'b': 2, 'a': 1}
-    roundtrip_spec = RoundtripSpec(
-        payload={'b': 2, 'a': 1},
-        expected={'a': '1', 'b': '2'},
+    roundtrip_spec = build_roundtrip_spec(
+        {'b': 2, 'a': 1}, {'a': '1', 'b': '2'},
     )
 
     def assert_write_contract_result(
