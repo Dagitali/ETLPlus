@@ -20,10 +20,41 @@ from ...pytest_file_common import call_handler_operation
 from ...pytest_file_common import resolve_module_handler
 from ...pytest_file_common import skip_on_known_file_io_error
 
+# SECTION: EXPORTS ========================================================== #
+
+
 __all__ = [
+    # Classes
     'SmokeRoundtripModuleContract',
+    # Constants
+    'SMOKE_ROUNDTRIP_EXCEPTION_MODULES',
+    'SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES',
+    'SMOKE_ROUNDTRIP_OVERRIDE_ATTRS',
+    # Functions
     'run_file_smoke',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+SMOKE_ROUNDTRIP_OVERRIDE_ATTRS = frozenset(
+    {
+        'error_match',
+        'expect_write_error',
+        'file_name',
+    },
+)
+SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES = {
+    'test_i_file_gz.py': frozenset({'file_name'}),
+    'test_i_file_xls.py': frozenset(
+        {'expect_write_error', 'error_match'},
+    ),
+    'test_i_file_zip.py': frozenset({'file_name'}),
+}
+SMOKE_ROUNDTRIP_EXCEPTION_MODULES = frozenset(
+    SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES,
+)
 
 
 class SmokeRoundtripModuleContract:
