@@ -35,6 +35,11 @@ COMMON_PROTO: JSONData = {
 }
 COMMON_PB: JSONData = {'payload_base64': 'aGVsbG8='}
 COMMON_XML: JSONData = {'root': {'items': [{'text': 'one'}]}}
+FORMAT_INFERENCE_CASES = (
+    ('data.json', FileFormat.JSON),
+    ('data.csv.gz', FileFormat.CSV),
+    ('data.jsonl.gz', FileFormat.NDJSON),
+)
 
 
 # SECTION: FUNCTIONS ======================================================== #
