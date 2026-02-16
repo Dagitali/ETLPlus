@@ -85,6 +85,11 @@ def _module_override_attrs(path: Path) -> set[str]:
     return attrs
 
 
+def _integration_file_test_modules() -> list[Path]:
+    """Return sorted integration file smoke test module paths."""
+    return sorted(_INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN))
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -95,7 +100,7 @@ class TestIntegrationFileSmokeConventions:
         """Test each integration file module uses one contract test class."""
         missing_contract = sorted(
             path.name
-            for path in _INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN)
+            for path in _integration_file_test_modules()
             if not _contract_classes(path)
         )
         assert not missing_contract, (
@@ -103,11 +108,24 @@ class TestIntegrationFileSmokeConventions:
             + '\n- '.join(missing_contract)
         )
 
+    def test_each_module_has_exactly_one_contract_test_class(self) -> None:
+        """Test each integration file module defining one contract class."""
+        offenders = sorted(
+            f'{path.name}: {len(contract_classes)}'
+            for path in _integration_file_test_modules()
+            if len(contract_classes := _contract_classes(path)) != 1
+        )
+        assert not offenders, (
+            'Integration file modules must define exactly one contract '
+            'test class:\n- '
+            + '\n- '.join(offenders)
+        )
+
     def test_only_documented_modules_use_override_attributes(self) -> None:
         """Test only documented exception modules using override attrs."""
         overrides_by_module = {
             path.name: _module_override_attrs(path)
-            for path in _INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN)
+            for path in _integration_file_test_modules()
         }
         observed_exception_modules = {
             module_name

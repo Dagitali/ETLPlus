@@ -35,11 +35,38 @@ COMMON_PROTO: JSONData = {
 }
 COMMON_PB: JSONData = {'payload_base64': 'aGVsbG8='}
 COMMON_XML: JSONData = {'root': {'items': [{'text': 'one'}]}}
+EMBEDDED_DB_MULTI_TABLE_CASES = (
+    (FileFormat.DUCKDB, 'multi.duckdb'),
+    (FileFormat.SQLITE, 'multi.sqlite'),
+)
+EMBEDDED_DB_MULTI_TABLE_CASE_IDS = ('duckdb', 'sqlite')
+EXPLICIT_STRING_FORMAT_CASES = (
+    ('json', FileFormat.JSON),
+    ('not-a-real-format', None),
+)
+EXPLICIT_STRING_FORMAT_CASE_IDS = (
+    'valid_string_format',
+    'invalid_string_format',
+)
 FORMAT_INFERENCE_CASES = (
     ('data.json', FileFormat.JSON),
     ('data.csv.gz', FileFormat.CSV),
     ('data.jsonl.gz', FileFormat.NDJSON),
 )
+FORMAT_INFERENCE_CASE_IDS = ('json', 'csv_gz', 'jsonl_gz')
+UNKNOWN_FORMAT_CASES = (
+    ('data.gz', 'compressed', 'read', 'compressed file'),
+    ('weird.data', '{}', 'read', 'Cannot infer file format'),
+    ('output.unknown', None, 'write', 'Cannot infer file format'),
+)
+UNKNOWN_FORMAT_CASE_IDS = (
+    'compression_only_suffix',
+    'read_unknown_extension',
+    'write_unknown',
+)
+STUB_OPERATION_CASES = ('read', 'write')
+XML_ROUNDTRIP_NORMALIZED_FORMATS = frozenset({FileFormat.XML})
+NUMERIC_ROUNDTRIP_NORMALIZED_FORMATS = frozenset({FileFormat.XLS})
 
 
 # SECTION: FUNCTIONS ======================================================== #

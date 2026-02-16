@@ -28,9 +28,19 @@ from etlplus.types import JSONData
 
 from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error
+from .pytest_file_core_cases import EMBEDDED_DB_MULTI_TABLE_CASE_IDS
+from .pytest_file_core_cases import EMBEDDED_DB_MULTI_TABLE_CASES
+from .pytest_file_core_cases import EXPLICIT_STRING_FORMAT_CASE_IDS
+from .pytest_file_core_cases import EXPLICIT_STRING_FORMAT_CASES
 from .pytest_file_core_cases import FORMAT_CASES
+from .pytest_file_core_cases import FORMAT_INFERENCE_CASE_IDS
 from .pytest_file_core_cases import FORMAT_INFERENCE_CASES
+from .pytest_file_core_cases import NUMERIC_ROUNDTRIP_NORMALIZED_FORMATS
+from .pytest_file_core_cases import STUB_OPERATION_CASES
 from .pytest_file_core_cases import STUBBED_FORMATS
+from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
+from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
+from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
 
 # SECTION: HELPERS ========================================================== #
 
@@ -147,10 +157,10 @@ def _normalize_roundtrip_values(
     """Normalize roundtrip values for format-specific assertion behavior."""
     normalized_result = result
     normalized_expected = expected
-    if file_format is FileFormat.XML:
+    if file_format in XML_ROUNDTRIP_NORMALIZED_FORMATS:
         normalized_result = normalize_xml_payload(normalized_result)
         normalized_expected = normalize_xml_payload(normalized_expected)
-    if file_format is FileFormat.XLS:
+    if file_format in NUMERIC_ROUNDTRIP_NORMALIZED_FORMATS:
         normalized_result = normalize_numeric_records(normalized_result)
     return normalized_result, normalized_expected
 
@@ -179,11 +189,8 @@ class TestFile:
 
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
-        [
-            (FileFormat.DUCKDB, 'multi.duckdb'),
-            (FileFormat.SQLITE, 'multi.sqlite'),
-        ],
-        ids=['duckdb', 'sqlite'],
+        EMBEDDED_DB_MULTI_TABLE_CASES,
+        ids=EMBEDDED_DB_MULTI_TABLE_CASE_IDS,
     )
     def test_embedded_db_read_fails_with_multiple_tables(
         self,
@@ -211,8 +218,8 @@ class TestFile:
 
     @pytest.mark.parametrize(
         ('raw_format', 'expected'),
-        (('json', FileFormat.JSON), ('not-a-real-format', None)),
-        ids=('valid_string_format', 'invalid_string_format'),
+        EXPLICIT_STRING_FORMAT_CASES,
+        ids=EXPLICIT_STRING_FORMAT_CASE_IDS,
     )
     def test_explicit_string_file_format_validation(
         self,
@@ -245,7 +252,7 @@ class TestFile:
     @pytest.mark.parametrize(
         ('filename', 'expected_format'),
         FORMAT_INFERENCE_CASES,
-        ids=('json', 'csv_gz', 'jsonl_gz'),
+        ids=FORMAT_INFERENCE_CASE_IDS,
     )
     def test_infers_format_from_extension_patterns(
         self,
@@ -337,16 +344,8 @@ class TestFile:
 
     @pytest.mark.parametrize(
         ('filename', 'contents', 'operation', 'error_pattern'),
-        [
-            ('data.gz', 'compressed', 'read', 'compressed file'),
-            ('weird.data', '{}', 'read', 'Cannot infer file format'),
-            ('output.unknown', None, 'write', 'Cannot infer file format'),
-        ],
-        ids=[
-            'compression_only_suffix',
-            'read_unknown_extension',
-            'write_unknown',
-        ],
+        UNKNOWN_FORMAT_CASES,
+        ids=UNKNOWN_FORMAT_CASE_IDS,
     )
     def test_unknown_formats_defer_error(
         self,
@@ -426,7 +425,7 @@ class TestFile:
             for file_format, filename in STUBBED_FORMATS
         ],
     )
-    @pytest.mark.parametrize('operation', ['read', 'write'])
+    @pytest.mark.parametrize('operation', STUB_OPERATION_CASES)
     def test_stub_formats_raise_on_operations(
         self,
         tmp_path: Path,
