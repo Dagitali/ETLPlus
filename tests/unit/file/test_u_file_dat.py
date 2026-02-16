@@ -21,8 +21,9 @@ from etlplus.file import dat as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_roundtrip_cases import ROUNDTRIP_CASES
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: HELPERS ========================================================== #
 
@@ -177,16 +178,7 @@ class TestDat(RoundtripUnitModuleContract):
 
     module = mod
     format_name = 'dat'
-    roundtrip_spec = RoundtripSpec(
-        payload=[
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ],
-        expected=[
-            {'id': '1', 'name': 'Alice'},
-            {'id': '2', 'name': 'Bob'},
-        ],
-    )
+    roundtrip_spec = build_roundtrip_spec(*ROUNDTRIP_CASES['dat_records'])
 
     def test_read_accepts_custom_sniffer_via_read_options(
         self,

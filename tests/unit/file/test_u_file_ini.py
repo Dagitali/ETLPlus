@@ -12,10 +12,11 @@ import pytest
 
 from etlplus.file import ini as mod
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import SemiStructuredReadModuleContract
 from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
+from .pytest_file_roundtrip_cases import ROUNDTRIP_CASES
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -50,15 +51,8 @@ class TestIni(
         'DEFAULT': {'shared': 'base', 'timeout': 5},
         'alpha': {'value': 1},
     }
-    roundtrip_spec = RoundtripSpec(
-        payload={
-            'DEFAULT': {'shared': 'base', 'timeout': 5},
-            'alpha': {'value': 1},
-        },
-        expected={
-            'DEFAULT': {'shared': 'base', 'timeout': '5'},
-            'alpha': {'value': '1'},
-        },
+    roundtrip_spec = build_roundtrip_spec(
+        *ROUNDTRIP_CASES['ini_default_alpha'],
     )
 
     def assert_write_contract_result(
