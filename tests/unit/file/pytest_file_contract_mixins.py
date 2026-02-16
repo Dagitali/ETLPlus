@@ -123,7 +123,7 @@ class RoundtripUnitModuleContract(PathMixin):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install optional dependencies required by a roundtrip case."""
-        return None
+        _ = optional_module_stub
 
     def normalize_roundtrip_result(
         self,
