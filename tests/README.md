@@ -8,6 +8,7 @@ with pytest markers.
   - [Intent Markers](#intent-markers)
   - [Discovery and Selection](#discovery-and-selection)
   - [Common Commands](#common-commands)
+  - [Post-Move Validation Checklist](#post-move-validation-checklist)
 
 ## Scope Markers / Directory Layout
 
@@ -58,4 +59,32 @@ pytest -m e2e
 # Marker-based selection by intent
 pytest -m smoke
 pytest -m contract
+```
+
+## Post-Move Validation Checklist
+
+Use these checks after moving/renaming test modules or changing test scope
+directories.
+
+```bash
+# 1) Fast import/collection sanity checks
+python -m pytest --collect-only -q tests/unit tests/integration tests/e2e
+
+# 2) Scope-layout guardrails (legacy paths, filename patterns, marker coverage)
+python -m pytest -q \
+  tests/unit/meta/test_u_test_layout.py \
+  tests/unit/meta/test_u_test_filenames.py \
+  tests/unit/meta/test_u_marker_coverage.py
+
+# 3) Scope-focused smoke run (catches broken imports quickly)
+python -m pytest -q tests/unit tests/integration
+
+# 4) Conftest scope-marker grep checks
+rg -n "pytest\\.mark\\.unit" tests/unit/**/conftest.py tests/unit/conftest.py
+rg -n "pytest\\.mark\\.integration" tests/integration/**/conftest.py tests/integration/conftest.py
+rg -n "pytest\\.mark\\.smoke" tests/integration/file/conftest.py
+
+# 5) Filename hygiene checks (spaces / duplicate-copy suffixes)
+find tests -type f -name '*.py' | awk '/ / {print}'
+rg --files tests | rg " 2\\.py$| 3\\.py$"
 ```
