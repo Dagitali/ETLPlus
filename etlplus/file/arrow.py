@@ -45,6 +45,15 @@ __all__ = [
     'write',
 ]
 
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='ARROW')
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -78,7 +87,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'ARROW')
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         return pyarrow_mod.Table.from_pylist(records)
 
     def read_table(
@@ -103,7 +112,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             PyArrow table object.
         """
         _ = options
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         with pyarrow_mod.memory_map(str(path), 'r') as source:
             reader = pyarrow_mod.ipc.open_file(source)
             return reader.read_all()
@@ -147,7 +156,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             Optional write parameters.
         """
         _ = options
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         with pyarrow_mod.OSFile(str(path), 'wb') as sink:
             with pyarrow_mod.ipc.new_file(sink, table.schema) as writer:
                 writer.write_table(table)
