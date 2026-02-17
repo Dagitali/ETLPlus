@@ -45,6 +45,7 @@ __all__ = [
 
 # SECTION: CLASSES ========================================================== #
 
+
 class RDataModuleContract(PathMixin):
     """Reusable contract suite for R-data wrapper modules (RDA/RDS)."""
 

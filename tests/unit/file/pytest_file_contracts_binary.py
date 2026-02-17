@@ -36,6 +36,7 @@ __all__ = [
 
 # SECTION: CLASSES ========================================================== #
 
+
 class BinaryCodecStub:
     """
     Generic codec stub for binary serialization module tests.

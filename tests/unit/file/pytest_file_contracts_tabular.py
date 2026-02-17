@@ -47,6 +47,7 @@ __all__ = [
 
 # SECTION: CLASSES ========================================================== #
 
+
 class DelimitedModuleContract(
     DelimitedCategoryContractBase,
     DelimitedReadWriteMixin,

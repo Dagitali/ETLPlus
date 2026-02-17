@@ -1,30 +1,27 @@
-"""Shared roundtrip-case builders/constants for file unit tests."""
+"""
+:mod:`tests.unit.file.pytest_file_roundtrip_cases` module.
+
+Roundtrip spec builders for file unit tests.
+"""
 
 from __future__ import annotations
 
 from etlplus.types import JSONData
 
+from .pytest_file_contract_mixins import RoundtripShape
 from .pytest_file_contract_mixins import RoundtripSpec
+from .pytest_file_contract_mixins import RoundtripValueKind
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CONSTANTS ===================================================== #
 
 
 ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
     'dat_records': (
-        [
-            {'id': 1, 'name': 'Alice'},
-            {'id': 2, 'name': 'Bob'},
-        ],
-        [
-            {'id': '1', 'name': 'Alice'},
-            {'id': '2', 'name': 'Bob'},
-        ],
+        [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}],
+        [{'id': '1', 'name': 'Alice'}, {'id': '2', 'name': 'Bob'}],
     ),
     'ini_default_alpha': (
-        {
-            'DEFAULT': {'shared': 'base', 'timeout': 5},
-            'alpha': {'value': 1},
-        },
+        {'DEFAULT': {'shared': 'base', 'timeout': 5}, 'alpha': {'value': 1}},
         {
             'DEFAULT': {'shared': 'base', 'timeout': '5'},
             'alpha': {'value': '1'},
@@ -47,79 +44,24 @@ ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
 }
 
 
-def build_delimited_roundtrip_spec() -> RoundtripSpec:
-    """
-    Build a simple roundtrip spec for delimited formats.
-
-    Returns
-    -------
-    RoundtripSpec
-        A roundtrip specification with a simple record containing an ID and
-        name.
-    """
-    return RoundtripSpec(
-        payload=[{'id': 1, 'name': 'Ada'}],
-        expected=[{'id': '1', 'name': 'Ada'}],
-    )
-
-
-def build_two_id_records_roundtrip_spec() -> RoundtripSpec:
-    """
-    Build a roundtrip spec with two ID records.
-
-    Returns
-    -------
-    RoundtripSpec
-        A roundtrip specification with two records, each containing an ID.
-    """
-    return RoundtripSpec(
-        payload=[{'id': 1}, {'id': 2}],
-        expected=[{'id': 1}, {'id': 2}],
-    )
-
-
-def build_template_roundtrip_spec(template: str) -> RoundtripSpec:
-    """
-    Build a roundtrip spec with a single template record.
-
-    Parameters
-    ----------
-    template : str
-        The template string to include in the payload and expected data.
-
-    Returns
-    -------
-    RoundtripSpec
-        The constructed roundtrip specification with the template.
-    """
-    return RoundtripSpec(
-        payload={'template': template},
-        expected=[{'template': template}],
-    )
-
-
-def build_text_alpha_beta_roundtrip_spec() -> RoundtripSpec:
-    """
-    Build a roundtrip spec with two text records.
-
-    Returns
-    -------
-    RoundtripSpec
-        A roundtrip specification with two records, each containing a text
-        field with values 'alpha' and 'beta'.
-    """
-    return RoundtripSpec(
-        payload=[{'text': 'alpha'}, {'text': 'beta'}],
-        expected=[{'text': 'alpha'}, {'text': 'beta'}],
-    )
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def build_roundtrip_spec(
-    payload: JSONData,
-    expected: JSONData,
+    payload: JSONData | None = None,
+    expected: JSONData | None = None,
+    *,
+    case: str | None = None,
+    shape: RoundtripShape = 'records',
+    field_count: int = 1,
+    record_count: int = 1,
+    value_kind: RoundtripValueKind = 'numeric',
 ) -> RoundtripSpec:
     """
-    Build a roundtrip spec with arbitrary payload and expected data.
+    Build one :class:`RoundtripSpec`.
+
+    Supports explicit ``payload``/``expected``, named ``case`` lookup, or
+    generated payloads via :meth:`RoundtripSpec.build`.
 
     Parameters
     ----------
@@ -133,4 +75,19 @@ def build_roundtrip_spec(
     RoundtripSpec
         The constructed roundtrip specification.
     """
-    return RoundtripSpec(payload=payload, expected=expected)
+    if (payload is None) != (expected is None):
+        raise ValueError('payload and expected must be provided together')
+    if payload is not None and expected is not None:
+        return RoundtripSpec(payload=payload, expected=expected)
+    if case is not None:
+        selected_payload, selected_expected = ROUNDTRIP_CASES[case]
+        return RoundtripSpec(
+            payload=selected_payload,
+            expected=selected_expected,
+        )
+    return RoundtripSpec.build(
+        shape=shape,
+        field_count=field_count,
+        record_count=record_count,
+        value_kind=value_kind,
+    )
