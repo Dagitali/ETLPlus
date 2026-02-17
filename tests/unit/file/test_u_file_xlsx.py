@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import xlsx as mod
 
-from .pytest_file_contract_contracts import WritableSpreadsheetModuleContract
+from .pytest_file_contracts import WritableSpreadsheetModuleContract
 
 # SECTION: TESTS ============================================================ #
 

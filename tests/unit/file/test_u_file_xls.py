@@ -13,8 +13,8 @@ import pytest
 from etlplus.file import xls as mod
 from etlplus.file.base import ReadOptions
 
+from .pytest_file_contract_bases import SpreadsheetCategoryContractBase
 from .pytest_file_contract_mixins import ReadOnlyWriteGuardMixin
-from .pytest_file_contract_mixins import SpreadsheetCategoryContractBase
 from .pytest_file_contract_mixins import SpreadsheetReadImportErrorMixin
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_support import SpreadsheetSheetFrameStub

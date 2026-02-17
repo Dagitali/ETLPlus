@@ -10,11 +10,11 @@ from pathlib import Path
 
 from etlplus.file import fwf as mod
 
-from .pytest_file_contract_contracts import TextRowModuleContract
-from .pytest_file_contract_mixins import OptionalModuleInstaller
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import TextRowModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 from .pytest_file_support import DictRecordsFrameStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: HELPERS ========================================================== #
 
@@ -45,10 +45,7 @@ class TestFwf(
     format_name = 'fwf'
     write_payload = [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}]
     expected_written_count = 2
-    roundtrip_spec = RoundtripSpec(
-        payload=[{'id': 1}],
-        expected=[{'id': 1}],
-    )
+    roundtrip_spec = build_roundtrip_spec([{'id': 1}], [{'id': 1}])
     _pandas: _PandasStub
 
     def assert_write_contract_result(

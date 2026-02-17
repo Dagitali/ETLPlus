@@ -15,10 +15,10 @@ import pytest
 from etlplus.file import txt as mod
 from etlplus.types import JSONData
 
-from .pytest_file_contract_contracts import TextRowModuleContract
-from .pytest_file_contract_mixins import OptionalModuleInstaller
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import TextRowModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 
@@ -35,10 +35,7 @@ class TestTxt(
     format_name = 'txt'
     write_payload = [{'text': 'alpha'}, {'text': 'beta'}]
     expected_written_count = 2
-    roundtrip_spec = RoundtripSpec(
-        payload=[{'text': 'alpha'}, {'text': 'beta'}],
-        expected=[{'text': 'alpha'}, {'text': 'beta'}],
-    )
+    roundtrip_spec = build_roundtrip_spec(shape='text', record_count=2)
 
     def assert_write_contract_result(
         self,

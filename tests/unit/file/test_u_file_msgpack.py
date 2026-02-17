@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import msgpack as mod
 
-from .pytest_file_contract_contracts import BinaryCodecModuleContract
+from .pytest_file_contracts import BinaryCodecModuleContract
 
 # SECTION: TESTS ============================================================ #
 

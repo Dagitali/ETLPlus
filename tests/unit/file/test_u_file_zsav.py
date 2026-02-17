@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import zsav as mod
 
-from .pytest_file_contract_contracts import SingleDatasetPlaceholderContract
+from .pytest_file_contracts import SingleDatasetPlaceholderContract
 
 # SECTION: TESTS ============================================================ #
 

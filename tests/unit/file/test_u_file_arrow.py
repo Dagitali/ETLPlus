@@ -14,7 +14,7 @@ import pytest
 
 from etlplus.file import arrow as mod
 
-from .pytest_file_contract_contracts import PyarrowMissingDependencyMixin
+from .pytest_file_contracts import PyarrowMissingDependencyMixin
 
 # SECTION: HELPERS ========================================================== #
 

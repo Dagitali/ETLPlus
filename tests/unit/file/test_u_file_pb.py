@@ -10,7 +10,7 @@ import base64
 
 from etlplus.file import pb as mod
 
-from .pytest_file_contract_contracts import BinaryKeyedPayloadModuleContract
+from .pytest_file_contracts import BinaryKeyedPayloadModuleContract
 
 # SECTION: TESTS ============================================================ #
 
