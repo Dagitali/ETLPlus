@@ -18,7 +18,7 @@ from etlplus.file import ndjson as mod
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import SemiStructuredReadModuleContract
 from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
-from .pytest_file_roundtrip_cases import build_two_id_records_roundtrip_spec
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -35,7 +35,7 @@ class TestNdjson(
     sample_read_text = '{"id": 1}\n\n   \n{"id": 2}\n'
     expected_read_payload = [{'id': 1}, {'id': 2}]
     dict_payload = {'id': 1}
-    roundtrip_spec = build_two_id_records_roundtrip_spec()
+    roundtrip_spec = build_roundtrip_spec(record_count=2)
 
     def assert_write_contract_result(
         self,

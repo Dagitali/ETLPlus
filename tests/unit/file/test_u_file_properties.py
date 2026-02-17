@@ -48,7 +48,8 @@ class TestProperties(
     }
     dict_payload = {'b': 2, 'a': 1}
     roundtrip_spec = build_roundtrip_spec(
-        {'b': 2, 'a': 1}, {'a': '1', 'b': '2'},
+        {'b': 2, 'a': 1},
+        {'a': '1', 'b': '2'},
     )
 
     def assert_write_contract_result(
