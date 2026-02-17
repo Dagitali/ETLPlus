@@ -117,8 +117,7 @@ class TestIntegrationFileSmokeConventions:
         )
         assert not offenders, (
             'Integration file modules must define exactly one contract '
-            'test class:\n- '
-            + '\n- '.join(offenders)
+            'test class:\n- ' + '\n- '.join(offenders)
         )
 
     def test_only_documented_modules_use_override_attributes(self) -> None:
@@ -137,8 +136,7 @@ class TestIntegrationFileSmokeConventions:
         for module_name, attrs in overrides_by_module.items():
             if module_name in SMOKE_ROUNDTRIP_EXCEPTION_MODULES:
                 assert (
-                    attrs
-                    == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES[module_name]
+                    attrs == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES[module_name]
                 )
             else:
                 assert not attrs
