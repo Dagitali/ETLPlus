@@ -65,6 +65,11 @@ _PRIMITIVE_TYPES: tuple[type, ...] = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _fastavro() -> Any:
+    """Return the optional fastavro module."""
+    return get_dependency('fastavro', format_name='AVRO')
+
+
 def _infer_schema(records: JSONList) -> dict[str, Any]:
     """
     Infer a basic Avro schema from record payloads.
@@ -168,7 +173,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
         if not records:
             return b''
 
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         schema = _infer_schema(records)
         parsed_schema = fastavro.parse_schema(schema)
 
@@ -198,7 +203,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
             Parsed records.
         """
         _ = options
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         with BytesIO(payload) as handle:
             reader = fastavro.reader(handle)
             return [cast(JSONDict, record) for record in reader]
@@ -225,7 +230,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
             The list of dictionaries read from the AVRO file.
         """
         _ = options
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         with path.open('rb') as handle:
             reader = fastavro.reader(handle)
             return [cast(JSONDict, record) for record in reader]
@@ -259,7 +264,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
         if not records:
             return 0
 
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         schema = _infer_schema(records)
         parsed_schema = fastavro.parse_schema(schema)
 
