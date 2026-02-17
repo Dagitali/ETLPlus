@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from etlplus.types import JSONData
 
-from .pytest_file_contract_mixins import RoundtripShape
-from .pytest_file_contract_mixins import RoundtripSpec
-from .pytest_file_contract_mixins import RoundtripValueKind
+from .pytest_file_roundtrip_spec import RoundtripShape
+from .pytest_file_roundtrip_spec import RoundtripSpec
+from .pytest_file_roundtrip_spec import RoundtripValueKind
 
 # SECTION: CONSTANTS ===================================================== #
 
