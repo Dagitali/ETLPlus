@@ -45,6 +45,15 @@ __all__ = [
     'write',
 ]
 
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for Parquet operations."""
+    return get_pandas('Parquet')
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -88,7 +97,7 @@ class ParquetFile(ColumnarFileHandlerABC):
             installed.
         """
         _ = options
-        pandas = get_pandas('Parquet')
+        pandas = _pandas()
         try:
             return pandas.read_parquet(path)
         except ImportError as err:  # pragma: no cover
@@ -116,7 +125,7 @@ class ParquetFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'Parquet')
-        pandas = get_pandas('Parquet')
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
