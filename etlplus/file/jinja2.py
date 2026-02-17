@@ -90,6 +90,10 @@ class Jinja2File(TemplateFileHandlerABC):
         self,
         template: str,
         context: JSONDict,
+        *,
+        strict_undefined: bool = False,
+        trim_blocks: bool = False,
+        lstrip_blocks: bool = False,
     ) -> str:
         """
         Render Jinja2 template text using context data.
@@ -100,6 +104,12 @@ class Jinja2File(TemplateFileHandlerABC):
             Template text to render.
         context : JSONDict
             Context dictionary for rendering.
+        strict_undefined : bool, optional
+            Raise when templates reference undefined variables.
+        trim_blocks : bool, optional
+            Remove the first newline after a block.
+        lstrip_blocks : bool, optional
+            Strip leading spaces and tabs from block lines.
 
         Returns
         -------
@@ -111,7 +121,18 @@ class Jinja2File(TemplateFileHandlerABC):
             format_name='JINJA2',
             pip_name='Jinja2',
         )
-        template_obj = jinja2.Template(template)
+        if strict_undefined or trim_blocks or lstrip_blocks:
+            env_kwargs: dict[str, object] = {
+                'trim_blocks': trim_blocks,
+                'lstrip_blocks': lstrip_blocks,
+            }
+            if strict_undefined:
+                env_kwargs['undefined'] = jinja2.StrictUndefined
+            template_obj = jinja2.Environment(**env_kwargs).from_string(
+                template,
+            )
+        else:
+            template_obj = jinja2.Template(template)
         return template_obj.render(**context)
 
     def write(
