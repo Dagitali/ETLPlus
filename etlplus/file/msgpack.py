@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import StrPath
@@ -43,6 +44,14 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _msgpack() -> Any:
+    """Return the optional msgpack module."""
+    return get_dependency('msgpack', format_name='MSGPACK')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -81,7 +90,7 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
             Serialized MsgPack payload bytes.
         """
         _ = options
-        msgpack = get_dependency('msgpack', format_name='MSGPACK')
+        msgpack = _msgpack()
         records = normalize_records(data, 'MSGPACK')
         payload: JSONData = records if isinstance(data, list) else records[0]
         return msgpack.packb(payload, use_bin_type=True)
@@ -108,7 +117,7 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
             Parsed payload.
         """
         _ = options
-        msgpack = get_dependency('msgpack', format_name='MSGPACK')
+        msgpack = _msgpack()
         decoded = msgpack.unpackb(payload, raw=False)
         return coerce_record_payload(decoded, format_name='MSGPACK')
 
