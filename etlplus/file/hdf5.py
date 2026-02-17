@@ -20,6 +20,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -46,12 +47,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
+
 
 DEFAULT_KEY = 'data'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for HDF5 operations."""
+    return get_pandas('HDF5')
 
 
 def _raise_tables_error(
@@ -109,7 +116,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = get_pandas(self.format_name)
+        pandas = _pandas()
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
@@ -147,7 +154,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pandas = get_pandas(self.format_name)
+        pandas = _pandas()
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
