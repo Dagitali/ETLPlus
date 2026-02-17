@@ -44,6 +44,33 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _tomli_w() -> Any:
+    """Return the optional tomli_w module for TOML writes."""
+    return get_optional_module(
+        'tomli_w',
+        error_message=(
+            'TOML write support requires optional dependency '
+            '"tomli_w".\n'
+            'Install with: pip install tomli-w'
+        ),
+    )
+
+
+def _toml() -> Any:
+    """Return the optional toml module as TOML write fallback."""
+    return get_optional_module(
+        'toml',
+        error_message=(
+            'TOML write support requires optional dependency '
+            '"tomli_w" or "toml".\n'
+            'Install with: pip install tomli-w'
+        ),
+    )
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -86,24 +113,10 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
 
         toml_writer: Any
         try:
-            toml_writer = get_optional_module(
-                'tomli_w',
-                error_message=(
-                    'TOML write support requires optional dependency '
-                    '"tomli_w".\n'
-                    'Install with: pip install tomli-w'
-                ),
-            )
+            toml_writer = _tomli_w()
             return str(toml_writer.dumps(payload))
         except ImportError:
-            toml = get_optional_module(
-                'toml',
-                error_message=(
-                    'TOML write support requires optional dependency '
-                    '"tomli_w" or "toml".\n'
-                    'Install with: pip install tomli-w'
-                ),
-            )
+            toml = _toml()
             return str(toml.dumps(payload))
 
     def loads(
