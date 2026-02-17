@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -49,6 +50,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _duckdb() -> Any:
+    """Return the optional duckdb module."""
+    return get_dependency('duckdb', format_name='DUCKDB')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -83,7 +93,7 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         duckdb.DuckDBPyConnection
             DuckDB connection object.
         """
-        duckdb_mod = get_dependency('duckdb', format_name='DUCKDB')
+        duckdb_mod = _duckdb()
         return duckdb_mod.connect(str(path))
 
     def list_tables(
