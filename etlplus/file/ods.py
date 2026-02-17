@@ -20,6 +20,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -44,6 +45,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for ODS operations."""
+    return get_pandas('ODS')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -91,7 +101,7 @@ class OdsFile(SpreadsheetFileHandlerABC):
             installed.
         """
         _ = options
-        pandas = get_pandas('ODS')
+        pandas = _pandas()
         try:
             frame = pandas.read_excel(
                 path,
@@ -141,7 +151,7 @@ class OdsFile(SpreadsheetFileHandlerABC):
             installed.
         """
         _ = options
-        pandas = get_pandas('ODS')
+        pandas = _pandas()
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(rows)
         try:
