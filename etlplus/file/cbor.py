@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import StrPath
@@ -43,6 +44,14 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _cbor2() -> Any:
+    """Return the optional cbor2 module."""
+    return get_dependency('cbor2', format_name='CBOR')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -81,7 +90,7 @@ class CborFile(BinarySerializationFileHandlerABC):
             Serialized CBOR payload bytes.
         """
         _ = options
-        cbor2 = get_dependency('cbor2', format_name='CBOR')
+        cbor2 = _cbor2()
         records = normalize_records(data, 'CBOR')
         payload: JSONData = records if isinstance(data, list) else records[0]
         return cbor2.dumps(payload)
@@ -108,7 +117,7 @@ class CborFile(BinarySerializationFileHandlerABC):
             Parsed payload.
         """
         _ = options
-        cbor2 = get_dependency('cbor2', format_name='CBOR')
+        cbor2 = _cbor2()
         decoded = cbor2.loads(payload)
         return coerce_record_payload(decoded, format_name='CBOR')
 
