@@ -49,6 +49,11 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _bson() -> Any:
+    """Return the optional bson module."""
+    return get_dependency('bson', format_name='BSON', pip_name='pymongo')
+
+
 def _decode_all(
     bson_module: Any,
     payload: bytes,
@@ -147,7 +152,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
             Serialized BSON payload bytes.
         """
         _ = options
-        bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
+        bson = _bson()
         records = normalize_records(data, 'BSON')
         chunks = [_encode_doc(bson, record) for record in records]
         return b''.join(chunks)
@@ -174,7 +179,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
             Parsed records.
         """
         _ = options
-        bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
+        bson = _bson()
         docs = _decode_all(bson, payload)
         return cast(JSONList, docs)
 
