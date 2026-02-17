@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import StrPath
@@ -45,6 +46,19 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for RDA operations."""
+    return get_pandas('RDA')
+
+
+def _pyreadr() -> Any:
+    """Return the optional pyreadr module."""
+    return get_dependency('pyreadr', format_name='RDA')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -79,7 +93,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         list[str]
             Available dataset keys.
         """
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pyreadr = _pyreadr()
         result = pyreadr.read_r(str(path))
         return list_r_dataset_keys(
             result,
@@ -112,8 +126,8 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         """
         format_name = self.format_name
         dataset = self.resolve_read_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=format_name)
-        pandas = get_pandas(format_name)
+        pyreadr = _pyreadr()
+        pandas = _pandas()
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
@@ -157,8 +171,8 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         """
         format_name = self.format_name
         dataset = self.resolve_write_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=format_name)
-        pandas = get_pandas(format_name)
+        pyreadr = _pyreadr()
+        pandas = _pandas()
         records = normalize_records(data, format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
