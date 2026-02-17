@@ -192,7 +192,7 @@ class File:
         """
         self._assert_exists()
         handler = self._resolve_handler()
-        return handler.read(self.path)
+        return handler.at(self.path).read()
 
     def write(
         self,
@@ -218,8 +218,7 @@ class File:
 
         """
         handler = self._resolve_handler()
-        return handler.write(
-            self.path,
+        return handler.at(self.path).write(
             data,
             options=WriteOptions(root_tag=root_tag),
         )
