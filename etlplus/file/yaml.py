@@ -17,6 +17,8 @@ Notes
 
 from __future__ import annotations
 
+from typing import Any
+
 from ..types import JSONData
 from ..types import StrPath
 from ._imports import get_yaml
@@ -38,6 +40,14 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _yaml() -> Any:
+    """Return the optional PyYAML module."""
+    return get_yaml()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -79,7 +89,8 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         from io import StringIO
 
         stream = StringIO()
-        get_yaml().safe_dump(
+        yaml = _yaml()
+        yaml.safe_dump(
             data,
             stream,
             sort_keys=False,
@@ -112,7 +123,8 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         _ = options
         from io import StringIO
 
-        loaded = get_yaml().safe_load(StringIO(text))
+        yaml = _yaml()
+        loaded = yaml.safe_load(StringIO(text))
         return coerce_record_payload(loaded, format_name='YAML')
 
 
