@@ -18,6 +18,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -43,6 +44,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for FWF operations."""
+    return get_pandas('FWF')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -80,7 +90,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
             The list of dictionaries parsed from the FWF file.
         """
         _ = options
-        pandas = get_pandas('FWF')
+        pandas = _pandas()
         frame = pandas.read_fwf(path)
         return records_from_table(frame)
 
