@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
@@ -45,6 +46,18 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _jinja2() -> Any:
+    """Return the optional Jinja2 module."""
+    return get_dependency(
+        'jinja2',
+        format_name='JINJA2',
+        pip_name='Jinja2',
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -116,11 +129,7 @@ class Jinja2File(TemplateFileHandlerABC):
         str
             Rendered template output.
         """
-        jinja2 = get_dependency(
-            'jinja2',
-            format_name='JINJA2',
-            pip_name='Jinja2',
-        )
+        jinja2 = _jinja2()
         if strict_undefined or trim_blocks or lstrip_blocks:
             env_kwargs: dict[str, object] = {
                 'trim_blocks': trim_blocks,
