@@ -7,6 +7,7 @@ Helpers for reading Excel XLS files (write is not supported).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -29,6 +30,14 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for XLS operations."""
+    return get_pandas('XLS')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -76,7 +85,7 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
             If the optional dependency "xlrd" is not installed.
         """
         _ = options
-        pandas = get_pandas('XLS')
+        pandas = _pandas()
         try:
             frame = pandas.read_excel(path, engine='xlrd', sheet_name=sheet)
         except TypeError:
