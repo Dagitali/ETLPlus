@@ -7,11 +7,9 @@ Reusable contract mixins for unit tests of :mod:`etlplus.file`.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-from typing import Literal
 
 import pytest
 
@@ -28,6 +26,7 @@ from .pytest_file_contract_utils import (
 )
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_roundtrip_spec import RoundtripSpec
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import SpreadsheetSheetFrameStub
@@ -52,167 +51,7 @@ __all__ = [
     'SpreadsheetReadImportErrorMixin',
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
-    # Data Classes
-    'RoundtripSpec',
-    # Type Aliases
-    'RoundtripShape',
-    'RoundtripValueKind',
 ]
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-type RoundtripShape = Literal[
-    'records',
-    'delimited',
-    'template',
-    'text',
-    'mapping',
-]
-type RoundtripValueKind = Literal['numeric', 'string', 'mixed']
-
-
-@dataclass(frozen=True, slots=True)
-class RoundtripSpec:
-    """
-    Declarative roundtrip case for one format-aligned unit contract.
-    """
-
-    payload: JSONData
-    expected: JSONData
-    stem: str = 'roundtrip'
-    read_options: ReadOptions | None = None
-    write_options: WriteOptions | None = None
-    expected_written_count: int | None = None
-
-    @classmethod
-    def build(
-        cls,
-        *,
-        shape: RoundtripShape = 'records',
-        field_count: int = 1,
-        record_count: int = 1,
-        value_kind: RoundtripValueKind = 'numeric',
-    ) -> RoundtripSpec:
-        """
-        Build a generated roundtrip spec.
-
-        Generated record field names are standardized to ``id``, ``name``,
-        and ``age`` before falling back to ``field_N``. Generated values
-        are deterministic based on row/field indices, with optional
-        coercion to strings or mixed types.
-
-        Parameters
-        ----------
-        shape : RoundtripShape
-            The shape of the payload to generate.
-        field_count : int
-            The number of fields to generate for record-oriented shapes.
-        record_count : int
-            The number of records to generate for record-oriented shapes.
-        value_kind : RoundtripValueKind
-            The type coercion to apply to generated values.
-
-        Returns
-        -------
-        RoundtripSpec
-            The constructed roundtrip specification.
-
-        Raises
-        ------
-        ValueError
-            If ``field_count`` or ``record_count`` are less than 1.
-        """
-        if field_count < 1 or record_count < 1:
-            raise ValueError('field_count and record_count must be >= 1')
-
-        names = ('Alice', 'Bob', 'Cleo', 'Dora', 'Evan', 'Faye')
-        words = ('alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta')
-
-        def _base_value(
-            row_index: int,
-            field_index: int,
-        ) -> int | str:
-            field_name = _field_name(field_index)
-            if field_name == 'id':
-                return row_index + 1
-            if field_name == 'name':
-                return names[row_index % len(names)]
-            if field_name == 'age':
-                return 20 + row_index
-            return row_index + field_index + 1
-
-        def _field_name(field_index: int) -> str:
-            if field_index == 0:
-                return 'id'
-            if field_index == 1:
-                return 'name'
-            if field_index == 2:
-                return 'age'
-            return f'field_{field_index + 1}'
-
-        def _coerce_value(
-            row_index: int,
-            field_index: int,
-        ) -> int | str:
-            base_value = _base_value(row_index, field_index)
-            if value_kind == 'numeric':
-                return (
-                    base_value
-                    if isinstance(base_value, int)
-                    else row_index + field_index + 1
-                )
-            if value_kind == 'string':
-                return str(base_value)
-            return base_value
-
-        if shape == 'template':
-            template_row = {'template': 'template_1'}
-            return cls(payload=template_row, expected=[template_row])
-
-        if shape == 'text':
-            text_rows = [
-                {
-                    'text': (
-                        str(row_index + 1)
-                        if value_kind == 'numeric'
-                        else (
-                            words[row_index % len(words)]
-                            if value_kind == 'mixed'
-                            else f'text_{row_index + 1}'
-                        )
-                    ),
-                }
-                for row_index in range(record_count)
-            ]
-            return cls(payload=text_rows, expected=text_rows)
-
-        if shape == 'mapping':
-            payload_map: dict[str, int | str] = {
-                _field_name(field_index): _coerce_value(0, field_index)
-                for field_index in range(field_count)
-            }
-            return cls(payload=payload_map, expected=payload_map)
-
-        generated_rows: list[dict[str, int | str]] = []
-        for row_index in range(record_count):
-            row_payload: dict[str, int | str] = {}
-            for field_index in range(field_count):
-                row_payload[_field_name(field_index)] = _coerce_value(
-                    row_index,
-                    field_index,
-                )
-            generated_rows.append(row_payload)
-
-        if shape == 'delimited':
-            expected_rows: JSONData = [
-                {key: str(value) for key, value in row_data.items()}
-                for row_data in generated_rows
-            ]
-        else:
-            expected_rows = generated_rows
-        return cls(payload=generated_rows, expected=expected_rows)
 
 
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
