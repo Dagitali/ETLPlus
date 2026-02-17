@@ -43,9 +43,7 @@ _MATRIX_ROW_PATTERN = re.compile(
     r'`(?P<status>[^`]+)` \|$',
 )
 _OVERRIDE_ATTR_PATTERN = re.compile(
-    r'\b(?:'
-    + '|'.join(sorted(SMOKE_ROUNDTRIP_OVERRIDE_ATTRS))
-    + r')\b',
+    r'\b(?:' + '|'.join(sorted(SMOKE_ROUNDTRIP_OVERRIDE_ATTRS)) + r')\b',
 )
 
 type MatrixRow = tuple[str, str, str, str]
