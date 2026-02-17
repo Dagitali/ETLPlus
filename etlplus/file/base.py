@@ -18,6 +18,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..types import StrPath
 from ..utils import count_records
 from ._io import normalize_records
 from ._io import read_text
@@ -29,6 +30,7 @@ from .enums import FileFormat
 
 __all__ = [
     # Data Classes
+    'BoundFileHandler',
     'ReadOptions',
     'WriteOptions',
     # Base Classes
@@ -52,6 +54,44 @@ __all__ = [
 
 
 # SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True, frozen=True)
+class BoundFileHandler:
+    """
+    Path-bound facade around a format handler.
+
+    Attributes
+    ----------
+    handler : FileHandlerABC
+        Concrete format handler instance.
+    path : Path
+        Bound file path used by :meth:`read` and :meth:`write`.
+    """
+
+    handler: FileHandlerABC
+    path: Path
+
+    def read(
+        self,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read from :attr:`path` using :attr:`handler`.
+        """
+        return self.handler.read(self.path, options=options)
+
+    def write(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to :attr:`path` using :attr:`handler`.
+        """
+        return self.handler.write(self.path, data, options=options)
 
 
 @dataclass(slots=True, frozen=True)
@@ -148,6 +188,28 @@ class FileHandlerABC(ABC):
             Uppercase enum value for :attr:`format`.
         """
         return self.format.value.upper()
+
+    # -- Instance Methods -- #
+
+    def at(
+        self,
+        path: StrPath,
+    ) -> BoundFileHandler:
+        """
+        Return a path-bound facade for this handler.
+
+        Parameters
+        ----------
+        path : StrPath
+            File path to bind to this handler.
+
+        Returns
+        -------
+        BoundFileHandler
+            Facade exposing ``read()`` and ``write(data)`` without a *path*
+            argument.
+        """
+        return BoundFileHandler(self, Path(path))
 
     # -- Abstract Instance Methods -- #
 
