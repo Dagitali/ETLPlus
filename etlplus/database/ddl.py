@@ -17,12 +17,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Final
 
-from jinja2 import DictLoader
-from jinja2 import Environment
-from jinja2 import FileSystemLoader
-from jinja2 import StrictUndefined
-
 from ..file import File
+from ..file.jinja2 import Jinja2File
 from ..types import StrAnyMap
 from ..types import StrPath
 from ..types import TemplateKey
@@ -49,6 +45,8 @@ _SUPPORTED_SPEC_SUFFIXES: Final[frozenset[str]] = frozenset(
         '.yaml',
     },
 )
+
+_JINJA2_HANDLER: Final[Jinja2File] = Jinja2File()
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -104,9 +102,9 @@ def _resolve_template(
     *,
     template_key: TemplateKey | None,
     template_path: StrPath | None,
-) -> tuple[Environment, str]:
+) -> str:
     """
-    Return environment and template name for rendering.
+    Return template text for rendering.
 
     Parameters
     ----------
@@ -117,13 +115,15 @@ def _resolve_template(
 
     Returns
     -------
-    tuple[Environment, str]
-        Pair of configured Jinja environment and the template identifier.
+    str
+        Resolved template source code.
 
     Raises
     ------
     FileNotFoundError
         If the provided template path does not exist.
+    TypeError
+        If the template payload is invalid.
     ValueError
         If the template key is unknown.
     """
@@ -136,14 +136,11 @@ def _resolve_template(
         path = Path(file_override)
         if not path.exists():
             raise FileNotFoundError(f'Template file not found: {path}')
-        loader = FileSystemLoader(str(path.parent))
-        env = Environment(
-            loader=loader,
-            undefined=StrictUndefined,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        return env, path.name
+        rows = _JINJA2_HANDLER.read(path)
+        template_value = rows[0].get('template') if rows else None
+        if not isinstance(template_value, str):
+            raise TypeError('JINJA2 template payload must include text')
+        return template_value
 
     key: TemplateKey = template_key or 'ddl'
     if key not in TEMPLATES:
@@ -154,15 +151,7 @@ def _resolve_template(
 
     # Load template from package data.
     template_filename = TEMPLATES[key]
-    template_source = _load_template_text(template_filename)
-
-    env = Environment(
-        loader=DictLoader({key: template_source}),
-        undefined=StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    return env, key
+    return _load_template_text(template_filename)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -240,12 +229,18 @@ def render_table_sql(
     str
         Rendered SQL string.
     """
-    env, template_name = _resolve_template(
+    template_source = _resolve_template(
         template_key=template,
         template_path=template_path,
     )
-    tmpl = env.get_template(template_name)
-    return tmpl.render(spec=spec).rstrip() + '\n'
+    rendered_sql = _JINJA2_HANDLER.render(
+        template_source,
+        {'spec': spec},
+        strict_undefined=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    return rendered_sql.rstrip() + '\n'
 
 
 def render_tables(
