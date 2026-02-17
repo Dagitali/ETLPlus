@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -45,6 +46,19 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for XPT operations."""
+    return get_pandas('XPT')
+
+
+def _pyreadstat() -> Any:
+    """Return the optional pyreadstat module."""
+    return get_dependency('pyreadstat', format_name='XPT')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -91,9 +105,8 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
             options=options,
         )
 
-        format_name = self.format_name
-        pandas = get_pandas(format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
+        pandas = _pandas()
+        pyreadstat = _pyreadstat()
         reader = getattr(pyreadstat, 'read_xport', None)
         if reader is not None:
             frame, _meta = reader(str(path))
@@ -146,8 +159,8 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        pandas = get_pandas(format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
+        pandas = _pandas()
+        pyreadstat = _pyreadstat()
         writer = getattr(pyreadstat, 'write_xport', None)
         if writer is None:
             raise ImportError(
