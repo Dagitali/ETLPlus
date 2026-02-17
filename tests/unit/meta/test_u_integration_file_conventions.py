@@ -18,12 +18,13 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
 )
+from tests.unit.meta.pytest_meta_support import REPO_ROOT
+from tests.unit.meta.pytest_meta_support import sorted_glob
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_INTEGRATION_FILE_ROOT = _REPO_ROOT / 'tests' / 'integration' / 'file'
+_INTEGRATION_FILE_ROOT = REPO_ROOT / 'tests' / 'integration' / 'file'
 _INTEGRATION_FILE_PATTERN = 'test_i_file_*.py'
 
 
@@ -87,7 +88,7 @@ def _module_override_attrs(path: Path) -> set[str]:
 
 def _integration_file_test_modules() -> list[Path]:
     """Return sorted integration file smoke test module paths."""
-    return sorted(_INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN))
+    return sorted_glob(_INTEGRATION_FILE_ROOT, _INTEGRATION_FILE_PATTERN)
 
 
 # SECTION: TESTS ============================================================ #
