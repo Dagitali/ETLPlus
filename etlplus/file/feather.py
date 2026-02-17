@@ -46,6 +46,20 @@ __all__ = [
     'write',
 ]
 
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for Feather operations."""
+    return get_pandas('Feather')
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='Feather')
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -83,8 +97,8 @@ class FeatherFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         _ = options
-        get_dependency('pyarrow', format_name='Feather')
-        pandas = get_pandas('Feather')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.read_feather(path)
 
     def records_to_table(
@@ -105,8 +119,8 @@ class FeatherFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'Feather')
-        get_dependency('pyarrow', format_name='Feather')
-        pandas = get_pandas('Feather')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
