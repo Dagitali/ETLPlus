@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from etlplus.file import feather as mod
 
-from .pytest_file_contract_contracts import (
-    PyarrowGatedPandasColumnarModuleContract,
-)
+from .pytest_file_contracts import PyarrowGatedPandasColumnarModuleContract
 
 # SECTION: TESTS ============================================================ #
 

@@ -13,10 +13,10 @@ from etlplus.file import sqlite as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_contracts import EmbeddedDatabaseModuleContract
-from .pytest_file_contract_mixins import OptionalModuleInstaller
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contracts import EmbeddedDatabaseModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: TESTS ============================================================ #
 
@@ -32,9 +32,9 @@ class TestSqlite(
     module = mod
     format_name = 'sqlite'
     multi_table_error_pattern = 'Multiple tables found in SQLite'
-    roundtrip_spec = RoundtripSpec(
-        payload=[{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
-        expected=[{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
+    roundtrip_spec = build_roundtrip_spec(
+        [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
+        [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': 'Bob'}],
     )
 
     def build_empty_database_path(

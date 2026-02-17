@@ -11,8 +11,9 @@ from pathlib import Path
 from etlplus.file import xml as mod
 from etlplus.file.base import WriteOptions
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_roundtrip_cases import ROUNDTRIP_CASES
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -23,19 +24,8 @@ class TestXml(RoundtripUnitModuleContract):
     module = mod
     format_name = 'xml'
     root_tag = 'rows'
-    roundtrip_spec = RoundtripSpec(
-        payload={
-            'root': {
-                '@id': '42',
-                'item': {'@lang': 'en', 'text': 'Hello'},
-            },
-        },
-        expected={
-            'root': {
-                '@id': '42',
-                'item': {'@lang': 'en', 'text': 'Hello'},
-            },
-        },
+    roundtrip_spec = build_roundtrip_spec(
+        *ROUNDTRIP_CASES['xml_nested_attributes'],
     )
 
     def test_write_uses_root_tag_and_read_roundtrip(

@@ -15,8 +15,8 @@ import pytest
 from etlplus.file import jinja2 as mod
 from etlplus.file.base import ReadOptions
 
-from .pytest_file_contract_mixins import RoundtripSpec
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: TESTS ============================================================ #
 
@@ -54,9 +54,9 @@ class TestJinja2(RoundtripUnitModuleContract):
 
     module = mod
     format_name = 'jinja2'
-    roundtrip_spec = RoundtripSpec(
-        payload={'template': 'Hello {{ name }}'},
-        expected=[{'template': 'Hello {{ name }}'}],
+    roundtrip_spec = build_roundtrip_spec(
+        {'template': 'Hello {{ name }}'},
+        [{'template': 'Hello {{ name }}'}],
     )
 
     def test_read_honors_encoding_options(

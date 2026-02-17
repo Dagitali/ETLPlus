@@ -1,14 +1,12 @@
 """
 :mod:`tests.unit.file.pytest_file_contract_mixins` module.
 
-Reusable contract mixins and category bases for unit tests of
-:mod:`etlplus.file`.
+Reusable contract mixins for unit tests of :mod:`etlplus.file`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -28,58 +26,32 @@ from .pytest_file_contract_utils import (
 )
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_roundtrip_spec import RoundtripSpec
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
+from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    'PathMixin',
-    'ReadOnlyWriteGuardMixin',
-    'RoundtripSpec',
-    'RoundtripUnitModuleContract',
+    # Classes
     'DelimitedReadWriteMixin',
     'DelimitedTextRowsMixin',
+    'EmptyWriteReturnsZeroMixin',
+    'PathMixin',
+    'ReadOnlyWriteGuardMixin',
+    'RoundtripUnitModuleContract',
+    'ScientificSingleDatasetHandlerMixin',
     'ScientificReadOnlyUnknownDatasetMixin',
-    'SpreadsheetReadImportErrorMixin',
     'SemiStructuredReadMixin',
     'SemiStructuredWriteDictMixin',
-    'ScientificSingleDatasetHandlerMixin',
-    'SpreadsheetWritableMixin',
+    'SpreadsheetReadImportErrorMixin',
     'SpreadsheetSheetNameRoutingMixin',
-    'DelimitedCategoryContractBase',
-    'ScientificCategoryContractBase',
-    'SpreadsheetCategoryContractBase',
-    'SemiStructuredCategoryContractBase',
-    'OptionalModuleInstaller',
+    'SpreadsheetWritableMixin',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-# Shared callable used by dependency-stubbing fixtures/contracts.
-type OptionalModuleInstaller = Callable[[dict[str, object]], None]
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class RoundtripSpec:
-    """
-    Declarative roundtrip case for one format-aligned unit contract.
-    """
-
-    payload: JSONData
-    expected: JSONData
-    stem: str = 'roundtrip'
-    read_options: ReadOptions | None = None
-    write_options: WriteOptions | None = None
-    expected_written_count: int | None = None
 
 
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
@@ -720,70 +692,3 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         assert pandas.last_frame.to_excel_calls == [
             self._write_sheet_kwargs(path),
         ]
-
-
-# SECTION: CLASSES (BASES) ================================================== #
-
-
-class DelimitedCategoryContractBase(PathMixin):
-    """
-    Shared base contract for delimited/text category modules.
-    """
-
-    sample_rows: JSONData = [{'id': 1}]
-
-
-class ScientificCategoryContractBase(PathMixin):
-    """
-    Shared base contract for scientific dataset handlers/modules.
-    """
-
-    dataset_key: str = 'data'
-
-
-class SpreadsheetCategoryContractBase(PathMixin):
-    """
-    Shared base contract for spreadsheet format handlers.
-    """
-
-    dependency_hint: str
-    read_engine: str | None = None
-    write_engine: str | None = None
-
-
-class SemiStructuredCategoryContractBase(PathMixin):
-    """
-    Shared base contract for semi-structured text modules.
-    """
-
-    # pylint: disable=unused-argument
-
-    sample_read_text: str = ''
-    expected_read_payload: JSONData = make_payload('dict')
-    dict_payload: JSONData = make_payload('dict')
-
-    def setup_read_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install optional dependencies needed for read tests."""
-
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install optional dependencies needed for write tests."""
-
-    def assert_read_contract_result(
-        self,
-        result: JSONData,
-    ) -> None:
-        """Assert module-specific read contract expectations."""
-        assert result == self.expected_read_payload
-
-    def assert_write_contract_result(
-        self,
-        path: Path,
-    ) -> None:
-        """Assert module-specific write contract expectations."""
-        assert path.exists()

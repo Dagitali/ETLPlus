@@ -78,6 +78,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           python-bootstrap: "-e .[dev,yaml]"
+      - name: Run fast meta guardrails
+        run: |
+          pytest -q \
+            tests/unit/meta/test_u_test_layout.py \
+            tests/unit/meta/test_u_test_filenames.py \
+            tests/unit/meta/test_u_marker_coverage.py \
+            tests/unit/meta/test_u_integration_file_conventions.py \
+            tests/unit/meta/test_u_contract_readme.py
       - name: Run tests (with coverage)
         run: |
           pytest -q \
