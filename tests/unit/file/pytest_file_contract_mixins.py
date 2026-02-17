@@ -118,6 +118,11 @@ class RoundtripSpec:
         -------
         RoundtripSpec
             The constructed roundtrip specification.
+
+        Raises
+        ------
+        ValueError
+            If ``field_count`` or ``record_count`` are less than 1.
         """
         if field_count < 1 or record_count < 1:
             raise ValueError('field_count and record_count must be >= 1')
