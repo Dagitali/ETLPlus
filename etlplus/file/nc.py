@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -50,6 +51,11 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _pandas() -> Any:
+    """Return the optional pandas module for NC operations."""
+    return get_pandas('NC')
+
+
 def _raise_engine_error(
     err: ImportError,
 ) -> None:
@@ -72,6 +78,11 @@ def _raise_engine_error(
         'NC support requires optional dependency "netCDF4" or "h5netcdf".\n'
         'Install with: pip install netCDF4',
     ) from err
+
+
+def _xarray() -> Any:
+    """Return the optional xarray module."""
+    return get_dependency('xarray', format_name='NC')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -117,8 +128,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             dataset,
             options=options,
         )
-        format_name = self.format_name
-        xarray = get_dependency('xarray', format_name=format_name)
+        xarray = _xarray()
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
@@ -168,8 +178,8 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name=format_name)
-        pandas = get_pandas(format_name)
+        xarray = _xarray()
+        pandas = _pandas()
         frame = pandas.DataFrame.from_records(records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
