@@ -525,6 +525,15 @@ class BinarySerializationFileHandlerABC(FileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return the default record count for binary write operations.
+        """
+        return count_records(data)
+
     @abstractmethod
     def loads_bytes(
         self,
@@ -1634,6 +1643,7 @@ class TemplateFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'template'
     template_engine: ClassVar[str]
+    template_key: ClassVar[str] = 'template'
 
     # -- Instance Methods -- #
 
