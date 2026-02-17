@@ -7,6 +7,7 @@ Helpers for reading/writing Excel XLSX files.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -31,6 +32,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for XLSX operations."""
+    return get_pandas('XLSX')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -77,7 +87,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
             If the required optional dependency is not installed.
         """
         _ = options
-        pandas = get_pandas('XLSX')
+        pandas = _pandas()
         try:
             frame = pandas.read_excel(path, sheet_name=sheet)
         except TypeError:
@@ -123,7 +133,7 @@ class XlsxFile(SpreadsheetFileHandlerABC):
             If the required optional dependency is not installed.
         """
         _ = options
-        pandas = get_pandas('XLSX')
+        pandas = _pandas()
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(rows)
         try:
