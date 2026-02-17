@@ -46,6 +46,20 @@ __all__ = [
     'write',
 ]
 
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for ORC operations."""
+    return get_pandas('ORC')
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='ORC')
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -83,8 +97,8 @@ class OrcFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         _ = options
-        get_dependency('pyarrow', format_name='ORC')
-        pandas = get_pandas('ORC')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.read_orc(path)
 
     def records_to_table(
@@ -105,8 +119,8 @@ class OrcFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'ORC')
-        get_dependency('pyarrow', format_name='ORC')
-        pandas = get_pandas('ORC')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
