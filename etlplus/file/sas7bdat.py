@@ -18,6 +18,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -43,6 +44,19 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for SAS7BDAT operations."""
+    return get_pandas('SAS7BDAT')
+
+
+def _pyreadstat() -> Any:
+    """Return the optional pyreadstat module."""
+    return get_dependency('pyreadstat', format_name='SAS7BDAT')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -91,9 +105,8 @@ class Sas7bdatFile(
             dataset,
             options=options,
         )
-        format_name = self.format_name
-        get_dependency('pyreadstat', format_name=format_name)
-        pandas = get_pandas(format_name)
+        _ = _pyreadstat()
+        pandas = _pandas()
         try:
             frame = pandas.read_sas(path, format='sas7bdat')
         except TypeError:
