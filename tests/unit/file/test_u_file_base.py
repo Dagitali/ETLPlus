@@ -18,6 +18,7 @@ from etlplus.file import FileFormat
 from etlplus.file._stub_categories import (
     StubSingleDatasetScientificFileHandlerABC,
 )
+from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
@@ -286,6 +287,18 @@ class _ReadOnlySingleScientificStub(
 
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
+
+    def test_at_returns_path_bound_facade(self) -> None:
+        """Test ``at(path)`` returning a callable bound handler facade."""
+        handler = _DelimitedStub()
+
+        bound = handler.at('ignored.csv')
+
+        assert isinstance(bound, BoundFileHandler)
+        assert bound.handler is handler
+        assert bound.path == Path('ignored.csv')
+        assert bound.read() == [{'id': 1}]
+        assert bound.write([{'id': 1}, {'id': 2}]) == 2
 
     @pytest.mark.parametrize(
         (
