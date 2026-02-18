@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from etlplus.file import _core_dispatch as mod
 from etlplus.file import core as core_mod
 from etlplus.file.enums import FileFormat
@@ -34,6 +36,7 @@ class TestCoreDispatchHelpers:
                 seen['fmt'] = fmt
 
             def read(self) -> dict[str, object]:
+                """Stub read method that captures the payload bytes."""
                 path = seen['path']
                 seen['payload'] = path.read_bytes()
                 return {'name': path.name}
@@ -50,6 +53,34 @@ class TestCoreDispatchHelpers:
         assert seen['fmt'] is FileFormat.JSON
         assert seen['path'].name == 'input.json'
         assert seen['payload'] == b'{"a": 1}'
+
+    @pytest.mark.parametrize(
+        'filename',
+        ('../escape.json', '/tmp/escape.json'),
+        ids=('parent_traversal', 'absolute'),
+    )
+    def test_write_payload_with_core_rejects_unsafe_paths(
+        self,
+        monkeypatch,
+        filename: str,
+    ) -> None:
+        """Test write payload rejecting paths that escape the temp root."""
+
+        class FileStub:
+            """Fail fast if unsafe filenames ever reach File dispatch."""
+
+            def __init__(self, path: Path, fmt: FileFormat) -> None:
+                _ = (path, fmt)
+                raise AssertionError('File dispatch should not be reached')
+
+        monkeypatch.setattr(core_mod, 'File', FileStub)
+
+        with pytest.raises(ValueError, match='relative path|temporary'):
+            mod.write_payload_with_core(
+                fmt=FileFormat.JSON,
+                data={'x': 1},
+                filename=filename,
+            )
 
     def test_write_payload_with_core_returns_count_and_bytes(
         self,
