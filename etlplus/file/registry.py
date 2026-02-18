@@ -214,6 +214,7 @@ def get_handler_class(
     ----------
     file_format : FileFormat
         File format enum value.
+
     Returns
     -------
     type[FileHandlerABC]
@@ -246,6 +247,7 @@ def get_handler(
     ----------
     file_format : FileFormat
         File format enum value.
+
     Returns
     -------
     FileHandlerABC
