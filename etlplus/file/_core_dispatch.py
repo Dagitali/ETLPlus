@@ -12,6 +12,33 @@ from pathlib import Path
 from ..types import JSONData
 from .enums import FileFormat
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _safe_tmp_path(
+    *,
+    tmpdir: str,
+    filename: str,
+    keep_dirs: bool,
+) -> Path:
+    """
+    Resolve *filename* under *tmpdir* and block directory traversal.
+    """
+    root = Path(tmpdir).resolve()
+    raw = Path(filename)
+    if raw.is_absolute():
+        raise ValueError('filename must be a relative path')
+    relative = raw if keep_dirs else Path(raw.name)
+    resolved = (root / relative).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as err:
+        raise ValueError(
+            'filename must not escape the temporary directory',
+        ) from err
+    return resolved
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -25,7 +52,11 @@ def read_payload_with_core(
     Parse payload bytes by materializing a temporary typed file and reading it.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / Path(filename).name
+        tmp_path = _safe_tmp_path(
+            tmpdir=tmpdir,
+            filename=filename,
+            keep_dirs=False,
+        )
         tmp_path.write_bytes(payload)
         from .core import File
 
@@ -42,7 +73,11 @@ def write_payload_with_core(
     Serialize data by writing to a temporary typed file and returning bytes.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / filename
+        tmp_path = _safe_tmp_path(
+            tmpdir=tmpdir,
+            filename=filename,
+            keep_dirs=True,
+        )
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
         from .core import File
 
