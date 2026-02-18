@@ -23,71 +23,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-# Explicit class map is the default dispatch path.
-_HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
-    FileFormat.ACCDB: 'etlplus.file.accdb:AccdbFile',
-    FileFormat.AVRO: 'etlplus.file.avro:AvroFile',
-    FileFormat.ARROW: 'etlplus.file.arrow:ArrowFile',
-    FileFormat.BSON: 'etlplus.file.bson:BsonFile',
-    FileFormat.CBOR: 'etlplus.file.cbor:CborFile',
-    FileFormat.CFG: 'etlplus.file.cfg:CfgFile',
-    FileFormat.CONF: 'etlplus.file.conf:ConfFile',
-    FileFormat.CSV: 'etlplus.file.csv:CsvFile',
-    FileFormat.DAT: 'etlplus.file.dat:DatFile',
-    FileFormat.DTA: 'etlplus.file.dta:DtaFile',
-    FileFormat.DUCKDB: 'etlplus.file.duckdb:DuckdbFile',
-    FileFormat.FEATHER: 'etlplus.file.feather:FeatherFile',
-    FileFormat.FWF: 'etlplus.file.fwf:FwfFile',
-    FileFormat.GZ: 'etlplus.file.gz:GzFile',
-    FileFormat.HDF5: 'etlplus.file.hdf5:Hdf5File',
-    FileFormat.HBS: 'etlplus.file.hbs:HbsFile',
-    FileFormat.INI: 'etlplus.file.ini:IniFile',
-    FileFormat.ION: 'etlplus.file.ion:IonFile',
-    FileFormat.JINJA2: 'etlplus.file.jinja2:Jinja2File',
-    FileFormat.JSON: 'etlplus.file.json:JsonFile',
-    FileFormat.LOG: 'etlplus.file.log:LogFile',
-    FileFormat.MSGPACK: 'etlplus.file.msgpack:MsgpackFile',
-    FileFormat.MAT: 'etlplus.file.mat:MatFile',
-    FileFormat.MDB: 'etlplus.file.mdb:MdbFile',
-    FileFormat.MUSTACHE: 'etlplus.file.mustache:MustacheFile',
-    FileFormat.NC: 'etlplus.file.nc:NcFile',
-    FileFormat.NDJSON: 'etlplus.file.ndjson:NdjsonFile',
-    FileFormat.NUMBERS: 'etlplus.file.numbers:NumbersFile',
-    FileFormat.ODS: 'etlplus.file.ods:OdsFile',
-    FileFormat.ORC: 'etlplus.file.orc:OrcFile',
-    FileFormat.PARQUET: 'etlplus.file.parquet:ParquetFile',
-    FileFormat.PB: 'etlplus.file.pb:PbFile',
-    FileFormat.PBF: 'etlplus.file.pbf:PbfFile',
-    FileFormat.PROTO: 'etlplus.file.proto:ProtoFile',
-    FileFormat.PROPERTIES: 'etlplus.file.properties:PropertiesFile',
-    FileFormat.PSV: 'etlplus.file.psv:PsvFile',
-    FileFormat.RDA: 'etlplus.file.rda:RdaFile',
-    FileFormat.RDS: 'etlplus.file.rds:RdsFile',
-    FileFormat.SAS7BDAT: 'etlplus.file.sas7bdat:Sas7bdatFile',
-    FileFormat.SAV: 'etlplus.file.sav:SavFile',
-    FileFormat.SQLITE: 'etlplus.file.sqlite:SqliteFile',
-    FileFormat.SYLK: 'etlplus.file.sylk:SylkFile',
-    FileFormat.TAB: 'etlplus.file.tab:TabFile',
-    FileFormat.TOML: 'etlplus.file.toml:TomlFile',
-    FileFormat.TXT: 'etlplus.file.txt:TxtFile',
-    FileFormat.TSV: 'etlplus.file.tsv:TsvFile',
-    FileFormat.STUB: 'etlplus.file.stub:StubFile',
-    FileFormat.VM: 'etlplus.file.vm:VmFile',
-    FileFormat.WKS: 'etlplus.file.wks:WksFile',
-    FileFormat.XML: 'etlplus.file.xml:XmlFile',
-    FileFormat.XLS: 'etlplus.file.xls:XlsFile',
-    FileFormat.XLSM: 'etlplus.file.xlsm:XlsmFile',
-    FileFormat.XLSX: 'etlplus.file.xlsx:XlsxFile',
-    FileFormat.XPT: 'etlplus.file.xpt:XptFile',
-    FileFormat.YAML: 'etlplus.file.yaml:YamlFile',
-    FileFormat.ZSAV: 'etlplus.file.zsav:ZsavFile',
-    FileFormat.ZIP: 'etlplus.file.zip:ZipFile',
-}
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -128,6 +63,28 @@ def _coerce_handler_class(
     return cast(type[FileHandlerABC], symbol)
 
 
+def _handler_class_name(
+    file_format: FileFormat,
+) -> str:
+    """
+    Build the canonical handler class name for one format.
+    """
+    value = file_format.value
+    return f'{value[:1].upper()}{value[1:]}File'
+
+
+def _handler_spec(
+    file_format: FileFormat,
+) -> str:
+    """
+    Build the ``module:Class`` import spec for one handler format.
+    """
+    return (
+        f'etlplus.file.{file_format.value}:'
+        f'{_handler_class_name(file_format)}'
+    )
+
+
 def _import_symbol(
     spec: str,
 ) -> object:
@@ -149,10 +106,9 @@ def _import_symbol(
     ValueError
         If *spec* is malformed or symbol import fails.
     """
-    parts = spec.split(':', maxsplit=1)
-    if len(parts) != 2:
+    module_name, separator, attr = spec.partition(':')
+    if separator != ':' or not module_name or not attr:
         raise ValueError(f'Invalid handler spec: {spec!r}')
-    module_name, attr = parts
     module = importlib.import_module(module_name)
     try:
         return getattr(module, attr)
@@ -160,6 +116,88 @@ def _import_symbol(
         raise ValueError(
             f'Handler symbol {attr!r} not found in module {module_name!r}',
         ) from err
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SUPPORTED_HANDLER_FORMATS: tuple[FileFormat, ...] = (
+    # Stubbed / placeholder
+    FileFormat.STUB,
+    FileFormat.ACCDB,
+    FileFormat.CFG,
+    FileFormat.CONF,
+    FileFormat.ION,
+    FileFormat.MDB,
+    FileFormat.NUMBERS,
+    FileFormat.PBF,
+    FileFormat.WKS,
+    # Tabular / delimited text
+    FileFormat.CSV,
+    FileFormat.DAT,
+    FileFormat.FWF,
+    FileFormat.PSV,
+    FileFormat.TAB,
+    FileFormat.TSV,
+    FileFormat.TXT,
+    # Semi-structured text
+    FileFormat.INI,
+    FileFormat.JSON,
+    FileFormat.NDJSON,
+    FileFormat.PROPERTIES,
+    FileFormat.TOML,
+    FileFormat.XML,
+    FileFormat.YAML,
+    # Columnar / analytics
+    FileFormat.ARROW,
+    FileFormat.FEATHER,
+    FileFormat.ORC,
+    FileFormat.PARQUET,
+    # Binary serialization
+    FileFormat.AVRO,
+    FileFormat.BSON,
+    FileFormat.CBOR,
+    FileFormat.MSGPACK,
+    FileFormat.PB,
+    FileFormat.PROTO,
+    # Databases / embedded storage
+    FileFormat.DUCKDB,
+    FileFormat.SQLITE,
+    # Spreadsheet
+    FileFormat.ODS,
+    FileFormat.XLS,
+    FileFormat.XLSM,
+    FileFormat.XLSX,
+    # Scientific / statistical
+    FileFormat.DTA,
+    FileFormat.HDF5,
+    FileFormat.MAT,
+    FileFormat.NC,
+    FileFormat.RDA,
+    FileFormat.RDS,
+    FileFormat.SAS7BDAT,
+    FileFormat.SAV,
+    FileFormat.SYLK,
+    FileFormat.XPT,
+    FileFormat.ZSAV,
+    # Archives / wrappers
+    FileFormat.GZ,
+    FileFormat.ZIP,
+    # Logs
+    FileFormat.LOG,
+    # Templates
+    FileFormat.HBS,
+    FileFormat.JINJA2,
+    FileFormat.MUSTACHE,
+    FileFormat.VM,
+)
+
+
+# Explicit class map is the only dispatch path.
+_HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
+    file_format: _handler_spec(file_format)
+    for file_format in _SUPPORTED_HANDLER_FORMATS
+}
 
 
 # SECTION: FUNCTIONS ======================================================== #
