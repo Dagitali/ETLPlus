@@ -23,6 +23,12 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HandlerClass = type[FileHandlerABC]
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -60,7 +66,14 @@ def _coerce_handler_class(
         raise ValueError(
             f'Handler for {file_format.value!r} must inherit FileHandlerABC',
         )
-    return cast(type[FileHandlerABC], symbol)
+    handler_class = cast(HandlerClass, symbol)
+    declared_format = getattr(handler_class, 'format', None)
+    if declared_format is not file_format:
+        raise ValueError(
+            f'Handler for {file_format.value!r} declares mismatched format '
+            f'{declared_format!r}',
+        )
+    return handler_class
 
 
 def _handler_class_name(
