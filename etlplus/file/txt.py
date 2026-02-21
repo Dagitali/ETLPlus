@@ -21,7 +21,6 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
-from ..utils import count_records
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import read_text
@@ -129,7 +128,7 @@ class TxtFile(TextFixedWidthFileHandlerABC):
                 raise TypeError('TXT payloads must include a "text" key')
         payload = ''.join(f'{row["text"]}\n' for row in rows)
         write_text(path, payload, encoding=encoding)
-        return count_records(rows)
+        return len(rows)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
