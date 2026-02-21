@@ -21,8 +21,11 @@ from ..types import JSONList
 from ..types import StrPath
 from ..utils import count_records
 from ._io import normalize_records
+from ._io import read_delimited
 from ._io import read_text
+from ._io import write_delimited
 from ._io import write_text
+from ._sql import resolve_table
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -38,6 +41,7 @@ __all__ = [
     'ReadOnlyFileHandlerABC',
     # Secondary / Category Base Classes
     'DelimitedTextFileHandlerABC',
+    'StandardDelimitedTextFileHandlerABC',
     'TextFixedWidthFileHandlerABC',
     'SemiStructuredTextFileHandlerABC',
     'ColumnarFileHandlerABC',
@@ -819,6 +823,45 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         return self.delimiter
 
 
+class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
+    """
+    Shared implementation for straightforward delimited text handlers.
+
+    Subclasses only need to define :attr:`format` and :attr:`delimiter`.
+    """
+
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read delimited rows using :attr:`delimiter` or option overrides.
+        """
+        return read_delimited(
+            path,
+            delimiter=self.delimiter_from_read_options(options),
+        )
+
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write delimited rows using :attr:`delimiter` or option overrides.
+        """
+        return write_delimited(
+            path,
+            rows,
+            delimiter=self.delimiter_from_write_options(options),
+            format_name=self.format_name,
+        )
+
+
 class TextFixedWidthFileHandlerABC(FileHandlerABC):
     """
     Base contract for plain text and fixed-width text formats.
@@ -942,33 +985,21 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         -------
         JSONList
             The list of dictionaries read from the selected table.
-
-        Raises
-        ------
-        ValueError
-            If table selection is ambiguous.
         """
         connection = self.connect(path)
         try:
-            tables = self.list_tables(connection)
             table = self.table_from_read_options(options)
             if table is None:
-                if not tables:
+                table = resolve_table(
+                    self.list_tables(connection),
+                    engine_name=self.engine_name,
+                    default_table=self.default_table,
+                )
+                if table is None:
                     return []
-                if self.default_table in tables:
-                    table = self.default_table
-                elif len(tables) == 1:
-                    table = tables[0]
-                else:
-                    raise ValueError(
-                        f'Multiple tables found in {self.engine_name} file; '
-                        f'expected "{self.default_table}" or a single table',
-                    )
             return self.read_table(connection, table)
         finally:
-            closer = getattr(connection, 'close', None)
-            if callable(closer):
-                closer()
+            self._close_connection(connection)
 
     def write(
         self,
@@ -1015,9 +1046,7 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         try:
             return self.write_table(connection, table, rows)
         finally:
-            closer = getattr(connection, 'close', None)
-            if callable(closer):
-                closer()
+            self._close_connection(connection)
 
     @abstractmethod
     def connect(
@@ -1085,6 +1114,24 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         if value is not None:
             return cast(str, value)
         return default
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _close_connection(
+        connection: Any,
+    ) -> None:
+        """
+        Close a database connection when it exposes a ``close`` method.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object to close.
+        """
+        closer = getattr(connection, 'close', None)
+        if callable(closer):
+            closer()
 
 
 class LogEventFileHandlerABC(FileHandlerABC):
@@ -1542,6 +1589,7 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         if not rows:
             return 0
         sheet = self.sheet_from_write_options(options)
+        path.parent.mkdir(parents=True, exist_ok=True)
         return self.write_sheet(path, rows, sheet=sheet, options=options)
 
     @abstractmethod
