@@ -6,6 +6,8 @@ Reusable mixins extracted from file handler ABCs.
 
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -15,8 +17,10 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ..utils import count_records
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
+from ._io import read_text
 from ._io import require_dict_payload as _require_dict_payload
 from ._io import write_text
 
@@ -32,6 +36,12 @@ __all__ = [
     'DelimitedOptionMixin',
     'EmbeddedDatabaseTableOptionMixin',
     'FileHandlerOptionMixin',
+    'BinarySerializationIOMixin',
+    'RowReadWriteMixin',
+    'ScientificDatasetIOMixin',
+    'SemiStructuredTextIOMixin',
+    'SingleDatasetValidationMixin',
+    'SpreadsheetSheetIOMixin',
     'ScientificDatasetOptionMixin',
     'SemiStructuredPayloadMixin',
     'SpreadsheetSheetOptionMixin',
@@ -211,7 +221,218 @@ class FileHandlerOptionMixin:
         return options.extras.get(key, default)
 
 
-# SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
+# SECTION: CLASSES (IO MIXINS) ============================================== #
+
+
+class BinarySerializationIOMixin(ABC):
+    """
+    Shared path-level read/write flow for binary serialization handlers.
+    """
+
+    # -- Abstract Instance Methods -- #
+
+    @abstractmethod
+    def dumps_bytes(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> bytes:
+        """
+        Serialize structured data into binary payload bytes.
+        """
+
+    @abstractmethod
+    def loads_bytes(
+        self,
+        payload: bytes,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse binary payload bytes into structured data.
+        """
+
+    # -- Instance Methods -- #
+
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return the default record count for binary write operations.
+        """
+        return count_records(data)
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and decode binary serialization payload bytes from *path*.
+        """
+        return self.loads_bytes(path.read_bytes(), options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Encode and write binary serialization payload bytes to *path*.
+        """
+        payload = self.dumps_bytes(data, options=options)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+        return self.count_written_records(data)
+
+
+class RowReadWriteMixin(ABC):
+    """
+    Shared read/write dispatch for row-oriented file handlers.
+    """
+
+    # -- Class Attributes -- #
+
+    format_name: str
+
+    # -- Abstract Instance Methods -- #
+
+    @abstractmethod
+    def read_rows(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read row records from *path*.
+        """
+
+    @abstractmethod
+    def write_rows(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write row records to *path*.
+        """
+
+    # -- Instance Methods -- #
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return row-oriented content from *path*.
+        """
+        return self.read_rows(path, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write row-oriented content to *path* and return record count.
+        """
+        return self.write_rows(
+            path,
+            normalize_records(data, self.format_name),
+            options=options,
+        )
+
+
+class SemiStructuredTextIOMixin(FileHandlerOptionMixin, ABC):
+    """
+    Shared path-level read/write flow for semi-structured text handlers.
+    """
+
+    # -- Class Attributes -- #
+
+    write_trailing_newline: ClassVar[bool] = False
+
+    # -- Abstract Instance Methods -- #
+
+    @abstractmethod
+    def dumps(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize structured data into text.
+        """
+
+    @abstractmethod
+    def loads(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse *text* into structured data.
+        """
+
+    # -- Instance Methods -- #
+
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return the default record count for write operations.
+        """
+        return count_records(data)
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and return semi-structured text content from *path*.
+        """
+        return self.loads(
+            read_text(path, encoding=self.encoding_from_read_options(options)),
+            options=options,
+        )
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write semi-structured text content to *path* and return record count.
+        """
+        write_text(
+            path,
+            self.dumps(data, options=options),
+            encoding=self.encoding_from_write_options(options),
+            trailing_newline=self.write_trailing_newline,
+        )
+        return self.count_written_records(data)
+
+
+# SECTION: CLASSES (OTHER MIXINS) =========================================== #
 
 
 class ArchiveInnerNameOptionMixin(FileHandlerOptionMixin):
@@ -546,6 +767,188 @@ class SpreadsheetSheetOptionMixin(FileHandlerOptionMixin):
         if default is not None:
             return default
         return self.default_sheet
+
+
+class ScientificDatasetIOMixin(ScientificDatasetOptionMixin, ABC):
+    """
+    Shared read/write dispatch for scientific dataset handlers.
+    """
+
+    @abstractmethod
+    def read_dataset(
+        self,
+        path: Path,
+        *,
+        dataset: str | None = None,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and return one dataset from *path*.
+        """
+
+    @abstractmethod
+    def write_dataset(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one dataset to *path* and return record count.
+        """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and return scientific dataset content from *path*.
+        """
+        dataset = self.dataset_from_read_options(options)
+        return self.read_dataset(path, dataset=dataset, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write scientific dataset content to *path* and return record count.
+        """
+        dataset = self.dataset_from_write_options(options)
+        return self.write_dataset(
+            path,
+            data,
+            dataset=dataset,
+            options=options,
+        )
+
+
+class SingleDatasetValidationMixin(ScientificDatasetOptionMixin):
+    """
+    Shared helpers for single-dataset scientific handler variants.
+    """
+
+    dataset_key: ClassVar[str]
+    format_name: str
+
+    def list_datasets(
+        self,
+        path: Path,
+    ) -> list[str]:
+        """
+        Return the single supported dataset key.
+        """
+        _ = path
+        return [self.dataset_key]
+
+    def resolve_single_read_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | None = None,
+    ) -> str | None:
+        """
+        Resolve and validate single-dataset read selection.
+        """
+        resolved = self.resolve_read_dataset(dataset, options=options)
+        self.validate_single_dataset_key(resolved)
+        return resolved
+
+    def resolve_single_write_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str | None:
+        """
+        Resolve and validate single-dataset write selection.
+        """
+        resolved = self.resolve_write_dataset(dataset, options=options)
+        self.validate_single_dataset_key(resolved)
+        return resolved
+
+    def validate_single_dataset_key(
+        self,
+        dataset: str | None,
+    ) -> None:
+        """
+        Validate that *dataset* is either omitted or the default key.
+        """
+        if dataset is None or dataset == self.dataset_key:
+            return
+        raise ValueError(
+            f'{self.format_name} supports only dataset key '
+            f'{self.dataset_key!r}',
+        )
+
+
+class SpreadsheetSheetIOMixin(SpreadsheetSheetOptionMixin, ABC):
+    """
+    Shared read/write dispatch for spreadsheet handlers.
+    """
+
+    format_name: str
+
+    @abstractmethod
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read a single sheet from *path*.
+        """
+
+    @abstractmethod
+    def write_sheet(
+        self,
+        path: Path,
+        rows: JSONList,
+        *,
+        sheet: str | int,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write rows to a single sheet in *path*.
+        """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return spreadsheet content from *path*.
+        """
+        sheet = self.sheet_from_read_options(options)
+        return self.read_sheet(path, sheet=sheet, options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write spreadsheet content to *path* and return record count.
+        """
+        rows = normalize_records(data, self.format_name)
+        if not rows:
+            return 0
+        sheet = self.sheet_from_write_options(options)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return self.write_sheet(path, rows, sheet=sheet, options=options)
 
 
 class TemplateTextIOMixin:
