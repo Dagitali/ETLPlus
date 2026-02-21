@@ -21,12 +21,11 @@ from __future__ import annotations
 import re
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import stringify_value
+from ._mixins import RegexTemplateRenderMixin
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin
 from .enums import FileFormat
@@ -46,7 +45,11 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class VmFile(TemplateTextIOMixin, TemplateFileHandlerABC):
+class VmFile(
+    RegexTemplateRenderMixin,
+    TemplateTextIOMixin,
+    TemplateFileHandlerABC,
+):
     """
     Handler implementation for VM files.
     """
@@ -55,45 +58,35 @@ class VmFile(TemplateTextIOMixin, TemplateFileHandlerABC):
 
     format = FileFormat.VM
     template_engine = 'velocity'
+    token_pattern = re.compile(
+        r'\$\{(?P<brace_key>[A-Za-z_][A-Za-z0-9_]*)\}'
+        r'|\$(?P<plain_key>[A-Za-z_][A-Za-z0-9_]*)',
+    )
 
     # -- Instance Methods -- #
 
-    def render(
+    def template_key_from_match(
         self,
-        template: str,
-        context: JSONDict,
-    ) -> str:
+        match: re.Match[str],
+    ) -> str | None:
         """
-        Render VM template text using context data.
+        Resolve one Velocity token key from a regex match.
 
         Parameters
         ----------
-        template : str
-            Template text to render.
-        context : JSONDict
-            Context dictionary for rendering.
+        match : re.Match[str]
+            The regex match object containing Velocity token groups.
 
         Returns
         -------
-        str
-            Rendered template output.
+        str | None
+            The resolved Velocity token key, or None if no key is found.
         """
-
-        def _replace(match: re.Match[str]) -> str:
-            key = match.group('brace_key') or match.group('plain_key')
-            value = context.get(str(key))
-            return stringify_value(value)
-
-        return _VM_TOKEN_PATTERN.sub(_replace, template)
+        return match.group('brace_key') or match.group('plain_key')
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
-
-_VM_TOKEN_PATTERN = re.compile(
-    r'\$\{(?P<brace_key>[A-Za-z_][A-Za-z0-9_]*)\}'
-    r'|\$(?P<plain_key>[A-Za-z_][A-Za-z0-9_]*)',
-)
 
 _VM_HANDLER = VmFile()
 
