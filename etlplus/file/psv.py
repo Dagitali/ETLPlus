@@ -28,8 +28,8 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import read_delimited
 from ._io import write_delimited
-from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
+from .base import StandardDelimitedTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -48,7 +48,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class PsvFile(DelimitedTextFileHandlerABC):
+class PsvFile(StandardDelimitedTextFileHandlerABC):
     """
     Handler implementation for PSV files.
     """
@@ -95,7 +95,7 @@ class PsvFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write PSV *rows* to *path*.
+        Write PSV *rows* to *path* and return the number written.
 
         Parameters
         ----------
@@ -121,6 +121,7 @@ class PsvFile(DelimitedTextFileHandlerABC):
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _PSV_HANDLER = PsvFile()
 
