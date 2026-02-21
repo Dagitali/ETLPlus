@@ -19,7 +19,6 @@ Notes
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONDict
@@ -27,13 +26,9 @@ from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import normalize_records
-from ._io import require_str_key
 from ._io import stringify_value
-from ._io import write_text
-from .base import ReadOptions
 from .base import TemplateFileHandlerABC
-from .base import WriteOptions
+from .base import TemplateTextIOMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -51,7 +46,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class MustacheFile(TemplateFileHandlerABC):
+class MustacheFile(TemplateTextIOMixin, TemplateFileHandlerABC):
     """
     Handler implementation for MUSTACHE files.
     """
@@ -62,30 +57,6 @@ class MustacheFile(TemplateFileHandlerABC):
     template_engine = 'mustache'
 
     # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return template payload from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the MUSTACHE template file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Single-row payload with one ``template`` field.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return [{'template': path.read_text(encoding=encoding)}]
 
     def render(
         self,
@@ -114,55 +85,6 @@ class MustacheFile(TemplateFileHandlerABC):
             return stringify_value(value)
 
         return _MUSTACHE_TOKEN_PATTERN.sub(_replace, template)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write template payload to *path* and return row count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the MUSTACHE template file on disk.
-        data : JSONData
-            One object (or one-object list) containing a ``template`` string.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of payload rows written.
-
-        Raises
-        ------
-        TypeError
-            If the payload does not contain exactly one object or if the object
-            does not contain a string ``template`` field.
-        """
-        rows = normalize_records(data, self.format_name)
-        if not rows:
-            return 0
-        if len(rows) != 1:
-            raise TypeError(
-                'MUSTACHE payloads must contain exactly one object',
-            )
-        template_text = require_str_key(
-            rows[0],
-            format_name='MUSTACHE',
-            key='template',
-        )
-        write_text(
-            path,
-            template_text,
-            encoding=self.encoding_from_write_options(options),
-        )
-        return 1
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
