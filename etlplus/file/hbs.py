@@ -21,12 +21,11 @@ from __future__ import annotations
 import re
 
 from ..types import JSONData
-from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import stringify_value
+from ._mixins import RegexTemplateRenderMixin
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin
 from .enums import FileFormat
@@ -46,7 +45,11 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class HbsFile(TemplateTextIOMixin, TemplateFileHandlerABC):
+class HbsFile(
+    RegexTemplateRenderMixin,
+    TemplateTextIOMixin,
+    TemplateFileHandlerABC,
+):
     """
     Handler implementation for HBS files.
     """
@@ -55,46 +58,13 @@ class HbsFile(TemplateTextIOMixin, TemplateFileHandlerABC):
 
     format = FileFormat.HBS
     template_engine = 'handlebars'
-
-    # -- Instance Methods -- #
-
-    def render(
-        self,
-        template: str,
-        context: JSONDict,
-    ) -> str:
-        """
-        Render HBS template text using context data.
-
-        Parameters
-        ----------
-        template : str
-            Template text to render.
-        context : JSONDict
-            Context dictionary for rendering.
-
-        Returns
-        -------
-        str
-            Rendered template output.
-        """
-
-        def _replace(match: re.Match[str]) -> str:
-            key = match.group('key')
-            value = context.get(key)
-            return stringify_value(value)
-
-        return _HBS_TOKEN_PATTERN.sub(_replace, template)
+    token_pattern = re.compile(r'{{\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*}}')
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _HBS_HANDLER = HbsFile()
-
-_HBS_TOKEN_PATTERN = re.compile(
-    r'{{\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*}}',
-)
 
 
 # SECTION: FUNCTIONS ======================================================== #
