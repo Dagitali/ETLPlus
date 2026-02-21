@@ -40,6 +40,34 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _stub_read(
+    handler: StubFileHandlerABC,
+    path: Path,
+    *,
+    options: ReadOptions | None = None,
+) -> JSONData:
+    """
+    Delegate one read call to :class:`StubFileHandlerABC`.
+    """
+    return StubFileHandlerABC.read(handler, path, options=options)
+
+
+def _stub_write(
+    handler: StubFileHandlerABC,
+    path: Path,
+    data: JSONData,
+    *,
+    options: WriteOptions | None = None,
+) -> int:
+    """
+    Delegate one write call to :class:`StubFileHandlerABC`.
+    """
+    return StubFileHandlerABC.write(handler, path, data, options=options)
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -63,10 +91,7 @@ class StubBinarySerializationFileHandlerABC(
         Raise :class:`NotImplementedError` for binary payload reads.
         """
         _ = payload
-        return cast(
-            JSONData,
-            super().read(self._stub_path(), options=options),
-        )
+        return _stub_read(self, self._stub_path(), options=options)
 
     def dumps_bytes(
         self,
@@ -77,7 +102,7 @@ class StubBinarySerializationFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for binary payload writes.
         """
-        super().write(self._stub_path(), data, options=options)
+        _stub_write(self, self._stub_path(), data, options=options)
         return b''
 
 
@@ -98,7 +123,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for connection creation.
         """
-        return cast(Any, StubFileHandlerABC.read(self, path))
+        return cast(Any, _stub_read(self, path))
 
     def list_tables(
         self,
@@ -110,7 +135,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         _ = connection
         return cast(
             list[str],
-            StubFileHandlerABC.read(self, self._stub_path()),
+            _stub_read(self, self._stub_path()),
         )
 
     def read(
@@ -122,7 +147,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for embedded-database reads.
         """
-        return StubFileHandlerABC.read(self, path, options=options)
+        return cast(JSONList, _stub_read(self, path, options=options))
 
     def read_table(
         self,
@@ -134,7 +159,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         _ = connection
         _ = table
-        return StubFileHandlerABC.read(self, self._stub_path())
+        return cast(JSONList, _stub_read(self, self._stub_path()))
 
     def write(
         self,
@@ -146,7 +171,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for embedded-database writes.
         """
-        return StubFileHandlerABC.write(self, path, data, options=options)
+        return _stub_write(self, path, data, options=options)
 
     def write_table(
         self,
@@ -159,7 +184,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
         """
         _ = connection
         _ = table
-        return StubFileHandlerABC.write(self, self._stub_path(), rows)
+        return _stub_write(self, self._stub_path(), rows)
 
 
 class StubLogEventFileHandlerABC(
@@ -180,7 +205,7 @@ class StubLogEventFileHandlerABC(
         Raise :class:`NotImplementedError` for line parsing.
         """
         _ = line
-        return cast(JSONDict, super().read(self._stub_path()))
+        return cast(JSONDict, _stub_read(self, self._stub_path()))
 
     def serialize_event(
         self,
@@ -189,7 +214,7 @@ class StubLogEventFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for event serialization.
         """
-        super().write(self._stub_path(), event)
+        _stub_write(self, self._stub_path(), event)
         return ''
 
 
@@ -212,7 +237,7 @@ class StubSemiStructuredTextFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for semi-structured reads.
         """
-        return StubFileHandlerABC.read(self, path, options=options)
+        return cast(JSONList, _stub_read(self, path, options=options))
 
     def write(
         self,
@@ -224,7 +249,7 @@ class StubSemiStructuredTextFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for semi-structured writes.
         """
-        return StubFileHandlerABC.write(self, path, data, options=options)
+        return _stub_write(self, path, data, options=options)
 
     def loads(
         self,
@@ -236,14 +261,7 @@ class StubSemiStructuredTextFileHandlerABC(
         Raise :class:`NotImplementedError` for text payload parsing.
         """
         _ = text
-        return cast(
-            JSONData,
-            StubFileHandlerABC.read(
-                self,
-                self._stub_path(),
-                options=options,
-            ),
-        )
+        return _stub_read(self, self._stub_path(), options=options)
 
     def dumps(
         self,
@@ -254,12 +272,7 @@ class StubSemiStructuredTextFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for text payload serialization.
         """
-        StubFileHandlerABC.write(
-            self,
-            self._stub_path(),
-            data,
-            options=options,
-        )
+        _stub_write(self, self._stub_path(), data, options=options)
         return ''
 
 
@@ -299,7 +312,7 @@ class StubSingleDatasetScientificFileHandlerABC(
             dataset,
             options=options,
         )
-        return StubFileHandlerABC.read(self, path, options=options)
+        return cast(JSONList, _stub_read(self, path, options=options))
 
     def write(
         self,
@@ -334,7 +347,7 @@ class StubSingleDatasetScientificFileHandlerABC(
             dataset,
             options=options,
         )
-        return StubFileHandlerABC.write(self, path, data, options=options)
+        return _stub_write(self, path, data, options=options)
 
 
 class StubSpreadsheetFileHandlerABC(
@@ -360,7 +373,7 @@ class StubSpreadsheetFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for spreadsheet reads.
         """
-        return StubFileHandlerABC.read(self, path, options=options)
+        return cast(JSONList, _stub_read(self, path, options=options))
 
     def read_sheet(
         self,
@@ -373,7 +386,7 @@ class StubSpreadsheetFileHandlerABC(
         Raise :class:`NotImplementedError` for sheet reads.
         """
         _ = sheet
-        return StubFileHandlerABC.read(self, path, options=options)
+        return cast(JSONList, _stub_read(self, path, options=options))
 
     def write(
         self,
@@ -385,7 +398,7 @@ class StubSpreadsheetFileHandlerABC(
         """
         Raise :class:`NotImplementedError` for spreadsheet writes.
         """
-        return StubFileHandlerABC.write(self, path, data, options=options)
+        return _stub_write(self, path, data, options=options)
 
     def write_sheet(
         self,
@@ -399,7 +412,7 @@ class StubSpreadsheetFileHandlerABC(
         Raise :class:`NotImplementedError` for sheet writes.
         """
         _ = sheet
-        return StubFileHandlerABC.write(self, path, rows, options=options)
+        return _stub_write(self, path, rows, options=options)
 
 
 class StubTemplateFileHandlerABC(
@@ -426,4 +439,4 @@ class StubTemplateFileHandlerABC(
         """
         _ = template
         _ = context
-        return cast(str, super().read(self._stub_path()))
+        return cast(str, _stub_read(self, self._stub_path()))
