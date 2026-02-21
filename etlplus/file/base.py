@@ -13,20 +13,25 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ..utils import count_records
-from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import read_delimited
 from ._io import read_text
-from ._io import require_dict_payload as _require_dict_payload
 from ._io import write_delimited
 from ._io import write_text
+from ._mixins import ArchiveInnerNameOptionMixin
+from ._mixins import DelimitedOptionMixin
+from ._mixins import EmbeddedDatabaseTableOptionMixin
+from ._mixins import FileHandlerOptionMixin
+from ._mixins import ScientificDatasetOptionMixin
+from ._mixins import SemiStructuredPayloadMixin
+from ._mixins import SpreadsheetSheetOptionMixin
+from ._mixins import TemplateTextIOMixin
 from ._sql import resolve_table
 from .enums import FileFormat
 
@@ -167,7 +172,7 @@ class WriteOptions:
 # SECTION: ABSTRACT BASE CLASSES (PRIMARY) ================================== #
 
 
-class FileHandlerABC(ABC):
+class FileHandlerABC(FileHandlerOptionMixin, ABC):
     """
     Root interface for format-specific file handlers.
 
@@ -271,140 +276,6 @@ class FileHandlerABC(ABC):
             Number of records written.
         """
 
-    # -- Internal Instance Methods -- #
-
-    def _option_attr(
-        self,
-        options: ReadOptions | WriteOptions | None,
-        attr_name: str,
-    ) -> Any | None:
-        """
-        Return an option attribute value when present.
-
-        Parameters
-        ----------
-        options : ReadOptions | WriteOptions | None
-            Optional parameter bundle.
-        attr_name : str
-            Dataclass attribute to read.
-
-        Returns
-        -------
-        Any | None
-            The attribute value, or ``None`` when missing.
-        """
-        if options is None:
-            return None
-        return getattr(options, attr_name)
-
-    # -- Instance Methods -- #
-
-    def read_extra_option(
-        self,
-        options: ReadOptions | None,
-        key: str,
-        *,
-        default: Any | None = None,
-    ) -> Any | None:
-        """
-        Read one format-specific read option from ``options.extras``.
-        """
-        if options is None:
-            return default
-        return options.extras.get(key, default)
-
-    def write_extra_option(
-        self,
-        options: WriteOptions | None,
-        key: str,
-        *,
-        default: Any | None = None,
-    ) -> Any | None:
-        """
-        Read one format-specific write option from ``options.extras``.
-        """
-        if options is None:
-            return default
-        return options.extras.get(key, default)
-
-    def encoding_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str:
-        """
-        Extract text encoding from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Optional read parameters.
-        default : str, optional
-            Default encoding if not specified in *options*.
-
-        Returns
-        -------
-        str
-            Text encoding.
-        """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def encoding_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str:
-        """
-        Extract text encoding from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str, optional
-            Default encoding if not specified in *options*.
-
-        Returns
-        -------
-        str
-            Text encoding.
-        """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def root_tag_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'root',
-    ) -> str:
-        """
-        Extract XML-like root tag from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str, optional
-            Default root tag if not specified in *options*.
-
-        Returns
-        -------
-        str
-            XML-like root tag.
-        """
-        value = self._option_attr(options, 'root_tag')
-        if value is not None:
-            return cast(str, value)
-        return default
-
 
 class ReadOnlyFileHandlerABC(FileHandlerABC):
     """
@@ -455,7 +326,10 @@ class ReadOnlyFileHandlerABC(FileHandlerABC):
 # SECTION: ABSTRACT BASE CLASSES (SECONDARY) ================================ #
 
 
-class ArchiveWrapperFileHandlerABC(FileHandlerABC):
+class ArchiveWrapperFileHandlerABC(
+    ArchiveInnerNameOptionMixin,
+    FileHandlerABC,
+):
     """
     Base contract for archive/compression wrapper formats.
 
@@ -491,34 +365,6 @@ class ArchiveWrapperFileHandlerABC(FileHandlerABC):
         """
         Write inner member bytes to an archive at *path*.
         """
-
-    def inner_name_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from read options.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from write options.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
 
 
 class BinarySerializationFileHandlerABC(FileHandlerABC):
@@ -732,7 +578,7 @@ class ColumnarFileHandlerABC(FileHandlerABC):
         """
 
 
-class DelimitedTextFileHandlerABC(FileHandlerABC):
+class DelimitedTextFileHandlerABC(DelimitedOptionMixin, FileHandlerABC):
     """
     Base contract for delimited text formats.
 
@@ -822,64 +668,6 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         """
         rows = normalize_records(data, self.format.value.upper())
         return self.write_rows(path, rows, options=options)
-
-    def delimiter_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Optional read parameters.
-        default : str | None, optional
-            Fallback delimiter when no override is provided. When omitted,
-            :attr:`delimiter` is used.
-
-        Returns
-        -------
-        str
-            Effective delimiter.
-        """
-        override = self.read_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
-
-    def delimiter_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str | None, optional
-            Fallback delimiter when no override is provided. When omitted,
-            :attr:`delimiter` is used.
-
-        Returns
-        -------
-        str
-            Effective delimiter.
-        """
-        override = self.write_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
 
 
 class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
@@ -1009,7 +797,10 @@ class TextFixedWidthFileHandlerABC(FileHandlerABC):
         return self.write_rows(path, rows, options=options)
 
 
-class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
+class EmbeddedDatabaseFileHandlerABC(
+    EmbeddedDatabaseTableOptionMixin,
+    FileHandlerABC,
+):
     """
     Base contract for file-backed embedded database formats.
 
@@ -1146,52 +937,6 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
         Write *rows* to *table*.
         """
 
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from read options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _close_connection(
-        connection: Any,
-    ) -> None:
-        """
-        Close a database connection when it exposes a ``close`` method.
-
-        Parameters
-        ----------
-        connection : Any
-            Database connection object to close.
-        """
-        closer = getattr(connection, 'close', None)
-        if callable(closer):
-            closer()
-
 
 class LogEventFileHandlerABC(FileHandlerABC):
     """
@@ -1226,7 +971,10 @@ class LogEventFileHandlerABC(FileHandlerABC):
         """
 
 
-class SemiStructuredTextFileHandlerABC(FileHandlerABC):
+class SemiStructuredTextFileHandlerABC(
+    SemiStructuredPayloadMixin,
+    FileHandlerABC,
+):
     """
     Base contract for semi-structured text formats.
 
@@ -1241,83 +989,6 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
     write_trailing_newline: ClassVar[bool] = False
 
     # -- Instance Methods -- #
-
-    def coerce_dict_root_payload(
-        self,
-        payload: object,
-        *,
-        error_message: str | None = None,
-    ) -> JSONDict:
-        """
-        Coerce ``payload`` to a dictionary or raise ``TypeError``.
-
-        Parameters
-        ----------
-        payload : object
-            The raw payload to coerce.
-        error_message : str | None, optional
-            Custom error message for failed coercion. When omitted, a default
-            message referencing :attr:`format_name` is used.
-
-        Returns
-        -------
-        JSONDict
-            The coerced dictionary payload.
-
-        Raises
-        ------
-        TypeError
-            If coercion fails due to incompatible type.
-        """
-        if isinstance(payload, dict):
-            return cast(JSONDict, payload)
-        if error_message is None:
-            error_message = f'{self.format_name} root must be a dict'
-        raise TypeError(error_message)
-
-    def coerce_record_payload(
-        self,
-        payload: Any,
-    ) -> JSONData:
-        """
-        Coerce ``payload`` into object-or-object-list record form.
-
-        Parameters
-        ----------
-        payload : Any
-            The raw payload to coerce.
-
-        Returns
-        -------
-        JSONData
-            The coerced record payload.
-        """
-        return _coerce_record_payload(
-            payload,
-            format_name=self.format_name,
-        )
-
-    def require_dict_payload(
-        self,
-        data: JSONData,
-    ) -> JSONDict:
-        """
-        Validate and return one dictionary payload.
-
-        Parameters
-        ----------
-        data : JSONData
-            The data to validate as a dictionary payload.
-
-        Returns
-        -------
-        JSONDict
-            The validated dictionary payload.
-        """
-        return _require_dict_payload(
-            data,
-            format_name=self.format_name,
-        )
 
     @abstractmethod
     def loads(
@@ -1489,7 +1160,10 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
         )
 
 
-class ScientificDatasetFileHandlerABC(FileHandlerABC):
+class ScientificDatasetFileHandlerABC(
+    ScientificDatasetOptionMixin,
+    FileHandlerABC,
+):
     """
     Base contract for scientific/statistical dataset containers.
 
@@ -1595,66 +1269,6 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
             options=options,
         )
 
-    def dataset_from_read_options(
-        self,
-        options: ReadOptions | None,
-    ) -> str | None:
-        """
-        Extract dataset selector from read options.
-        """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
-
-    def dataset_from_write_options(
-        self,
-        options: WriteOptions | None,
-    ) -> str | None:
-        """
-        Extract dataset selector from write options.
-        """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
-
-    def resolve_read_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: ReadOptions | None = None,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Resolve read-time dataset selection using explicit, options, then
-        default.
-        """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_read_options(options)
-        if from_options is not None:
-            return from_options
-        return default
-
-    def resolve_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Resolve write-time dataset selection using explicit, options, then
-        default.
-        """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_write_options(options)
-        if from_options is not None:
-            return from_options
-        return default
-
 
 class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
     """
@@ -1736,7 +1350,7 @@ class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
         )
 
 
-class SpreadsheetFileHandlerABC(FileHandlerABC):
+class SpreadsheetFileHandlerABC(SpreadsheetSheetOptionMixin, FileHandlerABC):
     """
     Base contract for spreadsheet formats.
 
@@ -1831,38 +1445,6 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
         Write rows to a single sheet in *path*.
         """
 
-    def sheet_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int:
-        """
-        Extract sheet selector from read options.
-        """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
-
-    def sheet_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int:
-        """
-        Extract sheet selector from write options.
-        """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
-
 
 class ReadOnlySpreadsheetFileHandlerABC(
     ReadOnlyFileHandlerABC,
@@ -1930,64 +1512,3 @@ class TemplateFileHandlerABC(FileHandlerABC):
         str
             Rendered template text.
         """
-
-
-class TemplateTextIOMixin:
-    """
-    Shared template-file read/write implementation.
-
-    This mixin keeps template handlers focused on engine-specific rendering
-    while centralizing payload shape validation and text IO.
-    """
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return a single template row from *path*.
-        """
-        template_handler = cast(TemplateFileHandlerABC, self)
-        return [
-            {
-                template_handler.template_key: path.read_text(
-                    encoding=template_handler.encoding_from_read_options(
-                        options,
-                    ),
-                ),
-            },
-        ]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write one template row to *path* and return row count.
-        """
-        template_handler = cast(TemplateFileHandlerABC, self)
-        rows = normalize_records(data, template_handler.format_name)
-        if not rows:
-            return 0
-        if len(rows) != 1:
-            raise TypeError(
-                f'{template_handler.format_name} payloads must contain '
-                'exactly one object',
-            )
-        template_value = rows[0].get(template_handler.template_key)
-        if not isinstance(template_value, str):
-            raise TypeError(
-                f'{template_handler.format_name} payloads must include a '
-                f'"{template_handler.template_key}" string',
-            )
-        write_text(
-            path,
-            template_value,
-            encoding=template_handler.encoding_from_write_options(options),
-        )
-        return 1
