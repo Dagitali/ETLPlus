@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import gzip
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import StrPath
+from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
 from ._io import call_deprecated_module_read
@@ -21,7 +23,6 @@ from .base import ReadOptions
 from .base import WriteOptions
 from .enums import CompressionFormat
 from .enums import FileFormat
-from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -53,20 +54,13 @@ def _resolve_format(
     -------
     FileFormat
         The inferred inner file format.
-
-    Raises
-    ------
-    ValueError
-        If the file format cannot be inferred from the filename.
     """
-    fmt, compression = infer_file_format_and_compression(path)
-    if compression is not CompressionFormat.GZ:
-        raise ValueError(f'Not a gzip file: {path}')
-    if fmt is None:
-        raise ValueError(
-            f'Cannot infer file format from compressed file {path!r}',
-        )
-    return fmt
+    fmt = infer_archive_payload_format(
+        path,
+        allowed_compressions=(CompressionFormat.GZ,),
+        compression_error=f'Not a gzip file: {path}',
+    )
+    return cast(FileFormat, fmt)
 
 
 # SECTION: CLASSES ========================================================== #
