@@ -18,19 +18,20 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
-from ..utils import count_records
 from ._io import normalize_records
 from ._io import read_delimited
-from ._io import read_text
 from ._io import write_delimited
-from ._io import write_text
 from ._mixins import ArchiveInnerNameOptionMixin
+from ._mixins import BinarySerializationIOMixin
 from ._mixins import DelimitedOptionMixin
 from ._mixins import EmbeddedDatabaseTableOptionMixin
 from ._mixins import FileHandlerOptionMixin
-from ._mixins import ScientificDatasetOptionMixin
+from ._mixins import RowReadWriteMixin
+from ._mixins import ScientificDatasetIOMixin
 from ._mixins import SemiStructuredPayloadMixin
-from ._mixins import SpreadsheetSheetOptionMixin
+from ._mixins import SemiStructuredTextIOMixin
+from ._mixins import SingleDatasetValidationMixin
+from ._mixins import SpreadsheetSheetIOMixin
 from ._mixins import TemplateTextIOMixin
 from ._sql import resolve_table
 from .enums import FileFormat
@@ -367,7 +368,10 @@ class ArchiveWrapperFileHandlerABC(
         """
 
 
-class BinarySerializationFileHandlerABC(FileHandlerABC):
+class BinarySerializationFileHandlerABC(
+    BinarySerializationIOMixin,
+    FileHandlerABC,
+):
     """
     Base contract for binary serialization/interchange formats.
 
@@ -377,93 +381,6 @@ class BinarySerializationFileHandlerABC(FileHandlerABC):
     # -- Class Attributes -- #
 
     category: ClassVar[str] = 'binary_serialization'
-
-    # -- Abstract Instance Methods -- #
-
-    @abstractmethod
-    def loads_bytes(
-        self,
-        payload: bytes,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse binary payload bytes into structured data.
-        """
-
-    @abstractmethod
-    def dumps_bytes(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> bytes:
-        """
-        Serialize structured data into binary payload bytes.
-        """
-
-    # -- Instance Methods -- #
-
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for binary write operations.
-        """
-        return count_records(data)
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and decode binary serialization payload bytes from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the binary file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Decoded structured payload.
-        """
-        return self.loads_bytes(path.read_bytes(), options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Encode and write binary serialization payload bytes to *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the binary file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        payload = self.dumps_bytes(data, options=options)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
-        return self.count_written_records(data)
 
 
 class ColumnarFileHandlerABC(FileHandlerABC):
@@ -578,7 +495,11 @@ class ColumnarFileHandlerABC(FileHandlerABC):
         """
 
 
-class DelimitedTextFileHandlerABC(DelimitedOptionMixin, FileHandlerABC):
+class DelimitedTextFileHandlerABC(
+    RowReadWriteMixin,
+    DelimitedOptionMixin,
+    FileHandlerABC,
+):
     """
     Base contract for delimited text formats.
 
@@ -591,83 +512,6 @@ class DelimitedTextFileHandlerABC(DelimitedOptionMixin, FileHandlerABC):
     delimiter: ClassVar[str]
     quotechar: ClassVar[str] = '"'
     has_header: ClassVar[bool] = True
-
-    # -- Abstract Instance Methods -- #
-
-    @abstractmethod
-    def read_rows(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read delimited rows from *path*.
-        """
-
-    @abstractmethod
-    def write_rows(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write delimited *rows* to *path*.
-        """
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return delimited text content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the delimited text file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed rows.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write delimited text content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the delimited text file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of rows written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        return self.write_rows(path, rows, options=options)
 
 
 class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
@@ -709,7 +553,7 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         )
 
 
-class TextFixedWidthFileHandlerABC(FileHandlerABC):
+class TextFixedWidthFileHandlerABC(RowReadWriteMixin, FileHandlerABC):
     """
     Base contract for plain text and fixed-width text formats.
 
@@ -720,81 +564,6 @@ class TextFixedWidthFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'text_fixed_width'
     default_encoding: ClassVar[str] = 'utf-8'
-
-    # -- Instance Methods -- #
-
-    @abstractmethod
-    def read_rows(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read text-backed rows from *path*.
-        """
-
-    @abstractmethod
-    def write_rows(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write text-backed *rows* to *path*.
-        """
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return text/fixed-width content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the text/fixed-width file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed rows.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write text/fixed-width content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the text/fixed-width file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of rows written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        return self.write_rows(path, rows, options=options)
 
 
 class EmbeddedDatabaseFileHandlerABC(
@@ -972,6 +741,7 @@ class LogEventFileHandlerABC(FileHandlerABC):
 
 
 class SemiStructuredTextFileHandlerABC(
+    SemiStructuredTextIOMixin,
     SemiStructuredPayloadMixin,
     FileHandlerABC,
 ):
@@ -987,99 +757,6 @@ class SemiStructuredTextFileHandlerABC(
     allow_dict_root: ClassVar[bool] = True
     allow_list_root: ClassVar[bool] = True
     write_trailing_newline: ClassVar[bool] = False
-
-    # -- Instance Methods -- #
-
-    @abstractmethod
-    def loads(
-        self,
-        text: str,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse *text* into structured JSON-like data.
-        """
-
-    @abstractmethod
-    def dumps(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str:
-        """
-        Serialize *data* into a text payload.
-        """
-
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for write operations.
-        """
-        return count_records(data)
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return semi-structured text content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the semi-structured text file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(
-            read_text(path, encoding=encoding),
-            options=options,
-        )
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write semi-structured text content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the semi-structured text file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-            trailing_newline=self.write_trailing_newline,
-        )
-        return self.count_written_records(data)
 
 
 class RecordPayloadSemiStructuredTextFileHandlerABC(
@@ -1161,7 +838,7 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
 
 
 class ScientificDatasetFileHandlerABC(
-    ScientificDatasetOptionMixin,
+    ScientificDatasetIOMixin,
     FileHandlerABC,
 ):
     """
@@ -1186,171 +863,17 @@ class ScientificDatasetFileHandlerABC(
         Return available dataset keys within *path*.
         """
 
-    @abstractmethod
-    def read_dataset(
-        self,
-        path: Path,
-        *,
-        dataset: str | None = None,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return one dataset from *path*.
-        """
 
-    @abstractmethod
-    def write_dataset(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        dataset: str | None = None,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write one dataset to *path* and return record count.
-        """
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return scientific dataset content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the scientific dataset file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed dataset payload.
-        """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write scientific dataset content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the scientific dataset file on disk.
-        data : JSONData
-            Dataset payload to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
-
-
-class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
+class SingleDatasetScientificFileHandlerABC(
+    SingleDatasetValidationMixin,
+    ScientificDatasetFileHandlerABC,
+):
     """
     Base contract for scientific formats with a single dataset key.
     """
 
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return the single supported dataset key.
-        """
-        _ = path
-        return [self.dataset_key]
 
-    def resolve_single_read_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: ReadOptions | None = None,
-    ) -> str | None:
-        """
-        Resolve and validate single-dataset read selection.
-
-        Parameters
-        ----------
-        dataset : str | None, optional
-            Explicit dataset selector.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        str | None
-            Validated dataset key or ``None``.
-        """
-        resolved = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(resolved)
-        return resolved
-
-    def resolve_single_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str | None:
-        """
-        Resolve and validate single-dataset write selection.
-
-        Parameters
-        ----------
-        dataset : str | None, optional
-            Explicit dataset selector.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str | None
-            Validated dataset key or ``None``.
-        """
-        resolved = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(resolved)
-        return resolved
-
-    def validate_single_dataset_key(
-        self,
-        dataset: str | None,
-    ) -> None:
-        """
-        Validate that *dataset* is either omitted or the default key.
-        """
-        if dataset is None or dataset == self.dataset_key:
-            return
-        raise ValueError(
-            f'{self.format.value.upper()} supports only dataset key '
-            f'{self.dataset_key!r}',
-        )
-
-
-class SpreadsheetFileHandlerABC(SpreadsheetSheetOptionMixin, FileHandlerABC):
+class SpreadsheetFileHandlerABC(SpreadsheetSheetIOMixin, FileHandlerABC):
     """
     Base contract for spreadsheet formats.
 
@@ -1362,88 +885,6 @@ class SpreadsheetFileHandlerABC(SpreadsheetSheetOptionMixin, FileHandlerABC):
     category: ClassVar[str] = 'spreadsheet'
     engine_name: ClassVar[str]
     default_sheet: ClassVar[str | int] = 0
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return spreadsheet content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the selected sheet.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write spreadsheet content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        sheet = self.sheet_from_write_options(options)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return self.write_sheet(path, rows, sheet=sheet, options=options)
-
-    @abstractmethod
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read a single sheet from *path*.
-        """
-
-    @abstractmethod
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write rows to a single sheet in *path*.
-        """
 
 
 class ReadOnlySpreadsheetFileHandlerABC(
