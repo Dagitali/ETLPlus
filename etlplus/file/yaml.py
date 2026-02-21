@@ -24,9 +24,8 @@ from ..types import StrPath
 from ._imports import get_yaml
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import coerce_record_payload
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
+from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -53,7 +52,7 @@ def _yaml() -> Any:
 # SECTION: CLASSES ========================================================== #
 
 
-class YamlFile(SemiStructuredTextFileHandlerABC):
+class YamlFile(RecordPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for YAML files.
     """
@@ -99,14 +98,14 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         )
         return stream.getvalue()
 
-    def loads(
+    def loads_payload(
         self,
         text: str,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> object:
         """
-        Parse YAML *text* into structured records.
+        Parse YAML *text* into a Python payload.
 
         Parameters
         ----------
@@ -117,15 +116,14 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
 
         Returns
         -------
-        JSONData
+        object
             Parsed payload.
         """
         _ = options
         from io import StringIO
 
         yaml = _yaml()
-        loaded = yaml.safe_load(StringIO(text))
-        return coerce_record_payload(loaded, format_name='YAML')
+        return yaml.safe_load(StringIO(text))
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
