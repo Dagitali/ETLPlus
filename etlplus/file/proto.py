@@ -17,13 +17,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -107,60 +104,9 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         encoding = self.encoding_from_read_options(options)
         return {'schema': payload.decode(encoding)}
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return PROTO content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PROTO file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the PROTO file.
-        """
-        return self.loads_bytes(path.read_bytes(), options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to PROTO at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PROTO file on disk.
-        data : JSONData
-            Data to write as PROTO. Should be a dictionary with ``schema``.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the PROTO file.
-        """
-        payload = self.dumps_bytes(data, options=options)
-        ensure_parent_dir(path)
-        path.write_bytes(payload)
-        return 1
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _PROTO_HANDLER = ProtoFile()
 
