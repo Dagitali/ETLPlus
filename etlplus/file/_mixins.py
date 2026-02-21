@@ -6,6 +6,7 @@ Reusable mixins extracted from file handler ABCs.
 
 from __future__ import annotations
 
+import re
 from abc import ABC
 from abc import abstractmethod
 from pathlib import Path
@@ -22,7 +23,9 @@ from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import read_text
 from ._io import require_dict_payload as _require_dict_payload
+from ._io import stringify_value
 from ._io import write_text
+from ._sql import resolve_table
 
 if TYPE_CHECKING:
     from .base import ReadOptions
@@ -37,11 +40,14 @@ __all__ = [
     'EmbeddedDatabaseTableOptionMixin',
     'FileHandlerOptionMixin',
     'BinarySerializationIOMixin',
+    'ColumnarIOMixin',
+    'EmbeddedDatabaseIOMixin',
     'RowReadWriteMixin',
     'ScientificDatasetIOMixin',
     'SemiStructuredTextIOMixin',
     'SingleDatasetValidationMixin',
     'SpreadsheetSheetIOMixin',
+    'RegexTemplateRenderMixin',
     'ScientificDatasetOptionMixin',
     'SemiStructuredPayloadMixin',
     'SpreadsheetSheetOptionMixin',
@@ -289,6 +295,188 @@ class BinarySerializationIOMixin(ABC):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)
         return self.count_written_records(data)
+
+
+class ColumnarIOMixin(ABC):
+    """
+    Shared read/write dispatch for columnar table handlers.
+    """
+
+    format_name: str
+
+    @abstractmethod
+    def read_table(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> Any:
+        """
+        Read a columnar table object from *path*.
+        """
+
+    @abstractmethod
+    def write_table(
+        self,
+        path: Path,
+        table: Any,
+        *,
+        options: WriteOptions | None = None,
+    ) -> None:
+        """
+        Write a columnar table object to *path*.
+        """
+
+    @abstractmethod
+    def table_to_records(
+        self,
+        table: Any,
+    ) -> JSONList:
+        """
+        Convert a table object into row-oriented records.
+        """
+
+    @abstractmethod
+    def records_to_table(
+        self,
+        data: JSONData,
+    ) -> Any:
+        """
+        Convert row-oriented records into a table object.
+        """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return columnar content from *path*.
+        """
+        return self.table_to_records(self.read_table(path, options=options))
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write columnar content to *path* and return record count.
+        """
+        rows = normalize_records(data, self.format_name)
+        if not rows:
+            return 0
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.write_table(
+            path,
+            self.records_to_table(rows),
+            options=options,
+        )
+        return len(rows)
+
+
+class EmbeddedDatabaseIOMixin(ABC):
+    """
+    Shared read/write dispatch for embedded-database handlers.
+    """
+
+    engine_name: ClassVar[str]
+    default_table: ClassVar[str]
+    format_name: str
+
+    @abstractmethod
+    def connect(
+        self,
+        path: Path,
+    ) -> Any:
+        """
+        Open and return a database connection for *path*.
+        """
+
+    @abstractmethod
+    def list_tables(
+        self,
+        connection: Any,
+    ) -> list[str]:
+        """
+        Return readable table names from *connection*.
+        """
+
+    @abstractmethod
+    def read_table(
+        self,
+        connection: Any,
+        table: str,
+    ) -> JSONList:
+        """
+        Read rows from *table*.
+        """
+
+    @abstractmethod
+    def write_table(
+        self,
+        connection: Any,
+        table: str,
+        rows: JSONList,
+    ) -> int:
+        """
+        Write *rows* to *table*.
+        """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return embedded-database content from *path*.
+        """
+        database_handler = cast(Any, self)
+        connection = self.connect(path)
+        try:
+            table = database_handler.table_from_read_options(options)
+            if table is None:
+                table = resolve_table(
+                    self.list_tables(connection),
+                    engine_name=self.engine_name,
+                    default_table=self.default_table,
+                )
+                if table is None:
+                    return []
+            return self.read_table(connection, table)
+        finally:
+            database_handler.close_connection(connection)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write embedded-database content to *path* and return record count.
+        """
+        database_handler = cast(Any, self)
+        rows = normalize_records(data, self.format_name)
+        if not rows:
+            return 0
+        table = database_handler.table_from_write_options(
+            options,
+            default=self.default_table,
+        )
+        if table is None:  # pragma: no cover - guarded by default
+            raise ValueError(f'{self.format_name} write requires a table name')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = self.connect(path)
+        try:
+            return self.write_table(connection, table, rows)
+        finally:
+            database_handler.close_connection(connection)
 
 
 class RowReadWriteMixin(ABC):
@@ -598,10 +786,10 @@ class EmbeddedDatabaseTableOptionMixin(FileHandlerOptionMixin):
             return cast(str, value)
         return default
 
-    # -- Internal Static Methods -- #
+    # -- Static Methods -- #
 
     @staticmethod
-    def _close_connection(
+    def close_connection(
         connection: Any,
     ) -> None:
         """
@@ -1044,3 +1232,36 @@ class TemplateTextIOMixin:
             encoding=template_handler.encoding_from_write_options(options),
         )
         return 1
+
+
+class RegexTemplateRenderMixin:
+    """
+    Shared regex-token template rendering implementation.
+    """
+
+    token_pattern: ClassVar[re.Pattern[str]]
+
+    def template_key_from_match(
+        self,
+        match: re.Match[str],
+    ) -> str | None:
+        """
+        Resolve one context key from a regex token match.
+        """
+        return cast(str | None, match.groupdict().get('key'))
+
+    def render(
+        self,
+        template: str,
+        context: JSONDict,
+    ) -> str:
+        """
+        Render template text by replacing regex token matches with context
+        values.
+        """
+
+        def _replace(match: re.Match[str]) -> str:
+            key = self.template_key_from_match(match)
+            return stringify_value(context.get(key)) if key is not None else ''
+
+        return self.token_pattern.sub(_replace, template)

@@ -11,19 +11,19 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
-from typing import Any
 from typing import ClassVar
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
-from ._io import normalize_records
 from ._io import read_delimited
 from ._io import write_delimited
 from ._mixins import ArchiveInnerNameOptionMixin
 from ._mixins import BinarySerializationIOMixin
+from ._mixins import ColumnarIOMixin
 from ._mixins import DelimitedOptionMixin
+from ._mixins import EmbeddedDatabaseIOMixin
 from ._mixins import EmbeddedDatabaseTableOptionMixin
 from ._mixins import FileHandlerOptionMixin
 from ._mixins import RowReadWriteMixin
@@ -33,7 +33,6 @@ from ._mixins import SemiStructuredTextIOMixin
 from ._mixins import SingleDatasetValidationMixin
 from ._mixins import SpreadsheetSheetIOMixin
 from ._mixins import TemplateTextIOMixin
-from ._sql import resolve_table
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -383,7 +382,7 @@ class BinarySerializationFileHandlerABC(
     category: ClassVar[str] = 'binary_serialization'
 
 
-class ColumnarFileHandlerABC(FileHandlerABC):
+class ColumnarFileHandlerABC(ColumnarIOMixin, FileHandlerABC):
     """
     Base contract for columnar analytics formats.
 
@@ -394,105 +393,6 @@ class ColumnarFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'columnar_analytics'
     engine_name: ClassVar[str]
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return columnar content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the columnar file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Row-oriented records parsed from the columnar table.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write columnar content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the columnar file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        table = self.records_to_table(rows)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.write_table(path, table, options=options)
-        return len(rows)
-
-    @abstractmethod
-    def read_table(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read a columnar table object from *path*.
-        """
-
-    @abstractmethod
-    def write_table(
-        self,
-        path: Path,
-        table: Any,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write a columnar table object to *path*.
-        """
-
-    @abstractmethod
-    def table_to_records(
-        self,
-        table: Any,
-    ) -> JSONList:
-        """
-        Convert a table object into row-oriented records.
-        """
-
-    @abstractmethod
-    def records_to_table(
-        self,
-        data: JSONData,
-    ) -> Any:
-        """
-        Convert row-oriented records into a table object.
-        """
 
 
 class DelimitedTextFileHandlerABC(
@@ -567,6 +467,7 @@ class TextFixedWidthFileHandlerABC(RowReadWriteMixin, FileHandlerABC):
 
 
 class EmbeddedDatabaseFileHandlerABC(
+    EmbeddedDatabaseIOMixin,
     EmbeddedDatabaseTableOptionMixin,
     FileHandlerABC,
 ):
@@ -581,130 +482,6 @@ class EmbeddedDatabaseFileHandlerABC(
     category: ClassVar[str] = 'embedded_database'
     engine_name: ClassVar[str] = 'database'
     default_table: ClassVar[str] = 'data'
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return embedded-database content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the embedded database file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the selected table.
-        """
-        connection = self.connect(path)
-        try:
-            table = self.table_from_read_options(options)
-            if table is None:
-                table = resolve_table(
-                    self.list_tables(connection),
-                    engine_name=self.engine_name,
-                    default_table=self.default_table,
-                )
-                if table is None:
-                    return []
-            return self.read_table(connection, table)
-        finally:
-            self._close_connection(connection)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write embedded-database content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the embedded database file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-
-        Raises
-        ------
-        ValueError
-            If table selection is ambiguous.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        table = self.table_from_write_options(
-            options,
-            default=self.default_table,
-        )
-        if table is None:  # pragma: no cover - guarded by default
-            raise ValueError(
-                f'{self.format.value.upper()} write requires a table name',
-            )
-        path.parent.mkdir(parents=True, exist_ok=True)
-        connection = self.connect(path)
-        try:
-            return self.write_table(connection, table, rows)
-        finally:
-            self._close_connection(connection)
-
-    @abstractmethod
-    def connect(
-        self,
-        path: Path,
-    ) -> Any:
-        """
-        Open and return a database connection for *path*.
-        """
-
-    @abstractmethod
-    def list_tables(
-        self,
-        connection: Any,
-    ) -> list[str]:
-        """
-        Return readable table names from *connection*.
-        """
-
-    @abstractmethod
-    def read_table(
-        self,
-        connection: Any,
-        table: str,
-    ) -> JSONList:
-        """
-        Read rows from *table*.
-        """
-
-    @abstractmethod
-    def write_table(
-        self,
-        connection: Any,
-        table: str,
-        rows: JSONList,
-    ) -> int:
-        """
-        Write *rows* to *table*.
-        """
 
 
 class LogEventFileHandlerABC(FileHandlerABC):
