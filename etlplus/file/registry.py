@@ -93,8 +93,7 @@ def _handler_spec(
     Build the ``module:Class`` import spec for one handler format.
     """
     return (
-        f'etlplus.file.{file_format.value}:'
-        f'{_handler_class_name(file_format)}'
+        f'etlplus.file.{file_format.value}:{_handler_class_name(file_format)}'
     )
 
 
