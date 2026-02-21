@@ -57,6 +57,7 @@ __all__ = [
     'SpreadsheetFileHandlerABC',
     'StandardDelimitedTextFileHandlerABC',
     'TemplateFileHandlerABC',
+    'TemplateTextIOMixin',
     'TextFixedWidthFileHandlerABC',
 ]
 
@@ -1875,3 +1876,64 @@ class TemplateFileHandlerABC(FileHandlerABC):
         str
             Rendered template text.
         """
+
+
+class TemplateTextIOMixin:
+    """
+    Shared template-file read/write implementation.
+
+    This mixin keeps template handlers focused on engine-specific rendering
+    while centralizing payload shape validation and text IO.
+    """
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read and return a single template row from *path*.
+        """
+        template_handler = cast(TemplateFileHandlerABC, self)
+        return [
+            {
+                template_handler.template_key: path.read_text(
+                    encoding=template_handler.encoding_from_read_options(
+                        options,
+                    ),
+                ),
+            },
+        ]
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write one template row to *path* and return row count.
+        """
+        template_handler = cast(TemplateFileHandlerABC, self)
+        rows = normalize_records(data, template_handler.format_name)
+        if not rows:
+            return 0
+        if len(rows) != 1:
+            raise TypeError(
+                f'{template_handler.format_name} payloads must contain '
+                'exactly one object',
+            )
+        template_value = rows[0].get(template_handler.template_key)
+        if not isinstance(template_value, str):
+            raise TypeError(
+                f'{template_handler.format_name} payloads must include a '
+                f'"{template_handler.template_key}" string',
+            )
+        write_text(
+            path,
+            template_value,
+            encoding=template_handler.encoding_from_write_options(options),
+        )
+        return 1
