@@ -24,9 +24,8 @@ from ..types import JSONData
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import coerce_record_payload
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
+from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -45,7 +44,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class JsonFile(SemiStructuredTextFileHandlerABC):
+class JsonFile(RecordPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for JSON files.
     """
@@ -81,14 +80,14 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         _ = options
         return json.dumps(data, indent=2, ensure_ascii=False)
 
-    def loads(
+    def loads_payload(
         self,
         text: str,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> object:
         """
-        Parse JSON *text* into structured records.
+        Parse raw JSON text into a Python payload.
 
         Parameters
         ----------
@@ -99,11 +98,11 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
 
         Returns
         -------
-        JSONData
+        object
             Parsed payload.
         """
         _ = options
-        return coerce_record_payload(json.loads(text), format_name='JSON')
+        return json.loads(text)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
