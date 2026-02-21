@@ -18,6 +18,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,6 @@ from ..types import StrPath
 from ._imports import get_dependency
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -208,72 +208,6 @@ class AvroFile(BinarySerializationFileHandlerABC):
             reader = fastavro.reader(handle)
             return [cast(JSONDict, record) for record in reader]
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return AVRO content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the AVRO file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the AVRO file.
-        """
-        _ = options
-        fastavro = _fastavro()
-        with path.open('rb') as handle:
-            reader = fastavro.reader(handle)
-            return [cast(JSONDict, record) for record in reader]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to AVRO at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the AVRO file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        _ = options
-        records = normalize_records(data, 'AVRO')
-        if not records:
-            return 0
-
-        fastavro = _fastavro()
-        schema = _infer_schema(records)
-        parsed_schema = fastavro.parse_schema(schema)
-
-        ensure_parent_dir(path)
-        with path.open('wb') as handle:
-            fastavro.writer(handle, parsed_schema, records)
-
-        return len(records)
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -302,7 +236,7 @@ def read(
     return call_deprecated_module_read(
         path,
         __name__,
-        _AVRO_HANDLER.read,
+        cast(Callable[[Path], JSONList], _AVRO_HANDLER.read),
     )
 
 
