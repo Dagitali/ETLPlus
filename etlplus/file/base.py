@@ -20,9 +20,11 @@ from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
 from ..utils import count_records
+from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import read_delimited
 from ._io import read_text
+from ._io import require_dict_payload as _require_dict_payload
 from ._io import write_delimited
 from ._io import write_text
 from ._sql import resolve_table
@@ -40,20 +42,22 @@ __all__ = [
     'FileHandlerABC',
     'ReadOnlyFileHandlerABC',
     # Secondary / Category Base Classes
-    'DelimitedTextFileHandlerABC',
-    'StandardDelimitedTextFileHandlerABC',
-    'TextFixedWidthFileHandlerABC',
-    'SemiStructuredTextFileHandlerABC',
-    'ColumnarFileHandlerABC',
+    'ArchiveWrapperFileHandlerABC',
     'BinarySerializationFileHandlerABC',
+    'ColumnarFileHandlerABC',
+    'DelimitedTextFileHandlerABC',
+    'DictPayloadSemiStructuredTextFileHandlerABC',
     'EmbeddedDatabaseFileHandlerABC',
-    'SpreadsheetFileHandlerABC',
+    'LogEventFileHandlerABC',
+    'RecordPayloadSemiStructuredTextFileHandlerABC',
     'ReadOnlySpreadsheetFileHandlerABC',
     'ScientificDatasetFileHandlerABC',
+    'SemiStructuredTextFileHandlerABC',
     'SingleDatasetScientificFileHandlerABC',
-    'ArchiveWrapperFileHandlerABC',
-    'LogEventFileHandlerABC',
+    'SpreadsheetFileHandlerABC',
+    'StandardDelimitedTextFileHandlerABC',
     'TemplateFileHandlerABC',
+    'TextFixedWidthFileHandlerABC',
 ]
 
 
@@ -1183,6 +1187,83 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def coerce_dict_root_payload(
+        self,
+        payload: object,
+        *,
+        error_message: str | None = None,
+    ) -> JSONDict:
+        """
+        Coerce ``payload`` to a dictionary or raise ``TypeError``.
+
+        Parameters
+        ----------
+        payload : object
+            The raw payload to coerce.
+        error_message : str | None, optional
+            Custom error message for failed coercion. When omitted, a default
+            message referencing :attr:`format_name` is used.
+
+        Returns
+        -------
+        JSONDict
+            The coerced dictionary payload.
+
+        Raises
+        ------
+        TypeError
+            If coercion fails due to incompatible type.
+        """
+        if isinstance(payload, dict):
+            return cast(JSONDict, payload)
+        if error_message is None:
+            error_message = f'{self.format_name} root must be a dict'
+        raise TypeError(error_message)
+
+    def coerce_record_payload(
+        self,
+        payload: Any,
+    ) -> JSONData:
+        """
+        Coerce ``payload`` into object-or-object-list record form.
+
+        Parameters
+        ----------
+        payload : Any
+            The raw payload to coerce.
+
+        Returns
+        -------
+        JSONData
+            The coerced record payload.
+        """
+        return _coerce_record_payload(
+            payload,
+            format_name=self.format_name,
+        )
+
+    def require_dict_payload(
+        self,
+        data: JSONData,
+    ) -> JSONDict:
+        """
+        Validate and return one dictionary payload.
+
+        Parameters
+        ----------
+        data : JSONData
+            The data to validate as a dictionary payload.
+
+        Returns
+        -------
+        JSONDict
+            The validated dictionary payload.
+        """
+        return _require_dict_payload(
+            data,
+            format_name=self.format_name,
+        )
+
     @abstractmethod
     def loads(
         self,
@@ -1273,6 +1354,84 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
             trailing_newline=self.write_trailing_newline,
         )
         return self.count_written_records(data)
+
+
+class RecordPayloadSemiStructuredTextFileHandlerABC(
+    SemiStructuredTextFileHandlerABC,
+):
+    """
+    Shared base for semi-structured formats with record-like roots.
+    """
+
+    # -- Abstract Instance Methods -- #
+
+    @abstractmethod
+    def loads_payload(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> object:
+        """
+        Parse raw text into a Python payload prior to record coercion.
+        """
+
+    # -- Instance Methods -- #
+
+    def loads(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Parse text into object-or-object-list record payloads.
+        """
+        return self.coerce_record_payload(
+            self.loads_payload(text, options=options),
+        )
+
+
+class DictPayloadSemiStructuredTextFileHandlerABC(
+    SemiStructuredTextFileHandlerABC,
+):
+    """
+    Shared base for semi-structured formats that write dictionary payloads.
+    """
+
+    # -- Class Attributes -- #
+
+    allow_dict_root: ClassVar[bool] = True
+    allow_list_root: ClassVar[bool] = False
+
+    # -- Abstract Instance Methods -- #
+
+    @abstractmethod
+    def dumps_dict_payload(
+        self,
+        payload: JSONDict,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize one dictionary payload into format-specific text.
+        """
+
+    # -- Instance Methods -- #
+
+    def dumps(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize dictionary-root data into format-specific text.
+        """
+        return self.dumps_dict_payload(
+            self.require_dict_payload(data),
+            options=options,
+        )
 
 
 class ScientificDatasetFileHandlerABC(FileHandlerABC):
