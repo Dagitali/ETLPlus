@@ -115,7 +115,7 @@ class CsvFile(StandardDelimitedTextFileHandlerABC):
             path,
             rows,
             delimiter=self.delimiter_from_write_options(options),
-            format_name='CSV',
+            format_name=self.format_name,
         )
 
 
