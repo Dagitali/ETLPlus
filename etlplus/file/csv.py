@@ -27,8 +27,8 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import read_delimited
 from ._io import write_delimited
-from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
+from .base import StandardDelimitedTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -47,7 +47,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class CsvFile(DelimitedTextFileHandlerABC):
+class CsvFile(StandardDelimitedTextFileHandlerABC):
     """
     Handler implementation for CSV files.
     """
@@ -94,7 +94,7 @@ class CsvFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write CSV *rows* to *path*.
+        Write CSV *rows* to *path* and return the number written.
 
         Parameters
         ----------
@@ -120,6 +120,7 @@ class CsvFile(DelimitedTextFileHandlerABC):
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _CSV_HANDLER = CsvFile()
 
