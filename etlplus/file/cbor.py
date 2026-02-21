@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from ..types import JSONData
@@ -27,7 +26,6 @@ from ._imports import get_dependency
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import coerce_record_payload
-from ._io import ensure_parent_dir
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -120,60 +118,6 @@ class CborFile(BinarySerializationFileHandlerABC):
         cbor2 = _cbor2()
         decoded = cbor2.loads(payload)
         return coerce_record_payload(decoded, format_name='CBOR')
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return CBOR content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the CBOR file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the CBOR file.
-        """
-        _ = options
-        return self.loads_bytes(path.read_bytes())
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to CBOR at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the CBOR file on disk.
-        data : JSONData
-            Data to write as CBOR file.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the CBOR file.
-        """
-        records = normalize_records(data, 'CBOR')
-        payload = self.dumps_bytes(data, options=options)
-        ensure_parent_dir(path)
-        path.write_bytes(payload)
-        return len(records)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
