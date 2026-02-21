@@ -115,6 +115,7 @@ class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
             template_obj = jinja2.Template(template)
         return template_obj.render(**context)
 
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
