@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
+from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
 from ._io import call_deprecated_module_read
@@ -22,7 +24,6 @@ from .base import ReadOptions
 from .base import WriteOptions
 from .enums import CompressionFormat
 from .enums import FileFormat
-from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -138,20 +139,13 @@ def _resolve_format(
     -------
     FileFormat
         The inferred inner file format.
-
-    Raises
-    ------
-    ValueError
-        If the file format cannot be inferred from the filename.
     """
-    fmt, compression = infer_file_format_and_compression(filename)
-    if compression is not None and compression is not CompressionFormat.ZIP:
-        raise ValueError(f'Unexpected compression in archive: {filename}')
-    if fmt is None:
-        raise ValueError(
-            f'Cannot infer file format from compressed file {filename!r}',
-        )
-    return fmt
+    fmt = infer_archive_payload_format(
+        filename,
+        allowed_compressions=(None, CompressionFormat.ZIP),
+        compression_error=f'Unexpected compression in archive: {filename}',
+    )
+    return cast(FileFormat, fmt)
 
 
 def _decode_entry_with_core(
@@ -314,12 +308,12 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If the inner file format cannot be inferred from the provided
             options.
         """
-        _fmt, output_compression = infer_file_format_and_compression(path)
-        if (
-            output_compression is not None
-            and output_compression is not CompressionFormat.ZIP
-        ):
-            raise ValueError(f'Unexpected compression in archive: {path}')
+        _ = infer_archive_payload_format(
+            path,
+            allowed_compressions=(None, CompressionFormat.ZIP),
+            compression_error=f'Unexpected compression in archive: {path}',
+            require_format=False,
+        )
 
         default_inner_name = Path(path.name).with_suffix('').name
         inner_name = self.inner_name_from_write_options(
