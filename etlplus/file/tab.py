@@ -29,8 +29,8 @@ from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import read_delimited
 from ._io import write_delimited
-from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
+from .base import StandardDelimitedTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -49,7 +49,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class TabFile(DelimitedTextFileHandlerABC):
+class TabFile(StandardDelimitedTextFileHandlerABC):
     """
     Handler implementation for TAB files.
     """
@@ -96,7 +96,7 @@ class TabFile(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write TAB *rows* to *path*.
+        Write TAB *rows* to *path* and return the number written.
 
         Parameters
         ----------
@@ -122,6 +122,7 @@ class TabFile(DelimitedTextFileHandlerABC):
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _TAB_HANDLER = TabFile()
 
