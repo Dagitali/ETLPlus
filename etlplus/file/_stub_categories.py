@@ -81,6 +81,18 @@ class StubBinarySerializationFileHandlerABC(
 
     # -- Instance Methods -- #
 
+    def dumps_bytes(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> bytes:
+        """
+        Raise :class:`NotImplementedError` for binary payload writes.
+        """
+        _stub_write(self, self._stub_path(), data, options=options)
+        return b''
+
     def loads_bytes(
         self,
         payload: bytes,
@@ -93,17 +105,28 @@ class StubBinarySerializationFileHandlerABC(
         _ = payload
         return _stub_read(self, self._stub_path(), options=options)
 
-    def dumps_bytes(
+    def read(
         self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Raise :class:`NotImplementedError` for binary payload reads.
+        """
+        return cast(JSONList, _stub_read(self, path, options=options))
+
+    def write(
+        self,
+        path: Path,
         data: JSONData,
         *,
         options: WriteOptions | None = None,
-    ) -> bytes:
+    ) -> int:
         """
         Raise :class:`NotImplementedError` for binary payload writes.
         """
-        _stub_write(self, self._stub_path(), data, options=options)
-        return b''
+        return _stub_write(self, path, data, options=options)
 
 
 class StubEmbeddedDatabaseFileHandlerABC(
