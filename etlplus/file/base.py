@@ -532,16 +532,7 @@ class BinarySerializationFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'binary_serialization'
 
-    # -- Instance Methods -- #
-
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for binary write operations.
-        """
-        return count_records(data)
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def loads_bytes(
@@ -564,6 +555,69 @@ class BinarySerializationFileHandlerABC(FileHandlerABC):
         """
         Serialize structured data into binary payload bytes.
         """
+
+    # -- Instance Methods -- #
+
+    def count_written_records(
+        self,
+        data: JSONData,
+    ) -> int:
+        """
+        Return the default record count for binary write operations.
+        """
+        return count_records(data)
+
+    def read(
+        self,
+        path: Path,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read and decode binary serialization payload bytes from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the binary file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONData
+            Decoded structured payload.
+        """
+        return self.loads_bytes(path.read_bytes(), options=options)
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Encode and write binary serialization payload bytes to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the binary file on disk.
+        data : JSONData
+            Payload to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            Number of records written.
+        """
+        payload = self.dumps_bytes(data, options=options)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+        return self.count_written_records(data)
 
 
 class ColumnarFileHandlerABC(FileHandlerABC):
