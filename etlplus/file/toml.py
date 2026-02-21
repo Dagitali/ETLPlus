@@ -22,13 +22,13 @@ import tomllib
 from typing import Any
 
 from ..types import JSONData
+from ..types import JSONDict
 from ..types import StrPath
 from ._imports import get_optional_module
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import require_dict_payload
+from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -74,7 +74,7 @@ def _toml() -> Any:
 # SECTION: CLASSES ========================================================== #
 
 
-class TomlFile(SemiStructuredTextFileHandlerABC):
+class TomlFile(DictPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for TOML files.
     """
@@ -82,14 +82,12 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.TOML
-    allow_dict_root = True
-    allow_list_root = False
 
     # -- Instance Methods -- #
 
-    def dumps(
+    def dumps_dict_payload(
         self,
-        data: JSONData,
+        payload: JSONDict,
         *,
         options: WriteOptions | None = None,
     ) -> str:
@@ -98,8 +96,8 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
 
         Parameters
         ----------
-        data : JSONData
-            Payload to serialize.
+        payload : JSONDict
+            Dictionary payload to serialize.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -109,7 +107,6 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             Serialized TOML text.
         """
         _ = options
-        payload = require_dict_payload(data, format_name='TOML')
 
         toml_writer: Any
         try:
@@ -146,10 +143,10 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             If the TOML root is not a table (dictionary).
         """
         _ = options
-        payload = tomllib.loads(text)
-        if isinstance(payload, dict):
-            return payload
-        raise TypeError('TOML root must be a table (dict)')
+        return self.coerce_dict_root_payload(
+            tomllib.loads(text),
+            error_message='TOML root must be a table (dict)',
+        )
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
