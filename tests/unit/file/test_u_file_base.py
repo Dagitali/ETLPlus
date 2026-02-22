@@ -469,8 +469,8 @@ class TestOptionsContracts:
         read_options = ReadOptions(dataset='features')
         write_options = WriteOptions(dataset='labels')
 
-        assert handler.dataset_from_read_options(None) is None
-        assert handler.dataset_from_read_options(read_options) == 'features'
+        assert handler.dataset_from_options(None) is None
+        assert handler.dataset_from_options(read_options) == 'features'
         assert (
             handler.resolve_read_dataset(None, options=read_options)
             == 'features'
@@ -487,8 +487,8 @@ class TestOptionsContracts:
             == 'fallback'
         )
 
-        assert handler.dataset_from_write_options(None) is None
-        assert handler.dataset_from_write_options(write_options) == 'labels'
+        assert handler.dataset_from_options(None) is None
+        assert handler.dataset_from_options(write_options) == 'labels'
         assert (
             handler.resolve_write_dataset(None, options=write_options)
             == 'labels'
