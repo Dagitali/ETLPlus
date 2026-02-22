@@ -83,7 +83,7 @@ class CsvFile(StandardDelimitedTextFileHandlerABC):
         """
         return read_delimited(
             path,
-            delimiter=self.delimiter_from_read_options(options),
+            delimiter=self.delimiter_from_options(options),
         )
 
     def write_rows(
@@ -114,7 +114,7 @@ class CsvFile(StandardDelimitedTextFileHandlerABC):
         return write_delimited(
             path,
             rows,
-            delimiter=self.delimiter_from_write_options(options),
+            delimiter=self.delimiter_from_options(options),
             format_name=self.format_name,
         )
 
