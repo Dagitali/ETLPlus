@@ -468,9 +468,11 @@ class FileHandlerOption:
         self,
         options: ReadOptions | WriteOptions | None,
         attr_name: str,
+        *,
+        default: Any | None = None,
     ) -> Any | None:
         """
-        Return one option attribute value when present.
+        Return one option attribute value or a provided default.
 
         Parameters
         ----------
@@ -478,15 +480,19 @@ class FileHandlerOption:
             Options object to extract the attribute from.
         attr_name : str
             Name of the attribute to extract.
+        default : Any | None, optional
+            Fallback value to return when the attribute is missing.
+            Defaults to ``None``.
 
         Returns
         -------
         Any | None
-            The attribute value when present, else ``None``.
+            The attribute value when present, else *default*.
         """
         if options is None:
-            return None
-        return getattr(options, attr_name)
+            return default
+        value = getattr(options, attr_name)
+        return default if value is None else value
 
     # -- Instance Methods -- #
 
@@ -512,10 +518,10 @@ class FileHandlerOption:
         str
             Text encoding from *options* when present, else *default*.
         """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
+        return cast(
+            str,
+            self._option_attr(options, 'encoding', default=default),
+        )
 
     def extra_option(
         self,
@@ -568,10 +574,10 @@ class FileHandlerOption:
         str
             XML-like root tag from *options* when present, else *default*.
         """
-        value = self._option_attr(options, 'root_tag')
-        if value is not None:
-            return cast(str, value)
-        return default
+        return cast(
+            str,
+            self._option_attr(options, 'root_tag', default=default),
+        )
 
 
 class ArchiveInnerNameOption(FileHandlerOption):
@@ -590,10 +596,10 @@ class ArchiveInnerNameOption(FileHandlerOption):
         """
         Extract archive member selector from read/write options.
         """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
+        return cast(
+            str | None,
+            self._option_attr(options, 'inner_name', default=default),
+        )
 
 
 class DelimitedOption(FileHandlerOption):
@@ -616,9 +622,7 @@ class DelimitedOption(FileHandlerOption):
         """
         Extract delimiter override from read/write options.
         """
-        override = None
-        if options is not None:
-            override = options.extras.get('delimiter')
+        override = self.extra_option(options, 'delimiter')
         if override is not None:
             return str(override)
         if default is not None:
@@ -653,10 +657,10 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         """
         Extract table selector from read/write options.
         """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
+        return cast(
+            str | None,
+            self._option_attr(options, 'table', default=default),
+        )
 
 
 class ScientificDatasetOption(FileHandlerOption):
@@ -673,10 +677,10 @@ class ScientificDatasetOption(FileHandlerOption):
         """
         Extract dataset selector from read/write options.
         """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
+        return cast(
+            str | None,
+            self._option_attr(options, 'dataset', default=None),
+        )
 
     def resolve_dataset(
         self,
@@ -713,9 +717,8 @@ class SpreadsheetSheetOption(FileHandlerOption):
         """
         Extract sheet selector from read/write options.
         """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
+        resolved_default = self.default_sheet if default is None else default
+        return cast(
+            str | int,
+            self._option_attr(options, 'sheet', default=resolved_default),
+        )
