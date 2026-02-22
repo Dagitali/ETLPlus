@@ -106,7 +106,7 @@ class LogFile(LogEventFileHandlerABC):
         JSONList
             Parsed event dictionaries.
         """
-        encoding = self.encoding_from_read_options(options)
+        encoding = self.encoding_from_options(options)
         rows: JSONList = []
         with path.open('r', encoding=encoding) as handle:
             for raw_line in handle:
@@ -166,7 +166,7 @@ class LogFile(LogEventFileHandlerABC):
         write_text(
             path,
             payload,
-            encoding=self.encoding_from_write_options(options),
+            encoding=self.encoding_from_options(options),
             trailing_newline=True,
         )
         return len(rows)
