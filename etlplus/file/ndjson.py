@@ -85,7 +85,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         JSONList
             The list of dictionaries read from the NDJSON file.
         """
-        encoding = self.encoding_from_read_options(options)
+        encoding = self.encoding_from_options(options)
         return cast(
             JSONList,
             self.loads(read_text(path, encoding=encoding), options=options),
@@ -118,7 +118,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         rows = normalize_records(data, 'NDJSON')
         if not rows:
             return 0
-        encoding = self.encoding_from_write_options(options)
+        encoding = self.encoding_from_options(options)
         write_text(
             path,
             self.dumps(rows, options=options),
