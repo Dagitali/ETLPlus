@@ -679,12 +679,24 @@ class BinarySerializationABC(ABC):
             Structured data parsed from the binary payload.
         """
 
+    # -- Instance Methods -- #
+
     def count_written_records(
         self,
         data: JSONData,
     ) -> int:
         """
         Return the default record count for binary write operations.
+
+        Parameters
+        ----------
+        data : JSONData
+            Structured data to count records for.
+
+        Returns
+        -------
+        int
+            Number of records in the structured data.
         """
         return count_records(data)
 
@@ -779,25 +791,22 @@ class ColumnarABC(ABC):
         """
 
     @abstractmethod
-    def write_table(
+    def records_to_table(
         self,
-        path: Path,
-        table: Any,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
+        data: JSONData,
+    ) -> Any:
         """
-        Write a columnar table object to *path*.
+        Convert row-oriented records into a table object.
 
         Parameters
         ----------
-        path : Path
-            Path to write the columnar table to.
-        table : Any
-            Columnar table object to write.
-        options : WriteOptions | None, optional
-            Write options to use when encoding the table.
-            Defaults to ``None``.
+        data : JSONData
+            Row-oriented records to convert.
+
+        Returns
+        -------
+        Any
+            Columnar table object created from the records.
         """
 
     @abstractmethod
@@ -820,22 +829,25 @@ class ColumnarABC(ABC):
         """
 
     @abstractmethod
-    def records_to_table(
+    def write_table(
         self,
-        data: JSONData,
-    ) -> Any:
+        path: Path,
+        table: Any,
+        *,
+        options: WriteOptions | None = None,
+    ) -> None:
         """
-        Convert row-oriented records into a table object.
+        Write a columnar table object to *path*.
 
         Parameters
         ----------
-        data : JSONData
-            Row-oriented records to convert.
-
-        Returns
-        -------
-        Any
-            Columnar table object created from the records.
+        path : Path
+            Path to write the columnar table to.
+        table : Any
+            Columnar table object to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the table.
+            Defaults to ``None``.
         """
 
     # -- Instance Methods -- #
@@ -921,6 +933,16 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     ) -> Any:
         """
         Open and return a database connection for *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the embedded database file on disk.
+
+        Returns
+        -------
+        Any
+            Database connection object.
         """
 
     @abstractmethod
@@ -930,6 +952,16 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     ) -> list[str]:
         """
         Return readable table names from *connection*.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object.
+
+        Returns
+        -------
+        list[str]
+            List of readable table names.
         """
 
     @abstractmethod
@@ -940,6 +972,18 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     ) -> JSONList:
         """
         Read rows from *table*.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object.
+        table : str
+            Name of the table to read.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the table.
         """
 
     @abstractmethod
@@ -951,6 +995,20 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     ) -> int:
         """
         Write *rows* to *table*.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object.
+        table : str
+            Name of the table to write to.
+        rows : JSONList
+            Row-oriented records to write.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
 
     # -- Instance Methods -- #
@@ -989,6 +1047,11 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     ) -> None:
         """
         Close a database connection.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object.
         """
         closer = getattr(connection, 'close', None)
         if callable(closer):
@@ -1101,6 +1164,19 @@ class RowReadWriteABC(ABC):
     ) -> JSONList:
         """
         Read row records from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the row records from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the file.
         """
 
     @abstractmethod
@@ -1113,6 +1189,21 @@ class RowReadWriteABC(ABC):
     ) -> int:
         """
         Write row records to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the row records to.
+        rows : JSONList
+            Row-oriented records to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
 
     # -- Instance Methods -- #
@@ -1125,6 +1216,19 @@ class RowReadWriteABC(ABC):
     ) -> JSONList:
         """
         Read and return row-oriented content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the row records from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the file.
         """
         return self.read_rows(path, options=options)
 
@@ -1137,6 +1241,21 @@ class RowReadWriteABC(ABC):
     ) -> int:
         """
         Write row-oriented content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the row records to.
+        data : JSONData
+            Row-oriented records to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
         return self.write_rows(
             path,
@@ -1197,6 +1316,19 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
     ) -> JSONData:
         """
         Read and return semi-structured text content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the row records from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONData
+            Semi-structured text content extracted from the file.
         """
         return self.loads(
             read_text(path, encoding=self.encoding_from_read_options(options)),
@@ -1212,6 +1344,21 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
     ) -> int:
         """
         Write semi-structured text content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the row records to.
+        data : JSONData
+            Row-oriented records to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the row records.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
         write_text(
             path,
@@ -1402,6 +1549,8 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
         int
             The number of records written to the dataset.
         """
+
+    # -- Instance Methods -- #
 
     def read(
         self,
