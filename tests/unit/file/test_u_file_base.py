@@ -562,8 +562,8 @@ class TestOptionsContracts:
             ),
             (
                 SqliteFile,
-                'table_from_read_options',
-                'table_from_write_options',
+                'table_from_options',
+                'table_from_options',
                 ReadOptions(table='events'),
                 WriteOptions(table='staging'),
                 None,
