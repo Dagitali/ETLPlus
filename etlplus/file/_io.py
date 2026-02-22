@@ -832,14 +832,14 @@ class SpreadsheetSheetOption(FileHandlerOption):
 
     default_sheet: ClassVar[str | int]
 
-    def sheet_from_read_options(
+    def sheet_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         *,
         default: str | int | None = None,
     ) -> str | int:
         """
-        Extract sheet selector from read options.
+        Extract sheet selector from read/write options.
         """
         value = self._option_attr(options, 'sheet')
         if value is not None:
@@ -847,33 +847,3 @@ class SpreadsheetSheetOption(FileHandlerOption):
         if default is not None:
             return default
         return self.default_sheet
-
-    def sheet_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int:
-        """
-        Extract sheet selector from write options.
-        """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default

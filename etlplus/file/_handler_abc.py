@@ -893,7 +893,7 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         """
         Read and return spreadsheet content from *path*.
         """
-        sheet = self.sheet_from_read_options(options)
+        sheet = self.sheet_from_options(options)
         return self.read_sheet(path, sheet=sheet, options=options)
 
     def write(
@@ -923,6 +923,6 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         rows = normalize_records(data, self.format_name)
         if not rows:
             return 0
-        sheet = self.sheet_from_write_options(options)
+        sheet = self.sheet_from_options(options)
         path.parent.mkdir(parents=True, exist_ok=True)
         return self.write_sheet(path, rows, sheet=sheet, options=options)
