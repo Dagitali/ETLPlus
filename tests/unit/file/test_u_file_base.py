@@ -472,15 +472,14 @@ class TestOptionsContracts:
         assert handler.dataset_from_options(None) is None
         assert handler.dataset_from_options(read_options) == 'features'
         assert (
-            handler.resolve_read_dataset(None, options=read_options)
-            == 'features'
+            handler.resolve_dataset(None, options=read_options) == 'features'
         )
         assert (
-            handler.resolve_read_dataset('explicit', options=read_options)
+            handler.resolve_dataset('explicit', options=read_options)
             == 'explicit'
         )
         assert (
-            handler.resolve_read_dataset(
+            handler.resolve_dataset(
                 None,
                 default='fallback',
             )
@@ -489,15 +488,12 @@ class TestOptionsContracts:
 
         assert handler.dataset_from_options(None) is None
         assert handler.dataset_from_options(write_options) == 'labels'
+        assert handler.resolve_dataset(None, options=write_options) == 'labels'
         assert (
-            handler.resolve_write_dataset(None, options=write_options)
-            == 'labels'
-        )
-        assert (
-            handler.resolve_write_dataset('explicit', options=write_options)
+            handler.resolve_dataset('explicit', options=write_options)
             == 'explicit'
         )
-        assert handler.resolve_write_dataset(None, default='fallback') == (
+        assert handler.resolve_dataset(None, default='fallback') == (
             'fallback'
         )
 
