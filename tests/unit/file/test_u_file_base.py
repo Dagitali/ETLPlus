@@ -514,8 +514,8 @@ class TestOptionsContracts:
         [
             (
                 _DelimitedStub,
-                'delimiter_from_read_options',
-                'delimiter_from_write_options',
+                'delimiter_from_options',
+                'delimiter_from_options',
                 ReadOptions(extras={'delimiter': '|'}),
                 WriteOptions(extras={'delimiter': '\t'}),
                 ',',
