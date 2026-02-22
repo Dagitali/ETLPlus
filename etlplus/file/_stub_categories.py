@@ -318,7 +318,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Read content from *path* through the single-dataset contract.
         """
-        dataset = self.resolve_read_dataset(options=options)
+        dataset = self.resolve_dataset(options=options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def read_dataset(
@@ -347,7 +347,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Write *data* to *path* through the single-dataset contract.
         """
-        dataset = self.resolve_write_dataset(options=options)
+        dataset = self.resolve_dataset(options=options)
         return self.write_dataset(
             path,
             data,
