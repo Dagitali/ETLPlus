@@ -776,33 +776,15 @@ class ScientificDatasetOption(FileHandlerOption):
             return cast(str, value)
         return None
 
-    def resolve_read_dataset(
+    def resolve_dataset(
         self,
         dataset: str | None = None,
         *,
-        options: ReadOptions | None = None,
+        options: ReadOptions | WriteOptions | None = None,
         default: str | None = None,
     ) -> str | None:
         """
-        Resolve read-time dataset selection using explicit, options, then
-        default.
-        """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_options(options)
-        if from_options is not None:
-            return from_options
-        return default
-
-    def resolve_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Resolve write-time dataset selection using explicit, options, then
+        Resolve dataset selection using explicit, options, then
         default.
         """
         if dataset is not None:

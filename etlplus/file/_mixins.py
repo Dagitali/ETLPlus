@@ -138,7 +138,7 @@ class SingleDatasetValidation(ScientificDatasetOption):
         """
         Resolve and validate single-dataset read selection.
         """
-        resolved = self.resolve_read_dataset(dataset, options=options)
+        resolved = self.resolve_dataset(dataset, options=options)
         self.validate_single_dataset_key(resolved)
         return resolved
 
@@ -151,7 +151,7 @@ class SingleDatasetValidation(ScientificDatasetOption):
         """
         Resolve and validate single-dataset write selection.
         """
-        resolved = self.resolve_write_dataset(dataset, options=options)
+        resolved = self.resolve_dataset(dataset, options=options)
         self.validate_single_dataset_key(resolved)
         return resolved
 
