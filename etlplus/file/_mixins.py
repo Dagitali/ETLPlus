@@ -16,12 +16,15 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
+from ._io import ArchiveInnerNameOption
 from ._io import BinarySerializationABC
 from ._io import ColumnarABC
+from ._io import DelimitedOption
 from ._io import EmbeddedDatabaseABC
+from ._io import EmbeddedDatabaseTableOption
 from ._io import FileHandlerOption
 from ._io import RowReadWriteABC
-from ._io import ScientificDataseABC
+from ._io import ScientificDatasetABC
 from ._io import ScientificDatasetOption
 from ._io import SemiStructuredTextABC
 from ._io import SpreadsheetSheetABC
@@ -48,7 +51,7 @@ __all__ = [
     'ColumnarABC',
     'EmbeddedDatabaseABC',
     'RowReadWriteABC',
-    'ScientificDataseABC',
+    'ScientificDatasetABC',
     'SemiStructuredTextABC',
     'SingleDatasetValidation',
     'SpreadsheetSheetABC',
@@ -61,207 +64,6 @@ __all__ = [
 
 
 # SECTION: CLASSES ========================================================== #
-
-
-class ArchiveInnerNameOption(FileHandlerOption):
-    """
-    Shared helpers for archive member selection options.
-    """
-
-    # -- Instance Methods -- #
-
-    def inner_name_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default value to return if the option is not present.
-
-        Returns
-        -------
-        str | None
-            The archive member selector if present, else *default*.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default value to return if the option is not present.
-
-        Returns
-        -------
-        str | None
-            The archive member selector if present, else *default*.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-
-class DelimitedOption(FileHandlerOption):
-    """
-    Shared helpers for delimiter overrides on delimited text handlers.
-    """
-
-    # -- Class Attributes -- #
-
-    delimiter: ClassVar[str]
-
-    # -- Instance Methods -- #
-
-    def delimiter_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default delimiter to use if not specified in options.
-
-        Returns
-        -------
-        str
-            The delimiter to use.
-        """
-        override = self.read_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
-
-    def delimiter_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default delimiter to use if not specified in options.
-
-        Returns
-        -------
-        str
-            The delimiter to use.
-        """
-        override = self.write_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
-
-
-class EmbeddedDatabaseTableOption(FileHandlerOption):
-    """
-    Shared helpers for embedded-database table selection and cleanup.
-    """
-
-    # -- Instance Methods -- #
-
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default value to return if the option is not present.
-
-        Returns
-        -------
-        str | None
-            The table selector if present, else *default*.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Options to extract from, or ``None`` to skip.
-        default : str | None, optional
-            Default value to return if the option is not present.
-
-        Returns
-        -------
-        str | None
-            The table selector if present, else *default*.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def close_connection(
-        connection: Any,
-    ) -> None:
-        """
-        Close a database connection when it exposes a ``close`` method.
-        """
-        closer = getattr(connection, 'close', None)
-        if callable(closer):
-            closer()
 
 
 class SemiStructuredPayloadMixin:

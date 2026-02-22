@@ -634,6 +634,125 @@ class FileHandlerOption:
         return options.extras.get(key, default)
 
 
+class ArchiveInnerNameOption(FileHandlerOption):
+    """
+    Shared helpers for archive member selection options.
+    """
+
+    def inner_name_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract archive member selector from read options.
+        """
+        value = self._option_attr(options, 'inner_name')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+    def inner_name_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract archive member selector from write options.
+        """
+        value = self._option_attr(options, 'inner_name')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+
+class DelimitedOption(FileHandlerOption):
+    """
+    Shared helpers for delimiter overrides on delimited text handlers.
+    """
+
+    delimiter: ClassVar[str]
+
+    def delimiter_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str:
+        """
+        Extract delimiter override from read options.
+        """
+        override = self.read_extra_option(options, 'delimiter')
+        if override is not None:
+            return str(override)
+        if default is not None:
+            return default
+        return self.delimiter
+
+    def delimiter_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str:
+        """
+        Extract delimiter override from write options.
+        """
+        override = self.write_extra_option(options, 'delimiter')
+        if override is not None:
+            return str(override)
+        if default is not None:
+            return default
+        return self.delimiter
+
+
+class EmbeddedDatabaseTableOption(FileHandlerOption):
+    """
+    Shared helpers for embedded-database table selection and cleanup.
+    """
+
+    def close_connection(
+        self,
+        connection: Any,
+    ) -> None:
+        """
+        Close a database connection when it exposes a ``close`` method.
+        """
+        closer = getattr(connection, 'close', None)
+        if callable(closer):
+            closer()
+
+    def table_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from read options.
+        """
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+    def table_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from write options.
+        """
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+
 # SECTION: ABSTRACT BASE CLASSES ============================================ #
 
 
@@ -913,7 +1032,7 @@ class ColumnarABC(ABC):
         return len(rows)
 
 
-class EmbeddedDatabaseABC(FileHandlerOption, ABC):
+class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
     """
     Shared read/write dispatch for embedded-database handlers.
     """
@@ -1013,50 +1132,6 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
 
     # -- Instance Methods -- #
 
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from read options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def close_connection(
-        self,
-        connection: Any,
-    ) -> None:
-        """
-        Close a database connection.
-
-        Parameters
-        ----------
-        connection : Any
-            Database connection object.
-        """
-        closer = getattr(connection, 'close', None)
-        if callable(closer):
-            closer()
-
     def read(
         self,
         path: Path,
@@ -1079,10 +1154,9 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
         JSONList
             Row-oriented records extracted from the embedded-database.
         """
-        database_handler = cast(Any, self)
         connection = self.connect(path)
         try:
-            table = database_handler.table_from_read_options(options)
+            table = self.table_from_read_options(options)
             if table is None:
                 table = resolve_table(
                     self.list_tables(connection),
@@ -1093,7 +1167,7 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
                     return []
             return self.read_table(connection, table)
         finally:
-            database_handler.close_connection(connection)
+            self.close_connection(connection)
 
     def write(
         self,
@@ -1126,11 +1200,10 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
             If no table name is specified in options and no default table can
             be resolved from the database.
         """
-        database_handler = cast(Any, self)
         rows = normalize_records(data, self.format_name)
         if not rows:
             return 0
-        table = database_handler.table_from_write_options(
+        table = self.table_from_write_options(
             options,
             default=self.default_table,
         )
@@ -1141,7 +1214,7 @@ class EmbeddedDatabaseABC(FileHandlerOption, ABC):
         try:
             return self.write_table(connection, table, rows)
         finally:
-            database_handler.close_connection(connection)
+            self.close_connection(connection)
 
 
 class RowReadWriteABC(ABC):
@@ -1481,7 +1554,7 @@ class SpreadsheetSheetOption(FileHandlerOption):
         return self.default_sheet
 
 
-class ScientificDataseABC(ScientificDatasetOption, ABC):
+class ScientificDatasetABC(ScientificDatasetOption, ABC):
     """
     Shared read/write dispatch for scientific dataset handlers.
     """

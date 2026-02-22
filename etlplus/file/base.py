@@ -17,19 +17,18 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
+from ._io import ArchiveInnerNameOption
 from ._io import BinarySerializationABC
 from ._io import ColumnarABC
+from ._io import DelimitedOption
 from ._io import EmbeddedDatabaseABC
 from ._io import FileHandlerOption
 from ._io import RowReadWriteABC
-from ._io import ScientificDataseABC
+from ._io import ScientificDatasetABC
 from ._io import SemiStructuredTextABC
 from ._io import SpreadsheetSheetABC
 from ._io import read_delimited
 from ._io import write_delimited
-from ._mixins import ArchiveInnerNameOption
-from ._mixins import DelimitedOption
-from ._mixins import EmbeddedDatabaseTableOption
 from ._mixins import SemiStructuredPayloadMixin
 from ._mixins import SingleDatasetValidation
 from ._mixins import TemplateTextIOMixin
@@ -468,7 +467,6 @@ class TextFixedWidthFileHandlerABC(RowReadWriteABC, FileHandlerABC):
 
 class EmbeddedDatabaseFileHandlerABC(
     EmbeddedDatabaseABC,
-    EmbeddedDatabaseTableOption,
     FileHandlerABC,
 ):
     """
@@ -615,7 +613,7 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
 
 
 class ScientificDatasetFileHandlerABC(
-    ScientificDataseABC,
+    ScientificDatasetABC,
     FileHandlerABC,
 ):
     """
