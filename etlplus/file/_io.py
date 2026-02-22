@@ -635,6 +635,8 @@ class ArchiveInnerNameOption(FileHandlerOption):
     Shared helpers for archive member selection options.
     """
 
+    # -- Instance Methods -- #
+
     def inner_name_from_read_options(
         self,
         options: ReadOptions | None,
@@ -669,7 +671,11 @@ class DelimitedOption(FileHandlerOption):
     Shared helpers for delimiter overrides on delimited text handlers.
     """
 
+    # -- Class Attributes -- #
+
     delimiter: ClassVar[str]
+
+    # -- Instance Methods -- #
 
     def delimiter_from_read_options(
         self,
@@ -709,6 +715,8 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
     Shared helpers for embedded-database table selection and cleanup.
     """
 
+    # -- Instance Methods -- #
+
     def close_connection(
         self,
         connection: Any,
@@ -733,6 +741,128 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         if value is not None:
             return cast(str, value)
         return default
+
+    def table_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from write options.
+        """
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+
+class ScientificDatasetOption(FileHandlerOption):
+    """
+    Shared helpers for scientific dataset selection options.
+    """
+
+    # -- Instance Methods -- #
+
+    def dataset_from_read_options(
+        self,
+        options: ReadOptions | None,
+    ) -> str | None:
+        """
+        Extract dataset selector from read options.
+        """
+        value = self._option_attr(options, 'dataset')
+        if value is not None:
+            return cast(str, value)
+        return None
+
+    def dataset_from_write_options(
+        self,
+        options: WriteOptions | None,
+    ) -> str | None:
+        """
+        Extract dataset selector from write options.
+        """
+        value = self._option_attr(options, 'dataset')
+        if value is not None:
+            return cast(str, value)
+        return None
+
+    def resolve_read_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | None = None,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Resolve read-time dataset selection using explicit, options, then
+        default.
+        """
+        if dataset is not None:
+            return dataset
+        from_options = self.dataset_from_read_options(options)
+        if from_options is not None:
+            return from_options
+        return default
+
+    def resolve_write_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Resolve write-time dataset selection using explicit, options, then
+        default.
+        """
+        if dataset is not None:
+            return dataset
+        from_options = self.dataset_from_write_options(options)
+        if from_options is not None:
+            return from_options
+        return default
+
+
+class SpreadsheetSheetOption(FileHandlerOption):
+    """
+    Shared helpers for spreadsheet sheet-selection options.
+    """
+
+    default_sheet: ClassVar[str | int]
+
+    def sheet_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int:
+        """
+        Extract sheet selector from read options.
+        """
+        value = self._option_attr(options, 'sheet')
+        if value is not None:
+            return cast(str | int, value)
+        if default is not None:
+            return default
+        return self.default_sheet
+
+    def sheet_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int:
+        """
+        Extract sheet selector from write options.
+        """
+        value = self._option_attr(options, 'sheet')
+        if value is not None:
+            return cast(str | int, value)
+        if default is not None:
+            return default
+        return self.default_sheet
 
     def table_from_write_options(
         self,
