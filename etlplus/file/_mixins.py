@@ -17,23 +17,23 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ._io import ArchiveInnerNameOption
-from ._io import BinarySerializationABC
-from ._io import ColumnarABC
 from ._io import DelimitedOption
-from ._io import EmbeddedDatabaseABC
 from ._io import EmbeddedDatabaseTableOption
 from ._io import FileHandlerOption
-from ._io import RowReadWriteABC
-from ._io import ScientificDatasetABC
-from ._io import ScientificDatasetOption
-from ._io import SemiStructuredTextABC
-from ._io import SpreadsheetSheetABC
-from ._io import SpreadsheetSheetOption
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import require_dict_payload as _require_dict_payload
 from ._io import stringify_value
 from ._io import write_text
+from ._io_abc import BinarySerializationABC
+from ._io_abc import ColumnarABC
+from ._io_abc import EmbeddedDatabaseABC
+from ._io_abc import RowReadWriteABC
+from ._io_abc import ScientificDatasetABC
+from ._io_abc import ScientificDatasetOption
+from ._io_abc import SemiStructuredTextABC
+from ._io_abc import SpreadsheetSheetABC
+from ._io_abc import SpreadsheetSheetOption
 
 if TYPE_CHECKING:
     from .base import ReadOptions
