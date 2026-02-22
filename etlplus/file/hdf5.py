@@ -153,7 +153,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         ValueError
             If the selected dataset key is missing or ambiguous.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
+        dataset = self.resolve_dataset(dataset, options=options)
         pandas = _pandas()
         try:
             store = pandas.HDFStore(path)
