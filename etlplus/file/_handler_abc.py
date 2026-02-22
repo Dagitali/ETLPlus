@@ -432,7 +432,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
         """
         connection = self.connect(path)
         try:
-            table = self.table_from_read_options(options)
+            table = self.table_from_options(options)
             if table is None:
                 table = resolve_table(
                     self.list_tables(connection),
@@ -479,7 +479,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
         rows = normalize_records(data, self.format_name)
         if not rows:
             return 0
-        table = self.table_from_write_options(
+        table = self.table_from_options(
             options,
             default=self.default_table,
         )

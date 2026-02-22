@@ -728,28 +728,14 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         if callable(closer):
             closer()
 
-    def table_from_read_options(
+    def table_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str | None:
         """
-        Extract table selector from read options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
+        Extract table selector from read/write options.
         """
         value = self._option_attr(options, 'table')
         if value is not None:
