@@ -637,28 +637,14 @@ class ArchiveInnerNameOption(FileHandlerOption):
 
     # -- Instance Methods -- #
 
-    def inner_name_from_read_options(
+    def inner_name_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str | None:
         """
-        Extract archive member selector from read options.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from write options.
+        Extract archive member selector from read/write options.
         """
         value = self._option_attr(options, 'inner_name')
         if value is not None:
