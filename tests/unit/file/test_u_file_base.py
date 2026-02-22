@@ -526,8 +526,8 @@ class TestOptionsContracts:
             ),
             (
                 XlsFile,
-                'encoding_from_read_options',
-                'encoding_from_write_options',
+                'encoding_from_options',
+                'encoding_from_options',
                 ReadOptions(encoding='latin-1'),
                 WriteOptions(encoding='utf-16'),
                 'utf-8',
