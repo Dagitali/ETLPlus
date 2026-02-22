@@ -17,21 +17,21 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
+from ._io import BinarySerializationABC
+from ._io import ColumnarABC
+from ._io import EmbeddedDatabaseABC
+from ._io import FileHandlerOption
+from ._io import RowReadWriteABC
+from ._io import ScientificDataseABC
+from ._io import SemiStructuredTextABC
+from ._io import SpreadsheetSheetABC
 from ._io import read_delimited
 from ._io import write_delimited
 from ._mixins import ArchiveInnerNameOptionMixin
-from ._mixins import BinarySerializationIOMixin
-from ._mixins import ColumnarIOMixin
 from ._mixins import DelimitedOptionMixin
-from ._mixins import EmbeddedDatabaseIOMixin
 from ._mixins import EmbeddedDatabaseTableOptionMixin
-from ._mixins import FileHandlerOptionMixin
-from ._mixins import RowReadWriteMixin
-from ._mixins import ScientificDatasetIOMixin
 from ._mixins import SemiStructuredPayloadMixin
-from ._mixins import SemiStructuredTextIOMixin
 from ._mixins import SingleDatasetValidationMixin
-from ._mixins import SpreadsheetSheetIOMixin
 from ._mixins import TemplateTextIOMixin
 from .enums import FileFormat
 
@@ -172,7 +172,7 @@ class WriteOptions:
 # SECTION: ABSTRACT BASE CLASSES (PRIMARY) ================================== #
 
 
-class FileHandlerABC(FileHandlerOptionMixin, ABC):
+class FileHandlerABC(FileHandlerOption, ABC):
     """
     Root interface for format-specific file handlers.
 
@@ -368,7 +368,7 @@ class ArchiveWrapperFileHandlerABC(
 
 
 class BinarySerializationFileHandlerABC(
-    BinarySerializationIOMixin,
+    BinarySerializationABC,
     FileHandlerABC,
 ):
     """
@@ -382,7 +382,7 @@ class BinarySerializationFileHandlerABC(
     category: ClassVar[str] = 'binary_serialization'
 
 
-class ColumnarFileHandlerABC(ColumnarIOMixin, FileHandlerABC):
+class ColumnarFileHandlerABC(ColumnarABC, FileHandlerABC):
     """
     Base contract for columnar analytics formats.
 
@@ -396,7 +396,7 @@ class ColumnarFileHandlerABC(ColumnarIOMixin, FileHandlerABC):
 
 
 class DelimitedTextFileHandlerABC(
-    RowReadWriteMixin,
+    RowReadWriteABC,
     DelimitedOptionMixin,
     FileHandlerABC,
 ):
@@ -453,7 +453,7 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         )
 
 
-class TextFixedWidthFileHandlerABC(RowReadWriteMixin, FileHandlerABC):
+class TextFixedWidthFileHandlerABC(RowReadWriteABC, FileHandlerABC):
     """
     Base contract for plain text and fixed-width text formats.
 
@@ -467,7 +467,7 @@ class TextFixedWidthFileHandlerABC(RowReadWriteMixin, FileHandlerABC):
 
 
 class EmbeddedDatabaseFileHandlerABC(
-    EmbeddedDatabaseIOMixin,
+    EmbeddedDatabaseABC,
     EmbeddedDatabaseTableOptionMixin,
     FileHandlerABC,
 ):
@@ -518,7 +518,7 @@ class LogEventFileHandlerABC(FileHandlerABC):
 
 
 class SemiStructuredTextFileHandlerABC(
-    SemiStructuredTextIOMixin,
+    SemiStructuredTextABC,
     SemiStructuredPayloadMixin,
     FileHandlerABC,
 ):
@@ -615,7 +615,7 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
 
 
 class ScientificDatasetFileHandlerABC(
-    ScientificDatasetIOMixin,
+    ScientificDataseABC,
     FileHandlerABC,
 ):
     """
@@ -650,7 +650,7 @@ class SingleDatasetScientificFileHandlerABC(
     """
 
 
-class SpreadsheetFileHandlerABC(SpreadsheetSheetIOMixin, FileHandlerABC):
+class SpreadsheetFileHandlerABC(SpreadsheetSheetABC, FileHandlerABC):
     """
     Base contract for spreadsheet formats.
 
