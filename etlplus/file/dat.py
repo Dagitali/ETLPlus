@@ -190,14 +190,14 @@ class DatFile(DelimitedTextFileHandlerABC):
         """
         delimiters = _DEFAULT_DELIMITERS
         sniffer: _CsvSniffer | None = None
-        extra_delimiters = self.read_extra_option(
+        extra_delimiters = self.extra_option(
             options,
             'delimiters',
             default=delimiters,
         )
         if extra_delimiters is not None:
             delimiters = str(extra_delimiters)
-        extra_sniffer = self.read_extra_option(options, 'sniffer')
+        extra_sniffer = self.extra_option(options, 'sniffer')
         if extra_sniffer is not None:
             sniffer = cast(_CsvSniffer, extra_sniffer)
 
