@@ -810,7 +810,7 @@ class ScientificDatasetABC(ScientificDatasetOption, ABC):
         JSONData
             The content of the dataset.
         """
-        dataset = self.dataset_from_read_options(options)
+        dataset = self.dataset_from_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
 
     def write(
@@ -837,7 +837,7 @@ class ScientificDatasetABC(ScientificDatasetOption, ABC):
         int
             The number of records written to the dataset.
         """
-        dataset = self.dataset_from_write_options(options)
+        dataset = self.dataset_from_options(options)
         return self.write_dataset(
             path,
             data,

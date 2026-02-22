@@ -764,24 +764,12 @@ class ScientificDatasetOption(FileHandlerOption):
 
     # -- Instance Methods -- #
 
-    def dataset_from_read_options(
+    def dataset_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
     ) -> str | None:
         """
-        Extract dataset selector from read options.
-        """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
-
-    def dataset_from_write_options(
-        self,
-        options: WriteOptions | None,
-    ) -> str | None:
-        """
-        Extract dataset selector from write options.
+        Extract dataset selector from read/write options.
         """
         value = self._option_attr(options, 'dataset')
         if value is not None:
@@ -801,7 +789,7 @@ class ScientificDatasetOption(FileHandlerOption):
         """
         if dataset is not None:
             return dataset
-        from_options = self.dataset_from_read_options(options)
+        from_options = self.dataset_from_options(options)
         if from_options is not None:
             return from_options
         return default
@@ -819,7 +807,7 @@ class ScientificDatasetOption(FileHandlerOption):
         """
         if dataset is not None:
             return dataset
-        from_options = self.dataset_from_write_options(options)
+        from_options = self.dataset_from_options(options)
         if from_options is not None:
             return from_options
         return default
