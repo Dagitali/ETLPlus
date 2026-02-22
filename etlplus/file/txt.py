@@ -76,7 +76,7 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         JSONList
             The list of dictionaries parsed from the TXT file.
         """
-        encoding = self.encoding_from_read_options(
+        encoding = self.encoding_from_options(
             options,
             default=self.default_encoding,
         )
@@ -119,7 +119,7 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         if not rows:
             return 0
 
-        encoding = self.encoding_from_write_options(
+        encoding = self.encoding_from_options(
             options,
             default=self.default_encoding,
         )
