@@ -501,6 +501,7 @@ class TestOptionsContracts:
             'fallback'
         )
 
+    # TODO: Simplify.
     @pytest.mark.parametrize(
         (
             'handler_cls',
@@ -553,8 +554,8 @@ class TestOptionsContracts:
             ),
             (
                 XlsxFile,
-                'sheet_from_read_options',
-                'sheet_from_write_options',
+                'sheet_from_options',
+                'sheet_from_options',
                 ReadOptions(sheet='Sheet2'),
                 WriteOptions(sheet=3),
                 0,
