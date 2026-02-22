@@ -213,7 +213,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         JSONData
             Parsed payload.
         """
-        inner_name = self.inner_name_from_read_options(options)
+        inner_name = self.inner_name_from_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
             entries = _archive_entries(archive, path=path)
             if inner_name is not None:
@@ -262,7 +262,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If multiple members are present and no ``inner_name`` is provided.
             If ``inner_name`` does not match any archive member.
         """
-        inner_name = self.inner_name_from_read_options(options)
+        inner_name = self.inner_name_from_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
             entries = _archive_entries(archive, path=path)
             if inner_name is not None:
@@ -316,7 +316,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         )
 
         default_inner_name = Path(path.name).with_suffix('').name
-        inner_name = self.inner_name_from_write_options(
+        inner_name = self.inner_name_from_options(
             options,
             default=default_inner_name,
         )
@@ -363,7 +363,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If ``inner_name`` is not provided and cannot be inferred from the
             ZIP filename.
         """
-        inner_name = self.inner_name_from_write_options(
+        inner_name = self.inner_name_from_options(
             options,
             default=self.default_inner_name,
         )
