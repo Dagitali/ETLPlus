@@ -538,8 +538,8 @@ class TestOptionsContracts:
             ),
             (
                 ZipFile,
-                'inner_name_from_read_options',
-                'inner_name_from_write_options',
+                'inner_name_from_options',
+                'inner_name_from_options',
                 ReadOptions(inner_name='data.json'),
                 WriteOptions(inner_name='payload.csv'),
                 None,
