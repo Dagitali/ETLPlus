@@ -259,7 +259,7 @@ class DatFile(DelimitedTextFileHandlerABC):
         return write_delimited(
             path,
             rows,
-            delimiter=self.delimiter_from_write_options(options),
+            delimiter=self.delimiter_from_options(options),
             format_name='DAT',
         )
 
