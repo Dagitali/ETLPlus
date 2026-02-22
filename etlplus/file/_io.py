@@ -475,6 +475,18 @@ class FileHandlerOption:
     ) -> Any | None:
         """
         Return one option attribute value when present.
+
+        Parameters
+        ----------
+        options : ReadOptions | WriteOptions | None
+            Options object to extract the attribute from.
+        attr_name : str
+            Name of the attribute to extract.
+
+        Returns
+        -------
+        Any | None
+            The attribute value when present, else ``None``.
         """
         if options is None:
             return None
@@ -490,6 +502,19 @@ class FileHandlerOption:
     ) -> str:
         """
         Extract text encoding from read options.
+
+        Parameters
+        ----------
+        options : ReadOptions | None
+            Read options to extract the encoding from.
+        default : str, optional
+            Default encoding to return when not specified in *options*.
+            Defaults to ``'utf-8'``.
+
+        Returns
+        -------
+        str
+            Text encoding from *options* when present, else *default*.
         """
         value = self._option_attr(options, 'encoding')
         if value is not None:
@@ -504,6 +529,19 @@ class FileHandlerOption:
     ) -> str:
         """
         Extract text encoding from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Write options to extract the encoding from.
+        default : str, optional
+            Default encoding to return when not specified in *options*.
+            Defaults to ``'utf-8'``.
+
+        Returns
+        -------
+        str
+            Text encoding from *options* when present, else *default*.
         """
         value = self._option_attr(options, 'encoding')
         if value is not None:
@@ -519,6 +557,21 @@ class FileHandlerOption:
     ) -> Any | None:
         """
         Read one format-specific read option from ``options.extras``.
+
+        Parameters
+        ----------
+        options : ReadOptions | None
+            Read options to extract the extra option from.
+        key : str
+            Key of the extra option to extract.
+        default : Any | None, optional
+            Default value to return when the extra option is not present.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        Any | None
+            The value of the extra option when present, else *default*.
         """
         if options is None:
             return default
@@ -532,6 +585,19 @@ class FileHandlerOption:
     ) -> str:
         """
         Extract XML-like root tag from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Write options to extract the root tag from.
+        default : str, optional
+            Default root tag to return when not specified in *options*.
+            Defaults to ``'root'``.
+
+        Returns
+        -------
+        str
+            XML-like root tag from *options* when present, else *default*.
         """
         value = self._option_attr(options, 'root_tag')
         if value is not None:
@@ -547,6 +613,21 @@ class FileHandlerOption:
     ) -> Any | None:
         """
         Read one format-specific write option from ``options.extras``.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Write options to extract the extra option from.
+        key : str
+            Key of the extra option to extract.
+        default : Any | None, optional
+            Default value to return when the extra option is not present.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        Any | None
+            The value of the extra option when present, else *default*.
         """
         if options is None:
             return default
@@ -561,7 +642,8 @@ class BinarySerializationABC(ABC):
     Shared path-level read/write flow for binary serialization handlers.
     """
 
-    # -- Abstract Instance Methods -- #!SE
+    # -- Abstract Instance Methods -- #
+
     @abstractmethod
     def dumps_bytes(
         self,
@@ -582,6 +664,19 @@ class BinarySerializationABC(ABC):
     ) -> JSONData:
         """
         Parse binary payload bytes into structured data.
+
+        Parameters
+        ----------
+        payload : bytes
+            Binary payload to parse.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the payload.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONData
+            Structured data parsed from the binary payload.
         """
 
     def count_written_records(
@@ -601,6 +696,19 @@ class BinarySerializationABC(ABC):
     ) -> JSONData:
         """
         Read and decode binary serialization payload bytes from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the binary payload from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the payload.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONData
+            Structured data parsed from the binary payload.
         """
         return self.loads_bytes(path.read_bytes(), options=options)
 
@@ -613,6 +721,21 @@ class BinarySerializationABC(ABC):
     ) -> int:
         """
         Encode and write binary serialization payload bytes to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the binary payload to.
+        data : JSONData
+            Structured data to serialize and write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the payload.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
         payload = self.dumps_bytes(data, options=options)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -625,7 +748,11 @@ class ColumnarABC(ABC):
     Shared read/write dispatch for columnar table handlers.
     """
 
+    # -- Class Attributes -- #
+
     format_name: str
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def read_table(
@@ -636,6 +763,19 @@ class ColumnarABC(ABC):
     ) -> Any:
         """
         Read a columnar table object from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the columnar table from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the table.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        Any
+            Columnar table object read from *path*.
         """
 
     @abstractmethod
@@ -648,6 +788,16 @@ class ColumnarABC(ABC):
     ) -> None:
         """
         Write a columnar table object to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the columnar table to.
+        table : Any
+            Columnar table object to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the table.
+            Defaults to ``None``.
         """
 
     @abstractmethod
@@ -657,6 +807,16 @@ class ColumnarABC(ABC):
     ) -> JSONList:
         """
         Convert a table object into row-oriented records.
+
+        Parameters
+        ----------
+        table : Any
+            Columnar table object to convert.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the table.
         """
 
     @abstractmethod
@@ -666,7 +826,19 @@ class ColumnarABC(ABC):
     ) -> Any:
         """
         Convert row-oriented records into a table object.
+
+        Parameters
+        ----------
+        data : JSONData
+            Row-oriented records to convert.
+
+        Returns
+        -------
+        Any
+            Columnar table object created from the records.
         """
+
+    # -- Instance Methods -- #
 
     def read(
         self,
@@ -676,6 +848,19 @@ class ColumnarABC(ABC):
     ) -> JSONList:
         """
         Read and return columnar content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the columnar table from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the table.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the columnar table.
         """
         return self.table_to_records(self.read_table(path, options=options))
 
@@ -688,6 +873,21 @@ class ColumnarABC(ABC):
     ) -> int:
         """
         Write columnar content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the columnar table to.
+        data : JSONData
+            Row-oriented records to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the table.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
         """
         rows = normalize_records(data, self.format_name)
         if not rows:
@@ -701,14 +901,18 @@ class ColumnarABC(ABC):
         return len(rows)
 
 
-class EmbeddedDatabaseABC(ABC):
+class EmbeddedDatabaseABC(FileHandlerOption, ABC):
     """
     Shared read/write dispatch for embedded-database handlers.
     """
 
+    # -- Class Attributes -- #
+
     engine_name: ClassVar[str]
     default_table: ClassVar[str]
     format_name: str
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def connect(
@@ -749,6 +953,47 @@ class EmbeddedDatabaseABC(ABC):
         Write *rows* to *table*.
         """
 
+    # -- Instance Methods -- #
+
+    def table_from_read_options(
+        self,
+        options: ReadOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from read options.
+        """
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+    def table_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from write options.
+        """
+        value = self._option_attr(options, 'table')
+        if value is not None:
+            return cast(str, value)
+        return default
+
+    def close_connection(
+        self,
+        connection: Any,
+    ) -> None:
+        """
+        Close a database connection.
+        """
+        closer = getattr(connection, 'close', None)
+        if callable(closer):
+            closer()
+
     def read(
         self,
         path: Path,
@@ -757,6 +1002,19 @@ class EmbeddedDatabaseABC(ABC):
     ) -> JSONList:
         """
         Read and return embedded-database content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to read the embedded-database content from.
+        options : ReadOptions | None, optional
+            Read options to use when parsing the database.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the embedded-database.
         """
         database_handler = cast(Any, self)
         connection = self.connect(path)
@@ -783,6 +1041,27 @@ class EmbeddedDatabaseABC(ABC):
     ) -> int:
         """
         Write embedded-database content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            Path to write the embedded-database content to.
+        data : JSONData
+            Row-oriented records to write.
+        options : WriteOptions | None, optional
+            Write options to use when encoding the database.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            Number of records written.
+
+        Raises
+        ------
+        ValueError
+            If no table name is specified in options and no default table can
+            be resolved from the database.
         """
         database_handler = cast(Any, self)
         rows = normalize_records(data, self.format_name)
@@ -807,7 +1086,11 @@ class RowReadWriteABC(ABC):
     Shared read/write dispatch for row-oriented file handlers.
     """
 
+    # -- Class Attributes -- #
+
     format_name: str
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def read_rows(
@@ -831,6 +1114,8 @@ class RowReadWriteABC(ABC):
         """
         Write row records to *path*.
         """
+
+    # -- Instance Methods -- #
 
     def read(
         self,
@@ -865,7 +1150,11 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
     Shared path-level read/write flow for semi-structured text handlers.
     """
 
+    # -- Class Attributes -- #
+
     write_trailing_newline: ClassVar[bool] = False
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def dumps(
@@ -888,6 +1177,8 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
         """
         Parse *text* into structured data.
         """
+
+    # -- Instance Methods -- #
 
     def count_written_records(
         self,
@@ -935,6 +1226,8 @@ class ScientificDatasetOptionABC(FileHandlerOption):
     """
     Shared helpers for scientific dataset selection options.
     """
+
+    # -- Instance Methods -- #
 
     def dataset_from_read_options(
         self,
@@ -1002,7 +1295,11 @@ class SpreadsheetSheetOptionABC(FileHandlerOption):
     Shared helpers for spreadsheet sheet-selection options.
     """
 
+    # -- Class Attributes -- #
+
     default_sheet: ClassVar[str | int]
+
+    # -- Instance Methods -- #
 
     def sheet_from_read_options(
         self,
@@ -1042,6 +1339,8 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
     Shared read/write dispatch for scientific dataset handlers.
     """
 
+    # -- Abstract Instance Methods -- #
+
     @abstractmethod
     def read_dataset(
         self,
@@ -1052,6 +1351,26 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
     ) -> JSONData:
         """
         Read and return one dataset from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file containing the dataset.
+        dataset : str | None, optional
+            The name of the dataset to read. If not provided, the default
+            dataset will be used.
+        options : ReadOptions | None, optional
+            Additional options for reading the dataset.
+
+        Returns
+        -------
+        JSONData
+            The content of the dataset.
+
+        Raises
+        ------
+        ValueError
+            If the specified dataset does not exist.
         """
 
     @abstractmethod
@@ -1065,6 +1384,23 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
     ) -> int:
         """
         Write one dataset to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the dataset will be written.
+        data : JSONData
+            The data to write to the dataset.
+        dataset : str | None, optional
+            The name of the dataset to write. If not provided, the default
+            dataset will be used.
+        options : WriteOptions | None, optional
+            Additional options for writing the dataset.
+
+        Returns
+        -------
+        int
+            The number of records written to the dataset.
         """
 
     def read(
@@ -1075,6 +1411,18 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
     ) -> JSONData:
         """
         Read and return scientific dataset content from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file containing the dataset.
+        options : ReadOptions | None, optional
+            Additional options for reading the dataset.
+
+        Returns
+        -------
+        JSONData
+            The content of the dataset.
         """
         dataset = self.dataset_from_read_options(options)
         return self.read_dataset(path, dataset=dataset, options=options)
@@ -1088,6 +1436,20 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
     ) -> int:
         """
         Write scientific dataset content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the dataset will be written.
+        data : JSONData
+            The data to write to the dataset.
+        options : WriteOptions | None, optional
+            Additional options for writing the dataset.
+
+        Returns
+        -------
+        int
+            The number of records written to the dataset.
         """
         dataset = self.dataset_from_write_options(options)
         return self.write_dataset(
@@ -1103,7 +1465,11 @@ class SpreadsheetSheetABC(SpreadsheetSheetOptionABC, ABC):
     Shared read/write dispatch for spreadsheet handlers.
     """
 
+    # -- Class Attributes -- #
+
     format_name: str
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def read_sheet(
@@ -1130,6 +1496,8 @@ class SpreadsheetSheetABC(SpreadsheetSheetOptionABC, ABC):
         Write rows to a single sheet in *path*.
         """
 
+    # -- Instance Methods -- #
+
     def read(
         self,
         path: Path,
@@ -1151,6 +1519,20 @@ class SpreadsheetSheetABC(SpreadsheetSheetOptionABC, ABC):
     ) -> int:
         """
         Write spreadsheet content to *path* and return record count.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file where the spreadsheet will be written.
+        data : JSONData
+            The data to write to the spreadsheet.
+        options : WriteOptions | None, optional
+            Additional options for writing the spreadsheet.
+
+        Returns
+        -------
+        int
+            The number of records written to the spreadsheet.
         """
         rows = normalize_records(data, self.format_name)
         if not rows:
