@@ -490,46 +490,19 @@ class FileHandlerOption:
 
     # -- Instance Methods -- #
 
-    def encoding_from_read_options(
+    def encoding_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         *,
         default: str = 'utf-8',
     ) -> str:
         """
-        Extract text encoding from read options.
+        Extract text encoding from read/write options.
 
         Parameters
         ----------
-        options : ReadOptions | None
-            Read options to extract the encoding from.
-        default : str, optional
-            Default encoding to return when not specified in *options*.
-            Defaults to ``'utf-8'``.
-
-        Returns
-        -------
-        str
-            Text encoding from *options* when present, else *default*.
-        """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def encoding_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str:
-        """
-        Extract text encoding from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Write options to extract the encoding from.
+        options : ReadOptions | WriteOptions | None
+            Read or write options to extract the encoding from.
         default : str, optional
             Default encoding to return when not specified in *options*.
             Defaults to ``'utf-8'``.

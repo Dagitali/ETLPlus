@@ -680,7 +680,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
             Semi-structured text content extracted from the file.
         """
         return self.loads(
-            read_text(path, encoding=self.encoding_from_read_options(options)),
+            read_text(path, encoding=self.encoding_from_options(options)),
             options=options,
         )
 
@@ -712,7 +712,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
         write_text(
             path,
             self.dumps(data, options=options),
-            encoding=self.encoding_from_write_options(options),
+            encoding=self.encoding_from_options(options),
             trailing_newline=self.write_trailing_newline,
         )
         return self.count_written_records(data)

@@ -204,9 +204,7 @@ class TemplateTextIOMixin:
         return [
             {
                 template_handler.template_key: path.read_text(
-                    encoding=template_handler.encoding_from_read_options(
-                        options,
-                    ),
+                    encoding=template_handler.encoding_from_options(options),
                 ),
             },
         ]
@@ -260,7 +258,7 @@ class TemplateTextIOMixin:
         write_text(
             path,
             template_value,
-            encoding=template_handler.encoding_from_write_options(options),
+            encoding=template_handler.encoding_from_options(options),
         )
         return 1
 
