@@ -517,20 +517,20 @@ class FileHandlerOption:
             return cast(str, value)
         return default
 
-    def read_extra_option(
+    def extra_option(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         key: str,
         *,
         default: Any | None = None,
     ) -> Any | None:
         """
-        Read one format-specific read option from ``options.extras``.
+        Read one format-specific option from ``options.extras``.
 
         Parameters
         ----------
-        options : ReadOptions | None
-            Read options to extract the extra option from.
+        options : ReadOptions | WriteOptions | None
+            Read or write options to extract the extra option from.
         key : str
             Key of the extra option to extract.
         default : Any | None, optional
@@ -572,35 +572,6 @@ class FileHandlerOption:
         if value is not None:
             return cast(str, value)
         return default
-
-    def write_extra_option(
-        self,
-        options: WriteOptions | None,
-        key: str,
-        *,
-        default: Any | None = None,
-    ) -> Any | None:
-        """
-        Read one format-specific write option from ``options.extras``.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Write options to extract the extra option from.
-        key : str
-            Key of the extra option to extract.
-        default : Any | None, optional
-            Default value to return when the extra option is not present.
-            Defaults to ``None``.
-
-        Returns
-        -------
-        Any | None
-            The value of the extra option when present, else *default*.
-        """
-        if options is None:
-            return default
-        return options.extras.get(key, default)
 
 
 class ArchiveInnerNameOption(FileHandlerOption):
