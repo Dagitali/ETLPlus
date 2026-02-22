@@ -677,32 +677,18 @@ class DelimitedOption(FileHandlerOption):
 
     # -- Instance Methods -- #
 
-    def delimiter_from_read_options(
+    def delimiter_from_options(
         self,
-        options: ReadOptions | None,
+        options: ReadOptions | WriteOptions | None,
         *,
         default: str | None = None,
     ) -> str:
         """
-        Extract delimiter override from read options.
+        Extract delimiter override from read/write options.
         """
-        override = self.read_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
-
-    def delimiter_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from write options.
-        """
-        override = self.write_extra_option(options, 'delimiter')
+        override = None
+        if options is not None:
+            override = options.extras.get('delimiter')
         if override is not None:
             return str(override)
         if default is not None:
