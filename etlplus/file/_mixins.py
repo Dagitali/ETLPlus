@@ -22,10 +22,10 @@ from ._io import EmbeddedDatabaseABC
 from ._io import FileHandlerOption
 from ._io import RowReadWriteABC
 from ._io import ScientificDataseABC
-from ._io import ScientificDatasetOptionABC
+from ._io import ScientificDatasetOption
 from ._io import SemiStructuredTextABC
 from ._io import SpreadsheetSheetABC
-from ._io import SpreadsheetSheetOptionABC
+from ._io import SpreadsheetSheetOption
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import require_dict_payload as _require_dict_payload
@@ -40,9 +40,9 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    'ArchiveInnerNameOptionMixin',
-    'DelimitedOptionMixin',
-    'EmbeddedDatabaseTableOptionMixin',
+    'ArchiveInnerNameOption',
+    'DelimitedOption',
+    'EmbeddedDatabaseTableOption',
     'FileHandlerOption',
     'BinarySerializationABC',
     'ColumnarABC',
@@ -50,12 +50,12 @@ __all__ = [
     'RowReadWriteABC',
     'ScientificDataseABC',
     'SemiStructuredTextABC',
-    'SingleDatasetValidationMixin',
+    'SingleDatasetValidation',
     'SpreadsheetSheetABC',
     'RegexTemplateRenderMixin',
-    'ScientificDatasetOptionABC',
+    'ScientificDatasetOption',
     'SemiStructuredPayloadMixin',
-    'SpreadsheetSheetOptionABC',
+    'SpreadsheetSheetOption',
     'TemplateTextIOMixin',
 ]
 
@@ -63,7 +63,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class ArchiveInnerNameOptionMixin(FileHandlerOption):
+class ArchiveInnerNameOption(FileHandlerOption):
     """
     Shared helpers for archive member selection options.
     """
@@ -123,7 +123,7 @@ class ArchiveInnerNameOptionMixin(FileHandlerOption):
         return default
 
 
-class DelimitedOptionMixin(FileHandlerOption):
+class DelimitedOption(FileHandlerOption):
     """
     Shared helpers for delimiter overrides on delimited text handlers.
     """
@@ -191,7 +191,7 @@ class DelimitedOptionMixin(FileHandlerOption):
         return self.delimiter
 
 
-class EmbeddedDatabaseTableOptionMixin(FileHandlerOption):
+class EmbeddedDatabaseTableOption(FileHandlerOption):
     """
     Shared helpers for embedded-database table selection and cleanup.
     """
@@ -206,6 +206,18 @@ class EmbeddedDatabaseTableOptionMixin(FileHandlerOption):
     ) -> str | None:
         """
         Extract table selector from read options.
+
+        Parameters
+        ----------
+        options : ReadOptions | None
+            Options to extract from, or ``None`` to skip.
+        default : str | None, optional
+            Default value to return if the option is not present.
+
+        Returns
+        -------
+        str | None
+            The table selector if present, else *default*.
         """
         value = self._option_attr(options, 'table')
         if value is not None:
@@ -220,6 +232,18 @@ class EmbeddedDatabaseTableOptionMixin(FileHandlerOption):
     ) -> str | None:
         """
         Extract table selector from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Options to extract from, or ``None`` to skip.
+        default : str | None, optional
+            Default value to return if the option is not present.
+
+        Returns
+        -------
+        str | None
+            The table selector if present, else *default*.
         """
         value = self._option_attr(options, 'table')
         if value is not None:
@@ -285,7 +309,7 @@ class SemiStructuredPayloadMixin:
         return _require_dict_payload(data, format_name=self.format_name)
 
 
-class SingleDatasetValidationMixin(ScientificDatasetOptionABC):
+class SingleDatasetValidation(ScientificDatasetOption):
     """
     Shared helpers for single-dataset scientific handler variants.
     """

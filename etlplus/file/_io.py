@@ -1369,7 +1369,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
         return self.count_written_records(data)
 
 
-class ScientificDatasetOptionABC(FileHandlerOption):
+class ScientificDatasetOption(FileHandlerOption):
     """
     Shared helpers for scientific dataset selection options.
     """
@@ -1437,7 +1437,7 @@ class ScientificDatasetOptionABC(FileHandlerOption):
         return default
 
 
-class SpreadsheetSheetOptionABC(FileHandlerOption):
+class SpreadsheetSheetOption(FileHandlerOption):
     """
     Shared helpers for spreadsheet sheet-selection options.
     """
@@ -1481,7 +1481,7 @@ class SpreadsheetSheetOptionABC(FileHandlerOption):
         return self.default_sheet
 
 
-class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
+class ScientificDataseABC(ScientificDatasetOption, ABC):
     """
     Shared read/write dispatch for scientific dataset handlers.
     """
@@ -1609,7 +1609,7 @@ class ScientificDataseABC(ScientificDatasetOptionABC, ABC):
         )
 
 
-class SpreadsheetSheetABC(SpreadsheetSheetOptionABC, ABC):
+class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
     """
     Shared read/write dispatch for spreadsheet handlers.
     """

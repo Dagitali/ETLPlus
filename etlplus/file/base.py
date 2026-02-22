@@ -27,11 +27,11 @@ from ._io import SemiStructuredTextABC
 from ._io import SpreadsheetSheetABC
 from ._io import read_delimited
 from ._io import write_delimited
-from ._mixins import ArchiveInnerNameOptionMixin
-from ._mixins import DelimitedOptionMixin
-from ._mixins import EmbeddedDatabaseTableOptionMixin
+from ._mixins import ArchiveInnerNameOption
+from ._mixins import DelimitedOption
+from ._mixins import EmbeddedDatabaseTableOption
 from ._mixins import SemiStructuredPayloadMixin
-from ._mixins import SingleDatasetValidationMixin
+from ._mixins import SingleDatasetValidation
 from ._mixins import TemplateTextIOMixin
 from .enums import FileFormat
 
@@ -327,7 +327,7 @@ class ReadOnlyFileHandlerABC(FileHandlerABC):
 
 
 class ArchiveWrapperFileHandlerABC(
-    ArchiveInnerNameOptionMixin,
+    ArchiveInnerNameOption,
     FileHandlerABC,
 ):
     """
@@ -397,7 +397,7 @@ class ColumnarFileHandlerABC(ColumnarABC, FileHandlerABC):
 
 class DelimitedTextFileHandlerABC(
     RowReadWriteABC,
-    DelimitedOptionMixin,
+    DelimitedOption,
     FileHandlerABC,
 ):
     """
@@ -468,7 +468,7 @@ class TextFixedWidthFileHandlerABC(RowReadWriteABC, FileHandlerABC):
 
 class EmbeddedDatabaseFileHandlerABC(
     EmbeddedDatabaseABC,
-    EmbeddedDatabaseTableOptionMixin,
+    EmbeddedDatabaseTableOption,
     FileHandlerABC,
 ):
     """
@@ -642,7 +642,7 @@ class ScientificDatasetFileHandlerABC(
 
 
 class SingleDatasetScientificFileHandlerABC(
-    SingleDatasetValidationMixin,
+    SingleDatasetValidation,
     ScientificDatasetFileHandlerABC,
 ):
     """
