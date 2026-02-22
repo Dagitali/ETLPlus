@@ -100,7 +100,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             Parsed dataset payload.
         """
         format_name = self.format_name
-        dataset = self.resolve_read_dataset(dataset, options=options)
+        dataset = self.resolve_dataset(dataset, options=options)
         pyreadr = _pyreadr()
         pandas = _pandas()
         result = pyreadr.read_r(str(path))
