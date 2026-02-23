@@ -11,8 +11,7 @@ from typing import Any
 
 from ..types import JSONList
 from ._imports import get_pandas
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
@@ -104,5 +103,4 @@ _XLS_HANDLER = XlsFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _XLS_HANDLER)
-write = make_deprecated_module_write(__name__, _XLS_HANDLER)
+read, write = make_deprecated_module_io(__name__, _XLS_HANDLER)

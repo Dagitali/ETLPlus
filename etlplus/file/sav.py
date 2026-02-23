@@ -24,8 +24,7 @@ from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -138,5 +137,4 @@ _SAV_HANDLER = SavFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _SAV_HANDLER)
-write = make_deprecated_module_write(__name__, _SAV_HANDLER)
+read, write = make_deprecated_module_io(__name__, _SAV_HANDLER)

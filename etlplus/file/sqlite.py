@@ -22,8 +22,7 @@ import sqlite3
 from pathlib import Path
 
 from ..types import JSONList
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._sql import DEFAULT_TABLE
 from ._sql import SQLITE_DIALECT
 from ._sql import coerce_sql_value
@@ -193,5 +192,4 @@ _SQLITE_HANDLER = SqliteFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _SQLITE_HANDLER)
-write = make_deprecated_module_write(__name__, _SQLITE_HANDLER)
+read, write = make_deprecated_module_io(__name__, _SQLITE_HANDLER)

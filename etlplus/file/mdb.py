@@ -19,8 +19,7 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._stub_categories import StubEmbeddedDatabaseFileHandlerABC
 from .enums import FileFormat
 
@@ -58,5 +57,4 @@ _MDB_HANDLER = MdbFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _MDB_HANDLER)
-write = make_deprecated_module_write(__name__, _MDB_HANDLER)
+read, write = make_deprecated_module_io(__name__, _MDB_HANDLER)

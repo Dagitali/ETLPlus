@@ -25,8 +25,7 @@ from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -172,5 +171,4 @@ _ORC_HANDLER = OrcFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _ORC_HANDLER)
-write = make_deprecated_module_write(__name__, _ORC_HANDLER)
+read, write = make_deprecated_module_io(__name__, _ORC_HANDLER)

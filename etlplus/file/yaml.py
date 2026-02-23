@@ -21,8 +21,7 @@ from typing import Any
 
 from ..types import JSONData
 from ._imports import get_yaml
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -133,5 +132,4 @@ _YAML_HANDLER = YamlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _YAML_HANDLER)
-write = make_deprecated_module_write(__name__, _YAML_HANDLER)
+read, write = make_deprecated_module_io(__name__, _YAML_HANDLER)

@@ -18,8 +18,7 @@ from __future__ import annotations
 import base64
 
 from ..types import JSONData
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -118,5 +117,4 @@ _PB_HANDLER = PbFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _PB_HANDLER)
-write = make_deprecated_module_write(__name__, _PB_HANDLER)
+read, write = make_deprecated_module_io(__name__, _PB_HANDLER)

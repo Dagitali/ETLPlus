@@ -23,8 +23,7 @@ import configparser
 
 from ..types import JSONData
 from ..types import JSONDict
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import stringify_value
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
@@ -193,5 +192,4 @@ _INI_HANDLER = IniFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _INI_HANDLER)
-write = make_deprecated_module_write(__name__, _INI_HANDLER)
+read, write = make_deprecated_module_io(__name__, _INI_HANDLER)

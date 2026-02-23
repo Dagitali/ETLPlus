@@ -24,8 +24,7 @@ from typing import Any
 
 from ..types import JSONList
 from ._imports import get_dependency
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
 from ._sql import coerce_sql_value
@@ -207,5 +206,4 @@ _DUCKDB_HANDLER = DuckdbFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _DUCKDB_HANDLER)
-write = make_deprecated_module_write(__name__, _DUCKDB_HANDLER)
+read, write = make_deprecated_module_io(__name__, _DUCKDB_HANDLER)

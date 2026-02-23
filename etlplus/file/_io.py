@@ -64,6 +64,16 @@ class _WritableHandler(Protocol):
         """
 
 
+class _ReadWriteHandler[T](
+    _ReadableHandler[T],
+    _WritableHandler,
+    Protocol,
+):
+    """
+    Protocol for handlers exposing both :meth:`read` and :meth:`write`.
+    """
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -583,6 +593,34 @@ def make_deprecated_module_write(
         write.__doc__ = doc
     write.__module__ = module_name
     return write
+
+
+def make_deprecated_module_io[T](
+    module_name: str,
+    handler: _ReadWriteHandler[T],
+) -> tuple[
+    Callable[[StrPath], T],
+    Callable[[StrPath, JSONData], int],
+]:
+    """
+    Build paired deprecated module-level ``read`` and ``write`` wrappers.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully-qualified module name for warning messages.
+    handler : _ReadWriteHandler[T]
+        Handler instance exposing ``read(path)`` and ``write(path, data)``.
+
+    Returns
+    -------
+    tuple[Callable[[StrPath], T], Callable[[StrPath, JSONData], int]]
+        ``(read, write)`` wrappers.
+    """
+    return (
+        make_deprecated_module_read(module_name, handler),
+        make_deprecated_module_write(module_name, handler),
+    )
 
 
 # SECTION: CLASSES ========================================================== #

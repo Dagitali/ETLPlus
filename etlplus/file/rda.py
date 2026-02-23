@@ -24,8 +24,7 @@ from ..types import JSONData
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._r import coerce_r_result
 from ._r import list_r_dataset_keys
@@ -186,5 +185,4 @@ _RDA_HANDLER = RdaFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _RDA_HANDLER)
-write = make_deprecated_module_write(__name__, _RDA_HANDLER)
+read, write = make_deprecated_module_io(__name__, _RDA_HANDLER)

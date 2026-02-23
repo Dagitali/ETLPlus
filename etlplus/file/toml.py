@@ -24,8 +24,7 @@ from typing import Any
 from ..types import JSONData
 from ..types import JSONDict
 from ._imports import get_optional_module
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -156,5 +155,4 @@ _TOML_HANDLER = TomlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _TOML_HANDLER)
-write = make_deprecated_module_write(__name__, _TOML_HANDLER)
+read, write = make_deprecated_module_io(__name__, _TOML_HANDLER)

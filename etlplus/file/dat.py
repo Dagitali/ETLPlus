@@ -25,8 +25,7 @@ from typing import cast
 
 from ..types import JSONDict
 from ..types import JSONList
-from ._io import make_deprecated_module_read
-from ._io import make_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -271,5 +270,4 @@ _DAT_HANDLER = DatFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-read = make_deprecated_module_read(__name__, _DAT_HANDLER)
-write = make_deprecated_module_write(__name__, _DAT_HANDLER)
+read, write = make_deprecated_module_io(__name__, _DAT_HANDLER)
