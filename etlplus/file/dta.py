@@ -22,13 +22,10 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
+from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -58,7 +55,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.DTA
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -86,13 +82,9 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
-        format_name = self.format_name
-        get_dependency('pyreadstat', format_name=format_name)
-        pandas = get_pandas(format_name)
+        self.resolve_single_dataset(dataset, options=options)
+        _ = get_dependency('pyreadstat', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         frame = pandas.read_stata(path)
         return records_from_table(frame)
 
@@ -123,18 +115,16 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        self.resolve_single_write_dataset(
-            dataset,
+        records = self.prepare_single_dataset_write_records(
+            data,
+            dataset=dataset,
             options=options,
         )
-
-        format_name = self.format_name
-        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        get_dependency('pyreadstat', format_name=format_name)
-        pandas = get_pandas(format_name)
+        _ = get_dependency('pyreadstat', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
@@ -150,52 +140,4 @@ _DTA_HANDLER = DtaFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``DtaFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DTA file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the DTA file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _DTA_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``DtaFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DTA file on disk.
-    data : JSONData
-        Data to write as DTA file. Should be a list of dictionaries or a single
-        dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the DTA file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _DTA_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _DTA_HANDLER)

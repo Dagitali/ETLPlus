@@ -20,11 +20,7 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
 
@@ -52,10 +48,6 @@ class ConfFile(StubSemiStructuredTextFileHandlerABC):
 
     format = FileFormat.CONF
 
-    # -- Instance Methods -- #
-
-    # Inherits read() and write() from StubSemiStructuredTextFileHandlerABC.
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -66,52 +58,4 @@ _CONF_HANDLER = ConfFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``ConfFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CONF file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the CONF file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _CONF_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ConfFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CONF file on disk.
-    data : JSONData
-        Data to write as CONF. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the CONF file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _CONF_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _CONF_HANDLER)

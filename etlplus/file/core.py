@@ -12,6 +12,7 @@ from pathlib import Path
 
 from ..types import JSONData
 from . import xml
+from .base import BoundFileHandler
 from .base import FileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
@@ -25,6 +26,12 @@ __all__ = [
     # Classes
     'File',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FileFormatArg = FileFormat | str | None
 
 
 # SECTION: CLASSES ========================================================== #
@@ -88,16 +95,27 @@ class File:
         if not self.path.exists():
             raise FileNotFoundError(f'File not found: {self.path}')
 
+    def _bound_handler(self) -> BoundFileHandler:
+        """
+        Resolve and bind the active handler to :attr:`path`.
+
+        Returns
+        -------
+        BoundFileHandler
+            A handler instance bound to :attr:`path` for the active format.
+        """
+        return self._resolve_handler().at(self.path)
+
     def _coerce_format(
         self,
-        file_format: FileFormat | str | None,
+        file_format: FileFormatArg,
     ) -> FileFormat | None:
         """
         Normalize the file format input.
 
         Parameters
         ----------
-        file_format : FileFormat | str | None
+        file_format : FileFormatArg
             File format specifier. Strings are coerced into
             :class:`FileFormat`.
 
@@ -191,8 +209,7 @@ class File:
 
         """
         self._assert_exists()
-        handler = self._resolve_handler()
-        return handler.read(self.path)
+        return self._bound_handler().read()
 
     def write(
         self,
@@ -217,9 +234,7 @@ class File:
             The number of records written.
 
         """
-        handler = self._resolve_handler()
-        return handler.write(
-            self.path,
+        return self._bound_handler().write(
             data,
             options=WriteOptions(root_tag=root_tag),
         )

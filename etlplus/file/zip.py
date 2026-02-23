@@ -8,21 +8,20 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
+from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import CompressionFormat
 from .enums import FileFormat
-from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,35 +38,65 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _resolve_format(
-    filename: str,
-) -> FileFormat:
+def _archive_entries(
+    archive: zipfile.ZipFile,
+    *,
+    path: Path,
+) -> list[zipfile.ZipInfo]:
     """
-    Resolve the inner file format from a filename.
+    Return non-directory archive entries or raise when the archive is empty.
 
     Parameters
     ----------
-    filename : str
-        The name of the file inside the ZIP archive.
+    archive : zipfile.ZipFile
+        The opened ZIP archive.
+    path : Path
+        Path to the ZIP file on disk, used for error messages.
 
     Returns
     -------
-    FileFormat
-        The inferred inner file format.
+    list[zipfile.ZipInfo]
+        List of non-directory archive entries.
 
     Raises
     ------
     ValueError
-        If the file format cannot be inferred from the filename.
+        If the ZIP archive is empty.
     """
-    fmt, compression = infer_file_format_and_compression(filename)
-    if compression is not None and compression is not CompressionFormat.ZIP:
-        raise ValueError(f'Unexpected compression in archive: {filename}')
-    if fmt is None:
-        raise ValueError(
-            f'Cannot infer file format from compressed file {filename!r}',
-        )
-    return fmt
+    entries = [entry for entry in archive.infolist() if not entry.is_dir()]
+    if not entries:
+        raise ValueError(f'ZIP archive is empty: {path}')
+    return entries
+
+
+def _find_entry(
+    entries: list[zipfile.ZipInfo],
+    inner_name: str,
+) -> zipfile.ZipInfo:
+    """
+    Return one member matching *inner_name* or raise a clear error.
+
+    Parameters
+    ----------
+    entries : list[zipfile.ZipInfo]
+        List of non-directory archive entries.
+    inner_name : str
+        The name of the archive member to find.
+
+    Returns
+    -------
+    zipfile.ZipInfo
+        The matching archive entry.
+
+    Raises
+    ------
+    ValueError
+        If no matching archive entry is found.
+    """
+    for entry in entries:
+        if entry.filename == inner_name:
+            return entry
+    raise ValueError(f'ZIP archive member not found: {inner_name!r}')
 
 
 def _extract_payload(
@@ -91,6 +120,58 @@ def _extract_payload(
     """
     with archive.open(entry, 'r') as handle:
         return handle.read()
+
+
+def _resolve_format(
+    filename: str,
+) -> FileFormat:
+    """
+    Resolve the inner file format from a filename.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file inside the ZIP archive.
+
+    Returns
+    -------
+    FileFormat
+        The inferred inner file format.
+    """
+    fmt = infer_archive_payload_format(
+        filename,
+        allowed_compressions=(None, CompressionFormat.ZIP),
+        compression_error=f'Unexpected compression in archive: {filename}',
+    )
+    return cast(FileFormat, fmt)
+
+
+def _decode_entry_with_core(
+    archive: zipfile.ZipFile,
+    entry: zipfile.ZipInfo,
+) -> JSONData:
+    """
+    Decode one archive member payload through :mod:`etlplus.file.core`.
+
+    Parameters
+    ----------
+    archive : zipfile.ZipFile
+        The opened ZIP archive.
+    entry : zipfile.ZipInfo
+        The ZIP archive entry.
+
+    Returns
+    -------
+    JSONData
+        The decoded payload.
+    """
+    fmt = _resolve_format(entry.filename)
+    payload = _extract_payload(entry, archive)
+    return read_payload_with_core(
+        filename=entry.filename,
+        fmt=fmt,
+        payload=payload,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -129,53 +210,24 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
         -------
         JSONData
             Parsed payload.
-
-        Raises
-        ------
-        ValueError
-            If the ZIP archive is empty.
-            If ``inner_name`` is provided and does not match an archive member.
         """
-        inner_name = self.inner_name_from_read_options(options)
+        inner_name = self.inner_name_from_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
-            entries = [
-                entry for entry in archive.infolist() if not entry.is_dir()
-            ]
-            if not entries:
-                raise ValueError(f'ZIP archive is empty: {path}')
-
+            entries = _archive_entries(archive, path=path)
             if inner_name is not None:
-                for entry in entries:
-                    if entry.filename == inner_name:
-                        fmt = _resolve_format(entry.filename)
-                        payload = _extract_payload(entry, archive)
-                        return read_payload_with_core(
-                            filename=entry.filename,
-                            fmt=fmt,
-                            payload=payload,
-                        )
-                raise ValueError(
-                    f'ZIP archive member not found: {inner_name!r}',
+                return _decode_entry_with_core(
+                    archive,
+                    _find_entry(entries, inner_name),
                 )
 
             if len(entries) == 1:
-                entry = entries[0]
-                fmt = _resolve_format(entry.filename)
-                payload = _extract_payload(entry, archive)
-                return read_payload_with_core(
-                    filename=entry.filename,
-                    fmt=fmt,
-                    payload=payload,
-                )
+                return _decode_entry_with_core(archive, entries[0])
 
             results: JSONDict = {}
             for entry in entries:
-                fmt = _resolve_format(entry.filename)
-                payload = _extract_payload(entry, archive)
-                results[entry.filename] = read_payload_with_core(
-                    filename=entry.filename,
-                    fmt=fmt,
-                    payload=payload,
+                results[entry.filename] = _decode_entry_with_core(
+                    archive,
+                    entry,
                 )
             return results
 
@@ -208,19 +260,13 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If multiple members are present and no ``inner_name`` is provided.
             If ``inner_name`` does not match any archive member.
         """
-        inner_name = self.inner_name_from_read_options(options)
+        inner_name = self.inner_name_from_options(options)
         with zipfile.ZipFile(path, 'r') as archive:
-            entries = [
-                entry for entry in archive.infolist() if not entry.is_dir()
-            ]
-            if not entries:
-                raise ValueError(f'ZIP archive is empty: {path}')
+            entries = _archive_entries(archive, path=path)
             if inner_name is not None:
-                for entry in entries:
-                    if entry.filename == inner_name:
-                        return _extract_payload(entry, archive)
-                raise ValueError(
-                    f'ZIP archive member not found: {inner_name!r}',
+                return _extract_payload(
+                    _find_entry(entries, inner_name),
+                    archive,
                 )
             if len(entries) != 1:
                 raise ValueError(
@@ -260,15 +306,15 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If the inner file format cannot be inferred from the provided
             options.
         """
-        _fmt, output_compression = infer_file_format_and_compression(path)
-        if (
-            output_compression is not None
-            and output_compression is not CompressionFormat.ZIP
-        ):
-            raise ValueError(f'Unexpected compression in archive: {path}')
+        _ = infer_archive_payload_format(
+            path,
+            allowed_compressions=(None, CompressionFormat.ZIP),
+            compression_error=f'Unexpected compression in archive: {path}',
+            require_format=False,
+        )
 
         default_inner_name = Path(path.name).with_suffix('').name
-        inner_name = self.inner_name_from_write_options(
+        inner_name = self.inner_name_from_options(
             options,
             default=default_inner_name,
         )
@@ -315,7 +361,7 @@ class ZipFile(ArchiveWrapperFileHandlerABC):
             If ``inner_name`` is not provided and cannot be inferred from the
             ZIP filename.
         """
-        inner_name = self.inner_name_from_write_options(
+        inner_name = self.inner_name_from_options(
             options,
             default=self.default_inner_name,
         )
@@ -338,51 +384,4 @@ _ZIP_HANDLER = ZipFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``ZipFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ZIP file on disk.
-
-    Returns
-    -------
-    JSONData
-        Parsed payload.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ZIP_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ZipFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ZIP file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ZIP_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _ZIP_HANDLER)

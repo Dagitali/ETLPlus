@@ -20,13 +20,10 @@ from __future__ import annotations
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import require_dict_payload
+from ._io import make_deprecated_module_io
 from ._io import stringify_value
+from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -75,7 +72,7 @@ def _parse_properties_text(
 # SECTION: CLASSES ========================================================== #
 
 
-class PropertiesFile(SemiStructuredTextFileHandlerABC):
+class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for Java-style properties files.
     """
@@ -83,14 +80,12 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.PROPERTIES
-    allow_dict_root = True
-    allow_list_root = False
 
     # -- Instance Methods -- #
 
-    def dumps(
+    def dumps_dict_payload(
         self,
-        data: JSONData,
+        payload: JSONDict,
         *,
         options: WriteOptions | None = None,
     ) -> str:
@@ -99,8 +94,8 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
 
         Parameters
         ----------
-        data : JSONData
-            Payload to serialize.
+        payload : JSONDict
+            Dictionary payload to serialize.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -110,7 +105,6 @@ class PropertiesFile(SemiStructuredTextFileHandlerABC):
             Serialized PROPERTIES text.
         """
         _ = options
-        payload = require_dict_payload(data, format_name='PROPERTIES')
         return ''.join(
             f'{key}={stringify_value(payload[key])}\n'
             for key in sorted(payload.keys())
@@ -149,51 +143,4 @@ _PROPERTIES_HANDLER = PropertiesFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``PropertiesFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PROPERTIES file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the PROPERTIES file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PROPERTIES_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``PropertiesFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PROPERTIES file on disk.
-    data : JSONData
-        Data to write as PROPERTIES. Should be a dictionary.
-
-    Returns
-    -------
-    int
-        The number of records written to the PROPERTIES file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PROPERTIES_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _PROPERTIES_HANDLER)

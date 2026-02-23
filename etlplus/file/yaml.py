@@ -17,14 +17,13 @@ Notes
 
 from __future__ import annotations
 
+from typing import Any
+
 from ..types import JSONData
-from ..types import StrPath
 from ._imports import get_yaml
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import coerce_record_payload
+from ._io import make_deprecated_module_io
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
+from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -40,10 +39,18 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _yaml() -> Any:
+    """Return the optional PyYAML module."""
+    return get_yaml()
+
+
 # SECTION: CLASSES ========================================================== #
 
 
-class YamlFile(SemiStructuredTextFileHandlerABC):
+class YamlFile(RecordPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for YAML files.
     """
@@ -79,7 +86,8 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         from io import StringIO
 
         stream = StringIO()
-        get_yaml().safe_dump(
+        yaml = _yaml()
+        yaml.safe_dump(
             data,
             stream,
             sort_keys=False,
@@ -88,14 +96,14 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
         )
         return stream.getvalue()
 
-    def loads(
+    def loads_payload(
         self,
         text: str,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> object:
         """
-        Parse YAML *text* into structured records.
+        Parse YAML *text* into a Python payload.
 
         Parameters
         ----------
@@ -106,14 +114,14 @@ class YamlFile(SemiStructuredTextFileHandlerABC):
 
         Returns
         -------
-        JSONData
+        object
             Parsed payload.
         """
         _ = options
         from io import StringIO
 
-        loaded = get_yaml().safe_load(StringIO(text))
-        return coerce_record_payload(loaded, format_name='YAML')
+        yaml = _yaml()
+        return yaml.safe_load(StringIO(text))
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -124,53 +132,4 @@ _YAML_HANDLER = YamlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``YamlFile().read(...)`` instead.
-
-    Validates that the YAML root is a dict or a list of dicts.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the YAML file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the YAML file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _YAML_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``YamlFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the YAML file on disk.
-    data : JSONData
-        Data to write as YAML.
-
-    Returns
-    -------
-    int
-        The number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _YAML_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _YAML_HANDLER)

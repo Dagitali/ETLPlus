@@ -19,21 +19,11 @@ Notes
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import normalize_records
-from ._io import require_str_key
-from ._io import stringify_value
-from ._io import write_text
-from .base import ReadOptions
+from ._io import make_deprecated_module_io
+from ._mixins import RegexTemplateRenderMixin
 from .base import TemplateFileHandlerABC
-from .base import WriteOptions
+from .base import TemplateTextIOMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -51,7 +41,11 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class VmFile(TemplateFileHandlerABC):
+class VmFile(
+    RegexTemplateRenderMixin,
+    TemplateTextIOMixin,
+    TemplateFileHandlerABC,
+):
     """
     Handler implementation for VM files.
     """
@@ -60,116 +54,35 @@ class VmFile(TemplateFileHandlerABC):
 
     format = FileFormat.VM
     template_engine = 'velocity'
+    token_pattern = re.compile(
+        r'\$\{(?P<brace_key>[A-Za-z_][A-Za-z0-9_]*)\}'
+        r'|\$(?P<plain_key>[A-Za-z_][A-Za-z0-9_]*)',
+    )
 
     # -- Instance Methods -- #
 
-    def read(
+    def template_key_from_match(
         self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
+        match: re.Match[str],
+    ) -> str | None:
         """
-        Read and return template payload from *path*.
+        Resolve one Velocity token key from a regex match.
 
         Parameters
         ----------
-        path : Path
-            Path to the VM template file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
+        match : re.Match[str]
+            The regex match object containing Velocity token groups.
 
         Returns
         -------
-        JSONList
-            Single-row payload with one ``template`` field.
+        str | None
+            The resolved Velocity token key, or None if no key is found.
         """
-        encoding = self.encoding_from_read_options(options)
-        return [{'template': path.read_text(encoding=encoding)}]
-
-    def render(
-        self,
-        template: str,
-        context: JSONDict,
-    ) -> str:
-        """
-        Render VM template text using context data.
-
-        Parameters
-        ----------
-        template : str
-            Template text to render.
-        context : JSONDict
-            Context dictionary for rendering.
-
-        Returns
-        -------
-        str
-            Rendered template output.
-        """
-
-        def _replace(match: re.Match[str]) -> str:
-            key = match.group('brace_key') or match.group('plain_key')
-            value = context.get(str(key))
-            return stringify_value(value)
-
-        return _VM_TOKEN_PATTERN.sub(_replace, template)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write template payload to *path* and return row count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the VM template file on disk.
-        data : JSONData
-            One object (or one-object list) containing a ``template`` string.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of payload rows written.
-
-        Raises
-        ------
-        TypeError
-            If the payload does not contain exactly one object or if the object
-            does not contain a string ``template`` field.
-        """
-        rows = normalize_records(data, self.format_name)
-        if not rows:
-            return 0
-        if len(rows) != 1:
-            raise TypeError('VM payloads must contain exactly one object')
-        template_text = require_str_key(
-            rows[0],
-            format_name='VM',
-            key='template',
-        )
-        write_text(
-            path,
-            template_text,
-            encoding=self.encoding_from_write_options(options),
-        )
-        return 1
+        return match.group('brace_key') or match.group('plain_key')
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
-
-_VM_TOKEN_PATTERN = re.compile(
-    r'\$\{(?P<brace_key>[A-Za-z_][A-Za-z0-9_]*)\}'
-    r'|\$(?P<plain_key>[A-Za-z_][A-Za-z0-9_]*)',
-)
 
 _VM_HANDLER = VmFile()
 
@@ -177,52 +90,4 @@ _VM_HANDLER = VmFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``VmFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the VM file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the VM file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _VM_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``VmFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the VM file on disk.
-    data : JSONData
-        Data to write as VM file. Should be a list of dictionaries or a single
-        dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the VM file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _VM_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _VM_HANDLER)

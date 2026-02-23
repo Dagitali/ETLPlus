@@ -23,13 +23,10 @@ import configparser
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import require_dict_payload
+from ._io import make_deprecated_module_io
 from ._io import stringify_value
+from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -119,7 +116,7 @@ def _payload_from_parser(
 # SECTION: CLASSES ========================================================== #
 
 
-class IniFile(SemiStructuredTextFileHandlerABC):
+class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for INI files.
     """
@@ -127,14 +124,12 @@ class IniFile(SemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.INI
-    allow_dict_root = True
-    allow_list_root = False
 
     # -- Instance Methods -- #
 
-    def dumps(
+    def dumps_dict_payload(
         self,
-        data: JSONData,
+        payload: JSONDict,
         *,
         options: WriteOptions | None = None,
     ) -> str:
@@ -143,8 +138,8 @@ class IniFile(SemiStructuredTextFileHandlerABC):
 
         Parameters
         ----------
-        data : JSONData
-            Payload to serialize.
+        payload : JSONDict
+            Dictionary payload to serialize.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -154,7 +149,6 @@ class IniFile(SemiStructuredTextFileHandlerABC):
             Serialized INI text.
         """
         _ = options
-        payload = require_dict_payload(data, format_name='INI')
         parser = _parser_from_payload(payload)
 
         from io import StringIO
@@ -198,51 +192,4 @@ _INI_HANDLER = IniFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``IniFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the INI file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the INI file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _INI_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``IniFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the INI file on disk.
-    data : JSONData
-        Data to write as INI. Should be a dictionary.
-
-    Returns
-    -------
-    int
-        The number of records written to the INI file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _INI_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _INI_HANDLER)

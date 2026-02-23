@@ -23,11 +23,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -45,6 +43,20 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for ORC operations."""
+    return get_pandas('ORC')
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='ORC')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -83,8 +95,8 @@ class OrcFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         _ = options
-        get_dependency('pyarrow', format_name='ORC')
-        pandas = get_pandas('ORC')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.read_orc(path)
 
     def records_to_table(
@@ -105,8 +117,8 @@ class OrcFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'ORC')
-        get_dependency('pyarrow', format_name='ORC')
-        pandas = get_pandas('ORC')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
@@ -159,51 +171,4 @@ _ORC_HANDLER = OrcFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``OrcFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ORC file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the ORC file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ORC_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``OrcFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ORC file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ORC_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _ORC_HANDLER)

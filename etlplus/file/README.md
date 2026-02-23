@@ -146,6 +146,8 @@ JsonFile().write(Path("output.json"), data)
 
 - `read(path, options=None)`: Reads and parses one file path, returning structured data.
 - `write(path, data, options=None)`: Serializes and writes data to one file path.
+- `at(path).read(options=None)`: Returns a path-bound facade that reads without re-passing `path`.
+- `at(path).write(data, options=None)`: Returns a path-bound facade that writes without re-passing `path`.
 
 ## Example: Reading and Writing
 

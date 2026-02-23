@@ -136,8 +136,10 @@ def _resolve_template(
         path = Path(file_override)
         if not path.exists():
             raise FileNotFoundError(f'Template file not found: {path}')
-        rows = _JINJA2_HANDLER.read(path)
-        template_value = rows[0].get('template') if rows else None
+        payload = _JINJA2_HANDLER.at(path).read()
+        template_value = None
+        if isinstance(payload, list) and payload:
+            template_value = payload[0].get('template')
         if not isinstance(template_value, str):
             raise TypeError('JINJA2 template payload must include text')
         return template_value

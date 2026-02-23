@@ -10,14 +10,69 @@ import csv
 import warnings
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
+from typing import ClassVar
 from typing import Literal
+from typing import Protocol
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..types import StrPath
+
+if TYPE_CHECKING:
+    from .base import ReadOptions
+    from .base import WriteOptions
+
+# SECTION: PROTOCOLS ======================================================== #
+
+
+class _ReadableHandler[T](Protocol):
+    """
+    Protocol for handler instances exposing ``read(path)``.
+    """
+
+    def read(
+        self,
+        path: Path,
+        /,
+        *args: Any,
+        **kwargs: Any,
+    ) -> T:
+        """
+        Read payload from *path*.
+        """
+
+
+class _WritableHandler(Protocol):
+    """
+    Protocol for handler instances exposing ``write(path, data)``.
+    """
+
+    def write(
+        self,
+        path: Path,
+        data: JSONData,
+        /,
+        *args: Any,
+        **kwargs: Any,
+    ) -> int:
+        """
+        Write *data* to *path*.
+        """
+
+
+class _ReadWriteHandler[T](
+    _ReadableHandler[T],
+    _WritableHandler,
+    Protocol,
+):
+    """
+    Protocol for handlers exposing both :meth:`read` and :meth:`write`.
+    """
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -163,6 +218,27 @@ def read_delimited(
                 continue
             rows.append(cast(JSONDict, dict(row)))
     return rows
+
+
+def read_sas_table(
+    pandas: Any,
+    path: StrPath,
+    *,
+    format_hint: str | None = None,
+) -> Any:
+    """
+    Read a SAS-backed table via pandas, tolerating unsupported format kwargs.
+
+    Some pandas-compatible readers accept ``format=...`` while others raise
+    ``TypeError``; this helper preserves a single fallback path.
+    """
+    resolved_path = coerce_path(path)
+    if format_hint is None:
+        return pandas.read_sas(resolved_path)
+    try:
+        return pandas.read_sas(resolved_path, format=format_hint)
+    except TypeError:
+        return pandas.read_sas(resolved_path)
 
 
 def read_text(
@@ -446,3 +522,372 @@ def call_deprecated_module_write(
     """
     warn_deprecated_module_io(module_name, 'write')
     return writer(coerce_path(path), data)
+
+
+def make_deprecated_module_read[T](
+    module_name: str,
+    handler: _ReadableHandler[T],
+    *,
+    doc: str | None = None,
+) -> Callable[[StrPath], T]:
+    """
+    Build a thin deprecated module-level ``read`` wrapper.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully-qualified module name for warning messages.
+    handler : _ReadableHandler[T]
+        Handler instance exposing ``read(path)``.
+    doc : str | None, optional
+        Optional wrapper docstring override.
+
+    Returns
+    -------
+    Callable[[StrPath], T]
+        Wrapper with ``read(path)`` signature.
+    """
+
+    def read(path: StrPath) -> T:
+        return call_deprecated_module_read(path, module_name, handler.read)
+
+    if doc is not None:
+        read.__doc__ = doc
+    read.__module__ = module_name
+    return read
+
+
+def make_deprecated_module_write(
+    module_name: str,
+    handler: _WritableHandler,
+    *,
+    doc: str | None = None,
+) -> Callable[[StrPath, JSONData], int]:
+    """
+    Build a thin deprecated module-level ``write`` wrapper.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully-qualified module name for warning messages.
+    handler : _WritableHandler
+        Handler instance exposing ``write(path, data)``.
+    doc : str | None, optional
+        Optional wrapper docstring override.
+
+    Returns
+    -------
+    Callable[[StrPath, JSONData], int]
+        Wrapper with ``write(path, data)`` signature.
+    """
+
+    def write(path: StrPath, data: JSONData) -> int:
+        return call_deprecated_module_write(
+            path,
+            data,
+            module_name,
+            handler.write,
+        )
+
+    if doc is not None:
+        write.__doc__ = doc
+    write.__module__ = module_name
+    return write
+
+
+def make_deprecated_module_io[T](
+    module_name: str,
+    handler: _ReadWriteHandler[T],
+) -> tuple[
+    Callable[[StrPath], T],
+    Callable[[StrPath, JSONData], int],
+]:
+    """
+    Build paired deprecated module-level ``read`` and ``write`` wrappers.
+
+    Parameters
+    ----------
+    module_name : str
+        Fully-qualified module name for warning messages.
+    handler : _ReadWriteHandler[T]
+        Handler instance exposing ``read(path)`` and ``write(path, data)``.
+
+    Returns
+    -------
+    tuple[Callable[[StrPath], T], Callable[[StrPath, JSONData], int]]
+        ``(read, write)`` wrappers.
+    """
+    return (
+        make_deprecated_module_read(module_name, handler),
+        make_deprecated_module_write(module_name, handler),
+    )
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class FileHandlerOption:
+    """
+    Shared helpers for common read/write option extraction.
+    """
+
+    # -- Internal Instance Methods -- #
+
+    def _option_attr(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        attr_name: str,
+        *,
+        default: Any | None = None,
+    ) -> Any | None:
+        """
+        Return one option attribute value or a provided default.
+
+        Parameters
+        ----------
+        options : ReadOptions | WriteOptions | None
+            Options object to extract the attribute from.
+        attr_name : str
+            Name of the attribute to extract.
+        default : Any | None, optional
+            Fallback value to return when the attribute is missing.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        Any | None
+            The attribute value when present, else *default*.
+        """
+        if options is None:
+            return default
+        value = getattr(options, attr_name)
+        return default if value is None else value
+
+    # -- Instance Methods -- #
+
+    def encoding_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        *,
+        default: str = 'utf-8',
+    ) -> str:
+        """
+        Extract text encoding from read/write options.
+
+        Parameters
+        ----------
+        options : ReadOptions | WriteOptions | None
+            Read or write options to extract the encoding from.
+        default : str, optional
+            Default encoding to return when not specified in *options*.
+            Defaults to ``'utf-8'``.
+
+        Returns
+        -------
+        str
+            Text encoding from *options* when present, else *default*.
+        """
+        return cast(
+            str,
+            self._option_attr(options, 'encoding', default=default),
+        )
+
+    def extra_option(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        key: str,
+        *,
+        default: Any | None = None,
+    ) -> Any | None:
+        """
+        Read one format-specific option from ``options.extras``.
+
+        Parameters
+        ----------
+        options : ReadOptions | WriteOptions | None
+            Read or write options to extract the extra option from.
+        key : str
+            Key of the extra option to extract.
+        default : Any | None, optional
+            Default value to return when the extra option is not present.
+            Defaults to ``None``.
+
+        Returns
+        -------
+        Any | None
+            The value of the extra option when present, else *default*.
+        """
+        if options is None:
+            return default
+        return options.extras.get(key, default)
+
+    def root_tag_from_write_options(
+        self,
+        options: WriteOptions | None,
+        *,
+        default: str = 'root',
+    ) -> str:
+        """
+        Extract XML-like root tag from write options.
+
+        Parameters
+        ----------
+        options : WriteOptions | None
+            Write options to extract the root tag from.
+        default : str, optional
+            Default root tag to return when not specified in *options*.
+            Defaults to ``'root'``.
+
+        Returns
+        -------
+        str
+            XML-like root tag from *options* when present, else *default*.
+        """
+        return cast(
+            str,
+            self._option_attr(options, 'root_tag', default=default),
+        )
+
+
+class ArchiveInnerNameOption(FileHandlerOption):
+    """
+    Shared helpers for archive member selection options.
+    """
+
+    # -- Instance Methods -- #
+
+    def inner_name_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract archive member selector from read/write options.
+        """
+        return cast(
+            str | None,
+            self._option_attr(options, 'inner_name', default=default),
+        )
+
+
+class DelimitedOption(FileHandlerOption):
+    """
+    Shared helpers for delimiter overrides on delimited text handlers.
+    """
+
+    # -- Class Attributes -- #
+
+    delimiter: ClassVar[str]
+
+    # -- Instance Methods -- #
+
+    def delimiter_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str:
+        """
+        Extract delimiter override from read/write options.
+        """
+        override = self.extra_option(options, 'delimiter')
+        if override is not None:
+            return str(override)
+        if default is not None:
+            return default
+        return self.delimiter
+
+
+class EmbeddedDatabaseTableOption(FileHandlerOption):
+    """
+    Shared helpers for embedded-database table selection and cleanup.
+    """
+
+    # -- Instance Methods -- #
+
+    def close_connection(
+        self,
+        connection: Any,
+    ) -> None:
+        """
+        Close a database connection when it exposes a ``close`` method.
+        """
+        closer = getattr(connection, 'close', None)
+        if callable(closer):
+            closer()
+
+    def table_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        *,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Extract table selector from read/write options.
+        """
+        return cast(
+            str | None,
+            self._option_attr(options, 'table', default=default),
+        )
+
+
+class ScientificDatasetOption(FileHandlerOption):
+    """
+    Shared helpers for scientific dataset selection options.
+    """
+
+    # -- Instance Methods -- #
+
+    def dataset_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+    ) -> str | None:
+        """
+        Extract dataset selector from read/write options.
+        """
+        return cast(
+            str | None,
+            self._option_attr(options, 'dataset', default=None),
+        )
+
+    def resolve_dataset(
+        self,
+        dataset: str | None = None,
+        *,
+        options: ReadOptions | WriteOptions | None = None,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Resolve dataset selection using explicit, options, then
+        default.
+        """
+        if dataset is not None:
+            return dataset
+        from_options = self.dataset_from_options(options)
+        if from_options is not None:
+            return from_options
+        return default
+
+
+class SpreadsheetSheetOption(FileHandlerOption):
+    """
+    Shared helpers for spreadsheet sheet-selection options.
+    """
+
+    default_sheet: ClassVar[str | int]
+
+    def sheet_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+        *,
+        default: str | int | None = None,
+    ) -> str | int:
+        """
+        Extract sheet selector from read/write options.
+        """
+        resolved_default = self.default_sheet if default is None else default
+        return cast(
+            str | int,
+            self._option_attr(options, 'sheet', default=resolved_default),
+        )

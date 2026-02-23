@@ -21,12 +21,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._r import coerce_r_result
 from ._r import list_r_dataset_keys
@@ -58,7 +56,6 @@ class RdaFile(ScientificDatasetFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.RDA
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -110,16 +107,15 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         JSONData
             Parsed dataset payload.
         """
-        format_name = self.format_name
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=format_name)
-        pandas = get_pandas(format_name)
+        dataset = self.resolve_dataset(dataset, options=options)
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
             dataset=dataset,
             dataset_key=self.dataset_key,
-            format_name=format_name,
+            format_name=self.format_name,
             pandas=pandas,
         )
 
@@ -155,11 +151,10 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        format_name = self.format_name
-        dataset = self.resolve_write_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=format_name)
-        pandas = get_pandas(format_name)
-        records = normalize_records(data, format_name)
+        dataset = self.resolve_dataset(dataset, options=options)
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
+        records = normalize_records(data, self.format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
         target_dataset = dataset if dataset is not None else self.dataset_key
@@ -190,52 +185,4 @@ _RDA_HANDLER = RdaFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``RdaFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the RDA file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the RDA file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _RDA_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``RdaFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the RDA file on disk.
-    data : JSONData
-        Data to write as RDA file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the RDA file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _RDA_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _RDA_HANDLER)

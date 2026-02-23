@@ -20,13 +20,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
@@ -46,12 +45,18 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
+
 
 DEFAULT_KEY = 'data'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for HDF5 operations."""
+    return get_pandas('HDF5')
 
 
 def _raise_tables_error(
@@ -109,7 +114,7 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = get_pandas(self.format_name)
+        pandas = _pandas()
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
@@ -146,8 +151,8 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         ValueError
             If the selected dataset key is missing or ambiguous.
         """
-        dataset = self.resolve_read_dataset(dataset, options=options)
-        pandas = get_pandas(self.format_name)
+        dataset = self.resolve_dataset(dataset, options=options)
+        pandas = _pandas()
         try:
             store = pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
@@ -197,52 +202,4 @@ _HDF5_HANDLER = Hdf5File()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``Hdf5File().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the HDF5 file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the HDF5 file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _HDF5_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``Hdf5File().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the HDF5 file on disk.
-    data : JSONData
-        Data to write as HDF5 file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the HDF5 file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _HDF5_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _HDF5_HANDLER)

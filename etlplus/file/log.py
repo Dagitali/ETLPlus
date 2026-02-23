@@ -24,9 +24,7 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import write_text
 from .base import LogEventFileHandlerABC
@@ -106,7 +104,7 @@ class LogFile(LogEventFileHandlerABC):
         JSONList
             Parsed event dictionaries.
         """
-        encoding = self.encoding_from_read_options(options)
+        encoding = self.encoding_from_options(options)
         rows: JSONList = []
         with path.open('r', encoding=encoding) as handle:
             for raw_line in handle:
@@ -166,7 +164,7 @@ class LogFile(LogEventFileHandlerABC):
         write_text(
             path,
             payload,
-            encoding=self.encoding_from_write_options(options),
+            encoding=self.encoding_from_options(options),
             trailing_newline=True,
         )
         return len(rows)
@@ -181,52 +179,4 @@ _LOG_HANDLER = LogFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``LogFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the LOG file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the LOG file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _LOG_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``LogFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the LOG file on disk.
-    data : JSONData
-        Data to write as LOG. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the LOG file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _LOG_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _LOG_HANDLER)
