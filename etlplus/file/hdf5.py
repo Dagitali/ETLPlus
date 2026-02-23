@@ -50,11 +50,6 @@ DEFAULT_KEY = 'data'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _pandas() -> Any:
-    """Return the optional pandas module for HDF5 operations."""
-    return get_pandas('HDF5')
-
-
 def _raise_tables_error(
     err: ImportError,
 ) -> None:
@@ -110,13 +105,21 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = _pandas()
+        with self.open_store(path) as store:
+            return [key.lstrip('/') for key in store.keys()]
+
+    def open_store(
+        self,
+        path: Path,
+    ) -> Any:
+        """
+        Open and return one HDFStore, wrapping missing tables dependency.
+        """
+        pandas = self.resolve_pandas()
         try:
-            store = pandas.HDFStore(path)
+            return pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
             _raise_tables_error(err)
-        with store:
-            return [key.lstrip('/') for key in store.keys()]
 
     def read_dataset(
         self,
@@ -148,31 +151,43 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pandas = _pandas()
-        try:
-            store = pandas.HDFStore(path)
-        except ImportError as err:  # pragma: no cover
-            _raise_tables_error(err)
-
-        with store:
+        with self.open_store(path) as store:
             keys = [key.lstrip('/') for key in store.keys()]
-            if not keys:
+            key = self.resolve_store_key(keys, dataset=dataset)
+            if key is None:
                 return []
-            if dataset is not None:
-                if dataset not in keys:
-                    raise ValueError(f'HDF5 dataset {dataset!r} not found')
-                key = dataset
-            elif DEFAULT_KEY in keys:
-                key = DEFAULT_KEY
-            elif len(keys) == 1:
-                key = keys[0]
-            else:
-                raise ValueError(
-                    'Multiple datasets found in HDF5 file; expected "data" or '
-                    'a single dataset',
-                )
             frame = store.get(key)
         return records_from_table(frame)
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_store_key(
+        self,
+        keys: list[str],
+        *,
+        dataset: str | None,
+    ) -> str | None:
+        """
+        Resolve one selected HDF5 key from available keys.
+        """
+        if not keys:
+            return None
+        if dataset is not None:
+            if dataset not in keys:
+                raise ValueError(f'HDF5 dataset {dataset!r} not found')
+            return dataset
+        if DEFAULT_KEY in keys:
+            return DEFAULT_KEY
+        if len(keys) == 1:
+            return keys[0]
+        raise ValueError(
+            'Multiple datasets found in HDF5 file; expected "data" or '
+            'a single dataset',
+        )
 
     def write_dataset(
         self,
