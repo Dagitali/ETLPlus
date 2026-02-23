@@ -18,11 +18,7 @@ Notes
 
 from __future__ import annotations
 
-import re
-
-from ._mixins import RegexTemplateRenderMixin
-from .base import TemplateFileHandlerABC
-from .base import TemplateTextIOMixin
+from ._template_handlers import BraceTokenTemplateHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -37,11 +33,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class MustacheFile(
-    RegexTemplateRenderMixin,
-    TemplateTextIOMixin,
-    TemplateFileHandlerABC,
-):
+class MustacheFile(BraceTokenTemplateHandlerMixin):
     """
     Handler implementation for MUSTACHE files.
     """
@@ -50,4 +42,3 @@ class MustacheFile(
 
     format = FileFormat.MUSTACHE
     template_engine = 'mustache'
-    token_pattern = re.compile(r'{{\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*}}')
