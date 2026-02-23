@@ -18,10 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._binary_codec_handlers import BinaryRecordCodecHandlerMixin
-from ._imports import get_dependency
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -31,15 +28,6 @@ __all__ = [
     # Classes
     'MsgpackFile',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _msgpack() -> Any:
-    """Return the optional msgpack module."""
-    return get_dependency('msgpack', format_name='MSGPACK')
-
 
 # SECTION: CLASSES ========================================================== #
 
@@ -58,11 +46,3 @@ class MsgpackFile(BinaryRecordCodecHandlerMixin):
     decode_method_name = 'unpackb'
     encode_kwargs = (('use_bin_type', True),)
     decode_kwargs = (('raw', False),)
-
-    # -- Internal Instance Methods -- #
-
-    def resolve_codec_module(self) -> Any:
-        """
-        Return the optional msgpack module.
-        """
-        return _msgpack()
