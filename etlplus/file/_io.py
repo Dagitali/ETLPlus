@@ -171,6 +171,27 @@ def read_delimited(
     return rows
 
 
+def read_sas_table(
+    pandas: Any,
+    path: StrPath,
+    *,
+    format_hint: str | None = None,
+) -> Any:
+    """
+    Read a SAS-backed table via pandas, tolerating unsupported format kwargs.
+
+    Some pandas-compatible readers accept ``format=...`` while others raise
+    ``TypeError``; this helper preserves a single fallback path.
+    """
+    resolved_path = coerce_path(path)
+    if format_hint is None:
+        return pandas.read_sas(resolved_path)
+    try:
+        return pandas.read_sas(resolved_path, format=format_hint)
+    except TypeError:
+        return pandas.read_sas(resolved_path)
+
+
 def read_text(
     path: StrPath,
     *,
