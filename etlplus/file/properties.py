@@ -32,6 +32,12 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SEPARATORS = ('=', ':')
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -46,20 +52,25 @@ def _parse_properties_text(
         stripped = line.strip()
         if not stripped or stripped.startswith(('#', '!')):
             continue
-        separator_index = -1
-        for sep in ('=', ':'):
-            if sep in stripped:
-                separator_index = stripped.find(sep)
-                break
-        if separator_index == -1:
-            key = stripped
-            value = ''
-        else:
-            key = stripped[:separator_index].strip()
-            value = stripped[separator_index + 1:].strip()
+
+        key, value = _split_key_value(stripped)
         if key:
             payload[key] = value
     return payload
+
+
+def _split_key_value(
+    line: str,
+) -> tuple[str, str]:
+    """
+    Split one normalized PROPERTIES line into ``(key, value)``.
+    """
+    separator_indexes = [line.find(sep) for sep in _SEPARATORS if sep in line]
+    if not separator_indexes:
+        return line, ''
+
+    index = min(separator_indexes)
+    return line[:index].strip(), line[index + 1:].strip()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -93,6 +104,6 @@ class PropertiesFile(DictPayloadTextCodecHandlerMixin):
         Serialize dictionary *data* into PROPERTIES text.
         """
         return ''.join(
-            f'{key}={stringify_value(payload[key])}\n'
-            for key in sorted(payload.keys())
+            f'{key}={stringify_value(value)}\n'
+            for key, value in sorted(payload.items())
         )
