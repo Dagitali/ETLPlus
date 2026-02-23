@@ -26,10 +26,8 @@ from ..types import JSONList
 from ._imports import get_dependency
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
-from ._sql import coerce_sql_value
-from ._sql import collect_column_values
-from ._sql import infer_column_type
 from ._sql import quote_identifier
+from ._sql import write_table_rows
 from .base import EmbeddedDatabaseFileHandlerABC
 from .enums import FileFormat
 
@@ -162,33 +160,9 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         int
             Number of rows written.
         """
-        if not rows:
-            return 0
-
-        columns, column_values = collect_column_values(rows)
-        if not columns:
-            return 0
-
-        column_defs = ', '.join(
-            f'{quote_identifier(column)} '
-            f'{infer_column_type(values, DUCKDB_DIALECT)}'
-            for column, values in column_values.items()
+        return write_table_rows(
+            connection,
+            table,
+            rows,
+            dialect=DUCKDB_DIALECT,
         )
-        table_ident = quote_identifier(table)
-        insert_columns = ', '.join(
-            quote_identifier(column) for column in columns
-        )
-        placeholders = ', '.join('?' for _ in columns)
-        insert_sql = (
-            f'INSERT INTO {table_ident} ({insert_columns}) '
-            f'VALUES ({placeholders})'
-        )
-
-        connection.execute(f'DROP TABLE IF EXISTS {table_ident}')
-        connection.execute(f'CREATE TABLE {table_ident} ({column_defs})')
-        values = [
-            tuple(coerce_sql_value(row.get(column)) for column in columns)
-            for row in rows
-        ]
-        connection.executemany(insert_sql, values)
-        return len(rows)
