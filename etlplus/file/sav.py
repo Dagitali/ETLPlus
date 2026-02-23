@@ -20,8 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
 from .base import WriteOptions
@@ -34,6 +34,14 @@ __all__ = [
     # Classes
     'SavFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
@@ -73,7 +81,7 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
             The pyreadstat module, passed via dependency injection when
             required by the mixin. Will be None if not required.
         options : ReadOptions | None
-            Optional read options. May be ignored by this handler.
+            Optional read options.
 
         Returns
         -------
@@ -93,18 +101,6 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
             )
         frame, _meta = pyreadstat.read_sav(str(path))
         return frame
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
-
-    def resolve_pyreadstat(self) -> Any:
-        """
-        Return pyreadstat using module-level dependency resolution.
-        """
-        return get_dependency('pyreadstat', format_name=self.format_name)
 
     def write_frame(
         self,
@@ -130,7 +126,7 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
             The pyreadstat module, passed via dependency injection when
             required by the mixin. Will be None if not required.
         options : WriteOptions | None
-            Optional write options. May be ignored by this handler.
+            Optional write options.
 
         Raises
         ------
