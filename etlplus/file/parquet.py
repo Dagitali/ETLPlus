@@ -23,10 +23,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -191,51 +190,5 @@ _PARQUET_HANDLER = ParquetFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``ParquetFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PARQUET file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the Parquet file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PARQUET_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ParquetFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PARQUET file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PARQUET_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _PARQUET_HANDLER)
+write = make_deprecated_module_write(__name__, _PARQUET_HANDLER)
