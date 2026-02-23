@@ -18,12 +18,14 @@ Notes
 
 from __future__ import annotations
 
-from typing import Any
-
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._pandas_handlers import PandasColumnarHandlerMixin
 from .enums import FileFormat
+
+# Keep module-level resolver hooks for monkeypatch-driven contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -50,17 +52,3 @@ class OrcFile(PandasColumnarHandlerMixin):
     write_method = 'to_orc'
     write_kwargs = (('index', False),)
     requires_pyarrow = True
-
-    # -- Internal Instance Methods -- #
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using the local dependency resolver hook.
-        """
-        return get_pandas(self.pandas_format_name)
-
-    def resolve_pyarrow(self) -> Any:
-        """
-        Return pyarrow using the local dependency resolver hook.
-        """
-        return get_dependency('pyarrow', format_name=self.pandas_format_name)
