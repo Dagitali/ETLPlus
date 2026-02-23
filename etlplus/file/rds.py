@@ -19,7 +19,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import StrPath
@@ -44,19 +43,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for RDS operations."""
-    return get_pandas('RDS')
-
-
-def _pyreadr() -> Any:
-    """Return the optional pyreadr module."""
-    return get_dependency('pyreadr', format_name='RDS')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -100,8 +86,8 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         """
         format_name = self.format_name
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = _pyreadr()
-        pandas = _pandas()
+        pyreadr = get_dependency('pyreadr', format_name='RDS')
+        pandas = get_pandas('RDS')
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
@@ -148,8 +134,8 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             dataset=dataset,
             options=options,
         )
-        pyreadr = _pyreadr()
-        pandas = _pandas()
+        pyreadr = get_dependency('pyreadr', format_name='RDS')
+        pandas = get_pandas('RDS')
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
 
