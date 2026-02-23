@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import tomllib
 from typing import Any
+from typing import Protocol
 
 from ..types import JSONDict
 from ._imports import get_optional_module
@@ -35,31 +36,56 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_TOML_FALLBACK_MESSAGE = (
+    'TOML write support requires optional dependency '
+    '"tomli_w" or "toml".\n'
+    'Install with: pip install tomli-w'
+)
+_TOMLI_W_MESSAGE = (
+    'TOML write support requires optional dependency '
+    '"tomli_w".\n'
+    'Install with: pip install tomli-w'
+)
+
+
+# SECTION: INTERNAL PROTOCOLS =============================================== #
+
+
+class _TomlWriter(Protocol):
+    """
+    Structural protocol for TOML writer modules exposing ``dumps``.
+    """
+
+    def dumps(
+        self,
+        payload: JSONDict,
+    ) -> str: ...
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _tomli_w() -> Any:
     """Return the optional tomli_w module for TOML writes."""
-    return get_optional_module(
-        'tomli_w',
-        error_message=(
-            'TOML write support requires optional dependency '
-            '"tomli_w".\n'
-            'Install with: pip install tomli-w'
-        ),
-    )
+    return get_optional_module('tomli_w', error_message=_TOMLI_W_MESSAGE)
 
 
 def _toml() -> Any:
     """Return the optional toml module as TOML write fallback."""
-    return get_optional_module(
-        'toml',
-        error_message=(
-            'TOML write support requires optional dependency '
-            '"tomli_w" or "toml".\n'
-            'Install with: pip install tomli-w'
-        ),
-    )
+    return get_optional_module('toml', error_message=_TOML_FALLBACK_MESSAGE)
+
+
+def _resolve_toml_writer() -> _TomlWriter:
+    """
+    Resolve preferred TOML writer module with ``tomli_w`` first.
+    """
+    try:
+        return _tomli_w()
+    except ImportError:
+        return _toml()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -93,10 +119,4 @@ class TomlFile(DictPayloadTextCodecHandlerMixin):
         """
         Serialize dictionary *data* into TOML text.
         """
-        toml_writer: Any
-        try:
-            toml_writer = _tomli_w()
-            return str(toml_writer.dumps(payload))
-        except ImportError:
-            toml = _toml()
-            return str(toml.dumps(payload))
+        return _resolve_toml_writer().dumps(payload)
