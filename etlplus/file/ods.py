@@ -22,13 +22,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SpreadsheetFileHandlerABC
@@ -182,52 +180,5 @@ _ODS_HANDLER = OdsFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``OdsFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ODS file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the ODS file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ODS_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``OdsFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ODS file on disk.
-    data : JSONData
-        Data to write as ODS. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the ODS file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ODS_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _ODS_HANDLER)
+write = make_deprecated_module_write(__name__, _ODS_HANDLER)
