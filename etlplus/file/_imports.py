@@ -10,11 +10,14 @@ import sys
 from collections.abc import Callable
 from importlib import import_module
 from typing import Any
+from typing import ClassVar
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'FormatPandasResolverMixin',
     # Functions
     'get_dependency',
     'get_optional_module',
@@ -315,3 +318,24 @@ def resolve_pandas(
         get_pandas,
         format_name,
     )
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class FormatPandasResolverMixin:
+    """
+    Shared pandas resolver for handlers keyed by ``self.format_name``.
+    """
+
+    # -- Class Attributes -- #
+
+    format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level override support.
+        """
+        return resolve_pandas(self, format_name=self.format_name)
