@@ -25,7 +25,6 @@ from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'NcFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -168,14 +164,3 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         except ImportError as err:  # pragma: no cover
             _raise_engine_error(err)
         return len(records)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_NC_HANDLER = NcFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _NC_HANDLER)

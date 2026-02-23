@@ -12,7 +12,6 @@ from typing import Any
 from ..types import JSONList
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SpreadsheetFileHandlerABC
@@ -25,9 +24,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'XlsxFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -146,14 +142,3 @@ class XlsxFile(SpreadsheetFileHandlerABC):
                 'Install with: pip install openpyxl',
             ) from err
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_XLSX_HANDLER = XlsxFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _XLSX_HANDLER)

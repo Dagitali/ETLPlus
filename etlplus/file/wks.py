@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
 
@@ -28,9 +27,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'WksFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -46,15 +42,3 @@ class WksFile(StubSpreadsheetFileHandlerABC):
 
     format = FileFormat.WKS
     engine_name = 'lotus123'
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_WKS_HANDLER = WksFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _WKS_HANDLER)

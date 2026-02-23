@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.meta.test_u_contract_module_io_deprecations` module.
 
-Contract tests for deprecated module-level file I/O wrappers.
+Contract tests for removal of legacy module-level file I/O wrappers.
 """
 
 from __future__ import annotations
@@ -9,29 +9,8 @@ from __future__ import annotations
 import ast
 import importlib
 from pathlib import Path
-from types import ModuleType
-from typing import Any
-
-import pytest
 
 from etlplus.file import registry as file_registry
-
-# SECTION: MARKS ============================================================ #
-
-
-pytestmark = pytest.mark.filterwarnings(
-    (
-        'default:.*is deprecated; use handler instance methods '
-        'instead\\.:DeprecationWarning'
-    ),
-)
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type HandlerInstance = Any
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -56,31 +35,6 @@ _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _get_module_handler(
-    module: ModuleType,
-) -> HandlerInstance:
-    """Return the single module-level handler singleton instance."""
-    handlers = [
-        value
-        for name, value in vars(module).items()
-        if name.endswith('_HANDLER')
-    ]
-    assert len(handlers) == 1
-    return handlers[0]
-
-
-def _call_module_write(
-    module: ModuleType,
-    *,
-    path: Path,
-    payload: list[dict[str, object]],
-) -> int:
-    """Call one module-level write wrapper with module-specific kwargs."""
-    if module.__name__ == 'etlplus.file.xml':
-        return module.write(path, payload, root_tag='root')
-    return module.write(path, payload)
-
-
 def _iter_internal_python_files() -> list[Path]:
     """Return non-file-subpackage runtime Python modules under ``etlplus``."""
     files: list[Path] = []
@@ -97,86 +51,31 @@ def _iter_internal_python_files() -> list[Path]:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(
-    'module_name',
-    _MODULE_NAMES,
-)
-def test_module_read_wrapper_warns_and_delegates(
-    module_name: str,
-    monkeypatch: pytest.MonkeyPatch,
+def test_file_format_modules_do_not_expose_module_level_read_write() -> None:
+    """
+    Test mapped file modules no longer exposing ``read``/``write`` wrappers.
+    """
+    for module_name in _MODULE_NAMES:
+        module = importlib.import_module(module_name)
+        assert not hasattr(module, 'read'), module_name
+        assert not hasattr(module, 'write'), module_name
+
+
+def test_file_format_modules_do_not_expose_module_level_handler_singletons(
 ) -> None:
-    """
-    Test module read wrappers warning and delegating to handler instances.
-    """
-    module = importlib.import_module(module_name)
-    handler = _get_module_handler(module)
-    captured: dict[str, Path] = {}
-    expected_result: object = {'ok': True}
-
-    def fake_read(path: Path, *_args: object, **_kwargs: object) -> object:
-        captured['path'] = path
-        return expected_result
-
-    monkeypatch.setattr(handler, 'read', fake_read)
-
-    with pytest.warns(DeprecationWarning) as captured_warnings:
-        result = module.read('sample.any')
-
-    assert result is expected_result
-    assert captured['path'] == Path('sample.any')
-    assert any(
-        f'{module_name}.read() is deprecated' in str(warning.message)
-        for warning in captured_warnings.list
-    )
+    """Test mapped file modules no longer exposing ``_*_HANDLER`` constants."""
+    violations: list[str] = []
+    for module_name in _MODULE_NAMES:
+        module = importlib.import_module(module_name)
+        for symbol_name in vars(module):
+            if symbol_name.endswith('_HANDLER'):
+                violations.append(f'{module_name}.{symbol_name}')
+    assert not violations, '\n'.join(violations)
 
 
-@pytest.mark.parametrize(
-    'module_name',
-    _MODULE_NAMES,
-)
-def test_module_write_wrapper_warns_and_delegates(
-    module_name: str,
-    monkeypatch: pytest.MonkeyPatch,
+def test_internal_runtime_code_does_not_use_removed_module_io_wrappers(
 ) -> None:
-    """
-    Test module write wrappers warning and delegating to handler instances.
-    """
-    module = importlib.import_module(module_name)
-    handler = _get_module_handler(module)
-    captured: dict[str, object] = {}
-    payload: list[dict[str, object]] = [{'a': 1}]
-    expected_count = 17
-
-    def fake_write(
-        path: Path,
-        data: object,
-        *_args: object,
-        **_kwargs: object,
-    ) -> int:
-        captured['path'] = path
-        captured['data'] = data
-        return expected_count
-
-    monkeypatch.setattr(handler, 'write', fake_write)
-
-    with pytest.warns(DeprecationWarning) as captured_warnings:
-        count = _call_module_write(
-            module,
-            path=Path('sample.any'),
-            payload=payload,
-        )
-
-    assert count == expected_count
-    assert captured['path'] == Path('sample.any')
-    assert captured['data'] is payload
-    assert any(
-        f'{module_name}.write() is deprecated' in str(warning.message)
-        for warning in captured_warnings.list
-    )
-
-
-def test_internal_runtime_code_does_not_use_module_level_io_wrappers() -> None:
-    """Test runtime modules avoiding deprecated file-format module wrappers."""
+    """Test runtime modules not importing/calling removed wrapper APIs."""
     violations: list[str] = []
 
     for path in _iter_internal_python_files():

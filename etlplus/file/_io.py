@@ -7,14 +7,10 @@ Shared helpers for record normalization and delimited text formats.
 from __future__ import annotations
 
 import csv
-import warnings
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
-from typing import Literal
-from typing import Protocol
 from typing import cast
 
 from ..types import JSONData
@@ -25,54 +21,6 @@ from ..types import StrPath
 if TYPE_CHECKING:
     from .base import ReadOptions
     from .base import WriteOptions
-
-# SECTION: PROTOCOLS ======================================================== #
-
-
-class _ReadableHandler[T](Protocol):
-    """
-    Protocol for handler instances exposing ``read(path)``.
-    """
-
-    def read(
-        self,
-        path: Path,
-        /,
-        *args: Any,
-        **kwargs: Any,
-    ) -> T:
-        """
-        Read payload from *path*.
-        """
-
-
-class _WritableHandler(Protocol):
-    """
-    Protocol for handler instances exposing ``write(path, data)``.
-    """
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        /,
-        *args: Any,
-        **kwargs: Any,
-    ) -> int:
-        """
-        Write *data* to *path*.
-        """
-
-
-class _ReadWriteHandler[T](
-    _ReadableHandler[T],
-    _WritableHandler,
-    Protocol,
-):
-    """
-    Protocol for handlers exposing both :meth:`read` and :meth:`write`.
-    """
-
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -370,30 +318,6 @@ def stringify_value(value: Any) -> str:
     return str(value)
 
 
-def warn_deprecated_module_io(
-    module_name: str,
-    operation: Literal['read', 'write'],
-) -> None:
-    """
-    Emit a deprecation warning for module-level IO wrappers.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully-qualified module name containing the deprecated wrapper.
-    operation : Literal['read', 'write']
-        Deprecated module-level operation.
-    """
-    warnings.warn(
-        (
-            f'{module_name}.{operation}() is deprecated; use handler '
-            'instance methods instead.'
-        ),
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
 def write_delimited(
     path: StrPath,
     data: JSONData,
@@ -467,160 +391,6 @@ def write_text(
     path = coerce_path(path)
     with path.open('w', encoding=encoding, newline='') as handle:
         handle.write(payload)
-
-
-def call_deprecated_module_read[T](
-    path: StrPath,
-    module_name: str,
-    reader: Callable[[Path], T],
-) -> T:
-    """
-    Delegate deprecated module :func:`read` wrappers to handler methods.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path-like wrapper argument to normalize.
-    module_name : str
-        Fully-qualified module name containing the deprecated wrapper.
-    reader : Callable[[Path], T]
-        Bound handler read method.
-
-    Returns
-    -------
-    T
-        Parsed payload returned by the handler read method.
-    """
-    warn_deprecated_module_io(module_name, 'read')
-    return reader(coerce_path(path))
-
-
-def call_deprecated_module_write(
-    path: StrPath,
-    data: JSONData,
-    module_name: str,
-    writer: Callable[[Path, JSONData], int],
-) -> int:
-    """
-    Delegate deprecated module :func:`write` wrappers to handler methods.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path-like wrapper argument to normalize.
-    data : JSONData
-        Payload forwarded to the handler write method.
-    module_name : str
-        Fully-qualified module name containing the deprecated wrapper.
-    writer : Callable[[Path, JSONData], int]
-        Bound handler write method.
-
-    Returns
-    -------
-    int
-        Number of records written by the handler.
-    """
-    warn_deprecated_module_io(module_name, 'write')
-    return writer(coerce_path(path), data)
-
-
-def make_deprecated_module_read[T](
-    module_name: str,
-    handler: _ReadableHandler[T],
-    *,
-    doc: str | None = None,
-) -> Callable[[StrPath], T]:
-    """
-    Build a thin deprecated module-level ``read`` wrapper.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully-qualified module name for warning messages.
-    handler : _ReadableHandler[T]
-        Handler instance exposing ``read(path)``.
-    doc : str | None, optional
-        Optional wrapper docstring override.
-
-    Returns
-    -------
-    Callable[[StrPath], T]
-        Wrapper with ``read(path)`` signature.
-    """
-
-    def read(path: StrPath) -> T:
-        return call_deprecated_module_read(path, module_name, handler.read)
-
-    if doc is not None:
-        read.__doc__ = doc
-    read.__module__ = module_name
-    return read
-
-
-def make_deprecated_module_write(
-    module_name: str,
-    handler: _WritableHandler,
-    *,
-    doc: str | None = None,
-) -> Callable[[StrPath, JSONData], int]:
-    """
-    Build a thin deprecated module-level ``write`` wrapper.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully-qualified module name for warning messages.
-    handler : _WritableHandler
-        Handler instance exposing ``write(path, data)``.
-    doc : str | None, optional
-        Optional wrapper docstring override.
-
-    Returns
-    -------
-    Callable[[StrPath, JSONData], int]
-        Wrapper with ``write(path, data)`` signature.
-    """
-
-    def write(path: StrPath, data: JSONData) -> int:
-        return call_deprecated_module_write(
-            path,
-            data,
-            module_name,
-            handler.write,
-        )
-
-    if doc is not None:
-        write.__doc__ = doc
-    write.__module__ = module_name
-    return write
-
-
-def make_deprecated_module_io[T](
-    module_name: str,
-    handler: _ReadWriteHandler[T],
-) -> tuple[
-    Callable[[StrPath], T],
-    Callable[[StrPath, JSONData], int],
-]:
-    """
-    Build paired deprecated module-level ``read`` and ``write`` wrappers.
-
-    Parameters
-    ----------
-    module_name : str
-        Fully-qualified module name for warning messages.
-    handler : _ReadWriteHandler[T]
-        Handler instance exposing ``read(path)`` and ``write(path, data)``.
-
-    Returns
-    -------
-    tuple[Callable[[StrPath], T], Callable[[StrPath, JSONData], int]]
-        ``(read, write)`` wrappers.
-    """
-    return (
-        make_deprecated_module_read(module_name, handler),
-        make_deprecated_module_write(module_name, handler),
-    )
 
 
 # SECTION: CLASSES ========================================================== #

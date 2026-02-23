@@ -23,7 +23,6 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_dependency
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -36,9 +35,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'BsonFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -178,15 +174,3 @@ class BsonFile(BinarySerializationFileHandlerABC):
         bson = _bson()
         docs = _decode_all(bson, payload)
         return cast(JSONList, docs)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_BSON_HANDLER = BsonFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _BSON_HANDLER)

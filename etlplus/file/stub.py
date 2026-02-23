@@ -12,9 +12,6 @@ from typing import Never
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
-from ._io import coerce_path
-from ._io import warn_deprecated_module_io
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -27,9 +24,6 @@ __all__ = [
     # Classes
     'StubFileHandlerABC',
     'StubFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -97,9 +91,6 @@ class StubFile(StubFileHandlerABC):
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_STUB_HANDLER = StubFile()
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -131,62 +122,3 @@ def _raise_not_implemented(
     raise NotImplementedError(
         f'{format_name} {operation} is not implemented yet',
     )
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def read(
-    path: StrPath,
-    format_name: str = 'Stubbed',
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``StubFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the stubbed file on disk.
-    format_name : str
-        Deprecated override for human-readable format name.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the stubbed file.
-    """
-    path = coerce_path(path)
-    warn_deprecated_module_io(__name__, 'read')
-    if format_name != 'Stubbed':
-        _raise_not_implemented('read', format_name=format_name)
-    return _STUB_HANDLER.read(path)
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-    format_name: str = 'Stubbed',
-) -> int:
-    """
-    Deprecated wrapper. Use ``StubFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the stubbed file on disk.
-    data : JSONData
-        Data to write as stubbed file. Should be a list of dictionaries or a
-        single dictionary.
-    format_name : str
-        Deprecated override for human-readable format name.
-
-    Returns
-    -------
-    int
-        The number of rows written to the stubbed file.
-    """
-    path = coerce_path(path)
-    warn_deprecated_module_io(__name__, 'write')
-    if format_name != 'Stubbed':
-        _raise_not_implemented('write', format_name=format_name)
-    return _STUB_HANDLER.write(path, data)

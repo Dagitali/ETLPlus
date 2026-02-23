@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import re
 
-from ._io import make_deprecated_module_io
 from ._mixins import RegexTemplateRenderMixin
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin
@@ -32,9 +31,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'MustacheFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -55,15 +51,3 @@ class MustacheFile(
     format = FileFormat.MUSTACHE
     template_engine = 'mustache'
     token_pattern = re.compile(r'{{\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*}}')
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_MUSTACHE_HANDLER = MustacheFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _MUSTACHE_HANDLER)

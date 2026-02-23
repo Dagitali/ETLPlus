@@ -24,7 +24,6 @@ from typing import Any
 
 from ..types import JSONList
 from ._imports import get_dependency
-from ._io import make_deprecated_module_io
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
 from ._sql import coerce_sql_value
@@ -43,9 +42,6 @@ if TYPE_CHECKING:
 __all__ = [
     # Classes
     'DuckdbFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -196,14 +192,3 @@ class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
         ]
         connection.executemany(insert_sql, values)
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_DUCKDB_HANDLER = DuckdbFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _DUCKDB_HANDLER)

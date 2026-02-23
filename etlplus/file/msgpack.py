@@ -23,7 +23,6 @@ from typing import Any
 from ..types import JSONData
 from ._imports import get_dependency
 from ._io import coerce_record_payload
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -36,9 +35,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'MsgpackFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -116,15 +112,3 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
         msgpack = _msgpack()
         decoded = msgpack.unpackb(payload, raw=False)
         return coerce_record_payload(decoded, format_name='MSGPACK')
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_MSGPACK_HANDLER = MsgpackFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _MSGPACK_HANDLER)

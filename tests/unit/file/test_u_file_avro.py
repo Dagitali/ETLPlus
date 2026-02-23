@@ -193,7 +193,7 @@ class TestAvroHelpers:
 
 
 class TestAvroIo(BinaryDependencyModuleContract):
-    """Unit tests for AVRO module-level read/write dispatch."""
+    """Unit tests for AVRO handler read/write behavior."""
 
     # pylint: disable=protected-access
 

@@ -26,7 +26,6 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ._imports import get_dependency
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -39,9 +38,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'AvroFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -203,14 +199,3 @@ class AvroFile(BinarySerializationFileHandlerABC):
         with BytesIO(payload) as handle:
             reader = fastavro.reader(handle)
             return [cast(JSONDict, record) for record in reader]
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_AVRO_HANDLER = AvroFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _AVRO_HANDLER)

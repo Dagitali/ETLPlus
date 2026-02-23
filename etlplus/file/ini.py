@@ -23,7 +23,6 @@ import configparser
 
 from ..types import JSONData
 from ..types import JSONDict
-from ._io import make_deprecated_module_io
 from ._io import stringify_value
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
@@ -36,9 +35,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'IniFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -182,14 +178,3 @@ class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
         parser = configparser.ConfigParser()
         parser.read_string(text)
         return _payload_from_parser(parser)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_INI_HANDLER = IniFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _INI_HANDLER)
