@@ -56,7 +56,6 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.SAV
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -85,7 +84,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
         frame, _meta = pyreadstat.read_sav(str(path))
         return records_from_table(frame)
 
@@ -124,8 +123,8 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
-        pandas = get_pandas('SAV')
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         pyreadstat.write_sav(frame, str(path))
