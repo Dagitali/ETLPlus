@@ -80,7 +80,7 @@ class ArrowFile(ColumnarFileHandlerABC):
         Any
             Columnar table object.
         """
-        records = normalize_records(data, 'ARROW')
+        records = normalize_records(data, self.format_name)
         pyarrow_mod = _pyarrow()
         return pyarrow_mod.Table.from_pylist(records)
 
