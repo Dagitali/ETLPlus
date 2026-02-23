@@ -19,11 +19,12 @@ Notes
 
 from __future__ import annotations
 
-from typing import Any
-
-from ._imports import get_pandas
+from ._imports import get_pandas as _get_pandas
 from ._pandas_handlers import PandasSpreadsheetHandlerMixin
 from .enums import FileFormat
+
+# Keep module-level resolver hook for monkeypatch-driven contract tests.
+get_pandas = _get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -52,11 +53,3 @@ class OdsFile(PandasSpreadsheetHandlerMixin):
         'ODS support requires optional dependency "odfpy".\n'
         'Install with: pip install odfpy'
     )
-
-    # -- Internal Instance Methods -- #
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using the local dependency resolver hook.
-        """
-        return get_pandas(self.pandas_format_name)
