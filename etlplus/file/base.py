@@ -66,6 +66,13 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type SheetName = str | int
+type SheetSelector = SheetName | None
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -116,7 +123,7 @@ class ReadOptions:
     ----------
     encoding : str
         Text encoding used for text-backed formats.
-    sheet : str | int | None
+    sheet : SheetSelector
         Spreadsheet sheet selector (name or index).
     table : str | None
         Table name for embedded database file formats.
@@ -129,7 +136,7 @@ class ReadOptions:
     """
 
     encoding: str = 'utf-8'
-    sheet: str | int | None = None
+    sheet: SheetSelector = None
     table: str | None = None
     dataset: str | None = None
     inner_name: str | None = None
@@ -147,7 +154,7 @@ class WriteOptions:
         Text encoding used for text-backed formats.
     root_tag : str
         Root XML tag name for XML-like structured outputs.
-    sheet : str | int | None
+    sheet : SheetSelector
         Spreadsheet sheet selector (name or index).
     table : str | None
         Table name for embedded database file formats.
@@ -161,7 +168,7 @@ class WriteOptions:
 
     encoding: str = 'utf-8'
     root_tag: str = 'root'
-    sheet: str | int | None = None
+    sheet: SheetSelector = None
     table: str | None = None
     dataset: str | None = None
     inner_name: str | None = None
@@ -758,7 +765,7 @@ class SpreadsheetFileHandlerABC(SpreadsheetSheetABC, FileHandlerABC):
 
     category: ClassVar[str] = 'spreadsheet'
     engine_name: ClassVar[str]
-    default_sheet: ClassVar[str | int] = 0
+    default_sheet: ClassVar[SheetName] = 0
 
 
 class ReadOnlySpreadsheetFileHandlerABC(
@@ -776,7 +783,7 @@ class ReadOnlySpreadsheetFileHandlerABC(
         path: Path,
         rows: JSONList,
         *,
-        sheet: str | int,
+        sheet: SheetName,
         options: WriteOptions | None = None,
     ) -> int:
         """
@@ -788,7 +795,7 @@ class ReadOnlySpreadsheetFileHandlerABC(
             File path to write to.
         rows : JSONList
             Rows of data to write.
-        sheet : str | int
+        sheet : SheetName
             Sheet name or index.
         options : WriteOptions | None, optional
             Write options, which may include formatting overrides. Defaults to
@@ -797,7 +804,7 @@ class ReadOnlySpreadsheetFileHandlerABC(
         Returns
         -------
         int
-            Number of rows written (always 0 for read-only formats).
+            Never returns normally.
         """
         _ = sheet
         return ReadOnlyFileHandlerABC.write(

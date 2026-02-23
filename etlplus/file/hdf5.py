@@ -24,8 +24,11 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_pandas
+from ._imports import get_pandas as _get_pandas
 from ._io import records_from_table
+from ._scientific_dataset import normalize_store_dataset_keys
+from ._scientific_dataset import resolve_store_dataset_key
+from ._scientific_handlers import ScientificPandasResolverMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
@@ -41,6 +44,13 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_pandas = _get_pandas
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -48,11 +58,6 @@ DEFAULT_KEY = 'data'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for HDF5 operations."""
-    return get_pandas('HDF5')
 
 
 def _raise_tables_error(
@@ -81,7 +86,11 @@ def _raise_tables_error(
 # SECTION: CLASSES ========================================================== #
 
 
-class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
+class Hdf5File(
+    ScientificPandasResolverMixin,
+    ReadOnlyFileHandlerABC,
+    ScientificDatasetFileHandlerABC,
+):
     """
     Read-only handler implementation for HDF5 files.
     """
@@ -110,13 +119,21 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         list[str]
             Dataset keys in the HDF5 store.
         """
-        pandas = _pandas()
+        with self.open_store(path) as store:
+            return normalize_store_dataset_keys(store.keys())
+
+    def open_store(
+        self,
+        path: Path,
+    ) -> Any:
+        """
+        Open and return one HDFStore, wrapping missing tables dependency.
+        """
+        pandas = self.resolve_pandas()
         try:
-            store = pandas.HDFStore(path)
+            return pandas.HDFStore(path)
         except ImportError as err:  # pragma: no cover
             _raise_tables_error(err)
-        with store:
-            return [key.lstrip('/') for key in store.keys()]
 
     def read_dataset(
         self,
@@ -148,31 +165,29 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
             If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pandas = _pandas()
-        try:
-            store = pandas.HDFStore(path)
-        except ImportError as err:  # pragma: no cover
-            _raise_tables_error(err)
-
-        with store:
-            keys = [key.lstrip('/') for key in store.keys()]
-            if not keys:
+        with self.open_store(path) as store:
+            keys = normalize_store_dataset_keys(store.keys())
+            key = self.resolve_store_key(keys, dataset=dataset)
+            if key is None:
                 return []
-            if dataset is not None:
-                if dataset not in keys:
-                    raise ValueError(f'HDF5 dataset {dataset!r} not found')
-                key = dataset
-            elif DEFAULT_KEY in keys:
-                key = DEFAULT_KEY
-            elif len(keys) == 1:
-                key = keys[0]
-            else:
-                raise ValueError(
-                    'Multiple datasets found in HDF5 file; expected "data" or '
-                    'a single dataset',
-                )
             frame = store.get(key)
         return records_from_table(frame)
+
+    def resolve_store_key(
+        self,
+        keys: list[str],
+        *,
+        dataset: str | None,
+    ) -> str | None:
+        """
+        Resolve one selected HDF5 key from available keys.
+        """
+        return resolve_store_dataset_key(
+            keys,
+            dataset=dataset,
+            default_key=DEFAULT_KEY,
+            format_name=self.format_name,
+        )
 
     def write_dataset(
         self,

@@ -19,13 +19,17 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._dataframe import dataframe_from_records
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import ensure_parent_dir
 from ._io import records_from_table
+from ._scientific_handlers import ScientificPandasResolverMixin
+from ._scientific_handlers import ScientificXarrayResolverMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -38,6 +42,14 @@ __all__ = [
     # Classes
     'NcFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -70,7 +82,11 @@ def _raise_engine_error(
 # SECTION: CLASSES ========================================================== #
 
 
-class NcFile(SingleDatasetScientificFileHandlerABC):
+class NcFile(
+    ScientificXarrayResolverMixin,
+    ScientificPandasResolverMixin,
+    SingleDatasetScientificFileHandlerABC,
+):
     """
     Handler implementation for NC files.
     """
@@ -78,6 +94,22 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.NC
+
+    # -- Instance Methods -- #
+
+    def drop_sequential_index_column(
+        self,
+        frame: Any,
+    ) -> Any:
+        """
+        Drop the index column when it is a simple 0..N-1 sequence.
+        """
+        if 'index' not in frame.columns:
+            return frame
+        values = list(frame['index'])
+        if values != list(range(len(values))):
+            return frame
+        return frame.drop(columns=['index'])
 
     # -- Instance Methods -- #
 
@@ -106,17 +138,14 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        xarray = get_dependency('xarray', format_name=self.format_name)
+        xarray = self.resolve_xarray()
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
             _raise_engine_error(err)
         with xarray_dataset as ds:
             frame = ds.to_dataframe().reset_index()
-        if 'index' in frame.columns:
-            values = list(frame['index'])
-            if values == list(range(len(values))):
-                frame = frame.drop(columns=['index'])
+        frame = self.drop_sequential_index_column(frame)
         return records_from_table(frame)
 
     def write_dataset(
@@ -154,9 +183,9 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        frame = pandas.DataFrame.from_records(records)
+        xarray = self.resolve_xarray()
+        pandas = self.resolve_pandas()
+        frame = dataframe_from_records(pandas, records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
         try:

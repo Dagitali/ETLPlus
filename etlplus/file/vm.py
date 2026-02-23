@@ -20,9 +20,7 @@ from __future__ import annotations
 
 import re
 
-from ._mixins import RegexTemplateRenderMixin
-from .base import TemplateFileHandlerABC
-from .base import TemplateTextIOMixin
+from ._template_handlers import RegexTemplateHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -37,11 +35,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class VmFile(
-    RegexTemplateRenderMixin,
-    TemplateTextIOMixin,
-    TemplateFileHandlerABC,
-):
+class VmFile(RegexTemplateHandlerMixin):
     """
     Handler implementation for VM files.
     """

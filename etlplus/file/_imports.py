@@ -6,8 +6,30 @@ Shared helpers for optional dependency imports.
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Callable
 from importlib import import_module
 from typing import Any
+from typing import ClassVar
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Classes
+    'FormatDependencyResolverMixin',
+    'FormatPandasResolverMixin',
+    # Functions
+    'get_dependency',
+    'get_optional_module',
+    'get_pandas',
+    'get_pyarrow',
+    'get_yaml',
+    'resolve_dependency',
+    'resolve_module_callable',
+    'resolve_pandas',
+]
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -47,6 +69,40 @@ def _error_message(
         f'optional dependency "{install_name}".\n'
         f'Install with: pip install {install_name}'
     )
+
+
+def _resolve_with_module_override(
+    handler: object,
+    override_name: str,
+    fallback: Callable[..., Any],
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """
+    Resolve one dependency call via module override with fallback.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    override_name : str
+        Callable name to resolve from the concrete module.
+    fallback : Callable[..., Any]
+        Fallback resolver when no override callable is present.
+    *args : Any
+        Positional arguments forwarded to the resolver.
+    **kwargs : Any
+        Keyword arguments forwarded to the resolver.
+
+    Returns
+    -------
+    Any
+        The resolved dependency/module value.
+    """
+    if resolver := resolve_module_callable(handler, override_name):
+        return resolver(*args, **kwargs)
+    return fallback(*args, **kwargs)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -140,22 +196,171 @@ def get_pandas(
     -------
     Any
         The pandas module.
-
-    Notes
-    -----
-    Prefer :func:`get_dependency` for new call sites.
     """
     return get_dependency('pandas', format_name=format_name)
+
+
+def get_pyarrow(
+    format_name: str,
+) -> Any:
+    """
+    Return the pyarrow module, importing it on first use.
+
+    Parameters
+    ----------
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    Any
+        The pyarrow module.
+    """
+    return get_dependency('pyarrow', format_name=format_name)
 
 
 def get_yaml() -> Any:
     """
     Return the PyYAML module, importing it on first use.
 
-    Raises an informative ImportError if the optional dependency is missing.
-
-    Notes
-    -----
-    Prefer :func:`get_dependency` for new call sites.
+    Returns
+    -------
+    Any
+        The PyYAML module.
     """
     return get_dependency('yaml', format_name='YAML', pip_name='PyYAML')
+
+
+def resolve_module_callable(
+    handler: object,
+    name: str,
+) -> Callable[..., Any] | None:
+    """
+    Resolve one callable from the concrete handler module when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module should be inspected.
+    name : str
+        The callable name to resolve from the concrete module.
+
+    Returns
+    -------
+    Callable[..., Any] | None
+        The resolved callable if present and callable; otherwise ``None``.
+    """
+    module = sys.modules.get(type(handler).__module__)
+    if module is None:
+        return None
+    value = getattr(module, name, None)
+    return value if callable(value) else None
+
+
+def resolve_dependency(
+    handler: object,
+    dependency_name: str,
+    *,
+    format_name: str,
+    pip_name: str | None = None,
+) -> Any:
+    """
+    Resolve one optional dependency with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    dependency_name : str
+        Dependency import name.
+    format_name : str
+        Human-readable format name used for import error context.
+    pip_name : str | None, optional
+        Optional package name hint.
+
+    Returns
+    -------
+    Any
+        The resolved dependency module.
+    """
+    return _resolve_with_module_override(
+        handler,
+        'get_dependency',
+        get_dependency,
+        dependency_name,
+        format_name=format_name,
+        pip_name=pip_name,
+    )
+
+
+def resolve_pandas(
+    handler: object,
+    *,
+    format_name: str,
+) -> Any:
+    """
+    Resolve pandas with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    format_name : str
+        Human-readable format name used for import error context.
+
+    Returns
+    -------
+    Any
+        The resolved pandas module.
+    """
+    return _resolve_with_module_override(
+        handler,
+        'get_pandas',
+        get_pandas,
+        format_name,
+    )
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class FormatDependencyResolverMixin:
+    """
+    Shared dependency resolver for handlers keyed by ``self.format_name``.
+    """
+
+    # -- Class Attributes -- #
+
+    format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
+
+    def resolve_format_dependency(
+        self,
+        dependency_name: str,
+        *,
+        pip_name: str | None = None,
+    ) -> Any:
+        """
+        Resolve one dependency for this handler's format context.
+        """
+        return resolve_dependency(
+            self,
+            dependency_name,
+            format_name=self.format_name,
+            pip_name=pip_name,
+        )
+
+
+class FormatPandasResolverMixin(FormatDependencyResolverMixin):
+    """
+    Shared pandas resolver for handlers keyed by ``self.format_name``.
+    """
+
+    # -- Instance Methods -- #
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level override support.
+        """
+        return resolve_pandas(self, format_name=self.format_name)

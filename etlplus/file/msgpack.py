@@ -18,15 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from typing import Any
-
-from ..types import JSONData
-from ._imports import get_dependency
-from ._io import coerce_record_payload
-from ._io import normalize_records
-from .base import BinarySerializationFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._binary_codec_handlers import BinaryRecordCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -37,19 +29,10 @@ __all__ = [
     'MsgpackFile',
 ]
 
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _msgpack() -> Any:
-    """Return the optional msgpack module."""
-    return get_dependency('msgpack', format_name='MSGPACK')
-
-
 # SECTION: CLASSES ========================================================== #
 
 
-class MsgpackFile(BinarySerializationFileHandlerABC):
+class MsgpackFile(BinaryRecordCodecHandlerMixin):
     """
     Handler implementation for MessagePack files.
     """
@@ -57,58 +40,9 @@ class MsgpackFile(BinarySerializationFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.MSGPACK
-
-    # -- Instance Methods -- #
-
-    def dumps_bytes(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> bytes:
-        """
-        Serialize structured records to MsgPack bytes.
-
-        Parameters
-        ----------
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        bytes
-            Serialized MsgPack payload bytes.
-        """
-        _ = options
-        msgpack = _msgpack()
-        records = normalize_records(data, 'MSGPACK')
-        payload: JSONData = records if isinstance(data, list) else records[0]
-        return msgpack.packb(payload, use_bin_type=True)
-
-    def loads_bytes(
-        self,
-        payload: bytes,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse MsgPack bytes into structured records.
-
-        Parameters
-        ----------
-        payload : bytes
-            Raw MsgPack payload bytes.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        _ = options
-        msgpack = _msgpack()
-        decoded = msgpack.unpackb(payload, raw=False)
-        return coerce_record_payload(decoded, format_name='MSGPACK')
+    codec_module_name = 'msgpack'
+    codec_format_name = 'MSGPACK'
+    encode_method_name = 'packb'
+    decode_method_name = 'unpackb'
+    encode_kwargs = (('use_bin_type', True),)
+    decode_kwargs = (('raw', False),)
