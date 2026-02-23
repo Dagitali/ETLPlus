@@ -6,8 +6,26 @@ Shared helpers for optional dependency imports.
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Callable
 from importlib import import_module
 from typing import Any
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'get_dependency',
+    'get_optional_module',
+    'get_pandas',
+    'get_pyarrow',
+    'get_yaml',
+    'resolve_dependency',
+    'resolve_module_callable',
+    'resolve_pandas',
+]
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -173,3 +191,93 @@ def get_yaml() -> Any:
         The PyYAML module.
     """
     return get_dependency('yaml', format_name='YAML', pip_name='PyYAML')
+
+
+def resolve_module_callable(
+    handler: object,
+    name: str,
+) -> Callable[..., Any] | None:
+    """
+    Resolve one callable from the concrete handler module when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module should be inspected.
+    name : str
+        The callable name to resolve from the concrete module.
+
+    Returns
+    -------
+    Callable[..., Any] | None
+        The resolved callable if present and callable; otherwise ``None``.
+    """
+    module = sys.modules.get(type(handler).__module__)
+    if module is None:
+        return None
+    value = getattr(module, name, None)
+    return value if callable(value) else None
+
+
+def resolve_dependency(
+    handler: object,
+    dependency_name: str,
+    *,
+    format_name: str,
+    pip_name: str | None = None,
+) -> Any:
+    """
+    Resolve one optional dependency with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    dependency_name : str
+        Dependency import name.
+    format_name : str
+        Human-readable format name used for import error context.
+    pip_name : str | None, optional
+        Optional package name hint.
+
+    Returns
+    -------
+    Any
+        The resolved dependency module.
+    """
+    if resolver := resolve_module_callable(handler, 'get_dependency'):
+        return resolver(
+            dependency_name,
+            format_name=format_name,
+            pip_name=pip_name,
+        )
+    return get_dependency(
+        dependency_name,
+        format_name=format_name,
+        pip_name=pip_name,
+    )
+
+
+def resolve_pandas(
+    handler: object,
+    *,
+    format_name: str,
+) -> Any:
+    """
+    Resolve pandas with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    format_name : str
+        Human-readable format name used for import error context.
+
+    Returns
+    -------
+    Any
+        The resolved pandas module.
+    """
+    if resolver := resolve_module_callable(handler, 'get_pandas'):
+        return resolver(format_name)
+    return get_pandas(format_name)
