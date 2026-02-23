@@ -17,14 +17,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
-from .base import ReadOptions
-from .base import WriteOptions
+from ._statistical_handlers import PyreadstatReadWriteFrameMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -47,7 +43,10 @@ get_pandas = _get_pandas
 # SECTION: CLASSES ========================================================== #
 
 
-class SavFile(SingleDatasetTabularScientificReadWriteMixin):
+class SavFile(
+    PyreadstatReadWriteFrameMixin,
+    SingleDatasetTabularScientificReadWriteMixin,
+):
     """
     Handler implementation for SAV files.
     """
@@ -57,86 +56,5 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
     format = FileFormat.SAV
     requires_pyreadstat_for_read = True
     requires_pyreadstat_for_write = True
-
-    # -- Instance Methods -- #
-
-    def read_frame(
-        self,
-        path: Path,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read and return one dataframe-like dataset from SAV.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAV file to read.
-        pandas : Any
-            The pandas module, passed via dependency injection.
-        pyreadstat : Any | None
-            The pyreadstat module, passed via dependency injection when
-            required by the mixin. Will be None if not required.
-        options : ReadOptions | None
-            Optional read options.
-
-        Returns
-        -------
-        Any
-            The resulting dataframe-like dataset.
-
-        Raises
-        ------
-        RuntimeError
-            If the pyreadstat dependency is required but not provided.
-        """
-        _ = pandas
-        _ = options
-        if pyreadstat is None:  # pragma: no cover - guarded by mixin flag
-            raise RuntimeError(
-                'pyreadstat dependency is required for SAV read',
-            )
-        frame, _meta = pyreadstat.read_sav(str(path))
-        return frame
-
-    def write_frame(
-        self,
-        path: Path,
-        frame: Any,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write one dataframe-like dataset to SAV.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAV file to write.
-        frame : Any
-            The dataframe-like dataset to write.
-        pandas : Any
-            The pandas module, passed via dependency injection.
-        pyreadstat : Any | None
-            The pyreadstat module, passed via dependency injection when
-            required by the mixin. Will be None if not required.
-        options : WriteOptions | None
-            Optional write options.
-
-        Raises
-        ------
-        RuntimeError
-            If the pyreadstat dependency is required but not provided.
-        """
-        _ = pandas
-        _ = options
-        if pyreadstat is None:  # pragma: no cover - guarded by mixin flag
-            raise RuntimeError(
-                'pyreadstat dependency is required for SAV write',
-            )
-        pyreadstat.write_sav(frame, str(path))
+    pyreadstat_read_method = 'read_sav'
+    pyreadstat_write_method = 'write_sav'
