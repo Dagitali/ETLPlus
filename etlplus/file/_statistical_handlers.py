@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file._statistical_handlers` module.
 
-Shared mixins for statistical tabular handlers (DTA/SAV/XPT/SAS7BDAT).
+Shared frame mixins for statistical tabular handlers (DTA/SAV/XPT/SAS7BDAT).
 """
 
 from __future__ import annotations
@@ -27,6 +27,112 @@ __all__ = [
     'PyreadstatRequiredWriteFrameMixin',
     'PyreadstatReadSasFallbackFrameMixin',
 ]
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _PyreadstatFrameMixin:
+    """
+    Internal helpers for pyreadstat-backed frame reads and writes.
+    """
+
+    format_name: ClassVar[str]
+    pyreadstat_module_name: ClassVar[str] = 'pyreadstat'
+
+    def read_pyreadstat_frame(
+        self,
+        path: Path,
+        *,
+        pyreadstat: Any | None,
+        method_name: str,
+    ) -> Any:
+        """
+        Read one frame via one required pyreadstat reader method.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file to read.
+        pyreadstat : Any | None
+            The pyreadstat module to use for reading, if available.
+        method_name : str
+            The name of the pyreadstat reader method to call.
+
+        Returns
+        -------
+        Any
+            The dataframe-like dataset read from the file.
+        """
+        return read_module_frame(
+            module=pyreadstat,
+            format_name=self.format_name,
+            module_name=self.pyreadstat_module_name,
+            method_name=method_name,
+            path=path,
+        )
+
+    def read_pyreadstat_frame_if_supported(
+        self,
+        path: Path,
+        *,
+        pyreadstat: Any | None,
+        method_name: str,
+    ) -> Any | None:
+        """
+        Read one frame via one optional pyreadstat reader method.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file to read.
+        pyreadstat : Any | None
+            The pyreadstat module to use for reading, if available.
+        method_name : str
+            The name of the pyreadstat reader method to call.
+
+        Returns
+        -------
+        Any | None
+            The dataframe-like dataset read from the file, or None if not
+            supported.
+        """
+        return read_module_frame_if_supported(
+            module=pyreadstat,
+            method_name=method_name,
+            path=path,
+        )
+
+    def write_pyreadstat_frame(
+        self,
+        path: Path,
+        frame: Any,
+        *,
+        pyreadstat: Any | None,
+        method_name: str,
+    ) -> None:
+        """
+        Write one frame via one required pyreadstat writer method.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file to write.
+        frame : Any
+            The dataframe-like dataset to write.
+        pyreadstat : Any | None
+            The pyreadstat module to use for writing, if available.
+        method_name : str
+            The name of the pyreadstat writer method to call.
+        """
+        write_module_frame(
+            module=pyreadstat,
+            format_name=self.format_name,
+            module_name=self.pyreadstat_module_name,
+            method_name=method_name,
+            frame=frame,
+            path=path,
+        )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -112,7 +218,7 @@ class PandasStataReadWriteFrameMixin:
         )
 
 
-class PyreadstatReadWriteFrameMixin:
+class PyreadstatReadWriteFrameMixin(_PyreadstatFrameMixin):
     """
     Shared frame read/write behavior for direct ``pyreadstat`` method pairs.
     """
@@ -121,7 +227,6 @@ class PyreadstatReadWriteFrameMixin:
 
     pyreadstat_read_method: ClassVar[str]
     pyreadstat_write_method: ClassVar[str]
-    format_name: ClassVar[str]
 
     # -- Instance Methods -- #
 
@@ -135,15 +240,29 @@ class PyreadstatReadWriteFrameMixin:
     ) -> Any:
         """
         Read one dataframe-like dataset using ``pyreadstat``.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file to read.
+        pandas : Any
+            The pandas module to use for reading.
+        pyreadstat : Any | None
+            The pyreadstat module to use for reading, if available.
+        options : ReadOptions | None, optional
+            Additional read options, if available.
+
+        Returns
+        -------
+        Any
+            The dataframe-like dataset read from the file.
         """
         _ = pandas
         _ = options
-        return read_module_frame(
-            module=pyreadstat,
-            format_name=self.format_name,
-            module_name='pyreadstat',
+        return self.read_pyreadstat_frame(
+            path,
+            pyreadstat=pyreadstat,
             method_name=self.pyreadstat_read_method,
-            path=path,
         )
 
     def write_frame(
@@ -157,22 +276,33 @@ class PyreadstatReadWriteFrameMixin:
     ) -> None:
         """
         Write one dataframe-like dataset using ``pyreadstat``.
+
+        Parameters
+        ----------
+        path : Path
+            The path to the file to write.
+        frame : Any
+            The dataframe-like dataset to write.
+        pandas : Any
+            The pandas module to use for writing.
+        pyreadstat : Any | None, optional
+            The pyreadstat module to use for writing, if available.
+        options : WriteOptions | None, optional
+            Additional write options, if available.
         """
         _ = pandas
         _ = options
-        write_module_frame(
-            module=pyreadstat,
-            format_name=self.format_name,
-            module_name='pyreadstat',
+        self.write_pyreadstat_frame(
+            path,
+            frame,
+            pyreadstat=pyreadstat,
             method_name=self.pyreadstat_write_method,
-            frame=frame,
-            path=path,
         )
 
 
-class PyreadstatReadSasFallbackFrameMixin:
+class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared frame read behavior using optional pyreadstat then pandas fallback.
+    Shared read behavior using optional pyreadstat then pandas ``read_sas``.
     """
 
     # -- Class Attributes -- #
@@ -212,25 +342,24 @@ class PyreadstatReadSasFallbackFrameMixin:
         _ = options
         if self.pyreadstat_read_method is not None:
             if (
-                frame := read_module_frame_if_supported(
-                    module=pyreadstat,
+                frame := self.read_pyreadstat_frame_if_supported(
+                    path,
+                    pyreadstat=pyreadstat,
                     method_name=self.pyreadstat_read_method,
-                    path=path,
                 )
             ) is not None:
                 return frame
         return read_sas_table(pandas, path, format_hint=self.sas_format_hint)
 
 
-class PyreadstatRequiredWriteFrameMixin:
+class PyreadstatRequiredWriteFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared frame write behavior requiring one ``pyreadstat`` writer method.
+    Shared write behavior requiring one ``pyreadstat`` writer method.
     """
 
     # -- Class Attributes -- #
 
     pyreadstat_write_method: ClassVar[str]
-    format_name: ClassVar[str]
 
     # -- Instance Methods -- #
 
@@ -261,11 +390,9 @@ class PyreadstatRequiredWriteFrameMixin:
         """
         _ = pandas
         _ = options
-        write_module_frame(
-            module=pyreadstat,
-            format_name=self.format_name,
-            module_name='pyreadstat',
+        self.write_pyreadstat_frame(
+            path,
+            frame,
+            pyreadstat=pyreadstat,
             method_name=self.pyreadstat_write_method,
-            frame=frame,
-            path=path,
         )
