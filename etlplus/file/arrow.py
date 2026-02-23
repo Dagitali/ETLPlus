@@ -24,10 +24,9 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
@@ -170,52 +169,5 @@ _ARROW_HANDLER = ArrowFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``ArrowFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the Apache Arrow file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the Apache Arrow file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ARROW_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ArrowFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ARROW file on disk.
-    data : JSONData
-        Data to write as ARROW. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the ARROW file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ARROW_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _ARROW_HANDLER)
+write = make_deprecated_module_write(__name__, _ARROW_HANDLER)
