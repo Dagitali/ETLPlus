@@ -26,6 +26,8 @@ from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_pandas as _get_pandas
 from ._io import records_from_table
+from ._scientific_dataset import normalize_store_dataset_keys
+from ._scientific_dataset import resolve_store_dataset_key
 from ._scientific_handlers import ScientificPandasResolverMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
@@ -118,7 +120,7 @@ class Hdf5File(
             Dataset keys in the HDF5 store.
         """
         with self.open_store(path) as store:
-            return [key.lstrip('/') for key in store.keys()]
+            return normalize_store_dataset_keys(store.keys())
 
     def open_store(
         self,
@@ -164,7 +166,7 @@ class Hdf5File(
         """
         dataset = self.resolve_dataset(dataset, options=options)
         with self.open_store(path) as store:
-            keys = [key.lstrip('/') for key in store.keys()]
+            keys = normalize_store_dataset_keys(store.keys())
             key = self.resolve_store_key(keys, dataset=dataset)
             if key is None:
                 return []
@@ -180,19 +182,11 @@ class Hdf5File(
         """
         Resolve one selected HDF5 key from available keys.
         """
-        if not keys:
-            return None
-        if dataset is not None:
-            if dataset not in keys:
-                raise ValueError(f'HDF5 dataset {dataset!r} not found')
-            return dataset
-        if DEFAULT_KEY in keys:
-            return DEFAULT_KEY
-        if len(keys) == 1:
-            return keys[0]
-        raise ValueError(
-            'Multiple datasets found in HDF5 file; expected "data" or '
-            'a single dataset',
+        return resolve_store_dataset_key(
+            keys,
+            dataset=dataset,
+            default_key=DEFAULT_KEY,
+            format_name=self.format_name,
         )
 
     def write_dataset(
