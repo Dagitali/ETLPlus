@@ -23,10 +23,12 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import ensure_parent_dir
 from ._io import records_from_table
+from ._scientific_handlers import ScientificPandasResolverMixin
+from ._scientific_handlers import ScientificXarrayResolverMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -39,6 +41,14 @@ __all__ = [
     # Classes
     'NcFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -71,7 +81,11 @@ def _raise_engine_error(
 # SECTION: CLASSES ========================================================== #
 
 
-class NcFile(SingleDatasetScientificFileHandlerABC):
+class NcFile(
+    ScientificXarrayResolverMixin,
+    ScientificPandasResolverMixin,
+    SingleDatasetScientificFileHandlerABC,
+):
     """
     Handler implementation for NC files.
     """
@@ -132,18 +146,6 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             frame = ds.to_dataframe().reset_index()
         frame = self.drop_sequential_index_column(frame)
         return records_from_table(frame)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
-
-    def resolve_xarray(self) -> Any:
-        """
-        Return xarray using module-level dependency resolution.
-        """
-        return get_dependency('xarray', format_name=self.format_name)
 
     def write_dataset(
         self,
