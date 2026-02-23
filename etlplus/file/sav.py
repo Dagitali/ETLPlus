@@ -72,8 +72,18 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
         pyreadstat : Any | None
             The pyreadstat module, passed via dependency injection when
             required by the mixin. Will be None if not required.
-        options : ReadOptions or None
+        options : ReadOptions | None
             Optional read options. May be ignored by this handler.
+
+        Returns
+        -------
+        Any
+            The resulting dataframe-like dataset.
+
+        Raises
+        ------
+        RuntimeError
+            If the pyreadstat dependency is required but not provided.
         """
         _ = pandas
         _ = options
@@ -107,6 +117,25 @@ class SavFile(SingleDatasetTabularScientificReadWriteMixin):
     ) -> None:
         """
         Write one dataframe-like dataset to SAV.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the SAV file to write.
+        frame : Any
+            The dataframe-like dataset to write.
+        pandas : Any
+            The pandas module, passed via dependency injection.
+        pyreadstat : Any | None
+            The pyreadstat module, passed via dependency injection when
+            required by the mixin. Will be None if not required.
+        options : WriteOptions | None
+            Optional write options. May be ignored by this handler.
+
+        Raises
+        ------
+        RuntimeError
+            If the pyreadstat dependency is required but not provided.
         """
         _ = pandas
         _ = options
