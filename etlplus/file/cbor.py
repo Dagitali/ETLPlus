@@ -18,10 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._binary_codec_handlers import BinaryRecordCodecHandlerMixin
-from ._imports import get_dependency
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -31,15 +28,6 @@ __all__ = [
     # Classes
     'CborFile',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _cbor2() -> Any:
-    """Return the optional cbor2 module."""
-    return get_dependency('cbor2', format_name='CBOR')
-
 
 # SECTION: CLASSES ========================================================== #
 
@@ -56,11 +44,3 @@ class CborFile(BinaryRecordCodecHandlerMixin):
     codec_format_name = 'CBOR'
     encode_method_name = 'dumps'
     decode_method_name = 'loads'
-
-    # -- Internal Instance Methods -- #
-
-    def resolve_codec_module(self) -> Any:
-        """
-        Return the optional cbor2 module.
-        """
-        return _cbor2()
