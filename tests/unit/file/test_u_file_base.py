@@ -267,7 +267,7 @@ class _ReadOnlySingleScientificStub(
         dataset: str | None = None,
         options: ReadOptions | None = None,
     ) -> JSONData:  # noqa: ARG002
-        self.resolve_single_read_dataset(dataset, options=options)
+        self.resolve_single_dataset(dataset, options=options)
         return []
 
     def write_dataset(
@@ -278,7 +278,7 @@ class _ReadOnlySingleScientificStub(
         dataset: str | None = None,
         options: WriteOptions | None = None,
     ) -> int:  # noqa: ARG002
-        self.resolve_single_write_dataset(dataset, options=options)
+        self.resolve_single_dataset(dataset, options=options)
         _raise_read_only_write(self.format)
 
 
