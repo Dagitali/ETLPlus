@@ -578,8 +578,7 @@ class TestOptionsContracts:
             assert helper(None, default=case.read_default) == case.read_default
         if case.write_default is not _NO_DEFAULT:
             assert (
-                helper(None, default=case.write_default)
-                == case.write_default
+                helper(None, default=case.write_default) == case.write_default
             )
 
     def test_read_options_use_independent_extras_dicts(self) -> None:

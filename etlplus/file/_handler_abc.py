@@ -453,6 +453,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
         JSONList
             Row-oriented records extracted from the embedded-database.
         """
+
         def _read(connection: Any) -> JSONList:
             table = self.table_from_options(options)
             if table is None:
@@ -464,6 +465,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
                 if table is None:
                     return []
             return self.read_table(connection, table)
+
         return _use_connection(
             path,
             connect=self.connect,
