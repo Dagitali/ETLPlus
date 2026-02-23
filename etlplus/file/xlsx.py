@@ -6,16 +6,10 @@ Helpers for reading/writing Excel XLSX files.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from ..types import JSONList
 from ._imports import get_pandas
-from ._io import ensure_parent_dir
-from ._io import records_from_table
-from .base import ReadOptions
-from .base import SpreadsheetFileHandlerABC
-from .base import WriteOptions
+from ._pandas_handlers import PandasSpreadsheetHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -26,19 +20,10 @@ __all__ = [
     'XlsxFile',
 ]
 
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for XLSX operations."""
-    return get_pandas('XLSX')
-
-
 # SECTION: CLASSES ========================================================== #
 
 
-class XlsxFile(SpreadsheetFileHandlerABC):
+class XlsxFile(PandasSpreadsheetHandlerMixin):
     """
     Handler implementation for XLSX files.
     """
@@ -47,98 +32,16 @@ class XlsxFile(SpreadsheetFileHandlerABC):
 
     format = FileFormat.XLSX
     engine_name = 'openpyxl'
+    pandas_format_name = 'XLSX'
+    import_error_message = (
+        'XLSX support requires optional dependency "openpyxl".\n'
+        'Install with: pip install openpyxl'
+    )
 
-    # -- Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
+    def resolve_pandas(self) -> Any:
         """
-        Read one XLSX sheet from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSX file on disk.
-        sheet : str | int
-            Sheet selector (name or index).
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLSX sheet.
-
-        Raises
-        ------
-        ImportError
-            If the required optional dependency is not installed.
+        Return pandas using the local dependency resolver hook.
         """
-        _ = options
-        pandas = _pandas()
-        try:
-            frame = pandas.read_excel(path, sheet_name=sheet)
-        except TypeError:
-            # Test stubs and older adapters may not accept sheet_name.
-            frame = pandas.read_excel(path)
-        except ImportError as err:  # pragma: no cover
-            raise ImportError(
-                'XLSX support requires optional dependency "openpyxl".\n'
-                'Install with: pip install openpyxl',
-            ) from err
-        return records_from_table(frame)
-
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write rows to one XLSX sheet in *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSX file on disk.
-        rows : JSONList
-            Rows to write.
-        sheet : str | int
-            Sheet selector (name or index).
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of rows written.
-
-        Raises
-        ------
-        ImportError
-            If the required optional dependency is not installed.
-        """
-        _ = options
-        pandas = _pandas()
-        ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(rows)
-        try:
-            if isinstance(sheet, str):
-                frame.to_excel(path, index=False, sheet_name=sheet)
-            else:
-                frame.to_excel(path, index=False)
-        except TypeError:
-            frame.to_excel(path, index=False)
-        except ImportError as err:  # pragma: no cover
-            raise ImportError(
-                'XLSX support requires optional dependency "openpyxl".\n'
-                'Install with: pip install openpyxl',
-            ) from err
-        return len(rows)
+        return get_pandas(self.pandas_format_name)
