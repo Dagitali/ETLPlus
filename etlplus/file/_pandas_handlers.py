@@ -6,6 +6,8 @@ Shared abstractions for pandas-backed file handlers.
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -57,6 +59,21 @@ def _raise_import_error(
 ) -> NoReturn:
     """
     Raise one standardized import error while preserving cause.
+
+    Parameters
+    ----------
+    error : ImportError
+        The original ImportError raised when trying to use a feature without
+        the required dependency.
+    message : str | None
+        Optional custom message for the ImportError. If None, the original
+        error message will be used instead.
+
+    Raises
+    ------
+    ImportError
+        A new ImportError with the provided message or the original error
+        message, preserving the original error.
     """
     if message is None:
         raise error
@@ -72,6 +89,22 @@ def _read_excel_frame(
 ) -> Any:
     """
     Read one spreadsheet frame, tolerating stubs without ``sheet_name``.
+
+    Parameters
+    ----------
+    pandas : Any
+        The pandas module to use for reading.
+    path : Path
+        Path to the spreadsheet file on disk.
+    sheet : str | int
+        Sheet selector, by name or index.
+    engine : str | None
+        Optional read engine name.
+
+    Returns
+    -------
+    Any
+        The read DataFrame.
     """
     kwargs: dict[str, Any] = {'sheet_name': sheet}
     if engine is not None:
@@ -83,6 +116,128 @@ def _read_excel_frame(
         return pandas.read_excel(path, **kwargs)
 
 
+def _read_sheet_records(
+    *,
+    path: Path,
+    sheet: str | int,
+    pandas: Any,
+    engine: str | None,
+    import_error_message: str | None,
+) -> JSONList:
+    """
+    Read one spreadsheet sheet and return row records.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the spreadsheet file on disk.
+    sheet : str | int
+        Sheet selector, by name or index.
+    pandas : Any
+        The pandas module to use for reading.
+    engine : str | None
+        Optional read engine name.
+    import_error_message : str | None
+        Optional custom message for import errors.
+
+    Returns
+    -------
+    JSONList
+        Row records parsed from the selected sheet.
+    """
+    try:
+        frame = _read_excel_frame(
+            pandas,
+            path,
+            sheet=sheet,
+            engine=engine,
+        )
+    except ImportError as error:  # pragma: no cover
+        _raise_import_error(
+            error,
+            message=import_error_message,
+        )
+    return records_from_table(frame)
+
+
+def _resolve_module_callable(
+    handler: object,
+    name: str,
+) -> Callable[..., Any] | None:
+    """
+    Resolve one callable from the concrete handler module when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance for which to resolve the callable.
+    name : str
+        The name of the callable to resolve.
+
+    Returns
+    -------
+    Callable[..., Any] | None
+        The resolved callable if found and valid, otherwise ``None``.
+    """
+    module = sys.modules.get(type(handler).__module__)
+    if module is None:
+        return None
+    value = getattr(module, name, None)
+    return value if callable(value) else None
+
+
+def _resolve_pandas_dependency(
+    handler: object,
+    *,
+    format_name: str,
+) -> Any:
+    """
+    Resolve pandas, preferring the concrete module resolver when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance for which to resolve the dependency.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    Any
+        The pandas module.
+    """
+    if resolver := _resolve_module_callable(handler, 'get_pandas'):
+        return resolver(format_name)
+    return get_pandas(format_name)
+
+
+def _resolve_pyarrow_dependency(
+    handler: object,
+    *,
+    format_name: str,
+) -> Any:
+    """
+    Resolve pyarrow, preferring the concrete module resolver when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance for which to resolve the dependency.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    Any
+        The pyarrow module.
+    """
+    if resolver := _resolve_module_callable(handler, 'get_pyarrow'):
+        return resolver(format_name)
+    if resolver := _resolve_module_callable(handler, 'get_dependency'):
+        return resolver('pyarrow', format_name=format_name)
+    return get_pyarrow(format_name)
+
+
 def _write_excel_frame(
     frame: Any,
     path: Path,
@@ -92,6 +247,17 @@ def _write_excel_frame(
 ) -> None:
     """
     Write one spreadsheet frame, tolerating stubs without ``sheet_name``.
+
+    Parameters
+    ----------
+    frame : Any
+        The spreadsheet frame to write.
+    path : Path
+        Path to the spreadsheet file on disk.
+    sheet : str | int
+        Sheet selector, by name or index.
+    engine : str | None, optional
+        Optional write engine name.
     """
     kwargs: dict[str, Any] = {'index': False}
     if engine is not None:
@@ -108,7 +274,27 @@ def _write_excel_frame(
 # SECTION: CLASSES ========================================================== #
 
 
-class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
+class _PandasModuleResolverMixin:
+    """
+    Resolve pandas via shared compatibility-first dependency lookup.
+    """
+
+    pandas_format_name: ClassVar[str]
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return the pandas module for this handler.
+        """
+        return _resolve_pandas_dependency(
+            self,
+            format_name=self.pandas_format_name,
+        )
+
+
+class PandasColumnarHandlerMixin(
+    _PandasModuleResolverMixin,
+    ColumnarFileHandlerABC,
+):
     """
     Shared implementation for pandas-backed columnar handlers.
     """
@@ -132,6 +318,18 @@ class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
     ) -> Any:
         """
         Read a columnar table object from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the file on disk.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        Any
+            Columnar table object read from the file.
         """
         _ = options
         self.validate_runtime_dependencies()
@@ -156,17 +354,14 @@ class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
         records = normalize_records(data, self.format_name)
         return pandas.DataFrame.from_records(records)
 
-    def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
-        return get_pandas(self.pandas_format_name)
-
     def resolve_pyarrow(self) -> Any:
         """
         Return the pyarrow module for this handler.
         """
-        return get_pyarrow(self.pandas_format_name)
+        return _resolve_pyarrow_dependency(
+            self,
+            format_name=self.pandas_format_name,
+        )
 
     def table_to_records(
         self,
@@ -174,6 +369,16 @@ class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
     ) -> JSONList:
         """
         Convert a table object into row-oriented records.
+
+        Parameters
+        ----------
+        table : Any
+            Columnar table object to convert.
+
+        Returns
+        -------
+        JSONList
+            Row-oriented records extracted from the table.
         """
         return records_from_table(table)
 
@@ -193,6 +398,15 @@ class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
     ) -> None:
         """
         Write a columnar table object to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the file on disk.
+        table : Any
+            Columnar table object to write.
+        options : WriteOptions | None, optional
+            Optional write parameters.
         """
         _ = options
         self.validate_runtime_dependencies()
@@ -206,7 +420,10 @@ class PandasColumnarHandlerMixin(ColumnarFileHandlerABC):
             )
 
 
-class PandasSpreadsheetHandlerMixin(SpreadsheetFileHandlerABC):
+class PandasSpreadsheetHandlerMixin(
+    _PandasModuleResolverMixin,
+    SpreadsheetFileHandlerABC,
+):
     """
     Shared implementation for writable pandas-backed spreadsheet handlers.
     """
@@ -229,28 +446,29 @@ class PandasSpreadsheetHandlerMixin(SpreadsheetFileHandlerABC):
     ) -> JSONList:
         """
         Read one sheet from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        sheet : str | int
+            Sheet selector, by name or index.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records from the selected sheet.
         """
         _ = options
-        pandas = self.resolve_pandas()
-        try:
-            frame = _read_excel_frame(
-                pandas,
-                path,
-                sheet=sheet,
-                engine=self.read_engine,
-            )
-        except ImportError as error:  # pragma: no cover
-            _raise_import_error(
-                error,
-                message=self.import_error_message,
-            )
-        return records_from_table(frame)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
-        return get_pandas(self.pandas_format_name)
+        return _read_sheet_records(
+            path=path,
+            sheet=sheet,
+            pandas=self.resolve_pandas(),
+            engine=self.read_engine,
+            import_error_message=self.import_error_message,
+        )
 
     def write_sheet(
         self,
@@ -262,6 +480,22 @@ class PandasSpreadsheetHandlerMixin(SpreadsheetFileHandlerABC):
     ) -> int:
         """
         Write one sheet to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        rows : JSONList
+            Row records to write to the sheet.
+        sheet : str | int
+            Sheet selector, by name or index.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        int
+            The number of records written to the sheet.
         """
         _ = options
         ensure_parent_dir(path)
@@ -283,6 +517,7 @@ class PandasSpreadsheetHandlerMixin(SpreadsheetFileHandlerABC):
 
 
 class PandasReadOnlySpreadsheetHandlerMixin(
+    _PandasModuleResolverMixin,
     ReadOnlySpreadsheetFileHandlerABC,
 ):
     """
@@ -306,25 +541,26 @@ class PandasReadOnlySpreadsheetHandlerMixin(
     ) -> JSONList:
         """
         Read one sheet from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        sheet : str | int
+            Sheet selector, by name or index.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records from the selected sheet.
         """
         _ = options
-        pandas = self.resolve_pandas()
-        try:
-            frame = _read_excel_frame(
-                pandas,
-                path,
-                sheet=sheet,
-                engine=self.read_engine,
-            )
-        except ImportError as error:  # pragma: no cover
-            _raise_import_error(
-                error,
-                message=self.import_error_message,
-            )
-        return records_from_table(frame)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
-        return get_pandas(self.pandas_format_name)
+        return _read_sheet_records(
+            path=path,
+            sheet=sheet,
+            pandas=self.resolve_pandas(),
+            engine=self.read_engine,
+            import_error_message=self.import_error_message,
+        )
