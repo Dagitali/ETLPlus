@@ -21,8 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import read_sas_table
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
@@ -36,6 +36,14 @@ __all__ = [
     # Classes
     'XptFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
@@ -71,18 +79,6 @@ class XptFile(SingleDatasetTabularScientificReadWriteMixin):
             frame, _meta = reader(str(path))
             return frame
         return read_sas_table(pandas, path, format_hint='xport')
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
-
-    def resolve_pyreadstat(self) -> Any:
-        """
-        Return pyreadstat using module-level dependency resolution.
-        """
-        return get_dependency('pyreadstat', format_name=self.format_name)
 
     def write_frame(
         self,
