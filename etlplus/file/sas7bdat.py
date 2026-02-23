@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Any
 
 from ..types import JSONData
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import read_sas_table
 from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
 from .base import ReadOnlyFileHandlerABC
@@ -37,6 +37,14 @@ __all__ = [
     # Classes
     'Sas7bdatFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
@@ -71,18 +79,6 @@ class Sas7bdatFile(
         _ = pyreadstat
         _ = options
         return read_sas_table(pandas, path, format_hint='sas7bdat')
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
-
-    def resolve_pyreadstat(self) -> Any:
-        """
-        Return pyreadstat using module-level dependency resolution.
-        """
-        return get_dependency('pyreadstat', format_name=self.format_name)
 
     def write_dataset(
         self,
