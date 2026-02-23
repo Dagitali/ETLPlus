@@ -140,22 +140,36 @@ def get_pandas(
     -------
     Any
         The pandas module.
-
-    Notes
-    -----
-    Prefer :func:`get_dependency` for new call sites.
     """
     return get_dependency('pandas', format_name=format_name)
+
+
+def get_pyarrow(
+    format_name: str,
+) -> Any:
+    """
+    Return the pyarrow module, importing it on first use.
+
+    Parameters
+    ----------
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    Any
+        The pyarrow module.
+    """
+    return get_dependency('pyarrow', format_name=format_name)
 
 
 def get_yaml() -> Any:
     """
     Return the PyYAML module, importing it on first use.
 
-    Raises an informative ImportError if the optional dependency is missing.
-
-    Notes
-    -----
-    Prefer :func:`get_dependency` for new call sites.
+    Returns
+    -------
+    Any
+        The PyYAML module.
     """
     return get_dependency('yaml', format_name='YAML', pip_name='PyYAML')
