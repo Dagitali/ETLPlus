@@ -23,12 +23,10 @@ from pathlib import Path
 from typing import Protocol
 from typing import cast
 
-from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -273,52 +271,5 @@ _DAT_HANDLER = DatFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``DatFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DAT file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the DAT file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _DAT_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``DatFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DAT file on disk.
-    data : JSONData
-        Data to write as DAT file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the DAT file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _DAT_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _DAT_HANDLER)
+write = make_deprecated_module_write(__name__, _DAT_HANDLER)
