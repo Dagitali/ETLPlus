@@ -20,18 +20,12 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..types import JSONData
 from ..types import JSONList
 from ..types import StrPath
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
-from ._io import read_delimited
-from ._io import write_delimited
-from .base import ReadOptions
 from .base import StandardDelimitedTextFileHandlerABC
-from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -58,67 +52,6 @@ class TabFile(StandardDelimitedTextFileHandlerABC):
 
     format = FileFormat.TAB
     delimiter = '\t'
-
-    # -- Instance Methods -- #
-
-    def read_rows(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read delimited TAB rows from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters. Extra key ``delimiter`` can override
-            :attr:`delimiter`.
-
-        Returns
-        -------
-        JSONList
-            Parsed rows.
-        """
-        return read_delimited(
-            path,
-            delimiter=self.delimiter_from_options(options),
-        )
-
-    def write_rows(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write TAB *rows* to *path* and return the number written.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the TAB file on disk.
-        rows : JSONList
-            Rows to write.
-        options : WriteOptions | None, optional
-            Optional write parameters. Extra key ``delimiter`` can override
-            :attr:`delimiter`.
-
-        Returns
-        -------
-        int
-            The number of rows written to the TAB file.
-        """
-        return write_delimited(
-            path,
-            rows,
-            delimiter=self.delimiter_from_options(options),
-            format_name=self.format_name,
-        )
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
