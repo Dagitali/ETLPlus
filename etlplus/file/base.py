@@ -427,7 +427,8 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read delimited rows using :attr:`delimiter` or option overrides.
+        Read delimited rows from *path* using :attr:`delimiter` or option
+        overrides.
 
         Parameters
         ----------
@@ -455,7 +456,8 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write delimited rows using :attr:`delimiter` or option overrides.
+        Write delimited rows to *path* using :attr:`delimiter` or option
+        overrides.
 
         Parameters
         ----------
@@ -522,7 +524,7 @@ class LogEventFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'log_event_stream'
     line_oriented: ClassVar[bool] = True
 
-    # -- Instance Methods -- #
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def parse_line(
