@@ -22,12 +22,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 
-from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
 from ._sql import coerce_sql_value
@@ -209,52 +207,5 @@ _DUCKDB_HANDLER = DuckdbFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``DuckdbFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DUCKDB file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the DUCKDB file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _DUCKDB_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``DuckdbFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the DUCKDB file on disk.
-    data : JSONData
-        Data to write as DUCKDB. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the DUCKDB file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _DUCKDB_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _DUCKDB_HANDLER)
+write = make_deprecated_module_write(__name__, _DUCKDB_HANDLER)
