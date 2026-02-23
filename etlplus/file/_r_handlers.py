@@ -14,9 +14,9 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ._dataframe import dataframe_and_count_from_data
+from ._dataframe import dataframe_from_records
 from ._imports import FormatPandasResolverMixin
-from ._imports import resolve_dependency
-from ._io import normalize_records
 from ._r import coerce_r_result
 
 # SECTION: EXPORTS ========================================================== #
@@ -90,9 +90,11 @@ class RDataHandlerMixin(FormatPandasResolverMixin):
         tuple[Any, int]
             A tuple containing the dataframe and the record count.
         """
-        return self.dataframe_from_records(
-            records := normalize_records(data, self.format_name),
-        ), len(records)
+        return dataframe_and_count_from_data(
+            self.resolve_pandas(),
+            data,
+            format_name=self.format_name,
+        )
 
     def dataframe_from_records(
         self,
@@ -111,7 +113,10 @@ class RDataHandlerMixin(FormatPandasResolverMixin):
         Any
             The resulting pandas DataFrame.
         """
-        return self.resolve_pandas().DataFrame.from_records(records)
+        return dataframe_from_records(
+            self.resolve_pandas(),
+            records,
+        )
 
     def read_r_result(
         self,
@@ -144,8 +149,4 @@ class RDataHandlerMixin(FormatPandasResolverMixin):
         Any
             The pyreadr module.
         """
-        return resolve_dependency(
-            self,
-            'pyreadr',
-            format_name=self.format_name,
-        )
+        return self.resolve_format_dependency('pyreadr')

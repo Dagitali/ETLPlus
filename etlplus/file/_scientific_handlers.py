@@ -13,8 +13,9 @@ from typing import ClassVar
 
 from ..types import JSONData
 from ..types import JSONList
+from ._dataframe import dataframe_from_records
+from ._imports import FormatDependencyResolverMixin
 from ._imports import FormatPandasResolverMixin
-from ._imports import resolve_dependency
 from ._io import ensure_parent_dir
 from ._io import records_from_table
 from .base import ReadOptions
@@ -33,9 +34,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -45,26 +43,16 @@ class ScientificPandasResolverMixin(FormatPandasResolverMixin):
     """
 
 
-class ScientificXarrayResolverMixin:
+class ScientificXarrayResolverMixin(FormatDependencyResolverMixin):
     """
     Shared xarray dependency resolver for scientific handlers.
     """
-
-    # -- Class Attributes -- #
-
-    format_name: ClassVar[str]
-
-    # -- Instance Methods -- #
 
     def resolve_xarray(self) -> Any:
         """
         Return the xarray module for this handler.
         """
-        return resolve_dependency(
-            self,
-            'xarray',
-            format_name=self.format_name,
-        )
+        return self.resolve_format_dependency('xarray')
 
 
 class SingleDatasetTabularScientificReadMixin(
@@ -162,11 +150,7 @@ class SingleDatasetTabularScientificReadMixin(
         """
         Return the pyreadstat module for this handler.
         """
-        return resolve_dependency(
-            self,
-            'pyreadstat',
-            format_name=self.format_name,
-        )
+        return self.resolve_format_dependency('pyreadstat')
 
 
 class SingleDatasetTabularScientificReadWriteMixin(
@@ -250,7 +234,7 @@ class SingleDatasetTabularScientificReadWriteMixin(
 
         pandas = self.resolve_pandas()
         ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(records)
+        frame = dataframe_from_records(pandas, records)
         self.write_frame(
             path,
             frame,

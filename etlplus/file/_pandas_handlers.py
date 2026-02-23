@@ -14,11 +14,12 @@ from typing import NoReturn
 
 from ..types import JSONData
 from ..types import JSONList
+from ._dataframe import dataframe_from_data
+from ._dataframe import dataframe_from_records
 from ._imports import resolve_dependency
 from ._imports import resolve_module_callable
 from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
 from .base import ReadOnlySpreadsheetFileHandlerABC
@@ -353,9 +354,11 @@ class PandasColumnarHandlerMixin(
         Convert row records into a pandas-backed table object.
         """
         self.validate_runtime_dependencies()
-        pandas = self.resolve_pandas()
-        records = normalize_records(data, self.format_name)
-        return pandas.DataFrame.from_records(records)
+        return dataframe_from_data(
+            self.resolve_pandas(),
+            data,
+            format_name=self.format_name,
+        )
 
     def resolve_pyarrow(self) -> Any:
         """
@@ -463,7 +466,7 @@ class PandasSpreadsheetHandlerMixin(
         _ = options
         ensure_parent_dir(path)
         pandas = self.resolve_pandas()
-        frame = pandas.DataFrame.from_records(rows)
+        frame = dataframe_from_records(pandas, rows)
         _call_with_import_error(
             lambda: _write_excel_frame(
                 frame,
