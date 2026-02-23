@@ -22,12 +22,11 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -179,52 +178,5 @@ _NC_HANDLER = NcFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``NcFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NC file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the NC file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _NC_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``NcFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NC file on disk.
-    data : JSONData
-        Data to write as NC file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the NC file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _NC_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _NC_HANDLER)
+write = make_deprecated_module_write(__name__, _NC_HANDLER)
