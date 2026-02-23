@@ -19,6 +19,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -81,6 +82,22 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def drop_sequential_index_column(
+        self,
+        frame: Any,
+    ) -> Any:
+        """
+        Drop the index column when it is a simple 0..N-1 sequence.
+        """
+        if 'index' not in frame.columns:
+            return frame
+        values = list(frame['index'])
+        if values != list(range(len(values))):
+            return frame
+        return frame.drop(columns=['index'])
+
+    # -- Instance Methods -- #
+
     def read_dataset(
         self,
         path: Path,
@@ -106,18 +123,27 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        xarray = get_dependency('xarray', format_name=self.format_name)
+        xarray = self.resolve_xarray()
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
             _raise_engine_error(err)
         with xarray_dataset as ds:
             frame = ds.to_dataframe().reset_index()
-        if 'index' in frame.columns:
-            values = list(frame['index'])
-            if values == list(range(len(values))):
-                frame = frame.drop(columns=['index'])
+        frame = self.drop_sequential_index_column(frame)
         return records_from_table(frame)
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_xarray(self) -> Any:
+        """
+        Return xarray using module-level dependency resolution.
+        """
+        return get_dependency('xarray', format_name=self.format_name)
 
     def write_dataset(
         self,
@@ -154,8 +180,8 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
+        xarray = self.resolve_xarray()
+        pandas = self.resolve_pandas()
         frame = pandas.DataFrame.from_records(records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
