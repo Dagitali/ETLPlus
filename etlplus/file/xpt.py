@@ -19,16 +19,13 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import ensure_parent_dir
 from ._io import read_sas_table
-from ._io import records_from_table
+from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
-from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -44,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class XptFile(SingleDatasetScientificFileHandlerABC):
+class XptFile(SingleDatasetTabularScientificReadWriteMixin):
     """
     Handler implementation for XPT files.
     """
@@ -52,93 +49,58 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.XPT
+    requires_pyreadstat_for_read = True
+    requires_pyreadstat_for_write = True
 
     # -- Instance Methods -- #
 
-    def read_dataset(
+    def read_frame(
         self,
         path: Path,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: ReadOptions | None = None,
-    ) -> JSONList:
+    ) -> Any:
         """
-        Read and return one dataset from XPT at *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XPT file on disk.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records.
+        Read and return one dataframe-like dataset from XPT.
         """
-        self.resolve_single_dataset(dataset, options=options)
-
-        pandas = get_pandas(self.format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
+        _ = options
         reader = getattr(pyreadstat, 'read_xport', None)
         if reader is not None:
             frame, _meta = reader(str(path))
-            return records_from_table(frame)
-        frame = read_sas_table(pandas, path, format_hint='xport')
-        return records_from_table(frame)
+            return frame
+        return read_sas_table(pandas, path, format_hint='xport')
 
-    def write_dataset(
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_pyreadstat(self) -> Any:
+        """
+        Return pyreadstat using module-level dependency resolution.
+        """
+        return get_dependency('pyreadstat', format_name=self.format_name)
+
+    def write_frame(
         self,
         path: Path,
-        data: JSONData,
+        frame: Any,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: WriteOptions | None = None,
-    ) -> int:
+    ) -> None:
         """
-        Write one dataset to XPT at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XPT file on disk.
-        data : JSONData
-            Dataset payload to write.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-
-        Raises
-        ------
-        ImportError
-            If "pyreadstat" is not installed with write support.
+        Write one dataframe-like dataset to XPT.
         """
-        records = self.prepare_single_dataset_write_records(
-            data,
-            dataset=dataset,
-            options=options,
-        )
-        if not records:
-            return 0
-
-        pandas = get_pandas(self.format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
+        _ = pandas
+        _ = options
         writer = getattr(pyreadstat, 'write_xport', None)
         if writer is None:
             raise ImportError(
                 'XPT write support requires "pyreadstat" with write_xport().',
             )
-
-        ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(records)
         writer(frame, str(path))
-        return len(records)
