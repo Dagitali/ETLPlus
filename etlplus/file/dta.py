@@ -19,15 +19,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import ensure_parent_dir
-from ._io import records_from_table
+from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
-from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -43,7 +40,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class DtaFile(SingleDatasetScientificFileHandlerABC):
+class DtaFile(SingleDatasetTabularScientificReadWriteMixin):
     """
     Handler implementation for DTA files.
     """
@@ -51,77 +48,51 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.DTA
+    requires_pyreadstat_for_read = True
+    requires_pyreadstat_for_write = True
 
     # -- Instance Methods -- #
 
-    def read_dataset(
+    def read_frame(
         self,
         path: Path,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: ReadOptions | None = None,
-    ) -> JSONList:
+    ) -> Any:
         """
-        Read and return one dataset from DTA at *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records.
+        Read and return one dataframe-like dataset from DTA.
         """
-        self.resolve_single_dataset(dataset, options=options)
-        _ = get_dependency('pyreadstat', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        frame = pandas.read_stata(path)
-        return records_from_table(frame)
+        _ = pyreadstat
+        _ = options
+        return pandas.read_stata(path)
 
-    def write_dataset(
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_pyreadstat(self) -> Any:
+        """
+        Return pyreadstat using module-level dependency resolution.
+        """
+        return get_dependency('pyreadstat', format_name=self.format_name)
+
+    def write_frame(
         self,
         path: Path,
-        data: JSONData,
+        frame: Any,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: WriteOptions | None = None,
-    ) -> int:
+    ) -> None:
         """
-        Write one dataset to DTA at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the DTA file on disk.
-        data : JSONData
-            Dataset payload to write.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
+        Write one dataframe-like dataset to DTA.
         """
-        records = self.prepare_single_dataset_write_records(
-            data,
-            dataset=dataset,
-            options=options,
-        )
-        if not records:
-            return 0
-
-        _ = get_dependency('pyreadstat', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(records)
+        _ = pandas
+        _ = pyreadstat
+        _ = options
         frame.to_stata(path, write_index=False)
-        return len(records)
