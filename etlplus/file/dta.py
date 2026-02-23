@@ -21,8 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
 from .base import WriteOptions
@@ -35,6 +35,14 @@ __all__ = [
     # Classes
     'DtaFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
@@ -67,18 +75,6 @@ class DtaFile(SingleDatasetTabularScientificReadWriteMixin):
         _ = pyreadstat
         _ = options
         return pandas.read_stata(path)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
-
-    def resolve_pyreadstat(self) -> Any:
-        """
-        Return pyreadstat using module-level dependency resolution.
-        """
-        return get_dependency('pyreadstat', format_name=self.format_name)
 
     def write_frame(
         self,
