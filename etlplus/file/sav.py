@@ -99,10 +99,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
         pyreadstat = _pyreadstat()
         frame, _meta = pyreadstat.read_sav(str(path))
         return records_from_table(frame)
@@ -134,10 +131,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        self.resolve_single_write_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
         format_name = self.format_name
         records = normalize_records(data, format_name)
