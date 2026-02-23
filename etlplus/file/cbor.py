@@ -21,11 +21,10 @@ from __future__ import annotations
 from typing import Any
 
 from ..types import JSONData
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import coerce_record_payload
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -128,52 +127,5 @@ _CBOR_HANDLER = CborFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``CborFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CBOR file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the CBOR file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _CBOR_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``CborFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CBOR file on disk.
-    data : JSONData
-        Data to write as CBOR file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the CBOR file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _CBOR_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _CBOR_HANDLER)
+write = make_deprecated_module_write(__name__, _CBOR_HANDLER)
