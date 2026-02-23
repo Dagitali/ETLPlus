@@ -21,7 +21,6 @@ from typing import Any
 
 from ..types import JSONData
 from ._imports import get_yaml
-from ._io import make_deprecated_module_io
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -33,9 +32,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'YamlFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -122,14 +118,3 @@ class YamlFile(RecordPayloadSemiStructuredTextFileHandlerABC):
 
         yaml = _yaml()
         return yaml.safe_load(StringIO(text))
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_YAML_HANDLER = YamlFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _YAML_HANDLER)

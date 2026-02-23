@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -28,9 +27,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'SylkFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -45,12 +41,3 @@ class SylkFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.SYLK
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_SYLK_HANDLER = SylkFile()
-
-
-read, write = make_deprecated_module_io(__name__, _SYLK_HANDLER)

@@ -23,7 +23,6 @@ from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import make_deprecated_module_io
 from ._io import read_sas_table
 from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'Sas7bdatFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -105,14 +101,3 @@ class Sas7bdatFile(
         """
         self.resolve_single_dataset(dataset, options=options)
         return self.write(path, data, options=options)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_SAS7BDAT_HANDLER = Sas7bdatFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _SAS7BDAT_HANDLER)

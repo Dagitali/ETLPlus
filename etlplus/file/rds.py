@@ -24,7 +24,6 @@ from ..types import JSONData
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._r import coerce_r_result
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -37,9 +36,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'RdsFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -144,14 +140,3 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ensure_parent_dir(path)
         writer(str(path), frame)
         return count
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_RDS_HANDLER = RdsFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _RDS_HANDLER)

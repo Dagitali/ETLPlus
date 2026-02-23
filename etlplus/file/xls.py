@@ -11,7 +11,6 @@ from typing import Any
 
 from ..types import JSONList
 from ._imports import get_pandas
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOnlySpreadsheetFileHandlerABC
 from .base import ReadOptions
@@ -23,9 +22,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'XlsFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -93,14 +89,3 @@ class XlsFile(ReadOnlySpreadsheetFileHandlerABC):
                 'Install with: pip install xlrd',
             ) from e
         return records_from_table(frame)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_XLS_HANDLER = XlsFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _XLS_HANDLER)

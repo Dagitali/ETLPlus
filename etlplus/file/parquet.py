@@ -24,7 +24,6 @@ from typing import Any
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_pandas
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'ParquetFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -179,14 +175,3 @@ class ParquetFile(ColumnarFileHandlerABC):
                 '"pyarrow" or "fastparquet".\n'
                 'Install with: pip install pyarrow',
             ) from err
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_PARQUET_HANDLER = ParquetFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PARQUET_HANDLER)

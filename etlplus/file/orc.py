@@ -25,7 +25,6 @@ from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -39,9 +38,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'OrcFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -161,14 +157,3 @@ class OrcFile(ColumnarFileHandlerABC):
         """
         _ = options
         table.to_orc(path, index=False)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_ORC_HANDLER = OrcFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _ORC_HANDLER)

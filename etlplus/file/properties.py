@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from ..types import JSONData
 from ..types import JSONDict
-from ._io import make_deprecated_module_io
 from ._io import stringify_value
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
@@ -33,9 +32,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'PropertiesFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -133,14 +129,3 @@ class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
         """
         _ = options
         return _parse_properties_text(text)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_PROPERTIES_HANDLER = PropertiesFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PROPERTIES_HANDLER)

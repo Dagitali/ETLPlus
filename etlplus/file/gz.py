@@ -16,7 +16,6 @@ from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -29,9 +28,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'GzFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -188,14 +184,3 @@ class GzFile(ArchiveWrapperFileHandlerABC):
         ensure_parent_dir(path)
         with gzip.open(path, 'wb') as handle:
             handle.write(payload)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_GZ_HANDLER = GzFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _GZ_HANDLER)

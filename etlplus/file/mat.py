@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -28,9 +27,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'MatFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -45,15 +41,3 @@ class MatFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.MAT
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_MAT_HANDLER = MatFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _MAT_HANDLER)

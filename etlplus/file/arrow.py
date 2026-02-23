@@ -25,7 +25,6 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_dependency
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'ArrowFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -158,14 +154,3 @@ class ArrowFile(ColumnarFileHandlerABC):
         with pyarrow_mod.OSFile(str(path), 'wb') as sink:
             with pyarrow_mod.ipc.new_file(sink, table.schema) as writer:
                 writer.write_table(table)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_ARROW_HANDLER = ArrowFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _ARROW_HANDLER)

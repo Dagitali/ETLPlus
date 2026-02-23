@@ -24,7 +24,6 @@ from pathlib import Path
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import write_text
 from .base import LogEventFileHandlerABC
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'LogFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -168,15 +164,3 @@ class LogFile(LogEventFileHandlerABC):
             trailing_newline=True,
         )
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_LOG_HANDLER = LogFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _LOG_HANDLER)

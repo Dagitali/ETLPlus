@@ -24,7 +24,6 @@ from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -37,9 +36,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'SavFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -127,14 +123,3 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         frame = pandas.DataFrame.from_records(records)
         pyreadstat.write_sav(frame, str(path))
         return len(records)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_SAV_HANDLER = SavFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _SAV_HANDLER)

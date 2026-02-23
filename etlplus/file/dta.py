@@ -25,7 +25,6 @@ from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'DtaFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -129,15 +125,3 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
         return len(records)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_DTA_HANDLER = DtaFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _DTA_HANDLER)

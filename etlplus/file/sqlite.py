@@ -22,7 +22,6 @@ import sqlite3
 from pathlib import Path
 
 from ..types import JSONList
-from ._io import make_deprecated_module_io
 from ._sql import DEFAULT_TABLE
 from ._sql import SQLITE_DIALECT
 from ._sql import coerce_sql_value
@@ -38,9 +37,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'SqliteFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 # SECTION: CLASSES ========================================================== #
@@ -182,14 +178,3 @@ class SqliteFile(EmbeddedDatabaseFileHandlerABC):
         connection.executemany(insert_sql, values)
         connection.commit()
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_SQLITE_HANDLER = SqliteFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _SQLITE_HANDLER)

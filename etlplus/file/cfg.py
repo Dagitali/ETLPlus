@@ -19,7 +19,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSemiStructuredTextFileHandlerABC
 from .enums import FileFormat
 
@@ -29,9 +28,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'CfgFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -46,15 +42,3 @@ class CfgFile(StubSemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.CFG
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_CFG_HANDLER = CfgFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _CFG_HANDLER)

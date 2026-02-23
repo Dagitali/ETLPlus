@@ -24,7 +24,6 @@ from ..types import JSONData
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._r import coerce_r_result
 from ._r import list_r_dataset_keys
@@ -39,9 +38,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'RdaFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -175,14 +171,3 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         except TypeError:
             writer(str(path), frame)
         return count
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_RDA_HANDLER = RdaFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _RDA_HANDLER)

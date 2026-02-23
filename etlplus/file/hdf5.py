@@ -25,7 +25,6 @@ from typing import Any
 from ..types import JSONData
 from ..types import JSONList
 from ._imports import get_pandas
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
@@ -39,9 +38,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'Hdf5File',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -191,15 +187,3 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
         """
         _ = dataset
         return self.write(path, data, options=options)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_HDF5_HANDLER = Hdf5File()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _HDF5_HANDLER)
