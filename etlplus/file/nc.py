@@ -83,7 +83,6 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.NC
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -112,7 +111,7 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        xarray = get_dependency('xarray', format_name='NC')
+        xarray = get_dependency('xarray', format_name=self.format_name)
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
@@ -160,8 +159,8 @@ class NcFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        xarray = get_dependency('xarray', format_name='NC')
-        pandas = get_pandas('NC')
+        xarray = get_dependency('xarray', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         frame = pandas.DataFrame.from_records(records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
