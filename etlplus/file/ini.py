@@ -20,13 +20,11 @@ Notes
 from __future__ import annotations
 
 import configparser
+from io import StringIO
 
-from ..types import JSONData
 from ..types import JSONDict
 from ._io import stringify_value
-from .base import DictPayloadSemiStructuredTextFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -112,7 +110,7 @@ def _payload_from_parser(
 # SECTION: CLASSES ========================================================== #
 
 
-class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
+class IniFile(DictPayloadTextCodecHandlerMixin):
     """
     Handler implementation for INI files.
     """
@@ -123,58 +121,26 @@ class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def dumps_dict_payload(
+    def decode_dict_payload_text(
+        self,
+        text: str,
+    ) -> object:
+        """
+        Parse INI *text* into dictionary payload.
+        """
+        parser = configparser.ConfigParser()
+        parser.read_string(text)
+        return _payload_from_parser(parser)
+
+    def encode_dict_payload_text(
         self,
         payload: JSONDict,
-        *,
-        options: WriteOptions | None = None,
     ) -> str:
         """
         Serialize dictionary *data* into INI text.
-
-        Parameters
-        ----------
-        payload : JSONDict
-            Dictionary payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str
-            Serialized INI text.
         """
-        _ = options
         parser = _parser_from_payload(payload)
-
-        from io import StringIO
 
         stream = StringIO()
         parser.write(stream)
         return stream.getvalue()
-
-    def loads(
-        self,
-        text: str,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse INI *text* into dictionary payload.
-
-        Parameters
-        ----------
-        text : str
-            INI payload as text.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        _ = options
-        parser = configparser.ConfigParser()
-        parser.read_string(text)
-        return _payload_from_parser(parser)
