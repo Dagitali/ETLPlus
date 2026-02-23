@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from abc import ABC
 from abc import abstractmethod
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -28,6 +29,44 @@ from ._sql import resolve_table
 if TYPE_CHECKING:
     from .base import ReadOptions
     from .base import WriteOptions
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+def _prepare_rows_for_write(
+    path: Path,
+    data: JSONData,
+    *,
+    format_name: str,
+) -> JSONList | None:
+    """
+    Normalize write payload rows and ensure the target parent directory.
+
+    Returns ``None`` when there are no rows to write.
+    """
+    rows = normalize_records(data, format_name)
+    if not rows:
+        return None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return rows
+
+
+def _use_connection[ResultT](
+    path: Path,
+    *,
+    connect: Callable[[Path], Any],
+    close: Callable[[Any], None],
+    operation: Callable[[Any], ResultT],
+) -> ResultT:
+    """
+    Execute *operation* with a connection that is always closed.
+    """
+    connection = connect(path)
+    try:
+        return operation(connection)
+    finally:
+        close(connection)
+
 
 # SECTION: ABSTRACT BASE CLASSES ============================================ #
 
@@ -75,25 +114,6 @@ class BinarySerializationABC(ABC):
         """
 
     # -- Instance Methods -- #
-
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for binary write operations.
-
-        Parameters
-        ----------
-        data : JSONData
-            Structured data to count records for.
-
-        Returns
-        -------
-        int
-            Number of records in the structured data.
-        """
-        return count_records(data)
 
     def read(
         self,
@@ -147,7 +167,7 @@ class BinarySerializationABC(ABC):
         payload = self.dumps_bytes(data, options=options)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)
-        return self.count_written_records(data)
+        return count_records(data)
 
 
 class ColumnarABC(ABC):
@@ -296,10 +316,13 @@ class ColumnarABC(ABC):
         int
             Number of records written.
         """
-        rows = normalize_records(data, self.format_name)
-        if not rows:
+        rows = _prepare_rows_for_write(
+            path,
+            data,
+            format_name=self.format_name,
+        )
+        if rows is None:
             return 0
-        path.parent.mkdir(parents=True, exist_ok=True)
         self.write_table(
             path,
             self.records_to_table(rows),
@@ -430,8 +453,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
         JSONList
             Row-oriented records extracted from the embedded-database.
         """
-        connection = self.connect(path)
-        try:
+        def _read(connection: Any) -> JSONList:
             table = self.table_from_options(options)
             if table is None:
                 table = resolve_table(
@@ -442,8 +464,12 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
                 if table is None:
                     return []
             return self.read_table(connection, table)
-        finally:
-            self.close_connection(connection)
+        return _use_connection(
+            path,
+            connect=self.connect,
+            close=self.close_connection,
+            operation=_read,
+        )
 
     def write(
         self,
@@ -476,8 +502,13 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
             If no table name is specified in options and no default table can
             be resolved from the database.
         """
-        rows = normalize_records(data, self.format_name)
-        if not rows:
+        if (
+            rows := _prepare_rows_for_write(
+                path,
+                data,
+                format_name=self.format_name,
+            )
+        ) is None:
             return 0
         table = self.table_from_options(
             options,
@@ -485,12 +516,16 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
         )
         if table is None:  # pragma: no cover - guarded by default
             raise ValueError(f'{self.format_name} write requires a table name')
-        path.parent.mkdir(parents=True, exist_ok=True)
-        connection = self.connect(path)
-        try:
+
+        def _write(connection: Any) -> int:
             return self.write_table(connection, table, rows)
-        finally:
-            self.close_connection(connection)
+
+        return _use_connection(
+            path,
+            connect=self.connect,
+            close=self.close_connection,
+            operation=_write,
+        )
 
 
 class RowReadWriteABC(ABC):
@@ -648,15 +683,6 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
 
     # -- Instance Methods -- #
 
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for write operations.
-        """
-        return count_records(data)
-
     def read(
         self,
         path: Path,
@@ -715,7 +741,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
             encoding=self.encoding_from_options(options),
             trailing_newline=self.write_trailing_newline,
         )
-        return self.count_written_records(data)
+        return count_records(data)
 
 
 class ScientificDatasetABC(ScientificDatasetOption, ABC):
@@ -920,9 +946,12 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         int
             The number of records written to the spreadsheet.
         """
-        rows = normalize_records(data, self.format_name)
-        if not rows:
+        rows = _prepare_rows_for_write(
+            path,
+            data,
+            format_name=self.format_name,
+        )
+        if rows is None:
             return 0
         sheet = self.sheet_from_options(options)
-        path.parent.mkdir(parents=True, exist_ok=True)
         return self.write_sheet(path, rows, sheet=sheet, options=options)
