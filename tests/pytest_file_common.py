@@ -50,6 +50,7 @@ def _module_handler_classes(
         if isinstance(value, type)
         and issubclass(value, FileHandlerABC)
         and value is not FileHandlerABC
+        and value.__name__.endswith('File')
         and value.__module__ == module.__name__
         and not bool(getattr(value, '__abstractmethods__', ()))
     ]
