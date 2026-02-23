@@ -7,8 +7,10 @@ Shared helpers for optional module method resolution and calls.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from typing import Literal
 from typing import NoReturn
 
 # SECTION: EXPORTS ========================================================== #
@@ -16,6 +18,7 @@ from typing import NoReturn
 
 __all__ = [
     # Functions
+    'call_module_method',
     'raise_missing_module_method',
     'read_module_frame',
     'read_module_frame_if_supported',
@@ -25,7 +28,45 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ModuleOperation = Literal['read', 'write']
+
+
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def call_module_method(
+    module: Any | None,
+    *,
+    format_name: str,
+    method_name: str,
+    operation: ModuleOperation,
+    module_name: str = 'module',
+    args: tuple[Any, ...] = (),
+    kwargs: Mapping[str, Any] | None = None,
+) -> Any:
+    """
+    Resolve and call one required module method with standardized errors.
+    """
+    module_method = resolve_module_method(
+        require_module(
+            module,
+            format_name=format_name,
+            operation=operation,
+            module_name=module_name,
+        ),
+        method_name,
+    )
+    if module_method is None:
+        raise_missing_module_method(
+            format_name=format_name,
+            module_name=module_name,
+            method_name=method_name,
+            operation=operation,
+        )
+    return module_method(*args, **(dict(kwargs) if kwargs else {}))
 
 
 def raise_missing_module_method(
@@ -33,7 +74,7 @@ def raise_missing_module_method(
     format_name: str,
     module_name: str = 'module',
     method_name: str,
-    operation: str,
+    operation: ModuleOperation,
 ) -> NoReturn:
     """
     Raise a consistent import error for missing module methods.
@@ -48,7 +89,7 @@ def require_module(
     module: Any | None,
     *,
     format_name: str,
-    operation: str,
+    operation: ModuleOperation,
     module_name: str = 'module',
 ) -> Any:
     """
@@ -86,23 +127,14 @@ def read_module_frame(
     """
     Read one table-like frame via one named module reader method.
     """
-    reader = resolve_module_method(
-        require_module(
-            module,
-            format_name=format_name,
-            operation='read',
-            module_name=module_name,
-        ),
-        method_name,
+    frame, _meta = call_module_method(
+        module,
+        format_name=format_name,
+        method_name=method_name,
+        operation='read',
+        module_name=module_name,
+        args=(str(path),),
     )
-    if reader is None:
-        raise_missing_module_method(
-            format_name=format_name,
-            module_name=module_name,
-            method_name=method_name,
-            operation='read',
-        )
-    frame, _meta = reader(str(path))
     return frame
 
 
@@ -134,20 +166,11 @@ def write_module_frame(
     """
     Write one table-like frame via one named module writer method.
     """
-    writer = resolve_module_method(
-        require_module(
-            module,
-            format_name=format_name,
-            operation='write',
-            module_name=module_name,
-        ),
-        method_name,
+    call_module_method(
+        module,
+        format_name=format_name,
+        method_name=method_name,
+        operation='write',
+        module_name=module_name,
+        args=(frame, str(path)),
     )
-    if writer is None:
-        raise_missing_module_method(
-            format_name=format_name,
-            module_name=module_name,
-            method_name=method_name,
-            operation='write',
-        )
-    writer(frame, str(path))
