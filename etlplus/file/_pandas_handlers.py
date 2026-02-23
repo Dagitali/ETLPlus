@@ -243,6 +243,48 @@ class _PandasModuleResolverMixin:
         )
 
 
+class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
+    """
+    Shared read path for pandas-backed spreadsheet handlers.
+    """
+
+    read_engine: ClassVar[str | None] = None
+    import_error_message: ClassVar[str | None] = None
+
+    def read_sheet(
+        self,
+        path: Path,
+        *,
+        sheet: str | int,
+        options: ReadOptions | None = None,
+    ) -> JSONList:
+        """
+        Read one sheet from *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the spreadsheet file on disk.
+        sheet : str | int
+            Sheet selector, by name or index.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+
+        Returns
+        -------
+        JSONList
+            Parsed records from the selected sheet.
+        """
+        _ = options
+        return _read_sheet_records(
+            path=path,
+            sheet=sheet,
+            pandas=self.resolve_pandas(),
+            engine=self.read_engine,
+            import_error_message=self.import_error_message,
+        )
+
+
 class PandasColumnarHandlerMixin(
     _PandasModuleResolverMixin,
     ColumnarFileHandlerABC,
@@ -373,7 +415,7 @@ class PandasColumnarHandlerMixin(
 
 
 class PandasSpreadsheetHandlerMixin(
-    _PandasModuleResolverMixin,
+    _PandasSpreadsheetReadMixin,
     SpreadsheetFileHandlerABC,
 ):
     """
@@ -383,44 +425,7 @@ class PandasSpreadsheetHandlerMixin(
     # -- Class Attributes -- #
 
     pandas_format_name: ClassVar[str]
-    read_engine: ClassVar[str | None] = None
     write_engine: ClassVar[str | None] = None
-    import_error_message: ClassVar[str | None] = None
-
-    # -- Instance Methods -- #
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read one sheet from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        sheet : str | int
-            Sheet selector, by name or index.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records from the selected sheet.
-        """
-        _ = options
-        return _read_sheet_records(
-            path=path,
-            sheet=sheet,
-            pandas=self.resolve_pandas(),
-            engine=self.read_engine,
-            import_error_message=self.import_error_message,
-        )
 
     def write_sheet(
         self,
@@ -469,7 +474,7 @@ class PandasSpreadsheetHandlerMixin(
 
 
 class PandasReadOnlySpreadsheetHandlerMixin(
-    _PandasModuleResolverMixin,
+    _PandasSpreadsheetReadMixin,
     ReadOnlySpreadsheetFileHandlerABC,
 ):
     """
@@ -479,40 +484,4 @@ class PandasReadOnlySpreadsheetHandlerMixin(
     # -- Class Attributes -- #
 
     pandas_format_name: ClassVar[str]
-    read_engine: ClassVar[str | None] = None
-    import_error_message: ClassVar[str | None] = None
-
-    # -- Instance Methods -- #
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read one sheet from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        sheet : str | int
-            Sheet selector, by name or index.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records from the selected sheet.
-        """
-        _ = options
-        return _read_sheet_records(
-            path=path,
-            sheet=sheet,
-            pandas=self.resolve_pandas(),
-            engine=self.read_engine,
-            import_error_message=self.import_error_message,
-        )
+    # Read behavior is provided by ``_PandasSpreadsheetReadMixin``.

@@ -36,60 +36,6 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _resolve_pyreadstat_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve pyreadstat, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance for which to resolve pyreadstat.
-    format_name : str
-        The format name to use in error messages when resolving pyreadstat.
-
-    Returns
-    -------
-    Any
-        The pyreadstat module.
-    """
-    return resolve_dependency(
-        handler,
-        'pyreadstat',
-        format_name=format_name,
-    )
-
-
-def _resolve_xarray_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve xarray, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance for which to resolve xarray.
-    format_name : str
-        The format name to use in error messages when resolving xarray.
-
-    Returns
-    -------
-    Any
-        The xarray module.
-    """
-    return resolve_dependency(
-        handler,
-        'xarray',
-        format_name=format_name,
-    )
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -121,8 +67,9 @@ class ScientificXarrayResolverMixin:
         """
         Return the xarray module for this handler.
         """
-        return _resolve_xarray_dependency(
+        return resolve_dependency(
             self,
+            'xarray',
             format_name=self.format_name,
         )
 
@@ -214,8 +161,9 @@ class SingleDatasetTabularScientificReadMixin(
         """
         Return the pyreadstat module for this handler.
         """
-        return _resolve_pyreadstat_dependency(
+        return resolve_dependency(
             self,
+            'pyreadstat',
             format_name=self.format_name,
         )
 

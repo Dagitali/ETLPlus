@@ -90,8 +90,9 @@ class RDataHandlerMixin:
         tuple[Any, int]
             A tuple containing the dataframe and the record count.
         """
-        records = normalize_records(data, self.format_name)
-        return self.dataframe_from_records(records), len(records)
+        return self.dataframe_from_records(
+            records := normalize_records(data, self.format_name),
+        ), len(records)
 
     def dataframe_from_records(
         self,
@@ -129,8 +130,10 @@ class RDataHandlerMixin:
         Mapping[str, object]
             The raw pyreadr result mapping.
         """
-        result = self.resolve_pyreadr().read_r(str(path))
-        return cast(Mapping[str, object], result)
+        return cast(
+            Mapping[str, object],
+            self.resolve_pyreadr().read_r(str(path)),
+        )
 
     def resolve_pandas(self) -> Any:
         """
