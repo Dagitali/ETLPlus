@@ -64,18 +64,13 @@ def _parser_from_payload(
     for section, values in payload.items():
         if section == 'DEFAULT':
             if isinstance(values, dict):
-                parser['DEFAULT'] = {
-                    key: stringify_value(value)
-                    for key, value in values.items()
-                }
+                parser['DEFAULT'] = _stringify_mapping(values)
             else:
                 raise TypeError('INI DEFAULT section must be a dict')
             continue
         if not isinstance(values, dict):
             raise TypeError('INI sections must map to dicts')
-        parser[section] = {
-            key: stringify_value(value) for key, value in values.items()
-        }
+        parser[section] = _stringify_mapping(values)
     return parser
 
 
@@ -100,11 +95,31 @@ def _payload_from_parser(
         payload['DEFAULT'] = dict(parser.defaults())
     defaults = dict(parser.defaults())
     for section in parser.sections():
-        raw_section = dict(parser.items(section))
-        for key in defaults:
-            raw_section.pop(key, None)
-        payload[section] = raw_section
+        payload[section] = {
+            key: value
+            for key, value in parser.items(section)
+            if key not in defaults
+        }
     return payload
+
+
+def _stringify_mapping(
+    mapping: JSONDict,
+) -> dict[str, str]:
+    """
+    Coerce one mapping payload into ``configparser`` string values.
+
+    Parameters
+    ----------
+    mapping : JSONDict
+        The mapping to stringify.
+
+    Returns
+    -------
+    dict[str, str]
+        The resulting mapping with stringified values.
+    """
+    return {key: stringify_value(value) for key, value in mapping.items()}
 
 
 # SECTION: CLASSES ========================================================== #
