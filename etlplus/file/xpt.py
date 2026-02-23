@@ -57,7 +57,6 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.XPT
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -87,8 +86,8 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         """
         self.resolve_single_dataset(dataset, options=options)
 
-        pandas = get_pandas('XPT')
-        pyreadstat = get_dependency('pyreadstat', format_name='XPT')
+        pandas = get_pandas(self.format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
         reader = getattr(pyreadstat, 'read_xport', None)
         if reader is not None:
             frame, _meta = reader(str(path))
@@ -139,8 +138,8 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        pandas = get_pandas('XPT')
-        pyreadstat = get_dependency('pyreadstat', format_name='XPT')
+        pandas = get_pandas(self.format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
         writer = getattr(pyreadstat, 'write_xport', None)
         if writer is None:
             raise ImportError(
