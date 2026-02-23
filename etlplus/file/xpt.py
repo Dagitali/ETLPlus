@@ -100,10 +100,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
         pandas = _pandas()
         pyreadstat = _pyreadstat()
@@ -149,10 +146,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadstat" is not installed with write support.
         """
-        self.resolve_single_write_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
         format_name = self.format_name
         records = normalize_records(data, format_name)
