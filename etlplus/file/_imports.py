@@ -17,6 +17,7 @@ from typing import ClassVar
 
 __all__ = [
     # Classes
+    'FormatDependencyResolverMixin',
     'FormatPandasResolverMixin',
     # Functions
     'get_dependency',
@@ -323,14 +324,38 @@ def resolve_pandas(
 # SECTION: CLASSES ========================================================== #
 
 
-class FormatPandasResolverMixin:
+class FormatDependencyResolverMixin:
     """
-    Shared pandas resolver for handlers keyed by ``self.format_name``.
+    Shared dependency resolver for handlers keyed by ``self.format_name``.
     """
 
     # -- Class Attributes -- #
 
     format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
+
+    def resolve_format_dependency(
+        self,
+        dependency_name: str,
+        *,
+        pip_name: str | None = None,
+    ) -> Any:
+        """
+        Resolve one dependency for this handler's format context.
+        """
+        return resolve_dependency(
+            self,
+            dependency_name,
+            format_name=self.format_name,
+            pip_name=pip_name,
+        )
+
+
+class FormatPandasResolverMixin(FormatDependencyResolverMixin):
+    """
+    Shared pandas resolver for handlers keyed by ``self.format_name``.
+    """
 
     # -- Instance Methods -- #
 
