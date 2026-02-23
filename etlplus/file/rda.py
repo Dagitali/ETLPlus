@@ -19,7 +19,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import StrPath
@@ -48,19 +47,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for RDA operations."""
-    return get_pandas('RDA')
-
-
-def _pyreadr() -> Any:
-    """Return the optional pyreadr module."""
-    return get_dependency('pyreadr', format_name='RDA')
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -72,7 +58,6 @@ class RdaFile(ScientificDatasetFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.RDA
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -93,7 +78,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         list[str]
             Available dataset keys.
         """
-        pyreadr = _pyreadr()
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
         result = pyreadr.read_r(str(path))
         return list_r_dataset_keys(
             result,
@@ -124,16 +109,15 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         JSONData
             Parsed dataset payload.
         """
-        format_name = self.format_name
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = _pyreadr()
-        pandas = _pandas()
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
             dataset=dataset,
             dataset_key=self.dataset_key,
-            format_name=format_name,
+            format_name=self.format_name,
             pandas=pandas,
         )
 
@@ -169,11 +153,10 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        format_name = self.format_name
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = _pyreadr()
-        pandas = _pandas()
-        records = normalize_records(data, format_name)
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
+        records = normalize_records(data, self.format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
         target_dataset = dataset if dataset is not None else self.dataset_key
