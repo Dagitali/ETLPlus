@@ -10,7 +10,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 from typing import Literal
-from typing import cast
 from typing import overload
 
 import pytest
@@ -19,6 +18,12 @@ from etlplus.file import FileFormat
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.types import JSONData
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_MODULE_HANDLER_CACHE: dict[str, FileHandlerABC] = {}
+
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -32,7 +37,22 @@ ORC_SYSCTL_SKIP_REASON = 'ORC read failed due to sysctl limitations'
 type Operation = Literal['read', 'write']
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _module_handler_classes(
+    module: ModuleType,
+) -> list[type[FileHandlerABC]]:
+    """Return concrete handler classes defined directly by one module."""
+    return [
+        value
+        for value in vars(module).values()
+        if isinstance(value, type)
+        and issubclass(value, FileHandlerABC)
+        and value is not FileHandlerABC
+        and value.__module__ == module.__name__
+        and not bool(getattr(value, '__abstractmethods__', ()))
+    ]
 
 
 def _resolve_write_options(
@@ -63,6 +83,9 @@ def _resolve_write_options(
     if not isinstance(options, WriteOptions):
         raise TypeError('options must be a WriteOptions instance')
     return options
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 @overload
@@ -113,16 +136,16 @@ def is_orc_sysctl_error(error: OSError) -> bool:
 def resolve_module_handler(
     module: ModuleType,
 ) -> FileHandlerABC:
-    """Return the singleton handler instance defined by a file module."""
-    handlers = [
-        value
-        for name, value in vars(module).items()
-        if name.endswith('_HANDLER')
-    ]
-    assert len(handlers) == 1
-    handler = handlers[0]
-    assert isinstance(handler, FileHandlerABC)
-    return cast(FileHandlerABC, handler)
+    """Return a cached handler instance for one file-format module."""
+    module_name = module.__name__
+    if (handler := _MODULE_HANDLER_CACHE.get(module_name)) is not None:
+        return handler
+
+    handler_classes = _module_handler_classes(module)
+    assert len(handler_classes) == 1
+    handler = handler_classes[0]()
+    _MODULE_HANDLER_CACHE[module_name] = handler
+    return handler
 
 
 def should_skip_known_file_io_error(
