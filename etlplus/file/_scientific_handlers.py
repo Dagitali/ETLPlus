@@ -28,6 +28,8 @@ from .base import WriteOptions
 
 __all__ = [
     # Classes
+    'ScientificPandasResolverMixin',
+    'ScientificXarrayResolverMixin',
     'SingleDatasetTabularScientificReadMixin',
     'SingleDatasetTabularScientificReadWriteMixin',
 ]
@@ -107,15 +109,119 @@ def _resolve_pyreadstat_dependency(
     Any
         The pyreadstat module.
     """
+    return _resolve_dependency(
+        handler,
+        'pyreadstat',
+        format_name=format_name,
+    )
+
+
+def _resolve_xarray_dependency(
+    handler: object,
+    *,
+    format_name: str,
+) -> Any:
+    """
+    Resolve xarray, preferring the concrete module resolver when present.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance for which to resolve xarray.
+    format_name : str
+        The format name to use in error messages when resolving xarray.
+
+    Returns
+    -------
+    Any
+        The xarray module.
+    """
+    return _resolve_dependency(
+        handler,
+        'xarray',
+        format_name=format_name,
+    )
+
+
+def _resolve_dependency(
+    handler: object,
+    dependency_name: str,
+    *,
+    format_name: str,
+    pip_name: str | None = None,
+) -> Any:
+    """
+    Resolve one dependency with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override dependency
+        resolution.
+    dependency_name : str
+        The dependency import name.
+    format_name : str
+        The format name to use in import error context.
+    pip_name : str | None, optional
+        Optional install-name hint.
+
+    Returns
+    -------
+    Any
+        The resolved dependency module.
+    """
     if resolver := _resolve_module_callable(handler, 'get_dependency'):
-        return resolver('pyreadstat', format_name=format_name)
-    return get_dependency('pyreadstat', format_name=format_name)
+        return resolver(
+            dependency_name,
+            format_name=format_name,
+            pip_name=pip_name,
+        )
+    return get_dependency(
+        dependency_name,
+        format_name=format_name,
+        pip_name=pip_name,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
 
 
+class ScientificPandasResolverMixin:
+    """
+    Shared pandas dependency resolver for scientific handlers.
+    """
+
+    format_name: ClassVar[str]
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return the pandas module for this handler.
+        """
+        return _resolve_pandas_dependency(
+            self,
+            format_name=self.format_name,
+        )
+
+
+class ScientificXarrayResolverMixin:
+    """
+    Shared xarray dependency resolver for scientific handlers.
+    """
+
+    format_name: ClassVar[str]
+
+    def resolve_xarray(self) -> Any:
+        """
+        Return the xarray module for this handler.
+        """
+        return _resolve_xarray_dependency(
+            self,
+            format_name=self.format_name,
+        )
+
+
 class SingleDatasetTabularScientificReadMixin(
+    ScientificPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
     """
@@ -198,15 +304,6 @@ class SingleDatasetTabularScientificReadMixin(
             options=options,
         )
         return records_from_table(frame)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
-        return _resolve_pandas_dependency(
-            self,
-            format_name=self.format_name,
-        )
 
     def resolve_pyreadstat(self) -> Any:
         """
