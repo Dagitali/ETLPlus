@@ -6,8 +6,6 @@ Shared abstractions for R-data handlers.
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -16,8 +14,8 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import resolve_dependency
+from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import normalize_records
 from ._r import coerce_r_result
 
@@ -28,83 +26,6 @@ __all__ = [
     # Classes
     'RDataHandlerMixin',
 ]
-
-
-# SECTION: CLASSES ========================================================== #
-
-
-def _resolve_module_callable(
-    handler: object,
-    name: str,
-) -> Callable[..., Any] | None:
-    """
-    Resolve one callable from the concrete handler module when present.
-
-    handler : object
-        The handler instance to resolve the callable for.
-    name : str
-        The name of the callable to resolve.
-
-    Returns
-    -------
-    Callable[..., Any] | None
-        The resolved callable if found and callable, else ``None``.
-    """
-    module = sys.modules.get(type(handler).__module__)
-    if module is None:
-        return None
-    value = getattr(module, name, None)
-    return value if callable(value) else None
-
-
-def _resolve_pandas_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve pandas, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance to resolve the pandas dependency for.
-    format_name : str
-        The name of the format to resolve pandas for.
-
-    Returns
-    -------
-    Any
-        The resolved pandas module.
-    """
-    if resolver := _resolve_module_callable(handler, 'get_pandas'):
-        return resolver(format_name)
-    return get_pandas(format_name)
-
-
-def _resolve_pyreadr_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve pyreadr, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance to resolve the pyreadr dependency for.
-    format_name : str
-        The name of the format to resolve pyreadr for.
-
-    Returns
-    -------
-    Any
-        The resolved pyreadr module.
-    """
-    if resolver := _resolve_module_callable(handler, 'get_dependency'):
-        return resolver('pyreadr', format_name=format_name)
-    return get_dependency('pyreadr', format_name=format_name)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -220,7 +141,10 @@ class RDataHandlerMixin:
         Any
             The pandas module.
         """
-        return _resolve_pandas_dependency(self, format_name=self.format_name)
+        return resolve_pandas_dependency(
+            self,
+            format_name=self.format_name,
+        )
 
     def resolve_pyreadr(self) -> Any:
         """
@@ -231,4 +155,8 @@ class RDataHandlerMixin:
         Any
             The pyreadr module.
         """
-        return _resolve_pyreadr_dependency(self, format_name=self.format_name)
+        return resolve_dependency(
+            self,
+            'pyreadr',
+            format_name=self.format_name,
+        )

@@ -6,8 +6,6 @@ Shared abstractions for pandas-backed file handlers.
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -15,8 +13,9 @@ from typing import NoReturn
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_pandas
-from ._imports import get_pyarrow
+from ._imports import resolve_dependency
+from ._imports import resolve_module_callable
+from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._io import records_from_table
@@ -162,57 +161,6 @@ def _read_sheet_records(
     return records_from_table(frame)
 
 
-def _resolve_module_callable(
-    handler: object,
-    name: str,
-) -> Callable[..., Any] | None:
-    """
-    Resolve one callable from the concrete handler module when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance for which to resolve the callable.
-    name : str
-        The name of the callable to resolve.
-
-    Returns
-    -------
-    Callable[..., Any] | None
-        The resolved callable if found and valid, otherwise ``None``.
-    """
-    module = sys.modules.get(type(handler).__module__)
-    if module is None:
-        return None
-    value = getattr(module, name, None)
-    return value if callable(value) else None
-
-
-def _resolve_pandas_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve pandas, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance for which to resolve the dependency.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    Any
-        The pandas module.
-    """
-    if resolver := _resolve_module_callable(handler, 'get_pandas'):
-        return resolver(format_name)
-    return get_pandas(format_name)
-
-
 def _resolve_pyarrow_dependency(
     handler: object,
     *,
@@ -233,11 +181,13 @@ def _resolve_pyarrow_dependency(
     Any
         The pyarrow module.
     """
-    if resolver := _resolve_module_callable(handler, 'get_pyarrow'):
+    if resolver := resolve_module_callable(handler, 'get_pyarrow'):
         return resolver(format_name)
-    if resolver := _resolve_module_callable(handler, 'get_dependency'):
-        return resolver('pyarrow', format_name=format_name)
-    return get_pyarrow(format_name)
+    return resolve_dependency(
+        handler,
+        'pyarrow',
+        format_name=format_name,
+    )
 
 
 def _write_excel_frame(
@@ -287,7 +237,7 @@ class _PandasModuleResolverMixin:
         """
         Return the pandas module for this handler.
         """
-        return _resolve_pandas_dependency(
+        return resolve_pandas_dependency(
             self,
             format_name=self.pandas_format_name,
         )

@@ -6,17 +6,15 @@ Shared abstractions for scientific dataset handlers.
 
 from __future__ import annotations
 
-import sys
 from abc import abstractmethod
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import resolve_dependency
+from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
 from ._io import records_from_table
 from .base import ReadOptions
@@ -36,57 +34,6 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _resolve_module_callable(
-    handler: object,
-    name: str,
-) -> Callable[..., Any] | None:
-    """
-    Resolve one callable from the concrete handler module when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance whose module to inspect.
-    name : str
-        The name of the callable to resolve.
-
-    Returns
-    -------
-    Callable[..., Any] | None
-        The resolved callable if found and callable, else ``None``.
-    """
-    module = sys.modules.get(type(handler).__module__)
-    if module is None:
-        return None
-    value = getattr(module, name, None)
-    return value if callable(value) else None
-
-
-def _resolve_pandas_dependency(
-    handler: object,
-    *,
-    format_name: str,
-) -> Any:
-    """
-    Resolve pandas, preferring the concrete module resolver when present.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance for which to resolve pandas.
-    format_name : str
-        The format name to use in error messages when resolving pandas.
-
-    Returns
-    -------
-    Any
-        The pandas module.
-    """
-    if resolver := _resolve_module_callable(handler, 'get_pandas'):
-        return resolver(format_name)
-    return get_pandas(format_name)
 
 
 def _resolve_pyreadstat_dependency(
@@ -109,7 +56,7 @@ def _resolve_pyreadstat_dependency(
     Any
         The pyreadstat module.
     """
-    return _resolve_dependency(
+    return resolve_dependency(
         handler,
         'pyreadstat',
         format_name=format_name,
@@ -136,50 +83,10 @@ def _resolve_xarray_dependency(
     Any
         The xarray module.
     """
-    return _resolve_dependency(
+    return resolve_dependency(
         handler,
         'xarray',
         format_name=format_name,
-    )
-
-
-def _resolve_dependency(
-    handler: object,
-    dependency_name: str,
-    *,
-    format_name: str,
-    pip_name: str | None = None,
-) -> Any:
-    """
-    Resolve one dependency with module-level override support.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance whose concrete module may override dependency
-        resolution.
-    dependency_name : str
-        The dependency import name.
-    format_name : str
-        The format name to use in import error context.
-    pip_name : str | None, optional
-        Optional install-name hint.
-
-    Returns
-    -------
-    Any
-        The resolved dependency module.
-    """
-    if resolver := _resolve_module_callable(handler, 'get_dependency'):
-        return resolver(
-            dependency_name,
-            format_name=format_name,
-            pip_name=pip_name,
-        )
-    return get_dependency(
-        dependency_name,
-        format_name=format_name,
-        pip_name=pip_name,
     )
 
 
@@ -197,7 +104,7 @@ class ScientificPandasResolverMixin:
         """
         Return the pandas module for this handler.
         """
-        return _resolve_pandas_dependency(
+        return resolve_pandas_dependency(
             self,
             format_name=self.format_name,
         )
@@ -293,8 +200,6 @@ class SingleDatasetTabularScientificReadMixin(
     ) -> JSONList:
         """
         Read and return one selected dataset as records.
-
-
         """
         self.resolve_single_dataset(dataset, options=options)
         frame = self.read_frame(
