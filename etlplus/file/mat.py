@@ -49,7 +49,6 @@ class MatFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.MAT
-    dataset_key = 'data'
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
