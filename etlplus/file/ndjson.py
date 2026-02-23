@@ -24,10 +24,9 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
 from ..utils import count_records
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text
@@ -202,54 +201,5 @@ _NDJSON_HANDLER = NdjsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``NdjsonFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NDJSON file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the NDJSON file.
-    """
-    return cast(
-        JSONList,
-        call_deprecated_module_read(
-            path,
-            __name__,
-            _NDJSON_HANDLER.read,
-        ),
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``NdjsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NDJSON file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _NDJSON_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _NDJSON_HANDLER)
+write = make_deprecated_module_write(__name__, _NDJSON_HANDLER)
