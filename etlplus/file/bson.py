@@ -22,10 +22,9 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -191,55 +190,5 @@ _BSON_HANDLER = BsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``BsonFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the BSON file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the BSON file.
-    """
-    return cast(
-        JSONList,
-        call_deprecated_module_read(
-            path,
-            __name__,
-            _BSON_HANDLER.read,
-        ),
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``BsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the BSON file on disk.
-    data : JSONData
-        Data to write as BSON. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the BSON file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _BSON_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _BSON_HANDLER)
+write = make_deprecated_module_write(__name__, _BSON_HANDLER)
