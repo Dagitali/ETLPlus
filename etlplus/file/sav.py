@@ -18,7 +18,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -44,19 +43,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for SAV operations."""
-    return get_pandas('SAV')
-
-
-def _pyreadstat() -> Any:
-    """Return the optional pyreadstat module."""
-    return get_dependency('pyreadstat', format_name='SAV')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -99,7 +85,7 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        pyreadstat = _pyreadstat()
+        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
         frame, _meta = pyreadstat.read_sav(str(path))
         return records_from_table(frame)
 
@@ -138,8 +124,8 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        pyreadstat = _pyreadstat()
-        pandas = _pandas()
+        pyreadstat = get_dependency('pyreadstat', format_name='SAV')
+        pandas = get_pandas('SAV')
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         pyreadstat.write_sav(frame, str(path))
