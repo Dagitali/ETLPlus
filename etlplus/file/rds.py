@@ -21,10 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ._imports import get_dependency
-from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._r import coerce_r_result
+from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -42,7 +40,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class RdsFile(SingleDatasetScientificFileHandlerABC):
+class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for RDS files.
     """
@@ -78,16 +76,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             Parsed dataset payload.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        result = pyreadr.read_r(str(path))
-        return coerce_r_result(
-            result,
-            dataset=dataset,
-            dataset_key=self.dataset_key,
-            format_name=self.format_name,
-            pandas=pandas,
-        )
+        return self.coerce_r_dataset(path, dataset=dataset)
 
     def write_dataset(
         self,
@@ -126,9 +115,8 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             dataset=dataset,
             options=options,
         )
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        frame = pandas.DataFrame.from_records(records)
+        pyreadr = self.resolve_pyreadr()
+        frame = self.dataframe_from_records(records)
         count = len(records)
 
         writer = getattr(pyreadr, 'write_rds', None)
