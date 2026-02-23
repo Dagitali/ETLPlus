@@ -100,10 +100,7 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
         _ = _pyreadstat()
         pandas = _pandas()
         frame = pandas.read_stata(path)
@@ -136,10 +133,7 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        self.resolve_single_write_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
         format_name = self.format_name
         records = normalize_records(data, format_name)
