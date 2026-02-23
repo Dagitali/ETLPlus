@@ -24,10 +24,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
@@ -204,52 +203,5 @@ _HDF5_HANDLER = Hdf5File()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``Hdf5File().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the HDF5 file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the HDF5 file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _HDF5_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``Hdf5File().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the HDF5 file on disk.
-    data : JSONData
-        Data to write as HDF5 file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the HDF5 file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _HDF5_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _HDF5_HANDLER)
+write = make_deprecated_module_write(__name__, _HDF5_HANDLER)
