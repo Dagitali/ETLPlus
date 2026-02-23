@@ -106,9 +106,9 @@ Category contracts include:
 - Templates (`TemplateFileHandlerABC`)
 - Placeholder stubs (`StubFileHandlerABC`)
 
-Format dispatch is registry-driven via explicit format-to-handler mappings. Module-level
-`etlplus.file.<format>.read()` and `write()` wrappers are deprecated compatibility shims.
-Documentation examples intentionally use handler instance methods only.
+Format dispatch is registry-driven via explicit format-to-handler mappings. Legacy module-level
+`etlplus.file.<format>.read()` and `write()` wrappers have been removed. Documentation examples
+intentionally use handler instance methods only.
 
 ## Inferring File Format and Compression
 

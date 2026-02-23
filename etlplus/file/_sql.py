@@ -28,6 +28,7 @@ __all__ = [
     'infer_column_type',
     'quote_identifier',
     'resolve_table',
+    'write_table_rows',
 ]
 
 
@@ -222,3 +223,62 @@ def resolve_table(
         f'Multiple tables found in {engine_name} file; expected '
         f'"{default_table}" or a single table',
     )
+
+
+def write_table_rows(
+    connection: Any,
+    table: str,
+    rows: JSONList,
+    *,
+    dialect: SqlDialect,
+    commit: bool = False,
+) -> int:
+    """
+    Replace *table* contents with *rows* and return number of written rows.
+
+    Parameters
+    ----------
+    connection : Any
+        SQL connection object exposing ``execute``/``executemany`` methods.
+    table : str
+        Target table name.
+    rows : JSONList
+        Row records to write.
+    dialect : SqlDialect
+        Dialect-specific type mapping for inferred columns.
+    commit : bool, optional
+        Whether to commit after writes (used for SQLite).
+
+    Returns
+    -------
+    int
+        Number of rows written.
+    """
+    if not rows:
+        return 0
+
+    columns, column_values = collect_column_values(rows)
+    if not columns:
+        return 0
+
+    table_ident = quote_identifier(table)
+    column_defs = ', '.join(
+        f'{quote_identifier(column)} {infer_column_type(values, dialect)}'
+        for column, values in column_values.items()
+    )
+    insert_columns = ', '.join(quote_identifier(column) for column in columns)
+    placeholders = ', '.join('?' for _ in columns)
+    insert_sql = (
+        f'INSERT INTO {table_ident} ({insert_columns}) VALUES ({placeholders})'
+    )
+    values = [
+        tuple(coerce_sql_value(row.get(column)) for column in columns)
+        for row in rows
+    ]
+
+    connection.execute(f'DROP TABLE IF EXISTS {table_ident}')
+    connection.execute(f'CREATE TABLE {table_ident} ({column_defs})')
+    connection.executemany(insert_sql, values)
+    if commit:
+        connection.commit()
+    return len(rows)

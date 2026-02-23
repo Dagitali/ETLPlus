@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from .base import StandardDelimitedTextFileHandlerABC
 from .enums import FileFormat
 
@@ -28,9 +27,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'CsvFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -46,15 +42,3 @@ class CsvFile(StandardDelimitedTextFileHandlerABC):
 
     format = FileFormat.CSV
     delimiter = ','
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_CSV_HANDLER = CsvFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _CSV_HANDLER)

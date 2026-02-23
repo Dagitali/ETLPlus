@@ -18,12 +18,7 @@ Notes
 
 from __future__ import annotations
 
-import re
-
-from ._io import make_deprecated_module_io
-from ._mixins import RegexTemplateRenderMixin
-from .base import TemplateFileHandlerABC
-from .base import TemplateTextIOMixin
+from ._template_handlers import BraceTokenTemplateHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -32,20 +27,13 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'HbsFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class HbsFile(
-    RegexTemplateRenderMixin,
-    TemplateTextIOMixin,
-    TemplateFileHandlerABC,
-):
+class HbsFile(BraceTokenTemplateHandlerMixin):
     """
     Handler implementation for HBS files.
     """
@@ -54,16 +42,3 @@ class HbsFile(
 
     format = FileFormat.HBS
     template_engine = 'handlebars'
-    token_pattern = re.compile(r'{{\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*}}')
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_HBS_HANDLER = HbsFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _HBS_HANDLER)

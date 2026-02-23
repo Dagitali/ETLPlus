@@ -16,7 +16,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
 
@@ -26,9 +25,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'NumbersFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -44,15 +40,3 @@ class NumbersFile(StubSpreadsheetFileHandlerABC):
 
     format = FileFormat.NUMBERS
     engine_name = 'numbers'
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_NUMBERS_HANDLER = NumbersFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _NUMBERS_HANDLER)

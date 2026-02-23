@@ -20,14 +20,11 @@ Notes
 from __future__ import annotations
 
 import configparser
+from io import StringIO
 
-from ..types import JSONData
 from ..types import JSONDict
-from ._io import make_deprecated_module_io
 from ._io import stringify_value
-from .base import DictPayloadSemiStructuredTextFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -36,9 +33,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'IniFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -70,18 +64,13 @@ def _parser_from_payload(
     for section, values in payload.items():
         if section == 'DEFAULT':
             if isinstance(values, dict):
-                parser['DEFAULT'] = {
-                    key: stringify_value(value)
-                    for key, value in values.items()
-                }
+                parser['DEFAULT'] = _stringify_mapping(values)
             else:
                 raise TypeError('INI DEFAULT section must be a dict')
             continue
         if not isinstance(values, dict):
             raise TypeError('INI sections must map to dicts')
-        parser[section] = {
-            key: stringify_value(value) for key, value in values.items()
-        }
+        parser[section] = _stringify_mapping(values)
     return parser
 
 
@@ -106,17 +95,37 @@ def _payload_from_parser(
         payload['DEFAULT'] = dict(parser.defaults())
     defaults = dict(parser.defaults())
     for section in parser.sections():
-        raw_section = dict(parser.items(section))
-        for key in defaults:
-            raw_section.pop(key, None)
-        payload[section] = raw_section
+        payload[section] = {
+            key: value
+            for key, value in parser.items(section)
+            if key not in defaults
+        }
     return payload
+
+
+def _stringify_mapping(
+    mapping: JSONDict,
+) -> dict[str, str]:
+    """
+    Coerce one mapping payload into ``configparser`` string values.
+
+    Parameters
+    ----------
+    mapping : JSONDict
+        The mapping to stringify.
+
+    Returns
+    -------
+    dict[str, str]
+        The resulting mapping with stringified values.
+    """
+    return {key: stringify_value(value) for key, value in mapping.items()}
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
+class IniFile(DictPayloadTextCodecHandlerMixin):
     """
     Handler implementation for INI files.
     """
@@ -127,69 +136,26 @@ class IniFile(DictPayloadSemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def dumps_dict_payload(
-        self,
-        payload: JSONDict,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str:
-        """
-        Serialize dictionary *data* into INI text.
-
-        Parameters
-        ----------
-        payload : JSONDict
-            Dictionary payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str
-            Serialized INI text.
-        """
-        _ = options
-        parser = _parser_from_payload(payload)
-
-        from io import StringIO
-
-        stream = StringIO()
-        parser.write(stream)
-        return stream.getvalue()
-
-    def loads(
+    def decode_dict_payload_text(
         self,
         text: str,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> object:
         """
         Parse INI *text* into dictionary payload.
-
-        Parameters
-        ----------
-        text : str
-            INI payload as text.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
         """
-        _ = options
         parser = configparser.ConfigParser()
         parser.read_string(text)
         return _payload_from_parser(parser)
 
+    def encode_dict_payload_text(
+        self,
+        payload: JSONDict,
+    ) -> str:
+        """
+        Serialize dictionary *data* into INI text.
+        """
+        parser = _parser_from_payload(payload)
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_INI_HANDLER = IniFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _INI_HANDLER)
+        stream = StringIO()
+        parser.write(stream)
+        return stream.getvalue()

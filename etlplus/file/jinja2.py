@@ -22,7 +22,6 @@ from typing import Any
 
 from ..types import JSONDict
 from ._imports import get_dependency
-from ._io import make_deprecated_module_io
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin
 from .enums import FileFormat
@@ -33,9 +32,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'Jinja2File',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -110,15 +106,3 @@ class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
         else:
             template_obj = jinja2.Template(template)
         return template_obj.render(**context)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_JINJA2_HANDLER = Jinja2File()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _JINJA2_HANDLER)

@@ -23,7 +23,6 @@ from typing import Any
 from ..types import JSONList
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from ._io import stringify_value
 from .base import ReadOptions
@@ -37,9 +36,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'FwfFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -146,14 +142,3 @@ class FwfFile(TextFixedWidthFileHandlerABC):
                 )
                 handle.write(line + '\n')
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_FWF_HANDLER = FwfFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _FWF_HANDLER)

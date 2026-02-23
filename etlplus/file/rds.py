@@ -21,11 +21,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ._imports import get_dependency
-from ._imports import get_pandas
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
-from ._r import coerce_r_result
+from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
@@ -37,16 +36,21 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'RdsFile',
-    # Functions
-    'read',
-    'write',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class RdsFile(SingleDatasetScientificFileHandlerABC):
+class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
     """
     Handler implementation for RDS files.
     """
@@ -82,16 +86,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             Parsed dataset payload.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        result = pyreadr.read_r(str(path))
-        return coerce_r_result(
-            result,
-            dataset=dataset,
-            dataset_key=self.dataset_key,
-            format_name=self.format_name,
-            pandas=pandas,
-        )
+        return self.coerce_r_dataset(path, dataset=dataset)
 
     def write_dataset(
         self,
@@ -130,9 +125,8 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             dataset=dataset,
             options=options,
         )
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        frame = pandas.DataFrame.from_records(records)
+        pyreadr = self.resolve_pyreadr()
+        frame = self.dataframe_from_records(records)
         count = len(records)
 
         writer = getattr(pyreadr, 'write_rds', None)
@@ -144,14 +138,3 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ensure_parent_dir(path)
         writer(str(path), frame)
         return count
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_RDS_HANDLER = RdsFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _RDS_HANDLER)

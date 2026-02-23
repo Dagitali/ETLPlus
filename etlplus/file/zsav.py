@@ -18,7 +18,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -28,9 +27,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'ZsavFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -45,15 +41,3 @@ class ZsavFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.ZSAV
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_ZSAV_HANDLER = ZsavFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _ZSAV_HANDLER)

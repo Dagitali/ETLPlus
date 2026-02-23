@@ -20,10 +20,7 @@ from __future__ import annotations
 
 import re
 
-from ._io import make_deprecated_module_io
-from ._mixins import RegexTemplateRenderMixin
-from .base import TemplateFileHandlerABC
-from .base import TemplateTextIOMixin
+from ._template_handlers import RegexTemplateHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -32,20 +29,13 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'VmFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class VmFile(
-    RegexTemplateRenderMixin,
-    TemplateTextIOMixin,
-    TemplateFileHandlerABC,
-):
+class VmFile(RegexTemplateHandlerMixin):
     """
     Handler implementation for VM files.
     """
@@ -79,15 +69,3 @@ class VmFile(
             The resolved Velocity token key, or None if no key is found.
         """
         return match.group('brace_key') or match.group('plain_key')
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_VM_HANDLER = VmFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _VM_HANDLER)

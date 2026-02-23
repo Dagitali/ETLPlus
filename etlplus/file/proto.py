@@ -18,7 +18,6 @@ Notes
 from __future__ import annotations
 
 from ..types import JSONData
-from ._io import make_deprecated_module_io
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -32,9 +31,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'ProtoFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -101,15 +97,3 @@ class ProtoFile(BinarySerializationFileHandlerABC):
         """
         encoding = self.encoding_from_options(options)
         return {'schema': payload.decode(encoding)}
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_PROTO_HANDLER = ProtoFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PROTO_HANDLER)

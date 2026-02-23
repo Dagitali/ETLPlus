@@ -19,7 +19,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from ._stub_categories import StubEmbeddedDatabaseFileHandlerABC
 from .enums import FileFormat
 
@@ -29,9 +28,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'AccdbFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -46,15 +42,3 @@ class AccdbFile(StubEmbeddedDatabaseFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.ACCDB
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_ACCDB_HANDLER = AccdbFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _ACCDB_HANDLER)

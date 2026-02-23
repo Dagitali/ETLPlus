@@ -25,7 +25,6 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
 from ..utils import count_records
-from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text
@@ -40,9 +39,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'NdjsonFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -190,14 +186,3 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         return ''.join(
             f'{json.dumps(row, ensure_ascii=False)}\n' for row in rows
         )
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_NDJSON_HANDLER = NdjsonFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _NDJSON_HANDLER)

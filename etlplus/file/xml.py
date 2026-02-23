@@ -23,12 +23,8 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
 from ..utils import count_records
-from ._io import coerce_path
 from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_read
-from ._io import warn_deprecated_module_io
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -40,9 +36,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'XmlFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -288,45 +281,3 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         ensure_parent_dir(path)
         tree.write(path, encoding='utf-8', xml_declaration=True)
         return count_records(data)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_XML_HANDLER = XmlFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read = make_deprecated_module_read(__name__, _XML_HANDLER)
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-    *,
-    root_tag: str,
-) -> int:
-    """
-    Deprecated wrapper. Use ``XmlFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the XML file on disk.
-    data : JSONData
-        Data to write as XML.
-    root_tag : str
-        Root tag name to use when writing XML files.
-
-    Returns
-    -------
-    int
-        The number of records written to the XML file.
-    """
-    warn_deprecated_module_io(__name__, 'write')
-    return _XML_HANDLER.write(
-        coerce_path(path),
-        data,
-        options=WriteOptions(root_tag=root_tag),
-    )

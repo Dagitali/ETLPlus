@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.meta.test_u_contract_module_io_deprecations` module.
 
-Contract tests for deprecated module-level file I/O wrappers.
+Contract tests for removal of legacy module-level file I/O wrappers.
 """
 
 from __future__ import annotations
@@ -10,28 +10,10 @@ import ast
 import importlib
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 
 import pytest
 
 from etlplus.file import registry as file_registry
-
-# SECTION: MARKS ============================================================ #
-
-
-pytestmark = pytest.mark.filterwarnings(
-    (
-        'default:.*is deprecated; use handler instance methods '
-        'instead\\.:DeprecationWarning'
-    ),
-)
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type HandlerInstance = Any
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -48,6 +30,7 @@ _MODULE_NAMES: tuple[str, ...] = tuple(
 _MODULE_SHORT_NAMES: frozenset[str] = frozenset(
     name.rsplit('.', maxsplit=1)[-1] for name in _MODULE_NAMES
 )
+_WRAPPER_API_NAMES: tuple[str, ...] = ('read', 'write')
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
@@ -56,29 +39,69 @@ _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _get_module_handler(
-    module: ModuleType,
-) -> HandlerInstance:
-    """Return the single module-level handler singleton instance."""
-    handlers = [
-        value
-        for name, value in vars(module).items()
-        if name.endswith('_HANDLER')
-    ]
-    assert len(handlers) == 1
-    return handlers[0]
-
-
-def _call_module_write(
-    module: ModuleType,
-    *,
+def _collect_imported_wrapper_aliases(
     path: Path,
-    payload: list[dict[str, object]],
-) -> int:
-    """Call one module-level write wrapper with module-specific kwargs."""
-    if module.__name__ == 'etlplus.file.xml':
-        return module.write(path, payload, root_tag='root')
-    return module.write(path, payload)
+    tree: ast.AST,
+    *,
+    violations: list[str],
+) -> dict[str, str]:
+    """
+    Collect imported file-module aliases and report disallowed imports.
+    """
+    aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in _MODULE_NAMES:
+                    local_name = (
+                        alias.asname
+                        or alias.name.rsplit('.', maxsplit=1)[-1]
+                    )
+                    aliases[local_name] = alias.name
+            continue
+
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.module in _MODULE_NAMES:
+            for alias in node.names:
+                if alias.name in _WRAPPER_API_NAMES:
+                    violations.append(
+                        f'{path}:{node.lineno} imports '
+                        f'{node.module}.{alias.name}',
+                    )
+        if node.module == 'etlplus.file':
+            for alias in node.names:
+                if alias.name in _MODULE_SHORT_NAMES:
+                    local_name = alias.asname or alias.name
+                    aliases[local_name] = f'etlplus.file.{alias.name}'
+    return aliases
+
+
+def _collect_wrapper_call_violations(
+    path: Path,
+    tree: ast.AST,
+    imported_wrapper_aliases: dict[str, str],
+) -> list[str]:
+    """
+    Collect violations for calls to removed module-level wrapper APIs.
+    """
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr not in _WRAPPER_API_NAMES:
+            continue
+        if not isinstance(node.func.value, ast.Name):
+            continue
+        module_name = imported_wrapper_aliases.get(node.func.value.id)
+        if module_name is None:
+            continue
+        violations.append(
+            f'{path}:{node.lineno} calls {module_name}.{node.func.attr}()',
+        )
+    return violations
 
 
 def _iter_internal_python_files() -> list[Path]:
@@ -94,135 +117,83 @@ def _iter_internal_python_files() -> list[Path]:
     return files
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='file_format_modules', scope='module')
+def file_format_modules_fixture() -> list[tuple[str, ModuleType]]:
+    """Return mapped file-format modules imported once per test module."""
+    return [
+        (module_name, importlib.import_module(module_name))
+        for module_name in _MODULE_NAMES
+    ]
+
+
+@pytest.fixture(name='internal_runtime_trees', scope='module')
+def internal_runtime_trees_fixture() -> list[tuple[Path, ast.AST]]:
+    """Return parsed AST trees for non-file runtime modules."""
+    return [
+        (path, ast.parse(path.read_text(encoding='utf-8')))
+        for path in _iter_internal_python_files()
+    ]
+
+
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(
-    'module_name',
-    _MODULE_NAMES,
-)
-def test_module_read_wrapper_warns_and_delegates(
-    module_name: str,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """
-    Test module read wrappers warning and delegating to handler instances.
-    """
-    module = importlib.import_module(module_name)
-    handler = _get_module_handler(module)
-    captured: dict[str, Path] = {}
-    expected_result: object = {'ok': True}
+class TestFileFormatModules:
+    """Unit tests for mapped file format module export contracts."""
 
-    def fake_read(path: Path, *_args: object, **_kwargs: object) -> object:
-        captured['path'] = path
-        return expected_result
+    @pytest.mark.parametrize('api_name', _WRAPPER_API_NAMES)
+    def test_no_io_exports(
+        self,
+        api_name: str,
+        file_format_modules: list[tuple[str, ModuleType]],
+    ) -> None:
+        """Test mapped modules not exposing wrapper API attributes."""
+        violations = [
+            module_name
+            for module_name, module in file_format_modules
+            if hasattr(module, api_name)
+        ]
+        assert not violations, '\n'.join(violations)
 
-    monkeypatch.setattr(handler, 'read', fake_read)
-
-    with pytest.warns(DeprecationWarning) as captured_warnings:
-        result = module.read('sample.any')
-
-    assert result is expected_result
-    assert captured['path'] == Path('sample.any')
-    assert any(
-        f'{module_name}.read() is deprecated' in str(warning.message)
-        for warning in captured_warnings.list
-    )
+    def test_no_handler_singletons(
+        self,
+        file_format_modules: list[tuple[str, ModuleType]],
+    ) -> None:
+        """Test mapped modules not exposing ``_*_HANDLER`` constants."""
+        violations = [
+            f'{module_name}.{symbol_name}'
+            for module_name, module in file_format_modules
+            for symbol_name in vars(module)
+            if symbol_name.endswith('_HANDLER')
+        ]
+        assert not violations, '\n'.join(violations)
 
 
-@pytest.mark.parametrize(
-    'module_name',
-    _MODULE_NAMES,
-)
-def test_module_write_wrapper_warns_and_delegates(
-    module_name: str,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """
-    Test module write wrappers warning and delegating to handler instances.
-    """
-    module = importlib.import_module(module_name)
-    handler = _get_module_handler(module)
-    captured: dict[str, object] = {}
-    payload: list[dict[str, object]] = [{'a': 1}]
-    expected_count = 17
+class TestInternalRuntimeCode:
+    """Unit tests for internal runtime usage of deprecated file APIs."""
 
-    def fake_write(
-        path: Path,
-        data: object,
-        *_args: object,
-        **_kwargs: object,
-    ) -> int:
-        captured['path'] = path
-        captured['data'] = data
-        return expected_count
+    def test_no_removed_io_wrapper_usage(
+        self,
+        internal_runtime_trees: list[tuple[Path, ast.AST]],
+    ) -> None:
+        """Test runtime modules not importing/calling removed wrapper APIs."""
+        violations: list[str] = []
 
-    monkeypatch.setattr(handler, 'write', fake_write)
-
-    with pytest.warns(DeprecationWarning) as captured_warnings:
-        count = _call_module_write(
-            module,
-            path=Path('sample.any'),
-            payload=payload,
-        )
-
-    assert count == expected_count
-    assert captured['path'] == Path('sample.any')
-    assert captured['data'] is payload
-    assert any(
-        f'{module_name}.write() is deprecated' in str(warning.message)
-        for warning in captured_warnings.list
-    )
-
-
-def test_internal_runtime_code_does_not_use_module_level_io_wrappers() -> None:
-    """Test runtime modules avoiding deprecated file-format module wrappers."""
-    violations: list[str] = []
-
-    for path in _iter_internal_python_files():
-        tree = ast.parse(path.read_text(encoding='utf-8'))
-        imported_wrapper_aliases: dict[str, str] = {}
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name in _MODULE_NAMES:
-                        local_name = (
-                            alias.asname
-                            or alias.name.rsplit('.', maxsplit=1)[-1]
-                        )
-                        imported_wrapper_aliases[local_name] = alias.name
-
-            if isinstance(node, ast.ImportFrom):
-                if node.module in _MODULE_NAMES:
-                    for alias in node.names:
-                        if alias.name in {'read', 'write'}:
-                            violations.append(
-                                f'{path}:{node.lineno} imports '
-                                f'{node.module}.{alias.name}',
-                            )
-                if node.module == 'etlplus.file':
-                    for alias in node.names:
-                        if alias.name in _MODULE_SHORT_NAMES:
-                            local_name = alias.asname or alias.name
-                            imported_wrapper_aliases[local_name] = (
-                                f'etlplus.file.{alias.name}'
-                            )
-
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            if not isinstance(node.func, ast.Attribute):
-                continue
-            if node.func.attr not in {'read', 'write'}:
-                continue
-            if not isinstance(node.func.value, ast.Name):
-                continue
-            module_name = imported_wrapper_aliases.get(node.func.value.id)
-            if module_name is None:
-                continue
-            violations.append(
-                f'{path}:{node.lineno} calls {module_name}.{node.func.attr}()',
+        for path, tree in internal_runtime_trees:
+            imported_wrapper_aliases = _collect_imported_wrapper_aliases(
+                path,
+                tree,
+                violations=violations,
+            )
+            violations.extend(
+                _collect_wrapper_call_violations(
+                    path,
+                    tree,
+                    imported_wrapper_aliases,
+                ),
             )
 
-    assert not violations, '\n'.join(violations)
+        assert not violations, '\n'.join(violations)

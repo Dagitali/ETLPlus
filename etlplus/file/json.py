@@ -21,10 +21,7 @@ from __future__ import annotations
 import json
 
 from ..types import JSONData
-from ._io import make_deprecated_module_io
-from .base import ReadOptions
-from .base import RecordPayloadSemiStructuredTextFileHandlerABC
-from .base import WriteOptions
+from ._semi_structured_handlers import RecordPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -33,16 +30,13 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'JsonFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class JsonFile(RecordPayloadSemiStructuredTextFileHandlerABC):
+class JsonFile(RecordPayloadTextCodecHandlerMixin):
     """
     Handler implementation for JSON files.
     """
@@ -54,61 +48,20 @@ class JsonFile(RecordPayloadSemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def dumps(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str:
-        """
-        Serialize *data* to JSON text.
-
-        Parameters
-        ----------
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str
-            Serialized JSON text.
-        """
-        _ = options
-        return json.dumps(data, indent=2, ensure_ascii=False)
-
-    def loads_payload(
+    def decode_text_payload(
         self,
         text: str,
-        *,
-        options: ReadOptions | None = None,
     ) -> object:
         """
         Parse raw JSON text into a Python payload.
-
-        Parameters
-        ----------
-        text : str
-            JSON payload as text.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        object
-            Parsed payload.
         """
-        _ = options
         return json.loads(text)
 
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_JSON_HANDLER = JsonFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _JSON_HANDLER)
+    def encode_text_payload(
+        self,
+        data: JSONData,
+    ) -> str:
+        """
+        Serialize *data* to JSON text.
+        """
+        return json.dumps(data, indent=2, ensure_ascii=False)

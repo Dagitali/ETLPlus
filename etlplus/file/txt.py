@@ -19,7 +19,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONList
-from ._io import make_deprecated_module_io
 from ._io import read_text
 from ._io import write_text
 from .base import ReadOptions
@@ -33,9 +32,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'TxtFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 # SECTION: CLASSES ========================================================== #
@@ -126,14 +122,3 @@ class TxtFile(TextFixedWidthFileHandlerABC):
         payload = ''.join(f'{row["text"]}\n' for row in rows)
         write_text(path, payload, encoding=encoding)
         return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_TXT_HANDLER = TxtFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _TXT_HANDLER)

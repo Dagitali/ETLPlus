@@ -19,18 +19,12 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
-from ..types import JSONList
-from ._imports import get_pandas
-from ._io import ensure_parent_dir
-from ._io import make_deprecated_module_io
-from ._io import records_from_table
-from .base import ReadOptions
-from .base import SpreadsheetFileHandlerABC
-from .base import WriteOptions
+from ._imports import get_pandas as _get_pandas
+from ._pandas_handlers import PandasSpreadsheetHandlerMixin
 from .enums import FileFormat
+
+# Keep module-level resolver hook for monkeypatch-driven contract tests.
+get_pandas = _get_pandas
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,24 +32,12 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'XlsmFile',
-    # Functions
-    'read',
-    'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for XLSM operations."""
-    return get_pandas('XLSM')
-
 
 # SECTION: CLASSES ========================================================== #
 
 
-class XlsmFile(SpreadsheetFileHandlerABC):
+class XlsmFile(PandasSpreadsheetHandlerMixin):
     """
     Handler implementation for XLSM files.
     """
@@ -64,108 +46,8 @@ class XlsmFile(SpreadsheetFileHandlerABC):
 
     format = FileFormat.XLSM
     engine_name = 'openpyxl'
-
-    # -- Instance Methods -- #
-
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read one XLSM sheet from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSM file on disk.
-        sheet : str | int
-            Sheet selector (name or index).
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the XLSM sheet.
-
-        Raises
-        ------
-        ImportError
-            If the required optional dependency is not installed.
-        """
-        _ = options
-        pandas = _pandas()
-        try:
-            frame = pandas.read_excel(path, sheet_name=sheet)
-        except TypeError:
-            frame = pandas.read_excel(path)
-        except ImportError as err:  # pragma: no cover
-            raise ImportError(
-                'XLSM support requires optional dependency "openpyxl".\n'
-                'Install with: pip install openpyxl',
-            ) from err
-        return records_from_table(frame)
-
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write rows to one XLSM sheet in *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the XLSM file on disk.
-        rows : JSONList
-            Rows to write.
-        sheet : str | int
-            Sheet selector (name or index).
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of rows written.
-
-        Raises
-        ------
-        ImportError
-            If the required optional dependency is not installed.
-        """
-        _ = options
-        pandas = _pandas()
-        ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(rows)
-        try:
-            if isinstance(sheet, str):
-                frame.to_excel(path, index=False, sheet_name=sheet)
-            else:
-                frame.to_excel(path, index=False)
-        except TypeError:
-            frame.to_excel(path, index=False)
-        except ImportError as err:  # pragma: no cover
-            raise ImportError(
-                'XLSM support requires optional dependency "openpyxl".\n'
-                'Install with: pip install openpyxl',
-            ) from err
-        return len(rows)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_XLSM_HANDLER = XlsmFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _XLSM_HANDLER)
+    pandas_format_name = 'XLSM'
+    import_error_message = (
+        'XLSM support requires optional dependency "openpyxl".\n'
+        'Install with: pip install openpyxl'
+    )

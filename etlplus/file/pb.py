@@ -18,7 +18,6 @@ from __future__ import annotations
 import base64
 
 from ..types import JSONData
-from ._io import make_deprecated_module_io
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -32,9 +31,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'PbFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -106,15 +102,3 @@ class PbFile(BinarySerializationFileHandlerABC):
         _ = options
         encoded = base64.b64encode(payload).decode('ascii')
         return {'payload_base64': encoded}
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_PB_HANDLER = PbFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PB_HANDLER)

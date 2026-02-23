@@ -18,13 +18,9 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
 from ..types import JSONDict
-from ._io import make_deprecated_module_io
 from ._io import stringify_value
-from .base import DictPayloadSemiStructuredTextFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -33,10 +29,13 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'PropertiesFile',
-    # Functions
-    'read',
-    'write',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SEPARATORS = ('=', ':')
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -53,26 +52,31 @@ def _parse_properties_text(
         stripped = line.strip()
         if not stripped or stripped.startswith(('#', '!')):
             continue
-        separator_index = -1
-        for sep in ('=', ':'):
-            if sep in stripped:
-                separator_index = stripped.find(sep)
-                break
-        if separator_index == -1:
-            key = stripped
-            value = ''
-        else:
-            key = stripped[:separator_index].strip()
-            value = stripped[separator_index + 1:].strip()
+
+        key, value = _split_key_value(stripped)
         if key:
             payload[key] = value
     return payload
 
 
+def _split_key_value(
+    line: str,
+) -> tuple[str, str]:
+    """
+    Split one normalized PROPERTIES line into ``(key, value)``.
+    """
+    separator_indexes = [line.find(sep) for sep in _SEPARATORS if sep in line]
+    if not separator_indexes:
+        return line, ''
+
+    index = min(separator_indexes)
+    return line[:index].strip(), line[index + 1:].strip()
+
+
 # SECTION: CLASSES ========================================================== #
 
 
-class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
+class PropertiesFile(DictPayloadTextCodecHandlerMixin):
     """
     Handler implementation for Java-style properties files.
     """
@@ -83,64 +87,23 @@ class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def dumps_dict_payload(
+    def decode_dict_payload_text(
+        self,
+        text: str,
+    ) -> object:
+        """
+        Parse PROPERTIES *text* into dictionary payload.
+        """
+        return _parse_properties_text(text)
+
+    def encode_dict_payload_text(
         self,
         payload: JSONDict,
-        *,
-        options: WriteOptions | None = None,
     ) -> str:
         """
         Serialize dictionary *data* into PROPERTIES text.
-
-        Parameters
-        ----------
-        payload : JSONDict
-            Dictionary payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str
-            Serialized PROPERTIES text.
         """
-        _ = options
         return ''.join(
-            f'{key}={stringify_value(payload[key])}\n'
-            for key in sorted(payload.keys())
+            f'{key}={stringify_value(value)}\n'
+            for key, value in sorted(payload.items())
         )
-
-    def loads(
-        self,
-        text: str,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse PROPERTIES *text* into dictionary payload.
-
-        Parameters
-        ----------
-        text : str
-            PROPERTIES payload as text.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        _ = options
-        return _parse_properties_text(text)
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-_PROPERTIES_HANDLER = PropertiesFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PROPERTIES_HANDLER)

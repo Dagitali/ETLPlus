@@ -19,7 +19,6 @@ Notes
 
 from __future__ import annotations
 
-from ._io import make_deprecated_module_io
 from .base import StandardDelimitedTextFileHandlerABC
 from .enums import FileFormat
 
@@ -29,9 +28,6 @@ from .enums import FileFormat
 __all__ = [
     # Classes
     'PsvFile',
-    # Functions
-    'read',
-    'write',
 ]
 
 
@@ -47,15 +43,3 @@ class PsvFile(StandardDelimitedTextFileHandlerABC):
 
     format = FileFormat.PSV
     delimiter = '|'
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_PSV_HANDLER = PsvFile()
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-read, write = make_deprecated_module_io(__name__, _PSV_HANDLER)
