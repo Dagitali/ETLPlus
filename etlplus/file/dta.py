@@ -18,14 +18,10 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
-from .base import ReadOptions
-from .base import WriteOptions
+from ._statistical_handlers import PandasStataReadWriteFrameMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -48,7 +44,10 @@ get_pandas = _get_pandas
 # SECTION: CLASSES ========================================================== #
 
 
-class DtaFile(SingleDatasetTabularScientificReadWriteMixin):
+class DtaFile(
+    PandasStataReadWriteFrameMixin,
+    SingleDatasetTabularScientificReadWriteMixin,
+):
     """
     Handler implementation for DTA files.
     """
@@ -58,37 +57,3 @@ class DtaFile(SingleDatasetTabularScientificReadWriteMixin):
     format = FileFormat.DTA
     requires_pyreadstat_for_read = True
     requires_pyreadstat_for_write = True
-
-    # -- Instance Methods -- #
-
-    def read_frame(
-        self,
-        path: Path,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read and return one dataframe-like dataset from DTA.
-        """
-        _ = pyreadstat
-        _ = options
-        return pandas.read_stata(path)
-
-    def write_frame(
-        self,
-        path: Path,
-        frame: Any,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write one dataframe-like dataset to DTA.
-        """
-        _ = pandas
-        _ = pyreadstat
-        _ = options
-        frame.to_stata(path, write_index=False)
