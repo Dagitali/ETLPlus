@@ -117,7 +117,7 @@ class TestBsonHelpers:
 
 
 class TestBsonIo(BinaryDependencyModuleContract):
-    """Unit tests for BSON module-level read/write dispatch."""
+    """Unit tests for BSON handler read/write behavior."""
 
     module = mod
     format_name = 'bson'
@@ -131,7 +131,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
         dependency_stub: object,
         path: Path,
     ) -> None:
-        """Assert bson module-level read behavior."""
+        """Assert BSON handler read behavior."""
         stub = dependency_stub
         assert isinstance(stub, _BsonCodecStub)
         assert stub.decoded == [b'payload']
@@ -142,7 +142,7 @@ class TestBsonIo(BinaryDependencyModuleContract):
         dependency_stub: object,
         path: Path,
     ) -> None:
-        """Assert bson module-level write behavior."""
+        """Assert BSON handler write behavior."""
         stub = dependency_stub
         assert isinstance(stub, _BsonCodecStub)
         assert stub.encoded == self.write_payload

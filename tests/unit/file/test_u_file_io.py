@@ -18,7 +18,7 @@ from etlplus.file import _io as mod
 
 
 class _TableStub:
-    """Minimal table-like stub with ``to_dict`` API."""
+    """Minimal table-like stub with :meth:`to_dict` API."""
 
     def __init__(
         self,
@@ -42,44 +42,10 @@ class _TableStub:
 class TestIoHelpers:
     """Unit tests for shared file IO helpers."""
 
-    def test_call_deprecated_module_read_and_write(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test deprecated wrapper delegates coerce paths and warn."""
-        read_calls: list[Path] = []
-        write_calls: list[tuple[Path, Any]] = []
-
-        def _reader(path: Path) -> dict[str, object]:
-            read_calls.append(path)
-            return {'ok': True}
-
-        def _writer(path: Path, data: Any) -> int:
-            write_calls.append((path, data))
-            return 3
-
-        target = tmp_path / 'legacy.json'
-        with pytest.warns(DeprecationWarning, match='deprecated'):
-            read_result = mod.call_deprecated_module_read(
-                str(target),
-                'etlplus.file.json',
-                _reader,
-            )
-        with pytest.warns(DeprecationWarning, match='deprecated'):
-            write_result = mod.call_deprecated_module_write(
-                str(target),
-                {'x': 1},
-                'etlplus.file.json',
-                _writer,
-            )
-
-        assert read_result == {'ok': True}
-        assert write_result == 3
-        assert read_calls == [target]
-        assert write_calls == [(target, {'x': 1})]
-
     def test_coerce_path_accepts_str_and_path(self, tmp_path: Path) -> None:
-        """Test path coercion from strings and existing Path objects."""
+        """
+        Test path coercion from strings and existing :class:`Path` objects.
+        """
         value = tmp_path / 'file.txt'
         assert mod.coerce_path(str(value)) == value
         assert mod.coerce_path(value) == value
@@ -179,11 +145,3 @@ class TestIoHelpers:
         """Test scalar stringification rules."""
         for value, expected in ((None, ''), (12, '12'), ('abc', 'abc')):
             assert mod.stringify_value(value) == expected
-
-    def test_warn_deprecated_module_io(self) -> None:
-        """Test direct deprecation warning helper."""
-        with pytest.warns(
-            DeprecationWarning,
-            match='etlplus.file.csv.read\\(\\) is deprecated',
-        ):
-            mod.warn_deprecated_module_io('etlplus.file.csv', 'read')
