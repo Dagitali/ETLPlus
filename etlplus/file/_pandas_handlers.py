@@ -71,9 +71,11 @@ def _raise_import_error(
 
     Raises
     ------
+    error
+        The original :class:`ImportError` if *message* is None.
     ImportError
-        A new ImportError with the provided message or the original error
-        message, preserving the original error.
+        A new :class:`ImportError` with the provided message or the original
+        error message, preserving the original error.
     """
     if message is None:
         raise error
