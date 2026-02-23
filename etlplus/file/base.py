@@ -428,6 +428,19 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
     ) -> JSONList:
         """
         Read delimited rows using :attr:`delimiter` or option overrides.
+
+        Parameters
+        ----------
+        path : Path
+            File path to read from.
+        options : ReadOptions | None, optional
+            Read options, which may include delimiter overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        JSONList
+            List of parsed rows as dictionaries.
         """
         return read_delimited(
             path,
@@ -443,6 +456,21 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
     ) -> int:
         """
         Write delimited rows using :attr:`delimiter` or option overrides.
+
+        Parameters
+        ----------
+        path : Path
+            File path to write to.
+        rows : JSONList
+            List of row dictionaries to write.
+        options : WriteOptions | None, optional
+            Write options, which may include delimiter overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        int
+            The number of rows written to the file.
         """
         return write_delimited(
             path,
@@ -503,6 +531,16 @@ class LogEventFileHandlerABC(FileHandlerABC):
     ) -> JSONDict:
         """
         Parse a single line into an event record.
+
+        Parameters
+        ----------
+        line : str
+            A single line from the log/event stream.
+
+        Returns
+        -------
+        JSONDict
+            The parsed event record.
         """
 
     @abstractmethod
@@ -512,6 +550,16 @@ class LogEventFileHandlerABC(FileHandlerABC):
     ) -> str:
         """
         Serialize a single event record into one line.
+
+        Parameters
+        ----------
+        event : JSONDict
+            The event record to serialize.
+
+        Returns
+        -------
+        str
+            The serialized event record as a single line.
         """
 
 
@@ -564,6 +612,19 @@ class RecordPayloadSemiStructuredTextFileHandlerABC(
     ) -> JSONData:
         """
         Parse text into object-or-object-list record payloads.
+
+        Parameters
+        ----------
+        text : str
+            The raw text to parse.
+        options : ReadOptions | None, optional
+            Read options, which may include parsing overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        JSONData
+            The parsed record payloads.
         """
         return self.coerce_record_payload(
             self.loads_payload(text, options=options),
@@ -593,6 +654,19 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
     ) -> str:
         """
         Serialize one dictionary payload into format-specific text.
+
+        Parameters
+        ----------
+        payload : JSONDict
+            The dictionary payload to serialize.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        str
+            The serialized dictionary payload as format-specific text.
         """
 
     # -- Instance Methods -- #
@@ -605,6 +679,19 @@ class DictPayloadSemiStructuredTextFileHandlerABC(
     ) -> str:
         """
         Serialize dictionary-root data into format-specific text.
+
+        Parameters
+        ----------
+        data : JSONData
+            The dictionary-root data to serialize.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        str
+            The serialized dictionary-root data.
         """
         return self.dumps_dict_payload(
             self.require_dict_payload(data),
@@ -636,6 +723,16 @@ class ScientificDatasetFileHandlerABC(
     ) -> list[str]:
         """
         Return available dataset keys within *path*.
+
+        Parameters
+        ----------
+        path : Path
+            File path to inspect for datasets.
+
+        Returns
+        -------
+        list[str]
+            List of dataset keys available within the file at *path*.
         """
 
 
@@ -682,6 +779,23 @@ class ReadOnlySpreadsheetFileHandlerABC(
     ) -> int:
         """
         Reject sheet-level writes for read-only spreadsheet formats.
+
+        Parameters
+        ----------
+        path : Path
+            File path to write to.
+        rows : JSONList
+            Rows of data to write.
+        sheet : str | int
+            Sheet name or index.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        int
+            Number of rows written (always 0 for read-only formats).
         """
         _ = sheet
         return ReadOnlyFileHandlerABC.write(
