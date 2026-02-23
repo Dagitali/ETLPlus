@@ -28,6 +28,7 @@ from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import read_sas_table
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -92,10 +93,7 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         if reader is not None:
             frame, _meta = reader(str(path))
             return records_from_table(frame)
-        try:
-            frame = pandas.read_sas(path, format='xport')
-        except TypeError:
-            frame = pandas.read_sas(path)
+        frame = read_sas_table(pandas, path, format_hint='xport')
         return records_from_table(frame)
 
     def write_dataset(
