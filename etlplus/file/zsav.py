@@ -49,7 +49,6 @@ class ZsavFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.ZSAV
-    dataset_key = 'data'
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
