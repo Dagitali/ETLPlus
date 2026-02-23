@@ -20,13 +20,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..types import JSONData
 from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin
 from .enums import FileFormat
@@ -125,52 +122,5 @@ _JINJA2_HANDLER = Jinja2File()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``Jinja2File().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JINJA2 file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the JINJA2 file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _JINJA2_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``Jinja2File().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JINJA2 file on disk.
-    data : JSONData
-        Data to write as JINJA2 file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the JINJA2 file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _JINJA2_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _JINJA2_HANDLER)
+write = make_deprecated_module_write(__name__, _JINJA2_HANDLER)
