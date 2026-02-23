@@ -18,19 +18,16 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -217,51 +214,5 @@ _AVRO_HANDLER = AvroFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``AvroFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the AVRO file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the AVRO file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        cast(Callable[[Path], JSONList], _AVRO_HANDLER.read),
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``AvroFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the AVRO file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _AVRO_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _AVRO_HANDLER)
+write = make_deprecated_module_write(__name__, _AVRO_HANDLER)
