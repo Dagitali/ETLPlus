@@ -28,7 +28,6 @@ from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._r import coerce_r_result
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -144,12 +143,13 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        self.resolve_single_dataset(dataset, options=options)
-
-        format_name = self.format_name
+        records = self.prepare_single_dataset_write_records(
+            data,
+            dataset=dataset,
+            options=options,
+        )
         pyreadr = _pyreadr()
         pandas = _pandas()
-        records = normalize_records(data, format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
 
