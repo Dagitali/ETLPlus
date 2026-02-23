@@ -16,19 +16,7 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ._handler_abc import BinarySerializationABC
-from ._handler_abc import ColumnarABC
-from ._handler_abc import EmbeddedDatabaseABC
-from ._handler_abc import RowReadWriteABC
-from ._handler_abc import ScientificDatasetABC
-from ._handler_abc import SemiStructuredTextABC
-from ._handler_abc import SpreadsheetSheetABC
-from ._io import ArchiveInnerNameOption
-from ._io import DelimitedOption
-from ._io import EmbeddedDatabaseTableOption
-from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption
-from ._io import SpreadsheetSheetOption
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
 from ._io import require_dict_payload as _require_dict_payload
@@ -43,23 +31,10 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    'ArchiveInnerNameOption',
-    'DelimitedOption',
-    'EmbeddedDatabaseTableOption',
-    'FileHandlerOption',
-    'BinarySerializationABC',
-    'ColumnarABC',
-    'EmbeddedDatabaseABC',
-    'RowReadWriteABC',
-    'ScientificDatasetABC',
-    'SemiStructuredTextABC',
-    'SingleDatasetValidation',
-    'SpreadsheetSheetABC',
-    'RegexTemplateRenderMixin',
-    'ScientificDatasetOption',
     'SemiStructuredPayloadMixin',
-    'SpreadsheetSheetOption',
+    'SingleDatasetValidation',
     'TemplateTextIOMixin',
+    'RegexTemplateRenderMixin',
 ]
 
 
@@ -129,27 +104,14 @@ class SingleDatasetValidation(ScientificDatasetOption):
         _ = path
         return [self.dataset_key]
 
-    def resolve_single_read_dataset(
+    def resolve_single_dataset(
         self,
         dataset: str | None = None,
         *,
-        options: ReadOptions | None = None,
+        options: ReadOptions | WriteOptions | None = None,
     ) -> str | None:
         """
-        Resolve and validate single-dataset read selection.
-        """
-        resolved = self.resolve_dataset(dataset, options=options)
-        self.validate_single_dataset_key(resolved)
-        return resolved
-
-    def resolve_single_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str | None:
-        """
-        Resolve and validate single-dataset write selection.
+        Resolve and validate single-dataset selection.
         """
         resolved = self.resolve_dataset(dataset, options=options)
         self.validate_single_dataset_key(resolved)
