@@ -12,13 +12,12 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
 from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -386,51 +385,5 @@ _ZIP_HANDLER = ZipFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``ZipFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ZIP file on disk.
-
-    Returns
-    -------
-    JSONData
-        Parsed payload.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ZIP_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ZipFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ZIP file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ZIP_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _ZIP_HANDLER)
+write = make_deprecated_module_write(__name__, _ZIP_HANDLER)
