@@ -331,10 +331,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Read and return one dataset from *path*.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
         return cast(JSONList, _stub_read(self, path, options=options))
 
     def write(
@@ -366,10 +363,7 @@ class StubSingleDatasetScientificFileHandlerABC(
         """
         Write one dataset to *path* and return record count.
         """
-        self.resolve_single_write_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
         return _stub_write(self, path, data, options=options)
 
 
