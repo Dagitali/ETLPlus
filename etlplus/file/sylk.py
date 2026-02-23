@@ -49,7 +49,6 @@ class SylkFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.SYLK
-    dataset_key = 'data'
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
