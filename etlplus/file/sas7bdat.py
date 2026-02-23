@@ -18,16 +18,15 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
-from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import read_sas_table
-from ._io import records_from_table
+from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
-from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -45,7 +44,7 @@ __all__ = [
 
 class Sas7bdatFile(
     ReadOnlyFileHandlerABC,
-    SingleDatasetScientificFileHandlerABC,
+    SingleDatasetTabularScientificReadMixin,
 ):
     """
     Read-only handler implementation for SAS7BDAT files.
@@ -54,38 +53,36 @@ class Sas7bdatFile(
     # -- Class Attributes -- #
 
     format = FileFormat.SAS7BDAT
+    requires_pyreadstat_for_read = True
 
     # -- Instance Methods -- #
 
-    def read_dataset(
+    def read_frame(
         self,
         path: Path,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: ReadOptions | None = None,
-    ) -> JSONList:
+    ) -> Any:
         """
-        Read and return one dataset from SAS7BDAT at *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAS7BDAT file on disk.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records.
+        Read and return one dataframe-like dataset from SAS7BDAT.
         """
-        self.resolve_single_dataset(dataset, options=options)
-        _ = get_dependency('pyreadstat', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        frame = read_sas_table(pandas, path, format_hint='sas7bdat')
-        return records_from_table(frame)
+        _ = pyreadstat
+        _ = options
+        return read_sas_table(pandas, path, format_hint='sas7bdat')
+
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_pyreadstat(self) -> Any:
+        """
+        Return pyreadstat using module-level dependency resolution.
+        """
+        return get_dependency('pyreadstat', format_name=self.format_name)
 
     def write_dataset(
         self,
