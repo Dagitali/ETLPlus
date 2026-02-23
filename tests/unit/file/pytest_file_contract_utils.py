@@ -40,7 +40,9 @@ def call_module_operation(
     path: Path,
     write_payload: JSONData | None = None,
 ) -> JSONData | int:
-    """Invoke handler ``read``/``write`` without deprecated module wrappers."""
+    """
+    Invoke module handler ``read``/``write`` through shared test utilities.
+    """
     if operation == 'read':
         return call_handler_operation(
             module,
@@ -103,7 +105,9 @@ def assert_stub_module_operation_raises(
     path: Path,
     write_payload: JSONData | None = None,
 ) -> None:
-    """Assert one stub module operation raises :class:`NotImplementedError`."""
+    """
+    Assert one stub handler operation raises :class:`NotImplementedError`.
+    """
     with pytest.raises(
         NotImplementedError,
         match=rf'{format_name.upper()} {operation} is not implemented yet',

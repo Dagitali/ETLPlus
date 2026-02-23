@@ -66,7 +66,7 @@ class PathMixin:
 
     @property
     def module_handler(self) -> Any:
-        """Return the module's singleton handler instance."""
+        """Return the current module's resolved handler instance."""
         return resolve_module_handler(self.module)
 
     def format_path(

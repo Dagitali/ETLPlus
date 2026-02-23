@@ -420,7 +420,10 @@ class StubModuleContract(PathMixin):
         operation: Operation,
         write_payload: JSONData | None,
     ) -> None:
-        """Test module-level read/write placeholder behavior."""
+        """
+        Test placeholder handler operations raising
+        :class:`NotImplementedError`.
+        """
         assert_stub_module_operation_raises(
             self.module,
             format_name=self.format_name,
