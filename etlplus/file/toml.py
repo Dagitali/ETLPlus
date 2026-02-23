@@ -23,10 +23,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONDict
-from ..types import StrPath
 from ._imports import get_optional_module
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -157,51 +156,5 @@ _TOML_HANDLER = TomlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``TomlFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the TOML file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the TOML file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _TOML_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``TomlFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the TOML file on disk.
-    data : JSONData
-        Data to write as TOML. Should be a dictionary.
-
-    Returns
-    -------
-    int
-        The number of records written to the TOML file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _TOML_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _TOML_HANDLER)
+write = make_deprecated_module_write(__name__, _TOML_HANDLER)
