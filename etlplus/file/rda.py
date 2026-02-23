@@ -21,6 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
+from ._imports import get_dependency as _get_dependency
+from ._imports import get_pandas as _get_pandas
 from ._io import ensure_parent_dir
 from ._r import list_r_dataset_keys
 from ._r_handlers import RDataHandlerMixin
@@ -36,6 +38,14 @@ __all__ = [
     # Classes
     'RdaFile',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_dependency = _get_dependency
+get_pandas = _get_pandas
 
 
 # SECTION: CLASSES ========================================================== #
