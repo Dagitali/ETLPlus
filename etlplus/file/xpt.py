@@ -18,15 +18,11 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
-from ._io import read_sas_table
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
-from .base import ReadOptions
-from .base import WriteOptions
+from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
+from ._statistical_handlers import PyreadstatRequiredWriteFrameMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -49,7 +45,11 @@ get_pandas = _get_pandas
 # SECTION: CLASSES ========================================================== #
 
 
-class XptFile(SingleDatasetTabularScientificReadWriteMixin):
+class XptFile(
+    PyreadstatReadSasFallbackFrameMixin,
+    PyreadstatRequiredWriteFrameMixin,
+    SingleDatasetTabularScientificReadWriteMixin,
+):
     """
     Handler implementation for XPT files.
     """
@@ -59,44 +59,6 @@ class XptFile(SingleDatasetTabularScientificReadWriteMixin):
     format = FileFormat.XPT
     requires_pyreadstat_for_read = True
     requires_pyreadstat_for_write = True
-
-    # -- Instance Methods -- #
-
-    def read_frame(
-        self,
-        path: Path,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read and return one dataframe-like dataset from XPT.
-        """
-        _ = options
-        reader = getattr(pyreadstat, 'read_xport', None)
-        if reader is not None:
-            frame, _meta = reader(str(path))
-            return frame
-        return read_sas_table(pandas, path, format_hint='xport')
-
-    def write_frame(
-        self,
-        path: Path,
-        frame: Any,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write one dataframe-like dataset to XPT.
-        """
-        _ = pandas
-        _ = options
-        writer = getattr(pyreadstat, 'write_xport', None)
-        if writer is None:
-            raise ImportError(
-                'XPT write support requires "pyreadstat" with write_xport().',
-            )
-        writer(frame, str(path))
+    pyreadstat_read_method = 'read_xport'
+    pyreadstat_write_method = 'write_xport'
+    sas_format_hint = 'xport'
