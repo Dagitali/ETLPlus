@@ -26,6 +26,7 @@ from ._imports import get_dependency
 from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
+from ._io import read_sas_table
 from ._io import records_from_table
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
@@ -89,10 +90,7 @@ class Sas7bdatFile(
         self.resolve_single_dataset(dataset, options=options)
         _ = get_dependency('pyreadstat', format_name=self.format_name)
         pandas = get_pandas(self.format_name)
-        try:
-            frame = pandas.read_sas(path, format='sas7bdat')
-        except TypeError:
-            frame = pandas.read_sas(path)
+        frame = read_sas_table(pandas, path, format_hint='sas7bdat')
         return records_from_table(frame)
 
     def write_dataset(
