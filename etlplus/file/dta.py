@@ -19,7 +19,6 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
@@ -45,19 +44,6 @@ __all__ = [
     'read',
     'write',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for DTA operations."""
-    return get_pandas('DTA')
-
-
-def _pyreadstat() -> Any:
-    """Return the optional pyreadstat module."""
-    return get_dependency('pyreadstat', format_name='DTA')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -100,8 +86,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        _ = _pyreadstat()
-        pandas = _pandas()
+        _ = get_dependency('pyreadstat', format_name='DTA')
+        pandas = get_pandas('DTA')
         frame = pandas.read_stata(path)
         return records_from_table(frame)
 
@@ -140,8 +126,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        _ = _pyreadstat()
-        pandas = _pandas()
+        _ = get_dependency('pyreadstat', format_name='DTA')
+        pandas = get_pandas('DTA')
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
