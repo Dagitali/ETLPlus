@@ -21,9 +21,8 @@ from __future__ import annotations
 import json
 
 from ..types import JSONData
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -113,53 +112,5 @@ _JSON_HANDLER = JsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``JsonFile().read(...)`` instead.
-
-    Validates that the JSON root is a dict or a list of dicts.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JSON file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the JSON file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _JSON_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``JsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JSON file on disk.
-    data : JSONData
-        Data to serialize as JSON.
-
-    Returns
-    -------
-    int
-        The number of records written to the JSON file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _JSON_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _JSON_HANDLER)
+write = make_deprecated_module_write(__name__, _JSON_HANDLER)
