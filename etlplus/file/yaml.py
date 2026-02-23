@@ -20,10 +20,9 @@ from __future__ import annotations
 from typing import Any
 
 from ..types import JSONData
-from ..types import StrPath
 from ._imports import get_yaml
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
@@ -134,53 +133,5 @@ _YAML_HANDLER = YamlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``YamlFile().read(...)`` instead.
-
-    Validates that the YAML root is a dict or a list of dicts.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the YAML file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the YAML file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _YAML_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``YamlFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the YAML file on disk.
-    data : JSONData
-        Data to write as YAML.
-
-    Returns
-    -------
-    int
-        The number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _YAML_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _YAML_HANDLER)
+write = make_deprecated_module_write(__name__, _YAML_HANDLER)
