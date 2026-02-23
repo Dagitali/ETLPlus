@@ -18,11 +18,8 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -57,52 +54,5 @@ class SylkFile(StubSingleDatasetScientificFileHandlerABC):
 _SYLK_HANDLER = SylkFile()
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``SylkFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the SYLK file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the SYLK file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _SYLK_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``SylkFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the SYLK file on disk.
-    data : JSONData
-        Data to write as SYLK file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the SYLK file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _SYLK_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _SYLK_HANDLER)
+write = make_deprecated_module_write(__name__, _SYLK_HANDLER)
