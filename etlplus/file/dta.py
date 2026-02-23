@@ -57,7 +57,6 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.DTA
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -86,8 +85,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
             Parsed records.
         """
         self.resolve_single_dataset(dataset, options=options)
-        _ = get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        _ = get_dependency('pyreadstat', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         frame = pandas.read_stata(path)
         return records_from_table(frame)
 
@@ -126,8 +125,8 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         if not records:
             return 0
 
-        _ = get_dependency('pyreadstat', format_name='DTA')
-        pandas = get_pandas('DTA')
+        _ = get_dependency('pyreadstat', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         ensure_parent_dir(path)
         frame = pandas.DataFrame.from_records(records)
         frame.to_stata(path, write_index=False)
