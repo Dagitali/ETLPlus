@@ -24,8 +24,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ._imports import get_pandas
+from ._imports import get_pandas as _get_pandas
 from ._io import records_from_table
+from ._scientific_handlers import ScientificPandasResolverMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
@@ -39,6 +40,13 @@ __all__ = [
     # Classes
     'Hdf5File',
 ]
+
+
+# SECTION: INTERNAL HELPERS ================================================= #
+
+
+# Preserve module-level resolver hooks for contract tests.
+get_pandas = _get_pandas
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -76,7 +84,11 @@ def _raise_tables_error(
 # SECTION: CLASSES ========================================================== #
 
 
-class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
+class Hdf5File(
+    ScientificPandasResolverMixin,
+    ReadOnlyFileHandlerABC,
+    ScientificDatasetFileHandlerABC,
+):
     """
     Read-only handler implementation for HDF5 files.
     """
@@ -158,12 +170,6 @@ class Hdf5File(ReadOnlyFileHandlerABC, ScientificDatasetFileHandlerABC):
                 return []
             frame = store.get(key)
         return records_from_table(frame)
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level dependency resolution.
-        """
-        return get_pandas(self.format_name)
 
     def resolve_store_key(
         self,
