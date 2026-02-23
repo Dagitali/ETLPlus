@@ -25,9 +25,9 @@ from ..types import JSONData
 from ..types import JSONDict
 from ..types import StrPath
 from ..utils import count_records
-from ._io import call_deprecated_module_read
 from ._io import coerce_path
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_read
 from ._io import warn_deprecated_module_io
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
@@ -298,27 +298,7 @@ _XML_HANDLER = XmlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONDict:
-    """
-    Deprecated wrapper. Use ``XmlFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the XML file on disk.
-
-    Returns
-    -------
-    JSONDict
-        Nested dictionary representation of the XML file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _XML_HANDLER.read,
-    )
+read = make_deprecated_module_read(__name__, _XML_HANDLER)
 
 
 def write(
