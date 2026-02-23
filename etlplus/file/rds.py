@@ -56,7 +56,6 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.RDS
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -84,16 +83,15 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         JSONData
             Parsed dataset payload.
         """
-        format_name = self.format_name
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name='RDS')
-        pandas = get_pandas('RDS')
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         result = pyreadr.read_r(str(path))
         return coerce_r_result(
             result,
             dataset=dataset,
             dataset_key=self.dataset_key,
-            format_name=format_name,
+            format_name=self.format_name,
             pandas=pandas,
         )
 
@@ -134,8 +132,8 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
             dataset=dataset,
             options=options,
         )
-        pyreadr = get_dependency('pyreadr', format_name='RDS')
-        pandas = get_pandas('RDS')
+        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
+        pandas = get_pandas(self.format_name)
         frame = pandas.DataFrame.from_records(records)
         count = len(records)
 
