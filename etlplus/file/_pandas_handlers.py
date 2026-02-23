@@ -6,6 +6,7 @@ Shared abstractions for pandas-backed file handlers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -81,6 +82,20 @@ def _raise_import_error(
     raise ImportError(message) from error
 
 
+def _call_with_import_error[T](
+    operation: Callable[[], T],
+    *,
+    message: str | None,
+) -> T:
+    """
+    Execute one operation and normalize dependency import failures.
+    """
+    try:
+        return operation()
+    except ImportError as error:  # pragma: no cover
+        _raise_import_error(error, message=message)
+
+
 def _read_excel_frame(
     pandas: Any,
     path: Path,
@@ -146,18 +161,15 @@ def _read_sheet_records(
     JSONList
         Row records parsed from the selected sheet.
     """
-    try:
-        frame = _read_excel_frame(
+    frame = _call_with_import_error(
+        lambda: _read_excel_frame(
             pandas,
             path,
             sheet=sheet,
             engine=engine,
-        )
-    except ImportError as error:  # pragma: no cover
-        _raise_import_error(
-            error,
-            message=import_error_message,
-        )
+        ),
+        message=import_error_message,
+    )
     return records_from_table(frame)
 
 
@@ -328,13 +340,10 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         pandas = self.resolve_pandas()
-        try:
-            return getattr(pandas, self.read_method)(path)
-        except ImportError as error:  # pragma: no cover
-            _raise_import_error(
-                error,
-                message=self.import_error_message,
-            )
+        return _call_with_import_error(
+            lambda: getattr(pandas, self.read_method)(path),
+            message=self.import_error_message,
+        )
 
     def records_to_table(
         self,
@@ -405,13 +414,10 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         kwargs = dict(self.write_kwargs)
-        try:
-            getattr(table, self.write_method)(path, **kwargs)
-        except ImportError as error:  # pragma: no cover
-            _raise_import_error(
-                error,
-                message=self.import_error_message,
-            )
+        _call_with_import_error(
+            lambda: getattr(table, self.write_method)(path, **kwargs),
+            message=self.import_error_message,
+        )
 
 
 class PandasSpreadsheetHandlerMixin(
@@ -458,18 +464,15 @@ class PandasSpreadsheetHandlerMixin(
         ensure_parent_dir(path)
         pandas = self.resolve_pandas()
         frame = pandas.DataFrame.from_records(rows)
-        try:
-            _write_excel_frame(
+        _call_with_import_error(
+            lambda: _write_excel_frame(
                 frame,
                 path,
                 sheet=sheet,
                 engine=self.write_engine,
-            )
-        except ImportError as error:  # pragma: no cover
-            _raise_import_error(
-                error,
-                message=self.import_error_message,
-            )
+            ),
+            message=self.import_error_message,
+        )
         return len(rows)
 
 
@@ -484,4 +487,3 @@ class PandasReadOnlySpreadsheetHandlerMixin(
     # -- Class Attributes -- #
 
     pandas_format_name: ClassVar[str]
-    # Read behavior is provided by ``_PandasSpreadsheetReadMixin``.

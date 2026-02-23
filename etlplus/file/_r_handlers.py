@@ -14,8 +14,8 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
+from ._imports import FormatPandasResolverMixin
 from ._imports import resolve_dependency
-from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import normalize_records
 from ._r import coerce_r_result
 
@@ -31,7 +31,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class RDataHandlerMixin:
+class RDataHandlerMixin(FormatPandasResolverMixin):
     """
     Shared dependency and payload helpers for R-data scientific handlers.
     """
@@ -133,20 +133,6 @@ class RDataHandlerMixin:
         return cast(
             Mapping[str, object],
             self.resolve_pyreadr().read_r(str(path)),
-        )
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return pandas using shared dependency resolution.
-
-        Returns
-        -------
-        Any
-            The pandas module.
-        """
-        return resolve_pandas_dependency(
-            self,
-            format_name=self.format_name,
         )
 
     def resolve_pyreadr(self) -> Any:

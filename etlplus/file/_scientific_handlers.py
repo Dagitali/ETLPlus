@@ -13,8 +13,8 @@ from typing import ClassVar
 
 from ..types import JSONData
 from ..types import JSONList
+from ._imports import FormatPandasResolverMixin
 from ._imports import resolve_dependency
-from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
 from ._io import records_from_table
 from .base import ReadOptions
@@ -39,21 +39,10 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class ScientificPandasResolverMixin:
+class ScientificPandasResolverMixin(FormatPandasResolverMixin):
     """
     Shared pandas dependency resolver for scientific handlers.
     """
-
-    format_name: ClassVar[str]
-
-    def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
-        return resolve_pandas_dependency(
-            self,
-            format_name=self.format_name,
-        )
 
 
 class ScientificXarrayResolverMixin:
@@ -61,7 +50,11 @@ class ScientificXarrayResolverMixin:
     Shared xarray dependency resolver for scientific handlers.
     """
 
+    # -- Class Attributes -- #
+
     format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
 
     def resolve_xarray(self) -> Any:
         """
@@ -81,6 +74,8 @@ class SingleDatasetTabularScientificReadMixin(
     """
     Shared read implementation for single-dataset tabular scientific formats.
     """
+
+    # -- Class Attributes -- #
 
     requires_pyreadstat_for_read: ClassVar[bool] = False
 
@@ -123,16 +118,20 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Internal Instance Methods -- #
 
-    def _read_pyreadstat_dependency(self) -> Any | None:
+    def _resolve_optional_pyreadstat(
+        self,
+        *,
+        required: bool,
+    ) -> Any | None:
         """
-        Resolve the read-time pyreadstat dependency when required.
+        Resolve pyreadstat when required for one operation.
 
         Returns
         -------
         Any | None
             The pyreadstat module when required, else None.
         """
-        if not self.requires_pyreadstat_for_read:
+        if not required:
             return None
         return self.resolve_pyreadstat()
 
@@ -152,7 +151,9 @@ class SingleDatasetTabularScientificReadMixin(
         frame = self.read_frame(
             path,
             pandas=self.resolve_pandas(),
-            pyreadstat=self._read_pyreadstat_dependency(),
+            pyreadstat=self._resolve_optional_pyreadstat(
+                required=self.requires_pyreadstat_for_read,
+            ),
             options=options,
         )
         return records_from_table(frame)
@@ -176,22 +177,9 @@ class SingleDatasetTabularScientificReadWriteMixin(
     formats.
     """
 
+    # -- Class Attributes -- #
+
     requires_pyreadstat_for_write: ClassVar[bool] = False
-
-    # -- Internal Instance Methods -- #
-
-    def _write_pyreadstat_dependency(self) -> Any | None:
-        """
-        Resolve the write-time pyreadstat dependency when required.
-
-        Returns
-        -------
-        Any | None
-            The pyreadstat module when required, else None.
-        """
-        if not self.requires_pyreadstat_for_write:
-            return None
-        return self.resolve_pyreadstat()
 
     # -- Abstract Instance Methods -- #
 
@@ -222,6 +210,8 @@ class SingleDatasetTabularScientificReadWriteMixin(
         options : WriteOptions | None
             Optional write options.
         """
+
+    # -- Instance Methods -- #
 
     def write_dataset(
         self,
@@ -265,7 +255,9 @@ class SingleDatasetTabularScientificReadWriteMixin(
             path,
             frame,
             pandas=pandas,
-            pyreadstat=self._write_pyreadstat_dependency(),
+            pyreadstat=self._resolve_optional_pyreadstat(
+                required=self.requires_pyreadstat_for_write,
+            ),
             options=options,
         )
         return len(records)
