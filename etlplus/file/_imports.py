@@ -67,6 +67,40 @@ def _error_message(
     )
 
 
+def _resolve_with_module_override(
+    handler: object,
+    override_name: str,
+    fallback: Callable[..., Any],
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """
+    Resolve one dependency call via module override with fallback.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    override_name : str
+        Callable name to resolve from the concrete module.
+    fallback : Callable[..., Any]
+        Fallback resolver when no override callable is present.
+    *args : Any
+        Positional arguments forwarded to the resolver.
+    **kwargs : Any
+        Keyword arguments forwarded to the resolver.
+
+    Returns
+    -------
+    Any
+        The resolved dependency/module value.
+    """
+    if resolver := resolve_module_callable(handler, override_name):
+        return resolver(*args, **kwargs)
+    return fallback(*args, **kwargs)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -245,13 +279,10 @@ def resolve_dependency(
     Any
         The resolved dependency module.
     """
-    if resolver := resolve_module_callable(handler, 'get_dependency'):
-        return resolver(
-            dependency_name,
-            format_name=format_name,
-            pip_name=pip_name,
-        )
-    return get_dependency(
+    return _resolve_with_module_override(
+        handler,
+        'get_dependency',
+        get_dependency,
         dependency_name,
         format_name=format_name,
         pip_name=pip_name,
@@ -278,6 +309,9 @@ def resolve_pandas(
     Any
         The resolved pandas module.
     """
-    if resolver := resolve_module_callable(handler, 'get_pandas'):
-        return resolver(format_name)
-    return get_pandas(format_name)
+    return _resolve_with_module_override(
+        handler,
+        'get_pandas',
+        get_pandas,
+        format_name,
+    )
