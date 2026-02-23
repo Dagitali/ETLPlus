@@ -144,10 +144,7 @@ class RdsFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadr" is not installed with write support.
         """
-        self.resolve_single_write_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
         format_name = self.format_name
         pyreadr = _pyreadr()
