@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from etlplus.file import base as base_mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -181,7 +182,7 @@ class DelimitedReadWriteMixin(PathMixin):
             calls['delimiter'] = delimiter
             return expected_rows
 
-        monkeypatch.setattr(self.module, 'read_delimited', _read_delimited)
+        monkeypatch.setattr(base_mod, 'read_delimited', _read_delimited)
 
         result = self.module_handler.read(self.format_path(tmp_path))
 
@@ -209,7 +210,7 @@ class DelimitedReadWriteMixin(PathMixin):
             calls['format_name'] = format_name
             return 1
 
-        monkeypatch.setattr(self.module, 'write_delimited', _write_delimited)
+        monkeypatch.setattr(base_mod, 'write_delimited', _write_delimited)
 
         written = self.module_handler.write(
             self.format_path(tmp_path),
