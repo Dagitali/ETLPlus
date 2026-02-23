@@ -21,12 +21,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..types import JSONData
-from ._imports import get_dependency
-from ._imports import get_pandas
 from ._io import ensure_parent_dir
-from ._io import normalize_records
-from ._r import coerce_r_result
 from ._r import list_r_dataset_keys
+from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
@@ -44,7 +41,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class RdaFile(ScientificDatasetFileHandlerABC):
+class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
     """
     Handler implementation for RDA files.
     """
@@ -72,8 +69,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
         list[str]
             Available dataset keys.
         """
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        result = pyreadr.read_r(str(path))
+        result = self.read_r_result(path)
         return list_r_dataset_keys(
             result,
             default_key=self.dataset_key,
@@ -104,16 +100,7 @@ class RdaFile(ScientificDatasetFileHandlerABC):
             Parsed dataset payload.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        result = pyreadr.read_r(str(path))
-        return coerce_r_result(
-            result,
-            dataset=dataset,
-            dataset_key=self.dataset_key,
-            format_name=self.format_name,
-            pandas=pandas,
-        )
+        return self.coerce_r_dataset(path, dataset=dataset)
 
     def write_dataset(
         self,
@@ -148,11 +135,8 @@ class RdaFile(ScientificDatasetFileHandlerABC):
             If "pyreadr" is not installed with write support.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = get_dependency('pyreadr', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        records = normalize_records(data, self.format_name)
-        frame = pandas.DataFrame.from_records(records)
-        count = len(records)
+        pyreadr = self.resolve_pyreadr()
+        frame, count = self.dataframe_from_data(data)
         target_dataset = dataset if dataset is not None else self.dataset_key
 
         writer = getattr(pyreadr, 'write_rdata', None) or getattr(
