@@ -61,6 +61,18 @@ def test_file_format_modules_do_not_expose_module_level_read_write() -> None:
         assert not hasattr(module, 'write'), module_name
 
 
+def test_file_format_modules_do_not_expose_module_level_handler_singletons(
+) -> None:
+    """Test mapped file modules no longer exposing ``_*_HANDLER`` constants."""
+    violations: list[str] = []
+    for module_name in _MODULE_NAMES:
+        module = importlib.import_module(module_name)
+        for symbol_name in vars(module):
+            if symbol_name.endswith('_HANDLER'):
+                violations.append(f'{module_name}.{symbol_name}')
+    assert not violations, '\n'.join(violations)
+
+
 def test_internal_runtime_code_does_not_use_removed_module_io_wrappers(
 ) -> None:
     """Test runtime modules not importing/calling removed wrapper APIs."""
