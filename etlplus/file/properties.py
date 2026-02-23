@@ -18,12 +18,9 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
 from ..types import JSONDict
 from ._io import stringify_value
-from .base import DictPayloadSemiStructuredTextFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -68,7 +65,7 @@ def _parse_properties_text(
 # SECTION: CLASSES ========================================================== #
 
 
-class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
+class PropertiesFile(DictPayloadTextCodecHandlerMixin):
     """
     Handler implementation for Java-style properties files.
     """
@@ -79,53 +76,23 @@ class PropertiesFile(DictPayloadSemiStructuredTextFileHandlerABC):
 
     # -- Instance Methods -- #
 
-    def dumps_dict_payload(
+    def decode_dict_payload_text(
+        self,
+        text: str,
+    ) -> object:
+        """
+        Parse PROPERTIES *text* into dictionary payload.
+        """
+        return _parse_properties_text(text)
+
+    def encode_dict_payload_text(
         self,
         payload: JSONDict,
-        *,
-        options: WriteOptions | None = None,
     ) -> str:
         """
         Serialize dictionary *data* into PROPERTIES text.
-
-        Parameters
-        ----------
-        payload : JSONDict
-            Dictionary payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str
-            Serialized PROPERTIES text.
         """
-        _ = options
         return ''.join(
             f'{key}={stringify_value(payload[key])}\n'
             for key in sorted(payload.keys())
         )
-
-    def loads(
-        self,
-        text: str,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse PROPERTIES *text* into dictionary payload.
-
-        Parameters
-        ----------
-        text : str
-            PROPERTIES payload as text.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        _ = options
-        return _parse_properties_text(text)
