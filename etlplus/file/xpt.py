@@ -22,13 +22,11 @@ from pathlib import Path
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
+from ._io import make_deprecated_module_io
+from ._io import read_sas_table
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -58,7 +56,6 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.XPT
-    dataset_key = 'data'
 
     # -- Instance Methods -- #
 
@@ -86,22 +83,15 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         JSONList
             Parsed records.
         """
-        self.resolve_single_read_dataset(
-            dataset,
-            options=options,
-        )
+        self.resolve_single_dataset(dataset, options=options)
 
-        format_name = self.format_name
-        pandas = get_pandas(format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(self.format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
         reader = getattr(pyreadstat, 'read_xport', None)
         if reader is not None:
             frame, _meta = reader(str(path))
             return records_from_table(frame)
-        try:
-            frame = pandas.read_sas(path, format='xport')
-        except TypeError:
-            frame = pandas.read_sas(path)
+        frame = read_sas_table(pandas, path, format_hint='xport')
         return records_from_table(frame)
 
     def write_dataset(
@@ -136,18 +126,16 @@ class XptFile(SingleDatasetScientificFileHandlerABC):
         ImportError
             If "pyreadstat" is not installed with write support.
         """
-        self.resolve_single_write_dataset(
-            dataset,
+        records = self.prepare_single_dataset_write_records(
+            data,
+            dataset=dataset,
             options=options,
         )
-
-        format_name = self.format_name
-        records = normalize_records(data, format_name)
         if not records:
             return 0
 
-        pandas = get_pandas(format_name)
-        pyreadstat = get_dependency('pyreadstat', format_name=format_name)
+        pandas = get_pandas(self.format_name)
+        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
         writer = getattr(pyreadstat, 'write_xport', None)
         if writer is None:
             raise ImportError(
@@ -168,52 +156,4 @@ _XPT_HANDLER = XptFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``XptFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the XPT file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the XPT file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _XPT_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``XptFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the XPT file on disk.
-    data : JSONData
-        Data to write as XPT file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the XPT file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _XPT_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _XPT_HANDLER)

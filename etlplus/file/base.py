@@ -11,17 +11,27 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
-from typing import Any
 from typing import ClassVar
-from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..utils import count_records
-from ._io import normalize_records
-from ._io import read_text
-from ._io import write_text
+from ..types import StrPath
+from ._handler_abc import BinarySerializationABC
+from ._handler_abc import ColumnarABC
+from ._handler_abc import EmbeddedDatabaseABC
+from ._handler_abc import RowReadWriteABC
+from ._handler_abc import ScientificDatasetABC
+from ._handler_abc import SemiStructuredTextABC
+from ._handler_abc import SpreadsheetSheetABC
+from ._io import ArchiveInnerNameOption
+from ._io import DelimitedOption
+from ._io import FileHandlerOption
+from ._io import read_delimited
+from ._io import write_delimited
+from ._mixins import SemiStructuredPayloadMixin
+from ._mixins import SingleDatasetValidation
+from ._mixins import TemplateTextIOMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -29,29 +39,72 @@ from .enums import FileFormat
 
 __all__ = [
     # Data Classes
+    'BoundFileHandler',
     'ReadOptions',
     'WriteOptions',
     # Base Classes
     'FileHandlerABC',
     'ReadOnlyFileHandlerABC',
     # Secondary / Category Base Classes
-    'DelimitedTextFileHandlerABC',
-    'TextFixedWidthFileHandlerABC',
-    'SemiStructuredTextFileHandlerABC',
-    'ColumnarFileHandlerABC',
+    'ArchiveWrapperFileHandlerABC',
     'BinarySerializationFileHandlerABC',
+    'ColumnarFileHandlerABC',
+    'DelimitedTextFileHandlerABC',
+    'DictPayloadSemiStructuredTextFileHandlerABC',
     'EmbeddedDatabaseFileHandlerABC',
-    'SpreadsheetFileHandlerABC',
+    'LogEventFileHandlerABC',
+    'RecordPayloadSemiStructuredTextFileHandlerABC',
     'ReadOnlySpreadsheetFileHandlerABC',
     'ScientificDatasetFileHandlerABC',
+    'SemiStructuredTextFileHandlerABC',
     'SingleDatasetScientificFileHandlerABC',
-    'ArchiveWrapperFileHandlerABC',
-    'LogEventFileHandlerABC',
+    'SpreadsheetFileHandlerABC',
+    'StandardDelimitedTextFileHandlerABC',
     'TemplateFileHandlerABC',
+    'TemplateTextIOMixin',
+    'TextFixedWidthFileHandlerABC',
 ]
 
 
 # SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True, frozen=True)
+class BoundFileHandler:
+    """
+    Path-bound facade around a format handler.
+
+    Attributes
+    ----------
+    handler : FileHandlerABC
+        Concrete format handler instance.
+    path : Path
+        Bound file path used by :meth:`read` and :meth:`write`.
+    """
+
+    handler: FileHandlerABC
+    path: Path
+
+    def read(
+        self,
+        *,
+        options: ReadOptions | None = None,
+    ) -> JSONData:
+        """
+        Read from :attr:`path` using :attr:`handler`.
+        """
+        return self.handler.read(self.path, options=options)
+
+    def write(
+        self,
+        data: JSONData,
+        *,
+        options: WriteOptions | None = None,
+    ) -> int:
+        """
+        Write *data* to :attr:`path` using :attr:`handler`.
+        """
+        return self.handler.write(self.path, data, options=options)
 
 
 @dataclass(slots=True, frozen=True)
@@ -118,7 +171,7 @@ class WriteOptions:
 # SECTION: ABSTRACT BASE CLASSES (PRIMARY) ================================== #
 
 
-class FileHandlerABC(ABC):
+class FileHandlerABC(FileHandlerOption, ABC):
     """
     Root interface for format-specific file handlers.
 
@@ -148,6 +201,28 @@ class FileHandlerABC(ABC):
             Uppercase enum value for :attr:`format`.
         """
         return self.format.value.upper()
+
+    # -- Instance Methods -- #
+
+    def at(
+        self,
+        path: StrPath,
+    ) -> BoundFileHandler:
+        """
+        Return a path-bound facade for this handler.
+
+        Parameters
+        ----------
+        path : StrPath
+            File path to bind to this handler.
+
+        Returns
+        -------
+        BoundFileHandler
+            Facade exposing ``read()`` and ``write(data)`` without a *path*
+            argument.
+        """
+        return BoundFileHandler(self, Path(path))
 
     # -- Abstract Instance Methods -- #
 
@@ -200,140 +275,6 @@ class FileHandlerABC(ABC):
             Number of records written.
         """
 
-    # -- Internal Instance Methods -- #
-
-    def _option_attr(
-        self,
-        options: ReadOptions | WriteOptions | None,
-        attr_name: str,
-    ) -> Any | None:
-        """
-        Return an option attribute value when present.
-
-        Parameters
-        ----------
-        options : ReadOptions | WriteOptions | None
-            Optional parameter bundle.
-        attr_name : str
-            Dataclass attribute to read.
-
-        Returns
-        -------
-        Any | None
-            The attribute value, or ``None`` when missing.
-        """
-        if options is None:
-            return None
-        return getattr(options, attr_name)
-
-    # -- Instance Methods -- #
-
-    def read_extra_option(
-        self,
-        options: ReadOptions | None,
-        key: str,
-        *,
-        default: Any | None = None,
-    ) -> Any | None:
-        """
-        Read one format-specific read option from ``options.extras``.
-        """
-        if options is None:
-            return default
-        return options.extras.get(key, default)
-
-    def write_extra_option(
-        self,
-        options: WriteOptions | None,
-        key: str,
-        *,
-        default: Any | None = None,
-    ) -> Any | None:
-        """
-        Read one format-specific write option from ``options.extras``.
-        """
-        if options is None:
-            return default
-        return options.extras.get(key, default)
-
-    def encoding_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str:
-        """
-        Extract text encoding from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Optional read parameters.
-        default : str, optional
-            Default encoding if not specified in *options*.
-
-        Returns
-        -------
-        str
-            Text encoding.
-        """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def encoding_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'utf-8',
-    ) -> str:
-        """
-        Extract text encoding from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str, optional
-            Default encoding if not specified in *options*.
-
-        Returns
-        -------
-        str
-            Text encoding.
-        """
-        value = self._option_attr(options, 'encoding')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def root_tag_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str = 'root',
-    ) -> str:
-        """
-        Extract XML-like root tag from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str, optional
-            Default root tag if not specified in *options*.
-
-        Returns
-        -------
-        str
-            XML-like root tag.
-        """
-        value = self._option_attr(options, 'root_tag')
-        if value is not None:
-            return cast(str, value)
-        return default
-
 
 class ReadOnlyFileHandlerABC(FileHandlerABC):
     """
@@ -384,7 +325,10 @@ class ReadOnlyFileHandlerABC(FileHandlerABC):
 # SECTION: ABSTRACT BASE CLASSES (SECONDARY) ================================ #
 
 
-class ArchiveWrapperFileHandlerABC(FileHandlerABC):
+class ArchiveWrapperFileHandlerABC(
+    ArchiveInnerNameOption,
+    FileHandlerABC,
+):
     """
     Base contract for archive/compression wrapper formats.
 
@@ -421,36 +365,11 @@ class ArchiveWrapperFileHandlerABC(FileHandlerABC):
         Write inner member bytes to an archive at *path*.
         """
 
-    def inner_name_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from read options.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
 
-    def inner_name_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract archive member selector from write options.
-        """
-        value = self._option_attr(options, 'inner_name')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-
-class BinarySerializationFileHandlerABC(FileHandlerABC):
+class BinarySerializationFileHandlerABC(
+    BinarySerializationABC,
+    FileHandlerABC,
+):
     """
     Base contract for binary serialization/interchange formats.
 
@@ -461,32 +380,8 @@ class BinarySerializationFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'binary_serialization'
 
-    # -- Instance Methods -- #
 
-    @abstractmethod
-    def loads_bytes(
-        self,
-        payload: bytes,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse binary payload bytes into structured data.
-        """
-
-    @abstractmethod
-    def dumps_bytes(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> bytes:
-        """
-        Serialize structured data into binary payload bytes.
-        """
-
-
-class ColumnarFileHandlerABC(FileHandlerABC):
+class ColumnarFileHandlerABC(ColumnarABC, FileHandlerABC):
     """
     Base contract for columnar analytics formats.
 
@@ -498,107 +393,12 @@ class ColumnarFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'columnar_analytics'
     engine_name: ClassVar[str]
 
-    # -- Instance Methods -- #
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return columnar content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the columnar file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Row-oriented records parsed from the columnar table.
-        """
-        table = self.read_table(path, options=options)
-        return self.table_to_records(table)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write columnar content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the columnar file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        table = self.records_to_table(rows)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.write_table(path, table, options=options)
-        return len(rows)
-
-    @abstractmethod
-    def read_table(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read a columnar table object from *path*.
-        """
-
-    @abstractmethod
-    def write_table(
-        self,
-        path: Path,
-        table: Any,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write a columnar table object to *path*.
-        """
-
-    @abstractmethod
-    def table_to_records(
-        self,
-        table: Any,
-    ) -> JSONList:
-        """
-        Convert a table object into row-oriented records.
-        """
-
-    @abstractmethod
-    def records_to_table(
-        self,
-        data: JSONData,
-    ) -> Any:
-        """
-        Convert row-oriented records into a table object.
-        """
-
-
-class DelimitedTextFileHandlerABC(FileHandlerABC):
+class DelimitedTextFileHandlerABC(
+    RowReadWriteABC,
+    DelimitedOption,
+    FileHandlerABC,
+):
     """
     Base contract for delimited text formats.
 
@@ -612,9 +412,14 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
     quotechar: ClassVar[str] = '"'
     has_header: ClassVar[bool] = True
 
-    # -- Abstract Instance Methods -- #
 
-    @abstractmethod
+class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
+    """
+    Shared implementation for straightforward delimited text handlers.
+
+    Subclasses only need to define :attr:`format` and :attr:`delimiter`.
+    """
+
     def read_rows(
         self,
         path: Path,
@@ -622,10 +427,27 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read delimited rows from *path*.
-        """
+        Read delimited rows from *path* using :attr:`delimiter` or option
+        overrides.
 
-    @abstractmethod
+        Parameters
+        ----------
+        path : Path
+            File path to read from.
+        options : ReadOptions | None, optional
+            Read options, which may include delimiter overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        JSONList
+            List of parsed rows as dictionaries.
+        """
+        return read_delimited(
+            path,
+            delimiter=self.delimiter_from_options(options),
+        )
+
     def write_rows(
         self,
         path: Path,
@@ -634,121 +456,33 @@ class DelimitedTextFileHandlerABC(FileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write delimited *rows* to *path*.
-        """
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return delimited text content from *path*.
+        Write delimited rows to *path* using :attr:`delimiter` or option
+        overrides.
 
         Parameters
         ----------
         path : Path
-            Path to the delimited text file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed rows.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write delimited text content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the delimited text file on disk.
-        data : JSONData
-            Payload to serialize.
+            File path to write to.
+        rows : JSONList
+            List of row dictionaries to write.
         options : WriteOptions | None, optional
-            Optional write parameters.
+            Write options, which may include delimiter overrides. Defaults to
+            ``None``.
 
         Returns
         -------
         int
-            Number of rows written.
+            The number of rows written to the file.
         """
-        rows = normalize_records(data, self.format.value.upper())
-        return self.write_rows(path, rows, options=options)
-
-    def delimiter_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from read options.
-
-        Parameters
-        ----------
-        options : ReadOptions | None
-            Optional read parameters.
-        default : str | None, optional
-            Fallback delimiter when no override is provided. When omitted,
-            :attr:`delimiter` is used.
-
-        Returns
-        -------
-        str
-            Effective delimiter.
-        """
-        override = self.read_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
-
-    def delimiter_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str:
-        """
-        Extract delimiter override from write options.
-
-        Parameters
-        ----------
-        options : WriteOptions | None
-            Optional write parameters.
-        default : str | None, optional
-            Fallback delimiter when no override is provided. When omitted,
-            :attr:`delimiter` is used.
-
-        Returns
-        -------
-        str
-            Effective delimiter.
-        """
-        override = self.write_extra_option(options, 'delimiter')
-        if override is not None:
-            return str(override)
-        if default is not None:
-            return default
-        return self.delimiter
+        return write_delimited(
+            path,
+            rows,
+            delimiter=self.delimiter_from_options(options),
+            format_name=self.format_name,
+        )
 
 
-class TextFixedWidthFileHandlerABC(FileHandlerABC):
+class TextFixedWidthFileHandlerABC(RowReadWriteABC, FileHandlerABC):
     """
     Base contract for plain text and fixed-width text formats.
 
@@ -760,83 +494,11 @@ class TextFixedWidthFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'text_fixed_width'
     default_encoding: ClassVar[str] = 'utf-8'
 
-    # -- Instance Methods -- #
 
-    @abstractmethod
-    def read_rows(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read text-backed rows from *path*.
-        """
-
-    @abstractmethod
-    def write_rows(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write text-backed *rows* to *path*.
-        """
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return text/fixed-width content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the text/fixed-width file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed rows.
-        """
-        return self.read_rows(path, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write text/fixed-width content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the text/fixed-width file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of rows written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        return self.write_rows(path, rows, options=options)
-
-
-class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
+class EmbeddedDatabaseFileHandlerABC(
+    EmbeddedDatabaseABC,
+    FileHandlerABC,
+):
     """
     Base contract for file-backed embedded database formats.
 
@@ -848,172 +510,6 @@ class EmbeddedDatabaseFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'embedded_database'
     engine_name: ClassVar[str] = 'database'
     default_table: ClassVar[str] = 'data'
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return embedded-database content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the embedded database file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the selected table.
-
-        Raises
-        ------
-        ValueError
-            If table selection is ambiguous.
-        """
-        connection = self.connect(path)
-        try:
-            tables = self.list_tables(connection)
-            table = self.table_from_read_options(options)
-            if table is None:
-                if not tables:
-                    return []
-                if self.default_table in tables:
-                    table = self.default_table
-                elif len(tables) == 1:
-                    table = tables[0]
-                else:
-                    raise ValueError(
-                        f'Multiple tables found in {self.engine_name} file; '
-                        f'expected "{self.default_table}" or a single table',
-                    )
-            return self.read_table(connection, table)
-        finally:
-            closer = getattr(connection, 'close', None)
-            if callable(closer):
-                closer()
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write embedded-database content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the embedded database file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-
-        Raises
-        ------
-        ValueError
-            If table selection is ambiguous.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        table = self.table_from_write_options(
-            options,
-            default=self.default_table,
-        )
-        if table is None:  # pragma: no cover - guarded by default
-            raise ValueError(
-                f'{self.format.value.upper()} write requires a table name',
-            )
-        path.parent.mkdir(parents=True, exist_ok=True)
-        connection = self.connect(path)
-        try:
-            return self.write_table(connection, table, rows)
-        finally:
-            closer = getattr(connection, 'close', None)
-            if callable(closer):
-                closer()
-
-    @abstractmethod
-    def connect(
-        self,
-        path: Path,
-    ) -> Any:
-        """
-        Open and return a database connection for *path*.
-        """
-
-    @abstractmethod
-    def list_tables(
-        self,
-        connection: Any,
-    ) -> list[str]:
-        """
-        Return readable table names from *connection*.
-        """
-
-    @abstractmethod
-    def read_table(
-        self,
-        connection: Any,
-        table: str,
-    ) -> JSONList:
-        """
-        Read rows from *table*.
-        """
-
-    @abstractmethod
-    def write_table(
-        self,
-        connection: Any,
-        table: str,
-        rows: JSONList,
-    ) -> int:
-        """
-        Write *rows* to *table*.
-        """
-
-    def table_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from read options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
-
-    def table_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Extract table selector from write options.
-        """
-        value = self._option_attr(options, 'table')
-        if value is not None:
-            return cast(str, value)
-        return default
 
 
 class LogEventFileHandlerABC(FileHandlerABC):
@@ -1028,7 +524,7 @@ class LogEventFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'log_event_stream'
     line_oriented: ClassVar[bool] = True
 
-    # -- Instance Methods -- #
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
     def parse_line(
@@ -1037,6 +533,16 @@ class LogEventFileHandlerABC(FileHandlerABC):
     ) -> JSONDict:
         """
         Parse a single line into an event record.
+
+        Parameters
+        ----------
+        line : str
+            A single line from the log/event stream.
+
+        Returns
+        -------
+        JSONDict
+            The parsed event record.
         """
 
     @abstractmethod
@@ -1046,10 +552,24 @@ class LogEventFileHandlerABC(FileHandlerABC):
     ) -> str:
         """
         Serialize a single event record into one line.
+
+        Parameters
+        ----------
+        event : JSONDict
+            The event record to serialize.
+
+        Returns
+        -------
+        str
+            The serialized event record as a single line.
         """
 
 
-class SemiStructuredTextFileHandlerABC(FileHandlerABC):
+class SemiStructuredTextFileHandlerABC(
+    SemiStructuredTextABC,
+    SemiStructuredPayloadMixin,
+    FileHandlerABC,
+):
     """
     Base contract for semi-structured text formats.
 
@@ -1063,9 +583,29 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
     allow_list_root: ClassVar[bool] = True
     write_trailing_newline: ClassVar[bool] = False
 
-    # -- Instance Methods -- #
+
+class RecordPayloadSemiStructuredTextFileHandlerABC(
+    SemiStructuredTextFileHandlerABC,
+):
+    """
+    Shared base for semi-structured formats with record-like roots.
+    """
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
+    def loads_payload(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+    ) -> object:
+        """
+        Parse raw text into a Python payload prior to record coercion.
+        """
+
+    # -- Instance Methods -- #
+
     def loads(
         self,
         text: str,
@@ -1073,10 +613,66 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONData:
         """
-        Parse *text* into structured JSON-like data.
+        Parse text into object-or-object-list record payloads.
+
+        Parameters
+        ----------
+        text : str
+            The raw text to parse.
+        options : ReadOptions | None, optional
+            Read options, which may include parsing overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        JSONData
+            The parsed record payloads.
         """
+        return self.coerce_record_payload(
+            self.loads_payload(text, options=options),
+        )
+
+
+class DictPayloadSemiStructuredTextFileHandlerABC(
+    SemiStructuredTextFileHandlerABC,
+):
+    """
+    Shared base for semi-structured formats that write dictionary payloads.
+    """
+
+    # -- Class Attributes -- #
+
+    allow_dict_root: ClassVar[bool] = True
+    allow_list_root: ClassVar[bool] = False
+
+    # -- Abstract Instance Methods -- #
 
     @abstractmethod
+    def dumps_dict_payload(
+        self,
+        payload: JSONDict,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize one dictionary payload into format-specific text.
+
+        Parameters
+        ----------
+        payload : JSONDict
+            The dictionary payload to serialize.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        str
+            The serialized dictionary payload as format-specific text.
+        """
+
+    # -- Instance Methods -- #
+
     def dumps(
         self,
         data: JSONData,
@@ -1084,80 +680,31 @@ class SemiStructuredTextFileHandlerABC(FileHandlerABC):
         options: WriteOptions | None = None,
     ) -> str:
         """
-        Serialize *data* into a text payload.
-        """
-
-    def count_written_records(
-        self,
-        data: JSONData,
-    ) -> int:
-        """
-        Return the default record count for write operations.
-        """
-        return count_records(data)
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return semi-structured text content from *path*.
+        Serialize dictionary-root data into format-specific text.
 
         Parameters
         ----------
-        path : Path
-            Path to the semi-structured text file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
+        data : JSONData
+            The dictionary-root data to serialize.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
 
         Returns
         -------
-        JSONData
-            Parsed payload.
+        str
+            The serialized dictionary-root data.
         """
-        encoding = self.encoding_from_read_options(options)
-        return self.loads(
-            read_text(path, encoding=encoding),
+        return self.dumps_dict_payload(
+            self.require_dict_payload(data),
             options=options,
         )
 
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write semi-structured text content to *path* and return record count.
 
-        Parameters
-        ----------
-        path : Path
-            Path to the semi-structured text file on disk.
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        encoding = self.encoding_from_write_options(options)
-        write_text(
-            path,
-            self.dumps(data, options=options),
-            encoding=encoding,
-            trailing_newline=self.write_trailing_newline,
-        )
-        return self.count_written_records(data)
-
-
-class ScientificDatasetFileHandlerABC(FileHandlerABC):
+class ScientificDatasetFileHandlerABC(
+    ScientificDatasetABC,
+    FileHandlerABC,
+):
     """
     Base contract for scientific/statistical dataset containers.
 
@@ -1178,233 +725,29 @@ class ScientificDatasetFileHandlerABC(FileHandlerABC):
     ) -> list[str]:
         """
         Return available dataset keys within *path*.
-        """
-
-    @abstractmethod
-    def read_dataset(
-        self,
-        path: Path,
-        *,
-        dataset: str | None = None,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return one dataset from *path*.
-        """
-
-    @abstractmethod
-    def write_dataset(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        dataset: str | None = None,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write one dataset to *path* and return record count.
-        """
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return scientific dataset content from *path*.
 
         Parameters
         ----------
         path : Path
-            Path to the scientific dataset file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
+            File path to inspect for datasets.
 
         Returns
         -------
-        JSONData
-            Parsed dataset payload.
+        list[str]
+            List of dataset keys available within the file at *path*.
         """
-        dataset = self.dataset_from_read_options(options)
-        return self.read_dataset(path, dataset=dataset, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write scientific dataset content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the scientific dataset file on disk.
-        data : JSONData
-            Dataset payload to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        dataset = self.dataset_from_write_options(options)
-        return self.write_dataset(
-            path,
-            data,
-            dataset=dataset,
-            options=options,
-        )
-
-    def dataset_from_read_options(
-        self,
-        options: ReadOptions | None,
-    ) -> str | None:
-        """
-        Extract dataset selector from read options.
-        """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
-
-    def dataset_from_write_options(
-        self,
-        options: WriteOptions | None,
-    ) -> str | None:
-        """
-        Extract dataset selector from write options.
-        """
-        value = self._option_attr(options, 'dataset')
-        if value is not None:
-            return cast(str, value)
-        return None
-
-    def resolve_read_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: ReadOptions | None = None,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Resolve read-time dataset selection using explicit, options, then
-        default.
-        """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_read_options(options)
-        if from_options is not None:
-            return from_options
-        return default
-
-    def resolve_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-        default: str | None = None,
-    ) -> str | None:
-        """
-        Resolve write-time dataset selection using explicit, options, then
-        default.
-        """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_write_options(options)
-        if from_options is not None:
-            return from_options
-        return default
 
 
-class SingleDatasetScientificFileHandlerABC(ScientificDatasetFileHandlerABC):
+class SingleDatasetScientificFileHandlerABC(
+    SingleDatasetValidation,
+    ScientificDatasetFileHandlerABC,
+):
     """
     Base contract for scientific formats with a single dataset key.
     """
 
-    def list_datasets(
-        self,
-        path: Path,
-    ) -> list[str]:
-        """
-        Return the single supported dataset key.
-        """
-        _ = path
-        return [self.dataset_key]
 
-    def resolve_single_read_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: ReadOptions | None = None,
-    ) -> str | None:
-        """
-        Resolve and validate single-dataset read selection.
-
-        Parameters
-        ----------
-        dataset : str | None, optional
-            Explicit dataset selector.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        str | None
-            Validated dataset key or ``None``.
-        """
-        resolved = self.resolve_read_dataset(dataset, options=options)
-        self.validate_single_dataset_key(resolved)
-        return resolved
-
-    def resolve_single_write_dataset(
-        self,
-        dataset: str | None = None,
-        *,
-        options: WriteOptions | None = None,
-    ) -> str | None:
-        """
-        Resolve and validate single-dataset write selection.
-
-        Parameters
-        ----------
-        dataset : str | None, optional
-            Explicit dataset selector.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        str | None
-            Validated dataset key or ``None``.
-        """
-        resolved = self.resolve_write_dataset(dataset, options=options)
-        self.validate_single_dataset_key(resolved)
-        return resolved
-
-    def validate_single_dataset_key(
-        self,
-        dataset: str | None,
-    ) -> None:
-        """
-        Validate that *dataset* is either omitted or the default key.
-        """
-        if dataset is None or dataset == self.dataset_key:
-            return
-        raise ValueError(
-            f'{self.format.value.upper()} supports only dataset key '
-            f'{self.dataset_key!r}',
-        )
-
-
-class SpreadsheetFileHandlerABC(FileHandlerABC):
+class SpreadsheetFileHandlerABC(SpreadsheetSheetABC, FileHandlerABC):
     """
     Base contract for spreadsheet formats.
 
@@ -1416,119 +759,6 @@ class SpreadsheetFileHandlerABC(FileHandlerABC):
     category: ClassVar[str] = 'spreadsheet'
     engine_name: ClassVar[str]
     default_sheet: ClassVar[str | int] = 0
-
-    # -- Instance Methods -- #
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return spreadsheet content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the selected sheet.
-        """
-        sheet = self.sheet_from_read_options(options)
-        return self.read_sheet(path, sheet=sheet, options=options)
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write spreadsheet content to *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the spreadsheet file on disk.
-        data : JSONData
-            Row-oriented data to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        rows = normalize_records(data, self.format.value.upper())
-        if not rows:
-            return 0
-        sheet = self.sheet_from_write_options(options)
-        return self.write_sheet(path, rows, sheet=sheet, options=options)
-
-    @abstractmethod
-    def read_sheet(
-        self,
-        path: Path,
-        *,
-        sheet: str | int,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read a single sheet from *path*.
-        """
-
-    @abstractmethod
-    def write_sheet(
-        self,
-        path: Path,
-        rows: JSONList,
-        *,
-        sheet: str | int,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write rows to a single sheet in *path*.
-        """
-
-    def sheet_from_read_options(
-        self,
-        options: ReadOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int:
-        """
-        Extract sheet selector from read options.
-        """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
-
-    def sheet_from_write_options(
-        self,
-        options: WriteOptions | None,
-        *,
-        default: str | int | None = None,
-    ) -> str | int:
-        """
-        Extract sheet selector from write options.
-        """
-        value = self._option_attr(options, 'sheet')
-        if value is not None:
-            return cast(str | int, value)
-        if default is not None:
-            return default
-        return self.default_sheet
 
 
 class ReadOnlySpreadsheetFileHandlerABC(
@@ -1551,6 +781,23 @@ class ReadOnlySpreadsheetFileHandlerABC(
     ) -> int:
         """
         Reject sheet-level writes for read-only spreadsheet formats.
+
+        Parameters
+        ----------
+        path : Path
+            File path to write to.
+        rows : JSONList
+            Rows of data to write.
+        sheet : str | int
+            Sheet name or index.
+        options : WriteOptions | None, optional
+            Write options, which may include formatting overrides. Defaults to
+            ``None``.
+
+        Returns
+        -------
+        int
+            Number of rows written (always 0 for read-only formats).
         """
         _ = sheet
         return ReadOnlyFileHandlerABC.write(
@@ -1572,6 +819,7 @@ class TemplateFileHandlerABC(FileHandlerABC):
 
     category: ClassVar[str] = 'template'
     template_engine: ClassVar[str]
+    template_key: ClassVar[str] = 'template'
 
     # -- Instance Methods -- #
 

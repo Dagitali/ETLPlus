@@ -18,11 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._stub_categories import StubBinarySerializationFileHandlerABC
 from .enums import FileFormat
 
@@ -50,10 +46,6 @@ class PbfFile(StubBinarySerializationFileHandlerABC):
 
     format = FileFormat.PBF
 
-    # -- Instance Methods -- #
-
-    # Inherits read() and write() from StubBinarySerializationFileHandlerABC.
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -64,52 +56,4 @@ _PBF_HANDLER = PbfFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``PbfFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PBF file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the PBF file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PBF_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``PbfFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PBF file on disk.
-    data : JSONData
-        Data to write as PBF. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the PBF file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PBF_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _PBF_HANDLER)

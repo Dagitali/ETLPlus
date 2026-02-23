@@ -24,10 +24,8 @@ from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
@@ -44,6 +42,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='ARROW')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -78,7 +85,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'ARROW')
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         return pyarrow_mod.Table.from_pylist(records)
 
     def read_table(
@@ -103,7 +110,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             PyArrow table object.
         """
         _ = options
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         with pyarrow_mod.memory_map(str(path), 'r') as source:
             reader = pyarrow_mod.ipc.open_file(source)
             return reader.read_all()
@@ -147,7 +154,7 @@ class ArrowFile(ColumnarFileHandlerABC):
             Optional write parameters.
         """
         _ = options
-        pyarrow_mod = get_dependency('pyarrow', format_name='ARROW')
+        pyarrow_mod = _pyarrow()
         with pyarrow_mod.OSFile(str(path), 'wb') as sink:
             with pyarrow_mod.ipc.new_file(sink, table.schema) as writer:
                 writer.write_table(table)
@@ -161,52 +168,4 @@ _ARROW_HANDLER = ArrowFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``ArrowFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the Apache Arrow file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the Apache Arrow file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _ARROW_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ArrowFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the ARROW file on disk.
-    data : JSONData
-        Data to write as ARROW. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the ARROW file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _ARROW_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _ARROW_HANDLER)

@@ -77,12 +77,16 @@ def get_optional_module(
     ImportError
         If the optional dependency is missing.
     """
-    cached = _MODULE_CACHE.get(module_name)
-    if cached is not None:  # pragma: no cover - tiny branch
-        return cached
+    try:
+        return _MODULE_CACHE[module_name]
+    except KeyError:
+        pass
     try:
         module = import_module(module_name)
     except ImportError as e:  # pragma: no cover
+        missing_name = getattr(e, 'name', None)
+        if missing_name is not None and missing_name != module_name:
+            raise
         raise ImportError(error_message) from e
     _MODULE_CACHE[module_name] = module
     return module

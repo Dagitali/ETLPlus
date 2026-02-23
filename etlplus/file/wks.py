@@ -18,11 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._stub_categories import StubSpreadsheetFileHandlerABC
 from .enums import FileFormat
 
@@ -51,10 +47,6 @@ class WksFile(StubSpreadsheetFileHandlerABC):
     format = FileFormat.WKS
     engine_name = 'lotus123'
 
-    # -- Instance Methods -- #
-
-    # Inherits read() and write() from StubSpreadsheetFileHandlerABC.
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
@@ -65,52 +57,4 @@ _WKS_HANDLER = WksFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``WksFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the WKS file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the WKS file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _WKS_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``WksFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the WKS file on disk.
-    data : JSONData
-        Data to write as WKS file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the WKS file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _WKS_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _WKS_HANDLER)

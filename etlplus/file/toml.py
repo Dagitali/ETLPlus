@@ -22,13 +22,11 @@ import tomllib
 from typing import Any
 
 from ..types import JSONData
-from ..types import StrPath
+from ..types import JSONDict
 from ._imports import get_optional_module
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import require_dict_payload
+from ._io import make_deprecated_module_io
+from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -44,10 +42,37 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _tomli_w() -> Any:
+    """Return the optional tomli_w module for TOML writes."""
+    return get_optional_module(
+        'tomli_w',
+        error_message=(
+            'TOML write support requires optional dependency '
+            '"tomli_w".\n'
+            'Install with: pip install tomli-w'
+        ),
+    )
+
+
+def _toml() -> Any:
+    """Return the optional toml module as TOML write fallback."""
+    return get_optional_module(
+        'toml',
+        error_message=(
+            'TOML write support requires optional dependency '
+            '"tomli_w" or "toml".\n'
+            'Install with: pip install tomli-w'
+        ),
+    )
+
+
 # SECTION: CLASSES ========================================================== #
 
 
-class TomlFile(SemiStructuredTextFileHandlerABC):
+class TomlFile(DictPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for TOML files.
     """
@@ -55,14 +80,12 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.TOML
-    allow_dict_root = True
-    allow_list_root = False
 
     # -- Instance Methods -- #
 
-    def dumps(
+    def dumps_dict_payload(
         self,
-        data: JSONData,
+        payload: JSONDict,
         *,
         options: WriteOptions | None = None,
     ) -> str:
@@ -71,8 +94,8 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
 
         Parameters
         ----------
-        data : JSONData
-            Payload to serialize.
+        payload : JSONDict
+            Dictionary payload to serialize.
         options : WriteOptions | None, optional
             Optional write parameters.
 
@@ -82,28 +105,13 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             Serialized TOML text.
         """
         _ = options
-        payload = require_dict_payload(data, format_name='TOML')
 
         toml_writer: Any
         try:
-            toml_writer = get_optional_module(
-                'tomli_w',
-                error_message=(
-                    'TOML write support requires optional dependency '
-                    '"tomli_w".\n'
-                    'Install with: pip install tomli-w'
-                ),
-            )
+            toml_writer = _tomli_w()
             return str(toml_writer.dumps(payload))
         except ImportError:
-            toml = get_optional_module(
-                'toml',
-                error_message=(
-                    'TOML write support requires optional dependency '
-                    '"tomli_w" or "toml".\n'
-                    'Install with: pip install tomli-w'
-                ),
-            )
+            toml = _toml()
             return str(toml.dumps(payload))
 
     def loads(
@@ -133,10 +141,10 @@ class TomlFile(SemiStructuredTextFileHandlerABC):
             If the TOML root is not a table (dictionary).
         """
         _ = options
-        payload = tomllib.loads(text)
-        if isinstance(payload, dict):
-            return payload
-        raise TypeError('TOML root must be a table (dict)')
+        return self.coerce_dict_root_payload(
+            tomllib.loads(text),
+            error_message='TOML root must be a table (dict)',
+        )
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -147,51 +155,4 @@ _TOML_HANDLER = TomlFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``TomlFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the TOML file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the TOML file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _TOML_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``TomlFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the TOML file on disk.
-    data : JSONData
-        Data to write as TOML. Should be a dictionary.
-
-    Returns
-    -------
-    int
-        The number of records written to the TOML file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _TOML_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _TOML_HANDLER)

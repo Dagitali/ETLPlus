@@ -21,12 +21,9 @@ from __future__ import annotations
 import json
 
 from ..types import JSONData
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import coerce_record_payload
+from ._io import make_deprecated_module_io
 from .base import ReadOptions
-from .base import SemiStructuredTextFileHandlerABC
+from .base import RecordPayloadSemiStructuredTextFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -45,7 +42,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class JsonFile(SemiStructuredTextFileHandlerABC):
+class JsonFile(RecordPayloadSemiStructuredTextFileHandlerABC):
     """
     Handler implementation for JSON files.
     """
@@ -81,14 +78,14 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
         _ = options
         return json.dumps(data, indent=2, ensure_ascii=False)
 
-    def loads(
+    def loads_payload(
         self,
         text: str,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> object:
         """
-        Parse JSON *text* into structured records.
+        Parse raw JSON text into a Python payload.
 
         Parameters
         ----------
@@ -99,11 +96,11 @@ class JsonFile(SemiStructuredTextFileHandlerABC):
 
         Returns
         -------
-        JSONData
+        object
             Parsed payload.
         """
         _ = options
-        return coerce_record_payload(json.loads(text), format_name='JSON')
+        return json.loads(text)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -114,53 +111,4 @@ _JSON_HANDLER = JsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``JsonFile().read(...)`` instead.
-
-    Validates that the JSON root is a dict or a list of dicts.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JSON file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the JSON file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _JSON_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``JsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the JSON file on disk.
-    data : JSONData
-        Data to serialize as JSON.
-
-    Returns
-    -------
-    int
-        The number of records written to the JSON file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _JSON_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _JSON_HANDLER)

@@ -24,10 +24,8 @@ from typing import cast
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
 from ..utils import count_records
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text
@@ -85,7 +83,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         JSONList
             The list of dictionaries read from the NDJSON file.
         """
-        encoding = self.encoding_from_read_options(options)
+        encoding = self.encoding_from_options(options)
         return cast(
             JSONList,
             self.loads(read_text(path, encoding=encoding), options=options),
@@ -118,7 +116,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         rows = normalize_records(data, 'NDJSON')
         if not rows:
             return 0
-        encoding = self.encoding_from_write_options(options)
+        encoding = self.encoding_from_options(options)
         write_text(
             path,
             self.dumps(rows, options=options),
@@ -202,54 +200,4 @@ _NDJSON_HANDLER = NdjsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``NdjsonFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NDJSON file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the NDJSON file.
-    """
-    return cast(
-        JSONList,
-        call_deprecated_module_read(
-            path,
-            __name__,
-            _NDJSON_HANDLER.read,
-        ),
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``NdjsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the NDJSON file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _NDJSON_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _NDJSON_HANDLER)

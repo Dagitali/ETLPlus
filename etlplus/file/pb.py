@@ -16,13 +16,9 @@ Notes
 from __future__ import annotations
 
 import base64
-from pathlib import Path
 
 from ..types import JSONData
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -111,62 +107,9 @@ class PbFile(BinarySerializationFileHandlerABC):
         encoded = base64.b64encode(payload).decode('ascii')
         return {'payload_base64': encoded}
 
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return PB content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PB file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the PB file.
-        """
-        _ = options
-        return self.loads_bytes(path.read_bytes())
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to PB at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the PB file on disk.
-        data : JSONData
-            Data to write as PB. Should be a dictionary with
-            ``payload_base64``.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of records written to the PB file.
-        """
-        payload = self.dumps_bytes(data, options=options)
-        ensure_parent_dir(path)
-        path.write_bytes(payload)
-        return 1
-
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
 
 _PB_HANDLER = PbFile()
 
@@ -174,51 +117,4 @@ _PB_HANDLER = PbFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``PbFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PB file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the PB file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PB_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``PbFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PB file on disk.
-    data : JSONData
-        Data to write as PB. Should be a dictionary with ``payload_base64``.
-
-    Returns
-    -------
-    int
-        The number of records written to the PB file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PB_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _PB_HANDLER)

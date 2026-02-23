@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import FrozenInstanceError
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 from typing import cast
@@ -18,6 +19,7 @@ from etlplus.file import FileFormat
 from etlplus.file._stub_categories import (
     StubSingleDatasetScientificFileHandlerABC,
 )
+from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
@@ -59,6 +61,22 @@ from .pytest_file_contract_utils import (
 
 
 _NO_DEFAULT: object = object()
+
+
+@dataclass(slots=True, frozen=True)
+class _OptionHelperCase:
+    """Parameterized case for option-helper contract assertions."""
+
+    id: str
+    handler_cls: type[object]
+    method_name: str
+    read_options: ReadOptions
+    write_options: WriteOptions
+    baseline: object
+    read_expected: object
+    write_expected: object
+    read_default: object = _NO_DEFAULT
+    write_default: object = _NO_DEFAULT
 
 
 def _raise_read_only_write(format_name: FileFormat) -> NoReturn:
@@ -266,7 +284,7 @@ class _ReadOnlySingleScientificStub(
         dataset: str | None = None,
         options: ReadOptions | None = None,
     ) -> JSONData:  # noqa: ARG002
-        self.resolve_single_read_dataset(dataset, options=options)
+        self.resolve_single_dataset(dataset, options=options)
         return []
 
     def write_dataset(
@@ -277,8 +295,70 @@ class _ReadOnlySingleScientificStub(
         dataset: str | None = None,
         options: WriteOptions | None = None,
     ) -> int:  # noqa: ARG002
-        self.resolve_single_write_dataset(dataset, options=options)
+        self.resolve_single_dataset(dataset, options=options)
         _raise_read_only_write(self.format)
+
+
+_OPTION_HELPER_CASES = (
+    _OptionHelperCase(
+        id='delimiter',
+        handler_cls=_DelimitedStub,
+        method_name='delimiter_from_options',
+        read_options=ReadOptions(extras={'delimiter': '|'}),
+        write_options=WriteOptions(extras={'delimiter': '\t'}),
+        baseline=',',
+        read_expected='|',
+        write_expected='\t',
+        read_default=';',
+        write_default=':',
+    ),
+    _OptionHelperCase(
+        id='encoding',
+        handler_cls=XlsFile,
+        method_name='encoding_from_options',
+        read_options=ReadOptions(encoding='latin-1'),
+        write_options=WriteOptions(encoding='utf-16'),
+        baseline='utf-8',
+        read_expected='latin-1',
+        write_expected='utf-16',
+        read_default='utf-16',
+        write_default='ascii',
+    ),
+    _OptionHelperCase(
+        id='inner_name',
+        handler_cls=ZipFile,
+        method_name='inner_name_from_options',
+        read_options=ReadOptions(inner_name='data.json'),
+        write_options=WriteOptions(inner_name='payload.csv'),
+        baseline=None,
+        read_expected='data.json',
+        write_expected='payload.csv',
+    ),
+    _OptionHelperCase(
+        id='sheet',
+        handler_cls=XlsxFile,
+        method_name='sheet_from_options',
+        read_options=ReadOptions(sheet='Sheet2'),
+        write_options=WriteOptions(sheet=3),
+        baseline=0,
+        read_expected='Sheet2',
+        write_expected=3,
+        read_default='fallback_sheet',
+        write_default=99,
+    ),
+    _OptionHelperCase(
+        id='table',
+        handler_cls=SqliteFile,
+        method_name='table_from_options',
+        read_options=ReadOptions(table='events'),
+        write_options=WriteOptions(table='staging'),
+        baseline=None,
+        read_expected='events',
+        write_expected='staging',
+        read_default='fallback_table',
+        write_default='fallback_table',
+    ),
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -286,6 +366,18 @@ class _ReadOnlySingleScientificStub(
 
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
+
+    def test_at_returns_path_bound_facade(self) -> None:
+        """Test ``at(path)`` returning a callable bound handler facade."""
+        handler = _DelimitedStub()
+
+        bound = handler.at('ignored.csv')
+
+        assert isinstance(bound, BoundFileHandler)
+        assert bound.handler is handler
+        assert bound.path == Path('ignored.csv')
+        assert bound.read() == [{'id': 1}]
+        assert bound.write([{'id': 1}, {'id': 2}]) == 2
 
     @pytest.mark.parametrize(
         (
@@ -453,144 +545,42 @@ class TestOptionsContracts:
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
         handler = DtaFile()
-        read_options = ReadOptions(dataset='features')
-        write_options = WriteOptions(dataset='labels')
+        option_expectations = (
+            (ReadOptions(dataset='features'), 'features'),
+            (WriteOptions(dataset='labels'), 'labels'),
+        )
 
-        assert handler.dataset_from_read_options(None) is None
-        assert handler.dataset_from_read_options(read_options) == 'features'
-        assert (
-            handler.resolve_read_dataset(None, options=read_options)
-            == 'features'
-        )
-        assert (
-            handler.resolve_read_dataset('explicit', options=read_options)
-            == 'explicit'
-        )
-        assert (
-            handler.resolve_read_dataset(
-                None,
-                default='fallback',
+        assert handler.dataset_from_options(None) is None
+        for options, expected in option_expectations:
+            assert handler.dataset_from_options(options) == expected
+            assert handler.resolve_dataset(None, options=options) == expected
+            assert handler.resolve_dataset('explicit', options=options) == (
+                'explicit'
             )
-            == 'fallback'
-        )
-
-        assert handler.dataset_from_write_options(None) is None
-        assert handler.dataset_from_write_options(write_options) == 'labels'
-        assert (
-            handler.resolve_write_dataset(None, options=write_options)
-            == 'labels'
-        )
-        assert (
-            handler.resolve_write_dataset('explicit', options=write_options)
-            == 'explicit'
-        )
-        assert handler.resolve_write_dataset(None, default='fallback') == (
-            'fallback'
-        )
+        assert handler.resolve_dataset(None, default='fallback') == 'fallback'
 
     @pytest.mark.parametrize(
-        (
-            'handler_cls',
-            'read_method_name',
-            'write_method_name',
-            'read_options',
-            'write_options',
-            'baseline',
-            'read_expected',
-            'write_expected',
-            'read_default',
-            'write_default',
-        ),
-        [
-            (
-                _DelimitedStub,
-                'delimiter_from_read_options',
-                'delimiter_from_write_options',
-                ReadOptions(extras={'delimiter': '|'}),
-                WriteOptions(extras={'delimiter': '\t'}),
-                ',',
-                '|',
-                '\t',
-                ';',
-                ':',
-            ),
-            (
-                XlsFile,
-                'encoding_from_read_options',
-                'encoding_from_write_options',
-                ReadOptions(encoding='latin-1'),
-                WriteOptions(encoding='utf-16'),
-                'utf-8',
-                'latin-1',
-                'utf-16',
-                'utf-16',
-                'ascii',
-            ),
-            (
-                ZipFile,
-                'inner_name_from_read_options',
-                'inner_name_from_write_options',
-                ReadOptions(inner_name='data.json'),
-                WriteOptions(inner_name='payload.csv'),
-                None,
-                'data.json',
-                'payload.csv',
-                _NO_DEFAULT,
-                _NO_DEFAULT,
-            ),
-            (
-                XlsxFile,
-                'sheet_from_read_options',
-                'sheet_from_write_options',
-                ReadOptions(sheet='Sheet2'),
-                WriteOptions(sheet=3),
-                0,
-                'Sheet2',
-                3,
-                'fallback_sheet',
-                99,
-            ),
-            (
-                SqliteFile,
-                'table_from_read_options',
-                'table_from_write_options',
-                ReadOptions(table='events'),
-                WriteOptions(table='staging'),
-                None,
-                'events',
-                'staging',
-                'fallback_table',
-                'fallback_table',
-            ),
-        ],
-        ids=['delimiter', 'encoding', 'inner_name', 'sheet', 'table'],
+        'case',
+        _OPTION_HELPER_CASES,
+        ids=[case.id for case in _OPTION_HELPER_CASES],
     )
     def test_option_helper_pairs_use_override_then_default(
         self,
-        handler_cls: type[object],
-        read_method_name: str,
-        write_method_name: str,
-        read_options: ReadOptions,
-        write_options: WriteOptions,
-        baseline: object,
-        read_expected: object,
-        write_expected: object,
-        read_default: object,
-        write_default: object,
+        case: _OptionHelperCase,
     ) -> None:
         """Test paired read/write option helpers with override/default."""
-        handler = handler_cls()
-        read_call = getattr(handler, read_method_name)
-        write_call = getattr(handler, write_method_name)
+        helper = getattr(case.handler_cls(), case.method_name)
 
-        assert read_call(None) == baseline
-        assert write_call(None) == baseline
-        assert read_call(read_options) == read_expected
-        assert write_call(write_options) == write_expected
-        if read_default is not _NO_DEFAULT:
-            assert read_call(None, default=read_default) == read_default
-        if write_default is not _NO_DEFAULT:
-            assert write_call(None, default=write_default) == write_default
+        assert helper(None) == case.baseline
+        assert helper(case.read_options) == case.read_expected
+        assert helper(case.write_options) == case.write_expected
+        if case.read_default is not _NO_DEFAULT:
+            assert helper(None, default=case.read_default) == case.read_default
+        if case.write_default is not _NO_DEFAULT:
+            assert (
+                helper(None, default=case.write_default)
+                == case.write_default
+            )
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """Test each ReadOptions instance getting its own extras dict."""

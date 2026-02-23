@@ -23,10 +23,8 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -44,6 +42,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for Parquet operations."""
+    return get_pandas('Parquet')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -88,7 +95,7 @@ class ParquetFile(ColumnarFileHandlerABC):
             installed.
         """
         _ = options
-        pandas = get_pandas('Parquet')
+        pandas = _pandas()
         try:
             return pandas.read_parquet(path)
         except ImportError as err:  # pragma: no cover
@@ -116,7 +123,7 @@ class ParquetFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'Parquet')
-        pandas = get_pandas('Parquet')
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
@@ -182,51 +189,4 @@ _PARQUET_HANDLER = ParquetFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``ParquetFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PARQUET file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the Parquet file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PARQUET_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ParquetFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PARQUET file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PARQUET_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _PARQUET_HANDLER)

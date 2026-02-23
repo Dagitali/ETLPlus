@@ -23,11 +23,9 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from ._io import records_from_table
 from .base import ColumnarFileHandlerABC
@@ -45,6 +43,20 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for Feather operations."""
+    return get_pandas('Feather')
+
+
+def _pyarrow() -> Any:
+    """Return the optional pyarrow module."""
+    return get_dependency('pyarrow', format_name='Feather')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -83,8 +95,8 @@ class FeatherFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         _ = options
-        get_dependency('pyarrow', format_name='Feather')
-        pandas = get_pandas('Feather')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.read_feather(path)
 
     def records_to_table(
@@ -105,8 +117,8 @@ class FeatherFile(ColumnarFileHandlerABC):
             Columnar table object.
         """
         records = normalize_records(data, 'Feather')
-        get_dependency('pyarrow', format_name='Feather')
-        pandas = get_pandas('Feather')
+        _ = _pyarrow()
+        pandas = _pandas()
         return pandas.DataFrame.from_records(records)
 
     def table_to_records(
@@ -159,51 +171,4 @@ _FEATHER_HANDLER = FeatherFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``FeatherFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the Feather file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the Feather file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _FEATHER_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``FeatherFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the Feather file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _FEATHER_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _FEATHER_HANDLER)

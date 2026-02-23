@@ -95,26 +95,30 @@ def _install_core_handler_stub(
     """Install a configurable core handler stub and return call metadata."""
     calls: dict[str, object] = {}
 
+    def _at(path: Path) -> object:
+        calls['bound_path'] = path
+
+        def _read() -> JSONData:
+            calls['read_path'] = path
+            return [] if read_result is None else read_result
+
+        def _write(
+            data: JSONData,
+            *,
+            options: WriteOptions | None = None,
+        ) -> int:
+            calls['write_path'] = path
+            calls['write_data'] = data
+            calls['write_options'] = options
+            return write_result
+
+        return SimpleNamespace(read=_read, write=_write)
+
     def _get_handler(file_format: FileFormat) -> object:
         calls['format'] = file_format
         return handler
 
-    def _read(path: Path) -> JSONData:
-        calls['read_path'] = path
-        return [] if read_result is None else read_result
-
-    def _write(
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        calls['write_path'] = path
-        calls['write_data'] = data
-        calls['write_options'] = options
-        return write_result
-
-    handler = SimpleNamespace(read=_read, write=_write)
+    handler = SimpleNamespace(at=_at)
 
     monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
     return calls
@@ -565,6 +569,7 @@ class TestFileCoreDispatch:
 
         assert result == read_result
         assert calls['format'] is FileFormat.CSV
+        assert calls['bound_path'] == path
         assert calls['read_path'] == path
 
     @pytest.mark.parametrize(
@@ -614,3 +619,4 @@ class TestFileCoreDispatch:
             expected_data=payload,
             expected_root_tag=expected_root_tag,
         )
+        assert calls['bound_path'] == path

@@ -18,15 +18,12 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import Any
 
 from ..types import JSONData
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import coerce_record_payload
-from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -43,6 +40,14 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _cbor2() -> Any:
+    """Return the optional cbor2 module."""
+    return get_dependency('cbor2', format_name='CBOR')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -81,7 +86,7 @@ class CborFile(BinarySerializationFileHandlerABC):
             Serialized CBOR payload bytes.
         """
         _ = options
-        cbor2 = get_dependency('cbor2', format_name='CBOR')
+        cbor2 = _cbor2()
         records = normalize_records(data, 'CBOR')
         payload: JSONData = records if isinstance(data, list) else records[0]
         return cbor2.dumps(payload)
@@ -108,63 +113,9 @@ class CborFile(BinarySerializationFileHandlerABC):
             Parsed payload.
         """
         _ = options
-        cbor2 = get_dependency('cbor2', format_name='CBOR')
+        cbor2 = _cbor2()
         decoded = cbor2.loads(payload)
         return coerce_record_payload(decoded, format_name='CBOR')
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Read and return CBOR content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the CBOR file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            The structured data read from the CBOR file.
-        """
-        _ = options
-        return self.loads_bytes(path.read_bytes())
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to CBOR at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the CBOR file on disk.
-        data : JSONData
-            Data to write as CBOR file.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the CBOR file.
-        """
-        records = normalize_records(data, 'CBOR')
-        payload = self.dumps_bytes(data, options=options)
-        ensure_parent_dir(path)
-        path.write_bytes(payload)
-        return len(records)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -175,52 +126,4 @@ _CBOR_HANDLER = CborFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``CborFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CBOR file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the CBOR file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _CBOR_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``CborFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the CBOR file on disk.
-    data : JSONData
-        Data to write as CBOR file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the CBOR file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _CBOR_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _CBOR_HANDLER)

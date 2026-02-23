@@ -19,18 +19,14 @@ Notes
 from __future__ import annotations
 
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONDict
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -63,6 +59,11 @@ _PRIMITIVE_TYPES: tuple[type, ...] = (
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _fastavro() -> Any:
+    """Return the optional fastavro module."""
+    return get_dependency('fastavro', format_name='AVRO')
 
 
 def _infer_schema(records: JSONList) -> dict[str, Any]:
@@ -168,7 +169,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
         if not records:
             return b''
 
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         schema = _infer_schema(records)
         parsed_schema = fastavro.parse_schema(schema)
 
@@ -198,76 +199,10 @@ class AvroFile(BinarySerializationFileHandlerABC):
             Parsed records.
         """
         _ = options
-        fastavro = get_dependency('fastavro', format_name='AVRO')
+        fastavro = _fastavro()
         with BytesIO(payload) as handle:
             reader = fastavro.reader(handle)
             return [cast(JSONDict, record) for record in reader]
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return AVRO content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the AVRO file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the AVRO file.
-        """
-        _ = options
-        fastavro = get_dependency('fastavro', format_name='AVRO')
-        with path.open('rb') as handle:
-            reader = fastavro.reader(handle)
-            return [cast(JSONDict, record) for record in reader]
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to AVRO at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the AVRO file on disk.
-        data : JSONData
-            Data to write.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
-        """
-        _ = options
-        records = normalize_records(data, 'AVRO')
-        if not records:
-            return 0
-
-        fastavro = get_dependency('fastavro', format_name='AVRO')
-        schema = _infer_schema(records)
-        parsed_schema = fastavro.parse_schema(schema)
-
-        ensure_parent_dir(path)
-        with path.open('wb') as handle:
-            fastavro.writer(handle, parsed_schema, records)
-
-        return len(records)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -278,51 +213,4 @@ _AVRO_HANDLER = AvroFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``AvroFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the AVRO file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the AVRO file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _AVRO_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``AvroFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the AVRO file on disk.
-    data : JSONData
-        Data to write.
-
-    Returns
-    -------
-    int
-        Number of records written.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _AVRO_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _AVRO_HANDLER)

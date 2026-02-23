@@ -18,14 +18,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_pandas
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import records_from_table
 from ._io import stringify_value
 from .base import ReadOptions
@@ -43,6 +41,15 @@ __all__ = [
     'read',
     'write',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _pandas() -> Any:
+    """Return the optional pandas module for FWF operations."""
+    return get_pandas('FWF')
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -80,7 +87,7 @@ class FwfFile(TextFixedWidthFileHandlerABC):
             The list of dictionaries parsed from the FWF file.
         """
         _ = options
-        pandas = get_pandas('FWF')
+        pandas = _pandas()
         frame = pandas.read_fwf(path)
         return records_from_table(frame)
 
@@ -149,52 +156,4 @@ _FWF_HANDLER = FwfFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``FwfFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the FWF file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the FWF file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _FWF_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``FwfFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the FWF file on disk.
-    data : JSONData
-        Data to write as FWF file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the FWF file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _FWF_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _FWF_HANDLER)

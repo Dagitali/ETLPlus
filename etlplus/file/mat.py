@@ -18,11 +18,7 @@ Notes
 
 from __future__ import annotations
 
-from ..types import JSONData
-from ..types import JSONList
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_io
 from ._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from .enums import FileFormat
 
@@ -49,7 +45,6 @@ class MatFile(StubSingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.MAT
-    dataset_key = 'data'
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -61,52 +56,4 @@ _MAT_HANDLER = MatFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``MatFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the MAT file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the MAT file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _MAT_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``MatFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the MAT file on disk.
-    data : JSONData
-        Data to write as MAT file. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the MAT file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _MAT_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _MAT_HANDLER)

@@ -17,17 +17,13 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..types import JSONData
 from ..types import JSONList
-from ..types import StrPath
 from ._imports import get_dependency
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
-from ._io import ensure_parent_dir
+from ._io import make_deprecated_module_io
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
@@ -47,6 +43,11 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _bson() -> Any:
+    """Return the optional bson module."""
+    return get_dependency('bson', format_name='BSON', pip_name='pymongo')
 
 
 def _decode_all(
@@ -147,7 +148,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
             Serialized BSON payload bytes.
         """
         _ = options
-        bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
+        bson = _bson()
         records = normalize_records(data, 'BSON')
         chunks = [_encode_doc(bson, record) for record in records]
         return b''.join(chunks)
@@ -174,66 +175,9 @@ class BsonFile(BinarySerializationFileHandlerABC):
             Parsed records.
         """
         _ = options
-        bson = get_dependency('bson', format_name='BSON', pip_name='pymongo')
+        bson = _bson()
         docs = _decode_all(bson, payload)
         return cast(JSONList, docs)
-
-    def read(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONList:
-        """
-        Read and return BSON content from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the BSON file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            The list of dictionaries read from the BSON file.
-        """
-        _ = options
-        return cast(JSONList, self.loads_bytes(path.read_bytes()))
-
-    def write(
-        self,
-        path: Path,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> int:
-        """
-        Write *data* to BSON at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the BSON file on disk.
-        data : JSONData
-            Data to write as BSON. Should be a list of dictionaries or a
-            single dictionary.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            The number of rows written to the BSON file.
-        """
-        records = normalize_records(data, 'BSON')
-        if not records:
-            return 0
-        payload = self.dumps_bytes(data, options=options)
-        ensure_parent_dir(path)
-        path.write_bytes(payload)
-        return len(records)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -245,55 +189,4 @@ _BSON_HANDLER = BsonFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONList:
-    """
-    Deprecated wrapper. Use ``BsonFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the BSON file on disk.
-
-    Returns
-    -------
-    JSONList
-        The list of dictionaries read from the BSON file.
-    """
-    return cast(
-        JSONList,
-        call_deprecated_module_read(
-            path,
-            __name__,
-            _BSON_HANDLER.read,
-        ),
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``BsonFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the BSON file on disk.
-    data : JSONData
-        Data to write as BSON. Should be a list of dictionaries or a
-        single dictionary.
-
-    Returns
-    -------
-    int
-        The number of rows written to the BSON file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _BSON_HANDLER.write,
-    )
+read, write = make_deprecated_module_io(__name__, _BSON_HANDLER)
