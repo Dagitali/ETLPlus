@@ -23,6 +23,7 @@ from typing import Any
 
 from ..types import JSONData
 from ..types import JSONList
+from ._dataframe import dataframe_from_records
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
 from ._io import ensure_parent_dir
@@ -184,7 +185,7 @@ class NcFile(
 
         xarray = self.resolve_xarray()
         pandas = self.resolve_pandas()
-        frame = pandas.DataFrame.from_records(records)
+        frame = dataframe_from_records(pandas, records)
         ds = xarray.Dataset.from_dataframe(frame)
         ensure_parent_dir(path)
         try:
