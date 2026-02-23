@@ -29,7 +29,6 @@ from ._imports import get_pandas
 from ._io import call_deprecated_module_read
 from ._io import call_deprecated_module_write
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import records_from_table
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -133,10 +132,11 @@ class DtaFile(SingleDatasetScientificFileHandlerABC):
         int
             Number of records written.
         """
-        self.resolve_single_dataset(dataset, options=options)
-
-        format_name = self.format_name
-        records = normalize_records(data, format_name)
+        records = self.prepare_single_dataset_write_records(
+            data,
+            dataset=dataset,
+            options=options,
+        )
         if not records:
             return 0
 
