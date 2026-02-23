@@ -20,13 +20,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..types import JSONData
+from ._binary_codec_handlers import BinaryRecordCodecHandlerMixin
 from ._imports import get_dependency
-from ._io import coerce_record_payload
-from ._io import normalize_records
-from .base import BinarySerializationFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -49,7 +44,7 @@ def _cbor2() -> Any:
 # SECTION: CLASSES ========================================================== #
 
 
-class CborFile(BinarySerializationFileHandlerABC):
+class CborFile(BinaryRecordCodecHandlerMixin):
     """
     Handler implementation for CBOR files.
     """
@@ -57,58 +52,15 @@ class CborFile(BinarySerializationFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.CBOR
+    codec_module_name = 'cbor2'
+    codec_format_name = 'CBOR'
+    encode_method_name = 'dumps'
+    decode_method_name = 'loads'
 
-    # -- Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
-    def dumps_bytes(
-        self,
-        data: JSONData,
-        *,
-        options: WriteOptions | None = None,
-    ) -> bytes:
+    def resolve_codec_module(self) -> Any:
         """
-        Serialize structured records to CBOR bytes.
-
-        Parameters
-        ----------
-        data : JSONData
-            Payload to serialize.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        bytes
-            Serialized CBOR payload bytes.
+        Return the optional cbor2 module.
         """
-        _ = options
-        cbor2 = _cbor2()
-        records = normalize_records(data, 'CBOR')
-        payload: JSONData = records if isinstance(data, list) else records[0]
-        return cbor2.dumps(payload)
-
-    def loads_bytes(
-        self,
-        payload: bytes,
-        *,
-        options: ReadOptions | None = None,
-    ) -> JSONData:
-        """
-        Parse CBOR bytes into structured records.
-
-        Parameters
-        ----------
-        payload : bytes
-            Raw CBOR payload bytes.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONData
-            Parsed payload.
-        """
-        _ = options
-        cbor2 = _cbor2()
-        decoded = cbor2.loads(payload)
-        return coerce_record_payload(decoded, format_name='CBOR')
+        return _cbor2()
