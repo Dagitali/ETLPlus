@@ -18,15 +18,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import ensure_parent_dir
-from ._io import records_from_table
+from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from .base import ReadOptions
-from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -42,7 +39,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class SavFile(SingleDatasetScientificFileHandlerABC):
+class SavFile(SingleDatasetTabularScientificReadWriteMixin):
     """
     Handler implementation for SAV files.
     """
@@ -50,76 +47,71 @@ class SavFile(SingleDatasetScientificFileHandlerABC):
     # -- Class Attributes -- #
 
     format = FileFormat.SAV
+    requires_pyreadstat_for_read = True
+    requires_pyreadstat_for_write = True
 
     # -- Instance Methods -- #
 
-    def read_dataset(
+    def read_frame(
         self,
         path: Path,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: ReadOptions | None = None,
-    ) -> JSONList:
+    ) -> Any:
         """
-        Read and return one dataset from SAV at *path*.
+        Read and return one dataframe-like dataset from SAV.
 
         Parameters
         ----------
         path : Path
-            Path to the SAV file on disk.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        JSONList
-            Parsed records.
+            Path to the SAV file to read.
+        pandas : Any
+            The pandas module, passed via dependency injection.
+        pyreadstat : Any | None
+            The pyreadstat module, passed via dependency injection when
+            required by the mixin. Will be None if not required.
+        options : ReadOptions or None
+            Optional read options. May be ignored by this handler.
         """
-        self.resolve_single_dataset(dataset, options=options)
-        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
+        _ = pandas
+        _ = options
+        if pyreadstat is None:  # pragma: no cover - guarded by mixin flag
+            raise RuntimeError(
+                'pyreadstat dependency is required for SAV read',
+            )
         frame, _meta = pyreadstat.read_sav(str(path))
-        return records_from_table(frame)
+        return frame
 
-    def write_dataset(
+    def resolve_pandas(self) -> Any:
+        """
+        Return pandas using module-level dependency resolution.
+        """
+        return get_pandas(self.format_name)
+
+    def resolve_pyreadstat(self) -> Any:
+        """
+        Return pyreadstat using module-level dependency resolution.
+        """
+        return get_dependency('pyreadstat', format_name=self.format_name)
+
+    def write_frame(
         self,
         path: Path,
-        data: JSONData,
+        frame: Any,
         *,
-        dataset: str | None = None,
+        pandas: Any,
+        pyreadstat: Any | None,
         options: WriteOptions | None = None,
-    ) -> int:
+    ) -> None:
         """
-        Write one dataset to SAV at *path* and return record count.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the SAV file on disk.
-        data : JSONData
-            Dataset payload to write.
-        dataset : str | None, optional
-            Dataset selector. Use the default dataset key or ``None``.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-
-        Returns
-        -------
-        int
-            Number of records written.
+        Write one dataframe-like dataset to SAV.
         """
-        records = self.prepare_single_dataset_write_records(
-            data,
-            dataset=dataset,
-            options=options,
-        )
-        if not records:
-            return 0
-
-        pyreadstat = get_dependency('pyreadstat', format_name=self.format_name)
-        pandas = get_pandas(self.format_name)
-        ensure_parent_dir(path)
-        frame = pandas.DataFrame.from_records(records)
+        _ = pandas
+        _ = options
+        if pyreadstat is None:  # pragma: no cover - guarded by mixin flag
+            raise RuntimeError(
+                'pyreadstat dependency is required for SAV write',
+            )
         pyreadstat.write_sav(frame, str(path))
-        return len(records)
