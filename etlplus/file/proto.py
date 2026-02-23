@@ -18,9 +18,8 @@ Notes
 from __future__ import annotations
 
 from ..types import JSONData
-from ..types import StrPath
-from ._io import call_deprecated_module_read
-from ._io import call_deprecated_module_write
+from ._io import make_deprecated_module_read
+from ._io import make_deprecated_module_write
 from ._io import require_dict_payload
 from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
@@ -114,51 +113,5 @@ _PROTO_HANDLER = ProtoFile()
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def read(
-    path: StrPath,
-) -> JSONData:
-    """
-    Deprecated wrapper. Use ``ProtoFile().read(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PROTO file on disk.
-
-    Returns
-    -------
-    JSONData
-        The structured data read from the PROTO file.
-    """
-    return call_deprecated_module_read(
-        path,
-        __name__,
-        _PROTO_HANDLER.read,
-    )
-
-
-def write(
-    path: StrPath,
-    data: JSONData,
-) -> int:
-    """
-    Deprecated wrapper. Use ``ProtoFile().write(...)`` instead.
-
-    Parameters
-    ----------
-    path : StrPath
-        Path to the PROTO file on disk.
-    data : JSONData
-        Data to write as PROTO. Should be a dictionary with ``schema``.
-
-    Returns
-    -------
-    int
-        The number of records written to the PROTO file.
-    """
-    return call_deprecated_module_write(
-        path,
-        data,
-        __name__,
-        _PROTO_HANDLER.write,
-    )
+read = make_deprecated_module_read(__name__, _PROTO_HANDLER)
+write = make_deprecated_module_write(__name__, _PROTO_HANDLER)
