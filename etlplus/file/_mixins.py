@@ -104,6 +104,33 @@ class SingleDatasetValidation(ScientificDatasetOption):
         _ = path
         return [self.dataset_key]
 
+    def prepare_single_dataset_write_records(
+        self,
+        data: JSONData,
+        *,
+        dataset: str | None = None,
+        options: WriteOptions | None = None,
+    ) -> JSONList:
+        """
+        Validate dataset selection and normalize write payload records.
+
+        Parameters
+        ----------
+        data : JSONData
+            Write payload to validate and normalize.
+        dataset : str | None, optional
+            Dataset selector. Use the default dataset key or ``None``.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        JSONList
+            Normalized list of records ready for writing.
+        """
+        self.resolve_single_dataset(dataset, options=options)
+        return normalize_records(data, self.format_name)
+
     def resolve_single_dataset(
         self,
         dataset: str | None = None,
