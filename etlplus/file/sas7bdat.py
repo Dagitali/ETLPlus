@@ -18,15 +18,13 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ..types import JSONData
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
-from ._io import read_sas_table
 from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
+from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
 from .base import ReadOnlyFileHandlerABC
-from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
 
@@ -52,6 +50,7 @@ get_pandas = _get_pandas
 
 class Sas7bdatFile(
     ReadOnlyFileHandlerABC,
+    PyreadstatReadSasFallbackFrameMixin,
     SingleDatasetTabularScientificReadMixin,
 ):
     """
@@ -62,23 +61,9 @@ class Sas7bdatFile(
 
     format = FileFormat.SAS7BDAT
     requires_pyreadstat_for_read = True
+    sas_format_hint = 'sas7bdat'
 
     # -- Instance Methods -- #
-
-    def read_frame(
-        self,
-        path: Path,
-        *,
-        pandas: Any,
-        pyreadstat: Any | None,
-        options: ReadOptions | None = None,
-    ) -> Any:
-        """
-        Read and return one dataframe-like dataset from SAS7BDAT.
-        """
-        _ = pyreadstat
-        _ = options
-        return read_sas_table(pandas, path, format_hint='sas7bdat')
 
     def write_dataset(
         self,
