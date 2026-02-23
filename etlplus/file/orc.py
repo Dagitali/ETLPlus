@@ -18,18 +18,11 @@ Notes
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
 from ._imports import get_dependency
 from ._imports import get_pandas
-from ._io import normalize_records
-from ._io import records_from_table
-from .base import ColumnarFileHandlerABC
-from .base import ReadOptions
-from .base import WriteOptions
+from ._pandas_handlers import PandasColumnarHandlerMixin
 from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,24 +33,10 @@ __all__ = [
     'OrcFile',
 ]
 
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _pandas() -> Any:
-    """Return the optional pandas module for ORC operations."""
-    return get_pandas('ORC')
-
-
-def _pyarrow() -> Any:
-    """Return the optional pyarrow module."""
-    return get_dependency('pyarrow', format_name='ORC')
-
-
 # SECTION: CLASSES ========================================================== #
 
 
-class OrcFile(ColumnarFileHandlerABC):
+class OrcFile(PandasColumnarHandlerMixin):
     """
     Handler implementation for ORC files.
     """
@@ -66,94 +45,22 @@ class OrcFile(ColumnarFileHandlerABC):
 
     format = FileFormat.ORC
     engine_name = 'pandas'
+    pandas_format_name = 'ORC'
+    read_method = 'read_orc'
+    write_method = 'to_orc'
+    write_kwargs = (('index', False),)
+    requires_pyarrow = True
 
-    # -- Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
-    def read_table(
-        self,
-        path: Path,
-        *,
-        options: ReadOptions | None = None,
-    ) -> Any:
+    def resolve_pandas(self) -> Any:
         """
-        Read an ORC table object from *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ORC file on disk.
-        options : ReadOptions | None, optional
-            Optional read parameters.
-
-        Returns
-        -------
-        Any
-            Columnar table object.
+        Return pandas using the local dependency resolver hook.
         """
-        _ = options
-        _ = _pyarrow()
-        pandas = _pandas()
-        return pandas.read_orc(path)
+        return get_pandas(self.pandas_format_name)
 
-    def records_to_table(
-        self,
-        data: JSONData,
-    ) -> Any:
+    def resolve_pyarrow(self) -> Any:
         """
-        Convert row-oriented records into an ORC table object.
-
-        Parameters
-        ----------
-        data : JSONData
-            Records to convert.
-
-        Returns
-        -------
-        Any
-            Columnar table object.
+        Return pyarrow using the local dependency resolver hook.
         """
-        records = normalize_records(data, 'ORC')
-        _ = _pyarrow()
-        pandas = _pandas()
-        return pandas.DataFrame.from_records(records)
-
-    def table_to_records(
-        self,
-        table: Any,
-    ) -> JSONList:
-        """
-        Convert an ORC table object into row-oriented records.
-
-        Parameters
-        ----------
-        table : Any
-            Columnar table object.
-
-        Returns
-        -------
-        JSONList
-            Parsed records.
-        """
-        return records_from_table(table)
-
-    def write_table(
-        self,
-        path: Path,
-        table: Any,
-        *,
-        options: WriteOptions | None = None,
-    ) -> None:
-        """
-        Write an ORC table object to *path*.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ORC file on disk.
-        table : Any
-            Columnar table object.
-        options : WriteOptions | None, optional
-            Optional write parameters.
-        """
-        _ = options
-        table.to_orc(path, index=False)
+        return get_dependency('pyarrow', format_name=self.pandas_format_name)
