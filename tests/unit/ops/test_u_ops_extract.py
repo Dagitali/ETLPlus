@@ -14,6 +14,7 @@ Notes
 
 from __future__ import annotations
 
+import importlib
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -27,6 +28,9 @@ from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 
 # SECTION: HELPERS ========================================================== #
+
+
+extract_mod = importlib.import_module('etlplus.ops.extract')
 
 
 class _StubResponse:
@@ -208,6 +212,8 @@ class TestExtractFromApi:
         coercion.
     """
 
+    # pylint: disable=protected-access
+
     def test_custom_method_and_kwargs(
         self,
         base_url: str,
@@ -231,6 +237,11 @@ class TestExtractFromApi:
         assert result == {'status': 'ok'}
         assert session.calls[0]['kwargs']['timeout'] == 2.5
         assert session.calls[0]['kwargs']['headers'] == {'X-Test': '1'}
+
+    def test_extract_from_api_env_requires_url(self) -> None:
+        """Missing URL in normalized API env should raise ValueError."""
+        with pytest.raises(ValueError, match='API source missing URL'):
+            extract_mod._extract_from_api_env({}, use_client=False)
 
     def test_invalid_json_fallback(
         self,
@@ -478,3 +489,84 @@ class TestExtractFromFile:
         with pytest.raises(ValueError) as e:
             extract_from_file(str(path), file_format)
         assert err_msg in str(e.value)
+
+
+class TestExtractDefensiveDispatch:
+    """Unit tests for defensive connector dispatch behavior."""
+
+    def test_extract_defensive_default_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unexpected connector coercion should trigger ValueError branch."""
+
+        def _coerce(_value: object) -> object:
+            return object()
+
+        monkeypatch.setattr(
+            extract_mod.DataConnectorType,
+            'coerce',
+            classmethod(lambda cls, value: _coerce(value)),
+        )
+        with pytest.raises(ValueError, match='Invalid source type'):
+            extract('file', 'ignored')
+
+    def test_extract_dispatches_database_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Database connector types should dispatch to DB extraction."""
+        calls: list[str] = []
+
+        def _extract_from_database(source: str) -> list[dict[str, str]]:
+            calls.append(source)
+            return [{'source': source}]
+
+        monkeypatch.setattr(
+            extract_mod,
+            'extract_from_database',
+            _extract_from_database,
+        )
+
+        result = extract('database', 'sqlite:///source.db')
+
+        assert calls == ['sqlite:///source.db']
+        assert result == [{'source': 'sqlite:///source.db'}]
+
+    def test_extract_dispatches_api_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """API connector types should dispatch to API extraction."""
+        calls: list[tuple[str, dict[str, Any]]] = []
+
+        def _extract_from_api(
+            source: str,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            calls.append((source, kwargs))
+            return {'source': source, 'kwargs': kwargs}
+
+        monkeypatch.setattr(
+            extract_mod,
+            'extract_from_api',
+            _extract_from_api,
+        )
+
+        result = extract(
+            'api',
+            'https://example.test/data',
+            method='post',
+            timeout=3.0,
+        )
+
+        assert calls == [
+            (
+                'https://example.test/data',
+                {'method': 'post', 'timeout': 3.0},
+            ),
+        ]
+        assert result == {
+            'source': 'https://example.test/data',
+            'kwargs': {'method': 'post', 'timeout': 3.0},
+        }

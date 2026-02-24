@@ -12,8 +12,12 @@ Notes
 
 from __future__ import annotations
 
+from typing import Any
+from typing import cast
+
 import pytest
 
+import etlplus.ops.utils as utils_mod
 from etlplus.ops.utils import ValidationResultDict
 from etlplus.ops.utils import maybe_validate
 
@@ -80,6 +84,11 @@ def test_error_severity_raises_value_error() -> None:
         )
 
     assert printer_calls, 'expected a log entry when validation fails'
+
+
+def test_rule_name_returns_none_without_get_method() -> None:
+    """Ruleset objects without ``get`` should return ``None`` name."""
+    assert utils_mod._rule_name(cast(Any, object())) is None
 
 
 def test_skip_when_disabled() -> None:
