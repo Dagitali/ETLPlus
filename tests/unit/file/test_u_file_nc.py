@@ -107,6 +107,22 @@ class TestNc(SingleDatasetWritableContract):
 
         assert result == [{'value': 1}, {'value': 2}]
 
+    def test_read_keeps_frame_without_index_column(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Test that reading preserves frames with no ``index`` column."""
+        frame = DictRecordsFrameStub([{'value': 10}, {'value': 11}])
+        dataset = _Dataset(frame)
+        xarray = _XarrayStub(dataset)
+        optional_module_stub({'xarray': xarray})
+        path = self.format_path(tmp_path)
+
+        result = mod.NcFile().read(path)
+
+        assert result == [{'value': 10}, {'value': 11}]
+
     def test_read_keeps_non_sequential_index(
         self,
         tmp_path: Path,

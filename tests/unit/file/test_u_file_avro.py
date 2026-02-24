@@ -121,8 +121,13 @@ class TestAvroHelpers:
         [
             (mod._infer_value_type, {'bad': 'value'}),
             (mod._infer_schema, [{'bad': {'nested': True}}]),
+            (mod._infer_schema, [{'bad': object()}]),
         ],
-        ids=['infer_value_type_complex', 'infer_schema_nested'],
+        ids=[
+            'infer_value_type_complex',
+            'infer_schema_nested',
+            'infer_schema_non_primitive_scalar',
+        ],
     )
     def test_infer_helpers_reject_invalid_payloads(
         self,

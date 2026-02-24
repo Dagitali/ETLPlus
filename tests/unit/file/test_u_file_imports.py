@@ -22,9 +22,10 @@ class TestImportsHelpers:
         ('method_name', 'method_args', 'expected_call'),
         [
             ('get_pandas', ('CSV',), ('pandas', 'CSV', None)),
+            ('get_pyarrow', ('PARQUET',), ('pyarrow', 'PARQUET', None)),
             ('get_yaml', (), ('yaml', 'YAML', 'PyYAML')),
         ],
-        ids=['pandas', 'yaml'],
+        ids=['pandas', 'pyarrow', 'yaml'],
     )
     def test_dependency_helpers_delegate_to_get_dependency(
         self,
@@ -146,3 +147,38 @@ class TestImportsHelpers:
             mod.get_optional_module('cached_mod', error_message='ignored')
             is sentinel
         )
+
+    def test_resolve_module_callable_returns_none_when_module_is_missing(
+        self,
+    ) -> None:
+        """Test callable resolution returning ``None`` for missing modules."""
+        handler_type = type(
+            '_DetachedHandler',
+            (),
+            {'__module__': 'not.loaded'},
+        )
+        handler = handler_type()
+        assert mod.resolve_module_callable(handler, 'anything') is None
+
+    def test_resolve_with_module_override_falls_back(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test module override helper using fallback when override missing."""
+        monkeypatch.setattr(mod, 'resolve_module_callable', lambda *_: None)
+        calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+        def _fallback(*args: object, **kwargs: object) -> str:
+            calls.append((args, kwargs))
+            return 'fallback'
+
+        result = mod._resolve_with_module_override(
+            object(),
+            'missing_override',
+            _fallback,
+            1,
+            token='x',
+        )
+
+        assert result == 'fallback'
+        assert calls == [((1,), {'token': 'x'})]

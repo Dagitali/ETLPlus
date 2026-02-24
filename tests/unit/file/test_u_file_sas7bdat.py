@@ -111,6 +111,19 @@ class TestSas7bdatRead(PathMixin):
         assert result == [{'id': 1}]
         pandas.assert_single_read_call(path, format_name='sas7bdat')
 
+    def test_write_dataset_rejects_default_dataset_as_read_only(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test write_dataset preserving read-only runtime behavior."""
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(RuntimeError, match='read-only'):
+            mod.Sas7bdatFile().write_dataset(
+                path,
+                [{'id': 1}],
+            )
+
     @staticmethod
     def _install_dependency_stubs(
         monkeypatch: pytest.MonkeyPatch,

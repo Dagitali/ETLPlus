@@ -73,6 +73,18 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         with pytest.raises(ValueError, match='multiple members'):
             mod.ZipFile().read_inner_bytes(path)
 
+    def test_read_inner_bytes_uses_single_member_when_unambiguous(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test byte reads when the archive has exactly one member."""
+        path = self.archive_path(tmp_path, stem='single')
+        _write_zip(path, {'payload.json': b'only'})
+
+        result = mod.ZipFile().read_inner_bytes(path)
+
+        assert result == b'only'
+
     @pytest.mark.parametrize(
         ('stem', 'entries', 'error_pattern'),
         [

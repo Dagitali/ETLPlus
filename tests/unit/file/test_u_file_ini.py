@@ -65,6 +65,11 @@ class TestIni(
         assert reloaded['DEFAULT'] == {'shared': 'base', 'timeout': '5'}
         assert reloaded['alpha'] == {'value': '1'}
 
+    def test_loads_without_default_section_omits_default_key(self) -> None:
+        """Test INI parsing without defaults omitting the ``DEFAULT`` key."""
+        payload = mod.IniFile().loads('[alpha]\nvalue=1\n')
+        assert payload == {'alpha': {'value': '1'}}
+
     def test_write_rejects_non_dict_default(
         self,
         tmp_path: Path,
