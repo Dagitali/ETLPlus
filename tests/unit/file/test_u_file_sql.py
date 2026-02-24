@@ -87,3 +87,28 @@ class TestSqlHelpers:
                 engine_name='sqlite',
                 default_table='data',
             )
+
+    def test_write_table_rows_returns_zero_for_empty_rows(self) -> None:
+        """Test write short-circuit when no rows are provided."""
+
+        class _Connection:
+            def execute(self, *_args: object, **_kwargs: object) -> None:
+                raise AssertionError('execute should not be called')
+
+            def executemany(
+                self,
+                *_args: object,
+                **_kwargs: object,
+            ) -> None:
+                raise AssertionError('executemany should not be called')
+
+        connection = _Connection()
+        assert (
+            mod.write_table_rows(
+                connection,
+                'data',
+                [],
+                dialect=mod.SQLITE_DIALECT,
+            )
+            == 0
+        )

@@ -247,6 +247,18 @@ class TestRegistryInternalHelpers:
                 file_format=FileFormat.JSON,
             )
 
+    def test_coerce_handler_class_rejects_mismatched_declared_format(
+        self,
+    ) -> None:
+        """Test coercion rejecting handler classes with mismatched format."""
+        from etlplus.file.json import JsonFile
+
+        with pytest.raises(ValueError, match='declares mismatched format'):
+            mod._coerce_handler_class(
+                JsonFile,
+                file_format=FileFormat.XML,
+            )
+
     def test_get_handler_class_wraps_malformed_mapping_specs(
         self,
         monkeypatch: pytest.MonkeyPatch,
