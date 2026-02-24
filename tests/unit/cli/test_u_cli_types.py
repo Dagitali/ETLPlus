@@ -15,5 +15,9 @@ from etlplus.cli.types import DataConnectorContext
 
 def test_data_connector_context_alias_members() -> None:
     """Type alias should enumerate ``source`` and ``target`` values."""
-    alias_value = DataConnectorContext.__value__
+    alias_value = getattr(
+        DataConnectorContext,
+        '__value__',
+        DataConnectorContext,
+    )
     assert set(get_args(alias_value)) == {'source', 'target'}
