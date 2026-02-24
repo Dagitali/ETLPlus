@@ -18,7 +18,7 @@ from etlplus.file.base import ReadOptions
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
-# SECTION: TESTS ============================================================ #
+# SECTION: HELPERS ========================================================== #
 
 
 @dataclass
@@ -34,6 +34,45 @@ class _TemplateStub:
         return f'{self.template}|{context}'
 
 
+class _Jinja2StrictStub:
+    """Jinja2 stub exposing ``Environment`` and ``StrictUndefined``."""
+
+    class StrictUndefined:  # noqa: D106
+        pass
+
+    class _Environment:
+        """Environment stub with ``from_string`` support."""
+
+        def __init__(
+            self,
+            owner: _Jinja2StrictStub,
+            kwargs: dict[str, object],
+        ) -> None:
+            self._owner = owner
+            self._kwargs = kwargs
+
+        def from_string(self, template: str) -> _TemplateStub:
+            """Capture template and return a render-capable stub."""
+            self._owner.env_kwargs.append(self._kwargs)
+            self._owner.from_string_calls.append(template)
+            stub = _TemplateStub(template=template, render_calls=[])
+            self._owner.template_instances.append(stub)
+            return stub
+
+    def __init__(self) -> None:
+        self.env_kwargs: list[dict[str, object]] = []
+        self.from_string_calls: list[str] = []
+        self.template_instances: list[_TemplateStub] = []
+
+    def Environment(self, **kwargs: object) -> _Environment:  # noqa: N802
+        """Return environment stub and preserve kwargs for assertions."""
+        return self._Environment(self, dict(kwargs))
+
+    def Template(self, template: str) -> _TemplateStub:  # noqa: N802
+        """Fail fast if non-environment rendering path is chosen."""
+        raise AssertionError(f'Unexpected Template path for {template!r}')
+
+
 class _Jinja2Stub:
     """Minimal module stub exposing ``Template``."""
 
@@ -47,6 +86,9 @@ class _Jinja2Stub:
         stub = _TemplateStub(template=template, render_calls=[])
         self.template_instances.append(stub)
         return stub
+
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestJinja2(RoundtripUnitModuleContract):
@@ -84,6 +126,58 @@ class TestJinja2(RoundtripUnitModuleContract):
 
         assert self.module_handler.read(path) == [
             {'template': 'Hello {{ name }}'},
+        ]
+
+    def test_render_strict_undefined_uses_environment_from_string(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test strict mode rendering through Environment.from_string."""
+        jinja2_stub = _Jinja2StrictStub()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *args, **kwargs: jinja2_stub,  # noqa: ARG005
+        )
+
+        result = self.module_handler.render(
+            'Hi {{ name }}',
+            {'name': 'Ada'},
+            strict_undefined=True,
+        )
+
+        assert result == "Hi {{ name }}|{'name': 'Ada'}"
+        assert jinja2_stub.from_string_calls == ['Hi {{ name }}']
+        assert jinja2_stub.env_kwargs == [
+            {
+                'trim_blocks': False,
+                'lstrip_blocks': False,
+                'undefined': jinja2_stub.StrictUndefined,
+            },
+        ]
+
+    def test_render_trim_blocks_uses_environment_without_strict_undefined(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test environment path when trim/lstrip flags are enabled."""
+        jinja2_stub = _Jinja2StrictStub()
+        monkeypatch.setattr(
+            mod,
+            'get_dependency',
+            lambda *args, **kwargs: jinja2_stub,  # noqa: ARG005
+        )
+
+        result = self.module_handler.render(
+            'Hi {{ name }}',
+            {'name': 'Ada'},
+            trim_blocks=True,
+        )
+
+        assert result == "Hi {{ name }}|{'name': 'Ada'}"
+        assert jinja2_stub.from_string_calls == ['Hi {{ name }}']
+        assert jinja2_stub.env_kwargs == [
+            {'trim_blocks': True, 'lstrip_blocks': False},
         ]
 
     def test_render_uses_optional_jinja2_dependency(

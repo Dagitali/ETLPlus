@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -176,6 +177,8 @@ class TestDatSniff:
 class TestDat(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.dat`."""
 
+    # pylint: disable=protected-access,unused-argument
+
     module = mod
     format_name = 'dat'
     roundtrip_spec = build_roundtrip_spec(*ROUNDTRIP_CASES['dat_records'])
@@ -256,6 +259,38 @@ class TestDat(RoundtripUnitModuleContract):
         path = _write_fixture_file(tmp_path, filename, content)
 
         assert mod.DatFile().read(path) == expected
+
+    def test_read_none_delimiters_extra_keeps_default_delimiters(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test ``delimiters=None`` preserves default sniff delimiters."""
+        captured_delimiters: list[str] = []
+
+        def _sniff(
+            sample: str,  # noqa: ARG001
+            *,
+            sniffer: object | None = None,  # noqa: ARG001
+            delimiters: str = mod._DEFAULT_DELIMITERS,
+        ) -> tuple[csv.Dialect, bool]:
+            captured_delimiters.append(delimiters)
+            return cast(csv.Dialect, csv.get_dialect('excel')), True
+
+        monkeypatch.setattr(mod, '_sniff', _sniff)
+        path = _write_fixture_file(
+            tmp_path,
+            'default_delims.dat',
+            'a,b\n1,2\n',
+        )
+
+        result = mod.DatFile().read(
+            path,
+            options=ReadOptions(extras={'delimiters': None}),
+        )
+
+        assert result == [{'a': '1', 'b': '2'}]
+        assert captured_delimiters == [mod._DEFAULT_DELIMITERS]
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,

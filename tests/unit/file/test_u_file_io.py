@@ -36,11 +36,28 @@ class _TableStub:
         return list(self._records)
 
 
+class _PandasReadSasStub:
+    """Minimal pandas-like stub for ``read_sas`` helper tests."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def read_sas(self, path: Path, **kwargs: object) -> object:
+        """Capture calls and return a sentinel object."""
+        self.calls.append({'path': path, **kwargs})
+        return {'ok': True}
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestIoHelpers:
     """Unit tests for shared file IO helpers."""
+
+    def test_close_connection_noop_when_close_is_not_callable(self) -> None:
+        """Test connection cleanup no-op when ``close`` is non-callable."""
+        connection = type('_Conn', (), {'close': 1})()
+        mod.EmbeddedDatabaseTableOption().close_connection(connection)
 
     def test_coerce_path_accepts_str_and_path(self, tmp_path: Path) -> None:
         """
@@ -119,6 +136,23 @@ class TestIoHelpers:
         mod.write_text(file_path, 'line', trailing_newline=True)
         assert file_path.read_text(encoding='utf-8') == 'line\n'
         assert mod.read_text(file_path) == 'line\n'
+
+    def test_read_sas_table_without_format_hint_omits_format_kwarg(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test SAS helper read path when no format hint is provided."""
+        pandas = _PandasReadSasStub()
+        path = tmp_path / 'sample.sas7bdat'
+
+        result = mod.read_sas_table(
+            pandas,
+            path,
+            format_hint=None,
+        )
+
+        assert result == {'ok': True}
+        assert pandas.calls == [{'path': path}]
 
     def test_records_from_table(self) -> None:
         """Test conversion from dataframe-like objects."""

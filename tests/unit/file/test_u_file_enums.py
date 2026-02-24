@@ -35,6 +35,8 @@ INFER_CASES: list[InferCase] = [
         CompressionFormat.GZ,
     ),
     ('application/octet-stream', None, None, None),
+    ('   ', None, None, None),
+    (FileFormat.JSON, None, FileFormat.JSON, None),
     (FileFormat.GZ, None, None, CompressionFormat.GZ),
     (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
 ]

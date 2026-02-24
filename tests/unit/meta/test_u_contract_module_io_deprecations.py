@@ -54,8 +54,7 @@ def _collect_imported_wrapper_aliases(
             for alias in node.names:
                 if alias.name in _MODULE_NAMES:
                     local_name = (
-                        alias.asname
-                        or alias.name.rsplit('.', maxsplit=1)[-1]
+                        alias.asname or alias.name.rsplit('.', maxsplit=1)[-1]
                     )
                     aliases[local_name] = alias.name
             continue
