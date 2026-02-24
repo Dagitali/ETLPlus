@@ -11,6 +11,7 @@ Notes
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,9 @@ from etlplus.ops.validate import validate_field
 from etlplus.types import JSONData
 
 # SECTION: TESTS ============================================================ #
+
+
+validate_mod = importlib.import_module('etlplus.ops.validate')
 
 
 class TestLoadData:
@@ -40,6 +44,11 @@ class TestLoadData:
 class TestValidateField:
     """Unit tests for :func:`etlplus.ops.validate.validate_field`."""
 
+    def test_boolean_type_branch(self) -> None:
+        """Test explicit boolean type branch in type matching."""
+        assert validate_field(True, {'type': 'boolean'})['valid'] is True
+        assert validate_field(1, {'type': 'boolean'})['valid'] is False
+
     def test_enum_rule_requires_list(self) -> None:
         """Test non-list enum rules adding an error entry."""
 
@@ -47,6 +56,21 @@ class TestValidateField:
         result = validate_field('a', {'enum': 'abc'})  # type: ignore
         assert result['valid'] is False
         assert any('enum' in err for err in result['errors'])
+
+    def test_pattern_rule_type_and_mismatch_paths(self) -> None:
+        """Test pattern mismatch and non-string pattern validation paths."""
+        mismatch = validate_field('abc', {'pattern': '^z'})
+        assert mismatch['valid'] is False
+        assert any(
+            'does not match pattern' in err for err in mismatch['errors']
+        )
+
+        matched = validate_field('abc', {'pattern': '^a'})
+        assert matched['valid'] is True
+
+        invalid_type = validate_field('abc', {'pattern': 123})
+        assert invalid_type['valid'] is False
+        assert any('must be a string' in err for err in invalid_type['errors'])
 
     def test_pattern_rule_with_invalid_regex(self) -> None:
         """Test invalid regex patterns adding an error entry."""
@@ -222,3 +246,49 @@ class TestValidate:
         assert result['valid'] is False
         assert result['data'] is None
         assert any('Failed to load data' in err for err in result['errors'])
+
+    def test_validate_handles_non_record_payloads_from_loader(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unexpected scalar payloads should return invalid=False result."""
+        monkeypatch.setattr(validate_mod, 'load_data', lambda _source: 42)
+        result = validate('ignored', {'name': {'required': True}})
+        assert result['valid'] is True
+        assert result['errors'] == []
+        assert result['field_errors'] == {}
+        assert result['data'] == 42
+
+
+class TestValidateInternalHelpers:
+    """Unit tests for internal validation helper branches."""
+
+    def test_coerce_rule_invalid_value_appends_error(self) -> None:
+        """Rule coercion should append errors on bad casts."""
+        errors: list[str] = []
+        assert (
+            validate_mod._coerce_rule(
+                {'min': 'x'},
+                'min',
+                float,
+                'numeric',
+                errors,
+            )
+            is None
+        )
+        assert errors == ["Rule 'min' must be numeric"]
+
+    def test_coerce_rule_none_value_returns_none_without_errors(self) -> None:
+        """Rule coercion should ignore explicit None values."""
+        errors: list[str] = []
+        assert (
+            validate_mod._coerce_rule(
+                {'min': None},
+                'min',
+                float,
+                'numeric',
+                errors,
+            )
+            is None
+        )
+        assert errors == []
