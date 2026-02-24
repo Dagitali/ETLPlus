@@ -279,7 +279,9 @@ class TestDat(RoundtripUnitModuleContract):
 
         monkeypatch.setattr(mod, '_sniff', _sniff)
         path = _write_fixture_file(
-            tmp_path, 'default_delims.dat', 'a,b\n1,2\n',
+            tmp_path,
+            'default_delims.dat',
+            'a,b\n1,2\n',
         )
 
         result = mod.DatFile().read(

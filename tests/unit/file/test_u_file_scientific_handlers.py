@@ -125,7 +125,8 @@ class TestScientificHandlers:
         assert handler.write_calls[0]['pandas'] is pandas
         assert handler.write_calls[0]['pyreadstat'] is pyreadstat
         assert isinstance(
-            handler.write_calls[0]['frame'], DictRecordsFrameStub,
+            handler.write_calls[0]['frame'],
+            DictRecordsFrameStub,
         )
 
     def test_resolve_optional_pyreadstat_delegates_when_required(self) -> None:

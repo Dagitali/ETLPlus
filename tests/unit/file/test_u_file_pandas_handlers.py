@@ -33,7 +33,9 @@ class TestResolvePyarrowDependency:
     ) -> None:
         """Test fallback path when no module-level override exists."""
         monkeypatch.delattr(
-            sys.modules[__name__], 'get_pyarrow', raising=False,
+            sys.modules[__name__],
+            'get_pyarrow',
+            raising=False,
         )
         calls: list[tuple[str, str]] = []
 

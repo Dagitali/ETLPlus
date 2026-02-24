@@ -153,7 +153,9 @@ class TestImportsHelpers:
     ) -> None:
         """Test callable resolution returning ``None`` for missing modules."""
         handler_type = type(
-            '_DetachedHandler', (), {'__module__': 'not.loaded'},
+            '_DetachedHandler',
+            (),
+            {'__module__': 'not.loaded'},
         )
         handler = handler_type()
         assert mod.resolve_module_callable(handler, 'anything') is None
