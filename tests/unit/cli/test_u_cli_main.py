@@ -6,10 +6,12 @@ Unit tests for :mod:`etlplus.cli.main`.
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
 from typing import Final
 from unittest.mock import Mock
 
+import click
 import pytest
 import typer
 
@@ -22,6 +24,7 @@ from .conftest import StubCommand
 
 
 PROG_NAME: Final[str] = 'etlplus'
+main_module = importlib.import_module('etlplus.cli.main')
 
 
 # SECTION: TESTS ============================================================ #
@@ -54,6 +57,79 @@ class TestMain:
         assert captured['args'] == ['extract']
         assert captured['prog_name'] == PROG_NAME
         assert captured['standalone_mode'] is False
+
+    def test_emit_context_help_none_returns_false(self) -> None:
+        """Helper should return ``False`` when no context is provided."""
+        assert main_module._emit_context_help(None) is False
+
+    def test_illegal_option_without_context_emits_root_help(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Illegal options without context should fall back to root help."""
+
+        class _StubCommand:
+            def main(self, **kwargs: object) -> object:
+                raise click.exceptions.NoSuchOption('--bad')
+
+        root_help_calls = {'count': 0}
+        monkeypatch.setattr(
+            typer.main,
+            'get_command',
+            lambda _app: _StubCommand(),
+        )
+        monkeypatch.setattr(
+            main_module,
+            '_emit_root_help',
+            lambda _command: root_help_calls.__setitem__('count', 1),
+        )
+
+        exit_code = cli_main(['--bad'])
+        assert exit_code == 2
+        assert root_help_calls['count'] == 1
+        assert 'No such option' in capsys.readouterr().err
+
+    def test_handles_os_error(
+        self,
+        stub_command: StubCommand,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Test that any :class:`OSError` surfaces to STDERR and return 1.
+
+        Parameters
+        ----------
+        stub_command : StubCommand
+            Fixture that wires Typer's command execution to ``action``.
+        capsys : pytest.CaptureFixture[str]
+            Capture fixture for STDOUT/STDERR.
+        """
+
+        def _action(**kwargs: object) -> object:  # noqa: ARG001
+            raise OSError('disk full')
+
+        stub_command(_action)
+
+        assert cli_main(['anything']) == 1
+        assert 'Error: disk full' in capsys.readouterr().err
+
+    def test_handles_system_exit_from_command(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that :func:`main` does not swallow `SystemExit` from the
+        dispatched command.
+        """
+        monkeypatch.setattr(
+            cli_handlers_module,
+            'extract_handler',
+            Mock(side_effect=SystemExit(5)),
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main(['extract', 'foo.csv'])
+        assert exc_info.value.code == 5
 
     @pytest.mark.parametrize(
         ('exception', 'expected_code', 'expected_err'),
@@ -106,46 +182,17 @@ class TestMain:
         if expected_err is not None:
             assert expected_err in stderr
 
-    def test_handles_os_error(
+    def test_maps_direct_typer_exit_from_command_main(
         self,
         stub_command: StubCommand,
-        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """
-        Test that any :class:`OSError` surfaces to STDERR and return 1.
-
-        Parameters
-        ----------
-        stub_command : StubCommand
-            Fixture that wires Typer's command execution to ``action``.
-        capsys : pytest.CaptureFixture[str]
-            Capture fixture for STDOUT/STDERR.
-        """
+        """Direct :class:`typer.Exit` from command.main should be mapped."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise OSError('disk full')
+            raise typer.Exit(9)
 
         stub_command(_action)
-
-        assert cli_main(['anything']) == 1
-        assert 'Error: disk full' in capsys.readouterr().err
-
-    def test_handles_system_exit_from_command(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that :func:`main` does not swallow `SystemExit` from the
-        dispatched command.
-        """
-        monkeypatch.setattr(
-            cli_handlers_module,
-            'extract_handler',
-            Mock(side_effect=SystemExit(5)),
-        )
-        with pytest.raises(SystemExit) as exc_info:
-            cli_main(['extract', 'foo.csv'])
-        assert exc_info.value.code == 5
+        assert cli_main(['extract']) == 9
 
     @pytest.mark.parametrize(
         ('setup', 'expected'),
@@ -214,3 +261,16 @@ class TestMain:
         assert exit_code == 2
         assert expected_message in captured.err
         assert 'Usage:' in captured.err
+
+    def test_usage_error_non_option_is_reraised(
+        self,
+        stub_command: StubCommand,
+    ) -> None:
+        """Unhandled :class:`UsageError` cases should be re-raised."""
+
+        def _action(**kwargs: object) -> object:  # noqa: ARG001
+            raise click.exceptions.UsageError('boom')
+
+        stub_command(_action)
+        with pytest.raises(click.exceptions.UsageError, match='boom'):
+            cli_main(['extract'])

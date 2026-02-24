@@ -12,6 +12,7 @@ import pytest
 import typer
 
 import etlplus
+import etlplus.cli.commands as commands
 import etlplus.cli.handlers as handlers
 import etlplus.cli.state as cli_state_module
 
@@ -308,6 +309,89 @@ class TestInferResourceType:
         inputs.
         """
         assert cli_state_module.infer_resource_type(raw) == expected
+
+
+class TestCliStateHelpers:
+    """Unit tests for :mod:`etlplus.cli.state` helper branches."""
+
+    def test_ensure_state_initializes_missing_context_state(self) -> None:
+        """
+        Non-state ``ctx.obj`` values should be replaced with ``CliState``.
+        """
+        command = typer.main.get_command(commands.app)
+        ctx = typer.Context(command)
+        ctx.obj = {'unexpected': True}
+
+        state = cli_state_module.ensure_state(ctx)
+
+        assert isinstance(state, cli_state_module.CliState)
+        assert ctx.obj is state
+
+    def test_infer_resource_type_soft_none_returns_none(self) -> None:
+        """Soft inference should return ``None`` for missing values."""
+        assert cli_state_module.infer_resource_type_soft(None) is None
+
+    def test_infer_resource_type_soft_swallows_inference_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Soft inference should return ``None`` for invalid resources."""
+        monkeypatch.setattr(
+            cli_state_module,
+            'infer_resource_type',
+            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
+        )
+        assert cli_state_module.infer_resource_type_soft('invalid') is None
+
+    def test_log_inferred_resource_prints_verbose_messages(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Verbose mode should emit inferred-resource diagnostics."""
+        cli_state_module.log_inferred_resource(
+            cli_state_module.CliState(pretty=True, quiet=False, verbose=True),
+            role='source',
+            value='input.json',
+            resource_type='file',
+        )
+        assert 'Inferred source_type=file' in capsys.readouterr().err
+
+    def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
+        """Conflicting explicit/override values should raise errors."""
+        with pytest.raises(typer.BadParameter, match='conflict'):
+            cli_state_module.resolve_resource_type(
+                explicit_type='api',
+                override_type='file',
+                value='input',
+                label='source_type',
+                conflict_error='conflict',
+            )
+
+    def test_resolve_resource_type_legacy_file_raises_bad_parameter(
+        self,
+    ) -> None:
+        """Legacy file-specific explicit type should raise when disallowed."""
+        with pytest.raises(typer.BadParameter, match='legacy'):
+            cli_state_module.resolve_resource_type(
+                explicit_type='file',
+                override_type=None,
+                value='input',
+                label='source_type',
+                legacy_file_error='legacy',
+            )
+
+    def test_resolve_resource_type_accepts_explicit_non_file_value(
+        self,
+    ) -> None:
+        """Explicit non-file values should pass through validation."""
+        resolved = cli_state_module.resolve_resource_type(
+            explicit_type='api',
+            override_type=None,
+            value='input',
+            label='source_type',
+            legacy_file_error='legacy',
+        )
+        assert resolved == 'api'
 
 
 class TestOptionalChoice:
