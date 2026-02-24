@@ -15,6 +15,7 @@ Notes
 from __future__ import annotations
 
 import csv
+import importlib
 import json as js
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -35,6 +36,9 @@ from etlplus.ops.load import load_to_file
 from etlplus.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
+
+
+load_mod = importlib.import_module('etlplus.ops.load')
 
 
 @dataclass(slots=True)
@@ -323,29 +327,23 @@ class TestLoadData:
     - Tests passthrough, file, string, stdin, and error cases.
     """
 
-    @pytest.mark.parametrize(
-        'input_data,expected_output',
-        [
-            ({'test': 'data'}, {'test': 'data'}),
-            ([{'test': 'data'}], [{'test': 'data'}]),
-        ],
-    )
-    def test_data_passthrough(
+    def test_data_from_existing_path_falls_back_to_json_string(
         self,
-        input_data: dict[str, Any] | list[dict[str, Any]],
-        expected_output: dict[str, Any] | list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test passthrough for dict and list input.
+        """Existing-path read failures should fall back to raw JSON parsing."""
 
-        Parameters
-        ----------
-        input_data : dict[str, Any] | list[dict[str, Any]]
-            Input data to load.
-        expected_output : dict[str, Any] | list[dict[str, Any]]
-            Expected output.
-        """
-        assert load_data(input_data) == expected_output
+        class _FailingFile:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                return None
+
+            def read(self) -> JSONData:
+                raise ValueError('cannot read as file')
+
+        monkeypatch.setattr(load_mod.Path, 'exists', lambda _self: True)
+        monkeypatch.setattr(load_mod, 'File', _FailingFile)
+
+        assert load_data('{"ok": true}') == {'ok': True}
 
     def test_data_from_file(
         self,
@@ -407,6 +405,35 @@ class TestLoadData:
         """
         with pytest.raises(ValueError, match='Invalid data source'):
             load_data('not a valid json string')
+
+    @pytest.mark.parametrize(
+        'input_data,expected_output',
+        [
+            ({'test': 'data'}, {'test': 'data'}),
+            ([{'test': 'data'}], [{'test': 'data'}]),
+        ],
+    )
+    def test_data_passthrough(
+        self,
+        input_data: dict[str, Any] | list[dict[str, Any]],
+        expected_output: dict[str, Any] | list[dict[str, Any]],
+    ) -> None:
+        """
+        Test passthrough for dict and list input.
+
+        Parameters
+        ----------
+        input_data : dict[str, Any] | list[dict[str, Any]]
+            Input data to load.
+        expected_output : dict[str, Any] | list[dict[str, Any]]
+            Expected output.
+        """
+        assert load_data(input_data) == expected_output
+
+    def test_load_data_rejects_unsupported_source_type(self) -> None:
+        """Unsupported source types should raise :class:`TypeError`."""
+        with pytest.raises(TypeError, match='source must be'):
+            load_data(cast(Any, 123))
 
 
 class TestLoadToFile:
@@ -577,6 +604,88 @@ class TestLoadToApi:
         first_call: _CallRecord = api_calls[0]
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
+    def test_load_to_api_env_requires_url(self) -> None:
+        """Missing URL in normalized API env should raise ValueError."""
+        with pytest.raises(ValueError, match='API target missing "url"'):
+            load_mod._load_to_api_env({'method': 'post'}, {})
+
+    def test_load_to_api_env_includes_headers_timeout_session_and_extras(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Normalized API env should forward headers and request kwargs."""
+
+        class _Response:
+            status_code = 201
+            text = 'fallback'
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> object:
+                return {'ok': True}
+
+        captured: dict[str, Any] = {}
+
+        def _request(url: str, **kwargs: Any) -> _Response:
+            captured['url'] = url
+            captured['kwargs'] = kwargs
+            return _Response()
+
+        monkeypatch.setattr(
+            load_mod,
+            'resolve_request',
+            lambda method, session, timeout: (_request, 9.5, HttpMethod.PUT),
+        )
+        result = load_mod._load_to_api_env(
+            [{'id': 1}],
+            {
+                'url': 'https://example.test/api',
+                'method': 'put',
+                'headers': {'X-Test': '1'},
+                'timeout': 2.0,
+                'session': 'sess',
+                'request_kwargs': {'verify': False},
+            },
+        )
+
+        assert result['method'] == 'PUT'
+        assert captured['url'] == 'https://example.test/api'
+        assert captured['kwargs']['timeout'] == 9.5
+        assert captured['kwargs']['headers'] == {'X-Test': '1'}
+        assert captured['kwargs']['verify'] is False
+
+    def test_load_to_api_env_falls_back_to_text_response_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """JSON decoding errors should fall back to response text."""
+
+        class _Response:
+            status_code = 200
+            text = 'text payload'
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> object:
+                raise ValueError('bad json')
+
+        def _request(url: str, **kwargs: Any) -> _Response:  # noqa: ARG001
+            return _Response()
+
+        monkeypatch.setattr(
+            load_mod,
+            'resolve_request',
+            lambda method, session, timeout: (_request, 10.0, HttpMethod.POST),
+        )
+        result = load_mod._load_to_api_env(
+            {'x': 1},
+            {'url': 'https://example.test/api', 'method': 'post'},
+        )
+
+        assert result['response'] == 'text payload'
+
 
 class TestLoadToDatabase:
     """Unit tests for :func:`etlplus.ops.load.load_to_database`."""
@@ -662,3 +771,16 @@ class TestLoadApiOrchestrator:
         assert calls
         first_call: _CallRecord = calls[0]
         assert first_call.method == 'put'
+
+    def test_load_defensive_default_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unexpected connector coercion should trigger ValueError branch."""
+        monkeypatch.setattr(
+            load_mod.DataConnectorType,
+            'coerce',
+            classmethod(lambda cls, value: object()),
+        )
+        with pytest.raises(ValueError, match='Invalid target type'):
+            load({'ok': True}, 'file', 'ignored')

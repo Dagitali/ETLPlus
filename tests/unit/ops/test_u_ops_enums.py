@@ -6,6 +6,9 @@ Unit tests for :mod:`etlplus.ops.enums` coercion helpers and behaviors.
 
 from __future__ import annotations
 
+from typing import Any
+from typing import cast
+
 import pytest
 
 from etlplus.ops.enums import AggregateName
@@ -37,11 +40,19 @@ class TestAggregateName:
 class TestOperatorName:
     """Unit tests for :class:`etlplus.ops.enums.OperatorName`."""
 
+    def test_func_property_defensive_fallthrough(self) -> None:
+        """Test descriptor fallback when called with a non-enum self."""
+        descriptor = cast(property, OperatorName.__dict__['func'])
+        raw_func = descriptor.fget
+        assert raw_func is not None
+        assert raw_func(cast(Any, object())) is None
+
     def test_funcs(self) -> None:
         """Test the operator functions."""
         assert OperatorName.EQ.func(5, 5) is True
         assert OperatorName.NE.func(5, 6) is True
         assert OperatorName.GT.func(5, 2) is True
+        assert OperatorName.LT.func(2, 5) is True
         assert OperatorName.LTE.func(5, 5) is True
         assert OperatorName.IN.func('a', 'abc') is True
         assert OperatorName.CONTAINS.func('alphabet', 'bet') is True

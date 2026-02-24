@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from typing import Any
 from typing import ClassVar
 from typing import Self
+from typing import cast
 
 import pytest
 
@@ -180,6 +181,115 @@ class TestRun:
         assert load_calls[0][1]['url'] == 'https://sink.example.com'
         assert load_calls[0][1]['method'] == 'put'
         assert result == {'ok': True}
+
+    def test_database_source_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test run() extracting from database connectors."""
+        job = _make_job(name='job', source='src', target='tgt')
+        src = SimpleNamespace(
+            name='src',
+            type='database',
+            connection_string='sqlite:///source.db',
+        )
+        tgt = SimpleNamespace(
+            name='tgt',
+            type='file',
+            path='/tmp/out.json',
+            format='json',
+        )
+        cfg = _base_config(job, src, tgt)
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+
+        extract_calls: list[tuple[str, str]] = []
+
+        def _extract(
+            stype: str,
+            source: str,
+            **kwargs: Any,
+        ) -> list[dict[str, int]]:
+            extract_calls.append((stype, source))
+            return [{'id': 1}]
+
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            _extract,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            lambda *_a, **_k: {'status': 'ok'},
+        )
+
+        result = run_mod.run('job')
+
+        assert extract_calls == [('database', 'sqlite:///source.db')]
+        assert result == {'status': 'ok'}
+
+    def test_database_target_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test run() loading to database connectors."""
+        job = _make_job(name='job', source='src', target='tgt')
+        src = SimpleNamespace(
+            name='src',
+            type='file',
+            path='/tmp/in.json',
+            format='json',
+        )
+        tgt = SimpleNamespace(
+            name='tgt',
+            type='database',
+            connection_string='sqlite:///target.db',
+        )
+        cfg = _base_config(job, src, tgt)
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        load_calls: list[tuple[str, str]] = []
+
+        def _load(
+            data: Any,
+            target_type: str,
+            target: str,
+            **kwargs: Any,
+        ) -> dict[str, str]:
+            load_calls.append((target_type, target))
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            _load,
+        )
+
+        result = run_mod.run('job')
+
+        assert load_calls == [('database', 'sqlite:///target.db')]
+        assert result == {'status': 'ok'}
 
     def test_file_source_missing_path_raises(
         self,
@@ -419,6 +529,67 @@ class TestRun:
         with pytest.raises(ValueError, match='extract'):
             run_mod.run('job')
 
+    def test_run_defensive_source_dispatch_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unexpected source coercion should trigger defensive ValueError."""
+        job = _make_job(name='job', source='src', target='tgt')
+        src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
+        tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
+        cfg = _base_config(job, src, tgt)
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(
+            run_mod.DataConnectorType,
+            'coerce',
+            classmethod(lambda cls, value: object()),
+        )
+
+        with pytest.raises(ValueError, match='Unsupported source type'):
+            run_mod.run('job')
+
+    def test_run_defensive_target_dispatch_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unexpected target coercion should trigger defensive ValueError."""
+        job = _make_job(name='job', source='src', target='tgt')
+        src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
+        tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
+        cfg = _base_config(job, src, tgt)
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        call_count = {'value': 0}
+
+        def _coerce(cls, value):  # noqa: ANN001, ANN202
+            call_count['value'] += 1
+            if call_count['value'] == 1:
+                return run_mod.DataConnectorType.FILE
+            return object()
+
+        monkeypatch.setattr(
+            run_mod.DataConnectorType,
+            'coerce',
+            classmethod(_coerce),
+        )
+
+        with pytest.raises(ValueError, match='Unsupported target type'):
+            run_mod.run('job')
+
     def test_transform_and_validation_branches(
         self,
         tmp_path: Path,
@@ -601,3 +772,146 @@ class TestRun:
         )
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
             run_mod.run('job')
+
+
+class TestRunInternals:
+    """Unit tests for internal run() helpers."""
+
+    def test_delegates_to_load_when_target_is_provided(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """run_pipeline should forward to load() for terminal write steps."""
+        load_calls: list[tuple[Any, Any, Any]] = []
+
+        def _load(
+            data: Any,
+            target_type: Any,
+            target: Any,
+            **kwargs: Any,
+        ) -> dict[str, str]:
+            load_calls.append((data, target_type, target))
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            _load,
+        )
+
+        result = run_mod.run_pipeline(
+            source_type=None,
+            source={'id': 1},
+            target_type='file',
+            target='/tmp/out.json',
+        )
+
+        assert result == {'status': 'ok'}
+        assert load_calls == [({'id': 1}, 'file', '/tmp/out.json')]
+
+    def test_extract_transform_then_return_when_no_target(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """run_pipeline should extract, transform, and return data."""
+        extract_calls: list[tuple[Any, Any, dict[str, Any]]] = []
+        transform_calls: list[tuple[Any, Any]] = []
+
+        def _extract(
+            source_type: Any,
+            source: Any,
+            **kwargs: Any,
+        ) -> dict[str, int]:
+            extract_calls.append((source_type, source, kwargs))
+            return {'value': 1}
+
+        def _transform(
+            data: Any,
+            operations: Any,
+        ) -> dict[str, int]:
+            transform_calls.append((data, operations))
+            return {'value': 2}
+
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            _extract,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'transform',
+            _transform,
+        )
+
+        ops: dict[str, Any] = {'map': {'value': 'value'}}
+        result = run_mod.run_pipeline(
+            source_type='file',
+            source='/tmp/in.json',
+            operations=ops,
+            target_type=None,
+        )
+
+        assert result == {'value': 2}
+        assert extract_calls == [
+            ('file', '/tmp/in.json', {'file_format': None}),
+        ]
+        assert transform_calls == [({'value': 1}, ops)]
+
+    def test_index_connectors_rejects_duplicates(self) -> None:
+        """Connector indexing should reject duplicate names."""
+        connectors = [
+            SimpleNamespace(name='dup'),
+            SimpleNamespace(name='dup'),
+        ]
+        with pytest.raises(
+            ValueError,
+            match='Duplicate source connector name',
+        ):
+            run_mod._index_connectors(connectors, label='source')
+
+    def test_index_connectors_skips_missing_or_blank_names(self) -> None:
+        """Connector indexing should skip unnamed entries."""
+        connectors = [
+            SimpleNamespace(name='valid'),
+            SimpleNamespace(name=''),
+            SimpleNamespace(),
+        ]
+
+        indexed = run_mod._index_connectors(connectors, label='source')
+
+        assert indexed == {'valid': connectors[0]}
+
+
+class TestRunPipeline:
+    """Unit tests for :func:`etlplus.ops.run.run_pipeline`."""
+
+    def test_requires_record_payload_when_no_target(self) -> None:
+        """run_pipeline should enforce dict/list payloads when not loading."""
+        with pytest.raises(
+            TypeError,
+            match='Expected data to be dict or list',
+        ):
+            run_mod.run_pipeline(source_type=None, source=cast(Any, 123))
+
+    def test_requires_source_when_source_type_is_none(self) -> None:
+        """run_pipeline should require a source payload when no source_type."""
+        with pytest.raises(
+            ValueError,
+            match='source or source_type is required',
+        ):
+            run_mod.run_pipeline(source_type=None, source=None)
+
+    def test_requires_source_when_source_type_is_set(self) -> None:
+        """run_pipeline should require source when source_type is provided."""
+        with pytest.raises(ValueError, match='source is required'):
+            run_mod.run_pipeline(source_type='file', source=None)
+
+    def test_requires_target_when_target_type_is_set(self) -> None:
+        """run_pipeline should require target when target_type is provided."""
+        with pytest.raises(ValueError, match='target is required'):
+            run_mod.run_pipeline(
+                source_type=None,
+                source={'id': 1},
+                target_type='file',
+                target=None,
+            )

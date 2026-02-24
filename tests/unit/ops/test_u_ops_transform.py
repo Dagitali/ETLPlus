@@ -15,7 +15,9 @@ Notes
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -57,6 +59,9 @@ from etlplus.ops.transform import transform
 from etlplus.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
+
+
+transform_mod = importlib.import_module('etlplus.ops.transform')
 
 
 type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']
@@ -380,6 +385,27 @@ class TestApplySort:
 class TestTransform:
     """Unit tests for :func:`etlplus.ops.transform.transform`."""
 
+    # pylint: disable=protected-access
+
+    def test_aggregate_skips_empty_step_outputs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Aggregate outputs that are empty should not mutate records."""
+        monkeypatch.setattr(
+            transform_mod,
+            '_apply_aggregate_step',
+            lambda _records, _spec: [],
+        )
+        data = [{'value': 1}]
+        assert (
+            transform(
+                data,
+                {'aggregate': {'field': 'value', 'func': 'sum'}},
+            )
+            == data
+        )
+
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
         """Aggregate step should be skipped when spec is not a mapping."""
 
@@ -416,6 +442,55 @@ class TestTransform:
         data = [{'name': 'John'}]
         result = transform(data)
         assert result == data
+
+    def test_non_list_payload_from_load_data(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Non-list payloads should bypass record-wise operations."""
+        monkeypatch.setattr(transform_mod, 'load_data', lambda _source: 7)
+        assert transform('ignored', {'filter': {'field': 'a'}}) == 7
+
+    def test_pipeline(self) -> None:
+        """Test that transform applies operations in sequence."""
+        data = [{'name': 'Ada', 'age': 10}, {'name': 'Bob', 'age': 20}]
+
+        ops: dict[StepType, Any] = {
+            'filter': {'field': 'age', 'op': 'gte', 'value': 15},
+            'map': {'name': 'person'},
+            'select': ['person', 'age'],
+            'sort': {'field': 'age'},
+        }
+
+        result = transform(data, ops)
+        assert result == [{'person': 'Bob', 'age': 20}]
+
+    def test_single_dict_returns_single_dict(self) -> None:
+        """
+        Single-dict inputs should remain dicts after list-based processing.
+        """
+        result = transform(
+            {'name': 'Ada', 'age': 31},
+            {'select': ['name']},
+        )
+        assert result == {'name': 'Ada'}
+
+    def test_skips_empty_normalized_specs(self) -> None:
+        """Empty step spec lists should be ignored."""
+        data = [{'a': 1}]
+        assert transform(data, {'filter': []}) == data
+
+    def test_skips_unknown_step_applier(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Missing appliers should skip step execution safely."""
+        monkeypatch.delitem(transform_mod._STEP_APPLIERS, 'filter')
+        data = [{'a': 1}]
+        assert (
+            transform(data, {'filter': {'field': 'a', 'op': 'eq', 'value': 1}})
+            == data
+        )
 
     def test_with_aggregate(self) -> None:
         """Test transforming using an aggregate operation."""
@@ -505,20 +580,6 @@ class TestTransform:
             {'name': 'John', 'age': 30},
         ]
 
-    def test_transform_pipeline(self) -> None:
-        """Test that transform applies operations in sequence."""
-        data = [{'name': 'Ada', 'age': 10}, {'name': 'Bob', 'age': 20}]
-
-        ops: dict[StepType, Any] = {
-            'filter': {'field': 'age', 'op': 'gte', 'value': 15},
-            'map': {'name': 'person'},
-            'select': ['person', 'age'],
-            'sort': {'field': 'age'},
-        }
-
-        result = transform(data, ops)
-        assert result == [{'person': 'Bob', 'age': 20}]
-
 
 class TestTransformInternalHelpers:
     """Unit tests for internal helpers in :mod:`etlplus.ops.transform`."""
@@ -564,6 +625,12 @@ class TestTransformInternalHelpers:
         else:
             assert result == expected
 
+    def test_apply_aggregate_invalid_operation_returns_error(self) -> None:
+        """Aggregates missing field/func should return structured errors."""
+        assert apply_aggregate([{'a': 1}], {'field': 'a'}) == {
+            'error': 'Invalid aggregation operation',
+        }
+
     def test_apply_aggregate_step(self) -> None:
         """
         Test that :func:`etlplus.ops.transform._apply_aggregate_step` returns a
@@ -573,6 +640,42 @@ class TestTransformInternalHelpers:
         spec = {'field': 'a', 'func': 'sum', 'alias': 'total'}
         result = _apply_aggregate_step(rows, spec)
         assert result == [{'total': 3}]
+
+    def test_apply_aggregate_unknown_function_returns_error(self) -> None:
+        """Unknown aggregate functions should return structured errors."""
+        result = apply_aggregate(
+            [{'a': 1}],
+            {'field': 'a', 'func': cast(Any, object())},
+        )
+        assert result['error'].startswith('Unknown aggregation function:')
+
+    def test_apply_filter_returns_input_when_value_is_none(self) -> None:
+        """Filters with ``None`` values should be treated as invalid specs."""
+        rows = [{'a': 1}]
+        assert (
+            apply_filter(
+                rows,
+                {'field': 'a', 'op': 'eq', 'value': None},
+            )
+            == rows
+        )
+
+    def test_apply_filter_skips_records_when_operator_raises_type_error(
+        self,
+    ) -> None:
+        """Type errors during comparison should skip only offending records."""
+
+        def _explode(_a: Any, _b: Any) -> bool:
+            raise TypeError('unsupported compare')
+
+        rows = [{'name': 'Ada'}, {'name': 'Bob'}]
+        assert (
+            apply_filter(
+                rows,
+                {'field': 'name', 'op': _explode, 'value': 'A'},
+            )
+            == []
+        )
 
     def test_apply_filter_step(self) -> None:
         """
@@ -584,6 +687,11 @@ class TestTransformInternalHelpers:
         result = _apply_filter_step(rows, spec)
         assert result == [{'a': 2}]
 
+    def test_apply_filter_step_returns_input_when_field_missing(self) -> None:
+        """Filter step should return input unchanged when field is absent."""
+        rows = [{'a': 1}]
+        assert _apply_filter_step(rows, {'op': 'eq', 'value': 1}) == rows
+
     def test_apply_map_step(self) -> None:
         """
         Test that :func:`etlplus.ops.transform._apply_map_step` returns correct
@@ -593,6 +701,11 @@ class TestTransformInternalHelpers:
         spec = {'a': 'x', 'b': 'y'}
         result = _apply_map_step(rows, spec)
         assert result == [{'x': 1, 'y': 2}]
+
+    def test_apply_map_step_non_mapping_is_noop(self) -> None:
+        """Map step should be a no-op for non-mapping specs."""
+        rows = [{'a': 1}]
+        assert _apply_map_step(rows, 123) == rows
 
     @pytest.mark.parametrize(
         ('spec', 'expected'),
@@ -615,6 +728,11 @@ class TestTransformInternalHelpers:
         rows = [{'a': 1, 'b': 2}]
         result = _apply_select_step(rows, spec)
         assert result == expected
+
+    def test_apply_select_step_invalid_mapping_fields_is_noop(self) -> None:
+        """Select step should no-op when mapping fields value is invalid."""
+        rows = [{'a': 1, 'b': 2}]
+        assert _apply_select_step(rows, {'fields': {'not': 'list'}}) == rows
 
     @pytest.mark.parametrize(
         ('spec', 'expected'),
@@ -650,6 +768,15 @@ class TestTransformInternalHelpers:
 
         nums, present = _collect_numeric_and_presence(rows, 'a')
         assert nums == [1, 2]
+        assert present == 2
+
+    def test_collect_numeric_and_presence_ignores_non_numeric_values(
+        self,
+    ) -> None:
+        """Presence should increment even when values are non-numeric."""
+        rows: list[dict[str, Any]] = [{'a': 'x'}, {'a': 2}]
+        nums, present = _collect_numeric_and_presence(rows, 'a')
+        assert nums == [2.0]
         assert present == 2
 
     def test_contains(self) -> None:
@@ -795,6 +922,40 @@ class TestTransformInternalHelpers:
         assert set(normalized) == {'filter', 'map'}
         assert normalized['filter']['field'] == 'age'
 
+    def test_normalize_operation_keys_fallback_paths(self) -> None:
+        """
+        Fallback key normalization should handle `.value` and skip non-str.
+        """
+
+        class _WithValue:
+            value = 'custom'
+
+        class _WithNonStringValue:
+            value = 123
+
+        normalized = _normalize_operation_keys(
+            {
+                _WithValue(): {'x': 1},
+                _WithNonStringValue(): {'y': 2},
+            },
+        )
+        assert normalized == {'custom': {'x': 1}}
+
+    def test_normalize_operation_keys_pipeline_step_isinstance_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Pipeline-step instance branch should use `.value` as key."""
+
+        @dataclass(slots=True, frozen=True)
+        class _Step:
+            value: str
+
+        monkeypatch.setattr(transform_mod, 'PipelineStep', _Step)
+
+        normalized = _normalize_operation_keys({_Step('filter'): {'x': 1}})
+        assert normalized == {'filter': {'x': 1}}
+
     def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
         """
         Test that :func:`etlplus.ops.transform._normalize_specs` coerces
@@ -849,6 +1010,13 @@ class TestTransformInternalHelpers:
 
         with pytest.raises(TypeError):
             _resolve_operator(cast(Any, object()))
+
+    def test_resolve_operator_falls_back_to_raw_values_when_non_numeric(
+        self,
+    ) -> None:
+        """Numeric wrappers should fall back to base operators for strings."""
+        fn = _resolve_operator('gt')
+        assert fn('b', 'a') is True
 
     def test_sort_key(self) -> None:
         """
