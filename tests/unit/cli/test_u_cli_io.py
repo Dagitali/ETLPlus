@@ -44,6 +44,62 @@ class TestEmitJson:
         assert called_with == [payload]
 
 
+class TestEmitOrWrite:
+    """Unit tests for :func:`emit_or_write`."""
+
+    def test_falls_back_to_emit_when_write_is_skipped(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When writes are skipped, payload should emit to STDOUT."""
+        emitted: list[tuple[object, bool]] = []
+        monkeypatch.setattr(
+            _io,
+            'write_json_output',
+            lambda data, output_path, *, success_message: False,
+        )
+        monkeypatch.setattr(
+            _io,
+            'emit_json',
+            lambda data, *, pretty: emitted.append((data, pretty)),
+        )
+
+        _io.emit_or_write(
+            {'ok': True},
+            None,
+            pretty=True,
+            success_message='written to',
+        )
+
+        assert emitted == [({'ok': True}, True)]
+
+    def test_short_circuits_when_write_succeeds(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Successful writes should skip STDOUT emission."""
+        emitted: list[tuple[object, bool]] = []
+        monkeypatch.setattr(
+            _io,
+            'write_json_output',
+            lambda data, output_path, *, success_message: True,
+        )
+        monkeypatch.setattr(
+            _io,
+            'emit_json',
+            lambda data, *, pretty: emitted.append((data, pretty)),
+        )
+
+        _io.emit_or_write(
+            {'ok': True},
+            'out.json',
+            pretty=False,
+            success_message='written to',
+        )
+
+        assert emitted == []
+
+
 class TestInferPayloadFormat:
     """Unit tests for :func:`infer_payload_format`."""
 
@@ -55,6 +111,21 @@ class TestInferPayloadFormat:
 
 class TestMaterializeFilePayload:
     """Unit tests for :func:`materialize_file_payload`."""
+
+    def test_explicit_without_hint_skips_suffix_inference(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Explicit mode without hint should not infer from suffix."""
+        file_path = tmp_path / 'payload.json'
+        file_path.write_text('{"ok": true}', encoding='utf-8')
+
+        payload = _io.materialize_file_payload(
+            str(file_path),
+            format_hint=None,
+            format_explicit=True,
+        )
+        assert payload == str(file_path)
 
     def test_ignoring_hint_without_flag(
         self,
@@ -159,6 +230,21 @@ class TestMaterializeFilePayload:
         )
         assert payload == [{'ok': True}]
 
+    def test_invalid_explicit_hint_keeps_source_as_is(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Invalid explicit hints should not force parsing."""
+        file_path = tmp_path / 'payload.json'
+        file_path.write_text('{"ok": true}', encoding='utf-8')
+
+        payload = _io.materialize_file_payload(
+            str(file_path),
+            format_hint='invalid-format',
+            format_explicit=True,
+        )
+        assert payload == str(file_path)
+
     def test_missing_file_raises(
         self,
         tmp_path: Path,
@@ -174,6 +260,57 @@ class TestMaterializeFilePayload:
                 format_hint=None,
                 format_explicit=False,
             )
+
+    def test_missing_path_with_inline_json_is_parsed(self) -> None:
+        """
+        Inline JSON should parse even when treated as a missing file path.
+        """
+        payload = _io.materialize_file_payload(
+            '{"inline": true}',
+            format_hint='json',
+            format_explicit=True,
+        )
+        assert payload == {'inline': True}
+
+    def test_missing_pathlike_source_raises_file_not_found(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """PathLike sources should still raise when files are missing."""
+        missing = tmp_path / 'missing.json'
+        with pytest.raises(FileNotFoundError, match='File not found'):
+            _io.materialize_file_payload(
+                missing,
+                format_hint=None,
+                format_explicit=False,
+            )
+
+    def test_no_suffix_without_explicit_format_keeps_source_as_is(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Sources without suffix should not infer a file format."""
+        file_path = tmp_path / 'payload'
+        file_path.write_text('opaque', encoding='utf-8')
+
+        payload = _io.materialize_file_payload(
+            str(file_path),
+            format_hint=None,
+            format_explicit=False,
+        )
+        assert payload == str(file_path)
+
+    def test_non_path_payload_returns_unchanged(self) -> None:
+        """Non-pathlike payloads should bypass file materialization."""
+        payload: object = 123
+        assert (
+            _io.materialize_file_payload(
+                payload,
+                format_hint='json',
+                format_explicit=True,
+            )
+            is payload
+        )
 
     def test_respects_hint(
         self,
@@ -199,6 +336,21 @@ class TestMaterializeFilePayload:
             format_explicit=True,
         )
         assert payload == [{'ok': True}]
+
+    def test_unknown_suffix_keeps_source_as_is(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Unknown file extensions should keep raw source value."""
+        file_path = tmp_path / 'payload.unknown'
+        file_path.write_text('opaque', encoding='utf-8')
+
+        payload = _io.materialize_file_payload(
+            str(file_path),
+            format_hint=None,
+            format_explicit=False,
+        )
+        assert payload == str(file_path)
 
     def test_with_non_file(self) -> None:
         """Test that non-file payloads are returned unchanged."""
@@ -249,6 +401,11 @@ class TestParseTextPayload:
             {'a': '3', 'b': '4'},
         ]
 
+    def test_parse_json_payload_reports_decode_errors(self) -> None:
+        """Invalid JSON should raise a normalized :class:`ValueError`."""
+        with pytest.raises(ValueError, match='Invalid JSON payload'):
+            _io.parse_json_payload('{broken')
+
 
 class TestReadCsvRows:
     """Unit tests for :func:`read_csv_rows`."""
@@ -284,6 +441,37 @@ class TestReadStdinText:
             types.SimpleNamespace(stdin=buffer),
         )
         assert _io.read_stdin_text() == 'stream-data'
+
+
+class TestResolveCliPayload:
+    """Unit tests for :func:`resolve_cli_payload`."""
+
+    def test_hydrates_file_sources_by_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Default behavior should delegate to ``materialize_file_payload``."""
+        captured: list[tuple[object, str | None, bool]] = []
+
+        def _materialize(
+            source: object,
+            *,
+            format_hint: str | None,
+            format_explicit: bool,
+        ) -> object:
+            captured.append((source, format_hint, format_explicit))
+            return {'ok': True}
+
+        monkeypatch.setattr(_io, 'materialize_file_payload', _materialize)
+
+        result = _io.resolve_cli_payload(
+            'payload.json',
+            format_hint='json',
+            format_explicit=True,
+        )
+
+        assert result == {'ok': True}
+        assert captured == [('payload.json', 'json', True)]
 
 
 class TestWriteJsonOutput:

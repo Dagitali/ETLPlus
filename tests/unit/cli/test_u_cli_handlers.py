@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+from typing import cast
 from unittest.mock import ANY
 
 import pytest
@@ -54,6 +57,66 @@ class TestCliHandlersInternalHelpers:
             transforms=False,
         )
         assert 'jobs' in result
+
+    def test_check_sections_jobs_and_mapping_transforms(
+        self,
+        dummy_cfg: Config,
+    ) -> None:
+        """Test jobs flag plus mapping-style transforms extraction."""
+        cfg = SimpleNamespace(
+            name=dummy_cfg.name,
+            version=dummy_cfg.version,
+            sources=dummy_cfg.sources,
+            targets=dummy_cfg.targets,
+            jobs=dummy_cfg.jobs,
+            transforms={
+                'trim': {'field': 'name'},
+                'dedupe': {'on': 'id'},
+            },
+        )
+
+        # pylint: disable=protected-access
+        result = handlers._check_sections(
+            cast(Config, cfg),
+            jobs=True,
+            pipelines=False,
+            sources=False,
+            targets=False,
+            transforms=True,
+        )
+        assert result['jobs'] == ['j1']
+        assert result['transforms'] == ['trim', 'dedupe']
+
+    def test_collect_table_specs_merges_config_and_spec(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that config and standalone spec entries are merged."""
+        spec_path = tmp_path / 'table.json'
+        spec_path.write_text('{}', encoding='utf-8')
+        monkeypatch.setattr(
+            handlers,
+            'load_table_spec',
+            lambda _path: {'table': 'from_spec'},
+        )
+        monkeypatch.setattr(
+            handlers.Config,
+            'from_yaml',
+            lambda _path, substitute: SimpleNamespace(
+                table_schemas=[{'table': 'from_config'}],
+            ),
+        )
+
+        # pylint: disable=protected-access
+        specs = handlers._collect_table_specs(
+            config_path='pipeline.yml',
+            spec_path=str(spec_path),
+        )
+        assert specs == [
+            {'table': 'from_spec'},
+            {'table': 'from_config'},
+        ]
 
     def test_pipeline_summary(self, dummy_cfg: Config) -> None:
         """
@@ -124,6 +187,31 @@ class TestCheckHandler:
         )
         assert handlers.check_handler(config='cfg.yml') == 0
         assert_emit_json(capture_io, {'targets': ['t1']}, pretty=True)
+
+    def test_summary_branch_uses_pipeline_summary(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that summary mode emits only the pipeline summary."""
+        monkeypatch.setattr(
+            handlers.Config,
+            'from_yaml',
+            lambda path, substitute: dummy_cfg,
+        )
+        monkeypatch.setattr(
+            handlers,
+            '_pipeline_summary',
+            lambda _cfg: {'name': 'p1', 'jobs': ['j1']},
+        )
+
+        assert handlers.check_handler(config='cfg.yml', summary=True) == 0
+        assert_emit_json(
+            capture_io,
+            {'name': 'p1', 'jobs': ['j1']},
+            pretty=True,
+        )
 
 
 class TestExtractHandler:
@@ -500,6 +588,88 @@ class TestRenderHandler:
         )
         assert 'No table schemas found' in capsys.readouterr().err
 
+    def test_output_file_respects_quiet_flag(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test output-file rendering without status log when quiet is set."""
+        output_path = tmp_path / 'rendered.sql'
+        monkeypatch.setattr(
+            handlers,
+            '_collect_table_specs',
+            lambda _cfg, _spec: [{'table': 'Widget'}],
+        )
+        monkeypatch.setattr(
+            handlers,
+            'render_tables',
+            lambda specs, **kwargs: ['SELECT 1'],
+        )
+
+        assert (
+            handlers.render_handler(
+                config='pipeline.yml',
+                spec=None,
+                table=None,
+                template='ddl',
+                template_path='custom.sql.j2',
+                output=str(output_path),
+                pretty=True,
+                quiet=True,
+            )
+            == 0
+        )
+        assert output_path.read_text(encoding='utf-8') == 'SELECT 1\n'
+        assert 'Rendered 1 schema(s)' not in capsys.readouterr().out
+
+    def test_uses_template_file_override_when_template_is_a_path(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test template-path auto-detection from the ``template`` argument."""
+        template_path = tmp_path / 'ddl.sql.j2'
+        template_path.write_text('CREATE TABLE {{ table }}', encoding='utf-8')
+        monkeypatch.setattr(
+            handlers,
+            '_collect_table_specs',
+            lambda _cfg, _spec: [{'table': 'Widget'}],
+        )
+        captured: dict[str, object] = {}
+
+        def _render_tables(
+            specs: list[dict[str, object]],
+            *,
+            template: str | None,
+            template_path: str | None,
+        ) -> list[str]:
+            captured['specs'] = specs
+            captured['template'] = template
+            captured['template_path'] = template_path
+            return ['SELECT 1']
+
+        monkeypatch.setattr(handlers, 'render_tables', _render_tables)
+
+        assert (
+            handlers.render_handler(
+                config='pipeline.yml',
+                spec=None,
+                table='Widget',
+                template=cast(Any, str(template_path)),
+                template_path=None,
+                output='-',
+                pretty=False,
+                quiet=True,
+            )
+            == 0
+        )
+        assert captured['template'] is None
+        assert captured['template_path'] == str(template_path)
+        assert captured['specs'] == [{'table': 'Widget'}]
+        assert capsys.readouterr().out.strip() == 'SELECT 1'
+
     def test_writes_sql_from_spec(
         self,
         widget_spec_paths: tuple[Path, Path],
@@ -657,6 +827,34 @@ class TestTransformHandler:
             pretty=False,
         )
 
+    def test_requires_mapping_operations_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Non-mapping operations payloads should raise :class:`ValueError`."""
+
+        def _resolve_cli_payload(
+            source: object,
+            **kwargs: object,
+        ) -> object:
+            if source == 'ops.json':
+                return ['not-a-mapping']
+            return [{'id': 1}]
+
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            _resolve_cli_payload,
+        )
+        with pytest.raises(ValueError, match='operations must resolve'):
+            handlers.transform_handler(
+                source='data.json',
+                operations='ops.json',
+                source_format='json',
+                target=None,
+                pretty=True,
+            )
+
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -784,6 +982,34 @@ class TestValidateHandler:
             'ValidationDict failed, no data to save for out.json'
             in capsys.readouterr().err
         )
+
+    def test_requires_mapping_rules_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Non-mapping rules payloads should raise :class:`ValueError`."""
+
+        def _resolve_cli_payload(
+            source: object,
+            **kwargs: object,
+        ) -> object:
+            if source == 'rules.json':
+                return ['not-a-mapping']
+            return [{'id': 1}]
+
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            _resolve_cli_payload,
+        )
+        with pytest.raises(ValueError, match='rules must resolve'):
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                source_format='json',
+                target=None,
+                pretty=True,
+            )
 
     def test_writes_target_file(
         self,
