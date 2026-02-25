@@ -151,6 +151,7 @@ class TestHelpers:
         [
             ('VARCHAR(12)', 'varchar', [12]),
             ('decimal(10, 4)', 'decimal', [10, 4]),
+            ('decimal(10, foo, 4)', 'decimal', [10, 4]),
             ('text', 'text', []),
             ('invalid(type', 'invalid(type', []),
         ],
