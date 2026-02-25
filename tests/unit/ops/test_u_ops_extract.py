@@ -328,6 +328,60 @@ class TestExtractFromApi:
             'content_type': 'text/plain',
         }
 
+    def test_use_client_with_direct_url_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Client mode with only a URL should use paginate_url path.
+        """
+        init_calls: list[dict[str, Any]] = []
+        paginate_calls: list[dict[str, Any]] = []
+
+        class _Client:
+            def __init__(self, **kwargs: Any) -> None:
+                init_calls.append(kwargs)
+
+            def paginate_url(
+                self,
+                url: str,
+                pagination: Any,
+                *,
+                request: Any,
+                sleep_seconds: float,
+            ) -> list[dict[str, int]]:
+                paginate_calls.append(
+                    {
+                        'url': url,
+                        'pagination': pagination,
+                        'request': request,
+                        'sleep_seconds': sleep_seconds,
+                    },
+                )
+                return [{'id': 1}]
+
+        monkeypatch.setattr(extract_mod, 'EndpointClient', _Client)
+
+        env = {
+            'url': 'https://example.test/v1/items?limit=5',
+            'params': {'limit': 5},
+            'headers': {'Accept': 'application/json'},
+            'timeout': 2.0,
+            'pagination': {'type': 'page'},
+            'sleep_seconds': 0.25,
+        }
+
+        result = extract_mod._extract_from_api_env(env, use_client=True)
+
+        assert result == [{'id': 1}]
+        assert init_calls[0]['base_url'] == 'https://example.test'
+        assert paginate_calls[0]['url'] == env['url']
+        assert paginate_calls[0]['sleep_seconds'] == 0.25
+        request = paginate_calls[0]['request']
+        assert request.params == {'limit': 5}
+        assert request.headers == {'Accept': 'application/json'}
+        assert request.timeout == 2.0
+
 
 class TestExtractFromDatabase:
     """
@@ -368,6 +422,20 @@ class TestExtractFromFile:
     -----
     - Tests supported and unsupported file formats.
     """
+
+    def test_infers_format_when_file_format_is_none(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Passing ``None`` for file_format should defer to extension inference.
+        """
+        path = tmp_path / 'data.json'
+        path.write_text('{"ok": true}', encoding='utf-8')
+
+        result = extract_from_file(str(path), None)
+
+        assert result == {'ok': True}
 
     @pytest.mark.parametrize(
         'file_format,write,expected_extracts',

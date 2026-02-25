@@ -590,6 +590,58 @@ class TestRun:
         with pytest.raises(ValueError, match='Unsupported target type'):
             run_mod.run('job')
 
+    def test_run_skips_transform_when_not_configured(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Jobs without transform config should bypass transform step.
+        """
+        job = _make_job(name='job', source='src', target='tgt')
+        job.transform = None
+        src = SimpleNamespace(
+            name='src',
+            type='file',
+            path='/tmp/in.json',
+            format='json',
+        )
+        tgt = SimpleNamespace(
+            name='tgt',
+            type='file',
+            path='/tmp/out.json',
+            format='json',
+        )
+        cfg = _base_config(job, src, tgt)
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
+
+        stages: list[str] = []
+
+        def _capture_validate(data: Any, stage: str, **kwargs: Any) -> Any:
+            stages.append(stage)
+            return data
+
+        monkeypatch.setattr(run_mod, 'maybe_validate', _capture_validate)
+
+        transform_calls: list[tuple[Any, Any]] = []
+
+        def _capture_transform(data: Any, ops: Any) -> Any:
+            transform_calls.append((data, ops))
+            return data
+
+        monkeypatch.setattr(run_mod, 'transform', _capture_transform)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: {'ok': True})
+
+        result = run_mod.run('job')
+
+        assert transform_calls == []
+        assert stages == ['before_transform', 'after_transform']
+        assert result == {'ok': True}
+
     def test_transform_and_validation_branches(
         self,
         tmp_path: Path,
