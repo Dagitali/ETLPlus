@@ -6,15 +6,20 @@ Unit tests for :mod:`etlplus.api.utils`.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
 from typing import cast
 
 import pytest
 
+from etlplus.api import ApiConfig
+from etlplus.api import CursorPaginationConfigDict
+from etlplus.api import EndpointConfig
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
+from etlplus.api import RateLimitConfig
 from etlplus.api import utils
 
 # SECTION: HELPERS ========================================================== #
@@ -382,3 +387,287 @@ class TestPaginateWithClient:
         )
 
         assert client.calls[0]['sleep_seconds'] == 0.0
+
+
+class TestUtilsInternalBranches:
+    """Branch-focused tests for internal API utility helpers."""
+
+    # pylint: disable=protected-access
+
+    def test_build_endpoint_client_helper(self) -> None:
+        """build_endpoint_client wires env options into EndpointClient."""
+        client = utils.build_endpoint_client(
+            base_url='https://example.test',
+            base_path='/v1',
+            endpoints={'users': '/users'},
+            env={'retry_network_errors': True},
+        )
+        assert client.base_url == 'https://example.test'
+        assert client.base_path == '/v1'
+        assert client.endpoints['users'] == '/users'
+        assert client.retry_network_errors is True
+
+    def test_build_pagination_cfg_page_cursor_and_unknown_variants(
+        self,
+    ) -> None:
+        """build_pagination_cfg covers page/cursor/unknown type branches."""
+        raw_page_cfg = utils.build_pagination_cfg(None, {'type': 'page'})
+        assert raw_page_cfg is not None
+        page_cfg = cast(PagePaginationConfigDict, raw_page_cfg)
+        assert page_cfg['type'] == 'page'
+        assert page_cfg['page_param'] == 'page'
+        assert page_cfg['size_param'] == 'per_page'
+
+        cursor_base = PaginationConfig(
+            type=PaginationType.CURSOR,
+            cursor_param='token',
+            cursor_path='meta.next',
+            page_size=50,
+            start_cursor='abc',
+        )
+        raw_cursor_cfg = utils.build_pagination_cfg(
+            cursor_base,
+            {'type': 'cursor'},
+        )
+        assert raw_cursor_cfg is not None
+        cursor_cfg = cast(CursorPaginationConfigDict, raw_cursor_cfg)
+        assert cursor_cfg is not None
+        assert cursor_cfg['type'] == 'cursor'
+        assert cursor_cfg['cursor_param'] == 'token'
+        assert cursor_cfg['cursor_path'] == 'meta.next'
+        assert cursor_cfg['page_size'] == 50
+        assert cursor_cfg['start_cursor'] == 'abc'
+
+        unknown = utils.build_pagination_cfg(None, {'type': 'custom'})
+        assert unknown is not None
+        assert unknown['type'] == 'custom'
+
+    def test_build_session_catches_params_and_cookie_update_exceptions(
+        self,
+    ) -> None:
+        """Param/cookie update exceptions should be swallowed."""
+
+        class _BrokenMapping(Mapping[str, Any]):
+            def __getitem__(self, key: str) -> Any:
+                raise KeyError(key)
+
+            def __iter__(self):
+                raise TypeError('bad iter')
+
+            def __len__(self) -> int:
+                return 0
+
+        class _BadCookies(Mapping[str, Any]):
+            def __getitem__(self, key: str) -> Any:
+                raise ValueError(key)
+
+            def __iter__(self):
+                return iter(['k'])
+
+            def __len__(self) -> int:
+                return 1
+
+            def items(self):
+                raise ValueError('bad cookies')
+
+        session = utils.build_session(
+            {
+                'params': cast(Any, _BrokenMapping()),
+                'cookies': cast(Any, _BadCookies()),
+            },
+        )
+        assert session is not None
+
+    def test_build_session_handles_error_tolerant_branches(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Session builder should tolerate assignment/update failures."""
+
+        class _BadMap(dict[str, Any]):
+            def __iter__(self):  # type: ignore[override]
+                raise TypeError('bad iter')
+
+        class _BadCookies(dict[str, Any]):
+            def items(self):  # type: ignore[override]
+                raise ValueError('bad cookies')
+
+        class _TinySession:
+            def __init__(self) -> None:
+                self.headers: dict[str, Any] = {}
+                self.params: dict[str, Any] = {}
+                self.auth: Any = None
+                self.verify: Any = True
+                self.cert: Any = None
+                self.proxies: dict[str, Any] = {}
+                self.cookies: dict[str, Any] = {}
+
+            def __setattr__(self, name: str, value: Any) -> None:
+                if name == 'trust_env':
+                    raise AttributeError('no trust_env')
+                object.__setattr__(self, name, value)
+
+        monkeypatch.setattr(utils.requests, 'Session', _TinySession)
+
+        session = utils.build_session(
+            {
+                'headers': cast(Any, ['not-mapping']),
+                'params': cast(Any, _BadMap({'a': 1})),
+                'auth': 'token-auth',
+                'cookies': cast(Any, _BadCookies({'x': '1'})),
+                'trust_env': True,
+            },
+        )
+        assert isinstance(session, _TinySession)
+        assert session.auth == 'token-auth'
+
+        default_session = utils.build_session(None)
+        assert isinstance(default_session, _TinySession)
+
+    def test_compose_api_request_env_without_api_reference(self) -> None:
+        """compose_api_request_env should work without api/endpoint linkage."""
+        cfg = SimpleNamespace(apis={})
+        source = SimpleNamespace(
+            url='https://example.test/items',
+            query_params={'a': 1},
+            headers={'H': '1'},
+            pagination=None,
+            rate_limit={'sleep_seconds': 0.4},
+            retry={'max_attempts': 1},
+            retry_network_errors=False,
+            session=None,
+            api=None,
+            endpoint=None,
+        )
+        env = utils.compose_api_request_env(
+            cfg,
+            source,
+            {
+                'retry': {'max_attempts': 2},
+                'retry_network_errors': True,
+                'session': ['not', 'mapping'],
+                'query_params': cast(Any, ['ignored']),
+                'headers': cast(Any, ['ignored']),
+            },
+        )
+        assert env['use_endpoints'] is False
+        assert env['url'] == 'https://example.test/items'
+        assert env['retry'] == {'max_attempts': 2}
+        assert env['retry_network_errors'] is True
+
+    def test_compose_api_request_env_without_retry_overrides(
+        self,
+        base_url: str,
+    ) -> None:
+        """Absent retry override keys should preserve source retry settings."""
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
+        source = SimpleNamespace(
+            api='core',
+            endpoint='users',
+            query_params=None,
+            headers=None,
+            pagination=None,
+            rate_limit=None,
+            retry={'max_attempts': 9},
+            retry_network_errors=False,
+            session=None,
+        )
+        env = utils.compose_api_request_env(cfg, source, {})
+        assert env['retry'] == {'max_attempts': 9}
+        assert env['retry_network_errors'] is False
+
+    def test_compose_api_target_env_skips_inherit_when_url_given(
+        self,
+        base_url: str,
+    ) -> None:
+        """Explicit target URL should bypass API endpoint inheritance."""
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
+        target = SimpleNamespace(
+            api='core', endpoint='users', headers={'T': '1'},
+        )
+        env = utils.compose_api_target_env(
+            cfg,
+            target,
+            {'url': 'https://override.test/u'},
+        )
+        assert env['url'] == 'https://override.test/u'
+        assert env['headers'] == {'T': '1'}
+
+    def test_internal_mapping_helpers_handle_non_mapping_inputs(
+        self,
+        base_url: str,
+    ) -> None:
+        """Internal helper branches should gracefully handle invalid inputs."""
+        assert utils._build_session_optional(cast(Any, 'bad')) is None
+        assert utils._coalesce(None, None) is None
+
+        target: dict[str, Any] = {'a': 1}
+        utils._update_mapping(target, cast(Any, ['not', 'mapping']))
+        assert target == {'a': 1}
+
+        api_cfg = _ApiCfg(base_url)
+        ep = _Endpoint()
+        url, headers, session_cfg = utils._inherit_http_from_api_endpoint(
+            cast(ApiConfig, api_cfg),
+            cast(EndpointConfig, ep),
+            'https://already.test/u',
+            {'X': '1'},
+            {'headers': {'S': '1'}},
+            force_url=False,
+        )
+        assert url == 'https://already.test/u'
+        assert headers['Accept'] == 'application/json'
+        assert headers['X'] == '1'
+        assert session_cfg is not None
+
+    def test_merge_session_cfg_three_with_non_mapping_values(
+        self,
+        base_url: str,
+    ) -> None:
+        """Session merge returns None when all three values are invalid."""
+        api_cfg = _ApiCfg(base_url)
+        api_cfg.session = cast(Any, 'bad')
+        ep = _Endpoint()
+        ep.session = cast(Any, 'bad')
+        merged = utils._merge_session_cfg_three(  # type: ignore[attr-defined]
+            cast(ApiConfig, api_cfg),
+            cast(EndpointConfig, ep),
+            cast(Any, 'bad'),
+        )
+        assert merged is None
+
+    def test_compute_rl_sleep_seconds_variants(self) -> None:
+        """Rate-limit sleep helper should filter overrides correctly."""
+        rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
+        assert (
+            utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
+        )
+        assert utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
+        assert (
+            utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1})
+            == 0.2
+        )
+
+    def test_resolve_request_raises_when_method_missing(self) -> None:
+        """resolve_request should fail when session lacks method callable."""
+        with pytest.raises(TypeError, match='must supply a callable'):
+            utils.resolve_request(
+                'get', session=SimpleNamespace(), timeout=1.0,
+            )
+
+    def test_resolve_request_success_path(self) -> None:
+        """resolve_request should return callable, timeout, and method enum."""
+
+        class _Session:
+            @staticmethod
+            def post(*_args: Any, **_kwargs: Any) -> Any:
+                return object()
+
+        call, timeout, method = utils.resolve_request(
+            'post',
+            session=_Session(),
+            timeout=2.0,
+        )
+        assert callable(call)
+        assert timeout == 2.0
+        assert method == utils.HttpMethod.POST

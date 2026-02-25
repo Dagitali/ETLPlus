@@ -11,6 +11,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
+from etlplus.api.errors import ApiAuthError
 from etlplus.api.retry_manager import RetryManager
 from etlplus.api.retry_manager import RetryPolicyDict
 from etlplus.api.retry_manager import RetryStrategy
@@ -63,6 +64,17 @@ class TestRetryManager:
         )
         assert manager.get_sleep_time(3) == pytest.approx(0.75)
 
+    def test_should_retry_false_for_non_network_error_with_flag_enabled(
+        self,
+    ) -> None:
+        """retry_network_errors only retries timeout/connection exceptions."""
+        manager = RetryManager(
+            policy={'max_attempts': 2},
+            retry_network_errors=True,
+        )
+        err = requests.HTTPError('bad')
+        assert manager.should_retry(None, err) is False
+
     def test_should_retry_network_errors(self) -> None:
         """Network errors should honor the ``retry_network_errors`` flag."""
         manager = RetryManager(
@@ -71,3 +83,24 @@ class TestRetryManager:
         )
         err = requests.Timeout('boom')
         assert manager.should_retry(None, err) is True
+
+    def test_should_retry_returns_false_when_not_retryable(self) -> None:
+        """Non-retryable status/errors should return False."""
+        manager = RetryManager(
+            policy={'max_attempts': 2, 'retry_on': [429]},
+            retry_network_errors=False,
+        )
+        err = requests.HTTPError('bad')
+        assert manager.should_retry(500, err) is False
+
+    def test_raise_terminal_error_emits_auth_error_for_401(self) -> None:
+        """401/403 terminal failures should raise ApiAuthError."""
+        manager = RetryManager(policy={'max_attempts': 1})
+        error = requests.HTTPError('auth')
+        with pytest.raises(ApiAuthError):
+            manager._raise_terminal_error(
+                'https://example.test/auth',
+                attempt=1,
+                status=401,
+                error=error,
+            )

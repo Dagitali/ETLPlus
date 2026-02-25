@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Iterable
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -65,6 +67,22 @@ class TestRateLimitConfig:
         c = rate_limit_config_factory(sleep_seconds=None, max_per_sec=3.0)
         assert a == b
         assert a != c
+
+    def test_from_defaults_returns_none_when_no_supported_keys(self) -> None:
+        """from_defaults should return None when keys are absent."""
+        assert RateLimitConfig.from_defaults({'other': 1}) is None
+
+    def test_from_inputs_handles_empty_config_instance(self) -> None:
+        """Empty RateLimitConfig inputs should normalize to disabled config."""
+        cfg = RateLimitConfig.from_inputs(rate_limit=RateLimitConfig())
+        assert cfg.sleep_seconds is None
+        assert cfg.max_per_sec is None
+
+    def test_from_inputs_non_mapping_rate_limit_is_ignored(self) -> None:
+        """Unsupported rate_limit input types should be ignored."""
+        cfg = RateLimitConfig.from_inputs(rate_limit=cast(Any, 'bad'))
+        assert cfg.sleep_seconds is None
+        assert cfg.max_per_sec is None
 
     @pytest.mark.parametrize(
         'obj,expect',
@@ -125,6 +143,11 @@ class TestRateLimitConfig:
         # from_obj should return None (not raise) for non-mapping inputs.
         res = rate_limit_from_obj_factory(Weird())  # type: ignore[arg-type]
         assert res is None
+
+    def test_from_obj_returns_same_instance(self) -> None:
+        """from_obj should return existing RateLimitConfig instances as-is."""
+        obj = RateLimitConfig(sleep_seconds=0.5)
+        assert RateLimitConfig.from_obj(obj) is obj
 
     def test_no_side_effects_on_input_mapping(
         self,

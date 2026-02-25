@@ -14,12 +14,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from typing import cast
 
 import pytest
 
+import etlplus.api.config as config_module
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import EndpointConfig
+from etlplus.api import HttpMethod
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 
@@ -670,3 +673,75 @@ class TestEndpointConfig:
         assert ep.path == '/users'
         assert ep.method == 'GET'
         assert ep.query_params.get('active') is True
+
+
+class TestConfigInternalBranches:
+    """Targeted branch tests for internal config helpers."""
+
+    # pylint: disable=protected-access
+
+    def test_api_profile_config_from_obj_requires_mapping(self) -> None:
+        """ApiProfileConfig.from_obj should fail for non-mapping inputs."""
+        with pytest.raises(TypeError, match='must be a mapping'):
+            ApiProfileConfig.from_obj(cast(Any, 1))
+
+    def test_api_config_from_obj_requires_mapping(self) -> None:
+        """ApiConfig.from_obj should fail on non-mapping values."""
+        with pytest.raises(TypeError, match='must be a mapping'):
+            ApiConfig.from_obj(cast(Any, 1))
+
+    def test_effective_defaults_requires_string_base_url(self) -> None:
+        """Fallback base URL must be a string when profiles are absent."""
+        with pytest.raises(TypeError, match='base_url'):
+            config_module._effective_service_defaults(
+                profiles={},
+                fallback_base=123,
+                fallback_headers={},
+            )
+
+    def test_endpoint_config_from_obj_rejects_invalid_shape(self) -> None:
+        """EndpointConfig.from_obj accepts only string or mapping inputs."""
+        with pytest.raises(TypeError, match='expected str or mapping'):
+            EndpointConfig.from_obj(cast(Any, [1, 2, 3]))
+
+    def test_effective_rate_limit_defaults_returns_selected_profile_value(
+        self,
+        base_url: str,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+    ) -> None:
+        """Rate-limit defaults should come from selected profile."""
+        cfg = api_config_factory(
+            {
+                'profiles': {
+                    'default': {
+                        'base_url': base_url,
+                        'defaults': {
+                            'rate_limit': {'sleep_seconds': 0.25},
+                        },
+                    },
+                },
+                'endpoints': {},
+            },
+        )
+        rate_limit = cfg.effective_rate_limit_defaults()
+        assert rate_limit is not None
+        assert rate_limit.sleep_seconds == 0.25
+
+    def test_normalize_method_branches(self) -> None:
+        """Method normalizer handles enum, blank, and invalid values."""
+        assert config_module._normalize_method(HttpMethod.GET) == 'GET'
+        assert config_module._normalize_method('   ') is None
+        with pytest.raises(ValueError, match='Unsupported HTTP method'):
+            config_module._normalize_method('tracee')
+
+    def test_parse_profiles_skips_non_mapping_entries(
+        self,
+        base_url: str,
+    ) -> None:
+        """Skip profile entries that are not mappings."""
+        raw = {
+            'good': {'base_url': base_url},
+            'bad': ['not', 'mapping'],
+        }
+        parsed = config_module._parse_profiles(raw)
+        assert list(parsed.keys()) == ['good']
