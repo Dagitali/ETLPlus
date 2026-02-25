@@ -583,7 +583,9 @@ class TestUtilsInternalBranches:
         """Explicit target URL should bypass API endpoint inheritance."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         target = SimpleNamespace(
-            api='core', endpoint='users', headers={'T': '1'},
+            api='core',
+            endpoint='users',
+            headers={'T': '1'},
         )
         env = utils.compose_api_target_env(
             cfg,
@@ -652,7 +654,9 @@ class TestUtilsInternalBranches:
         """resolve_request should fail when session lacks method callable."""
         with pytest.raises(TypeError, match='must supply a callable'):
             utils.resolve_request(
-                'get', session=SimpleNamespace(), timeout=1.0,
+                'get',
+                session=SimpleNamespace(),
+                timeout=1.0,
             )
 
     def test_resolve_request_success_path(self) -> None:

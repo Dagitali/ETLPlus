@@ -527,7 +527,8 @@ class TestRequestManagerInternalPaths:
             return _ResponseStub(payload={'ok': True})
 
         session = cast(
-            requests.Session, types.SimpleNamespace(request=_request),
+            requests.Session,
+            types.SimpleNamespace(request=_request),
         )
         manager._send_http_request(
             'post',

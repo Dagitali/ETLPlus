@@ -452,7 +452,8 @@ class TestPaginatorInternalBranches:
         paginator = Paginator(fetch=None)
         with pytest.raises(ValueError, match='fetch must be provided'):
             paginator._fetch_page(
-                'https://example.test/items', RequestOptions(),
+                'https://example.test/items',
+                RequestOptions(),
             )
 
     def test_fetch_page_wraps_api_request_error(self) -> None:
@@ -469,7 +470,8 @@ class TestPaginatorInternalBranches:
         paginator.last_page = 4
         with pytest.raises(PaginationError):
             paginator._fetch_page(
-                'https://example.test/items', RequestOptions(),
+                'https://example.test/items',
+                RequestOptions(),
             )
 
     def test_from_config_accepts_pagination_config_instance(self) -> None:
