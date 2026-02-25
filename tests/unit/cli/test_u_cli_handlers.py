@@ -334,6 +334,39 @@ class TestExtractHandler:
         )
         assert capture_io['emit_or_write'] == []
 
+    def test_target_argument_overrides_output_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        ``target`` should take precedence over ``output`` when both are set.
+        """
+        monkeypatch.setattr(
+            handlers,
+            'extract',
+            lambda *_args, **_kwargs: {'status': 'ok'},
+        )
+
+        assert (
+            handlers.extract_handler(
+                source_type='file',
+                source='data.json',
+                target='preferred.json',
+                output='ignored.json',
+                format_hint='json',
+                format_explicit=True,
+                pretty=False,
+            )
+            == 0
+        )
+        assert_emit_or_write(
+            capture_io,
+            {'status': 'ok'},
+            'preferred.json',
+            pretty=False,
+        )
+
     def test_writes_output_file_and_skips_emit(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -777,6 +810,8 @@ class TestRunHandler:
 class TestTransformHandler:
     """Unit tests for :func:`transform_handler`."""
 
+    # pylint: disable=unused-argument
+
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -910,6 +945,8 @@ class TestTransformHandler:
 class TestValidateHandler:
     """Unit tests for :func:`validate_handler`."""
 
+    # pylint: disable=unused-argument
+
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1010,6 +1047,54 @@ class TestValidateHandler:
                 target=None,
                 pretty=True,
             )
+
+    def test_target_stdout_emits_result_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        ``target='-'`` should emit full validation output to STDOUT.
+        """
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: (
+                {'source': source}
+                if source == 'data.json'
+                else {'id': {'required': True}}
+            ),
+        )
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda payload, rules: {
+                'data': payload,
+                'field_errors': {},
+                'rules': rules,
+                'valid': True,
+            },
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                target='-',
+                pretty=True,
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'data': {'source': 'data.json'},
+                'field_errors': {},
+                'rules': {'id': {'required': True}},
+                'valid': True,
+            },
+            pretty=True,
+        )
 
     def test_writes_target_file(
         self,
