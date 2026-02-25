@@ -25,8 +25,11 @@ from typing import cast
 import pytest
 
 from etlplus.api import EndpointClient
+from etlplus.api import PaginationConfig
 from etlplus.api import RateLimiter
 from etlplus.api import RequestOptions
+from etlplus.api.errors import ApiRequestError
+from etlplus.api.errors import PaginationError
 from etlplus.api.pagination import PagePaginationConfigDict
 from etlplus.api.pagination import PaginationInput
 from etlplus.api.pagination import PaginationType
@@ -383,3 +386,181 @@ class TestPaginator:
             assert paginator.type == ptype
 
         assert paginator.start_page == expected
+
+
+class TestPaginatorInternalBranches:
+    """Additional branch coverage for paginator internals."""
+
+    def test_coalesce_records_fallback_missing_and_none_payload(self) -> None:
+        """Missing fallback keeps None and triggers default payload path."""
+        records = Paginator.coalesce_records(
+            None,
+            None,
+            fallback_path='missing.path',
+        )
+        assert records == [{'value': None}]
+
+    def test_coalesce_records_missing_fallback_and_dict_paths(self) -> None:
+        """coalesce_records covers missing/fallback/list/dict branches."""
+        missing = Paginator.coalesce_records({'a': 1}, 'missing.path')
+        assert missing == [{'value': None}]
+
+        no_fallback = Paginator.coalesce_records(
+            {'a': 1},
+            None,
+            fallback_path='missing.path',
+        )
+        assert no_fallback == [{'a': 1}]
+
+        list_with_scalar = Paginator.coalesce_records([1, {'id': 2}], None)
+        assert list_with_scalar == [{'value': 1}, {'id': 2}]
+
+        dict_items = Paginator.coalesce_records({'items': [{'id': 3}]}, None)
+        assert dict_items == [{'id': 3}]
+
+        dict_plain = Paginator.coalesce_records({'id': 4}, None)
+        assert dict_plain == [{'id': 4}]
+
+    def test_cursor_iteration_stops_on_stop_limits_branch(self) -> None:
+        """Cursor iterator should break when stop limits are reached."""
+        payloads = [
+            {
+                'records': [{'id': 1}],
+                'meta': {'next': 'abc'},
+            },
+        ]
+
+        def fetch(
+            _url: str,
+            _request: RequestOptions,
+            _page: int | None,
+        ) -> dict[str, Any]:
+            return payloads[0]
+
+        paginator = Paginator(
+            type=PaginationType.CURSOR,
+            fetch=fetch,
+            records_path='records',
+            cursor_path='meta.next',
+            max_pages=1,
+        )
+        rows = list(paginator.paginate_iter('https://example.test/items'))
+        assert rows == [{'id': 1}]
+
+    def test_fetch_page_raises_when_fetch_missing(self) -> None:
+        """_fetch_page should raise when callback is absent."""
+        paginator = Paginator(fetch=None)
+        with pytest.raises(ValueError, match='fetch must be provided'):
+            paginator._fetch_page(
+                'https://example.test/items', RequestOptions(),
+            )
+
+    def test_fetch_page_wraps_api_request_error(self) -> None:
+        """ApiRequestError should be wrapped as PaginationError."""
+
+        def failing_fetch(
+            _url: str,
+            _request: RequestOptions,
+            _page: int | None,
+        ) -> dict[str, Any]:
+            raise ApiRequestError(url='https://example.test/items', status=429)
+
+        paginator = Paginator(fetch=failing_fetch, type=PaginationType.PAGE)
+        paginator.last_page = 4
+        with pytest.raises(PaginationError):
+            paginator._fetch_page(
+                'https://example.test/items', RequestOptions(),
+            )
+
+    def test_from_config_accepts_pagination_config_instance(self) -> None:
+        """from_config should handle PaginationConfig objects directly."""
+        cfg = PaginationConfig(
+            type=PaginationType.PAGE,
+            page_size=3,
+            start_page=2,
+            records_path='items',
+        )
+        paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
+        assert paginator.page_size == 3
+        assert paginator.start_page == 2
+        assert paginator.records_path == 'items'
+
+    def test_limit_batch_exhausted_branch(self) -> None:
+        """When emitted reaches max_records, remaining<=0 should exhaust."""
+        paginator = Paginator(fetch=_dummy_fetch, max_records=2)
+        trimmed, exhausted = paginator._limit_batch([{'id': 1}], emitted=2)
+        assert trimmed == []
+        assert exhausted is True
+
+    def test_next_cursor_from_invalid_paths(self) -> None:
+        """next_cursor_from should return None for invalid traversal inputs."""
+        assert Paginator.next_cursor_from([], 'meta.next') is None
+        assert (
+            Paginator.next_cursor_from({'meta': 'oops'}, 'meta.next') is None
+        )
+
+    def test_paginate_iter_exits_when_type_is_unrecognized(self) -> None:
+        """Unknown runtime type should fall through match and yield nothing."""
+        paginator = Paginator(fetch=_dummy_fetch)
+        paginator.type = cast(Any, 'unknown')
+        assert (
+            list(paginator.paginate_iter('https://example.test/items')) == []
+        )
+
+    def test_paginate_iter_raises_when_fetch_missing(self) -> None:
+        """paginate_iter should reject missing fetch callback."""
+        paginator = Paginator(fetch=None)
+        with pytest.raises(ValueError, match='fetch must be provided'):
+            list(paginator.paginate_iter('https://example.test/items'))
+
+    def test_post_init_normalizes_invalid_values(self) -> None:
+        """Direct construction should normalize type/start/page_size/params."""
+        paginator = Paginator(
+            type=cast(Any, 'invalid'),
+            start_page=-5,
+            page_size=0,
+            page_param='',
+            size_param='',
+            cursor_param='',
+            limit_param='',
+            fetch=_dummy_fetch,
+        )
+        assert paginator.type == PaginationType.PAGE
+        assert paginator.start_page == 1
+        assert paginator.page_size == 1
+        assert paginator.page_param == 'page'
+        assert paginator.size_param == 'per_page'
+        assert paginator.cursor_param == PaginationType.CURSOR
+        assert paginator.limit_param == 'limit'
+
+    def test_post_init_normalizes_zero_start_page_and_keeps_limit_param(
+        self,
+    ) -> None:
+        """Page start_page=0 normalizes to 1; non-empty limit_param is kept."""
+        paginator = Paginator(
+            type=PaginationType.PAGE,
+            start_page=0,
+            limit_param='lim',
+            fetch=_dummy_fetch,
+        )
+        assert paginator.start_page == 1
+        assert paginator.limit_param == 'lim'
+
+    def test_resolve_start_page_invalid_and_negative_offset(self) -> None:
+        """Start-page resolver handles invalid and negative overrides."""
+        page = Paginator(fetch=_dummy_fetch, type=PaginationType.PAGE)
+        out_page = page._resolve_start_page(
+            RequestOptions(params={page.page_param: 'bad'}),
+        )
+        assert out_page == page.start_page
+
+        offset = Paginator(fetch=_dummy_fetch, type=PaginationType.OFFSET)
+        out_offset = offset._resolve_start_page(
+            RequestOptions(params={offset.page_param: -5}),
+        )
+        assert out_offset == offset.START_PAGES[offset.type]
+
+    def test_stop_limits_max_records_branch(self) -> None:
+        """_stop_limits should return true when record cap is reached."""
+        paginator = Paginator(fetch=_dummy_fetch, max_records=2)
+        assert paginator._stop_limits(pages=1, recs=2) is True

@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from etlplus.api.pagination import PaginationClient
+from etlplus.api.pagination import PaginationConfig
 from etlplus.api.pagination import PaginationType
 from etlplus.api.types import RequestOptions
 
@@ -32,6 +33,37 @@ class TestPaginationClient:
     ) -> dict[str, Any]:
         """Return an empty payload for pagination client construction."""
         return {}
+
+    def test_collect_and_single_page_with_pagination_config(self) -> None:
+        """collect() and non-paginated single-page branches both work."""
+        pagination = PaginationConfig(
+            type=PaginationType.PAGE,
+            records_path='payload.items',
+        )
+        typed_client = PaginationClient(
+            pagination=pagination,
+            fetch=self._noop_fetch,
+        )
+        assert typed_client.pagination_type == PaginationType.PAGE
+
+        seen_pages: list[int | None] = []
+
+        def fetch(
+            _url: str,
+            _request: RequestOptions,
+            page: int | None,
+        ) -> dict[str, Any]:
+            seen_pages.append(page)
+            return {'items': [{'id': 9}]}
+
+        client = PaginationClient(
+            pagination=None,
+            fetch=fetch,
+        )
+
+        rows = client.collect('https://example.test/collect')
+        assert rows == [{'id': 9}]
+        assert seen_pages == [None]
 
     def test_is_paginated_reflects_config_mutations(self) -> None:
         """Test that pagination type detection re-runs on config mutation."""

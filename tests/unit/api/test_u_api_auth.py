@@ -20,12 +20,14 @@ import time
 import types
 from collections.abc import Callable
 from typing import Any
+from typing import cast
 
 import pytest
 import requests  # type: ignore[import]
 
 from etlplus.api.auth import CLOCK_SKEW_SEC
 from etlplus.api.auth import EndpointCredentialsBearer
+from etlplus.api.auth import _truncate
 
 from ...conftest import RequestFactory
 
@@ -168,6 +170,8 @@ class TestEndpointCredentialsBearer:
     - Validates caching, refresh, and error handling behavior.
     """
 
+    # pylint: disable=protected-access
+
     def test_fetches_and_caches(
         self,
         base_url: str,
@@ -203,6 +207,69 @@ class TestEndpointCredentialsBearer:
         s.auth(r2)
         assert r2.headers.get('Authorization') == 'Bearer t1'
         assert token_sequence['n'] == 1
+
+    def test_parse_token_response_requires_mapping_payload(
+        self,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+    ) -> None:
+        """Non-mapping token payloads should raise ValueError."""
+        auth = bearer_factory()
+        resp = types.SimpleNamespace(
+            text='[]',
+            json=lambda: ['not', 'a', 'mapping'],
+        )
+        with pytest.raises(ValueError, match='JSON object'):
+            auth._parse_token_response(cast(Any, resp))
+
+    def test_parse_token_response_falls_back_default_ttl(
+        self,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+    ) -> None:
+        """Invalid expires_in values should coerce to default TTL."""
+        auth = bearer_factory()
+        resp = types.SimpleNamespace(
+            text='{"access_token":"abc","expires_in":"bad"}',
+            json=lambda: {'access_token': 'abc', 'expires_in': 'bad'},
+        )
+        parsed = auth._parse_token_response(cast(Any, resp))
+        assert parsed['access_token'] == 'abc'
+        assert parsed['expires_in'] > 0
+
+    @pytest.mark.parametrize(
+        ('post_callable', 'expected_exception'),
+        [
+            pytest.param(
+                lambda *_a, **_k: _Resp({}, status=401),
+                requests.HTTPError,
+                id='http-error',
+            ),
+            pytest.param(
+                lambda *_a, **_k: _Resp({'expires_in': 60}),
+                RuntimeError,
+                id='missing-token',
+            ),
+            pytest.param(
+                lambda *_a, **_k: _NonJsonResponse(),
+                ValueError,
+                id='invalid-json',
+            ),
+        ],
+    )
+    def test_post_error_paths_raise(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+        request_factory: RequestFactory,
+        post_callable: Callable[..., Any],
+        expected_exception: type[Exception],
+    ) -> None:
+        """Test that various POST failure paths raise the expected errors."""
+
+        monkeypatch.setattr(requests, 'post', post_callable)
+        auth = bearer_factory()
+        request = request_factory()
+        with pytest.raises(expected_exception):
+            auth(request)
 
     def test_refreshes_when_expiring(
         self,
@@ -268,37 +335,57 @@ class TestEndpointCredentialsBearer:
         assert calls['n'] == 2
 
     @pytest.mark.parametrize(
-        ('post_callable', 'expected_exception'),
+        ('exc', 'expected'),
         [
             pytest.param(
-                lambda *_a, **_k: _Resp({}, status=401),
-                requests.HTTPError,
-                id='http-error',
+                requests.exceptions.Timeout('timeout'),
+                requests.exceptions.Timeout,
+                id='timeout',
             ),
             pytest.param(
-                lambda *_a, **_k: _Resp({'expires_in': 60}),
-                RuntimeError,
-                id='missing-token',
+                requests.exceptions.SSLError('ssl'),
+                requests.exceptions.SSLError,
+                id='ssl',
             ),
             pytest.param(
-                lambda *_a, **_k: _NonJsonResponse(),
-                ValueError,
-                id='invalid-json',
+                requests.exceptions.ConnectionError('conn'),
+                requests.exceptions.ConnectionError,
+                id='connection',
+            ),
+            pytest.param(
+                requests.exceptions.RequestException('generic'),
+                requests.exceptions.RequestException,
+                id='request-exception',
             ),
         ],
     )
-    def test_post_error_paths_raise(
+    def test_request_token_exception_branches(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
-        request_factory: RequestFactory,
-        post_callable: Callable[..., Any],
-        expected_exception: type[Exception],
+        exc: Exception,
+        expected: type[Exception],
     ) -> None:
-        """Test that various POST failure paths raise the expected errors."""
+        """Token request exceptions should propagate with branch coverage."""
 
-        monkeypatch.setattr(requests, 'post', post_callable)
+        class _Client:
+            @staticmethod
+            def post(*_args: Any, **_kwargs: Any) -> Any:
+                raise exc
+
         auth = bearer_factory()
-        request = request_factory()
-        with pytest.raises(expected_exception):
-            auth(request)
+        auth.session = cast(requests.Session, _Client())
+        with pytest.raises(expected):
+            auth._request_token()
+
+    def test_truncate_empty_text_returns_empty_string(self) -> None:
+        """Empty/None input should truncate to an empty string."""
+        assert _truncate('') == ''
+        assert _truncate(None) == ''
+
+    def test_token_payload_omits_blank_scope(
+        self,
+        bearer_factory: Callable[..., EndpointCredentialsBearer],
+    ) -> None:
+        """Whitespace-only scope should not be included in token payload."""
+        auth = bearer_factory(scope='   ')
+        assert auth._token_payload() == {'grant_type': 'client_credentials'}
