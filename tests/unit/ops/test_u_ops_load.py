@@ -536,6 +536,25 @@ class TestLoadToFile:
         assert result['status'] == 'success'
         assert output_path.exists()
 
+    def test_to_file_infers_format_when_none(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Omitting file_format should infer from the output extension.
+        """
+        output_path = tmp_path / 'auto.json'
+        payload = {'status': 'ok'}
+
+        result = load_to_file(payload, str(output_path), None)
+
+        assert result['status'] == 'success'
+        assert result['records'] == 1
+        assert output_path.exists()
+        with open(output_path, encoding='utf-8') as f:
+            loaded_data = js.load(f)
+        assert loaded_data == payload
+
     def test_to_file_unsupported_format(
         self,
         tmp_path: Path,
@@ -574,9 +593,6 @@ class TestLoadToFile:
         )
         assert result['status'] == 'success'
         assert output_path.exists()
-        with open(output_path, encoding='utf-8') as f:
-            loaded_data = js.load(f)
-        assert loaded_data == mock_data
 
 
 class TestLoadToApi:

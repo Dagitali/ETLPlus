@@ -14,13 +14,9 @@ import typer
 import etlplus.cli.commands as commands_mod
 from etlplus.cli.state import CliState
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _ctx() -> typer.Context:
-    command = typer.main.get_command(commands_mod.app)
-    return typer.Context(command)
-
+from .conftest import AssertCapturedText
+from .conftest import StubHandler
+from .conftest import TyperContextFactory
 
 # SECTION: TESTS ============================================================ #
 
@@ -54,6 +50,8 @@ class TestCheckCommand:
     def test_delegates_to_handler(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
     ) -> None:
         """Valid inputs should dispatch to ``check_handler``."""
         monkeypatch.setattr(
@@ -61,20 +59,14 @@ class TestCheckCommand:
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
-        captured: dict[str, Any] = {}
-
-        def _check_handler(**kwargs: Any) -> int:
-            captured.update(kwargs)
-            return 3
-
-        monkeypatch.setattr(
+        captured = stub_handler(
             commands_mod.handlers,
             'check_handler',
-            _check_handler,
+            result=3,
         )
 
         result = commands_mod.check_cmd(
-            _ctx(),
+            typer_ctx_factory(),
             config='pipeline.yml',
             jobs=True,
             pipelines=False,
@@ -89,110 +81,105 @@ class TestCheckCommand:
         assert captured['jobs'] is True
         assert captured['pretty'] is False
 
-    def test_requires_config_option(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Empty config should raise :class:`typer.Exit` with code 2."""
-        with pytest.raises(typer.Exit) as exc:
-            commands_mod.check_cmd(_ctx(), config='')
-        assert exc.value.exit_code == 2
-        assert "Missing required option '--config'" in capsys.readouterr().err
 
-
-class TestExtractCommand:
-    """Unit tests for :func:`etlplus.cli.commands.extract_cmd`."""
+class TestCommandsMissingInputs:
+    """Unit tests for missing required args/options."""
 
     @pytest.mark.parametrize(
-        ('source', 'expected_message'),
+        ('command_name', 'kwargs', 'expected_message'),
         [
-            (
+            pytest.param(
+                'check_cmd',
+                {'config': ''},
+                "Missing required option '--config'",
+                id='check-missing-config',
+            ),
+            pytest.param(
+                'run_cmd',
+                {'config': ''},
+                "Missing required option '--config'",
+                id='run-missing-config',
+            ),
+            pytest.param(
+                'render_cmd',
+                {'config': None, 'spec': None},
+                "Missing required option '--config' or '--spec'",
+                id='render-missing-input',
+            ),
+            pytest.param(
+                'extract_cmd',
+                {'source': ''},
+                "Missing required argument 'SOURCE'",
+                id='extract-missing-source',
+            ),
+            pytest.param(
+                'load_cmd',
+                {'target': ''},
+                "Missing required argument 'TARGET'",
+                id='load-missing-target',
+            ),
+        ],
+    )
+    def test_missing_required_inputs_exit_with_usage_error(
+        self,
+        typer_ctx_factory: TyperContextFactory,
+        assert_stderr_contains: AssertCapturedText,
+        command_name: str,
+        kwargs: dict[str, object],
+        expected_message: str,
+    ) -> None:
+        """
+        Commands should emit friendly usage errors when required inputs
+        are missing.
+        """
+        command = getattr(commands_mod, command_name)
+        with pytest.raises(typer.Exit) as exc:
+            command(typer_ctx_factory(), **kwargs)
+        assert exc.value.exit_code == 2
+        assert_stderr_contains(expected_message)
+
+    @pytest.mark.parametrize(
+        (
+            'command_name',
+            'argument_name',
+            'argument_value',
+            'expected_message',
+        ),
+        [
+            pytest.param(
+                'extract_cmd',
+                'source',
                 '--oops',
                 "must follow the 'SOURCE' argument",
+                id='extract-option-before-source',
             ),
-            (
-                '',
-                "Missing required argument 'SOURCE'",
-            ),
-        ],
-    )
-    def test_rejects_invalid_source_argument_ordering(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-        source: str,
-        expected_message: str,
-    ) -> None:
-        """Invalid SOURCE values should produce exit code 2."""
-        monkeypatch.setattr(
-            commands_mod,
-            'ensure_state',
-            lambda _ctx: CliState(),
-        )
-        with pytest.raises(typer.Exit) as exc:
-            commands_mod.extract_cmd(_ctx(), source=source)
-        assert exc.value.exit_code == 2
-        assert expected_message in capsys.readouterr().err
-
-
-class TestLoadCommand:
-    """Unit tests for :func:`etlplus.cli.commands.load_cmd`."""
-
-    @pytest.mark.parametrize(
-        ('target', 'expected_message'),
-        [
-            (
+            pytest.param(
+                'load_cmd',
+                'target',
                 '--oops',
                 "must follow the 'TARGET' argument",
-            ),
-            (
-                '',
-                "Missing required argument 'TARGET'",
+                id='load-option-before-target',
             ),
         ],
     )
-    def test_rejects_invalid_target_argument_ordering(
+    def test_rejects_option_values_for_positional_arguments(
         self,
-        capsys: pytest.CaptureFixture[str],
-        target: str,
+        typer_ctx_factory: TyperContextFactory,
+        assert_stderr_contains: AssertCapturedText,
+        command_name: str,
+        argument_name: str,
+        argument_value: str,
         expected_message: str,
     ) -> None:
-        """Invalid TARGET values should produce exit code 2."""
+        """
+        Positional arguments should reject option-like values.
+        """
+        kwargs = {argument_name: argument_value}
+        command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
-            commands_mod.load_cmd(_ctx(), target=target)
+            command(typer_ctx_factory(), **kwargs)
         assert exc.value.exit_code == 2
-        assert expected_message in capsys.readouterr().err
-
-
-class TestRenderCommand:
-    """Unit tests for :func:`etlplus.cli.commands.render_cmd`."""
-
-    def test_requires_config_or_spec(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Missing both ``--config`` and ``--spec`` should exit with code 2."""
-        with pytest.raises(typer.Exit) as exc:
-            commands_mod.render_cmd(_ctx(), config=None, spec=None)
-        assert exc.value.exit_code == 2
-        assert (
-            "Missing required option '--config' or '--spec'"
-            in capsys.readouterr().err
-        )
-
-
-class TestRunCommand:
-    """Unit tests for :func:`etlplus.cli.commands.run_cmd`."""
-
-    def test_requires_config_option(
-        self,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Empty config should raise :class:`typer.Exit` with code 2."""
-        with pytest.raises(typer.Exit) as exc:
-            commands_mod.run_cmd(_ctx(), config='')
-        assert exc.value.exit_code == 2
-        assert "Missing required option '--config'" in capsys.readouterr().err
+        assert_stderr_contains(expected_message)
 
 
 class TestTransformCommand:
@@ -203,6 +190,8 @@ class TestTransformCommand:
     def test_skips_source_validation_when_source_type_cannot_be_inferred(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
     ) -> None:
         """
         When source type is ``None``, source validation should be skipped.
@@ -244,20 +233,14 @@ class TestTransformCommand:
             return str(value)
 
         monkeypatch.setattr(commands_mod, 'validate_choice', _validate_choice)
-        captured: dict[str, Any] = {}
-
-        def _transform_handler(**kwargs: Any) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(
+        captured = stub_handler(
             commands_mod.handlers,
             'transform_handler',
-            _transform_handler,
+            result=0,
         )
 
         result = commands_mod.transform_cmd(
-            _ctx(),
+            typer_ctx_factory(),
             operations='{}',
             source='payload',
             source_format=None,

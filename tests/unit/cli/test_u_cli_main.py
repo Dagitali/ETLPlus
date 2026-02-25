@@ -19,6 +19,7 @@ import etlplus.cli.handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
 
 from .conftest import StubCommand
+from .conftest import StubCommandMain
 
 # SECTION: HELPERS ========================================================== #
 
@@ -33,25 +34,25 @@ main_module = importlib.import_module('etlplus.cli.main')
 class TestMain:
     """Unit tests for :func:`etlplus.cli.main`."""
 
+    # pylint: disable=protected-access,unused-argument
+
     def test_command_return_value_is_passthrough(
         self,
-        stub_command: StubCommand,
+        stub_command_main: StubCommandMain,
     ) -> None:
         """
         Test that the command return values flow through unchanged.
 
         Parameters
         ----------
-        stub_command : StubCommand
+        stub_command_main : StubCommandMain
             Fixture that wires Typer's command execution to ``action``.
         """
-        captured: dict[str, object] = {}
 
         def _action(**kwargs: object) -> object:
-            captured.update(kwargs)
             return 5
 
-        stub_command(_action)
+        captured = stub_command_main(_action)
 
         assert cli_main(['extract']) == 5
         assert captured['args'] == ['extract']
@@ -61,34 +62,6 @@ class TestMain:
     def test_emit_context_help_none_returns_false(self) -> None:
         """Helper should return ``False`` when no context is provided."""
         assert main_module._emit_context_help(None) is False
-
-    def test_illegal_option_without_context_emits_root_help(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Illegal options without context should fall back to root help."""
-
-        class _StubCommand:
-            def main(self, **kwargs: object) -> object:
-                raise click.exceptions.NoSuchOption('--bad')
-
-        root_help_calls = {'count': 0}
-        monkeypatch.setattr(
-            typer.main,
-            'get_command',
-            lambda _app: _StubCommand(),
-        )
-        monkeypatch.setattr(
-            main_module,
-            '_emit_root_help',
-            lambda _command: root_help_calls.__setitem__('count', 1),
-        )
-
-        exit_code = cli_main(['--bad'])
-        assert exit_code == 2
-        assert root_help_calls['count'] == 1
-        assert 'No such option' in capsys.readouterr().err
 
     def test_handles_os_error(
         self,
@@ -130,6 +103,40 @@ class TestMain:
         with pytest.raises(SystemExit) as exc_info:
             cli_main(['extract', 'foo.csv'])
         assert exc_info.value.code == 5
+
+    def test_illegal_option_without_context_emits_root_help(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Illegal options without context should fall back to root help."""
+
+        class _StubCommand:
+            """Stub command that raises a usage error for any option."""
+
+            def main(self, **kwargs: object) -> object:
+                """
+                Simulate Typer's command-level option parsing and error
+                handling.
+                """
+                raise click.exceptions.NoSuchOption('--bad')
+
+        root_help_calls = {'count': 0}
+        monkeypatch.setattr(
+            typer.main,
+            'get_command',
+            lambda _app: _StubCommand(),
+        )
+        monkeypatch.setattr(
+            main_module,
+            '_emit_root_help',
+            lambda _command: root_help_calls.__setitem__('count', 1),
+        )
+
+        exit_code = cli_main(['--bad'])
+        assert exit_code == 2
+        assert root_help_calls['count'] == 1
+        assert 'No such option' in capsys.readouterr().err
 
     @pytest.mark.parametrize(
         ('exception', 'expected_code', 'expected_err'),

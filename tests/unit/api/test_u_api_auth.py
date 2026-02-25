@@ -31,67 +31,13 @@ from etlplus.api.auth import _truncate
 
 from ...conftest import RequestFactory
 
-# SECTION: TYPES ============================================================ #
-
-
-class _NonJsonResponse:
-    """Response stub that raises :class:`ValueError` from ``json``."""
-
-    status_code = 200
-    text = 'not json'
-
-    @staticmethod
-    def raise_for_status() -> None:
-        """HTTP 200 OK; no-op."""
-
-    @staticmethod
-    def json() -> dict[str, Any]:
-        """Raise ``ValueError`` to simulate malformed JSON payloads."""
-        raise ValueError('invalid json')
-
-
-class _Resp:
-    """
-    Lightweight fake response object for simulating requests.Response.
-
-    Parameters
-    ----------
-    payload : dict[str, Any]
-        JSON payload to return.
-    status : int, optional
-        HTTP status code (default: 200).
-    """
-
-    def __init__(
-        self,
-        payload: dict[str, Any],
-        status: int = 200,
-    ) -> None:
-        self._payload = payload
-        self.status_code = status
-        self.text = str(payload)
-
-    def raise_for_status(self) -> None:
-        """Raise HTTPError if status code indicates an error."""
-        if self.status_code >= 400:
-            err = requests.HTTPError('boom')
-            err.response = types.SimpleNamespace(
-                status_code=self.status_code,
-                text=self.text,
-            )
-            raise err
-
-    def json(self) -> dict[str, Any]:
-        """Return the JSON payload."""
-        return self._payload
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='token_sequence')
 def token_sequence_fixture(
     monkeypatch: pytest.MonkeyPatch,
+    fake_response_factory: Callable[..., Any],
 ) -> dict[str, int]:
     """
     Track token fetch count and patch requests.post for token acquisition.
@@ -113,9 +59,11 @@ def token_sequence_fixture(
     def fake_post(
         *args,
         **kwargs,
-    ) -> _Resp:
+    ) -> Any:
         calls['n'] += 1
-        return _Resp({'access_token': f't{calls["n"]}', 'expires_in': 60})
+        return fake_response_factory(
+            payload={'access_token': f't{calls["n"]}', 'expires_in': 60},
+        )
 
     monkeypatch.setattr(requests, 'post', fake_post)
 
@@ -235,36 +183,16 @@ class TestEndpointCredentialsBearer:
         assert parsed['access_token'] == 'abc'
         assert parsed['expires_in'] > 0
 
-    @pytest.mark.parametrize(
-        ('post_callable', 'expected_exception'),
-        [
-            pytest.param(
-                lambda *_a, **_k: _Resp({}, status=401),
-                requests.HTTPError,
-                id='http-error',
-            ),
-            pytest.param(
-                lambda *_a, **_k: _Resp({'expires_in': 60}),
-                RuntimeError,
-                id='missing-token',
-            ),
-            pytest.param(
-                lambda *_a, **_k: _NonJsonResponse(),
-                ValueError,
-                id='invalid-json',
-            ),
-        ],
-    )
     def test_post_error_paths_raise(
         self,
         monkeypatch: pytest.MonkeyPatch,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
         request_factory: RequestFactory,
-        post_callable: Callable[..., Any],
-        expected_exception: type[Exception],
+        auth_post_error_case: tuple[Callable[..., Any], type[Exception]],
     ) -> None:
         """Test that various POST failure paths raise the expected errors."""
 
+        post_callable, expected_exception = auth_post_error_case
         monkeypatch.setattr(requests, 'post', post_callable)
         auth = bearer_factory()
         request = request_factory()
@@ -277,6 +205,7 @@ class TestEndpointCredentialsBearer:
         monkeypatch: pytest.MonkeyPatch,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
         request_factory: RequestFactory,
+        fake_response_factory: Callable[..., Any],
     ) -> None:
         """
         Test that :class:`EndpointCredentialsBearer` refreshes token when
@@ -300,18 +229,20 @@ class TestEndpointCredentialsBearer:
         def fake_post(
             *args,
             **kwargs,
-        ) -> _Resp:
+        ) -> Any:
             calls['n'] += 1
 
             # First token almost expired; second token longer lifetime.
             if calls['n'] == 1:
-                return _Resp(
-                    {
+                return fake_response_factory(
+                    payload={
                         'access_token': 'short',
                         'expires_in': CLOCK_SKEW_SEC - 1,
                     },
                 )
-            return _Resp({'access_token': 'long', 'expires_in': 120})
+            return fake_response_factory(
+                payload={'access_token': 'long', 'expires_in': 120},
+            )
 
         monkeypatch.setattr(requests, 'post', fake_post)
 
@@ -334,38 +265,16 @@ class TestEndpointCredentialsBearer:
         assert r2.headers['Authorization'] == 'Bearer long'
         assert calls['n'] == 2
 
-    @pytest.mark.parametrize(
-        ('exc', 'expected'),
-        [
-            pytest.param(
-                requests.exceptions.Timeout('timeout'),
-                requests.exceptions.Timeout,
-                id='timeout',
-            ),
-            pytest.param(
-                requests.exceptions.SSLError('ssl'),
-                requests.exceptions.SSLError,
-                id='ssl',
-            ),
-            pytest.param(
-                requests.exceptions.ConnectionError('conn'),
-                requests.exceptions.ConnectionError,
-                id='connection',
-            ),
-            pytest.param(
-                requests.exceptions.RequestException('generic'),
-                requests.exceptions.RequestException,
-                id='request-exception',
-            ),
-        ],
-    )
     def test_request_token_exception_branches(
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
-        exc: Exception,
-        expected: type[Exception],
+        auth_request_exception_case: tuple[
+            requests.RequestException,
+            type[Exception],
+        ],
     ) -> None:
         """Token request exceptions should propagate with branch coverage."""
+        exc, expected = auth_request_exception_case
 
         class _Client:
             @staticmethod
