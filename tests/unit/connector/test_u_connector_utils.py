@@ -10,12 +10,16 @@ Notes
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import parse_connector
+from etlplus.connector import utils as connector_utils
+from etlplus.connector.enums import DataConnectorType
 
 # SECTION: TESTS ============================================================ #
 
@@ -29,31 +33,22 @@ class TestParseConnector:
     Tests error handling for unsupported connector types and missing fields.
     """
 
-    @pytest.mark.parametrize(
-        'payload,expected_exception',
-        [
-            ({'name': 'x', 'type': 'unknown'}, TypeError),
-            ({'type': 'unknown'}, TypeError),
-        ],
-        ids=['unsupported_type', 'missing_name'],
-    )
-    def test_unsupported_type_raises(
-        self,
-        payload: dict[str, object],
-        expected_exception: type[Exception],
-    ) -> None:
-        """
-        Test that unsupported connector types raise the expected exception.
+    def test_missing_type_raises(self) -> None:
+        """Connector payload without ``type`` should raise ``TypeError``."""
+        with pytest.raises(TypeError, match='requires a "type"'):
+            parse_connector({'name': 'missing_type'})
 
-        Parameters
-        ----------
-        payload : dict[str, object]
-            Connector payload to test.
-        expected_exception : type[Exception]
-            Expected exception type.
-        """
-        with pytest.raises(expected_exception):
-            parse_connector(payload)
+    @pytest.mark.parametrize(
+        'payload',
+        [None, 123, 'not a mapping'],
+    )
+    def test_non_mapping_raises(
+        self,
+        payload: object,
+    ) -> None:
+        """Non-mapping payloads should raise ``TypeError``."""
+        with pytest.raises(TypeError, match='must be a mapping'):
+            parse_connector(payload)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
         'payload,expected_cls,expected_attrs',
@@ -111,3 +106,58 @@ class TestParseConnector:
         assert isinstance(connector, expected_cls)
         for field, value in expected_attrs.items():
             assert getattr(connector, field) == value
+
+    @pytest.mark.parametrize(
+        'payload,expected_exception',
+        [
+            ({'name': 'x', 'type': 'unknown'}, TypeError),
+            ({'type': 'unknown'}, TypeError),
+        ],
+        ids=['unsupported_type', 'missing_name'],
+    )
+    def test_unsupported_type_raises(
+        self,
+        payload: dict[str, object],
+        expected_exception: type[Exception],
+    ) -> None:
+        """
+        Test that unsupported connector types raise the expected exception.
+
+        Parameters
+        ----------
+        payload : dict[str, object]
+            Connector payload to test.
+        expected_exception : type[Exception]
+            Expected exception type.
+        """
+        with pytest.raises(expected_exception):
+            parse_connector(payload)
+
+
+class TestInternalLoadConnector:
+    """Unit tests for :func:`etlplus.connector.utils._load_connector`."""
+
+    # pylint: disable=protected-access
+
+    @pytest.mark.parametrize(
+        'kind,expected',
+        [
+            (DataConnectorType.API, ConnectorApi),
+            (DataConnectorType.DATABASE, ConnectorDb),
+            (DataConnectorType.FILE, ConnectorFile),
+        ],
+    )
+    def test_load_connector_for_known_kinds(
+        self,
+        kind: DataConnectorType,
+        expected: type[object],
+    ) -> None:
+        """Known connector kinds should resolve to concrete classes."""
+        assert connector_utils._load_connector(kind) is expected
+
+    def test_load_connector_rejects_unknown_kind(self) -> None:
+        """Unknown enum-like values should raise ``TypeError``."""
+        with pytest.raises(TypeError, match='Unsupported connector type'):
+            connector_utils._load_connector(
+                cast(DataConnectorType, 'unknown'),
+            )
