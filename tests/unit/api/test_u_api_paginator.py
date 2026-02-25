@@ -342,25 +342,9 @@ class TestPaginator:
         assert [rec['id'] for rec in records] == [1, 2]
         assert len(limiter_calls) == 2
 
-    @pytest.mark.parametrize(
-        'ptype, actual, expected',
-        [
-            ('page', None, 1),
-            ('page', -5, 1),
-            ('page', 0, 1),
-            ('page', 3, 3),
-            ('offset', None, 0),
-            ('offset', -5, 0),
-            ('offset', 0, 0),
-            ('offset', 10, 10),
-            ('bogus', 7, 7),  # falls back to ``"page"`` type
-        ],
-    )
     def test_start_page_normalization(
         self,
-        ptype: str,
-        actual: int | None,
-        expected: int,
+        paginator_mode_case: tuple[str, int | None, int],
     ) -> None:
         """
         Test that ``start_page`` values are normalized by paginator type.
@@ -374,6 +358,7 @@ class TestPaginator:
         expected : int
             Expected normalized start page value.
         """
+        ptype, actual, expected = paginator_mode_case
         cfg: dict[str, Any] = {'type': ptype}
         if actual is not None:
             cfg['start_page'] = actual

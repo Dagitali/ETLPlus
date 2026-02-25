@@ -194,28 +194,6 @@ def _stub_request_manager(
     return calls
 
 
-def make_http_error(status: int) -> requests.HTTPError:
-    """
-    Create a requests.HTTPError with attached response object.
-
-    Parameters
-    ----------
-    status : int
-        HTTP status code to attach.
-
-    Returns
-    -------
-    requests.HTTPError
-        HTTPError with attached response.
-    """
-    err = requests.HTTPError(f'HTTP {status}')
-    resp = requests.Response()
-    resp.status_code = status
-    err.response = resp  # type: ignore[attr-defined]
-
-    return err
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -562,6 +540,7 @@ class TestRequestOptionIntegration:
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         cursor_cfg: CursorConfigFactory,
         client_factory: Callable[..., EndpointClient],
+        fake_http_error_factory: Callable[[int, str], requests.HTTPError],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on
@@ -606,7 +585,7 @@ class TestRequestOptionIntegration:
                     'items': [{'i': 1}],
                     'meta': {'next': 'xyz'},
                 }
-            raise make_http_error(500)
+            raise fake_http_error_factory(500, 'boom')
 
         patch_request_once(extractor)
 
@@ -776,6 +755,7 @@ class TestErrors:
         base_url: str,
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
+        fake_http_error_factory: Callable[[int, str], requests.HTTPError],
     ) -> None:
         """
         Test that :class:`ApiAuthError` is raised and wrapped on a single
@@ -807,7 +787,7 @@ class TestErrors:
             **_kwargs: dict[str, Any],
         ) -> dict[str, Any]:
             assert method == 'GET'
-            raise make_http_error(401)
+            raise fake_http_error_factory(401, 'boom')
 
         patch_request_once(boom)
         with pytest.raises(api_errors.ApiAuthError) as ei:
@@ -1030,6 +1010,7 @@ class TestPagePagination:
         page_cfg: Callable[..., PagePaginationConfigDict],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
+        fake_http_error_factory: Callable[[int, str], requests.HTTPError],
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on failure.
@@ -1067,7 +1048,7 @@ class TestPagePagination:
             page = int(params.get('page', 1))
             size = int(params.get('per_page', page_size))
             if page == 4:
-                raise make_http_error(500)
+                raise fake_http_error_factory(500, 'boom')
             return {'items': [{'i': i} for i in range(size)]}
 
         # Return exactly `size` records to force continue until failure.
@@ -1228,6 +1209,7 @@ class TestRetryLogic:
         retry_cfg: Callable[..., dict[str, Any]],
         patch_request_once: Callable[[Callable[..., Any]], Callable[..., Any]],
         client_factory: Callable[..., EndpointClient],
+        fake_http_error_factory: Callable[[int, str], requests.HTTPError],
     ) -> None:
         """
         Test that :class:`ApiRequestError` is raised after retries are
@@ -1267,7 +1249,7 @@ class TestRetryLogic:
         ) -> dict[str, Any]:
             assert method == 'GET'
             attempts['n'] += 1
-            raise make_http_error(503)
+            raise fake_http_error_factory(503, 'boom')
 
         patch_request_once(boom)
 
