@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+import etlplus.config as config_mod
 from etlplus import Config
 from etlplus.config import _collect_parsed
 from etlplus.config import _parse_connector_entry
@@ -209,6 +210,38 @@ class TestConfig:
     Unit tests for :class:`Config`.
     """
 
+    def test_from_dict_parses_apis_and_filters_non_mapping_table_specs(
+        self,
+    ) -> None:
+        """
+        Test parsing non-empty APIs and tolerant table_schemas filtering.
+        """
+        raw = {
+            'name': 'Test',
+            'apis': {
+                'svc': {
+                    'base_url': 'https://example.test',
+                    'endpoints': {'users': '/users'},
+                },
+            },
+            'table_schemas': [
+                {
+                    'schema': 'dbo',
+                    'table': 'customers',
+                },
+                'skip-me',
+            ],
+            'sources': [],
+            'targets': [],
+            'jobs': [],
+        }
+
+        cfg = Config.from_dict(raw)
+
+        assert 'svc' in cfg.apis
+        assert len(cfg.table_schemas) == 1
+        assert cfg.table_schemas[0]['table'] == 'customers'
+
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         pipeline_builder: Callable[..., Config],
@@ -245,6 +278,40 @@ jobs: []
         # After substitution, re-parse should keep the resolved path.
         s_item = next(s for s in cfg.sources if s.name == 's')
         assert getattr(s_item, 'path', None) == 'bar-123.json'
+
+    def test_from_yaml_requires_mapping_root(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that from_yaml rejects non-mapping YAML roots.
+        """
+
+        monkeypatch.setattr(config_mod.File, 'read', lambda _self: ['bad'])
+
+        with pytest.raises(TypeError, match='mapping/object root'):
+            Config.from_yaml('ignored.yml')
+
+    def test_from_yaml_without_substitution_skips_token_resolution(
+        self,
+        pipeline_builder: Callable[..., Config],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that substitution logic is bypassed when ``substitute=False``.
+        """
+        monkeypatch.setattr(
+            config_mod,
+            'deep_substitute',
+            lambda *_a, **_k: (_ for _ in ()).throw(
+                AssertionError('deep_substitute should not be called'),
+            ),
+        )
+
+        cfg = pipeline_builder(MULTI_SOURCE_YAML, substitute=False)
+
+        s_item = next(s for s in cfg.sources if s.name == 's1')
+        assert getattr(s_item, 'path', None) == '${A}-${B}.json'
 
     @pytest.mark.parametrize(
         ('collection', 'name', 'expected_path'),

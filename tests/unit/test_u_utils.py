@@ -243,6 +243,13 @@ class TestUtils:
         assert '\\u2603' not in captured
         assert 'emoji' in captured
 
+    def test_to_int_additional_branches(self) -> None:
+        """Test remaining int coercion and bounds validation branches."""
+        assert to_int(3.0) == 3
+        assert to_int('   ') is None
+        with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
+            to_int(5, minimum=10, maximum=1)
+
     @pytest.mark.parametrize(
         'value,expected_result',
         [
