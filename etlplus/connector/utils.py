@@ -83,6 +83,8 @@ def _load_connector(
             return ConnectorDb
         case DataConnectorType.FILE:
             return ConnectorFile
+        case _:
+            raise TypeError(f'Unsupported connector type: {kind!r}')
 
 
 # SECTION: FUNCTIONS ======================================================== #
