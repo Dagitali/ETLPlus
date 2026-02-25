@@ -57,6 +57,25 @@ def fixture_sample_spec() -> dict[str, object]:
 class TestLoadTableSpec:
     """Unit tests for :func:`load_table_spec`."""
 
+    def test_json_import_error_is_reraised(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that ImportError is re-raised for JSON specs.
+        """
+        spec_path = tmp_path / 'spec.json'
+        spec_path.write_text('{}', encoding='utf-8')
+
+        def _raise_import_error(self: object) -> dict[str, object]:
+            raise ImportError('forced json import failure')
+
+        monkeypatch.setattr(ddl.File, 'read', _raise_import_error)
+
+        with pytest.raises(ImportError):
+            ddl.load_table_spec(spec_path)
+
     def test_missing_yaml_dependency(
         self,
         tmp_path: Path,
@@ -190,6 +209,39 @@ class TestRenderTableSql:
         with pytest.raises(FileNotFoundError):
             ddl.render_table_sql(sample_spec, template_path=str(missing))
 
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            [],
+            [{'not_template': 'value'}],
+            {'template': 'wrong shape'},
+        ],
+    )
+    def test_template_override_requires_template_text(
+        self,
+        tmp_path: Path,
+        sample_spec: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+        payload: object,
+    ) -> None:
+        """
+        Test that template override payload must expose text at index 0.
+        """
+        template_path = tmp_path / 'bad_template.sql.j2'
+        template_path.write_text('ignored', encoding='utf-8')
+
+        class _Reader:
+            def read(self) -> object:
+                return payload
+
+        monkeypatch.setattr(ddl._JINJA2_HANDLER, 'at', lambda _: _Reader())
+
+        with pytest.raises(TypeError):
+            ddl.render_table_sql(
+                sample_spec,
+                template_path=str(template_path),
+            )
+
     def test_unknown_template_key(
         self,
         sample_spec: dict[str, object],
@@ -200,6 +252,27 @@ class TestRenderTableSql:
                 sample_spec,
                 template='does not exist',  # type: ignore[arg-type]
             )
+
+
+class TestRenderTables:
+    """Unit tests for :func:`render_tables`."""
+
+    def test_renders_multiple_specs(
+        self,
+        sample_spec: dict[str, object],
+    ) -> None:
+        """
+        Test rendering an iterable of table specs into SQL strings.
+        """
+        first = deepcopy(sample_spec)
+        second = deepcopy(sample_spec)
+        second['table'] = 'widgets_history'
+
+        rendered = ddl.render_tables([first, second])
+
+        assert len(rendered) == 2
+        assert 'widgets' in rendered[0]
+        assert 'widgets_history' in rendered[1]
 
 
 class TestRenderTablesToString:
