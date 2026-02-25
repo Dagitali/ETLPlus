@@ -15,6 +15,8 @@ from __future__ import annotations
 import types
 import urllib.parse as urlparse
 from collections.abc import Callable
+from collections.abc import Iterator
+from collections.abc import Mapping
 from collections.abc import Sequence
 from functools import partial
 from typing import Any
@@ -1565,6 +1567,173 @@ class TestUrlComposition:
         assert request_once_stub['urls'][0] == (
             f'{base_url}/ep?z=9&dup=1&a=1&dup=2'
         )
+
+
+class TestEndpointClientInternalBranches:
+    """Targeted branch coverage for constructor and helper edge paths."""
+
+    def test_apply_sleep_uses_default_and_custom_sleepers(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """apply_sleep should call either time.sleep or provided sleeper."""
+        recorded: list[float] = []
+        monkeypatch.setattr(ec_module.time, 'sleep', recorded.append)
+
+        EndpointClient.apply_sleep(0.05)
+        assert recorded == [0.05]
+
+        custom: list[float] = []
+        EndpointClient.apply_sleep(0.1, sleeper=custom.append)
+        assert custom == [0.1]
+
+        EndpointClient.apply_sleep(0.0, sleeper=custom.append)
+        assert custom == [0.1]
+
+    def test_paginate_url_uses_object_type_for_non_mapping_pagination(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Object pagination configs should use their .type attribute."""
+        client = EndpointClient(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={'items': '/items'},
+        )
+        seen: dict[str, Any] = {}
+
+        def _paginate_url_iter(
+            _self: EndpointClient,
+            url: str,
+            pagination: Any = None,
+            *,
+            request: RequestOptions | None = None,
+            sleep_seconds: float = 0.0,
+            rate_limit_overrides: Any = None,
+        ) -> Iterator[dict[str, Any]]:
+            seen['url'] = url
+            seen['pagination'] = pagination
+            seen['request'] = request
+            seen['sleep_seconds'] = sleep_seconds
+            seen['rate_limit_overrides'] = rate_limit_overrides
+            yield {'id': 1}
+
+        monkeypatch.setattr(
+            EndpointClient,
+            'paginate_url_iter',
+            _paginate_url_iter,
+        )
+
+        pagination_obj = types.SimpleNamespace(type='page')
+        out = client.paginate_url(
+            f'{EXAMPLE_BASE_URL}/items',
+            pagination=cast(Any, pagination_obj),
+            sleep_seconds=0.2,
+        )
+        assert out == [{'id': 1}]
+        assert seen['pagination'] is pagination_obj
+        assert seen['url'] == f'{EXAMPLE_BASE_URL}/items'
+
+    def test_post_and_request_delegate_to_request_manager(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Thin wrappers should delegate to the embedded request manager."""
+        client = EndpointClient(base_url=EXAMPLE_BASE_URL, endpoints={})
+        seen: dict[str, Any] = {}
+
+        def _post(
+            _self: rm_module.RequestManager,
+            url: str,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            seen['post'] = (url, kwargs)
+            return {'ok': 'post'}
+
+        def _request(
+            _self: rm_module.RequestManager,
+            method: str,
+            url: str,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            seen['request'] = (method, url, kwargs)
+            return {'ok': 'request'}
+
+        monkeypatch.setattr(rm_module.RequestManager, 'post', _post)
+        monkeypatch.setattr(rm_module.RequestManager, 'request', _request)
+
+        out_post = client.post('https://example.test/p', json={'x': 1})
+        out_req = client.request('PATCH', 'https://example.test/r', timeout=3)
+
+        assert out_post == {'ok': 'post'}
+        assert out_req == {'ok': 'request'}
+        assert seen['post'][0] == 'https://example.test/p'
+        assert seen['request'][0] == 'PATCH'
+
+    def test_post_init_prefers_explicit_session_and_normalizes_adapters(
+        self,
+        mock_session: MockSession,
+    ) -> None:
+        """Explicit session disables factory; adapters are tuple-normalized."""
+        client = EndpointClient(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={'list': '/items'},
+            session=cast(requests.Session, mock_session),
+            session_factory=lambda: cast(requests.Session, MockSession()),
+            session_adapters=[{'prefix': 'https://'}],
+        )
+        assert client.session is mock_session
+        assert client.session_factory is None
+        assert isinstance(client.session_adapters, tuple)
+
+    def test_post_init_requires_absolute_base_url(self) -> None:
+        """Relative base_url values should be rejected."""
+        with pytest.raises(ValueError, match='base_url must be absolute'):
+            EndpointClient(base_url='/relative', endpoints={})
+
+    @pytest.mark.parametrize(
+        'endpoints',
+        [
+            {'ok': ''},
+            {1: '/x'},  # type: ignore[dict-item]
+        ],
+    )
+    def test_post_init_validates_endpoints_mapping(
+        self,
+        endpoints: dict[Any, Any],
+    ) -> None:
+        """Endpoint mapping must be string keys and non-empty string values."""
+        with pytest.raises(ValueError, match='endpoints must map str'):
+            EndpointClient(
+                base_url=EXAMPLE_BASE_URL,
+                endpoints=cast(Mapping[str, str], endpoints),
+            )
+
+    def test_url_raises_for_unknown_endpoint(self) -> None:
+        """Unknown endpoint keys should raise KeyError."""
+        client = EndpointClient(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={'known': '/k'},
+        )
+        with pytest.raises(KeyError, match='Unknown endpoint_key'):
+            client.url('missing')
+
+    def test_url_raises_for_missing_path_placeholder(self) -> None:
+        """Missing path placeholders should raise KeyError with context."""
+        client = EndpointClient(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={'item': '/items/{id}'},
+        )
+        with pytest.raises(KeyError, match='Missing path parameter'):
+            client.url('item', path_parameters={})
+
+    def test_url_raises_for_invalid_path_template(self) -> None:
+        """Malformed path format strings should raise ValueError."""
+        client = EndpointClient(
+            base_url=EXAMPLE_BASE_URL,
+            endpoints={'bad': '/items/{id'},
+        )
+        with pytest.raises(ValueError, match='Invalid path template'):
+            client.url('bad', path_parameters={'id': 1})
 
 
 @pytest.mark.property

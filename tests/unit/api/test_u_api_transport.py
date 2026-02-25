@@ -16,9 +16,12 @@ Examples
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import requests  # type: ignore[import]
 
+import etlplus.api.transport as transport_module
 from etlplus.api.transport import build_http_adapter
 from etlplus.api.transport import build_session_with_adapters
 
@@ -108,6 +111,31 @@ class TestBuildHttpAdapter:
             pytest.fail('build_session_with_adapters should not raise')
         assert isinstance(session, requests.Session)
 
+    def test_build_session_with_adapters_skips_invalid_adapter_configs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Invalid adapter builds should be skipped by session builder."""
+        real_builder = transport_module.build_http_adapter
+        calls: list[str] = []
+
+        def _wrapped(cfg: dict[str, object]) -> requests.adapters.HTTPAdapter:
+            calls.append(cast(str, cfg.get('prefix', 'https://')))
+            if cfg.get('prefix') == 'bad://':
+                raise TypeError('invalid')
+            return real_builder(cfg)
+
+        monkeypatch.setattr(transport_module, 'build_http_adapter', _wrapped)
+
+        session = build_session_with_adapters(
+            [
+                {'prefix': 'bad://'},
+                {'prefix': 'https://'},
+            ],
+        )
+        assert isinstance(session, requests.Session)
+        assert calls == ['bad://', 'https://']
+
     def test_integer_retries_fallback(self) -> None:
         """Test handling integer max_retries fallback."""
         cfg = {
@@ -191,3 +219,21 @@ class TestBuildHttpAdapter:
         assert {m.upper() for m in am} == {'GET', 'POST', 'PUT'}
         assert sf is not None
         assert set(sf) == {502, 503}
+
+    def test_retry_mapping_falls_back_to_total_on_builder_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Retry mappings fall back to ``total`` when builder fails."""
+
+        def _boom(_cfg: dict[str, object]) -> int:
+            raise ValueError('bad retry config')
+
+        monkeypatch.setattr(transport_module, '_build_retry_value', _boom)
+
+        adapter = build_http_adapter({'max_retries': {'total': 7}})
+        max_retries = adapter.max_retries
+        if isinstance(max_retries, int):
+            assert max_retries == 7
+        else:
+            assert getattr(max_retries, 'total', None) == 7

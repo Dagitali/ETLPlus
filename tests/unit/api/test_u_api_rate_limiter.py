@@ -218,6 +218,14 @@ class TestRateLimiterBasics:
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
 
+    def test_post_init_prefers_positive_rate_when_sleep_not_positive(
+        self,
+    ) -> None:
+        """Positive max_per_sec should derive sleep when sleep_seconds <= 0."""
+        limiter = RateLimiter(sleep_seconds=0.0, max_per_sec=4.0)
+        assert limiter.max_per_sec == pytest.approx(4.0)
+        assert limiter.sleep_seconds == pytest.approx(0.25)
+
     @pytest.mark.parametrize(
         'seconds, expected_enabled',
         [

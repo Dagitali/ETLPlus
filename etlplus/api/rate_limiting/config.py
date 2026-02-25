@@ -313,9 +313,16 @@ class RateLimitConfig(BoundsWarningsMixin):
     ) -> Self: ...
 
     @classmethod
+    @overload
     def from_obj(
         cls,
-        obj: StrAnyMap | RateLimitConfig | None,
+        obj: Self,
+    ) -> Self: ...
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: StrAnyMap | Self | None,
     ) -> Self | None:
         """
         Parse a mapping or existing config into a :class:`RateLimitConfig`
@@ -323,7 +330,7 @@ class RateLimitConfig(BoundsWarningsMixin):
 
         Parameters
         ----------
-        obj : StrAnyMap | RateLimitConfig | None
+        obj : StrAnyMap | Self | None
             Existing config instance or mapping with optional
             rate-limit fields, or ``None``.
 
