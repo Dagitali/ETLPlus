@@ -126,7 +126,7 @@ class ApiAuthError(ApiRequestError):
     """Authentication/authorization failure (e.g., 401/403)."""
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class PaginationError(ApiRequestError):
     """
     Error raised during pagination with page context.
@@ -148,6 +148,11 @@ class PaginationError(ApiRequestError):
     >>> err = PaginationError(url="u", status=400, page=3)
     >>> str(err).startswith("PaginationError(")
     True
+
+    Notes
+    -----
+    For compatibility with Python 3.13, the ``slots=True`` dataclass option is
+    not used; prefer explicit super target.
     """
 
     # -- Attributes -- #
