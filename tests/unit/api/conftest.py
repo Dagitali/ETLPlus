@@ -11,9 +11,15 @@ Notes
 
 from __future__ import annotations
 
+import types
 from collections.abc import Callable
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
+from typing import cast
 
 import pytest
+import requests  # type: ignore[import]
 
 import etlplus.api.rate_limiting.rate_limiter as rl_module
 import etlplus.api.retry_manager as rm_module
@@ -25,27 +31,119 @@ import etlplus.api.retry_manager as rm_module
 pytestmark = pytest.mark.unit
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FakeResponseFactory = Callable[..., '_FakeResponse']
+type FakeHttpErrorFactory = Callable[[int, str], requests.HTTPError]
+type FakeRequestErrorFactory = Callable[
+    [str],
+    requests.RequestException,
+]
+type AuthPostErrorCase = tuple[Callable[..., Any], type[Exception]]
+type AuthRequestExceptionCase = tuple[
+    requests.RequestException,
+    type[Exception],
+]
+type PaginatorModeCase = tuple[str, int | None, int]
+
+
+# SECTION: HELPERS ========================================================== #
+
+
+@dataclass(slots=True)
+class _FakeResponse:
+    """Lightweight response stub with ``requests.Response``-like behavior."""
+
+    payload: Any = None
+    status_code: int = 200
+    text: str = ''
+    content_type: str = 'application/json'
+    json_raises: bool = False
+    headers: dict[str, str] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.headers = {'content-type': self.content_type}
+        if not self.text:
+            self.text = str(self.payload)
+
+    def raise_for_status(self) -> None:
+        """Raise ``HTTPError`` for non-success statuses."""
+        if self.status_code >= 400:
+            err = requests.HTTPError(f'HTTP {self.status_code}')
+            err.response = cast(
+                requests.Response,
+                types.SimpleNamespace(
+                    status_code=self.status_code,
+                    text=self.text,
+                ),
+            )
+            raise err
+
+    def json(self) -> Any:
+        """Return payload or raise ``ValueError`` when configured."""
+        if self.json_raises:
+            raise ValueError('invalid json')
+        return self.payload
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(autouse=True)
-def patch_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Disable sleeping during tests to keep the suite fast.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Built-in pytest fixture used to patch attributes.
-    """
-    # Patch the module-level sleep helper so :class:`RateLimiter` continues to
-    # invoke ``time.sleep`` (allowing targeted tests to inspect it) without
-    # pausing.
-    monkeypatch.setattr(
-        rl_module.time,
-        'sleep',
-        lambda _seconds: None,
+@pytest.fixture(
+    name='auth_post_error_case',
+    params=[
+        pytest.param('http-error', id='http-error'),
+        pytest.param('missing-token', id='missing-token'),
+        pytest.param('invalid-json', id='invalid-json'),
+    ],
+)
+def auth_post_error_case_fixture(
+    request: pytest.FixtureRequest,
+    fake_response_factory: FakeResponseFactory,
+) -> AuthPostErrorCase:
+    """Matrix of token POST failure branches."""
+    case = cast(str, request.param)
+    if case == 'http-error':
+        return (
+            lambda *_a, **_k: fake_response_factory(payload={}, status=401),
+            requests.HTTPError,
+        )
+    if case == 'missing-token':
+        return (
+            lambda *_a, **_k: fake_response_factory(
+                payload={'expires_in': 60},
+            ),
+            RuntimeError,
+        )
+    return (
+        lambda *_a, **_k: fake_response_factory(
+            payload=None,
+            text='not json',
+            json_raises=True,
+        ),
+        ValueError,
     )
+
+
+@pytest.fixture(
+    name='auth_request_exception_case',
+    params=[
+        pytest.param('timeout', id='timeout'),
+        pytest.param('ssl', id='ssl'),
+        pytest.param('connection', id='connection'),
+        pytest.param('request', id='request-exception'),
+    ],
+)
+def auth_request_exception_case_fixture(
+    request: pytest.FixtureRequest,
+    fake_request_error_factory: FakeRequestErrorFactory,
+) -> AuthRequestExceptionCase:
+    """Matrix of request exception branches in token exchange."""
+    kind = cast(str, request.param)
+    exc = fake_request_error_factory(kind)
+    expected = type(exc)
+    return exc, expected
 
 
 @pytest.fixture
@@ -90,6 +188,71 @@ def capture_sleeps(
     )
 
     return sleeps
+
+
+@pytest.fixture(name='fake_response_factory')
+def fake_response_factory_fixture() -> FakeResponseFactory:
+    """
+    Build fake response objects that mimic the small subset tests need.
+    """
+
+    def _make(
+        *,
+        payload: Any = None,
+        status: int = 200,
+        text: str = '',
+        content_type: str = 'application/json',
+        json_raises: bool = False,
+    ) -> _FakeResponse:
+        return _FakeResponse(
+            payload=payload,
+            status_code=status,
+            text=text,
+            content_type=content_type,
+            json_raises=json_raises,
+        )
+
+    return _make
+
+
+@pytest.fixture(name='fake_http_error_factory')
+def fake_http_error_factory_fixture() -> FakeHttpErrorFactory:
+    """Create ``requests.HTTPError`` instances with attached responses."""
+
+    def _make(
+        status: int,
+        text: str = 'boom',
+    ) -> requests.HTTPError:
+        err = requests.HTTPError(f'HTTP {status}')
+        err.response = cast(
+            requests.Response,
+            types.SimpleNamespace(status_code=status, text=text),
+        )
+        return err
+
+    return _make
+
+
+@pytest.fixture(name='fake_request_error_factory')
+def fake_request_error_factory_fixture(
+    fake_http_error_factory: FakeHttpErrorFactory,
+) -> FakeRequestErrorFactory:
+    """Create request exceptions by semantic kind."""
+
+    def _make(kind: str) -> requests.RequestException:
+        match kind:
+            case 'http':
+                return fake_http_error_factory(500, 'boom')
+            case 'timeout':
+                return requests.exceptions.Timeout('timeout')
+            case 'ssl':
+                return requests.exceptions.SSLError('ssl')
+            case 'connection':
+                return requests.exceptions.ConnectionError('connection')
+            case _:
+                return requests.exceptions.RequestException('request')
+
+    return _make
 
 
 @pytest.fixture
@@ -137,3 +300,44 @@ def jitter(
         fake_uniform,
     )
     return set_values
+
+
+@pytest.fixture(
+    name='paginator_mode_case',
+    params=[
+        pytest.param(('page', None, 1), id='page-none'),
+        pytest.param(('page', -5, 1), id='page-negative'),
+        pytest.param(('page', 0, 1), id='page-zero'),
+        pytest.param(('page', 3, 3), id='page-custom'),
+        pytest.param(('offset', None, 0), id='offset-none'),
+        pytest.param(('offset', -5, 0), id='offset-negative'),
+        pytest.param(('offset', 0, 0), id='offset-zero'),
+        pytest.param(('offset', 10, 10), id='offset-custom'),
+        pytest.param(('bogus', 7, 7), id='bogus-falls-back'),
+    ],
+)
+def paginator_mode_case_fixture(
+    request: pytest.FixtureRequest,
+) -> PaginatorModeCase:
+    """Matrix of paginator type/start-page normalization scenarios."""
+    return cast(PaginatorModeCase, request.param)
+
+
+@pytest.fixture(name='patch_sleep', autouse=True)
+def patch_sleep_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Disable sleeping during tests to keep the suite fast.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Built-in pytest fixture used to patch attributes.
+    """
+    # Patch the module-level sleep helper so :class:`RateLimiter` continues to
+    # invoke ``time.sleep`` (allowing targeted tests to inspect it) without
+    # pausing.
+    monkeypatch.setattr(
+        rl_module.time,
+        'sleep',
+        lambda _seconds: None,
+    )

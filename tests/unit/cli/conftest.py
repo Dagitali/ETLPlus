@@ -28,6 +28,7 @@ from typer.testing import CliRunner
 
 from etlplus import Config
 from etlplus.cli.commands import app as cli_app
+from etlplus.cli.state import CliState
 
 # SECTION: MARKERS ========================================================== #
 
@@ -41,9 +42,16 @@ pytestmark = pytest.mark.unit
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
 
+type AssertCapturedText = Callable[[str], str]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
 type InvokeCli = Callable[..., Result]
+type StubHandler = Callable[..., dict[str, object]]
+type StubCommandMain = Callable[
+    [Callable[..., object] | BaseException],
+    dict[str, object],
+]
 type StubCommand = Callable[[Callable[..., object]], None]
+type TyperContextFactory = Callable[..., typer.Context]
 
 
 # SECTION: ASSERTIONS ======================================================= #
@@ -169,6 +177,58 @@ class DummyCfg:
 # SECTION: FIXTURES ========================================================= #
 
 
+@pytest.fixture(name='assert_stdout_contains')
+def assert_stdout_contains_fixture(
+    capsys: pytest.CaptureFixture[str],
+) -> AssertCapturedText:
+    """
+    Return helper asserting a substring exists in captured STDOUT.
+
+    Parameters
+    ----------
+    capsys : pytest.CaptureFixture[str]
+        Pytest capture fixture.
+
+    Returns
+    -------
+    AssertCapturedText
+        Assertion helper returning captured STDOUT text.
+    """
+
+    def _assert(expected: str) -> str:
+        captured = capsys.readouterr()
+        assert expected in captured.out
+        return captured.out
+
+    return _assert
+
+
+@pytest.fixture(name='assert_stderr_contains')
+def assert_stderr_contains_fixture(
+    capsys: pytest.CaptureFixture[str],
+) -> AssertCapturedText:
+    """
+    Return helper asserting a substring exists in captured STDERR.
+
+    Parameters
+    ----------
+    capsys : pytest.CaptureFixture[str]
+        Pytest capture fixture.
+
+    Returns
+    -------
+    AssertCapturedText
+        Assertion helper returning captured STDERR text.
+    """
+
+    def _assert(expected: str) -> str:
+        captured = capsys.readouterr()
+        assert expected in captured.err
+        return captured.err
+
+    return _assert
+
+
 @pytest.fixture(name='capture_io')
 def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     """
@@ -226,12 +286,42 @@ def runner_fixture() -> CliRunner:
 
 @pytest.fixture(name='stub_command')
 def stub_command_fixture(
-    monkeypatch: pytest.MonkeyPatch,
+    stub_command_main: StubCommandMain,
 ) -> Callable[[Callable[..., object]], None]:
     """Install a Typer command stub that delegates to the provided action."""
 
     def _install(action: Callable[..., object]) -> None:
+        stub_command_main(action)
+
+    return _install
+
+
+@pytest.fixture(name='stub_command_main')
+def stub_command_main_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> StubCommandMain:
+    """
+    Patch Typer command dispatch and capture low-level ``command.main`` calls.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    StubCommandMain
+        Installer that returns captured dispatch keyword arguments.
+    """
+
+    def _install(
+        action: Callable[..., object] | BaseException,
+    ) -> dict[str, object]:
+        calls: dict[str, object] = {}
+
         class _StubCommand:
+            """Typer command stub class with patched :meth:`main` method."""
+
             def main(
                 self,
                 *,
@@ -239,6 +329,16 @@ def stub_command_fixture(
                 prog_name: str,
                 standalone_mode: bool,
             ) -> object:
+                """Stubbed command main method capturing call arguments."""
+                calls.update(
+                    {
+                        'args': args,
+                        'prog_name': prog_name,
+                        'standalone_mode': standalone_mode,
+                    },
+                )
+                if isinstance(action, BaseException):
+                    raise action
                 return action(
                     args=args,
                     prog_name=prog_name,
@@ -250,8 +350,68 @@ def stub_command_fixture(
             'get_command',
             lambda _app: _StubCommand(),
         )
+        return calls
 
     return _install
+
+
+@pytest.fixture(name='stub_handler')
+def stub_handler_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> StubHandler:
+    """
+    Patch a handler-like callable and capture keyword arguments.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    StubHandler
+        Installer returning a mutable mapping of captured kwargs.
+    """
+
+    def _install(
+        module: object,
+        attr: str,
+        *,
+        result: object = 0,
+    ) -> dict[str, object]:
+        calls: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> object:
+            calls.update(kwargs)
+            return result
+
+        monkeypatch.setattr(module, attr, _stub)
+        return calls
+
+    return _install
+
+
+@pytest.fixture(name='typer_ctx_factory')
+def typer_ctx_factory_fixture() -> TyperContextFactory:
+    """
+    Return helper creating Typer contexts for command unit tests.
+
+    Returns
+    -------
+    TyperContextFactory
+        Callable creating :class:`typer.Context` with optional state.
+    """
+    command = typer.main.get_command(cli_app)
+
+    def _make(
+        *,
+        state: CliState | None = None,
+    ) -> typer.Context:
+        ctx = typer.Context(command)
+        ctx.obj = state or CliState()
+        return ctx
+
+    return _make
 
 
 @pytest.fixture(name='widget_spec_paths')
