@@ -13,8 +13,8 @@ import pytest
 
 from etlplus.file import FileFormat
 from etlplus.file.stub import StubFileHandlerABC
-from etlplus.types import JSONData
-from etlplus.types import JSONDict
+from etlplus.utils.types import JSONData
+from etlplus.utils.types import JSONDict
 
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import Operation

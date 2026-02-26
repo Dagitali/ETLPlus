@@ -15,8 +15,8 @@ from typing import Any
 import pytest
 
 from etlplus.cli import main
-from etlplus.types import JSONDict
-from etlplus.types import JSONList
+from etlplus.utils.types import JSONDict
+from etlplus.utils.types import JSONList
 
 from .pytest_shared_support import CaptureHandler
 from .pytest_shared_support import CliInvoke

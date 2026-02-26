@@ -17,7 +17,7 @@ import pytest
 from etlplus.file import FileFormat
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
