@@ -21,6 +21,7 @@ from etlplus.api.errors import ApiAuthError
 
 # pylint: disable=protected-access,unused-argument
 
+
 def _json_response(
     *,
     url: str,

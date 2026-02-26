@@ -1,8 +1,8 @@
 """
 :mod:`tests.unit.workflow.conftest` module.
 
-Define shared fixtures and helpers for pytest-based unit tests of
-:mod:`etlplus.workflow`.
+Shared fixtures and helpers for pytest-based unit tests of
+:mod:`etlplus.workflow` modules.
 
 Notes
 -----
