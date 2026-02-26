@@ -18,9 +18,9 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
-from ..types import StrAnyMap
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
+from ..utils.types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 

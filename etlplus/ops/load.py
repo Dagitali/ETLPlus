@@ -19,11 +19,11 @@ from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
 from ..utils import count_records
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
+from ..utils.types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -24,7 +24,7 @@ from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error

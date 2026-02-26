@@ -19,9 +19,9 @@ from typing import Final
 
 from ..file import File
 from ..file.jinja2 import Jinja2File
-from ..types import StrAnyMap
-from ..types import StrPath
-from ..types import TemplateKey
+from ..utils.types import StrAnyMap
+from ..utils.types import StrPath
+from ..utils.types import TemplateKey
 
 # SECTION: EXPORTS ========================================================== #
 

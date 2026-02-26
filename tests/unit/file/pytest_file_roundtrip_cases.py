@@ -6,7 +6,7 @@ Roundtrip spec builders for file unit tests.
 
 from __future__ import annotations
 
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 from .pytest_file_roundtrip_spec import RoundtripShape
 from .pytest_file_roundtrip_spec import RoundtripSpec

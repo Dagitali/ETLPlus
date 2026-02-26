@@ -27,10 +27,10 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ...mixins import BoundsWarningsMixin
-from ...types import StrAnyMap
 from ...utils import to_float
 from ...utils import to_positive_float
+from ...utils.mixins import BoundsWarningsMixin
+from ...utils.types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 

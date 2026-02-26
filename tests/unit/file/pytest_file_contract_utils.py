@@ -14,7 +14,7 @@ from typing import cast
 import pytest
 
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import Operation
 from ...pytest_file_common import call_handler_operation

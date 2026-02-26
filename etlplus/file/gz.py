@@ -10,8 +10,8 @@ import gzip
 from pathlib import Path
 from typing import cast
 
-from ..types import JSONData
-from ..types import StrPath
+from ..utils.types import JSONData
+from ..utils.types import StrPath
 from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core

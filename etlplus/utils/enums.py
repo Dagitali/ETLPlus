@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.enums` module.
+:mod:`etlplus.utils.enums` module.
 
 Shared enumeration base class.
 """

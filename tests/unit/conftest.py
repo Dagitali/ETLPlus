@@ -28,7 +28,7 @@ from etlplus.api import PaginationConfig
 from etlplus.api import PaginationConfigDict
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimitConfigDict
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 from .pytest_unit_api import api_profile_defaults_factory
 from .pytest_unit_api import client_factory

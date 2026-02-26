@@ -22,9 +22,9 @@ from io import BytesIO
 from typing import Any
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
 from ._imports import get_dependency
 from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC

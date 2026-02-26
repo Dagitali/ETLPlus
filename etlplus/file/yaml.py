@@ -20,7 +20,7 @@ from __future__ import annotations
 from io import StringIO
 from typing import Any
 
-from ..types import JSONData
+from ..utils.types import JSONData
 from ._imports import get_yaml
 from ._semi_structured_handlers import RecordPayloadTextCodecHandlerMixin
 from .enums import FileFormat

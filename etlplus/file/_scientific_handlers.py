@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 from typing import ClassVar
 
-from ..types import JSONData
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONList
 from ._dataframe import dataframe_from_records
 from ._imports import FormatDependencyResolverMixin
 from ._imports import FormatPandasResolverMixin

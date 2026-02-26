@@ -33,7 +33,7 @@ from etlplus.ops.load import load_data
 from etlplus.ops.load import load_to_api
 from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 # SECTION: HELPERS ========================================================== #
 

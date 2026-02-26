@@ -22,8 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONList
 from ._imports import get_pandas as _get_pandas
 from ._io import records_from_table
 from ._scientific_dataset import normalize_store_dataset_keys

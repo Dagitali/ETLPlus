@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from typing import Any
 from typing import cast
 
-from ...types import JSONDict
-from ...types import JSONRecords
+from ...utils.types import JSONDict
+from ...utils.types import JSONRecords
 from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions

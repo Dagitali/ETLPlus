@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
+from ..utils.types import JSONData
 from .enums import FileFormat
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #

@@ -16,8 +16,8 @@ from etlplus.file import _stub_categories as mod
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
-from etlplus.types import JSONData
-from etlplus.types import JSONList
+from etlplus.utils.types import JSONData
+from etlplus.utils.types import JSONList
 
 # SECTION: HELPERS ========================================================== #
 

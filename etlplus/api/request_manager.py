@@ -21,9 +21,9 @@ from typing import cast
 import requests  # type: ignore[import]
 from requests import Response  # type: ignore[import]
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import Timeout
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import Timeout
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 from .retry_manager import RetryInput

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..types import JSONList
+from ..utils.types import JSONList
 from ._io import read_text
 from ._io import write_text
 from .base import ReadOptions

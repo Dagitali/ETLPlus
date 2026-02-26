@@ -13,7 +13,7 @@ from typing import Protocol
 from typing import Self
 from typing import runtime_checkable
 
-from ..types import StrAnyMap
+from ..utils.types import StrAnyMap
 from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
