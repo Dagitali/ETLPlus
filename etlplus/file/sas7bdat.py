@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..types import JSONData
+from ..utils.types import JSONData
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
 from ._scientific_handlers import SingleDatasetTabularScientificReadMixin

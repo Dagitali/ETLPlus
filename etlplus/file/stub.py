@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import ClassVar
 from typing import Never
 
-from ..types import JSONData
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONList
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions

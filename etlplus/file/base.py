@@ -13,10 +13,10 @@ from dataclasses import field
 from pathlib import Path
 from typing import ClassVar
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
+from ..utils.types import StrPath
 from ._handler_abc import BinarySerializationABC
 from ._handler_abc import ColumnarABC
 from ._handler_abc import EmbeddedDatabaseABC

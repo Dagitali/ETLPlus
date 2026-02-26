@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Self
 
-from ..types import StrAnyMap
 from ..utils import cast_str_dict
 from ..utils import maybe_mapping
+from ..utils.types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 

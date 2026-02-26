@@ -11,9 +11,9 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
 from .base import BinarySerializationFileHandlerABC
 from .base import EmbeddedDatabaseFileHandlerABC
 from .base import LogEventFileHandlerABC

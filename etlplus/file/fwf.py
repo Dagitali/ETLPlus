@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONList
+from ..utils.types import JSONList
 from ._imports import get_pandas
 from ._io import ensure_parent_dir
 from ._io import records_from_table

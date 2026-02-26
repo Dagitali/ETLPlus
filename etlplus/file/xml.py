@@ -21,9 +21,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
-from ..types import JSONDict
 from ..utils import count_records
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
 from ._io import ensure_parent_dir
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC

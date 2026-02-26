@@ -50,8 +50,8 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
-from etlplus.types import JSONData
-from etlplus.types import JSONList
+from etlplus.utils.types import JSONData
+from etlplus.utils.types import JSONList
 
 from .pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,

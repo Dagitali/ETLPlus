@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..types import JSONData
+from .types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 

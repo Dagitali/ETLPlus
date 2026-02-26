@@ -13,7 +13,7 @@ from typing import cast
 import pytest
 
 from etlplus.file import txt as mod
-from etlplus.types import JSONData
+from etlplus.utils.types import JSONData
 
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import TextRowModuleContract

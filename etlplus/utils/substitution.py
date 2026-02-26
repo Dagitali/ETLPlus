@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 
-from ..types import StrAnyMap
+from .types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 

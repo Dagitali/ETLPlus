@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import cast
 
 from etlplus.file import File
-from etlplus.types import JSONDict
+from etlplus.utils.types import JSONDict
 
 # SECTION: HELPERS ========================================================== #
 

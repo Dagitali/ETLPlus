@@ -29,11 +29,11 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ...enums import CoercibleStrEnum
-from ...mixins import BoundsWarningsMixin
-from ...types import StrAnyMap
 from ...utils import maybe_mapping
 from ...utils import to_int
+from ...utils.enums import CoercibleStrEnum
+from ...utils.mixins import BoundsWarningsMixin
+from ...utils.types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 

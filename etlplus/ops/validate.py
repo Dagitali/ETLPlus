@@ -34,10 +34,10 @@ from typing import Final
 from typing import Literal
 from typing import TypedDict
 
-from ..types import JSONData
-from ..types import Record
-from ..types import StrAnyMap
-from ..types import StrPath
+from ..utils.types import JSONData
+from ..utils.types import Record
+from ..utils.types import StrAnyMap
+from ..utils.types import StrPath
 from .load import load_data
 
 # SECTION: EXPORTS ========================================================== #

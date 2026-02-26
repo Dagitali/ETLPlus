@@ -31,11 +31,11 @@ from typing import TypedDict
 
 import requests  # type: ignore[import]
 
-from ..types import JSONData
-from ..types import Sleeper
 from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_positive_int
+from ..utils.types import JSONData
+from ..utils.types import Sleeper
 from .errors import ApiAuthError
 from .errors import ApiRequestError
 

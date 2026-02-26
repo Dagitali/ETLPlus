@@ -15,10 +15,10 @@ from ..config import Config
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..ops.types import PipelineConfig
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import StrPath
 from ..utils import print_json
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import StrPath
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load

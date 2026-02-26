@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 
-from ..types import JSONList
+from ..utils.types import JSONList
 from ._imports import get_dependency
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT

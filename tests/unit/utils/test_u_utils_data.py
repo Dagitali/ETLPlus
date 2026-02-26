@@ -10,9 +10,9 @@ from collections.abc import Callable
 
 import pytest
 
-from etlplus.types import JSONData
 from etlplus.utils import count_records
 from etlplus.utils import print_json
+from etlplus.utils.types import JSONData
 
 # SECTION: TESTS ============================================================ #
 

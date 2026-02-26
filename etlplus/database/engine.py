@@ -17,8 +17,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from ..file import File
-from ..types import StrAnyMap
-from ..types import StrPath
+from ..utils.types import StrAnyMap
+from ..utils.types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 

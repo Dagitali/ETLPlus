@@ -6,8 +6,8 @@ Connector enums and helpers.
 
 from __future__ import annotations
 
-from ..enums import CoercibleStrEnum
-from ..types import StrStrMap
+from ..utils.enums import CoercibleStrEnum
+from ..utils.types import StrStrMap
 
 # SECTION: EXPORTS ========================================================= #
 

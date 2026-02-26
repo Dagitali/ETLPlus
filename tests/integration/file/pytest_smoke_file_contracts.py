@@ -12,9 +12,9 @@ from types import ModuleType
 
 import pytest
 
-from etlplus.types import JSONData
-from etlplus.types import JSONDict
-from etlplus.types import JSONList
+from etlplus.utils.types import JSONData
+from etlplus.utils.types import JSONDict
+from etlplus.utils.types import JSONList
 
 from ...pytest_file_common import call_handler_operation
 from ...pytest_file_common import resolve_module_handler

@@ -22,7 +22,7 @@ import tomllib
 from typing import Any
 from typing import Protocol
 
-from ..types import JSONDict
+from ..utils.types import JSONDict
 from ._imports import get_optional_module
 from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat

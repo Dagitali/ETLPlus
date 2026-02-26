@@ -25,8 +25,8 @@ from ..ops import run
 from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
-from ..types import JSONData
-from ..types import TemplateKey
+from ..utils.types import JSONData
+from ..utils.types import TemplateKey
 from . import io as cli_io
 
 # SECTION: EXPORTS ========================================================== #

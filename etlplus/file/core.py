@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..types import JSONData
+from ..utils.types import JSONData
 from . import xml
 from .base import BoundFileHandler
 from .base import FileHandlerABC

@@ -13,10 +13,10 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
+from ..utils.types import StrPath
 
 if TYPE_CHECKING:
     from .base import ReadOptions

@@ -10,8 +10,8 @@ from abc import abstractmethod
 from typing import ClassVar
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC

@@ -29,10 +29,10 @@ from .connector import Connector
 from .connector import parse_connector
 from .file import File
 from .file import FileFormat
-from .types import StrAnyMap
 from .utils import coerce_dict
 from .utils import deep_substitute
 from .utils import maybe_mapping
+from .utils.types import StrAnyMap
 from .workflow.jobs import JobConfig
 from .workflow.profile import ProfileConfig
 

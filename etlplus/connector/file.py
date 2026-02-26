@@ -21,8 +21,8 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ..types import StrAnyMap
 from ..utils import coerce_dict
+from ..utils.types import StrAnyMap
 from .core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType
