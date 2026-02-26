@@ -21,10 +21,10 @@ import json
 from pathlib import Path
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
 from ..utils import count_records
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
 from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text

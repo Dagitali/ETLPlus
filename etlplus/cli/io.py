@@ -17,8 +17,8 @@ from typing import cast
 
 from ..file import File
 from ..file import FileFormat
-from ..types import JSONData
 from ..utils import print_json
+from ..utils.types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 

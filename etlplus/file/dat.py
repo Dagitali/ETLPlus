@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import Protocol
 from typing import cast
 
-from ..types import JSONDict
-from ..types import JSONList
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions

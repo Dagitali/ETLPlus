@@ -13,9 +13,9 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
 from ._io import ScientificDatasetOption
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records

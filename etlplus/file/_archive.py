@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from ..types import StrPath
+from ..utils.types import StrPath
 from .enums import CompressionFormat
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 from typing import ClassVar
 
-from ..types import JSONData
+from ..utils.types import JSONData
 from ._imports import get_dependency
 from ._io import coerce_record_payload
 from ._io import normalize_records

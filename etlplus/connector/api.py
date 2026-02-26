@@ -25,11 +25,11 @@ from ..api import PaginationConfig
 from ..api import PaginationConfigDict
 from ..api import RateLimitConfig
 from ..api import RateLimitConfigDict
-from ..types import StrAnyMap
-from ..types import StrStrMap
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
+from ..utils.types import StrAnyMap
+from ..utils.types import StrStrMap
 from .core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType

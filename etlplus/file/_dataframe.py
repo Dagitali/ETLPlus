@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONList
 from ._io import normalize_records
 
 # SECTION: EXPORTS ========================================================== #

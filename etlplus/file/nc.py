@@ -21,8 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..types import JSONData
-from ..types import JSONList
+from ..utils.types import JSONData
+from ..utils.types import JSONList
 from ._dataframe import dataframe_from_records
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas

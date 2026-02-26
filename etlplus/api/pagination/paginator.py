@@ -28,11 +28,11 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
-from ...types import JSONDict
-from ...types import JSONRecords
 from ...utils import to_int
 from ...utils import to_maximum_int
 from ...utils import to_positive_int
+from ...utils.types import JSONDict
+from ...utils.types import JSONRecords
 from ..errors import ApiRequestError
 from ..errors import PaginationError
 from ..rate_limiting import RateLimiter

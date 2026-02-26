@@ -6,7 +6,7 @@ REST API-aligned enums and helpers.
 
 from __future__ import annotations
 
-from ..enums import CoercibleStrEnum
+from ..utils.enums import CoercibleStrEnum
 
 # SECTION: EXPORTS ========================================================= #
 

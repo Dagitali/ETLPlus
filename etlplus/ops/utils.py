@@ -20,8 +20,8 @@ from typing import Self
 from typing import TypedDict
 from typing import cast
 
-from ..types import StrAnyMap
 from ..utils import normalize_choice
+from ..utils.types import StrAnyMap
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 

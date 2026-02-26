@@ -9,8 +9,8 @@ from __future__ import annotations
 import operator as _op
 from statistics import fmean
 
-from ..enums import CoercibleStrEnum
-from ..types import StrStrMap
+from ..utils.enums import CoercibleStrEnum
+from ..utils.types import StrStrMap
 from .types import AggregateFunc
 from .types import OperatorFunc
 

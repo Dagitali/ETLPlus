@@ -15,8 +15,8 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from ..types import Timeout
 from ..utils import coerce_dict
+from ..utils.types import Timeout
 from .config import ApiConfig
 from .config import EndpointConfig
 from .endpoint_client import EndpointClient

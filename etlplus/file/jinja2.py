@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..types import JSONDict
+from ..utils.types import JSONDict
 from ._imports import get_dependency
 from .base import TemplateFileHandlerABC
 from .base import TemplateTextIOMixin

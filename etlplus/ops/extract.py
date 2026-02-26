@@ -23,11 +23,11 @@ from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
-from ..types import Timeout
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
+from ..utils.types import StrPath
+from ..utils.types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 

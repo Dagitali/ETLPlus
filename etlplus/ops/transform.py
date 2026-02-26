@@ -24,7 +24,11 @@ Basic pipeline with strings::
 
 Using enums for keys and functions::
 
-    from etlplus.enums import PipelineStep, OperatorName, AggregateName
+    from etlplus.utils.enums import (
+        PipelineStep,
+        OperatorName,
+        AggregateName,
+    )
     ops = {
         PipelineStep.FILTER: {
             'field': 'age', 'op': OperatorName.GTE, 'value': 18
@@ -45,11 +49,11 @@ from typing import Any
 from typing import cast
 
 from ..ops.types import PipelineConfig
-from ..types import JSONData
-from ..types import JSONDict
-from ..types import JSONList
-from ..types import StrPath
 from ..utils import to_number
+from ..utils.types import JSONData
+from ..utils.types import JSONDict
+from ..utils.types import JSONList
+from ..utils.types import StrPath
 from .enums import AggregateName
 from .enums import OperatorName
 from .enums import PipelineStep
@@ -1007,7 +1011,11 @@ def transform(
 
     Using enums for keys and functions::
 
-        from etlplus.enums import PipelineStep, OperatorName, AggregateName
+        from etlplus.utils.enums import (
+            PipelineStep,
+            OperatorName,
+            AggregateName,
+        )
         ops = {
             PipelineStep.FILTER: {
                 'field': 'age', 'op': OperatorName.GTE, 'value': 18
