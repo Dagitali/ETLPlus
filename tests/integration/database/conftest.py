@@ -1,7 +1,8 @@
 """
 :mod:`tests.integration.database.conftest` module.
 
-Shared integration smoke tests for :mod:`etlplus.database`.
+Shared fixtures and helpers for pytest-based integration tests of
+:mod:`etlplus.database` modules.
 """
 
 from __future__ import annotations
