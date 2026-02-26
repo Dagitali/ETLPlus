@@ -1,8 +1,8 @@
 """
 :mod:`tests.unit.ops.conftest` module.
 
-Define shared fixtures and helpers for pytest-based unit tests of
-:mod:`etlplus.ops`.
+Shared fixtures and helpers for pytest-based unit tests of
+:mod:`etlplus.ops` modules.
 
 Notes
 -----

@@ -1,8 +1,8 @@
 """
 :mod:`tests.integration.cli.conftest` module.
 
-Define shared fixtures and helpers for pytest-based integration tests of
-:mod:`etlplus.cli`.
+Shared fixtures and helpers for pytest-based integration tests of
+:mod:`etlplus.cli` modules.
 """
 
 from __future__ import annotations
