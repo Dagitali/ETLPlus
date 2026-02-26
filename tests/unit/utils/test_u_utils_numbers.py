@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.utils.numbers`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from etlplus.utils import to_float
@@ -21,153 +23,181 @@ from etlplus.utils import to_positive_int
 # SECTION: TESTS ============================================================ #
 
 
-class TestNumbers:
-    """Unit tests for :mod:`etlplus.utils.numbers`."""
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    [
+        pytest.param(2, 2.0, id='int'),
+        pytest.param(2.5, 2.5, id='float'),
+        pytest.param(' 2.5 ', 2.5, id='numeric-string'),
+        pytest.param('abc', None, id='invalid-string'),
+        pytest.param(None, None, id='none'),
+        pytest.param(True, None, id='bool-rejected'),
+    ],
+)
+def test_to_float_coercion(
+    value: object,
+    expected: float | None,
+) -> None:
+    """
+    Test that :func:`to_float` coerces valid inputs and rejects
+    invalid/booleanvalues.
+    """
+    assert to_float(value) == expected
 
-    def test_to_float_bounds_and_default(self) -> None:
-        """Test that :func:`to_float` respects defaults and bounds."""
-        assert to_float('abc', default=1.5) == 1.5
-        assert to_float('1', minimum=5) == 5
-        assert to_float('10', maximum=3) == 3
 
-    @pytest.mark.parametrize(
-        'value,expected_result',
-        [
-            (2, 2.0),
-            (2.5, 2.5),
-            (' 2.5 ', 2.5),
-            ('abc', None),
-            (None, None),
-        ],
-    )
-    def test_to_float_coercion(
-        self,
-        value: int | float | str | None,
-        expected_result: float | None,
-    ) -> None:
-        """
-        Test float coercion for various input types.
+@pytest.mark.parametrize(
+    ('value', 'kwargs', 'expected'),
+    [
+        pytest.param('abc', {'default': 1.5}, 1.5, id='default-on-failure'),
+        pytest.param('1', {'minimum': 5}, 5, id='minimum-clamp'),
+        pytest.param('10', {'maximum': 3}, 3, id='maximum-clamp'),
+    ],
+)
+def test_to_float_bounds_and_default(
+    value: object,
+    kwargs: dict[str, float],
+    expected: float,
+) -> None:
+    """
+    Test that :func:`to_float` applies defaults and clamps bounds consistently.
+    """
+    assert to_float(value, **kwargs) == expected
 
-        Parameters
-        ----------
-        value : int | float | str | None
-            Input value to coerce to float.
-        expected_result : float | None
-            Expected result after coercion.
-        """
-        assert to_float(value) == expected_result
 
-    def test_float_helper_variants(self) -> None:
-        """Test float helper variants for min/max/positivity handling."""
-        assert to_maximum_float('1.5', default=2.0) == 2.0
-        assert to_minimum_float('9.0', default=5.0) == 5.0
-        assert to_positive_float('2.5') == 2.5
-        assert to_positive_float('-1') is None
+@pytest.mark.parametrize(
+    ('func', 'value', 'expected'),
+    [
+        pytest.param(
+            to_maximum_float,
+            ('1.5', 2.0),
+            2.0,
+            id='to_maximum_float',
+        ),
+        pytest.param(
+            to_minimum_float,
+            ('9.0', 5.0),
+            5.0,
+            id='to_minimum_float',
+        ),
+        pytest.param(
+            to_positive_float,
+            ('2.5',),
+            2.5,
+            id='to_positive_float-positive',
+        ),
+        pytest.param(
+            to_positive_float,
+            ('-1',),
+            None,
+            id='to_positive_float-non-positive',
+        ),
+    ],
+)
+def test_float_helper_variants(
+    func: Callable[..., float | None],
+    value: tuple[object, ...],
+    expected: float | None,
+) -> None:
+    """Cover helper wrappers around float coercion."""
+    assert func(*value) == expected
 
-    def test_int_helper_variants(self) -> None:
-        """Test integer helper variants for clamping logic."""
-        assert to_maximum_int('7', default=10) == 10
-        assert to_minimum_int('2', default=5) == 2
-        assert to_positive_int('not-an-int', default=0, minimum=3) == 3
 
-    def test_to_int_additional_branches(self) -> None:
-        """Test remaining int coercion and bounds validation branches."""
-        assert to_int(3.0) == 3
-        assert to_int('   ') is None
-        with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
-            to_int(5, minimum=10, maximum=1)
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    [
+        pytest.param(10, 10, id='int'),
+        pytest.param('10', 10, id='int-string'),
+        pytest.param('  7  ', 7, id='trimmed-int-string'),
+        pytest.param('3.0', 3, id='integral-float-string'),
+        pytest.param('3.5', None, id='non-integral-float-string'),
+        pytest.param(None, None, id='none'),
+        pytest.param('abc', None, id='invalid-string'),
+        pytest.param(False, None, id='bool-rejected'),
+    ],
+)
+def test_to_int_coercion(
+    value: object,
+    expected: int | None,
+) -> None:
+    """
+    Test that :func:`to_int` coerces valid integer inputs and rejects
+    invalid/boolean values.
+    """
+    assert to_int(value) == expected
 
-    @pytest.mark.parametrize(
-        'value,expected_result',
-        [
-            (10, 10),
-            ('10', 10),
-            ('  7  ', 7),
-            ('3.0', 3),
-            ('3.5', None),
-            (None, None),
-            ('abc', None),
-        ],
-    )
-    def test_to_int_coercion(
-        self,
-        value: int | str | None,
-        expected_result: int | None,
-    ) -> None:
-        """
-        Test int coercion for various input types.
 
-        Parameters
-        ----------
-        value : int | str | None
-            Input value to coerce to int.
-        expected_result : int | None
-            Expected result after coercion.
-        """
-        assert to_int(value) == expected_result
+def test_to_int_raises_on_invalid_bounds() -> None:
+    """
+    Test that :func:`to_int` raises ``ValueError`` when ``minimum > maximum``.
+    """
+    with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
+        to_int(5, minimum=10, maximum=1)
 
-    @pytest.mark.parametrize(
-        'value',
-        ['abc', '', '3.14.15'],
-    )
-    def test_to_number_with_invalid_strings(
-        self,
-        value: str,
-    ) -> None:
-        """
-        Test :func:`to_number` with invalid string inputs.
 
-        Parameters
-        ----------
-        value : str
-            Input string to test.
-        """
-        assert to_number(value) is None
+@pytest.mark.parametrize(
+    ('func', 'value', 'expected'),
+    [
+        pytest.param(
+            to_maximum_int,
+            ('7', 10),
+            10,
+            id='to_maximum_int',
+        ),
+        pytest.param(
+            to_minimum_int,
+            ('2', 5),
+            2,
+            id='to_minimum_int',
+        ),
+    ],
+)
+def test_int_bound_helper_variants(
+    func: Callable[..., int],
+    value: tuple[object, ...],
+    expected: int,
+) -> None:
+    """Test min/max helper wrappers around int coercion."""
+    raw, default = value
+    assert func(raw, default) == expected
 
-    @pytest.mark.parametrize(
-        'value,expected_result',
-        [
-            ('42', 42.0),
-            ('  10.5 ', 10.5),
-        ],
-    )
-    def test_to_number_with_numeric_strings(
-        self,
-        value: str,
-        expected_result: float,
-    ) -> None:
-        """
-        Test :func:`to_number` with valid numeric string inputs.
 
-        Parameters
-        ----------
-        value : str
-            Input string to test.
-        expected_result : float
-            Expected result after conversion.
-        """
-        assert to_number(value) == expected_result
+def test_to_positive_int_minimum_fallback() -> None:
+    """
+    Test that :func:`to_positive_int` falls back to the provided minimum when
+    coercion/default are non-positive.
+    """
+    assert to_positive_int('not-an-int', default=0, minimum=3) == 3
 
-    @pytest.mark.parametrize(
-        'value,expected_result',
-        [
-            (5, 5.0),
-            (3.14, 3.14),
-        ],
-    )
-    def test_to_number_with_numeric_types(
-        self,
-        value: int | float,
-        expected_result: float,
-    ) -> None:
-        """
-        Test :func:`to_number` with numeric types (int, float).
 
-        Parameters
-        ----------
-        value : int | float
-            Input value to test.
-        expected_result : float
-            Expected result after conversion.
-        """
-        assert to_number(value) == expected_result
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    [
+        pytest.param('42', 42.0, id='int-string'),
+        pytest.param('  10.5 ', 10.5, id='float-string'),
+        pytest.param(5, 5.0, id='int'),
+        pytest.param(3.14, 3.14, id='float'),
+        pytest.param('abc', None, id='invalid-string'),
+        pytest.param('', None, id='blank-string'),
+        pytest.param('3.14.15', None, id='malformed-number'),
+        pytest.param(True, None, id='bool-rejected'),
+    ],
+)
+def test_to_number(
+    value: object,
+    expected: float | None,
+) -> None:
+    """
+    Test that :func:`to_number` performs best-effort number coercion following
+    float rules and rejects booleans.
+    """
+    assert to_number(value) == expected
+
+
+def test_to_number_with_shared_non_mapping_cases(
+    non_mapping_value: object,
+) -> None:
+    """
+    Test that non-mapping shared fixture values remain safe for numeric
+    coercion.
+    """
+    assert to_number(non_mapping_value) is None
