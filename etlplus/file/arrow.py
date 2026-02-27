@@ -44,8 +44,12 @@ __all__ = [
 
 
 def _pyarrow() -> Any:
-    """Return the optional pyarrow module."""
-    return get_dependency('pyarrow', format_name='ARROW')
+    """Return the required pyarrow module."""
+    return get_dependency(
+        'pyarrow',
+        format_name='ARROW',
+        required=True,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
