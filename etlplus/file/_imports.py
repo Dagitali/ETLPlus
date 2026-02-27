@@ -229,6 +229,47 @@ def get_yaml() -> Any:
     )
 
 
+def resolve_dependency(
+    handler: object,
+    dependency_name: str,
+    *,
+    format_name: str,
+    pip_name: str | None = None,
+    required: bool = False,
+) -> Any:
+    """
+    Resolve one dependency with module-level override support.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance whose concrete module may override resolution.
+    dependency_name : str
+        Dependency import name.
+    format_name : str
+        Human-readable format name used for import error context.
+    pip_name : str | None, optional
+        Optional package name hint.
+    required : bool, optional
+        Whether the dependency should be treated as required when building
+        import-error context. Defaults to ``False``.
+
+    Returns
+    -------
+    Any
+        The resolved dependency module.
+    """
+    return _resolve_with_module_override(
+        handler,
+        'get_dependency',
+        get_dependency,
+        dependency_name,
+        format_name=format_name,
+        pip_name=pip_name,
+        required=required,
+    )
+
+
 def resolve_module_callable(
     handler: object,
     name: str,
@@ -253,42 +294,6 @@ def resolve_module_callable(
         return None
     value = getattr(module, name, None)
     return value if callable(value) else None
-
-
-def resolve_dependency(
-    handler: object,
-    dependency_name: str,
-    *,
-    format_name: str,
-    pip_name: str | None = None,
-) -> Any:
-    """
-    Resolve one dependency with module-level override support.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance whose concrete module may override resolution.
-    dependency_name : str
-        Dependency import name.
-    format_name : str
-        Human-readable format name used for import error context.
-    pip_name : str | None, optional
-        Optional package name hint.
-
-    Returns
-    -------
-    Any
-        The resolved dependency module.
-    """
-    return _resolve_with_module_override(
-        handler,
-        'get_dependency',
-        get_dependency,
-        dependency_name,
-        format_name=format_name,
-        pip_name=pip_name,
-    )
 
 
 def resolve_pandas(
