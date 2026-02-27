@@ -16,7 +16,7 @@ from ..utils.types import JSONData
 from ..utils.types import JSONList
 from ._dataframe import dataframe_from_data
 from ._dataframe import dataframe_from_records
-from ._imports import resolve_dependency
+from ._imports import get_dependency
 from ._imports import resolve_module_callable
 from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
@@ -44,8 +44,7 @@ __all__ = [
 
 
 PARQUET_DEPENDENCY_ERROR = (
-    'Parquet support requires optional dependency "pyarrow" or '
-    '"fastparquet".\n'
+    'Parquet support requires dependency "pyarrow".\n'
     'Install with: pip install pyarrow'
 )
 
@@ -180,7 +179,7 @@ def _resolve_pyarrow_dependency(
     format_name: str,
 ) -> Any:
     """
-    Resolve pyarrow, preferring the concrete module resolver when present.
+    Resolve required pyarrow, preferring concrete-module resolver when present.
 
     Parameters
     ----------
@@ -196,10 +195,10 @@ def _resolve_pyarrow_dependency(
     """
     if resolver := resolve_module_callable(handler, 'get_pyarrow'):
         return resolver(format_name)
-    return resolve_dependency(
-        handler,
+    return get_dependency(
         'pyarrow',
         format_name=format_name,
+        required=True,
     )
 
 
@@ -390,7 +389,7 @@ class PandasColumnarHandlerMixin(
 
     def validate_runtime_dependencies(self) -> None:
         """
-        Validate optional dependencies required at runtime.
+        Validate runtime dependencies required by this handler.
         """
         if self.requires_pyarrow:
             self.resolve_pyarrow()
