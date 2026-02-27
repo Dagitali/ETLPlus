@@ -94,3 +94,55 @@ class TestResolvePyarrowDependency:
 
         assert result is sentinel
         assert calls == ['PARQUET']
+
+
+class TestResolveSpreadsheetEngineDependency:
+    """Unit tests for spreadsheet engine dependency resolution helper."""
+
+    # pylint: disable=protected-access
+
+    def test_resolve_spreadsheet_engine_dependency_noops_for_unknown_engine(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test unknown engine names bypassing dependency resolution."""
+        monkeypatch.setattr(
+            mod,
+            'resolve_dependency',
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError('resolver should not run'),
+            ),
+        )
+        mod._resolve_spreadsheet_engine_dependency(
+            _Handler(),
+            engine='unknown',
+            format_name='XLSX',
+        )
+
+    def test_resolve_spreadsheet_engine_dependency_uses_required_dependency(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test known engine resolution delegating with required semantics."""
+        calls: list[tuple[str, str, str | None, bool]] = []
+
+        def _resolve(
+            _handler: object,
+            dependency_name: str,
+            *,
+            format_name: str,
+            pip_name: str | None = None,
+            required: bool = False,
+        ) -> object:
+            calls.append((dependency_name, format_name, pip_name, required))
+            return object()
+
+        monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
+
+        mod._resolve_spreadsheet_engine_dependency(
+            _Handler(),
+            engine='odf',
+            format_name='ODS',
+        )
+
+        assert calls == [('odf', 'ODS', 'odfpy', True)]

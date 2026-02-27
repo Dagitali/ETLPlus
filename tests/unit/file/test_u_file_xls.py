@@ -33,6 +33,7 @@ class TestXls(
     module = mod
     format_name = 'xls'
     dependency_hint = 'xlrd'
+    dependency_module_name = 'xlrd'
 
     @pytest.mark.parametrize(
         ('sheet', 'read_supports_sheet_name', 'expected_read_calls'),
@@ -71,6 +72,12 @@ class TestXls(
             mod,
             resolver_name='get_pandas',
             value=pandas,
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_dependency',
+            value=object(),
         )
         path = self.format_path(tmp_path)
 
