@@ -54,7 +54,6 @@ class SavFile(
     # -- Class Attributes -- #
 
     format = FileFormat.SAV
-    requires_pyreadstat_for_read = True
-    requires_pyreadstat_for_write = True
+    pyreadstat_mode = 'read_write'
     pyreadstat_read_method = 'read_sav'
     pyreadstat_write_method = 'write_sav'
