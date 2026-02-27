@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file._imports` module.
 
-Shared helpers for optional dependency imports.
+Shared helpers for dependency imports.
 """
 
 from __future__ import annotations
@@ -21,7 +21,6 @@ __all__ = [
     'FormatPandasResolverMixin',
     # Functions
     'get_dependency',
-    'get_optional_module',
     'get_pandas',
     'get_pyarrow',
     'get_yaml',
@@ -45,9 +44,11 @@ def _error_message(
     module_name: str,
     format_name: str,
     pip_name: str | None = None,
+    *,
+    required: bool = False,
 ) -> str:
     """
-    Build an import error message for an optional dependency.
+    Build an import error message for a dependency.
 
     Parameters
     ----------
@@ -57,6 +58,9 @@ def _error_message(
         Human-readable format name for templated messages.
     pip_name : str | None, optional
         Package name to suggest for installation. Defaults to *module_name*.
+    required : bool, optional
+        Whether the dependency should be labeled as required in the message.
+        Defaults to ``False`` (optional dependency wording).
 
     Returns
     -------
@@ -64,9 +68,10 @@ def _error_message(
         Formatted error message.
     """
     install_name = pip_name or module_name
+    label = 'dependency' if required else 'optional dependency'
     return (
         f'{format_name} support requires '
-        f'optional dependency "{install_name}".\n'
+        f'{label} "{install_name}".\n'
         f'Install with: pip install {install_name}'
     )
 
@@ -108,20 +113,27 @@ def _resolve_with_module_override(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def get_optional_module(
+def get_dependency(
     module_name: str,
     *,
-    error_message: str,
+    format_name: str,
+    pip_name: str | None = None,
+    required: bool = False,
 ) -> Any:
     """
-    Return an optional dependency module, caching on first import.
+    Return a dependency module with a standardized error message.
 
     Parameters
     ----------
     module_name : str
         Name of the module to import.
-    error_message : str
-        Error message to surface when the module is missing.
+    format_name : str
+        Human-readable format name for error messages.
+    pip_name : str | None, optional
+        Package name to suggest for installation (defaults to *module_name*).
+    required : bool, optional
+        Whether to use required-dependency message wording.
+        Defaults to ``False`` (optional dependency wording).
 
     Returns
     -------
@@ -131,8 +143,14 @@ def get_optional_module(
     Raises
     ------
     ImportError
-        If the optional dependency is missing.
+        If the dependency is missing.
     """
+    error_message = _error_message(
+        module_name,
+        format_name=format_name,
+        pip_name=pip_name,
+        required=required,
+    )
     try:
         return _MODULE_CACHE[module_name]
     except KeyError:
@@ -146,39 +164,6 @@ def get_optional_module(
         raise ImportError(error_message) from e
     _MODULE_CACHE[module_name] = module
     return module
-
-
-def get_dependency(
-    module_name: str,
-    *,
-    format_name: str,
-    pip_name: str | None = None,
-) -> Any:
-    """
-    Return an optional dependency module with a standardized error message.
-
-    Parameters
-    ----------
-    module_name : str
-        Name of the module to import.
-    format_name : str
-        Human-readable format name for error messages.
-    pip_name : str | None, optional
-        Package name to suggest for installation (defaults to *module_name*).
-
-    Returns
-    -------
-    Any
-        The imported module.
-    """
-    return get_optional_module(
-        module_name,
-        error_message=_error_message(
-            module_name,
-            format_name=format_name,
-            pip_name=pip_name,
-        ),
-    )
 
 
 def get_pandas(
