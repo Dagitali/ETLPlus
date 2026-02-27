@@ -9,7 +9,8 @@ and writing data files.
   types
 - Exposes format handler classes (for example, `CsvFile`, `JsonFile`) as the primary read/write path
 
-Some formats require optional dependencies. Install with:
+Base installs include common non-native file dependencies such as `cbor2`, `duckdb`, `msgpack`,
+`pymongo`, and `tomli-w`. Additional formats still require optional dependencies. Install with:
 
 ```bash
 pip install -e ".[file]"
