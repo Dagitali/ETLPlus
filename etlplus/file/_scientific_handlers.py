@@ -10,6 +10,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
+from typing import Literal
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
@@ -65,7 +66,9 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Class Attributes -- #
 
-    requires_pyreadstat_for_read: ClassVar[bool] = False
+    pyreadstat_mode: ClassVar[
+        Literal['none', 'read', 'write', 'read_write']
+    ] = 'none'
 
     # -- Abstract Instance Methods -- #
 
@@ -106,20 +109,54 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Internal Instance Methods -- #
 
-    def _resolve_optional_pyreadstat(
+    def _pyreadstat_is_required_for(
         self,
-        *,
-        required: bool,
+        operation: Literal['read', 'write'],
+    ) -> bool:
+        """
+        Return whether pyreadstat is required for one operation.
+
+        Parameters
+        ----------
+        operation : Literal['read', 'write']
+            Operation kind.
+
+        Returns
+        -------
+        bool
+            True when pyreadstat is required for the operation.
+        """
+        mode = self.pyreadstat_mode
+        if mode == 'none':
+            return False
+        if mode == 'read':
+            return operation == 'read'
+        if mode == 'write':
+            return operation == 'write'
+        if mode == 'read_write':
+            return True
+        raise ValueError(
+            f'Unsupported pyreadstat mode "{mode}" for {self.format_name}',
+        )
+
+    def _resolve_pyreadstat_for(
+        self,
+        operation: Literal['read', 'write'],
     ) -> Any | None:
         """
         Resolve pyreadstat when required for one operation.
+
+        Parameters
+        ----------
+        operation : Literal['read', 'write']
+            Operation kind.
 
         Returns
         -------
         Any | None
             The pyreadstat module when required, else None.
         """
-        if not required:
+        if not self._pyreadstat_is_required_for(operation):
             return None
         return self.resolve_pyreadstat()
 
@@ -139,9 +176,7 @@ class SingleDatasetTabularScientificReadMixin(
         frame = self.read_frame(
             path,
             pandas=self.resolve_pandas(),
-            pyreadstat=self._resolve_optional_pyreadstat(
-                required=self.requires_pyreadstat_for_read,
-            ),
+            pyreadstat=self._resolve_pyreadstat_for('read'),
             options=options,
         )
         return records_from_table(frame)
@@ -160,10 +195,6 @@ class SingleDatasetTabularScientificReadWriteMixin(
     Shared read/write implementation for single-dataset tabular scientific
     formats.
     """
-
-    # -- Class Attributes -- #
-
-    requires_pyreadstat_for_write: ClassVar[bool] = False
 
     # -- Abstract Instance Methods -- #
 
@@ -239,9 +270,7 @@ class SingleDatasetTabularScientificReadWriteMixin(
             path,
             frame,
             pandas=pandas,
-            pyreadstat=self._resolve_optional_pyreadstat(
-                required=self.requires_pyreadstat_for_write,
-            ),
+            pyreadstat=self._resolve_pyreadstat_for('write'),
             options=options,
         )
         return len(records)
