@@ -85,11 +85,16 @@ class _ScientificHandler(mod.SingleDatasetTabularScientificReadWriteMixin):
         )
 
 
+class _ReadRequiredPyreadstatScientificHandler(_ScientificHandler):
+    """Scientific handler stub with required pyreadstat for read only."""
+
+    pyreadstat_mode = 'read'
+
+
 class _RequiredPyreadstatScientificHandler(_ScientificHandler):
     """Scientific handler stub with required pyreadstat for read/write."""
 
-    requires_pyreadstat_for_read = True
-    requires_pyreadstat_for_write = True
+    pyreadstat_mode = 'read_write'
 
 
 # SECTION: TESTS ============================================================ #
@@ -129,20 +134,20 @@ class TestScientificHandlers:
             DictRecordsFrameStub,
         )
 
-    def test_resolve_optional_pyreadstat_delegates_when_required(self) -> None:
+    def test_resolve_pyreadstat_for_delegates_when_required(self) -> None:
         """Test required pyreadstat branch delegating to resolver."""
         sentinel = object()
-        handler = _ScientificHandler(
+        handler = _ReadRequiredPyreadstatScientificHandler(
             pandas_dependency=RDataPandasStub(),
             pyreadstat_dependency=sentinel,
         )
 
-        resolved = handler._resolve_optional_pyreadstat(required=True)
+        resolved = handler._resolve_pyreadstat_for('read')
 
         assert resolved is sentinel
         assert handler.resolve_pyreadstat_calls == 1
 
-    def test_resolve_optional_pyreadstat_returns_none_when_not_required(
+    def test_resolve_pyreadstat_for_returns_none_when_not_required(
         self,
     ) -> None:
         """Test optional pyreadstat branch when dependency is not required."""
@@ -151,7 +156,7 @@ class TestScientificHandlers:
             pyreadstat_dependency=object(),
         )
 
-        resolved = handler._resolve_optional_pyreadstat(required=False)
+        resolved = handler._resolve_pyreadstat_for('read')
 
         assert resolved is None
         assert handler.resolve_pyreadstat_calls == 0

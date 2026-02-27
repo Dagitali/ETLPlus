@@ -33,7 +33,6 @@ class TestXls(
     module = mod
     format_name = 'xls'
     dependency_hint = 'xlrd'
-    dependency_module_name = 'xlrd'
 
     @pytest.mark.parametrize(
         ('sheet', 'read_supports_sheet_name', 'expected_read_calls'),

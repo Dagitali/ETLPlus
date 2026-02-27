@@ -89,20 +89,20 @@ class TestImportsHelpers:
         """
         Test optional dependency failures using normalized format messages.
         """
+        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
         monkeypatch.setattr(
             mod,
             'import_module',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
-            'ODS support requires optional dependency "odfpy".\n'
-            'Install with: pip install odfpy'
+            'NC support requires optional dependency "xarray".\n'
+            'Install with: pip install xarray'
         )
         with pytest.raises(ImportError, match=re.escape(expected)):
             mod.get_dependency(
-                'odf',
-                format_name='ODS',
-                pip_name='odfpy',
+                'xarray',
+                format_name='NC',
             )
 
     def test_get_dependency_raises_required_standard_message(
@@ -112,6 +112,7 @@ class TestImportsHelpers:
         """
         Test required dependency failures using normalized format messages.
         """
+        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
         monkeypatch.setattr(
             mod,
             'import_module',
@@ -248,3 +249,29 @@ class TestImportsHelpers:
 
         assert result == 'fallback'
         assert calls == [((1,), {'token': 'x'})]
+
+    def test_raise_engine_import_error_uses_shared_message(self) -> None:
+        """Test shared engine error helper raising standardized NC message."""
+        expected = (
+            'NC support requires optional dependency '
+            '"netCDF4" or "h5netcdf".\n'
+            'Install with: pip install netCDF4'
+        )
+        with pytest.raises(ImportError, match=re.escape(expected)):
+            mod.raise_engine_import_error(
+                ImportError('engine missing'),
+                format_name='NC',
+                dependency_names=('netCDF4', 'h5netcdf'),
+                pip_name='netCDF4',
+            )
+
+    def test_raise_engine_import_error_reraises_without_metadata(self) -> None:
+        """
+        Test engine helper re-raising original error when metadata is missing.
+        """
+        error = ImportError('engine missing')
+        with pytest.raises(ImportError, match='engine missing'):
+            mod.raise_engine_import_error(
+                error,
+                format_name='NC',
+            )
