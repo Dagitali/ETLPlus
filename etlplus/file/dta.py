@@ -55,5 +55,4 @@ class DtaFile(
     # -- Class Attributes -- #
 
     format = FileFormat.DTA
-    requires_pyreadstat_for_read = True
-    requires_pyreadstat_for_write = True
+    pyreadstat_mode = 'read_write'
