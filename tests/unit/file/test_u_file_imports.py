@@ -92,12 +92,19 @@ class TestImportsHelpers:
             return sentinel
 
         monkeypatch.setattr(mod, 'get_optional_module', _optional)
-        assert mod.get_dependency('duckdb', format_name='DUCKDB') is sentinel
+        assert (
+            mod.get_dependency(
+                'odf',
+                format_name='ODS',
+                pip_name='odfpy',
+            )
+            is sentinel
+        )
         assert calls == [
             (
-                'duckdb',
-                'DUCKDB support requires optional dependency "duckdb".\n'
-                'Install with: pip install duckdb',
+                'odf',
+                'ODS support requires optional dependency "odfpy".\n'
+                'Install with: pip install odfpy',
             ),
         ]
 

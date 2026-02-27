@@ -205,7 +205,8 @@ class TestFile:
         """Test embedded DB readers rejecting multi-table files."""
         path = tmp_path / filename
         if file_format is FileFormat.DUCKDB:
-            duckdb = pytest.importorskip('duckdb')
+            import duckdb
+
             conn = duckdb.connect(str(path))
         else:
             conn = sqlite3.connect(path)
