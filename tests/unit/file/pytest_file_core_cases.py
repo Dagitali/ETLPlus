@@ -109,19 +109,14 @@ FORMAT_CASES: list[FormatCase] = [
     _format_case(FileFormat.TSV, 'sample.tsv', COMMON_ROWS_STR),
     _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_TXT),
     # Semi-structured and interchange
-    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM, ('bson',)),
-    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM, ('cbor2',)),
+    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM),
+    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM),
     _format_case(FileFormat.JSON, 'sample.json', COMMON_ROWS_NUM),
-    _format_case(
-        FileFormat.MSGPACK,
-        'sample.msgpack',
-        COMMON_ROWS_NUM,
-        ('msgpack',),
-    ),
+    _format_case(FileFormat.MSGPACK, 'sample.msgpack', COMMON_ROWS_NUM),
     _format_case(FileFormat.NDJSON, 'sample.ndjson', COMMON_ROWS_NUM),
     _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM, ('yaml',)),
     _format_case(FileFormat.INI, 'sample.ini', COMMON_INI),
-    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML, ('tomli_w',)),
+    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML),
     _format_case(
         FileFormat.PROPERTIES,
         'sample.properties',
@@ -169,7 +164,6 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.DUCKDB,
         'sample.duckdb',
         COMMON_ROWS_STR,
-        ('duckdb',),
     ),
     _format_case(
         FileFormat.ODS,
