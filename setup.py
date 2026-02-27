@@ -51,6 +51,7 @@ setup(
         'fastavro>=1.12.1',
         'jinja2>=3.1.6',
         'msgpack>=1.0.8',
+        'odfpy>=1.4.1',
         'openpyxl>=3.1.5',
         'pandas>=2.3.3',
         'pydantic>=2.12.5',
@@ -79,7 +80,6 @@ setup(
             'pydoclint>=0.8.1',
         ],
         'file': [
-            'odfpy>=1.4.1',
             # 'tables>=3.10.2',
             'netCDF4>=1.7.2',
             'pyreadr>=0.5.2',
