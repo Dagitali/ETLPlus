@@ -16,7 +16,7 @@ from ..utils.types import JSONData
 from ..utils.types import JSONList
 from ._dataframe import dataframe_from_data
 from ._dataframe import dataframe_from_records
-from ._imports import get_dependency
+from ._imports import resolve_dependency
 from ._imports import resolve_module_callable
 from ._imports import resolve_pandas as resolve_pandas_dependency
 from ._io import ensure_parent_dir
@@ -31,22 +31,11 @@ from .base import WriteOptions
 
 
 __all__ = [
-    # Constants
-    'PARQUET_DEPENDENCY_ERROR',
     # Classes
     'PandasColumnarHandlerMixin',
     'PandasReadOnlySpreadsheetHandlerMixin',
     'PandasSpreadsheetHandlerMixin',
 ]
-
-
-# SECTION: CONSTANTS ======================================================== #
-
-
-PARQUET_DEPENDENCY_ERROR = (
-    'Parquet support requires dependency "pyarrow".\n'
-    'Install with: pip install pyarrow'
-)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -195,7 +184,8 @@ def _resolve_pyarrow_dependency(
     """
     if resolver := resolve_module_callable(handler, 'get_pyarrow'):
         return resolver(format_name)
-    return get_dependency(
+    return resolve_dependency(
+        handler,
         'pyarrow',
         format_name=format_name,
         required=True,
@@ -312,7 +302,6 @@ class PandasColumnarHandlerMixin(
     write_method: ClassVar[str]
     write_kwargs: ClassVar[tuple[tuple[str, Any], ...]] = ()
     requires_pyarrow: ClassVar[bool] = False
-    import_error_message: ClassVar[str | None] = None
 
     # -- Instance Methods -- #
 
@@ -340,10 +329,7 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         pandas = self.resolve_pandas()
-        return _call_with_import_error(
-            lambda: getattr(pandas, self.read_method)(path),
-            message=self.import_error_message,
-        )
+        return getattr(pandas, self.read_method)(path)
 
     def records_to_table(
         self,
@@ -416,10 +402,7 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         kwargs = dict(self.write_kwargs)
-        _call_with_import_error(
-            lambda: getattr(table, self.write_method)(path, **kwargs),
-            message=self.import_error_message,
-        )
+        getattr(table, self.write_method)(path, **kwargs)
 
 
 class PandasSpreadsheetHandlerMixin(
