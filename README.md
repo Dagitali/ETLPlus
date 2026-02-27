@@ -127,7 +127,16 @@ For development:
 pip install -e ".[dev]"
 ```
 
-For full file-format support (optional extras):
+The default install now includes non-native dependencies used by common semi-structured and
+embedded-database handlers: `cbor2`, `duckdb`, `msgpack`, `pymongo` (`bson`), and `tomli-w`.
+
+For development with full optional file-format support:
+
+```bash
+pip install -e ".[dev,file]"
+```
+
+For runtime-only optional file-format support:
 
 ```bash
 pip install -e ".[file]"
@@ -770,8 +779,19 @@ Curious how the pipeline runner composes API requests, pagination, and load call
 
 ### Running Tests
 
+For local CI parity and full coverage of remaining optional file formats,
+install:
+
 ```bash
+pip install -e ".[dev,file]"
+```
+
+```bash
+# Lightweight run (uses currently installed extras)
 pytest
+
+# Full run with remaining optional file-format dependencies
+make test-full
 ```
 
 #### Test Scope and Intent
