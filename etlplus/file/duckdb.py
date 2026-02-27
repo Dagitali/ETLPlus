@@ -47,8 +47,12 @@ __all__ = [
 
 
 def _duckdb() -> Any:
-    """Return the optional duckdb module."""
-    return get_dependency('duckdb', format_name='DUCKDB')
+    """Return the required duckdb module."""
+    return get_dependency(
+        'duckdb',
+        format_name='DUCKDB',
+        required=True,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
