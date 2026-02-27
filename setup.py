@@ -71,7 +71,7 @@ setup(
             'autopep8>=2.3.2',
             'pytest>=8.4.2',
             'pytest-cov>=7.0.0',
-            'hypothesis>=6.0.0',
+            # 'hypothesis>=6.0.0',
             'black>=25.9.0',
             'flake8>=7.3.0',
             'ruff>=0.14.4',
