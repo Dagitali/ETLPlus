@@ -10,9 +10,9 @@ and writing data files.
 - Exposes format handler classes (for example, `CsvFile`, `JsonFile`) as the primary read/write path
 
 Base installs include common non-native file dependencies such as `cbor2`, `duckdb`, `msgpack`,
-`pymongo`, `tomli-w`, `fastavro`, `pyarrow`, `openpyxl`, `xlrd`, `jinja2`, and `PyYAML`.
-Additional formats still require optional dependencies (for example, `odfpy`, `netCDF4`,
-`pyreadr`, `pyreadstat`, and `xarray`). Install with:
+`pymongo`, `tomli-w`, `fastavro`, `pyarrow`, `openpyxl`, `xlrd`, `odfpy`, `jinja2`, and `PyYAML`.
+Additional formats still require optional dependencies (for example, `netCDF4`, `pyreadr`,
+`pyreadstat`, and `xarray`). Install with:
 
 ```bash
 pip install -e ".[file]"
