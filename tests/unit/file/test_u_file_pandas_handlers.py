@@ -27,7 +27,7 @@ class TestResolvePyarrowDependency:
 
     # pylint: disable=protected-access
 
-    def test_resolve_pyarrow_dependency_falls_back_to_resolve_dependency(
+    def test_resolve_pyarrow_dependency_falls_back_to_get_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -37,20 +37,20 @@ class TestResolvePyarrowDependency:
             'get_pyarrow',
             raising=False,
         )
-        calls: list[tuple[str, str]] = []
+        calls: list[tuple[str, str, bool]] = []
 
-        def _resolve(
-            _handler: object,
+        def _dependency(
             dependency_name: str,
             *,
             format_name: str,
             pip_name: str | None = None,
+            required: bool = False,
         ) -> str:
             assert pip_name is None
-            calls.append((dependency_name, format_name))
+            calls.append((dependency_name, format_name, required))
             return 'fallback'
 
-        monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
+        monkeypatch.setattr(mod, 'get_dependency', _dependency)
 
         result = mod._resolve_pyarrow_dependency(
             _Handler(),
@@ -58,7 +58,7 @@ class TestResolvePyarrowDependency:
         )
 
         assert result == 'fallback'
-        assert calls == [('pyarrow', 'PARQUET')]
+        assert calls == [('pyarrow', 'PARQUET', True)]
 
     def test_resolve_pyarrow_dependency_prefers_module_override(
         self,
@@ -80,7 +80,7 @@ class TestResolvePyarrowDependency:
         )
         monkeypatch.setattr(
             mod,
-            'resolve_dependency',
+            'get_dependency',
             lambda *_args, **_kwargs: (_ for _ in ()).throw(
                 AssertionError('fallback should not run'),
             ),

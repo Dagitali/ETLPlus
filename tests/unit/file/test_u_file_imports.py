@@ -23,9 +23,9 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('method_name', 'method_args', 'expected_call'),
         [
-            ('get_pandas', ('CSV',), ('pandas', 'CSV', None)),
-            ('get_pyarrow', ('PARQUET',), ('pyarrow', 'PARQUET', None)),
-            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML')),
+            ('get_pandas', ('CSV',), ('pandas', 'CSV', None, True)),
+            ('get_pyarrow', ('PARQUET',), ('pyarrow', 'PARQUET', None, True)),
+            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML', True)),
         ],
         ids=['pandas', 'pyarrow', 'yaml'],
     )
@@ -34,10 +34,10 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
         method_name: str,
         method_args: tuple[object, ...],
-        expected_call: tuple[str, str, str | None],
+        expected_call: tuple[str, str, str | None, bool],
     ) -> None:
         """Test dependency helper wrappers forwarding expected arguments."""
-        calls: list[tuple[str, str, str | None]] = []
+        calls: list[tuple[str, str, str | None, bool]] = []
         sentinel = object()
 
         def _dependency(
@@ -47,8 +47,7 @@ class TestImportsHelpers:
             pip_name: str | None = None,
             required: bool = False,
         ) -> object:
-            _ = required
-            calls.append((module_name, format_name, pip_name))
+            calls.append((module_name, format_name, pip_name, required))
             return sentinel
 
         monkeypatch.setattr(mod, 'get_dependency', _dependency)

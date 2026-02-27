@@ -490,7 +490,6 @@ class TestFile:
         """
         Test that :func:`write` raises an error indicating lack of support.
         """
-        pytest.importorskip('pandas')
         path = tmp_path / 'sample.xls'
 
         with pytest.raises(RuntimeError, match='read-only'):
