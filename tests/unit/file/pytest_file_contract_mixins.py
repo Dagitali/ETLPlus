@@ -55,6 +55,16 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
+    'odf': ('odf', 'odfpy'),
+    'openpyxl': ('openpyxl', None),
+    'xlrd': ('xlrd', None),
+}
+
+
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
 
 
@@ -77,6 +87,27 @@ class PathMixin:
     ) -> Path:
         """Build a deterministic format-specific path."""
         return tmp_path / f'{stem}.{self.format_name}'
+
+    def spreadsheet_dependency_spec(self) -> tuple[str, str | None]:
+        """
+        Resolve spreadsheet dependency spec from configured engine names.
+        """
+        handler = self.module_handler
+        engines = (
+            getattr(self, 'read_engine', None),
+            getattr(self, 'write_engine', None),
+            getattr(handler, 'read_engine', None),
+            getattr(handler, 'write_engine', None),
+            getattr(handler, 'engine_name', None),
+        )
+        for engine in engines:
+            if isinstance(engine, str):
+                if spec := _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine):
+                    return spec
+        raise AssertionError(
+            'No spreadsheet dependency mapping found for '
+            f'{self.module.__name__}',
+        )
 
 
 # SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
@@ -361,8 +392,6 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
     """
 
     dependency_hint: str
-    dependency_module_name: str
-    dependency_pip_name: str | None = None
 
     def test_read_wraps_import_error(
         self,
@@ -383,14 +412,17 @@ class SpreadsheetReadImportErrorMixin(PathMixin):
             raise ImportError(self.dependency_hint)
 
         monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        dependency_module_name, dependency_pip_name = (
+            self.spreadsheet_dependency_spec()
+        )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module_handler.read(self.format_path(tmp_path))
         assert calls == [
             (
-                self.dependency_module_name,
+                dependency_module_name,
                 self.format_name.upper(),
-                self.dependency_pip_name,
+                dependency_pip_name,
                 True,
             ),
         ]
@@ -511,8 +543,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     """
 
     dependency_hint: str
-    dependency_module_name: str
-    dependency_pip_name: str | None = None
     read_engine: str | None
     write_engine: str | None
 
@@ -532,10 +562,11 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         rows: list[dict[str, object]] = [{'id': 1}]
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
+        dependency_module_name, _ = self.spreadsheet_dependency_spec()
         optional_module_stub(
             {
                 'pandas': pandas,
-                self.dependency_module_name: object(),
+                dependency_module_name: object(),
             },
         )
         path = self.format_path(tmp_path)
@@ -563,10 +594,11 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         rows: list[dict[str, object]] = [{'id': 1}]
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
+        dependency_module_name, _ = self.spreadsheet_dependency_spec()
         optional_module_stub(
             {
                 'pandas': pandas,
-                self.dependency_module_name: object(),
+                dependency_module_name: object(),
             },
         )
         path = self.format_path(tmp_path)
@@ -602,6 +634,9 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
             raise ImportError(self.dependency_hint)
 
         monkeypatch.setattr(self.module, 'get_dependency', _missing)
+        dependency_module_name, dependency_pip_name = (
+            self.spreadsheet_dependency_spec()
+        )
 
         with pytest.raises(ImportError, match=self.dependency_hint):
             self.module_handler.write(
@@ -610,9 +645,9 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
             )
         assert calls == [
             (
-                self.dependency_module_name,
+                dependency_module_name,
                 self.format_name.upper(),
-                self.dependency_pip_name,
+                dependency_pip_name,
                 True,
             ),
         ]
@@ -625,7 +660,6 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
 
     read_engine: str | None
     write_engine: str | None
-    dependency_module_name: str
 
     def _read_sheet_kwargs(self, path: Path) -> dict[str, object]:
         kwargs: dict[str, object] = {'path': path, 'sheet_name': 'Sheet2'}
