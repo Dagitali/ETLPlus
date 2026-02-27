@@ -38,7 +38,7 @@ __all__ = [
 
 
 def _yaml() -> Any:
-    """Return the optional PyYAML module."""
+    """Return the required PyYAML module."""
     return get_yaml()
 
 
