@@ -27,7 +27,7 @@ class TestResolvePyarrowDependency:
 
     # pylint: disable=protected-access
 
-    def test_resolve_pyarrow_dependency_falls_back_to_get_dependency(
+    def test_resolve_pyarrow_dependency_falls_back_to_resolve_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -39,7 +39,8 @@ class TestResolvePyarrowDependency:
         )
         calls: list[tuple[str, str, bool]] = []
 
-        def _dependency(
+        def _resolve(
+            _handler: object,
             dependency_name: str,
             *,
             format_name: str,
@@ -50,7 +51,7 @@ class TestResolvePyarrowDependency:
             calls.append((dependency_name, format_name, required))
             return 'fallback'
 
-        monkeypatch.setattr(mod, 'get_dependency', _dependency)
+        monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
 
         result = mod._resolve_pyarrow_dependency(
             _Handler(),
@@ -80,7 +81,7 @@ class TestResolvePyarrowDependency:
         )
         monkeypatch.setattr(
             mod,
-            'get_dependency',
+            'resolve_dependency',
             lambda *_args, **_kwargs: (_ for _ in ()).throw(
                 AssertionError('fallback should not run'),
             ),
