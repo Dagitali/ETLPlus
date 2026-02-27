@@ -11,6 +11,7 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import Any
 from typing import ClassVar
+from typing import NoReturn
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -24,6 +25,7 @@ __all__ = [
     'get_pandas',
     'get_pyarrow',
     'get_yaml',
+    'raise_engine_import_error',
     'resolve_dependency',
     'resolve_module_callable',
     'resolve_pandas',
@@ -41,7 +43,7 @@ _MODULE_CACHE: dict[str, Any] = {}
 
 
 def _error_message(
-    module_name: str,
+    module_name: str | tuple[str, ...],
     format_name: str,
     pip_name: str | None = None,
     *,
@@ -52,8 +54,8 @@ def _error_message(
 
     Parameters
     ----------
-    module_name : str
-        Module name to look up.
+    module_name : str | tuple[str, ...]
+        One module name or a tuple of alternative module names.
     format_name : str
         Human-readable format name for templated messages.
     pip_name : str | None, optional
@@ -67,12 +69,29 @@ def _error_message(
     str
         Formatted error message.
     """
-    install_name = pip_name or module_name
+    dependency_names: tuple[str, ...]
+    dependency_target: str
+    if isinstance(module_name, str):
+        dependency_display_name = pip_name or module_name
+        dependency_names = (dependency_display_name,)
+        dependency_target = dependency_display_name
+    else:
+        dependency_names = module_name
+        dependency_target = pip_name or dependency_names[0]
+
+    quoted = [f'"{name}"' for name in dependency_names]
+    if len(quoted) == 1:
+        dependency_label = quoted[0]
+    elif len(quoted) == 2:
+        dependency_label = f'{quoted[0]} or {quoted[1]}'
+    else:
+        dependency_label = f'{", ".join(quoted[:-1])}, or {quoted[-1]}'
+
     label = 'dependency' if required else 'optional dependency'
     return (
         f'{format_name} support requires '
-        f'{label} "{install_name}".\n'
-        f'Install with: pip install {install_name}'
+        f'{label} {dependency_label}.\n'
+        f'Install with: pip install {dependency_target}'
     )
 
 
@@ -227,6 +246,50 @@ def get_yaml() -> Any:
         pip_name='PyYAML',
         required=True,
     )
+
+
+def raise_engine_import_error(
+    error: ImportError,
+    *,
+    format_name: str,
+    dependency_names: str | tuple[str, ...] | None = None,
+    pip_name: str | None = None,
+    required: bool = False,
+) -> NoReturn:
+    """
+    Raise one shared engine-dependency ImportError for a format.
+
+    Parameters
+    ----------
+    error : ImportError
+        Original engine import error.
+    format_name : str
+        Human-readable format name.
+    dependency_names : str | tuple[str, ...] | None, optional
+        One dependency name or tuple of alternative names used to build a
+        standardized message. If None, re-raises *error*.
+    pip_name : str | None, optional
+        Package name hint for install command.
+    required : bool, optional
+        Whether to use required-dependency wording.
+
+    Raises
+    ------
+    ImportError
+        Standardized engine dependency message when dependency names are
+        provided.
+    error
+        The original ImportError when dependency names are not provided.
+    """
+    if dependency_names is None:
+        raise error
+    message = _error_message(
+        dependency_names,
+        format_name=format_name,
+        pip_name=pip_name,
+        required=required,
+    )
+    raise ImportError(message) from error
 
 
 def resolve_dependency(
