@@ -37,6 +37,7 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
     codec_module_name: ClassVar[str]
     codec_format_name: ClassVar[str]
     codec_pip_name: ClassVar[str | None] = None
+    dependency_required: ClassVar[bool] = False
     encode_method_name: ClassVar[str]
     decode_method_name: ClassVar[str]
     encode_kwargs: ClassVar[tuple[tuple[str, object], ...]] = ()
@@ -97,10 +98,11 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
 
     def resolve_codec_module(self) -> Any:
         """
-        Return the optional codec module for this handler.
+        Return the codec module for this handler.
         """
         return get_dependency(
             self.codec_module_name,
             format_name=self.codec_format_name,
             pip_name=self.codec_pip_name,
+            required=self.dependency_required,
         )
