@@ -57,9 +57,29 @@ Default test discovery is controlled by `pytest.ini`:
 
 - `testpaths = tests/e2e tests/integration tests/unit`
 
+## Dependency Prerequisites
+
+The base install already includes common non-native deps used by semi-structured and
+embedded-database handlers (`cbor2`, `duckdb`, `msgpack`, `pymongo`, `tomli-w`).
+
+For full coverage of remaining optional file formats (local CI parity), install:
+
+```bash
+pip install -e ".[dev,file]"
+```
+
+For lighter development without the remaining optional format coverage:
+
+```bash
+pip install -e ".[dev]"
+```
+
 ## Common Commands
 
 ```bash
+# Full dependency install + full test run (recommended for CI parity)
+make test-full
+
 # Default discovery from pytest.ini (unit + integration + e2e)
 pytest
 
