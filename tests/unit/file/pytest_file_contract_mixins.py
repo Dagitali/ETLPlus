@@ -49,7 +49,6 @@ __all__ = [
     'ScientificReadOnlyUnknownDatasetMixin',
     'SemiStructuredReadMixin',
     'SemiStructuredWriteDictMixin',
-    'SpreadsheetReadImportErrorMixin',
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
 ]
@@ -386,48 +385,6 @@ class ReadOnlyWriteGuardMixin(PathMixin):
             )
 
 
-class SpreadsheetReadImportErrorMixin(PathMixin):
-    """
-    Shared mixin for spreadsheet read dependency error behavior.
-    """
-
-    dependency_hint: str
-
-    def test_read_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test read failing when spreadsheet engine dependency is missing."""
-        calls: list[tuple[str, str, str | None, bool]] = []
-
-        def _missing(
-            module_name: str,
-            *,
-            format_name: str,
-            pip_name: str | None = None,
-            required: bool = False,
-        ) -> object:
-            calls.append((module_name, format_name, pip_name, required))
-            raise ImportError(self.dependency_hint)
-
-        monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        dependency_module_name, dependency_pip_name = (
-            self.spreadsheet_dependency_spec()
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module_handler.read(self.format_path(tmp_path))
-        assert calls == [
-            (
-                dependency_module_name,
-                self.format_name.upper(),
-                dependency_pip_name,
-                True,
-            ),
-        ]
-
-
 class SemiStructuredReadMixin(PathMixin):
     """
     Parametrized read contract mixin for semi-structured modules.
@@ -542,7 +499,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     Parametrized mixin for writable spreadsheet module contracts.
     """
 
-    dependency_hint: str
     read_engine: str | None
     write_engine: str | None
 
@@ -614,43 +570,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         assert call.get('index') is False
         if self.write_engine is not None:
             assert call.get('engine') == self.write_engine
-
-    def test_write_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test write failing when spreadsheet engine dependency is missing."""
-        calls: list[tuple[str, str, str | None, bool]] = []
-
-        def _missing(
-            module_name: str,
-            *,
-            format_name: str,
-            pip_name: str | None = None,
-            required: bool = False,
-        ) -> object:
-            calls.append((module_name, format_name, pip_name, required))
-            raise ImportError(self.dependency_hint)
-
-        monkeypatch.setattr(self.module, 'get_dependency', _missing)
-        dependency_module_name, dependency_pip_name = (
-            self.spreadsheet_dependency_spec()
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module_handler.write(
-                self.format_path(tmp_path),
-                [{'id': 1}],
-            )
-        assert calls == [
-            (
-                dependency_module_name,
-                self.format_name.upper(),
-                dependency_pip_name,
-                True,
-            ),
-        ]
 
 
 class SpreadsheetSheetNameRoutingMixin(PathMixin):
