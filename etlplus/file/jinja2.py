@@ -39,11 +39,12 @@ __all__ = [
 
 
 def _jinja2() -> Any:
-    """Return the optional Jinja2 module."""
+    """Return the required Jinja2 module."""
     return get_dependency(
         'jinja2',
         format_name='JINJA2',
         pip_name='Jinja2',
+        required=True,
     )
 
 
