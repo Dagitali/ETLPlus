@@ -20,9 +20,8 @@ type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 # SECTION: CONSTANTS ======================================================== #
 
 
-PYARROW_DEPS = ('pandas', 'pyarrow')
-PYREADR_DEPS = ('pandas', 'pyreadr')
-PYREADSTAT_DEPS = ('pandas', 'pyreadstat')
+PYREADR_DEPS = ('pyreadr',)
+PYREADSTAT_DEPS = ('pyreadstat',)
 
 COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
 COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
@@ -102,7 +101,6 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.FWF,
         'sample.fwf',
         [{'name': 'Ada', 'age': '36x'}],
-        ('pandas',),
     ),
     _format_case(FileFormat.PSV, 'sample.psv', COMMON_ROWS_STR),
     _format_case(FileFormat.TAB, 'sample.tab', COMMON_ROWS_STR),
@@ -114,7 +112,7 @@ FORMAT_CASES: list[FormatCase] = [
     _format_case(FileFormat.JSON, 'sample.json', COMMON_ROWS_NUM),
     _format_case(FileFormat.MSGPACK, 'sample.msgpack', COMMON_ROWS_NUM),
     _format_case(FileFormat.NDJSON, 'sample.ndjson', COMMON_ROWS_NUM),
-    _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM, ('yaml',)),
+    _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM),
     _format_case(FileFormat.INI, 'sample.ini', COMMON_INI),
     _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML),
     _format_case(
@@ -133,31 +131,26 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.PARQUET,
         'sample.parquet',
         COMMON_ROWS_NUM,
-        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.FEATHER,
         'sample.feather',
         COMMON_ROWS_NUM,
-        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.ORC,
         'sample.orc',
         COMMON_ROWS_NUM,
-        PYARROW_DEPS,
     ),
     _format_case(
         FileFormat.AVRO,
         'sample.avro',
         COMMON_ROWS_NUM,
-        ('fastavro',),
     ),
     _format_case(
         FileFormat.ARROW,
         'sample.arrow',
         COMMON_ROWS_NUM,
-        ('pyarrow',),
     ),
     # Databases / spreadsheets
     _format_case(
@@ -169,13 +162,12 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.ODS,
         'sample.ods',
         COMMON_ROWS_NUM,
-        ('pandas', 'odf'),
+        ('odf',),
     ),
     _format_case(
         FileFormat.XLSX,
         'sample.xlsx',
         COMMON_ROWS_NUM,
-        ('pandas', 'openpyxl'),
     ),
     _format_case(FileFormat.SQLITE, 'sample.sqlite', COMMON_ROWS_STR),
     # Scientific/statistical
@@ -213,7 +205,7 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.NC,
         'sample.nc',
         COMMON_ROWS_STR,
-        ('pandas', 'xarray', 'netCDF4'),
+        ('xarray', 'netCDF4'),
     ),
 ]
 
