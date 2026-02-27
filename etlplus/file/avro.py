@@ -58,8 +58,12 @@ _PRIMITIVE_TYPES: tuple[type, ...] = (
 
 
 def _fastavro() -> Any:
-    """Return the optional fastavro module."""
-    return get_dependency('fastavro', format_name='AVRO')
+    """Return the required fastavro module."""
+    return get_dependency(
+        'fastavro',
+        format_name='AVRO',
+        required=True,
+    )
 
 
 def _infer_schema(records: JSONList) -> dict[str, Any]:
