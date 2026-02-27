@@ -60,7 +60,7 @@ class Sas7bdatFile(
     # -- Class Attributes -- #
 
     format = FileFormat.SAS7BDAT
-    requires_pyreadstat_for_read = True
+    pyreadstat_mode = 'read'
     sas_format_hint = 'sas7bdat'
 
     # -- Instance Methods -- #
