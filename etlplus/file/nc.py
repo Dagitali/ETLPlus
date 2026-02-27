@@ -26,6 +26,7 @@ from ..utils.types import JSONList
 from ._dataframe import dataframe_from_records
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
+from ._imports import raise_engine_import_error
 from ._io import ensure_parent_dir
 from ._io import records_from_table
 from ._scientific_handlers import ScientificPandasResolverMixin
@@ -50,33 +51,6 @@ __all__ = [
 # Preserve module-level resolver hooks for contract tests.
 get_dependency = _get_dependency
 get_pandas = _get_pandas
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _raise_engine_error(
-    err: ImportError,
-) -> None:
-    """
-    Raise a consistent ImportError for missing NetCDF engine support.
-
-    Parameters
-    ----------
-    err : ImportError
-        The original ImportError raised when trying to use NetCDF support
-        without the required dependency.
-
-    Raises
-    ------
-    ImportError
-        Consistent ImportError indicating that NetCDF support requires
-        optional dependencies.
-    """
-    raise ImportError(
-        'NC support requires optional dependency "netCDF4" or "h5netcdf".\n'
-        'Install with: pip install netCDF4',
-    ) from err
 
 
 # SECTION: CLASSES ========================================================== #
@@ -142,7 +116,12 @@ class NcFile(
         try:
             xarray_dataset = xarray.open_dataset(path)
         except ImportError as err:  # pragma: no cover
-            _raise_engine_error(err)
+            raise_engine_import_error(
+                err,
+                format_name='NC',
+                dependency_names=('netCDF4', 'h5netcdf'),
+                pip_name='netCDF4',
+            )
         with xarray_dataset as ds:
             frame = ds.to_dataframe().reset_index()
         frame = self.drop_sequential_index_column(frame)
@@ -191,5 +170,10 @@ class NcFile(
         try:
             ds.to_netcdf(path)
         except ImportError as err:  # pragma: no cover
-            _raise_engine_error(err)
+            raise_engine_import_error(
+                err,
+                format_name='NC',
+                dependency_names=('netCDF4', 'h5netcdf'),
+                pip_name='netCDF4',
+            )
         return len(records)
