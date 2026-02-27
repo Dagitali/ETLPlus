@@ -42,8 +42,13 @@ __all__ = [
 
 
 def _bson() -> Any:
-    """Return the optional bson module."""
-    return get_dependency('bson', format_name='BSON', pip_name='pymongo')
+    """Return the required bson module."""
+    return get_dependency(
+        'bson',
+        format_name='BSON',
+        pip_name='pymongo',
+        required=True,
+    )
 
 
 def _decode_all(
