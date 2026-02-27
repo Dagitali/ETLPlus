@@ -22,7 +22,7 @@ import tomllib
 from typing import Any
 
 from ..utils.types import JSONDict
-from ._imports import get_optional_module
+from ._imports import get_dependency
 from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 from .enums import FileFormat
 
@@ -35,22 +35,17 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_TOMLI_W_MESSAGE = (
-    'TOML write support requires dependency '
-    '"tomli_w".\n'
-    'Install with: pip install tomli-w'
-)
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _tomli_w() -> Any:
     """Return required :mod:`tomli_w` module for TOML writes."""
-    return get_optional_module('tomli_w', error_message=_TOMLI_W_MESSAGE)
+    return get_dependency(
+        'tomli_w',
+        format_name='TOML',
+        pip_name='tomli-w',
+        required=True,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
