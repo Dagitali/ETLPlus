@@ -77,7 +77,7 @@ jobs:
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
-          python-bootstrap: "-e .[dev,yaml]"
+          python-bootstrap: "-e .[dev,file]"
       - name: Run fast meta guardrails
         run: |
           pytest -q \
