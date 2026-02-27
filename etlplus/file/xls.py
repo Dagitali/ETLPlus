@@ -36,6 +36,6 @@ class XlsFile(PandasReadOnlySpreadsheetHandlerMixin):
     pandas_format_name = 'XLS'
     read_engine = 'xlrd'
     import_error_message = (
-        'XLS support requires optional dependency "xlrd".\n'
+        'XLS support requires dependency "xlrd".\n'
         'Install with: pip install xlrd'
     )
