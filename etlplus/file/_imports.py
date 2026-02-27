@@ -33,7 +33,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-# Optional Python module support (lazy-loaded to avoid hard dependency)
+# Dependency module support (lazy-loaded to avoid hard dependency)
 _MODULE_CACHE: dict[str, Any] = {}
 
 
@@ -182,7 +182,11 @@ def get_pandas(
     Any
         The pandas module.
     """
-    return get_dependency('pandas', format_name=format_name)
+    return get_dependency(
+        'pandas',
+        format_name=format_name,
+        required=True,
+    )
 
 
 def get_pyarrow(
@@ -201,19 +205,28 @@ def get_pyarrow(
     Any
         The pyarrow module.
     """
-    return get_dependency('pyarrow', format_name=format_name)
+    return get_dependency(
+        'pyarrow',
+        format_name=format_name,
+        required=True,
+    )
 
 
 def get_yaml() -> Any:
     """
-    Return the PyYAML module, importing it on first use.
+    Return the required PyYAML module, importing it on first use.
 
     Returns
     -------
     Any
         The PyYAML module.
     """
-    return get_dependency('yaml', format_name='YAML', pip_name='PyYAML')
+    return get_dependency(
+        'yaml',
+        format_name='YAML',
+        pip_name='PyYAML',
+        required=True,
+    )
 
 
 def resolve_module_callable(
@@ -250,7 +263,7 @@ def resolve_dependency(
     pip_name: str | None = None,
 ) -> Any:
     """
-    Resolve one optional dependency with module-level override support.
+    Resolve one dependency with module-level override support.
 
     Parameters
     ----------
