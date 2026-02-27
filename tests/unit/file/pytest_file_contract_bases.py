@@ -89,5 +89,7 @@ class SpreadsheetCategoryContractBase(PathMixin):
     """
 
     dependency_hint: str
+    dependency_module_name: str
+    dependency_pip_name: str | None = None
     read_engine: str | None = None
     write_engine: str | None = None

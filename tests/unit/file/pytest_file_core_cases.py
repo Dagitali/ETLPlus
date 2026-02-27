@@ -162,7 +162,6 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.ODS,
         'sample.ods',
         COMMON_ROWS_NUM,
-        ('odf',),
     ),
     _format_case(
         FileFormat.XLSX,
