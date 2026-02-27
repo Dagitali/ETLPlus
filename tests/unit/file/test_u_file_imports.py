@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.file._imports`.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from etlplus.file import _imports as mod
@@ -14,7 +16,7 @@ from etlplus.file import _imports as mod
 
 
 class TestImportsHelpers:
-    """Unit tests for optional import helpers."""
+    """Unit tests for dependency import helpers."""
 
     # pylint: disable=protected-access, unused-argument
 
@@ -43,7 +45,9 @@ class TestImportsHelpers:
             *,
             format_name: str,
             pip_name: str | None = None,
+            required: bool = False,
         ) -> object:
+            _ = required
             calls.append((module_name, format_name, pip_name))
             return sentinel
 
@@ -79,36 +83,54 @@ class TestImportsHelpers:
         )
         assert f'pip install {dependency_name}' in message
 
-    def test_get_dependency_routes_through_standard_message(
+    def test_get_dependency_raises_optional_standard_message(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test dependency resolution with normalized format messages."""
-        calls: list[tuple[str, str]] = []
-        sentinel = object()
-
-        def _optional(module_name: str, *, error_message: str) -> object:
-            calls.append((module_name, error_message))
-            return sentinel
-
-        monkeypatch.setattr(mod, 'get_optional_module', _optional)
-        assert (
+        """
+        Test optional dependency failures using normalized format messages.
+        """
+        monkeypatch.setattr(
+            mod,
+            'import_module',
+            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
+        )
+        expected = (
+            'ODS support requires optional dependency "odfpy".\n'
+            'Install with: pip install odfpy'
+        )
+        with pytest.raises(ImportError, match=re.escape(expected)):
             mod.get_dependency(
                 'odf',
                 format_name='ODS',
                 pip_name='odfpy',
             )
-            is sentinel
-        )
-        assert calls == [
-            (
-                'odf',
-                'ODS support requires optional dependency "odfpy".\n'
-                'Install with: pip install odfpy',
-            ),
-        ]
 
-    def test_get_optional_module_imports_and_caches(
+    def test_get_dependency_raises_required_standard_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test required dependency failures using normalized format messages.
+        """
+        monkeypatch.setattr(
+            mod,
+            'import_module',
+            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
+        )
+        expected = (
+            'BSON support requires dependency "pymongo".\n'
+            'Install with: pip install pymongo'
+        )
+        with pytest.raises(ImportError, match=re.escape(expected)):
+            mod.get_dependency(
+                'bson',
+                format_name='BSON',
+                pip_name='pymongo',
+                required=True,
+            )
+
+    def test_get_dependency_imports_and_caches(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -118,27 +140,34 @@ class TestImportsHelpers:
 
         monkeypatch.setattr(mod, '_MODULE_CACHE', cache)
         monkeypatch.setattr(mod, 'import_module', lambda _name: sentinel)
-        result = mod.get_optional_module('example_dep', error_message='unused')
+        result = mod.get_dependency(
+            'example_dep',
+            format_name='EXAMPLE',
+        )
         assert result is sentinel
         assert cache['example_dep'] is sentinel
 
-    def test_get_optional_module_raises_custom_error_message(
+    def test_get_dependency_raises_formatted_error_message(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test missing dependency error propagation."""
+        """Test missing dependency errors using formatted messages."""
         monkeypatch.setattr(
             mod,
             'import_module',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
-        with pytest.raises(ImportError, match='custom import failure'):
-            mod.get_optional_module(
+        expected = (
+            'CUSTOM support requires optional dependency "missing_dep".\n'
+            'Install with: pip install missing_dep'
+        )
+        with pytest.raises(ImportError, match=re.escape(expected)):
+            mod.get_dependency(
                 'missing_dep',
-                error_message='custom import failure',
+                format_name='CUSTOM',
             )
 
-    def test_get_optional_module_uses_cache_when_available(
+    def test_get_dependency_uses_cache_when_available(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -151,9 +180,40 @@ class TestImportsHelpers:
             lambda _name: (_ for _ in ()).throw(AssertionError('unexpected')),
         )
         assert (
-            mod.get_optional_module('cached_mod', error_message='ignored')
+            mod.get_dependency(
+                'cached_mod',
+                format_name='IGNORED',
+            )
             is sentinel
         )
+
+    @pytest.mark.parametrize(
+        ('module_name', 'format_name', 'pip_name', 'dependency_name'),
+        [
+            ('duckdb', 'DUCKDB', None, 'duckdb'),
+            ('bson', 'BSON', 'pymongo', 'pymongo'),
+        ],
+        ids=['default_pip_name', 'explicit_pip_name'],
+    )
+    def test_required_error_message_uses_expected_dependency_name(
+        self,
+        module_name: str,
+        format_name: str,
+        pip_name: str | None,
+        dependency_name: str,
+    ) -> None:
+        """Test required import error messages rendering dependency hints."""
+        message = mod._error_message(
+            module_name,
+            format_name=format_name,
+            pip_name=pip_name,
+            required=True,
+        )
+        assert (
+            f'{format_name} support requires dependency '
+            f'"{dependency_name}"' in message
+        )
+        assert f'pip install {dependency_name}' in message
 
     def test_resolve_module_callable_returns_none_when_module_is_missing(
         self,
