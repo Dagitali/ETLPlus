@@ -35,6 +35,6 @@ class XlsxFile(PandasSpreadsheetHandlerMixin):
     engine_name = 'openpyxl'
     pandas_format_name = 'XLSX'
     import_error_message = (
-        'XLSX support requires optional dependency "openpyxl".\n'
+        'XLSX support requires dependency "openpyxl".\n'
         'Install with: pip install openpyxl'
     )
