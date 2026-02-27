@@ -48,6 +48,6 @@ class XlsmFile(PandasSpreadsheetHandlerMixin):
     engine_name = 'openpyxl'
     pandas_format_name = 'XLSM'
     import_error_message = (
-        'XLSM support requires optional dependency "openpyxl".\n'
+        'XLSM support requires dependency "openpyxl".\n'
         'Install with: pip install openpyxl'
     )
