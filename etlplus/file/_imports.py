@@ -39,11 +39,73 @@ __all__ = [
 _MODULE_CACHE: dict[str, Any] = {}
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type DependencyNames = str | tuple[str, ...]
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _dependency_label(
+    dependency_names: tuple[str, ...],
+) -> str:
+    """
+    Return one quoted dependency label string for an error message.
+
+    Parameters
+    ----------
+    dependency_names : tuple[str, ...]
+        One or more dependency names.
+
+    Returns
+    -------
+    str
+        One label suitable for insertion into error text.
+    """
+    if not dependency_names:
+        raise ValueError('dependency_names must not be empty')
+    quoted = tuple(f'"{name}"' for name in dependency_names)
+    match quoted:
+        case (single,):
+            return single
+        case (first, second):
+            return f'{first} or {second}'
+        case (*head, tail):
+            return f'{", ".join(head)}, or {tail}'
+    raise AssertionError('unreachable dependency label state')
+
+
+def _normalize_dependency_names(
+    module_name: DependencyNames,
+    pip_name: str | None,
+) -> tuple[tuple[str, ...], str]:
+    """
+    Normalize dependency names and install target for message formatting.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One module name or tuple of alternative module names.
+    pip_name : str | None
+        Optional package name hint for install instructions.
+
+    Returns
+    -------
+    tuple[tuple[str, ...], str]
+        ``(dependency_names, dependency_target)``.
+    """
+    if isinstance(module_name, str):
+        dependency_display_name = pip_name or module_name
+        return (dependency_display_name,), dependency_display_name
+    if not module_name:
+        raise ValueError('module_name must not be an empty tuple')
+    return module_name, pip_name or module_name[0]
+
+
 def _error_message(
-    module_name: str | tuple[str, ...],
+    module_name: DependencyNames,
     format_name: str,
     pip_name: str | None = None,
     *,
@@ -69,24 +131,11 @@ def _error_message(
     str
         Formatted error message.
     """
-    dependency_names: tuple[str, ...]
-    dependency_target: str
-    if isinstance(module_name, str):
-        dependency_display_name = pip_name or module_name
-        dependency_names = (dependency_display_name,)
-        dependency_target = dependency_display_name
-    else:
-        dependency_names = module_name
-        dependency_target = pip_name or dependency_names[0]
-
-    quoted = [f'"{name}"' for name in dependency_names]
-    if len(quoted) == 1:
-        dependency_label = quoted[0]
-    elif len(quoted) == 2:
-        dependency_label = f'{quoted[0]} or {quoted[1]}'
-    else:
-        dependency_label = f'{", ".join(quoted[:-1])}, or {quoted[-1]}'
-
+    dependency_names, dependency_target = _normalize_dependency_names(
+        module_name,
+        pip_name,
+    )
+    dependency_label = _dependency_label(dependency_names)
     label = 'dependency' if required else 'optional dependency'
     return (
         f'{format_name} support requires '
