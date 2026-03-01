@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
+from typing import Literal
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
@@ -50,6 +51,7 @@ _SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
 
 
 type SpreadsheetDependencySpec = tuple[str, str | None]
+type SpreadsheetOperation = Literal['read', 'write']
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -286,23 +288,59 @@ class _PandasModuleResolverMixin:
         )
 
 
-class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
+class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
     """
-    Shared read path for pandas-backed spreadsheet handlers.
+    Shared spreadsheet engine resolution/dependency checks for pandas handlers.
     """
 
     # -- Class Attributes -- #
 
     engine_name: ClassVar[str]
     read_engine: ClassVar[str | None] = None
+    write_engine: ClassVar[str | None] = None
 
     # -- Instance Methods -- #
+
+    def resolve_engine(
+        self,
+        operation: SpreadsheetOperation,
+    ) -> str:
+        """
+        Return the effective engine configured for one spreadsheet operation.
+        """
+        configured_engine = (
+            self.read_engine if operation == 'read' else self.write_engine
+        )
+        return _effective_engine(configured_engine, self.engine_name)
+
+    def resolve_engine_dependency(
+        self,
+        operation: SpreadsheetOperation,
+    ) -> str:
+        """
+        Resolve engine dependency for one operation and return engine name.
+        """
+        engine = self.resolve_engine(operation)
+        _resolve_spreadsheet_engine_dependency(
+            self,
+            engine=engine,
+            format_name=self.pandas_format_name,
+        )
+        return engine
+
+
+class _PandasSpreadsheetReadMixin(_PandasSpreadsheetEngineMixin):
+    """
+    Shared read path for pandas-backed spreadsheet handlers.
+    """
+
+    # -- Class Attributes -- #
 
     def resolve_read_engine(self) -> str:
         """
         Return the configured pandas read engine for this handler.
         """
-        return _effective_engine(self.read_engine, self.engine_name)
+        return self.resolve_engine('read')
 
     def read_sheet(
         self,
@@ -329,12 +367,7 @@ class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
             Parsed records from the selected sheet.
         """
         _ = options
-        engine = self.resolve_read_engine()
-        _resolve_spreadsheet_engine_dependency(
-            self,
-            engine=engine,
-            format_name=self.pandas_format_name,
-        )
+        engine = self.resolve_engine_dependency('read')
         return _read_sheet_records(
             path=path,
             sheet=sheet,
@@ -472,7 +505,6 @@ class PandasSpreadsheetHandlerMixin(
     # -- Class Attributes -- #
 
     pandas_format_name: ClassVar[str]
-    write_engine: ClassVar[str | None] = None
 
     # -- Instance Methods -- #
 
@@ -485,7 +517,7 @@ class PandasSpreadsheetHandlerMixin(
         str
             The effective write engine name for this handler.
         """
-        return _effective_engine(self.write_engine, self.engine_name)
+        return self.resolve_engine('write')
 
     def write_sheet(
         self,
@@ -515,12 +547,7 @@ class PandasSpreadsheetHandlerMixin(
             The number of records written to the sheet.
         """
         _ = options
-        engine = self.resolve_write_engine()
-        _resolve_spreadsheet_engine_dependency(
-            self,
-            engine=engine,
-            format_name=self.pandas_format_name,
-        )
+        engine = self.resolve_engine_dependency('write')
         ensure_parent_dir(path)
         pandas = self.resolve_pandas()
         frame = dataframe_from_records(pandas, rows)
