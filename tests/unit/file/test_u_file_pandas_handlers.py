@@ -19,6 +19,19 @@ class _Handler:
     """Simple handler stub for dependency resolver tests."""
 
 
+class _SpreadsheetEngineHandler(mod._PandasSpreadsheetEngineMixin):
+    """Concrete spreadsheet engine resolver stub for mixin unit tests."""
+
+    pandas_format_name = 'XLSX'
+    engine_name = 'openpyxl'
+
+
+class _SpreadsheetEngineWriteOverrideHandler(_SpreadsheetEngineHandler):
+    """Spreadsheet engine resolver stub with explicit write engine."""
+
+    write_engine = 'odf'
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -171,3 +184,48 @@ class TestSpreadsheetDependencySpec:
     ) -> None:
         """Test spreadsheet engine metadata lookup behavior."""
         assert mod._spreadsheet_dependency_spec(engine) == expected
+
+
+class TestSpreadsheetEngineResolverMixin:
+    """Unit tests for shared spreadsheet engine resolver mixin behavior."""
+
+    def test_resolve_engine_uses_default_engine_when_not_overridden(
+        self,
+    ) -> None:
+        """Test fallback engine behavior for read operations."""
+        handler = _SpreadsheetEngineHandler()
+        assert handler.resolve_engine('read') == 'openpyxl'
+
+    def test_resolve_engine_prefers_write_override_for_write_operations(
+        self,
+    ) -> None:
+        """Test write operation resolving explicit write-engine overrides."""
+        handler = _SpreadsheetEngineWriteOverrideHandler()
+        assert handler.resolve_engine('write') == 'odf'
+
+    def test_resolve_engine_dependency_delegates_with_format_context(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test dependency enforcement wiring for resolved engines."""
+        calls: list[tuple[str | None, str]] = []
+
+        def _resolve(
+            _handler: object,
+            *,
+            engine: str | None,
+            format_name: str,
+        ) -> None:
+            calls.append((engine, format_name))
+
+        monkeypatch.setattr(
+            mod,
+            '_resolve_spreadsheet_engine_dependency',
+            _resolve,
+        )
+        handler = _SpreadsheetEngineHandler()
+
+        resolved_engine = handler.resolve_engine_dependency('read')
+
+        assert resolved_engine == 'openpyxl'
+        assert calls == [('openpyxl', 'XLSX')]
