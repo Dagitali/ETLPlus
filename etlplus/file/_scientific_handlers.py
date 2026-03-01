@@ -10,6 +10,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
+from typing import Literal
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
@@ -32,6 +33,27 @@ __all__ = [
     'SingleDatasetTabularScientificReadMixin',
     'SingleDatasetTabularScientificReadWriteMixin',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ScientificOperation = Literal['read', 'write']
+type PyreadstatMode = Literal['none', 'read', 'write', 'read_write']
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_PYREADSTAT_REQUIRED_OPERATIONS: dict[
+    PyreadstatMode,
+    frozenset[ScientificOperation],
+] = {
+    'none': frozenset(),
+    'read': frozenset({'read'}),
+    'write': frozenset({'write'}),
+    'read_write': frozenset({'read', 'write'}),
+}
 
 
 # SECTION: CLASSES ========================================================== #
@@ -65,7 +87,7 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Class Attributes -- #
 
-    requires_pyreadstat_for_read: ClassVar[bool] = False
+    pyreadstat_mode: ClassVar[PyreadstatMode] = 'none'
 
     # -- Abstract Instance Methods -- #
 
@@ -106,22 +128,61 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Internal Instance Methods -- #
 
-    def _resolve_optional_pyreadstat(
+    def _pyreadstat_is_required_for(
         self,
-        *,
-        required: bool,
+        operation: ScientificOperation,
+    ) -> bool:
+        """
+        Return whether pyreadstat is required for one operation kind.
+
+        Parameters
+        ----------
+        operation : ScientificOperation
+            Operation kind.
+
+        Returns
+        -------
+        bool
+            True when pyreadstat is required for the operation.
+
+        Raises
+        ------
+        ValueError
+            If *pyreadstat_mode* is set to an unsupported value.
+        """
+        try:
+            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[
+                self.pyreadstat_mode
+            ]
+        except KeyError as error:
+            raise ValueError(
+                'Unsupported pyreadstat mode '
+                f'"{self.pyreadstat_mode}" for {self.format_name}',
+            ) from error
+        return operation in required_operations
+
+    def _resolve_pyreadstat_for(
+        self,
+        operation: ScientificOperation,
     ) -> Any | None:
         """
         Resolve pyreadstat when required for one operation.
+
+        Parameters
+        ----------
+        operation : ScientificOperation
+            Operation kind.
 
         Returns
         -------
         Any | None
             The pyreadstat module when required, else None.
         """
-        if not required:
-            return None
-        return self.resolve_pyreadstat()
+        return (
+            self.resolve_pyreadstat()
+            if self._pyreadstat_is_required_for(operation)
+            else None
+        )
 
     # -- Instance Methods -- #
 
@@ -139,9 +200,7 @@ class SingleDatasetTabularScientificReadMixin(
         frame = self.read_frame(
             path,
             pandas=self.resolve_pandas(),
-            pyreadstat=self._resolve_optional_pyreadstat(
-                required=self.requires_pyreadstat_for_read,
-            ),
+            pyreadstat=self._resolve_pyreadstat_for('read'),
             options=options,
         )
         return records_from_table(frame)
@@ -160,10 +219,6 @@ class SingleDatasetTabularScientificReadWriteMixin(
     Shared read/write implementation for single-dataset tabular scientific
     formats.
     """
-
-    # -- Class Attributes -- #
-
-    requires_pyreadstat_for_write: ClassVar[bool] = False
 
     # -- Abstract Instance Methods -- #
 
@@ -239,9 +294,7 @@ class SingleDatasetTabularScientificReadWriteMixin(
             path,
             frame,
             pandas=pandas,
-            pyreadstat=self._resolve_optional_pyreadstat(
-                required=self.requires_pyreadstat_for_write,
-            ),
+            pyreadstat=self._resolve_pyreadstat_for('write'),
             options=options,
         )
         return len(records)

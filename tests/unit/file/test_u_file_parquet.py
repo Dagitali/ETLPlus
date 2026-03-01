@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from etlplus.file import parquet as mod
 
-from .pytest_file_contracts import PandasColumnarModuleContract
+from .pytest_file_contracts import PyarrowGatedPandasColumnarModuleContract
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestParquet(PandasColumnarModuleContract):
+class TestParquet(PyarrowGatedPandasColumnarModuleContract):
     """Unit tests for :mod:`etlplus.file.parquet`."""
 
     module = mod
@@ -21,5 +21,3 @@ class TestParquet(PandasColumnarModuleContract):
     read_method_name = 'read_parquet'
     write_calls_attr = 'to_parquet_calls'
     write_uses_index = True
-    read_error_pattern = 'pyarrow'
-    write_error_pattern = 'pyarrow'

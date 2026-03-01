@@ -19,7 +19,6 @@ from .pytest_file_contract_mixins import DelimitedReadWriteMixin
 from .pytest_file_contract_mixins import DelimitedTextRowsMixin
 from .pytest_file_contract_mixins import EmptyWriteReturnsZeroMixin
 from .pytest_file_contract_mixins import PathMixin
-from .pytest_file_contract_mixins import SpreadsheetReadImportErrorMixin
 from .pytest_file_contract_mixins import SpreadsheetSheetNameRoutingMixin
 from .pytest_file_contract_mixins import SpreadsheetWritableMixin
 from .pytest_file_contract_utils import Operation
@@ -271,7 +270,6 @@ class TextRowModuleContract(
 
 class WritableSpreadsheetModuleContract(
     SpreadsheetCategoryContractBase,
-    SpreadsheetReadImportErrorMixin,
     SpreadsheetSheetNameRoutingMixin,
     SpreadsheetWritableMixin,
 ):

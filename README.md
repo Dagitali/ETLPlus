@@ -128,7 +128,8 @@ pip install -e ".[dev]"
 ```
 
 The default install now includes non-native dependencies used by common semi-structured and
-embedded-database handlers: `cbor2`, `duckdb`, `msgpack`, `pymongo` (`bson`), and `tomli-w`.
+embedded-database and spreadsheet handlers: `cbor2`, `duckdb`, `msgpack`, `pymongo` (`bson`),
+`tomli-w`, `openpyxl`, `xlrd`, and `odfpy`.
 
 For development with full optional file-format support:
 

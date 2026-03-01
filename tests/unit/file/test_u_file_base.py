@@ -542,6 +542,23 @@ class TestNamingConventions:
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
+    def test_dataset_option_helpers_preserve_empty_string_values(self) -> None:
+        """
+        Test dataset helpers preserving empty-string explicit/option values.
+        """
+        handler = DtaFile()
+        options = ReadOptions(dataset='')
+
+        assert handler.dataset_from_options(options) == ''
+        assert handler.resolve_dataset(None, options=options) == ''
+        assert (
+            handler.resolve_dataset(
+                '',
+                options=ReadOptions(dataset='other'),
+            )
+            == ''
+        )
+
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
         """Test scientific dataset helpers using explicit then default data."""
         handler = DtaFile()

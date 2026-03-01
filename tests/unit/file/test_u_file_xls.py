@@ -15,7 +15,6 @@ from etlplus.file.base import ReadOptions
 
 from .pytest_file_contract_bases import SpreadsheetCategoryContractBase
 from .pytest_file_contract_mixins import ReadOnlyWriteGuardMixin
-from .pytest_file_contract_mixins import SpreadsheetReadImportErrorMixin
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
@@ -25,14 +24,12 @@ from .pytest_file_support import SpreadsheetSheetPandasStub
 
 class TestXls(
     SpreadsheetCategoryContractBase,
-    SpreadsheetReadImportErrorMixin,
     ReadOnlyWriteGuardMixin,
 ):
     """Unit tests for :mod:`etlplus.file.xls`."""
 
     module = mod
     format_name = 'xls'
-    dependency_hint = 'xlrd'
 
     @pytest.mark.parametrize(
         ('sheet', 'read_supports_sheet_name', 'expected_read_calls'),
@@ -71,6 +68,12 @@ class TestXls(
             mod,
             resolver_name='get_pandas',
             value=pandas,
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            mod,
+            resolver_name='get_dependency',
+            value=object(),
         )
         path = self.format_path(tmp_path)
 

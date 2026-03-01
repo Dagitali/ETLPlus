@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import ClassVar
+from typing import Protocol
 from typing import cast
 
 from ..utils.types import JSONData
@@ -38,6 +38,28 @@ __all__ = [
 ]
 
 
+# SECTION: PROTOCOLS ======================================================== #
+
+
+class _TemplateTextHandlerProtocol(Protocol):
+    """
+    Structural type for template text handlers used by TemplateTextIOMixin.
+    """
+
+    # -- Class Attributes -- #
+
+    format_name: str
+    template_key: str
+
+    # -- Instance Methods -- #
+
+    def encoding_from_options(
+        self,
+        options: ReadOptions | WriteOptions | None,
+    ) -> str:
+        """
+        Return effective text encoding for read/write options.
+        """
 # SECTION: CLASSES ========================================================== #
 
 
@@ -69,7 +91,7 @@ class SemiStructuredPayloadMixin:
 
     def coerce_record_payload(
         self,
-        payload: Any,
+        payload: object,
     ) -> JSONData:
         """
         Coerce ``payload`` into object-or-object-list record form.
@@ -189,7 +211,7 @@ class TemplateTextIOMixin:
             List containing one dictionary with the template key and text
             value.
         """
-        template_handler = cast(Any, self)
+        template_handler = cast(_TemplateTextHandlerProtocol, self)
         return [
             {
                 template_handler.template_key: path.read_text(
@@ -229,7 +251,7 @@ class TemplateTextIOMixin:
              If *data* is not a one-item list of dictionaries with a string
                 value for the template key.
         """
-        template_handler = cast(Any, self)
+        template_handler = cast(_TemplateTextHandlerProtocol, self)
         rows = normalize_records(data, template_handler.format_name)
         if not rows:
             return 0
@@ -266,7 +288,7 @@ class RegexTemplateRenderMixin:
         """
         Resolve one context key from a regex token match.
         """
-        return cast(str | None, match.groupdict().get('key'))
+        return match.groupdict().get('key')
 
     def render(
         self,

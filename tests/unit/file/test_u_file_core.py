@@ -63,10 +63,10 @@ def _assert_core_write_dispatch(
     assert options.root_tag == expected_root_tag
 
 
-def _require_optional_modules(
+def _require_case_dependencies(
     requires: tuple[str, ...],
 ) -> None:
-    """Import optional dependencies for one format case or skip."""
+    """Import case dependencies for one format case or skip."""
     for module_name in requires:
         pytest.importorskip(module_name)
 
@@ -205,7 +205,8 @@ class TestFile:
         """Test embedded DB readers rejecting multi-table files."""
         path = tmp_path / filename
         if file_format is FileFormat.DUCKDB:
-            duckdb = pytest.importorskip('duckdb')
+            import duckdb
+
             conn = duckdb.connect(str(path))
         else:
             conn = sqlite3.connect(path)
@@ -403,7 +404,7 @@ class TestFile:
         requires: tuple[str, ...],
     ) -> None:
         """Test round-trip reads and writes across file formats."""
-        _require_optional_modules(requires)
+        _require_case_dependencies(requires)
         path = tmp_path / filename
 
         File(path, file_format).write(payload)
@@ -489,7 +490,6 @@ class TestFile:
         """
         Test that :func:`write` raises an error indicating lack of support.
         """
-        pytest.importorskip('pandas')
         path = tmp_path / 'sample.xls'
 
         with pytest.raises(RuntimeError, match='read-only'):

@@ -73,7 +73,7 @@ def make_records_frame_fixture() -> Callable[
 
 @pytest.fixture(name='optional_module_stub')
 def optional_module_stub_fixture() -> Generator[OptionalModuleInstaller]:
-    """Install optional dependency stubs and restore import cache afterward."""
+    """Install dependency stubs and restore import cache afterward."""
     cache = import_helpers._MODULE_CACHE  # pylint: disable=protected-access
     original = dict(cache)
     cache.clear()

@@ -180,11 +180,11 @@ class TestJinja2(RoundtripUnitModuleContract):
             {'trim_blocks': True, 'lstrip_blocks': False},
         ]
 
-    def test_render_uses_optional_jinja2_dependency(
+    def test_render_uses_required_jinja2_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test render delegating to optional Jinja2 dependency."""
+        """Test render delegating to required Jinja2 dependency."""
         jinja2_stub = _Jinja2Stub()
         monkeypatch.setattr(
             mod,

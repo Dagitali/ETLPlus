@@ -42,5 +42,6 @@ class CborFile(BinaryRecordCodecHandlerMixin):
     format = FileFormat.CBOR
     codec_module_name = 'cbor2'
     codec_format_name = 'CBOR'
+    dependency_required = True
     encode_method_name = 'dumps'
     decode_method_name = 'loads'

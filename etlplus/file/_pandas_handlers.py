@@ -6,11 +6,10 @@ Shared abstractions for pandas-backed file handlers.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
-from typing import NoReturn
+from typing import Literal
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
@@ -31,8 +30,6 @@ from .base import WriteOptions
 
 
 __all__ = [
-    # Constants
-    'PARQUET_DEPENDENCY_ERROR',
     # Classes
     'PandasColumnarHandlerMixin',
     'PandasReadOnlySpreadsheetHandlerMixin',
@@ -43,58 +40,64 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-PARQUET_DEPENDENCY_ERROR = (
-    'Parquet support requires optional dependency "pyarrow" or '
-    '"fastparquet".\n'
-    'Install with: pip install pyarrow'
-)
+_SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
+    'odf': ('odf', 'odfpy'),
+    'openpyxl': ('openpyxl', None),
+    'xlrd': ('xlrd', None),
+}
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type SpreadsheetDependencySpec = tuple[str, str | None]
+type SpreadsheetOperation = Literal['read', 'write']
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
-
-def _raise_import_error(
-    error: ImportError,
-    *,
-    message: str | None,
-) -> NoReturn:
+def _spreadsheet_dependency_spec(
+    engine: str | None,
+) -> SpreadsheetDependencySpec | None:
     """
-    Raise one standardized import error while preserving cause.
+    Return dependency metadata for one spreadsheet engine.
 
     Parameters
     ----------
-    error : ImportError
-        The original ImportError raised when trying to use a feature without
-        the required dependency.
-    message : str | None
-        Optional custom message for the ImportError. If None, the original
-        error message will be used instead.
+    engine : str | None
+        Spreadsheet engine name, if known.
 
-    Raises
-    ------
-    error
-        The original :class:`ImportError` if *message* is None.
-    ImportError
-        A new :class:`ImportError` with the provided message or the original
-        error message, preserving the original error.
+    Returns
+    -------
+    SpreadsheetDependencySpec | None
+        The dependency metadata for the specified engine, or None if not found.
     """
-    if message is None:
-        raise error
-    raise ImportError(message) from error
+    if engine is None:
+        return None
+    return _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine)
 
 
-def _call_with_import_error[T](
-    operation: Callable[[], T],
-    *,
-    message: str | None,
-) -> T:
+def _effective_engine(
+    configured_engine: str | None,
+    fallback_engine: str,
+) -> str:
     """
-    Execute one operation and normalize dependency import failures.
+    Return the effective engine from explicit then fallback configuration.
+
+    Parameters
+    ----------
+    configured_engine : str | None
+        The explicitly configured engine name, if any.
+    fallback_engine : str
+        The fallback engine name to use when no explicit configuration is
+        provided.
+
+    Returns
+    -------
+    str
+        The effective engine name.
     """
-    try:
-        return operation()
-    except ImportError as error:  # pragma: no cover
-        _raise_import_error(error, message=message)
+    return configured_engine or fallback_engine
 
 
 def _read_excel_frame(
@@ -139,7 +142,6 @@ def _read_sheet_records(
     sheet: str | int,
     pandas: Any,
     engine: str | None,
-    import_error_message: str | None,
 ) -> JSONList:
     """
     Read one spreadsheet sheet and return row records.
@@ -154,22 +156,17 @@ def _read_sheet_records(
         The pandas module to use for reading.
     engine : str | None
         Optional read engine name.
-    import_error_message : str | None
-        Optional custom message for import errors.
 
     Returns
     -------
     JSONList
         Row records parsed from the selected sheet.
     """
-    frame = _call_with_import_error(
-        lambda: _read_excel_frame(
-            pandas,
-            path,
-            sheet=sheet,
-            engine=engine,
-        ),
-        message=import_error_message,
+    frame = _read_excel_frame(
+        pandas,
+        path,
+        sheet=sheet,
+        engine=engine,
     )
     return records_from_table(frame)
 
@@ -180,7 +177,7 @@ def _resolve_pyarrow_dependency(
     format_name: str,
 ) -> Any:
     """
-    Resolve pyarrow, preferring the concrete module resolver when present.
+    Resolve required pyarrow, preferring concrete-module resolver when present.
 
     Parameters
     ----------
@@ -200,6 +197,37 @@ def _resolve_pyarrow_dependency(
         handler,
         'pyarrow',
         format_name=format_name,
+        required=True,
+    )
+
+
+def _resolve_spreadsheet_engine_dependency(
+    handler: object,
+    *,
+    engine: str | None,
+    format_name: str,
+) -> None:
+    """
+    Resolve required spreadsheet-engine dependency for one handler operation.
+
+    Parameters
+    ----------
+    handler : object
+        The handler instance for which to resolve the dependency.
+    engine : str | None
+        Spreadsheet engine name, if known.
+    format_name : str
+        Human-readable format name for import error messages.
+    """
+    if (spec := _spreadsheet_dependency_spec(engine)) is None:
+        return
+    module_name, pip_name = spec
+    resolve_dependency(
+        handler,
+        module_name,
+        format_name=format_name,
+        pip_name=pip_name,
+        required=True,
     )
 
 
@@ -244,7 +272,11 @@ class _PandasModuleResolverMixin:
     Resolve pandas via shared compatibility-first dependency lookup.
     """
 
+    # -- Class Attributes -- #
+
     pandas_format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
 
     def resolve_pandas(self) -> Any:
         """
@@ -256,13 +288,59 @@ class _PandasModuleResolverMixin:
         )
 
 
-class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
+class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
+    """
+    Shared spreadsheet engine resolution/dependency checks for pandas handlers.
+    """
+
+    # -- Class Attributes -- #
+
+    engine_name: ClassVar[str]
+    read_engine: ClassVar[str | None] = None
+    write_engine: ClassVar[str | None] = None
+
+    # -- Instance Methods -- #
+
+    def resolve_engine(
+        self,
+        operation: SpreadsheetOperation,
+    ) -> str:
+        """
+        Return the effective engine configured for one spreadsheet operation.
+        """
+        configured_engine = (
+            self.read_engine if operation == 'read' else self.write_engine
+        )
+        return _effective_engine(configured_engine, self.engine_name)
+
+    def resolve_engine_dependency(
+        self,
+        operation: SpreadsheetOperation,
+    ) -> str:
+        """
+        Resolve engine dependency for one operation and return engine name.
+        """
+        engine = self.resolve_engine(operation)
+        _resolve_spreadsheet_engine_dependency(
+            self,
+            engine=engine,
+            format_name=self.pandas_format_name,
+        )
+        return engine
+
+
+class _PandasSpreadsheetReadMixin(_PandasSpreadsheetEngineMixin):
     """
     Shared read path for pandas-backed spreadsheet handlers.
     """
 
-    read_engine: ClassVar[str | None] = None
-    import_error_message: ClassVar[str | None] = None
+    # -- Class Attributes -- #
+
+    def resolve_read_engine(self) -> str:
+        """
+        Return the configured pandas read engine for this handler.
+        """
+        return self.resolve_engine('read')
 
     def read_sheet(
         self,
@@ -289,12 +367,12 @@ class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
             Parsed records from the selected sheet.
         """
         _ = options
+        engine = self.resolve_engine_dependency('read')
         return _read_sheet_records(
             path=path,
             sheet=sheet,
             pandas=self.resolve_pandas(),
-            engine=self.read_engine,
-            import_error_message=self.import_error_message,
+            engine=engine,
         )
 
 
@@ -313,7 +391,6 @@ class PandasColumnarHandlerMixin(
     write_method: ClassVar[str]
     write_kwargs: ClassVar[tuple[tuple[str, Any], ...]] = ()
     requires_pyarrow: ClassVar[bool] = False
-    import_error_message: ClassVar[str | None] = None
 
     # -- Instance Methods -- #
 
@@ -341,10 +418,7 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         pandas = self.resolve_pandas()
-        return _call_with_import_error(
-            lambda: getattr(pandas, self.read_method)(path),
-            message=self.import_error_message,
-        )
+        return getattr(pandas, self.read_method)(path)
 
     def records_to_table(
         self,
@@ -390,7 +464,7 @@ class PandasColumnarHandlerMixin(
 
     def validate_runtime_dependencies(self) -> None:
         """
-        Validate optional dependencies required at runtime.
+        Validate runtime dependencies required by this handler.
         """
         if self.requires_pyarrow:
             self.resolve_pyarrow()
@@ -417,10 +491,7 @@ class PandasColumnarHandlerMixin(
         _ = options
         self.validate_runtime_dependencies()
         kwargs = dict(self.write_kwargs)
-        _call_with_import_error(
-            lambda: getattr(table, self.write_method)(path, **kwargs),
-            message=self.import_error_message,
-        )
+        getattr(table, self.write_method)(path, **kwargs)
 
 
 class PandasSpreadsheetHandlerMixin(
@@ -434,7 +505,19 @@ class PandasSpreadsheetHandlerMixin(
     # -- Class Attributes -- #
 
     pandas_format_name: ClassVar[str]
-    write_engine: ClassVar[str | None] = None
+
+    # -- Instance Methods -- #
+
+    def resolve_write_engine(self) -> str:
+        """
+        Return the configured pandas write engine for this handler.
+
+        Returns
+        -------
+        str
+            The effective write engine name for this handler.
+        """
+        return self.resolve_engine('write')
 
     def write_sheet(
         self,
@@ -464,17 +547,15 @@ class PandasSpreadsheetHandlerMixin(
             The number of records written to the sheet.
         """
         _ = options
+        engine = self.resolve_engine_dependency('write')
         ensure_parent_dir(path)
         pandas = self.resolve_pandas()
         frame = dataframe_from_records(pandas, rows)
-        _call_with_import_error(
-            lambda: _write_excel_frame(
-                frame,
-                path,
-                sheet=sheet,
-                engine=self.write_engine,
-            ),
-            message=self.import_error_message,
+        _write_excel_frame(
+            frame,
+            path,
+            sheet=sheet,
+            engine=engine,
         )
         return len(rows)
 

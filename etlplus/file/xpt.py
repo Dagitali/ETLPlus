@@ -57,8 +57,7 @@ class XptFile(
     # -- Class Attributes -- #
 
     format = FileFormat.XPT
-    requires_pyreadstat_for_read = True
-    requires_pyreadstat_for_write = True
+    pyreadstat_mode = 'read_write'
     pyreadstat_read_method = 'read_xport'
     pyreadstat_write_method = 'write_xport'
     sas_format_hint = 'xport'

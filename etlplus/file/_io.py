@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
+from typing import TypeGuard
 from typing import cast
 
 from ..utils.types import JSONData
@@ -21,6 +22,20 @@ from ..utils.types import StrPath
 if TYPE_CHECKING:
     from .base import ReadOptions
     from .base import WriteOptions
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _is_object_list(
+    payload: object,
+) -> TypeGuard[JSONList]:
+    """
+    Return whether *payload* is a list containing only dictionary objects.
+    """
+    return isinstance(payload, list) and all(
+        isinstance(item, dict) for item in payload
+    )
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -71,9 +86,9 @@ def coerce_record_payload(
     """
     if isinstance(payload, dict):
         return cast(JSONDict, payload)
+    if _is_object_list(payload):
+        return payload
     if isinstance(payload, list):
-        if all(isinstance(item, dict) for item in payload):
-            return cast(JSONList, payload)
         raise TypeError(
             f'{format_name} array must contain only objects (dicts)',
         )
@@ -121,12 +136,12 @@ def normalize_records(
     TypeError
         If the payload is not a dict or a list of dicts.
     """
+    if _is_object_list(data):
+        return data
     if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise TypeError(
-                f'{format_name} payloads must contain only objects (dicts)',
-            )
-        return cast(JSONList, data)
+        raise TypeError(
+            f'{format_name} payloads must contain only objects (dicts)',
+        )
     if isinstance(data, dict):
         return [cast(JSONDict, data)]
     raise TypeError(
@@ -258,9 +273,9 @@ def require_dict_payload(
     TypeError
         If the payload is not a dictionary.
     """
-    if isinstance(data, list) or not isinstance(data, dict):
-        raise TypeError(f'{format_name} payloads must be a dict')
-    return cast(JSONDict, data)
+    if isinstance(data, dict):
+        return cast(JSONDict, data)
+    raise TypeError(f'{format_name} payloads must be a dict')
 
 
 def require_str_key(
@@ -403,13 +418,13 @@ class FileHandlerOption:
 
     # -- Internal Instance Methods -- #
 
-    def _option_attr(
+    def _option_attr[T](
         self,
         options: ReadOptions | WriteOptions | None,
         attr_name: str,
         *,
-        default: Any | None = None,
-    ) -> Any | None:
+        default: T | None = None,
+    ) -> T | None:
         """
         Return one option attribute value or a provided default.
 
@@ -431,7 +446,26 @@ class FileHandlerOption:
         if options is None:
             return default
         value = getattr(options, attr_name)
-        return default if value is None else value
+        return default if value is None else cast(T, value)
+
+    def _resolve_option[T](
+        self,
+        explicit: T | None,
+        options: ReadOptions | WriteOptions | None,
+        attr_name: str,
+        *,
+        default: T | None = None,
+    ) -> T | None:
+        """
+        Resolve one value using explicit, options, then default precedence.
+        """
+        if explicit is not None:
+            return explicit
+        return self._option_attr(
+            options,
+            attr_name,
+            default=default,
+        )
 
     # -- Instance Methods -- #
 
@@ -457,10 +491,13 @@ class FileHandlerOption:
         str
             Text encoding from *options* when present, else *default*.
         """
-        return cast(
-            str,
-            self._option_attr(options, 'encoding', default=default),
+        encoding = self._option_attr(
+            options,
+            'encoding',
+            default=default,
         )
+        assert encoding is not None
+        return encoding
 
     def extra_option(
         self,
@@ -513,10 +550,13 @@ class FileHandlerOption:
         str
             XML-like root tag from *options* when present, else *default*.
         """
-        return cast(
-            str,
-            self._option_attr(options, 'root_tag', default=default),
+        root_tag = self._option_attr(
+            options,
+            'root_tag',
+            default=default,
         )
+        assert root_tag is not None
+        return root_tag
 
 
 class ArchiveInnerNameOption(FileHandlerOption):
@@ -535,10 +575,7 @@ class ArchiveInnerNameOption(FileHandlerOption):
         """
         Extract archive member selector from read/write options.
         """
-        return cast(
-            str | None,
-            self._option_attr(options, 'inner_name', default=default),
-        )
+        return self._option_attr(options, 'inner_name', default=default)
 
 
 class DelimitedOption(FileHandlerOption):
@@ -596,10 +633,7 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         """
         Extract table selector from read/write options.
         """
-        return cast(
-            str | None,
-            self._option_attr(options, 'table', default=default),
-        )
+        return self._option_attr(options, 'table', default=default)
 
 
 class ScientificDatasetOption(FileHandlerOption):
@@ -616,10 +650,7 @@ class ScientificDatasetOption(FileHandlerOption):
         """
         Extract dataset selector from read/write options.
         """
-        return cast(
-            str | None,
-            self._option_attr(options, 'dataset', default=None),
-        )
+        return self._option_attr(options, 'dataset', default=None)
 
     def resolve_dataset(
         self,
@@ -632,12 +663,12 @@ class ScientificDatasetOption(FileHandlerOption):
         Resolve dataset selection using explicit, options, then
         default.
         """
-        if dataset is not None:
-            return dataset
-        from_options = self.dataset_from_options(options)
-        if from_options is not None:
-            return from_options
-        return default
+        return self._resolve_option(
+            dataset,
+            options,
+            'dataset',
+            default=default,
+        )
 
 
 class SpreadsheetSheetOption(FileHandlerOption):
@@ -657,7 +688,10 @@ class SpreadsheetSheetOption(FileHandlerOption):
         Extract sheet selector from read/write options.
         """
         resolved_default = self.default_sheet if default is None else default
-        return cast(
-            str | int,
-            self._option_attr(options, 'sheet', default=resolved_default),
+        sheet = self._option_attr(
+            options,
+            'sheet',
+            default=resolved_default,
         )
+        assert sheet is not None
+        return cast(str | int, sheet)

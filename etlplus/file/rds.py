@@ -23,7 +23,6 @@ from pathlib import Path
 from ..utils.types import JSONData
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
-from ._io import ensure_parent_dir
 from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -125,16 +124,14 @@ class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
             dataset=dataset,
             options=options,
         )
-        pyreadr = self.resolve_pyreadr()
         frame = self.dataframe_from_records(records)
         count = len(records)
 
-        writer = getattr(pyreadr, 'write_rds', None)
-        if writer is None:
-            raise ImportError(
-                'RDS write support requires "pyreadr" with write_rds().',
-            )
-
-        ensure_parent_dir(path)
-        writer(str(path), frame)
+        writer = self.resolve_pyreadr_writer(
+            'write_rds',
+            error_message=(
+                'RDS write support requires "pyreadr" with write_rds().'
+            ),
+        )
+        self.call_pyreadr_writer(writer, path=path, frame=frame)
         return count

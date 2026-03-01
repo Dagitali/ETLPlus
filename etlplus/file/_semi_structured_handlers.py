@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import ClassVar
-from typing import cast
 
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
@@ -233,11 +232,7 @@ class DictPayloadTextCodecHandlerMixin(
         """
         _ = options
         decoded = self.decode_dict_payload_text(text)
-        if (error_message := self.dict_root_error_message) is not None:
-            return self.coerce_dict_root_payload(
-                decoded,
-                error_message=error_message,
-            )
-        if not isinstance(decoded, dict):
-            raise TypeError(f'{self.format_name} root must be a dict')
-        return cast(JSONDict, decoded)
+        return self.coerce_dict_root_payload(
+            decoded,
+            error_message=self.dict_root_error_message,
+        )
