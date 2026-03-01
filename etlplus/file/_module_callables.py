@@ -71,6 +71,31 @@ def call_module_method(
 ) -> Any:
     """
     Resolve and call one required module method with standardized errors.
+
+    Parameters
+    ----------
+    module : Any | None
+        Optional module object to resolve the method on.
+    format_name : str
+        Human-readable format name for templated messages.
+    method_name : str
+        Method name to resolve and call on the module.
+    operation : ModuleOperation
+        Operation name for templated messages (e.g. "read" or "write").
+    module_name : str, optional
+        Human-readable module name for templated messages. Default is
+        `'module'`.
+    args : tuple[Any, ...], optional
+        Optional tuple of positional arguments to pass to the method. Default
+        is ``()``.
+    kwargs : Mapping[str, Any] | None, optional
+        Optional mapping of keyword arguments to pass to the method. Default
+        is ``None``.
+
+    Returns
+    -------
+    Any
+        The result of the module method call.
     """
     module_method = resolve_module_method(
         require_module(
@@ -100,6 +125,23 @@ def raise_missing_module_method(
 ) -> NoReturn:
     """
     Raise a consistent import error for missing module methods.
+
+    Parameters
+    ----------
+    format_name : str
+        Human-readable format name for templated messages.
+    module_name : str, optional
+        Human-readable module name for templated messages. Default is
+        `'module'`.
+    method_name : str
+        Method name that is missing on the module.
+    operation : ModuleOperation
+        Operation name for templated messages (e.g. "read" or "write").
+
+    Raises
+    ------
+    ImportError
+        Always raised with a consistent message about the missing method.
     """
     raise ImportError(
         f'{format_name} {operation} support requires "{module_name}" '
