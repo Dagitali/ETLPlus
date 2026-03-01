@@ -93,6 +93,11 @@ class _ModuleCallContext:
         ----------
         method_name : str
             Method name that is missing on the module.
+
+        Raises
+        ------
+        ImportError
+            Raised when the required module method is missing.
         """
         raise ImportError(
             f'{self.format_name} {self.operation} support requires '
@@ -207,11 +212,6 @@ def raise_missing_module_method(
         Method name that is missing on the module.
     operation : ModuleOperation
         Operation name for templated messages (e.g. "read" or "write").
-
-    Raises
-    ------
-    ImportError
-        Always raised with a consistent message about the missing method.
     """
     _ModuleCallContext(
         module=object(),
