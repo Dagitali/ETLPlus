@@ -77,33 +77,6 @@ def _dependency_label(
     raise AssertionError('unreachable dependency label state')
 
 
-def _normalize_dependency_names(
-    module_name: DependencyNames,
-    pip_name: str | None,
-) -> tuple[tuple[str, ...], str]:
-    """
-    Normalize dependency names and install target for message formatting.
-
-    Parameters
-    ----------
-    module_name : DependencyNames
-        One module name or tuple of alternative module names.
-    pip_name : str | None
-        Optional package name hint for install instructions.
-
-    Returns
-    -------
-    tuple[tuple[str, ...], str]
-        ``(dependency_names, dependency_target)``.
-    """
-    if isinstance(module_name, str):
-        dependency_display_name = pip_name or module_name
-        return (dependency_display_name,), dependency_display_name
-    if not module_name:
-        raise ValueError('module_name must not be an empty tuple')
-    return module_name, pip_name or module_name[0]
-
-
 def _error_message(
     module_name: DependencyNames,
     format_name: str,
@@ -142,6 +115,33 @@ def _error_message(
         f'{label} {dependency_label}.\n'
         f'Install with: pip install {dependency_target}'
     )
+
+
+def _normalize_dependency_names(
+    module_name: DependencyNames,
+    pip_name: str | None,
+) -> tuple[tuple[str, ...], str]:
+    """
+    Normalize dependency names and install target for message formatting.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One module name or tuple of alternative module names.
+    pip_name : str | None
+        Optional package name hint for install instructions.
+
+    Returns
+    -------
+    tuple[tuple[str, ...], str]
+        ``(dependency_names, dependency_target)``.
+    """
+    if isinstance(module_name, str):
+        dependency_display_name = pip_name or module_name
+        return (dependency_display_name,), dependency_display_name
+    if not module_name:
+        raise ValueError('module_name must not be an empty tuple')
+    return module_name, pip_name or module_name[0]
 
 
 def _resolve_with_module_override(
