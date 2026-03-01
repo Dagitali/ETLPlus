@@ -36,7 +36,7 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
 _SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
@@ -44,6 +44,58 @@ _SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
     'openpyxl': ('openpyxl', None),
     'xlrd': ('xlrd', None),
 }
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type SpreadsheetDependencySpec = tuple[str, str | None]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+def _spreadsheet_dependency_spec(
+    engine: str | None,
+) -> SpreadsheetDependencySpec | None:
+    """
+    Return dependency metadata for one spreadsheet engine.
+
+    Parameters
+    ----------
+    engine : str | None
+        Spreadsheet engine name, if known.
+
+    Returns
+    -------
+    SpreadsheetDependencySpec | None
+        The dependency metadata for the specified engine, or None if not found.
+    """
+    if engine is None:
+        return None
+    return _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine)
+
+
+def _effective_engine(
+    configured_engine: str | None,
+    fallback_engine: str,
+) -> str:
+    """
+    Return the effective engine from explicit then fallback configuration.
+
+    Parameters
+    ----------
+    configured_engine : str | None
+        The explicitly configured engine name, if any.
+    fallback_engine : str
+        The fallback engine name to use when no explicit configuration is
+        provided.
+
+    Returns
+    -------
+    str
+        The effective engine name.
+    """
+    return configured_engine or fallback_engine
 
 
 def _read_excel_frame(
@@ -165,9 +217,7 @@ def _resolve_spreadsheet_engine_dependency(
     format_name : str
         Human-readable format name for import error messages.
     """
-    if engine is None:
-        return
-    if (spec := _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine)) is None:
+    if (spec := _spreadsheet_dependency_spec(engine)) is None:
         return
     module_name, pip_name = spec
     resolve_dependency(
@@ -220,7 +270,11 @@ class _PandasModuleResolverMixin:
     Resolve pandas via shared compatibility-first dependency lookup.
     """
 
+    # -- Class Attributes -- #
+
     pandas_format_name: ClassVar[str]
+
+    # -- Instance Methods -- #
 
     def resolve_pandas(self) -> Any:
         """
@@ -237,8 +291,18 @@ class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
     Shared read path for pandas-backed spreadsheet handlers.
     """
 
+    # -- Class Attributes -- #
+
     engine_name: ClassVar[str]
     read_engine: ClassVar[str | None] = None
+
+    # -- Instance Methods -- #
+
+    def resolve_read_engine(self) -> str:
+        """
+        Return the configured pandas read engine for this handler.
+        """
+        return _effective_engine(self.read_engine, self.engine_name)
 
     def read_sheet(
         self,
@@ -265,7 +329,7 @@ class _PandasSpreadsheetReadMixin(_PandasModuleResolverMixin):
             Parsed records from the selected sheet.
         """
         _ = options
-        engine = self.read_engine or self.engine_name
+        engine = self.resolve_read_engine()
         _resolve_spreadsheet_engine_dependency(
             self,
             engine=engine,
@@ -410,6 +474,19 @@ class PandasSpreadsheetHandlerMixin(
     pandas_format_name: ClassVar[str]
     write_engine: ClassVar[str | None] = None
 
+    # -- Instance Methods -- #
+
+    def resolve_write_engine(self) -> str:
+        """
+        Return the configured pandas write engine for this handler.
+
+        Returns
+        -------
+        str
+            The effective write engine name for this handler.
+        """
+        return _effective_engine(self.write_engine, self.engine_name)
+
     def write_sheet(
         self,
         path: Path,
@@ -438,7 +515,7 @@ class PandasSpreadsheetHandlerMixin(
             The number of records written to the sheet.
         """
         _ = options
-        engine = self.write_engine or self.engine_name
+        engine = self.resolve_write_engine()
         _resolve_spreadsheet_engine_dependency(
             self,
             engine=engine,
