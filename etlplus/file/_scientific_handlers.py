@@ -35,6 +35,13 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ScientificOperation = Literal['read', 'write']
+type PyreadstatMode = Literal['none', 'read', 'write', 'read_write']
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -66,9 +73,7 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Class Attributes -- #
 
-    pyreadstat_mode: ClassVar[
-        Literal['none', 'read', 'write', 'read_write']
-    ] = 'none'
+    pyreadstat_mode: ClassVar[PyreadstatMode] = 'none'
 
     # -- Abstract Instance Methods -- #
 
@@ -111,44 +116,51 @@ class SingleDatasetTabularScientificReadMixin(
 
     def _pyreadstat_is_required_for(
         self,
-        operation: Literal['read', 'write'],
+        operation: ScientificOperation,
     ) -> bool:
         """
         Return whether pyreadstat is required for one operation.
 
         Parameters
         ----------
-        operation : Literal['read', 'write']
+        operation : ScientificOperation
             Operation kind.
 
         Returns
         -------
         bool
             True when pyreadstat is required for the operation.
+
+        Raises
+        ------
+        ValueError
+            If *pyreadstat_mode* is set to an unsupported value.
         """
-        mode = self.pyreadstat_mode
-        if mode == 'none':
-            return False
-        if mode == 'read':
-            return operation == 'read'
-        if mode == 'write':
-            return operation == 'write'
-        if mode == 'read_write':
-            return True
-        raise ValueError(
-            f'Unsupported pyreadstat mode "{mode}" for {self.format_name}',
-        )
+        match self.pyreadstat_mode:
+            case 'none':
+                return False
+            case 'read':
+                return operation == 'read'
+            case 'write':
+                return operation == 'write'
+            case 'read_write':
+                return True
+            case mode:
+                raise ValueError(
+                    'Unsupported pyreadstat mode '
+                    f'"{mode}" for {self.format_name}',
+                )
 
     def _resolve_pyreadstat_for(
         self,
-        operation: Literal['read', 'write'],
+        operation: ScientificOperation,
     ) -> Any | None:
         """
         Resolve pyreadstat when required for one operation.
 
         Parameters
         ----------
-        operation : Literal['read', 'write']
+        operation : ScientificOperation
             Operation kind.
 
         Returns
