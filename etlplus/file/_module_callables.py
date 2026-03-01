@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -32,6 +33,82 @@ __all__ = [
 
 
 type ModuleOperation = Literal['read', 'write']
+
+
+# SECTION: INTERNAL CLASSES ================================================ #
+
+
+@dataclass(slots=True)
+class _ModuleCallContext:
+    """
+    Immutable context for module-method operations.
+
+    Attributes
+    ----------
+    module : Any | None
+        Optional module object to resolve methods on.
+    format_name : str
+        Human-readable format name for templated messages.
+    operation : ModuleOperation
+        Operation name for templated messages (e.g. "read" or "write").
+    module_name : str
+        Human-readable module name for templated messages.
+    """
+
+    # -- Instance Attributes -- #
+
+    module: Any | None
+    format_name: str
+    operation: ModuleOperation
+    module_name: str = 'module'
+
+    # -- Instance Methods -- #
+
+    def call(
+        self,
+        *,
+        method_name: str,
+        args: tuple[Any, ...] = (),
+        kwargs: Mapping[str, Any] | None = None,
+    ) -> Any:
+        """
+        Resolve and call one required module method.
+        """
+        module_method = resolve_module_method(
+            self.require_module(),
+            method_name,
+        )
+        if module_method is None:
+            self.raise_missing_module_method(method_name)
+        return module_method(*args, **_call_kwargs(kwargs))
+
+    def raise_missing_module_method(
+        self,
+        method_name: str,
+    ) -> NoReturn:
+        """
+        Raise the standardized missing-method error for this context.
+
+        Parameters
+        ----------
+        method_name : str
+            Method name that is missing on the module.
+        """
+        raise ImportError(
+            f'{self.format_name} {self.operation} support requires '
+            f'"{self.module_name}" with {method_name}().',
+        )
+
+    def require_module(self) -> Any:
+        """
+        Return the required module object or raise a runtime dependency error.
+        """
+        if self.module is None:  # pragma: no cover - guarded by mixin flags
+            raise RuntimeError(
+                f'{self.module_name} dependency is required for '
+                f'{self.format_name} {self.operation}',
+            )
+        return self.module
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -97,23 +174,16 @@ def call_module_method(
     Any
         The result of the module method call.
     """
-    module_method = resolve_module_method(
-        require_module(
-            module,
-            format_name=format_name,
-            operation=operation,
-            module_name=module_name,
-        ),
-        method_name,
+    return _ModuleCallContext(
+        module=module,
+        format_name=format_name,
+        operation=operation,
+        module_name=module_name,
+    ).call(
+        method_name=method_name,
+        args=args,
+        kwargs=kwargs,
     )
-    if module_method is None:
-        raise_missing_module_method(
-            format_name=format_name,
-            module_name=module_name,
-            method_name=method_name,
-            operation=operation,
-        )
-    return module_method(*args, **_call_kwargs(kwargs))
 
 
 def raise_missing_module_method(
@@ -143,10 +213,12 @@ def raise_missing_module_method(
     ImportError
         Always raised with a consistent message about the missing method.
     """
-    raise ImportError(
-        f'{format_name} {operation} support requires "{module_name}" '
-        f'with {method_name}().',
-    )
+    _ModuleCallContext(
+        module=object(),
+        format_name=format_name,
+        operation=operation,
+        module_name=module_name,
+    ).raise_missing_module_method(method_name)
 
 
 def require_module(
@@ -159,12 +231,12 @@ def require_module(
     """
     Return a required module object or raise a runtime dependency error.
     """
-    if module is None:  # pragma: no cover - guarded by mixin flags
-        raise RuntimeError(
-            f'{module_name} dependency is required for {format_name} '
-            f'{operation}',
-        )
-    return module
+    return _ModuleCallContext(
+        module=module,
+        format_name=format_name,
+        operation=operation,
+        module_name=module_name,
+    ).require_module()
 
 
 def resolve_module_method(
