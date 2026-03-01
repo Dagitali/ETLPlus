@@ -46,41 +46,10 @@ class _PyreadstatFrameMixin:
         *,
         pyreadstat: Any | None,
         method_name: str,
-    ) -> Any:
-        """
-        Read one frame via one required pyreadstat reader method.
-
-        Parameters
-        ----------
-        path : Path
-            The path to the file to read.
-        pyreadstat : Any | None
-            The pyreadstat module to use for reading, if available.
-        method_name : str
-            The name of the pyreadstat reader method to call.
-
-        Returns
-        -------
-        Any
-            The dataframe-like dataset read from the file.
-        """
-        return read_module_frame(
-            module=pyreadstat,
-            format_name=self.format_name,
-            module_name=self.pyreadstat_module_name,
-            method_name=method_name,
-            path=path,
-        )
-
-    def read_pyreadstat_frame_if_supported(
-        self,
-        path: Path,
-        *,
-        pyreadstat: Any | None,
-        method_name: str,
+        optional: bool = False,
     ) -> Any | None:
         """
-        Read one frame via one optional pyreadstat reader method.
+        Read one frame via one pyreadstat reader method.
 
         Parameters
         ----------
@@ -90,15 +59,26 @@ class _PyreadstatFrameMixin:
             The pyreadstat module to use for reading, if available.
         method_name : str
             The name of the pyreadstat reader method to call.
+        optional : bool, optional
+            Whether missing reader methods should return ``None`` instead of
+            raising. Defaults to ``False``.
 
         Returns
         -------
         Any | None
-            The dataframe-like dataset read from the file, or None if not
-            supported.
+            The dataframe-like dataset read from the file, or ``None`` when
+            ``optional`` is true and the reader method is unavailable.
         """
-        return read_module_frame_if_supported(
+        if optional:
+            return read_module_frame_if_supported(
+                module=pyreadstat,
+                method_name=method_name,
+                path=path,
+            )
+        return read_module_frame(
             module=pyreadstat,
+            format_name=self.format_name,
+            module_name=self.pyreadstat_module_name,
             method_name=method_name,
             path=path,
         )
@@ -259,11 +239,13 @@ class PyreadstatReadWriteFrameMixin(_PyreadstatFrameMixin):
         """
         _ = pandas
         _ = options
-        return self.read_pyreadstat_frame(
+        frame = self.read_pyreadstat_frame(
             path,
             pyreadstat=pyreadstat,
             method_name=self.pyreadstat_read_method,
         )
+        assert frame is not None
+        return frame
 
     def write_frame(
         self,
@@ -341,13 +323,13 @@ class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
         """
         _ = options
         if self.pyreadstat_read_method is not None:
-            if (
-                frame := self.read_pyreadstat_frame_if_supported(
-                    path,
-                    pyreadstat=pyreadstat,
-                    method_name=self.pyreadstat_read_method,
-                )
-            ) is not None:
+            frame = self.read_pyreadstat_frame(
+                path,
+                pyreadstat=pyreadstat,
+                method_name=self.pyreadstat_read_method,
+                optional=True,
+            )
+            if frame is not None:
                 return frame
         return read_sas_table(pandas, path, format_hint=self.sas_format_hint)
 
