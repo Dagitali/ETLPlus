@@ -34,6 +34,28 @@ __all__ = [
 type ModuleOperation = Literal['read', 'write']
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _call_kwargs(
+    kwargs: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Return a mutable kwargs dictionary for dynamic module calls.
+
+    Parameters
+    ----------
+    kwargs : Mapping[str, Any] | None
+        Optional kwargs mapping to copy for module method calls.
+
+    Returns
+    -------
+    dict[str, Any]
+        A mutable kwargs dictionary for module method calls.
+    """
+    return {} if kwargs is None else dict(kwargs)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -66,7 +88,7 @@ def call_module_method(
             method_name=method_name,
             operation=operation,
         )
-    return module_method(*args, **(dict(kwargs) if kwargs else {}))
+    return module_method(*args, **_call_kwargs(kwargs))
 
 
 def raise_missing_module_method(
