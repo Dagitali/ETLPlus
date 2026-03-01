@@ -27,6 +27,7 @@ from ._handler_abc import SpreadsheetSheetABC
 from ._io import ArchiveInnerNameOption
 from ._io import DelimitedOption
 from ._io import FileHandlerOption
+from ._io import coerce_path
 from ._io import read_delimited
 from ._io import write_delimited
 from ._mixins import SemiStructuredPayloadMixin
@@ -229,7 +230,7 @@ class FileHandlerABC(FileHandlerOption, ABC):
             Facade exposing ``read()`` and ``write(data)`` without a *path*
             argument.
         """
-        return BoundFileHandler(self, Path(path))
+        return BoundFileHandler(self, coerce_path(path))
 
     # -- Abstract Instance Methods -- #
 
