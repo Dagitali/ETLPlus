@@ -36,6 +36,22 @@ class TestModuleCallables:
                 module_name='pyreadstat',
             )
 
+    def test_call_module_method_raises_when_dependency_is_missing(
+        self,
+    ) -> None:
+        """Test required module calls raising runtime errors for ``None``."""
+        with pytest.raises(
+            RuntimeError,
+            match='pyreadstat dependency is required for SAV write',
+        ):
+            mod.call_module_method(
+                None,
+                format_name='SAV',
+                method_name='write_sav',
+                operation='write',
+                module_name='pyreadstat',
+            )
+
     def test_call_module_method_success_path(self) -> None:
         """Test required module method invocation with args and kwargs."""
 
@@ -68,19 +84,6 @@ class TestModuleCallables:
             )
             is None
         )
-
-    def test_require_module_raises_when_dependency_is_missing(self) -> None:
-        """Test required module helper raising runtime errors for ``None``."""
-        with pytest.raises(
-            RuntimeError,
-            match='pyreadstat dependency is required for SAV write',
-        ):
-            mod.require_module(
-                None,
-                format_name='SAV',
-                operation='write',
-                module_name='pyreadstat',
-            )
 
     def test_resolve_module_method_returns_none_for_missing_module(
         self,
