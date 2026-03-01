@@ -20,10 +20,8 @@ from typing import NoReturn
 __all__ = [
     # Functions
     'call_module_method',
-    'raise_missing_module_method',
     'read_module_frame',
     'read_module_frame_if_supported',
-    'require_module',
     'resolve_module_method',
     'write_module_frame',
 ]
@@ -98,7 +96,7 @@ class _ModuleCallContext:
         )
         if module_method is None:
             self.raise_missing_module_method(method_name)
-        return module_method(*args, **_call_kwargs(kwargs))
+        return module_method(*args, **(dict(kwargs) if kwargs else {}))
 
     def raise_missing_module_method(
         self,
@@ -134,28 +132,6 @@ class _ModuleCallContext:
                 f'{self.format_name} {self.operation}',
             )
         return self.module
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _call_kwargs(
-    kwargs: Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """
-    Return a mutable kwargs dictionary for dynamic module calls.
-
-    Parameters
-    ----------
-    kwargs : Mapping[str, Any] | None
-        Optional kwargs mapping to copy for module method calls.
-
-    Returns
-    -------
-    dict[str, Any]
-        A mutable kwargs dictionary for module method calls.
-    """
-    return {} if kwargs is None else dict(kwargs)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -209,54 +185,6 @@ def call_module_method(
         args=args,
         kwargs=kwargs,
     )
-
-
-def raise_missing_module_method(
-    *,
-    format_name: str,
-    module_name: str = 'module',
-    method_name: str,
-    operation: ModuleOperation,
-) -> NoReturn:
-    """
-    Raise a consistent import error for missing module methods.
-
-    Parameters
-    ----------
-    format_name : str
-        Human-readable format name for templated messages.
-    module_name : str, optional
-        Human-readable module name for templated messages. Default is
-        `'module'`.
-    method_name : str
-        Method name that is missing on the module.
-    operation : ModuleOperation
-        Operation name for templated messages (e.g. "read" or "write").
-    """
-    raise _ModuleCallContext.build_missing_module_method_error(
-        format_name=format_name,
-        module_name=module_name,
-        method_name=method_name,
-        operation=operation,
-    )
-
-
-def require_module(
-    module: Any | None,
-    *,
-    format_name: str,
-    operation: ModuleOperation,
-    module_name: str = 'module',
-) -> Any:
-    """
-    Return a required module object or raise a runtime dependency error.
-    """
-    return _ModuleCallContext(
-        module=module,
-        format_name=format_name,
-        operation=operation,
-        module_name=module_name,
-    ).require_module()
 
 
 def resolve_module_method(
