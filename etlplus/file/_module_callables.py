@@ -62,6 +62,24 @@ class _ModuleCallContext:
     operation: ModuleOperation
     module_name: str = 'module'
 
+    # -- Static Methods -- #
+
+    @staticmethod
+    def build_missing_module_method_error(
+        *,
+        format_name: str,
+        module_name: str,
+        method_name: str,
+        operation: ModuleOperation,
+    ) -> ImportError:
+        """
+        Build a standardized missing-method ImportError.
+        """
+        return ImportError(
+            f'{format_name} {operation} support requires '
+            f'"{module_name}" with {method_name}().',
+        )
+
     # -- Instance Methods -- #
 
     def call(
@@ -99,9 +117,11 @@ class _ModuleCallContext:
         ImportError
             Raised when the required module method is missing.
         """
-        raise ImportError(
-            f'{self.format_name} {self.operation} support requires '
-            f'"{self.module_name}" with {method_name}().',
+        raise self.build_missing_module_method_error(
+            format_name=self.format_name,
+            module_name=self.module_name,
+            method_name=method_name,
+            operation=self.operation,
         )
 
     def require_module(self) -> Any:
@@ -213,12 +233,12 @@ def raise_missing_module_method(
     operation : ModuleOperation
         Operation name for templated messages (e.g. "read" or "write").
     """
-    _ModuleCallContext(
-        module=object(),
+    raise _ModuleCallContext.build_missing_module_method_error(
         format_name=format_name,
-        operation=operation,
         module_name=module_name,
-    ).raise_missing_module_method(method_name)
+        method_name=method_name,
+        operation=operation,
+    )
 
 
 def require_module(
