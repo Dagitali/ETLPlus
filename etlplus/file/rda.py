@@ -23,7 +23,6 @@ from pathlib import Path
 from ..utils.types import JSONData
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
-from ._io import ensure_parent_dir
 from ._r import list_r_dataset_keys
 from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
@@ -145,23 +144,20 @@ class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
             If "pyreadr" is not installed with write support.
         """
         dataset = self.resolve_dataset(dataset, options=options)
-        pyreadr = self.resolve_pyreadr()
         frame, count = self.dataframe_from_data(data)
         target_dataset = dataset if dataset is not None else self.dataset_key
 
-        writer = getattr(pyreadr, 'write_rdata', None) or getattr(
-            pyreadr,
+        writer = self.resolve_pyreadr_writer(
+            'write_rdata',
             'write_rda',
-            None,
+            error_message=(
+                'RDA write support requires "pyreadr" with write_rdata().'
+            ),
         )
-        if writer is None:
-            raise ImportError(
-                'RDA write support requires "pyreadr" with write_rdata().',
-            )
-
-        ensure_parent_dir(path)
-        try:
-            writer(str(path), frame, df_name=target_dataset)
-        except TypeError:
-            writer(str(path), frame)
+        self.call_pyreadr_writer(
+            writer,
+            path=path,
+            frame=frame,
+            kwargs={'df_name': target_dataset},
+        )
         return count
