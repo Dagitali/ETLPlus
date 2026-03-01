@@ -14,6 +14,9 @@ from typing import Any
 import pytest
 
 from etlplus.file import base as base_mod
+from etlplus.file._pandas_handlers import (
+    _spreadsheet_dependency_spec as resolve_spreadsheet_dependency_spec,
+)
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -54,16 +57,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_SPREADSHEET_ENGINE_DEPENDENCIES: dict[str, tuple[str, str | None]] = {
-    'odf': ('odf', 'odfpy'),
-    'openpyxl': ('openpyxl', None),
-    'xlrd': ('xlrd', None),
-}
-
-
 # SECTION: CLASSES (PRIMARY MIXINS) ========================================= #
 
 
@@ -101,7 +94,7 @@ class PathMixin:
         )
         for engine in engines:
             if isinstance(engine, str):
-                if spec := _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine):
+                if spec := resolve_spreadsheet_dependency_spec(engine):
                     return spec
         raise AssertionError(
             'No spreadsheet dependency mapping found for '
