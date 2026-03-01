@@ -7,10 +7,12 @@ Unit tests for :mod:`etlplus.file._pandas_handlers`.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import pytest
 
 from etlplus.file import _pandas_handlers as mod
+from etlplus.file.enums import FileFormat
 
 # SECTION: HELPERS ========================================================== #
 
@@ -30,6 +32,72 @@ class _SpreadsheetEngineWriteOverrideHandler(_SpreadsheetEngineHandler):
     """Spreadsheet engine resolver stub with explicit write engine."""
 
     write_engine = 'odf'
+
+
+class _SpreadsheetReadHandler(mod._PandasSpreadsheetReadMixin):
+    """Concrete read-mixin stub exposing read-engine wrapper behavior."""
+
+    pandas_format_name = 'XLSX'
+    engine_name = 'openpyxl'
+
+
+class _SpreadsheetWriteHandler(mod.PandasSpreadsheetHandlerMixin):
+    """Concrete write-mixin stub exposing write-engine wrapper behavior."""
+
+    format = FileFormat.XLSX
+    pandas_format_name = 'XLSX'
+    engine_name = 'openpyxl'
+    write_engine = 'odf'
+
+    def resolve_pandas(self) -> object:
+        return object()
+
+
+class _ColumnarNoPyarrowHandler(mod.PandasColumnarHandlerMixin):
+    """Columnar-handler stub with pyarrow marked as not required."""
+
+    format = FileFormat.PARQUET
+    pandas_format_name = 'PARQUET'
+    read_method = 'read_parquet'
+    write_method = 'to_parquet'
+    requires_pyarrow = False
+
+    def resolve_pandas(self) -> object:
+        return object()
+
+    def resolve_pyarrow(self) -> object:
+        raise AssertionError('resolve_pyarrow should not be called')
+
+
+class _ReadExcelFallbackPandasStub:
+    """
+    Pandas stub that rejects ``sheet_name`` to exercise fallback behavior.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def read_excel(self, path: object, **kwargs: object) -> str:
+        """Record read_excel calls and reject ``sheet_name`` kwargs."""
+        call = {'path': path, **dict(kwargs)}
+        self.calls.append(call)
+        if 'sheet_name' in kwargs:
+            raise TypeError('sheet_name unsupported')
+        return 'frame'
+
+
+class _WriteExcelFallbackFrameStub:
+    """Frame stub that rejects ``sheet_name`` to exercise write fallback."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def to_excel(self, path: object, **kwargs: object) -> None:
+        """Record to_excel calls and reject ``sheet_name`` kwargs."""
+        call = {'path': path, **dict(kwargs)}
+        self.calls.append(call)
+        if 'sheet_name' in kwargs:
+            raise TypeError('sheet_name unsupported')
 
 
 # SECTION: TESTS ============================================================ #
@@ -203,6 +271,20 @@ class TestSpreadsheetEngineResolverMixin:
         handler = _SpreadsheetEngineWriteOverrideHandler()
         assert handler.resolve_engine('write') == 'odf'
 
+    def test_resolve_read_engine_wrapper_uses_shared_engine_resolution(
+        self,
+    ) -> None:
+        """Test read-engine wrapper forwarding to operation-aware resolver."""
+        handler = _SpreadsheetReadHandler()
+        assert handler.resolve_read_engine() == 'openpyxl'
+
+    def test_resolve_write_engine_wrapper_uses_shared_engine_resolution(
+        self,
+    ) -> None:
+        """Test write-engine wrapper forwarding to operation-aware resolver."""
+        handler = _SpreadsheetWriteHandler()
+        assert handler.resolve_write_engine() == 'odf'
+
     def test_resolve_engine_dependency_delegates_with_format_context(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -229,3 +311,102 @@ class TestSpreadsheetEngineResolverMixin:
 
         assert resolved_engine == 'openpyxl'
         assert calls == [('openpyxl', 'XLSX')]
+
+
+class TestSpreadsheetReadWriteFallbacks:
+    """Unit tests for spreadsheet read/write fallback helper branches."""
+
+    # pylint: disable=protected-access
+
+    def test_read_excel_frame_falls_back_without_sheet_name(self) -> None:
+        """Test read helper retrying when ``sheet_name`` is unsupported."""
+        pandas = _ReadExcelFallbackPandasStub()
+        path = Path('sample.xlsx')
+
+        result = mod._read_excel_frame(
+            pandas,
+            path,
+            sheet='Sheet1',
+            engine='openpyxl',
+        )
+
+        assert result == 'frame'
+        assert pandas.calls == [
+            {
+                'path': path,
+                'sheet_name': 'Sheet1',
+                'engine': 'openpyxl',
+            },
+            {'path': path, 'engine': 'openpyxl'},
+        ]
+
+    def test_read_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
+        """
+        Test read helper not injecting engine when ``engine`` is ``None``.
+        """
+        pandas = _ReadExcelFallbackPandasStub()
+        path = Path('sample.xlsx')
+
+        result = mod._read_excel_frame(
+            pandas,
+            path,
+            sheet='Sheet1',
+            engine=None,
+        )
+
+        assert result == 'frame'
+        assert pandas.calls == [
+            {'path': path, 'sheet_name': 'Sheet1'},
+            {'path': path},
+        ]
+
+    def test_write_excel_frame_falls_back_without_sheet_name(self) -> None:
+        """Test write helper retrying when ``sheet_name`` is unsupported."""
+        frame = _WriteExcelFallbackFrameStub()
+        path = Path('sample.xlsx')
+
+        mod._write_excel_frame(
+            frame,
+            path,
+            sheet='Sheet1',
+            engine='openpyxl',
+        )
+
+        assert frame.calls == [
+            {
+                'path': path,
+                'index': False,
+                'engine': 'openpyxl',
+                'sheet_name': 'Sheet1',
+            },
+            {'path': path, 'index': False, 'engine': 'openpyxl'},
+        ]
+
+    def test_write_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
+        """
+        Test write helper not injecting engine when ``engine`` is ``None``.
+        """
+        frame = _WriteExcelFallbackFrameStub()
+        path = Path('sample.xlsx')
+
+        mod._write_excel_frame(
+            frame,
+            path,
+            sheet='Sheet1',
+            engine=None,
+        )
+
+        assert frame.calls == [
+            {'path': path, 'index': False, 'sheet_name': 'Sheet1'},
+            {'path': path, 'index': False},
+        ]
+
+
+class TestColumnarRuntimeDependencyValidation:
+    """Unit tests for columnar runtime dependency validation branches."""
+
+    def test_validate_runtime_dependencies_noops_when_pyarrow_not_required(
+        self,
+    ) -> None:
+        """Test runtime dependency validation when pyarrow is not required."""
+        _ColumnarNoPyarrowHandler().validate_runtime_dependencies()
