@@ -63,6 +63,13 @@ def _dependency_label(
     -------
     str
         One label suitable for insertion into error text.
+
+    Raises
+    ------
+    AssertionError
+        If *dependency_names* is empty (should be prevented by caller).
+    ValueError
+        If *dependency_names* is empty.
     """
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
@@ -89,7 +96,7 @@ def _error_message(
 
     Parameters
     ----------
-    module_name : str | tuple[str, ...]
+    module_name : DependencyNames
         One module name or a tuple of alternative module names.
     format_name : str
         Human-readable format name for templated messages.
@@ -135,6 +142,11 @@ def _normalize_dependency_names(
     -------
     tuple[tuple[str, ...], str]
         ``(dependency_names, dependency_target)``.
+
+    Raises
+    ------
+    ValueError
+        If *module_name* is an empty tuple.
     """
     if isinstance(module_name, str):
         dependency_display_name = pip_name or module_name
