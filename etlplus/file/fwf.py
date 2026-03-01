@@ -43,7 +43,7 @@ __all__ = [
 
 
 def _pandas() -> Any:
-    """Return the optional pandas module for FWF operations."""
+    """Return the required pandas module for FWF operations."""
     return get_pandas('FWF')
 
 

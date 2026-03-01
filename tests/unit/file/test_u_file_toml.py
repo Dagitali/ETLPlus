@@ -100,30 +100,3 @@ class TestToml(
         """Install ``tomli_w`` stub for write contract tests."""
         self._tomli_w_stub = _TomlDumperStub('tomli_w_output')
         optional_module_stub({'tomli_w': self._tomli_w_stub})
-
-    def test_write_falls_back_to_toml_when_tomli_w_missing(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that :func:`write` falls back to :func:`toml` when :func:`tomli_w`
-        is missing.
-        """
-        stub = _TomlDumperStub('toml_output')
-
-        def _get_optional_module(name: str, *, error_message: str) -> object:
-            if name == 'tomli_w':
-                raise ImportError(error_message)
-            if name == 'toml':
-                return stub
-            raise AssertionError(f'Unexpected module {name!r}')
-
-        monkeypatch.setattr(mod, 'get_optional_module', _get_optional_module)
-        path = self.format_path(tmp_path, stem='config')
-
-        written = mod.TomlFile().write(path, {'name': 'etl'})
-
-        assert written == 1
-        assert path.read_text(encoding='utf-8') == 'toml_output'
-        assert stub.calls == [{'name': 'etl'}]

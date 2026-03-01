@@ -18,6 +18,5 @@ class TestOds(WritableSpreadsheetModuleContract):
 
     module = mod
     format_name = 'ods'
-    dependency_hint = 'odfpy'
     read_engine = 'odf'
     write_engine = 'odf'

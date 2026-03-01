@@ -18,4 +18,5 @@ class TestXlsx(WritableSpreadsheetModuleContract):
 
     module = mod
     format_name = 'xlsx'
-    dependency_hint = 'openpyxl'
+    read_engine = 'openpyxl'
+    write_engine = 'openpyxl'

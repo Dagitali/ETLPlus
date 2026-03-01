@@ -18,12 +18,13 @@ Notes
 
 from __future__ import annotations
 
+from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
-from ._pandas_handlers import PARQUET_DEPENDENCY_ERROR
 from ._pandas_handlers import PandasColumnarHandlerMixin
 from .enums import FileFormat
 
-# Keep module-level resolver hook for monkeypatch-driven contract tests.
+# Keep module-level resolver hooks for monkeypatch-driven contract tests.
+get_dependency = _get_dependency
 get_pandas = _get_pandas
 
 # SECTION: EXPORTS ========================================================== #
@@ -50,4 +51,4 @@ class ParquetFile(PandasColumnarHandlerMixin):
     read_method = 'read_parquet'
     write_method = 'to_parquet'
     write_kwargs = (('index', False),)
-    import_error_message = PARQUET_DEPENDENCY_ERROR
+    requires_pyarrow = True

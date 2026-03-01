@@ -42,6 +42,7 @@ class MsgpackFile(BinaryRecordCodecHandlerMixin):
     format = FileFormat.MSGPACK
     codec_module_name = 'msgpack'
     codec_format_name = 'MSGPACK'
+    dependency_required = True
     encode_method_name = 'packb'
     decode_method_name = 'unpackb'
     encode_kwargs = (('use_bin_type', True),)

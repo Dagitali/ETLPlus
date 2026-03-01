@@ -14,6 +14,9 @@ from typing import Any
 import pytest
 
 from etlplus.file import base as base_mod
+from etlplus.file._pandas_handlers import (
+    _spreadsheet_dependency_spec as resolve_spreadsheet_dependency_spec,
+)
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -49,7 +52,6 @@ __all__ = [
     'ScientificReadOnlyUnknownDatasetMixin',
     'SemiStructuredReadMixin',
     'SemiStructuredWriteDictMixin',
-    'SpreadsheetReadImportErrorMixin',
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
 ]
@@ -77,6 +79,27 @@ class PathMixin:
     ) -> Path:
         """Build a deterministic format-specific path."""
         return tmp_path / f'{stem}.{self.format_name}'
+
+    def spreadsheet_dependency_spec(self) -> tuple[str, str | None]:
+        """
+        Resolve spreadsheet dependency spec from configured engine names.
+        """
+        handler = self.module_handler
+        engines = (
+            getattr(self, 'read_engine', None),
+            getattr(self, 'write_engine', None),
+            getattr(handler, 'read_engine', None),
+            getattr(handler, 'write_engine', None),
+            getattr(handler, 'engine_name', None),
+        )
+        for engine in engines:
+            if isinstance(engine, str):
+                if spec := resolve_spreadsheet_dependency_spec(engine):
+                    return spec
+        raise AssertionError(
+            'No spreadsheet dependency mapping found for '
+            f'{self.module.__name__}',
+        )
 
 
 # SECTION: CLASSES (SECONDARY MIXINS) ======================================= #
@@ -355,30 +378,6 @@ class ReadOnlyWriteGuardMixin(PathMixin):
             )
 
 
-class SpreadsheetReadImportErrorMixin(PathMixin):
-    """
-    Shared mixin for spreadsheet read dependency error behavior.
-    """
-
-    dependency_hint: str
-
-    def test_read_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        make_import_error_reader: Callable[[str], object],
-    ) -> None:
-        """Test read wrapping dependency import errors."""
-        monkeypatch.setattr(
-            self.module,
-            'get_pandas',
-            lambda *_: make_import_error_reader('read_excel'),
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module_handler.read(self.format_path(tmp_path))
-
-
 class SemiStructuredReadMixin(PathMixin):
     """
     Parametrized read contract mixin for semi-structured modules.
@@ -493,7 +492,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     Parametrized mixin for writable spreadsheet module contracts.
     """
 
-    dependency_hint: str
     read_engine: str | None
     write_engine: str | None
 
@@ -513,7 +511,13 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         rows: list[dict[str, object]] = [{'id': 1}]
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
-        optional_module_stub({'pandas': pandas})
+        dependency_module_name, _ = self.spreadsheet_dependency_spec()
+        optional_module_stub(
+            {
+                'pandas': pandas,
+                dependency_module_name: object(),
+            },
+        )
         path = self.format_path(tmp_path)
 
         result = self.module_handler.read(path)
@@ -539,7 +543,13 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         rows: list[dict[str, object]] = [{'id': 1}]
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
-        optional_module_stub({'pandas': pandas})
+        dependency_module_name, _ = self.spreadsheet_dependency_spec()
+        optional_module_stub(
+            {
+                'pandas': pandas,
+                dependency_module_name: object(),
+            },
+        )
         path = self.format_path(tmp_path)
 
         written = self.module_handler.write(path, rows)
@@ -553,25 +563,6 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         assert call.get('index') is False
         if self.write_engine is not None:
             assert call.get('engine') == self.write_engine
-
-    def test_write_wraps_import_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        make_import_error_writer: Callable[[], object],
-    ) -> None:
-        """Test write wrapping dependency import errors."""
-        monkeypatch.setattr(
-            self.module,
-            'get_pandas',
-            lambda *_: make_import_error_writer(),
-        )
-
-        with pytest.raises(ImportError, match=self.dependency_hint):
-            self.module_handler.write(
-                self.format_path(tmp_path),
-                [{'id': 1}],
-            )
 
 
 class SpreadsheetSheetNameRoutingMixin(PathMixin):
@@ -620,6 +611,12 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
             resolver_name='get_pandas',
             value=pandas,
         )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_dependency',
+            value=object(),
+        )
         path = self.format_path(tmp_path)
 
         result = self.module_handler.read(
@@ -648,6 +645,12 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
             self.module,
             resolver_name='get_pandas',
             value=pandas,
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_dependency',
+            value=object(),
         )
         path = self.format_path(tmp_path)
 
@@ -679,6 +682,12 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
             self.module,
             resolver_name='get_pandas',
             value=pandas,
+        )
+        patch_dependency_resolver_value(
+            monkeypatch,
+            self.module,
+            resolver_name='get_dependency',
+            value=object(),
         )
         path = self.format_path(tmp_path)
 

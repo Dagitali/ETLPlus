@@ -88,6 +88,5 @@ class SpreadsheetCategoryContractBase(PathMixin):
     Shared base contract for spreadsheet format handlers.
     """
 
-    dependency_hint: str
     read_engine: str | None = None
     write_engine: str | None = None
