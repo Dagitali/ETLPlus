@@ -42,6 +42,20 @@ type ScientificOperation = Literal['read', 'write']
 type PyreadstatMode = Literal['none', 'read', 'write', 'read_write']
 
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+_PYREADSTAT_REQUIRED_OPERATIONS: dict[
+    PyreadstatMode,
+    frozenset[ScientificOperation],
+] = {
+    'none': frozenset(),
+    'read': frozenset({'read'}),
+    'write': frozenset({'write'}),
+    'read_write': frozenset({'read', 'write'}),
+}
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -119,7 +133,7 @@ class SingleDatasetTabularScientificReadMixin(
         operation: ScientificOperation,
     ) -> bool:
         """
-        Return whether pyreadstat is required for one operation.
+        Return whether pyreadstat is required for one operation kind.
 
         Parameters
         ----------
@@ -136,20 +150,16 @@ class SingleDatasetTabularScientificReadMixin(
         ValueError
             If *pyreadstat_mode* is set to an unsupported value.
         """
-        match self.pyreadstat_mode:
-            case 'none':
-                return False
-            case 'read':
-                return operation == 'read'
-            case 'write':
-                return operation == 'write'
-            case 'read_write':
-                return True
-            case mode:
-                raise ValueError(
-                    'Unsupported pyreadstat mode '
-                    f'"{mode}" for {self.format_name}',
-                )
+        try:
+            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[
+                self.pyreadstat_mode
+            ]
+        except KeyError as error:
+            raise ValueError(
+                'Unsupported pyreadstat mode '
+                f'"{self.pyreadstat_mode}" for {self.format_name}',
+            ) from error
+        return operation in required_operations
 
     def _resolve_pyreadstat_for(
         self,
@@ -168,9 +178,11 @@ class SingleDatasetTabularScientificReadMixin(
         Any | None
             The pyreadstat module when required, else None.
         """
-        if not self._pyreadstat_is_required_for(operation):
-            return None
-        return self.resolve_pyreadstat()
+        return (
+            self.resolve_pyreadstat()
+            if self._pyreadstat_is_required_for(operation)
+            else None
+        )
 
     # -- Instance Methods -- #
 
