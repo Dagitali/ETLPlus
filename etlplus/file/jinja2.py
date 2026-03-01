@@ -63,6 +63,28 @@ class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def build_template(
+        self,
+        jinja2_module: Any,
+        template: str,
+        *,
+        strict_undefined: bool = False,
+        trim_blocks: bool = False,
+        lstrip_blocks: bool = False,
+    ) -> Any:
+        """
+        Build one Jinja2 template object for rendering.
+        """
+        if not (strict_undefined or trim_blocks or lstrip_blocks):
+            return jinja2_module.Template(template)
+        env_kwargs: dict[str, object] = {
+            'trim_blocks': trim_blocks,
+            'lstrip_blocks': lstrip_blocks,
+        }
+        if strict_undefined:
+            env_kwargs['undefined'] = jinja2_module.StrictUndefined
+        return jinja2_module.Environment(**env_kwargs).from_string(template)
+
     def render(
         self,
         template: str,
@@ -94,16 +116,11 @@ class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
             Rendered template output.
         """
         jinja2 = _jinja2()
-        if strict_undefined or trim_blocks or lstrip_blocks:
-            env_kwargs: dict[str, object] = {
-                'trim_blocks': trim_blocks,
-                'lstrip_blocks': lstrip_blocks,
-            }
-            if strict_undefined:
-                env_kwargs['undefined'] = jinja2.StrictUndefined
-            template_obj = jinja2.Environment(**env_kwargs).from_string(
-                template,
-            )
-        else:
-            template_obj = jinja2.Template(template)
+        template_obj = self.build_template(
+            jinja2,
+            template,
+            strict_undefined=strict_undefined,
+            trim_blocks=trim_blocks,
+            lstrip_blocks=lstrip_blocks,
+        )
         return template_obj.render(**context)
