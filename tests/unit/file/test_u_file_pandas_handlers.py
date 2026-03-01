@@ -146,3 +146,28 @@ class TestResolveSpreadsheetEngineDependency:
         )
 
         assert calls == [('odf', 'ODS', 'odfpy', True)]
+
+
+class TestSpreadsheetDependencySpec:
+    """Unit tests for spreadsheet dependency metadata helper."""
+
+    # pylint: disable=protected-access
+
+    @pytest.mark.parametrize(
+        ('engine', 'expected'),
+        [
+            (None, None),
+            ('openpyxl', ('openpyxl', None)),
+            ('xlrd', ('xlrd', None)),
+            ('odf', ('odf', 'odfpy')),
+            ('unknown', None),
+        ],
+        ids=['none', 'openpyxl', 'xlrd', 'odf', 'unknown'],
+    )
+    def test_spreadsheet_dependency_spec(
+        self,
+        engine: str | None,
+        expected: tuple[str, str | None] | None,
+    ) -> None:
+        """Test spreadsheet engine metadata lookup behavior."""
+        assert mod._spreadsheet_dependency_spec(engine) == expected
