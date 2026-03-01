@@ -6,6 +6,7 @@ Shared abstractions for binary record codec handlers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from typing import ClassVar
 
@@ -45,6 +46,34 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
 
     # -- Instance Methods -- #
 
+    def _codec_method(
+        self,
+        codec_module: Any,
+        method_name: str,
+    ) -> Callable[..., Any]:
+        """
+        Return one codec callable and raise a clear error when unavailable.
+
+        Parameters
+        ----------
+        codec_module : Any
+            The codec module to resolve the method from.
+        method_name : str
+            The method name to resolve on the codec module.
+
+        Returns
+        -------
+        Callable[..., Any]
+            The resolved codec method.
+        """
+        method = getattr(codec_module, method_name, None)
+        if callable(method):
+            return method
+        raise AttributeError(
+            f'{self.format_name} codec module "{self.codec_module_name}" '
+            f'must provide callable {method_name}().',
+        )
+
     def decode_payload(
         self,
         codec_module: Any,
@@ -52,8 +81,23 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
     ) -> object:
         """
         Decode payload bytes using codec-specific reader settings.
+
+        Parameters
+        ----------
+        codec_module : Any
+            The codec module to resolve the decode method from.
+        payload : bytes
+            The bytes to decode.
+
+        Returns
+        -------
+        object
+            The decoded payload.
         """
-        decoder = getattr(codec_module, self.decode_method_name)
+        decoder = self._codec_method(
+            codec_module,
+            self.decode_method_name,
+        )
         return decoder(payload, **dict(self.decode_kwargs))
 
     def dumps_bytes(
@@ -64,6 +108,18 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
     ) -> bytes:
         """
         Serialize structured records to codec-specific bytes.
+
+        Parameters
+        ----------
+        data : JSONData
+            The structured records to serialize.
+        options : WriteOptions | None, optional
+            Optional write options for serialization. Default is ``None``.
+
+        Returns
+        -------
+        bytes
+            The serialized codec-specific bytes.
         """
         _ = options
         codec = self.resolve_codec_module()
@@ -78,8 +134,23 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
     ) -> bytes:
         """
         Encode a payload using codec-specific writer settings.
+
+        Parameters
+        ----------
+        codec_module : Any
+            The codec module to resolve the encode method from.
+        payload : JSONData
+            The payload to encode.
+
+        Returns
+        -------
+        bytes
+            The encoded payload.
         """
-        encoder = getattr(codec_module, self.encode_method_name)
+        encoder = self._codec_method(
+            codec_module,
+            self.encode_method_name,
+        )
         return encoder(payload, **dict(self.encode_kwargs))
 
     def loads_bytes(
@@ -90,6 +161,18 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
     ) -> JSONData:
         """
         Parse codec bytes into record payloads.
+
+        Parameters
+        ----------
+        payload : bytes
+            The codec-specific bytes to parse.
+        options : ReadOptions | None, optional
+            Optional read options for parsing. Default is ``None``.
+
+        Returns
+        -------
+        JSONData
+            The parsed record payloads.
         """
         _ = options
         codec = self.resolve_codec_module()
