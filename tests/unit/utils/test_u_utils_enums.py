@@ -29,6 +29,12 @@ class _Palette(CoercibleStrEnum):
         }
 
 
+class _Plain(CoercibleStrEnum):
+    """Test enum without alias overrides."""
+
+    ONE = 'one'
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -51,11 +57,19 @@ class TestCoercibleStrEnum:
         """choices should expose enum values in declaration order."""
         assert _Palette.choices() == ('red', 'green', 'blue')
 
-    def test_invalid_value_raises(self) -> None:
-        """Invalid values should raise ``ValueError`` with allowed values."""
-        with pytest.raises(ValueError, match='Invalid _Palette value'):
-            _Palette.coerce('unknown')
+    def test_coerce_returns_member_input_unchanged(self) -> None:
+        """coerce should return member values as-is."""
+        assert _Palette.coerce(_Palette.RED) is _Palette.RED
 
     def test_try_coerce_returns_none_for_invalid(self) -> None:
         """try_coerce should return ``None`` for invalid inputs."""
         assert _Palette.try_coerce('unknown') is None
+
+    def test_default_aliases_mapping_is_empty(self) -> None:
+        """aliases defaults to an empty mapping when not overridden."""
+        assert _Plain.aliases() == {}
+
+    def test_invalid_value_raises(self) -> None:
+        """Invalid values should raise ``ValueError`` with allowed values."""
+        with pytest.raises(ValueError, match='Invalid _Palette value'):
+            _Palette.coerce('unknown')
