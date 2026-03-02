@@ -66,22 +66,18 @@ def _dependency_label(
 
     Raises
     ------
-    AssertionError
-        If *dependency_names* is empty (should be prevented by caller).
     ValueError
         If *dependency_names* is empty.
     """
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
     quoted = tuple(f'"{name}"' for name in dependency_names)
-    match quoted:
-        case (single,):
-            return single
-        case (first, second):
-            return f'{first} or {second}'
-        case (*head, tail):
-            return f'{", ".join(head)}, or {tail}'
-    raise AssertionError('unreachable dependency label state')
+    if len(quoted) == 1:
+        return quoted[0]
+    if len(quoted) == 2:
+        first, second = quoted
+        return f'{first} or {second}'
+    return f'{", ".join(quoted[:-1])}, or {quoted[-1]}'
 
 
 def _error_message(

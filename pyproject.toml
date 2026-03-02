@@ -117,6 +117,9 @@ ignore = [
   "D105",  # Missing docstring in magic method
 ]
 
+[tool.mypy]
+exclude = '(^|/)etlplus/*_(OLD|ORIG|NEW)\.py$'
+
 [tool.setuptools.package-data]
 etlplus = ["py.typed", "templates/*.j2"]
 

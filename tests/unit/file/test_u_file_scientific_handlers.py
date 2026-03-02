@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from typing import cast
+
+import pytest
 
 from etlplus.file import _scientific_handlers as mod
 from etlplus.file.enums import FileFormat
@@ -85,6 +88,12 @@ class _ScientificHandler(mod.SingleDatasetTabularScientificReadWriteMixin):
         )
 
 
+class _InvalidPyreadstatModeScientificHandler(_ScientificHandler):
+    """Scientific handler stub using an invalid pyreadstat mode."""
+
+    pyreadstat_mode = cast(mod.PyreadstatMode, 'invalid')
+
+
 class _ReadRequiredPyreadstatScientificHandler(_ScientificHandler):
     """Scientific handler stub with required pyreadstat for read only."""
 
@@ -104,6 +113,16 @@ class TestScientificHandlers:
     """Unit tests for scientific mixin dependency wiring."""
 
     # pylint: disable=protected-access
+
+    def test_invalid_pyreadstat_mode_raises_value_error(self) -> None:
+        """Test invalid mode configuration raising a deterministic error."""
+        handler = _InvalidPyreadstatModeScientificHandler(
+            pandas_dependency=RDataPandasStub(),
+            pyreadstat_dependency=object(),
+        )
+
+        with pytest.raises(ValueError, match='Unsupported pyreadstat mode'):
+            handler._pyreadstat_is_required_for('read')
 
     def test_read_write_dataset_wiring_passes_injected_dependencies(
         self,

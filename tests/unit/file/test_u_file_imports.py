@@ -55,6 +55,18 @@ class TestImportsHelpers:
         assert method(*method_args) is sentinel
         assert calls == [expected_call]
 
+    def test_dependency_label_formats_three_or_more_dependencies(self) -> None:
+        """
+        Test dependency-label helper formatting 3+ dependency alternatives.
+        """
+        label = mod._dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
+        assert label == '"netCDF4", "h5netcdf", or "xarray"'
+
+    def test_dependency_label_raises_for_empty_names(self) -> None:
+        """Test dependency-label helper rejecting empty dependency sets."""
+        with pytest.raises(ValueError, match='must not be empty'):
+            mod._dependency_label(())
+
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
         [
@@ -186,6 +198,11 @@ class TestImportsHelpers:
             )
             is sentinel
         )
+
+    def test_normalize_dependency_names_rejects_empty_tuple(self) -> None:
+        """Test dependency-name normalization rejecting empty tuples."""
+        with pytest.raises(ValueError, match='must not be an empty tuple'):
+            mod._normalize_dependency_names((), None)
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
