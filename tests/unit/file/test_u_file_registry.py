@@ -34,6 +34,10 @@ from etlplus.file.base import TemplateFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -225,14 +229,12 @@ class TestRegistryAbcConformance:
 class TestRegistryInternalHelpers:
     """Unit tests for internal symbol import and coercion helpers."""
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
         ('symbol', 'error_pattern'),
-        (
+        [
             (object(), 'must be a class'),
             (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
-        ),
+        ],
         ids=('non_class', 'wrong_base_class'),
     )
     def test_coerce_handler_class_rejects_invalid_symbols(
@@ -296,8 +298,6 @@ class TestRegistryInternalHelpers:
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
 
-    # pylint: disable=protected-access
-
     singleton_format = FileFormat.JSON
 
     @pytest.mark.parametrize(
@@ -338,14 +338,12 @@ class TestRegistryStrictPolicy:
 
     fallback_format = FileFormat.GZ
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
         'resolver',
-        (
+        [
             mod.get_handler_class,
             mod.get_handler,
-        ),
+        ],
         ids=('class_lookup', 'instance_lookup'),
     )
     def test_lookups_raise_without_explicit_mapping(

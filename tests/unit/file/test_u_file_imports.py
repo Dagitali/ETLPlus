@@ -12,13 +12,15 @@ import pytest
 
 from etlplus.file import _imports as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestImportsHelpers:
     """Unit tests for dependency import helpers."""
-
-    # pylint: disable=protected-access, unused-argument
 
     @pytest.mark.parametrize(
         ('method_name', 'method_args', 'expected_call'),

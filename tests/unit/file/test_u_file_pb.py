@@ -12,6 +12,10 @@ from etlplus.file import pb as mod
 
 from .pytest_file_contracts import BinaryKeyedPayloadModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

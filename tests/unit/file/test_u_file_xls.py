@@ -19,6 +19,10 @@ from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

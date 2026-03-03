@@ -21,6 +21,10 @@ from .pytest_file_support import PyreadstatTabularStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

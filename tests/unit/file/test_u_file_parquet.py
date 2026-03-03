@@ -10,6 +10,10 @@ from etlplus.file import parquet as mod
 
 from .pytest_file_contracts import PyarrowGatedPandasColumnarModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

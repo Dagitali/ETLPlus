@@ -17,6 +17,10 @@ from etlplus.file.base import WriteOptions
 
 from .pytest_file_contracts import ArchiveWrapperCoreDispatchModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

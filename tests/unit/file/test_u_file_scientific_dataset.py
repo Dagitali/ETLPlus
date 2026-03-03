@@ -21,6 +21,10 @@ from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.file.stub import StubFileHandlerABC
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -166,21 +170,27 @@ class TestScientificDatasetHelpers:
 
     def test_resolve_store_dataset_key_prefers_default_key(self) -> None:
         """Test default-key selection when explicit dataset is omitted."""
-        assert scientific_dataset_mod.resolve_store_dataset_key(
-            ['data', 'features'],
-            dataset=None,
-            default_key='data',
-            format_name='HDF5',
-        ) == 'data'
+        assert (
+            scientific_dataset_mod.resolve_store_dataset_key(
+                ['data', 'features'],
+                dataset=None,
+                default_key='data',
+                format_name='HDF5',
+            )
+            == 'data'
+        )
 
     def test_resolve_store_dataset_key_prefers_explicit_dataset(self) -> None:
         """Test explicit dataset selection when present in available keys."""
-        assert scientific_dataset_mod.resolve_store_dataset_key(
-            ['data', 'features'],
-            dataset='features',
-            default_key='data',
-            format_name='HDF5',
-        ) == 'features'
+        assert (
+            scientific_dataset_mod.resolve_store_dataset_key(
+                ['data', 'features'],
+                dataset='features',
+                default_key='data',
+                format_name='HDF5',
+            )
+            == 'features'
+        )
 
     def test_resolve_store_dataset_key_raises_for_missing_explicit_dataset(
         self,
@@ -223,9 +233,12 @@ class TestScientificDatasetHelpers:
 
     def test_resolve_store_dataset_key_uses_single_key_fallback(self) -> None:
         """Test one-key fallback when default key is absent."""
-        assert scientific_dataset_mod.resolve_store_dataset_key(
-            ['features'],
-            dataset=None,
-            default_key='data',
-            format_name='HDF5',
-        ) == 'features'
+        assert (
+            scientific_dataset_mod.resolve_store_dataset_key(
+                ['features'],
+                dataset=None,
+                default_key='data',
+                format_name='HDF5',
+            )
+            == 'features'
+        )

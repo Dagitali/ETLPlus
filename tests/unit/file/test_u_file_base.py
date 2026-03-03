@@ -57,6 +57,10 @@ from .pytest_file_contract_utils import (
     assert_single_dataset_rejects_non_default_key,
 )
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -165,8 +169,6 @@ class _RowReadWriteMixin:
 class _DelimitedStub(_RowReadWriteMixin, DelimitedTextFileHandlerABC):
     """Concrete delimited handler used for abstract contract tests."""
 
-    # pylint: disable=unused-argument
-
     format = FileFormat.CSV
     delimiter = ','
 
@@ -207,8 +209,6 @@ class _IncompleteTextFixedWidth(
 class _TextFixedWidthStub(_RowReadWriteMixin, TextFixedWidthFileHandlerABC):
     """Concrete text/fixed-width handler used for abstract contract tests."""
 
-    # pylint: disable=unused-argument
-
     format = FileFormat.TXT
 
     def read_rows(
@@ -234,8 +234,6 @@ class _ReadOnlyScientificStub(
     ScientificDatasetFileHandlerABC,
 ):
     """Concrete read-only scientific handler for base-contract tests."""
-
-    # pylint: disable=unused-argument
 
     format = FileFormat.HDF5
     dataset_key = 'data'
@@ -271,8 +269,6 @@ class _ReadOnlySingleScientificStub(
     SingleDatasetScientificFileHandlerABC,
 ):
     """Concrete read-only single-dataset handler for base-contract tests."""
-
-    # pylint: disable=unused-argument
 
     format = FileFormat.SAS7BDAT
     dataset_key = 'data'
@@ -505,7 +501,7 @@ class TestBaseAbcContracts:
 
     @pytest.mark.parametrize(
         'incomplete_handler_cls',
-        (_IncompleteDelimited, _IncompleteTextFixedWidth),
+        [_IncompleteDelimited, _IncompleteTextFixedWidth],
         ids=['delimited', 'text_fixed_width'],
     )
     def test_row_abcs_require_row_methods(

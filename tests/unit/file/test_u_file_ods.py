@@ -10,6 +10,10 @@ from etlplus.file import ods as mod
 
 from .pytest_file_contracts import WritableSpreadsheetModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

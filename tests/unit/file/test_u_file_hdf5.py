@@ -20,6 +20,10 @@ from .pytest_file_support import ContextManagerSelfMixin
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -45,8 +49,6 @@ class _HDFStore(ContextManagerSelfMixin):
 
 class _PandasStub:
     """Stub for pandas module."""
-
-    # pylint: disable=invalid-name, unused-argument
 
     def __init__(
         self,

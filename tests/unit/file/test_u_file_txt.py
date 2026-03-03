@@ -20,6 +20,10 @@ from .pytest_file_contracts import TextRowModuleContract
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -28,8 +32,6 @@ class TestTxt(
     RoundtripUnitModuleContract,
 ):
     """Unit tests for :mod:`etlplus.file.txt`."""
-
-    # pylint: disable=unused-variable
 
     module = mod
     format_name = 'txt'

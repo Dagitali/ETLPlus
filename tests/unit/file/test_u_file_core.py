@@ -42,6 +42,10 @@ from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
 from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -235,7 +239,7 @@ class TestFile:
         """Test explicit string file-format coercion and validation."""
         path = tmp_path / 'data.json'
         if expected is None:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='Invalid FileFormat value'):
                 File(path, cast(Any, raw_format))
             return
         file = File(path, cast(Any, raw_format))
@@ -375,7 +379,7 @@ class TestFile:
             getattr(file, operation)(**operation_kwargs)
 
     @pytest.mark.parametrize(
-        'file_format,filename,payload,expected,requires',
+        ('file_format', 'filename', 'payload', 'expected', 'requires'),
         [
             pytest.param(
                 file_format,

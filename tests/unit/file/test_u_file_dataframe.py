@@ -11,6 +11,10 @@ from etlplus.file import _dataframe as mod
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

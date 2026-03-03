@@ -12,6 +12,10 @@ from etlplus.file import CompressionFormat
 from etlplus.file import FileFormat
 from etlplus.file import infer_file_format_and_compression
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -49,7 +53,7 @@ class TestFileFormat:
     """Unit tests for :class:`etlplus.utils.enums.FileFormat`."""
 
     @pytest.mark.parametrize(
-        'value,expected',
+        ('value', 'expected'),
         [
             ('JSON', FileFormat.JSON),
             ('application/xml', FileFormat.XML),
@@ -78,7 +82,7 @@ class TestInferFileFormatAndCompression:
     """Unit tests for :func:`infer_file_format_and_compression`."""
 
     @pytest.mark.parametrize(
-        'value,filename,expected_format,expected_compression',
+        ('value', 'filename', 'expected_format', 'expected_compression'),
         INFER_CASES,
     )
     def test_infers_format_and_compression(

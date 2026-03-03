@@ -14,6 +14,10 @@ import pytest
 
 from etlplus.file import _io as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CLASSES ================================================= #
 
 

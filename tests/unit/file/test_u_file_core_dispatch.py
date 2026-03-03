@@ -15,6 +15,10 @@ from etlplus.file import _core_dispatch as mod
 from etlplus.file import core as core_mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -56,7 +60,7 @@ class TestCoreDispatchHelpers:
 
     @pytest.mark.parametrize(
         'filename',
-        ('../escape.json', '/tmp/escape.json'),
+        ['../escape.json', '/tmp/escape.json'],
         ids=('parent_traversal', 'absolute'),
     )
     def test_write_payload_with_core_rejects_unsafe_paths(
@@ -97,6 +101,10 @@ class TestCoreDispatchHelpers:
                 seen['fmt'] = fmt
 
             def write(self, data: dict[str, object]) -> int:
+                """
+                Stub write method that captures the data dict and simulates
+                writing bytes.
+                """
                 path = seen['path']
                 seen['data'] = data
                 path.write_bytes(b'written')

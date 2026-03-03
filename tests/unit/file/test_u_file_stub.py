@@ -12,13 +12,15 @@ import pytest
 
 from etlplus.file import stub as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestStubReadWrite:
     """Unit tests for :mod:`etlplus.file.stub` handler behavior."""
-
-    # pylint: disable=protected-access
 
     def test_module_has_no_legacy_read_write_wrappers(self) -> None:
         """Test removed module-level ``read``/``write`` wrapper symbols."""

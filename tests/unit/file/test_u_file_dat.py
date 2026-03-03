@@ -26,6 +26,10 @@ from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_roundtrip_cases import ROUNDTRIP_CASES
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -79,8 +83,6 @@ class _StubSniffer:
     tests.
     """
 
-    # pylint: disable=unused-argument
-
     def __init__(
         self,
         *,
@@ -116,8 +118,6 @@ class _StubSniffer:
 
 class TestDatSniff:
     """Unit tests for :func:`_sniff`."""
-
-    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         (
@@ -176,8 +176,6 @@ class TestDatSniff:
 
 class TestDat(RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.dat`."""
-
-    # pylint: disable=protected-access,unused-argument
 
     module = mod
     format_name = 'dat'

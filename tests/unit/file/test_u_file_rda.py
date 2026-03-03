@@ -18,13 +18,15 @@ from .pytest_file_support import RDataNoWriterStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 class _PyreadrFallbackStub:
     """Stub exposing ``write_rda`` only."""
-
-    # pylint: disable=unused-argument
 
     def __init__(self) -> None:
         self.writes: list[tuple[str, object]] = []

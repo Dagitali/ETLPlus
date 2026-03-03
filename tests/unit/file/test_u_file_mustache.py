@@ -15,6 +15,10 @@ from etlplus.file import mustache as mod
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

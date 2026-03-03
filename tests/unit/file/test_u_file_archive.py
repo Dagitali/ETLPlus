@@ -12,6 +12,10 @@ from etlplus.file import _archive as mod
 from etlplus.file.enums import CompressionFormat
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

@@ -19,6 +19,10 @@ from etlplus.file.base import WriteOptions
 from .pytest_file_contracts import EmbeddedDatabaseModuleContract
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:
     import duckdb
 
@@ -88,8 +92,6 @@ class _Cursor:
 
 class _DuckdbStub:
     """Stub module exposing ``connect``."""
-
-    # pylint: disable=unused-argument
 
     def __init__(self, connection: _Connection) -> None:
         self._connection = connection

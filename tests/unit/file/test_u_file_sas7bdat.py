@@ -21,13 +21,15 @@ from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
     """Read-only scientific contract tests for :mod:`etlplus.file.sas7bdat`."""
-
-    # pylint: disable=unused-variable
 
     module = mod
     handler_cls = mod.Sas7bdatFile

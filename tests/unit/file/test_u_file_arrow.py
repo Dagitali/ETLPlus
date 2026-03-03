@@ -16,6 +16,10 @@ from etlplus.file import arrow as mod
 
 from .pytest_file_contracts import PyarrowMissingDependencyMixin
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -42,8 +46,6 @@ class _ContextStub:
 
 class _PyarrowStub:
     """Minimal pyarrow-like module for Arrow handler tests."""
-
-    # pylint: disable=invalid-name
 
     def __init__(self) -> None:
         self.from_pylist_calls: list[list[dict[str, object]]] = []

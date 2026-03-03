@@ -17,6 +17,10 @@ from etlplus.file import cbor as mod
 from .pytest_file_contracts import BinaryCodecModuleContract
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
