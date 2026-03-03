@@ -13,6 +13,10 @@ import pytest
 
 from etlplus.file import _r_handlers as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -93,8 +97,6 @@ class _RDataHandler(mod.RDataHandlerMixin):
 
 class TestRHandlers:
     """Unit tests for shared R-data handler mixin behavior."""
-
-    # pylint: disable=protected-access
 
     def test_resolve_pyreadr_writer_returns_first_available_candidate(
         self,

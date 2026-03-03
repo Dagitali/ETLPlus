@@ -16,6 +16,10 @@ from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
 from .pytest_file_support import PyreadstatTabularStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

@@ -19,6 +19,10 @@ from etlplus.file.stub import StubFileHandlerABC
 from etlplus.utils.types import JSONData
 from etlplus.utils.types import JSONList
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -121,8 +125,6 @@ class _TemplateStub(mod.StubTemplateFileHandlerABC):
 
 class TestStubCategoryHandlers:
     """Unit tests for category-specific stub handler ABCs."""
-
-    # pylint: disable=protected-access
 
     def test_binary_stub_loads_and_dumps_delegate_to_stub_io(
         self,

@@ -13,6 +13,10 @@ import pytest
 from etlplus.file import _binary_codec_handlers as mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

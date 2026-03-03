@@ -14,6 +14,10 @@ import pytest
 from etlplus.file import _pandas_handlers as mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -106,8 +110,6 @@ class _WriteExcelFallbackFrameStub:
 class TestResolvePyarrowDependency:
     """Unit tests for pyarrow dependency resolution helper."""
 
-    # pylint: disable=protected-access
-
     def test_resolve_pyarrow_dependency_falls_back_to_resolve_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -180,8 +182,6 @@ class TestResolvePyarrowDependency:
 class TestResolveSpreadsheetEngineDependency:
     """Unit tests for spreadsheet engine dependency resolution helper."""
 
-    # pylint: disable=protected-access
-
     def test_resolve_spreadsheet_engine_dependency_noops_for_unknown_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -231,8 +231,6 @@ class TestResolveSpreadsheetEngineDependency:
 
 class TestSpreadsheetDependencySpec:
     """Unit tests for spreadsheet dependency metadata helper."""
-
-    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         ('engine', 'expected'),
@@ -315,8 +313,6 @@ class TestSpreadsheetEngineResolverMixin:
 
 class TestSpreadsheetReadWriteFallbacks:
     """Unit tests for spreadsheet read/write fallback helper branches."""
-
-    # pylint: disable=protected-access
 
     def test_read_excel_frame_falls_back_without_sheet_name(self) -> None:
         """Test read helper retrying when ``sheet_name`` is unsupported."""

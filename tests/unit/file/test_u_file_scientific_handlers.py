@@ -18,6 +18,10 @@ from etlplus.file.enums import FileFormat
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -111,8 +115,6 @@ class _RequiredPyreadstatScientificHandler(_ScientificHandler):
 
 class TestScientificHandlers:
     """Unit tests for scientific mixin dependency wiring."""
-
-    # pylint: disable=protected-access
 
     def test_invalid_pyreadstat_mode_raises_value_error(self) -> None:
         """Test invalid mode configuration raising a deterministic error."""
