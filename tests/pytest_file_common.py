@@ -19,6 +19,10 @@ from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 

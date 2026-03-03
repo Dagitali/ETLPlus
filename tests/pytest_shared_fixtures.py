@@ -27,6 +27,10 @@ from .pytest_shared_support import JsonOutputParser
 from .pytest_shared_support import coerce_cli_args
 from .pytest_shared_support import parse_json
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 

@@ -15,6 +15,10 @@ from typing import Protocol
 
 from requests import PreparedRequest  # type: ignore[import]
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: PROTOCOLS ======================================================== #
 
 
@@ -66,7 +70,13 @@ class RequestFactory(Protocol):
     ) -> PreparedRequest: ...
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
 type CaptureHandler = Callable[[object, str], dict[str, object]]
+
+
+# SECTIONS: FUNCTIONS ======================================================= #
 
 
 def coerce_cli_args(
