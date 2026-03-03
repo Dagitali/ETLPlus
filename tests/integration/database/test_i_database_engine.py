@@ -12,6 +12,10 @@ from sqlalchemy.orm import sessionmaker
 
 from etlplus.database.engine import make_engine
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 

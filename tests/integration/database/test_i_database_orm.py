@@ -17,6 +17,10 @@ from etlplus.database.engine import make_engine
 from etlplus.database.orm import build_models
 from etlplus.database.schema import TableSpec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 
