@@ -12,6 +12,10 @@ from etlplus.cli import handlers
 
 from ...conftest import CaptureHandler
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKS ============================================================ #
 
 
