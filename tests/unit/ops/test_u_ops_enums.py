@@ -15,6 +15,10 @@ from etlplus.ops.enums import AggregateName
 from etlplus.ops.enums import OperatorName
 from etlplus.ops.enums import PipelineStep
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

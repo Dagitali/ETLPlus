@@ -24,7 +24,14 @@ from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
+
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 
 validate_mod = importlib.import_module('etlplus.ops.validate')
@@ -85,7 +92,7 @@ class TestValidateField:
         assert 'required' in result['errors'][0].lower()
 
     @pytest.mark.parametrize(
-        'value, rule, expected_valid',
+        ('value', 'rule', 'expected_valid'),
         [
             (None, {'required': True}, False),
             ('test', {'type': 'string'}, True),
@@ -129,7 +136,7 @@ class TestValidate:
     """Unit tests for :func:`etlplus.ops.validate.validate`."""
 
     @pytest.mark.parametrize(
-        'data, rules, expected_valid',
+        ('data', 'rules', 'expected_valid'),
         [
             (
                 {
@@ -255,8 +262,8 @@ class TestValidate:
         monkeypatch.setattr(validate_mod, 'load_data', lambda _source: 42)
         result = validate('ignored', {'name': {'required': True}})
         assert result['valid'] is True
-        assert result['errors'] == []
-        assert result['field_errors'] == {}
+        assert not result['errors']
+        assert not result['field_errors']
         assert result['data'] == 42
 
 

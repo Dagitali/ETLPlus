@@ -58,6 +58,10 @@ from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -156,7 +160,7 @@ class TestApplyFilter:
         assert result == [{'age': 20}, {'age': 30}]
 
     @pytest.mark.parametrize(
-        'data, op, value, expected_names',
+        ('data', 'op', 'value', 'expected_names'),
         [
             (
                 [
@@ -384,8 +388,6 @@ class TestApplySort:
 
 class TestTransform:
     """Unit tests for :func:`etlplus.ops.transform.transform`."""
-
-    # pylint: disable=protected-access
 
     def test_aggregate_skips_empty_step_outputs(
         self,
@@ -669,12 +671,9 @@ class TestTransformInternalHelpers:
             raise TypeError('unsupported compare')
 
         rows = [{'name': 'Ada'}, {'name': 'Bob'}]
-        assert (
-            apply_filter(
-                rows,
-                {'field': 'name', 'op': _explode, 'value': 'A'},
-            )
-            == []
+        assert not apply_filter(
+            rows,
+            {'field': 'name', 'op': _explode, 'value': 'A'},
         )
 
     def test_apply_filter_step(self) -> None:
@@ -825,7 +824,6 @@ class TestTransformInternalHelpers:
         Test that :func:`etlplus.ops.transform._derive_agg_key` handles
         callable aggregators.
         """
-        # pylint: disable=unused-argument
 
         def agg(xs: list[float], n: int) -> float:
             return 0.0
@@ -972,8 +970,6 @@ class TestTransformInternalHelpers:
         Test that :func:`etlplus.ops.transform._resolve_aggregator` accepts
         enums, strings, and callables.
         """
-        # pylint: disable=unused-argument
-
         fn = _resolve_aggregator(AggregateName.SUM)
         assert callable(fn)
         assert fn([1, 2], 2) == 3

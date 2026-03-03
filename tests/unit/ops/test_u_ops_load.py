@@ -35,10 +35,19 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 load_mod = importlib.import_module('etlplus.ops.load')
+
+
+def _write_json_payload(path: str, payload: Any) -> None:
+    """Write one JSON payload using UTF-8 encoding."""
+    Path(path).write_text(js.dumps(payload), encoding='utf-8')
 
 
 @dataclass(slots=True)
@@ -133,7 +142,7 @@ class TestLoad:
             load({'test': 'data'}, 'invalid', 'target')
 
     @pytest.mark.parametrize(
-        'target_type,target,expected_status',
+        ('target_type', 'target', 'expected_status'),
         [
             (
                 'database',
@@ -172,14 +181,11 @@ class TestLoad:
         assert result['status'] == expected_status
 
     @pytest.mark.parametrize(
-        'file_format,write,expected_data',
+        ('file_format', 'write', 'expected_data'),
         [
             (
                 'json',
-                lambda p, d: js.dump(
-                    d,
-                    open(p, 'w', encoding='utf-8'),
-                ),
+                _write_json_payload,
                 {'test': 'data'},
             ),
         ],
@@ -224,7 +230,7 @@ class TestLoad:
         assert path.exists()
 
     @pytest.mark.parametrize(
-        'exc_type,call,args,err_msg',
+        ('exc_type', 'call', 'args', 'err_msg'),
         [
             (
                 ValueError,
@@ -275,7 +281,7 @@ class TestLoadErrors:
     """
 
     @pytest.mark.parametrize(
-        'exc_type,call,args,err_msg',
+        ('exc_type', 'call', 'args', 'err_msg'),
         [
             (
                 ValueError,
@@ -338,6 +344,7 @@ class TestLoadData:
                 return None
 
             def read(self) -> JSONData:
+                """Simulate a file read failure by raising an error."""
                 raise ValueError('cannot read as file')
 
         monkeypatch.setattr(load_mod.Path, 'exists', lambda _self: True)
@@ -407,7 +414,7 @@ class TestLoadData:
             load_data('not a valid json string')
 
     @pytest.mark.parametrize(
-        'input_data,expected_output',
+        ('input_data', 'expected_output'),
         [
             ({'test': 'data'}, {'test': 'data'}),
             ([{'test': 'data'}], [{'test': 'data'}]),
@@ -635,15 +642,18 @@ class TestLoadToApi:
             status_code = 201
             text = 'fallback'
 
-            def raise_for_status(self) -> None:
-                return None
-
             def json(self) -> object:
+                """Simulate a successful JSON response."""
                 return {'ok': True}
+
+            def raise_for_status(self) -> None:
+                """No-op for status raising in stub."""
+                return None
 
         captured: dict[str, Any] = {}
 
         def _request(url: str, **kwargs: Any) -> _Response:
+            """Stub request function that captures URL and kwargs."""
             captured['url'] = url
             captured['kwargs'] = kwargs
             return _Response()
@@ -681,13 +691,16 @@ class TestLoadToApi:
             status_code = 200
             text = 'text payload'
 
-            def raise_for_status(self) -> None:
-                return None
-
             def json(self) -> object:
+                """Simulate a JSON decoding failure."""
                 raise ValueError('bad json')
 
+            def raise_for_status(self) -> None:
+                """No-op for status raising in stub."""
+                return None
+
         def _request(url: str, **kwargs: Any) -> _Response:  # noqa: ARG001
+            """Stub request function that returns a predefined response."""
             return _Response()
 
         monkeypatch.setattr(
@@ -737,13 +750,19 @@ class TestParseJsonString:
     def test_parse_invalid_root_raises(self) -> None:
         """Only dicts or lists of dicts are accepted."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match='JSON root must be an object or array',
+        ):
             _parse_json_string('"plain"')
 
     def test_parse_list_with_non_dicts_raises(self) -> None:
         """Mixed arrays should raise ValueError."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match='JSON array must contain only objects',
+        ):
             _parse_json_string('[{"ok": 1}, 3]')
 
 

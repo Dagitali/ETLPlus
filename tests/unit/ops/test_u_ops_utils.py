@@ -21,7 +21,14 @@ import etlplus.ops.utils as utils_mod
 from etlplus.ops.utils import ValidationResultDict
 from etlplus.ops.utils import maybe_validate
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
+
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 
 def _printer(messages: list[dict[str, object]]):
@@ -71,7 +78,7 @@ def test_error_severity_raises_value_error() -> None:
         return ValidationResultDict(valid=False, errors=['boom'])
 
     payload = {'ok': True}
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Validation failed'):
         maybe_validate(
             payload,
             when='after_transform',

@@ -16,6 +16,10 @@ from typing import cast
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -350,7 +354,6 @@ class TestRun:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test a file-to-file ETL pipeline execution."""
-        # pylint: disable=unused-argument
         job = _make_job(name='file_job', source='file_src', target='file_tgt')
         cfg = _base_config(
             job,
@@ -648,8 +651,6 @@ class TestRun:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test transform and validation branches are called."""
-        # pylint: disable=unused-argument
-
         job = _make_job(name='job', source='src', target='tgt')
         job.transform = SimpleNamespace(pipeline='noop')
         job.validate = SimpleNamespace(

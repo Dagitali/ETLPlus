@@ -27,10 +27,28 @@ from etlplus.ops.extract import extract_from_api
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 extract_mod = importlib.import_module('etlplus.ops.extract')
+
+
+def _write_json_payload(path: str, payload: dict[str, Any]) -> None:
+    """Write one JSON payload using UTF-8 encoding."""
+    Path(path).write_text(json.dumps(payload), encoding='utf-8')
+
+
+def _write_xml_person_payload(path: str) -> None:
+    """Write one minimal XML person payload using UTF-8 encoding."""
+    Path(path).write_text(
+        '<?xml version="1.0"?>\n'
+        '<person><name>John</name><age>30</age></person>',
+        encoding='utf-8',
+    )
 
 
 class _StubResponse:
@@ -102,14 +120,11 @@ class TestExtract:
             extract('invalid', 'source')
 
     @pytest.mark.parametrize(
-        'file_format,write,expected_extracts',
+        ('file_format', 'write', 'expected_extracts'),
         [
             (
                 'json',
-                lambda p: json.dump(
-                    {'test': 'data'},
-                    open(p, 'w', encoding='utf-8'),
-                ),
+                lambda p: _write_json_payload(p, {'test': 'data'}),
                 {'test': 'data'},
             ),
         ],
@@ -159,7 +174,7 @@ class TestExtractErrors:
     """
 
     @pytest.mark.parametrize(
-        'exc_type,call,args,err_msg',
+        ('exc_type', 'call', 'args', 'err_msg'),
         [
             (
                 FileNotFoundError,
@@ -212,8 +227,6 @@ class TestExtractFromApi:
         coercion.
     """
 
-    # pylint: disable=protected-access
-
     def test_custom_method_and_kwargs(
         self,
         base_url: str,
@@ -262,7 +275,7 @@ class TestExtractFromApi:
         }
 
     @pytest.mark.parametrize(
-        'payload,expected',
+        ('payload', 'expected'),
         [
             ({'name': 'Ada'}, {'name': 'Ada'}),
             (
@@ -339,6 +352,10 @@ class TestExtractFromApi:
         paginate_calls: list[dict[str, Any]] = []
 
         class _Client:
+            """
+            Stub EndpointClient that captures init and paginate_url calls.
+            """
+
             def __init__(self, **kwargs: Any) -> None:
                 init_calls.append(kwargs)
 
@@ -350,6 +367,10 @@ class TestExtractFromApi:
                 request: Any,
                 sleep_seconds: float,
             ) -> list[dict[str, int]]:
+                """
+                Stub paginate_url method that captures the call parameters and
+                simulates pagination.
+                """
                 paginate_calls.append(
                     {
                         'url': url,
@@ -438,13 +459,13 @@ class TestExtractFromFile:
         assert result == {'ok': True}
 
     @pytest.mark.parametrize(
-        'file_format,write,expected_extracts',
+        ('file_format', 'write', 'expected_extracts'),
         [
             (
                 'json',
-                lambda p: json.dump(
+                lambda p: _write_json_payload(
+                    p,
                     {'name': 'John', 'age': 30},
-                    open(p, 'w', encoding='utf-8'),
                 ),
                 {'name': 'John', 'age': 30},
             ),
@@ -458,12 +479,7 @@ class TestExtractFromFile:
             ),
             (
                 'xml',
-                lambda p: open(p, 'w', encoding='utf-8').write(
-                    (
-                        '<?xml version="1.0"?>\n'
-                        '<person><name>John</name><age>30</age></person>'
-                    ),
-                ),
+                _write_xml_person_payload,
                 {'person': {'name': {'text': 'John'}, 'age': {'text': '30'}}},
             ),
         ],
@@ -522,7 +538,7 @@ class TestExtractFromFile:
             assert result == expected_extracts
 
     @pytest.mark.parametrize(
-        'file_format,content,err_msg',
+        ('file_format', 'content', 'err_msg'),
         [
             ('unsupported', 'test', 'Invalid FileFormat'),
         ],
@@ -554,9 +570,8 @@ class TestExtractFromFile:
         """
         path = tmp_path / f'data.{file_format}'
         path.write_text(content, encoding='utf-8')
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError, match=err_msg):
             extract_from_file(str(path), file_format)
-        assert err_msg in str(e.value)
 
 
 class TestExtractDefensiveDispatch:
