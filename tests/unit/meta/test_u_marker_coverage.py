@@ -10,6 +10,10 @@ from tests.unit.meta.pytest_meta_support import REPO_ROOT
 from tests.unit.meta.pytest_meta_support import TESTS_ROOT
 from tests.unit.meta.pytest_meta_support import scope_conftests
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
