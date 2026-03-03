@@ -14,6 +14,10 @@ import pytest
 
 from etlplus.database import ddl
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -89,8 +93,6 @@ class TestLoadTableSpec:
             yaml.safe_dump(sample_spec, sort_keys=False),
             encoding='utf-8',
         )
-        # pylint: disable=import-outside-toplevel,protected-access
-
         import etlplus.file._imports as import_helpers
         import etlplus.file.yaml as file_mod
 
@@ -147,7 +149,10 @@ class TestLoadTableSpec:
         spec_path = tmp_path / 'spec.txt'
         spec_path.write_text('{}', encoding='utf-8')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r'Spec must be \.json, \.yml, or \.yaml',
+        ):
             ddl.load_table_spec(spec_path)
 
 
@@ -247,7 +252,7 @@ class TestRenderTableSql:
         sample_spec: dict[str, object],
     ) -> None:
         """Test that an unknown template key raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Unknown template key'):
             ddl.render_table_sql(
                 sample_spec,
                 template='does not exist',  # type: ignore[arg-type]

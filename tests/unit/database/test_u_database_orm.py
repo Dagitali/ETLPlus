@@ -31,6 +31,10 @@ from etlplus.database.orm import load_and_build_models
 from etlplus.database.orm import resolve_type
 from etlplus.database.schema import TableSpec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -124,7 +128,7 @@ class TestHelpers:
     """Unit tests for helper utilities in :mod:`orm`."""
 
     @pytest.mark.parametrize(
-        'type_decl, expected_type, expected_attr',
+        ('type_decl', 'expected_type', 'expected_attr'),
         [
             ('VARCHAR(255)', String, {'length': 255}),
             ('numeric(10,2)', Numeric, {'precision': 10, 'scale': 2}),
@@ -147,7 +151,7 @@ class TestHelpers:
             assert getattr(resolved, attr) == value
 
     @pytest.mark.parametrize(
-        'type_str, name, params',
+        ('type_str', 'name', 'params'),
         [
             ('VARCHAR(12)', 'varchar', [12]),
             ('decimal(10, 4)', 'decimal', [10, 4]),
@@ -165,8 +169,6 @@ class TestHelpers:
         """
         Type parsing returns expected names/params and class names PascalCase.
         """
-        # pylint: disable=protected-access
-
         parsed_name, parsed_params = orm_mod._parse_type_decl(type_str)
         assert parsed_name == name
         assert parsed_params == params
@@ -226,7 +228,7 @@ class TestBuildModels:
         )
 
         check_constraints = self._get_constraint(table, CheckConstraint)
-        assert any('ck_orders_region' == c.name for c in check_constraints)
+        assert any(c.name == 'ck_orders_region' for c in check_constraints)
 
         fk_constraints = self._get_constraint(table, ForeignKeyConstraint)
         assert any(

@@ -10,6 +10,10 @@ from sqlalchemy import String
 
 from etlplus.database import types as database_types
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 
 class TestDatabaseTypesModule:
     """Unit tests for database type aliases module."""

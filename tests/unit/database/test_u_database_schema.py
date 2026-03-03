@@ -19,6 +19,10 @@ from etlplus.database.schema import ColumnSpec
 from etlplus.database.schema import IdentitySpec
 from etlplus.database.schema import TableSpec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTIONS: HELPERS ========================================================= #
 
 
@@ -77,7 +81,7 @@ class TestLoadTableSpecs:
     Reuses a helper fixture to patch :meth:`File.read` and avoid disk IO.
     """
 
-    @pytest.fixture()
+    @pytest.fixture
     def patch_read_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -98,7 +102,6 @@ class TestLoadTableSpecs:
         """
 
         def _apply(payload: Any) -> None:
-            # pylint: disable=unused-argument
             """Apply the patch to :meth:`File.read` to return the payload."""
 
             def fake_read(self, *args, **kwargs):
@@ -118,7 +121,7 @@ class TestLoadTableSpecs:
         assert schema_mod.load_table_specs('missing.yml') == []
 
     @pytest.mark.parametrize(
-        'payload_factory, expected_names',
+        ('payload_factory', 'expected_names'),
         [
             (lambda spec: {'table_schemas': [spec]}, ['users']),
             (
@@ -172,7 +175,7 @@ class TestModels:
             )
 
     @pytest.mark.parametrize(
-        'field, value',
+        ('field', 'value'),
         [('seed', 0), ('increment', 0)],
     )
     def test_identity_spec_requires_positive_values(
@@ -221,7 +224,7 @@ class TestModels:
         assert minimal.primary_key is None
 
     @pytest.mark.parametrize(
-        'schema_name, expected',
+        ('schema_name', 'expected'),
         [('public', 'public.users'), (None, 'users')],
     )
     def test_table_spec_fq_name(

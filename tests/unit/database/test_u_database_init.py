@@ -8,6 +8,10 @@ from __future__ import annotations
 
 import etlplus.database as database_pkg
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 
 class TestDatabasePackageExports:
     """Unit tests for top-level package exports."""

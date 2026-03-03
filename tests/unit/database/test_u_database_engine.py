@@ -15,6 +15,10 @@ import pytest
 
 from etlplus.database.engine import load_database_url_from_config
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTIONS: HELPERS ========================================================= #
 
 
@@ -35,7 +39,7 @@ class TestLoadDatabaseUrlFromConfig:
     fixtures to keep tests DRY.
     """
 
-    @pytest.fixture()
+    @pytest.fixture
     def patch_read_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -93,7 +97,7 @@ class TestLoadDatabaseUrlFromConfig:
         )
 
     @pytest.mark.parametrize(
-        'payload, expected_exc',
+        ('payload', 'expected_exc'),
         [
             ({}, KeyError),
             ({'databases': None}, KeyError),
@@ -119,7 +123,7 @@ class TestLoadDatabaseUrlFromConfig:
 class TestMakeEngine:
     """Unit tests for :func:`make_engine` and module defaults."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def capture_create_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
