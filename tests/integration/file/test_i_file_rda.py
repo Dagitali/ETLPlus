@@ -10,6 +10,10 @@ from etlplus.file import rda as mod
 
 from .conftest import SmokeRoundtripModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
