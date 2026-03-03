@@ -26,14 +26,14 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 
 def test_in_memory_sqlite_engine_connection_sanity() -> None:
-    """In-memory sqlite engine should execute a trivial query."""
+    """Test that in-memory sqlite engine executes a trivial query."""
     engine = make_engine('sqlite+pysqlite:///:memory:')
     with engine.connect() as conn:
         assert conn.execute(text('SELECT 1')).scalar_one() == 1
 
 
 def test_in_memory_sqlite_session_sanity() -> None:
-    """Session bound to in-memory sqlite engine should execute SQL."""
+    """Test that session bound to in-memory sqlite engine executes SQL."""
     engine = make_engine('sqlite+pysqlite:///:memory:')
     session_factory = sessionmaker(
         bind=engine,

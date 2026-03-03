@@ -35,7 +35,10 @@ class TestCliRender:
         cli_invoke: CliInvoke,
         pipeline_table_schemas_config: PipelineSchema,
     ) -> None:
-        """Render SQL from a pipeline config containing table_schemas."""
+        """
+        Test that rendering SQL from a pipeline config containing table_schemas
+        works.
+        """
         cfg = pipeline_table_schemas_config
         code, out, err = cli_invoke(
             ('render', '--config', str(cfg.config_path), '--template', 'ddl'),

@@ -169,7 +169,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
     ) -> None:
-        """Explicit ``--source-format`` overrides file extension inference."""
+        """
+        Test that ``--source-format`` overrides file extension inference.
+        """
         source = tmp_path / 'records.txt'
         source.write_text('a,b\n1,2\n')
         code, out, err = cli_invoke(
@@ -186,7 +188,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """``--target-format`` controls how file targets are written."""
+        """
+        Test that ``--target-format`` controls how file targets are written.
+        """
         output_path = tmp_path / 'output.bin'
         monkeypatch.setattr(
             sys,
@@ -208,7 +212,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
     ) -> None:
-        """``validate`` accepts CSV files lacking extensions via flag."""
+        """
+        Test that ``validate`` accepts CSV files lacking extensions via flag.
+        """
         source = tmp_path / 'dataset.data'
         source.write_text('id,val\n1,2\n')
         code, out, err = cli_invoke(

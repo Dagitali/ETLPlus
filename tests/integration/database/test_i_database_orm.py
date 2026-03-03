@@ -41,7 +41,7 @@ class _IntegrationBase(DeclarativeBase):
 
 def test_build_model_create_table_and_roundtrip_row() -> None:
     """
-    Build a model dynamically, create the table, and roundtrip one row.
+    Test building a model dynamically, create the table, and roundtrip one row.
     """
     table_spec = TableSpec.model_validate(
         {
