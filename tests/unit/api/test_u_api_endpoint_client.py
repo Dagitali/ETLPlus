@@ -37,6 +37,10 @@ from etlplus.api import errors as api_errors
 
 from .test_u_api_mocks import MockSession
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -117,7 +121,6 @@ def _page_responder(
     Callable[..., list[dict[str, Any]]]
         Handler compatible with ``patch_request_once``.
     """
-    # pylint: disable=unused-argument
 
     def _handler(
         self: EndpointClient,
@@ -163,7 +166,6 @@ def _stub_request_manager(
     ValueError
         If *responses* is empty.
     """
-    # pylint: disable=unused-argument
 
     if not responses:
         msg = 'responses must contain at least one payload'
@@ -355,7 +357,7 @@ class TestCursorPagination:
     """Unit tests for :class:`EndpointClient`."""
 
     @pytest.mark.parametrize(
-        'raw_page_size,expected_limit',
+        ('raw_page_size', 'expected_limit'),
         [(-1, 1), ('not-a-number', EndpointClient.DEFAULT_PAGE_SIZE)],
     )
     def test_page_size_normalizes(
@@ -453,7 +455,6 @@ class TestRequestOptionIntegration:
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """Paginated iterations override RequestOptions params per call."""
-        # pylint: disable=unused-argument
 
         client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
@@ -559,13 +560,13 @@ class TestRequestOptionIntegration:
             Factory for cursor pagination config.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
+            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=f'{base_url}/v1',
             endpoints={'list': '/items'},
         )
-        # pylint: disable=unused-argument
-
         # First page succeeds with next cursor; second raises 500.
         calls = {'n': 0}
 
@@ -600,7 +601,8 @@ class TestRequestOptionIntegration:
             list(
                 client.paginate_iter('list', pagination=cfg),
             )
-        assert ei.value.page == 2 and ei.value.status == 500
+        assert ei.value.page == 2
+        assert ei.value.status == 500
 
     def test_rate_limit_overrides_adjust_sleep(
         self,
@@ -620,8 +622,6 @@ class TestRequestOptionIntegration:
         monkeypatch : pytest.MonkeyPatch
             Pytest monkeypatch fixture.
         """
-        # pylint: disable=unused-argument
-
         captured: dict[str, Any] = {}
 
         def fake_from_config(
@@ -702,8 +702,6 @@ class TestRequestOptionIntegration:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         jitter([0.05])
 
         attempts = {'n': 0}
@@ -769,9 +767,9 @@ class TestErrors:
             Helper used to patch the request helper.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
+            Factory to create deterministic HTTP errors for testing.
         """
-        # pylint: disable=unused-argument
-
         client = client_factory(
             base_url=base_url,
             endpoints={'x': '/x'},
@@ -822,8 +820,6 @@ class TestOffsetPagination:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         calls: list[dict[str, Any]] = []
 
         def fake_request(
@@ -1025,13 +1021,13 @@ class TestPagePagination:
             Helper that patches the request helper.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
+            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=base_url,
             endpoints={'list': '/items'},
         )
-        # pylint: disable=unused-argument
-
         page_size = 2
 
         def extractor(
@@ -1065,7 +1061,8 @@ class TestPagePagination:
             client.paginate('list', pagination=cfg)
         # The paginator reports the iteration count (2) rather than literal
         # page 4.
-        assert ei.value.page == 2 and ei.value.status == 500
+        assert ei.value.page == 2
+        assert ei.value.status == 500
 
     def test_unknown_type_returns_raw(
         self,
@@ -1082,7 +1079,6 @@ class TestPagePagination:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
 
         def _raw_response(
             self: EndpointClient,
@@ -1156,8 +1152,6 @@ class TestRateLimitPrecedence:
             timeout: Any,
             **kw: Any,
         ) -> list[dict[str, int]]:  # noqa: D401
-            # pylint: disable=unused-argument
-
             assert method == 'GET'
             calls['n'] += 1
             # Return full page until third call which ends pagination.
@@ -1225,9 +1219,9 @@ class TestRetryLogic:
             Helper used to patch the request helper.
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
+        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
+            Factory to create deterministic HTTP errors for testing.
         """
-        # pylint: disable=unused-argument
-
         client = client_factory(
             base_url=base_url,
             endpoints={'x': '/x'},
@@ -1288,8 +1282,6 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         jitter([0.1, 0.2])
 
         # Patch HTTP helper to fail with 503 twice, then succeed.
@@ -1358,8 +1350,6 @@ class TestRetryLogic:
         client_factory : Callable[..., EndpointClient]
             Factory fixture used to construct :class:`EndpointClient`.
         """
-        # pylint: disable=unused-argument
-
         jitter([0.12, 0.18])
         attempts = {'n': 0}
 
@@ -1741,7 +1731,6 @@ class TestUrlCompositionProperty:
     )
     def test_path_parameter_encoding_property(
         self,
-        base_url: str,
         id_value: str,
         extract_stub_factory: Callable[..., Any],
     ) -> None:
@@ -1750,8 +1739,6 @@ class TestUrlCompositionProperty:
 
         Parameters
         ----------
-        base_url : str
-            Common base URL used across tests.
         id_value : str
             Path parameter value to encode.
         extract_stub_factory : Callable[..., Any]
@@ -1759,7 +1746,7 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url=base_url,
+                base_url=EXAMPLE_BASE_URL,
                 endpoints={'item': '/users/{id}'},
             )
             client.paginate(
@@ -1783,7 +1770,6 @@ class TestUrlCompositionProperty:
     )
     def test_query_encoding_property(
         self,
-        base_url: str,
         params: dict[str, str],
         extract_stub_factory: Callable[..., Any],
     ) -> None:
@@ -1792,8 +1778,6 @@ class TestUrlCompositionProperty:
 
         Parameters
         ----------
-        base_url : str
-            Common base URL used across tests.
         params : dict[str, str]
             Query parameters to encode.
         extract_stub_factory : Callable[..., Any]
@@ -1801,7 +1785,7 @@ class TestUrlCompositionProperty:
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
-                base_url=base_url,
+                base_url=EXAMPLE_BASE_URL,
                 endpoints={'e': '/ep'},
             )
             client.paginate('e', query_parameters=params, pagination=None)

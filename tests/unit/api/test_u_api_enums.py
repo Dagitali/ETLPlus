@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from etlplus.api import HttpMethod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

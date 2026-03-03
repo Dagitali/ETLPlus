@@ -14,11 +14,15 @@ from etlplus.api.types import Params
 from etlplus.api.types import RequestOptions
 from etlplus.api.types import Url
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.parametrize(
-    'opts, expected',
+    ('opts', 'expected'),
     [
         pytest.param(
             RequestOptions(
@@ -56,7 +60,7 @@ def test_request_options_defaults():
 
 
 @pytest.mark.parametrize(
-    'kwargs, expected_params, expected_headers, expected_timeout',
+    ('kwargs', 'expected_params', 'expected_headers', 'expected_timeout'),
     [
         pytest.param(
             {'params': {'b': 2}, 'headers': None, 'timeout': None},
@@ -116,8 +120,6 @@ def test_request_options_invalid_params_headers():
 
 def test_type_aliases():
     """Test that type aliases are correct."""
-    # pylint: disable=unused-argument
-
     # url: Url = 'https://api.example.com/data'
     # headers: Headers = {'Authorization': 'token'}
     # params: Params = {'q': 'search'}
@@ -136,8 +138,6 @@ def test_type_aliases():
 
 def test_type_aliases_edge_cases():
     """Test type aliases with edge case values."""
-    # pylint: disable=unused-argument
-
     # Url must be str.
     url: Url = 'http://test/'
     assert isinstance(url, str)

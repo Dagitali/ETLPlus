@@ -36,6 +36,10 @@ from etlplus.api.pagination import PaginationType
 from etlplus.api.pagination import Paginator
 from etlplus.api.rate_limiting import RateLimitConfigDict
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -197,7 +201,7 @@ class TestPaginator:
             assert r.get('id') == expected[i]
 
     @pytest.mark.parametrize(
-        'actual, expected_page_size',
+        ('actual', 'expected_page_size'),
         [
             (None, Paginator.PAGE_SIZE),
             (-1, 1),
@@ -230,8 +234,6 @@ class TestPaginator:
 
     def test_paginate_accepts_request_options(self) -> None:
         """Paginator.paginate accepts RequestOptions overrides for params."""
-        # pylint: disable=unused-argument
-
         seen: list[RequestOptions] = []
 
         def fetch(
@@ -270,8 +272,6 @@ class TestPaginator:
         """
         Test that paginate and paginate_iter delegate to paginate_url_iter.
         """
-        # pylint: disable=protected-access
-
         client = RecordingClient(
             base_url='https://example.test/api',
             endpoints={'items': '/items'},
@@ -351,12 +351,9 @@ class TestPaginator:
 
         Parameters
         ----------
-        ptype : str
-            Raw pagination type from configuration.
-        actual : int | None
-            Configured start page value.
-        expected : int
-            Expected normalized start page value.
+        paginator_mode_case : tuple[str, int | None, int]
+            Tuple of pagination type, raw start page, expected normalized start
+            page.
         """
         ptype, actual, expected = paginator_mode_case
         cfg: dict[str, Any] = {'type': ptype}
@@ -490,9 +487,7 @@ class TestPaginatorInternalBranches:
         """Unknown runtime type should fall through match and yield nothing."""
         paginator = Paginator(fetch=_dummy_fetch)
         paginator.type = cast(Any, 'unknown')
-        assert (
-            list(paginator.paginate_iter('https://example.test/items')) == []
-        )
+        assert not list(paginator.paginate_iter('https://example.test/items'))
 
     def test_paginate_iter_raises_when_fetch_missing(self) -> None:
         """paginate_iter should reject missing fetch callback."""

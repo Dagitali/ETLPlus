@@ -22,6 +22,10 @@ from etlplus.api import PaginationType
 from etlplus.api import RateLimitConfig
 from etlplus.api import utils
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -391,8 +395,6 @@ class TestPaginateWithClient:
 
 class TestUtilsInternalBranches:
     """Branch-focused tests for internal API utility helpers."""
-
-    # pylint: disable=protected-access
 
     def test_build_endpoint_client_helper(self) -> None:
         """build_endpoint_client wires env options into EndpointClient."""

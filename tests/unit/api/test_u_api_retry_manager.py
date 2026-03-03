@@ -16,6 +16,10 @@ from etlplus.api.retry_manager import RetryManager
 from etlplus.api.retry_manager import RetryPolicyDict
 from etlplus.api.retry_manager import RetryStrategy
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

@@ -27,6 +27,10 @@ import requests  # type: ignore[import]
 
 from etlplus.api.request_manager import RequestManager
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -286,8 +290,6 @@ class TestRequestManager:
         Test that :meth:`__exit__` cleans up even when the managed block
         raises an exception.
         """
-        # pylint: disable=protected-access
-
         manager = RequestManager()
 
         class DummyExc(Exception):
@@ -296,9 +298,8 @@ class TestRequestManager:
         manager._ctx_session = DummySession()
         manager._ctx_owns_session = True
 
-        with pytest.raises(DummyExc):
-            with manager:
-                raise DummyExc()
+        with pytest.raises(DummyExc), manager:
+            raise DummyExc()
 
         assert manager._ctx_session is None
         assert manager._ctx_owns_session is False
@@ -308,8 +309,6 @@ class TestRequestManager:
         Test that :meth:`request_once` returns the underlying callable's
         result.
         """
-        # pylint: disable=unused-argument
-
         manager = RequestManager()
 
         def _callable(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -473,6 +472,9 @@ class TestRequestManagerInternalPaths:
         class _Session:
             @staticmethod
             def request(*_args: Any, **_kwargs: Any) -> _ResponseStub:
+                """
+                Simulate a session.request that returns our stub response.
+                """
                 return response
 
         result = manager.request_once(

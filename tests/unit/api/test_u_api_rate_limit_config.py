@@ -20,6 +20,10 @@ import pytest
 
 from etlplus.api import RateLimitConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -85,7 +89,7 @@ class TestRateLimitConfig:
         assert cfg.max_per_sec is None
 
     @pytest.mark.parametrize(
-        'obj,expect',
+        ('obj', 'expect'),
         [
             pytest.param(
                 {'sleep_seconds': '0.25', 'max_per_sec': '2'},
@@ -220,10 +224,11 @@ class TestRateLimitConfig:
         }
         warnings = rl.validate_bounds()
         # Ensure every warning is recognized and no extras appear.
-        assert warnings and set(warnings).issubset(allowed)
+        assert warnings
+        assert set(warnings).issubset(allowed)
 
     @pytest.mark.parametrize(
-        'kwargs,expected_warnings',
+        ('kwargs', 'expected_warnings'),
         [
             pytest.param(
                 {'sleep_seconds': 0.0, 'max_per_sec': 1.5},

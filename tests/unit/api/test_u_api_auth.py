@@ -31,6 +31,10 @@ from etlplus.api.auth import _truncate
 
 from ...conftest import RequestFactory
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -52,7 +56,6 @@ def token_sequence_fixture(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
-    # pylint: disable=unused-argument
 
     calls: dict[str, int] = {'n': 0}
 
@@ -117,8 +120,6 @@ class TestEndpointCredentialsBearer:
     - Uses monkeypatching to simulate token fetch, expiration, and error paths.
     - Validates caching, refresh, and error handling behavior.
     """
-
-    # pylint: disable=protected-access
 
     def test_fetches_and_caches(
         self,
@@ -222,8 +223,6 @@ class TestEndpointCredentialsBearer:
         request_factory : RequestFactory
             Factory that builds prepared requests.
         """
-        # pylint: disable=unused-argument
-
         calls: dict[str, int] = {'n': 0}
 
         def fake_post(

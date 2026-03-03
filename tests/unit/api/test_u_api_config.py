@@ -26,6 +26,10 @@ from etlplus.api import HttpMethod
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -40,7 +44,7 @@ class TestApiConfig:
     """
 
     @pytest.mark.parametrize(
-        'sleep,max_per',
+        ('sleep', 'max_per'),
         [
             (0.5, 2),
             (0.1, 10),
@@ -570,7 +574,8 @@ class TestEndpointConfig:
         )
         assert ep.method == 'POST'
         assert ep.path_params == {'id': 'int'}
-        assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
+        assert isinstance(ep.body, dict)
+        assert ep.body['type'] == 'file'
         assert ep.query_params == {'size': 'large'}
 
     def test_from_str_sets_no_method(
@@ -590,7 +595,7 @@ class TestEndpointConfig:
         assert ep.method is None
 
     @pytest.mark.parametrize(
-        'payload, expected_exception',
+        ('payload', 'expected_exception'),
         [
             ({'method': 'GET'}, TypeError),  # missing path
             ({'path': 123}, TypeError),  # path wrong type
@@ -677,8 +682,6 @@ class TestEndpointConfig:
 
 class TestConfigInternalBranches:
     """Targeted branch tests for internal config helpers."""
-
-    # pylint: disable=protected-access
 
     def test_api_profile_config_from_obj_requires_mapping(self) -> None:
         """ApiProfileConfig.from_obj should fail for non-mapping inputs."""

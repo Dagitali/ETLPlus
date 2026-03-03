@@ -25,6 +25,10 @@ import etlplus.api.transport as transport_module
 from etlplus.api.transport import build_http_adapter
 from etlplus.api.transport import build_session_with_adapters
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -98,7 +102,6 @@ class TestBuildHttpAdapter:
         """
         Test that invalid adapter configs are skipped but session is usable.
         """
-        # pylint: disable=broad-exception-caught
         adapters_cfg = [
             {'prefix': 'https://', 'pool_connections': 'bad'},
             {'prefix': 'http://', 'max_retries': {'total': 'bad'}},

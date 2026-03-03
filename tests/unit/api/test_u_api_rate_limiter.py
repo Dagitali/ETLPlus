@@ -24,6 +24,10 @@ import pytest
 from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ======================================================== #
 
 
@@ -63,7 +67,7 @@ class TestResolveSleepSeconds:
     """
 
     @pytest.mark.parametrize(
-        'rate_limit, config, expected_sleep',
+        ('rate_limit', 'config', 'expected_sleep'),
         [
             pytest.param(
                 {'sleep_seconds': -1},
@@ -192,7 +196,7 @@ class TestRateLimiterBasics:
         assert fixed_limiter.max_per_sec == pytest.approx(4.0)
 
     @pytest.mark.parametrize(
-        'seconds, expected_sleep',
+        ('seconds', 'expected_sleep'),
         [
             (2.0, 2.0),
             (-1.0, 0.0),
@@ -227,7 +231,7 @@ class TestRateLimiterBasics:
         assert limiter.sleep_seconds == pytest.approx(0.25)
 
     @pytest.mark.parametrize(
-        'seconds, expected_enabled',
+        ('seconds', 'expected_enabled'),
         [
             (0.0, False),
             (0.1, True),
@@ -271,7 +275,7 @@ class TestRateLimiterFromConfig:
     """
 
     @pytest.mark.parametrize(
-        'cfg, expected_sleep',
+        ('cfg', 'expected_sleep'),
         [
             ({'sleep_seconds': 0.2}, 0.2),
             ({'sleep_seconds': '0.3'}, 0.3),

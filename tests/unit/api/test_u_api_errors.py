@@ -9,6 +9,10 @@ from __future__ import annotations
 from etlplus.api.errors import ApiRequestError
 from etlplus.api.errors import PaginationError
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 
 class TestApiErrors:
     """Unit tests for API error payload helpers."""
