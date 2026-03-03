@@ -9,6 +9,10 @@ from __future__ import annotations
 from etlplus.connector import types as connector_types
 from etlplus.connector.enums import DataConnectorType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

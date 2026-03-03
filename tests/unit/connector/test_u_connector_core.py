@@ -12,13 +12,15 @@ from etlplus.connector.core import ConnectorBase
 from etlplus.connector.core import ConnectorProtocol
 from etlplus.connector.file import ConnectorFile
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestConnectorCore:
     """Unit tests for connector base/protocol helpers."""
-
-    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         'payload',

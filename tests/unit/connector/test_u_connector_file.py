@@ -11,6 +11,10 @@ import pytest
 from etlplus.connector.enums import DataConnectorType
 from etlplus.connector.file import ConnectorFile
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

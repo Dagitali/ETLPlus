@@ -8,6 +8,10 @@ from __future__ import annotations
 
 import etlplus.connector as connector_pkg
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

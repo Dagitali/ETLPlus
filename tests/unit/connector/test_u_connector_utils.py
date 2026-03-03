@@ -21,6 +21,10 @@ from etlplus.connector import parse_connector
 from etlplus.connector import utils as connector_utils
 from etlplus.connector.enums import DataConnectorType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -51,7 +55,7 @@ class TestParseConnector:
             parse_connector(payload)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
-        'payload,expected_cls,expected_attrs',
+        ('payload', 'expected_cls', 'expected_attrs'),
         [
             pytest.param(
                 {
@@ -108,7 +112,7 @@ class TestParseConnector:
             assert getattr(connector, field) == value
 
     @pytest.mark.parametrize(
-        'payload,expected_exception',
+        ('payload', 'expected_exception'),
         [
             ({'name': 'x', 'type': 'unknown'}, TypeError),
             ({'type': 'unknown'}, TypeError),
@@ -137,10 +141,8 @@ class TestParseConnector:
 class TestInternalLoadConnector:
     """Unit tests for :func:`etlplus.connector.utils._load_connector`."""
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
-        'kind,expected',
+        ('kind', 'expected'),
         [
             (DataConnectorType.API, ConnectorApi),
             (DataConnectorType.DATABASE, ConnectorDb),
