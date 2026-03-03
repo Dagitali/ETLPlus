@@ -15,6 +15,10 @@ import pytest
 
 from etlplus.file import registry as file_registry
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 

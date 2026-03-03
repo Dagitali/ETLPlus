@@ -29,6 +29,10 @@ from tests.unit.meta.pytest_meta_support import markdown_table_rows
 from tests.unit.meta.pytest_meta_support import read_lines
 from tests.unit.meta.pytest_meta_support import regex_matches
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -106,8 +110,6 @@ def _expected_matrix_row(file_format: FileFormat) -> MatrixRow:
 
 def _expected_supported_formats() -> set[FileFormat]:
     """Return non-stub formats from explicit registry mappings."""
-    # pylint: disable=protected-access
-
     expected: set[FileFormat] = set()
     for file_format in mod._HANDLER_CLASS_SPECS:
         handler_class = mod.get_handler_class(file_format)
@@ -183,8 +185,6 @@ def _override_attrs_from_text(override_text: str) -> frozenset[str]:
 
 class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
-
-    # pylint: disable=protected-access
 
     def test_matrix_rows_cover_explicit_registry_mappings(self) -> None:
         """Test both matrix docs covering every explicitly mapped format."""
