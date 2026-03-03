@@ -26,6 +26,10 @@ from etlplus.api import RateLimitConfig
 
 from .conftest import FakeEndpointClientProtocol
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

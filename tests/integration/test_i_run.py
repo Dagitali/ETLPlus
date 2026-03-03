@@ -22,6 +22,10 @@ from pytest import MonkeyPatch
 
 from etlplus import Config
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
