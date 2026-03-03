@@ -379,7 +379,10 @@ class TestRequestManagerInternalPaths:
     """Extra branch coverage for internal request manager helpers."""
 
     def test_exit_ignores_missing_close_attribute(self) -> None:
-        """__exit__ swallows AttributeError when close attribute is missing."""
+        """
+        Test :meth:`__exit__` swallows AttributeError when close attribute is
+        missing.
+        """
         manager = RequestManager()
         manager._ctx_session = object()
         manager._ctx_owns_session = True
@@ -390,14 +393,16 @@ class TestRequestManagerInternalPaths:
         assert manager._ctx_owns_session is False
 
     def test_exit_is_noop_when_context_session_missing(self) -> None:
-        """__exit__ returns early when no context session is active."""
+        """
+        Test :meth:`__exit__` returns early when no context session is active.
+        """
         manager = RequestManager()
         manager.__exit__(None, None, None)
         assert manager._ctx_session is None
         assert manager._ctx_owns_session is False
 
     def test_instantiate_session_handles_factory_none(self) -> None:
-        """A factory returning None yields no owned session."""
+        """Test a factory returning None yields no owned session."""
         manager = RequestManager(
             session_factory=cast(
                 Callable[[], requests.Session],
@@ -449,14 +454,19 @@ class TestRequestManagerInternalPaths:
         response: _ResponseStub,
         expected: Any,
     ) -> None:
-        """Payload parser handles invalid, list, scalar, and non-JSON input."""
+        """
+        Test payload parser handles invalid, list, scalar, and non-JSON input.
+        """
         manager = RequestManager()
         assert manager._parse_response_payload(cast(Any, response)) == expected
 
     def test_resolve_request_callable_raises_for_non_callable_session(
         self,
     ) -> None:
-        """Non-callable session.request raises a clear TypeError."""
+        """
+        Test non-callable :meth:`session.request` raises a clear
+        :class:`TypeError`.
+        """
         manager = RequestManager()
         bad_session = types.SimpleNamespace(request=123)
         with pytest.raises(TypeError, match='callable "request"'):
@@ -465,7 +475,10 @@ class TestRequestManagerInternalPaths:
             )
 
     def test_request_once_without_custom_callable_parses_payload(self) -> None:
-        """request_once sends HTTP request, checks status, and parses JSON."""
+        """
+        Test :meth:`request_once` sends HTTP request, checks status, and parses
+        JSON.
+        """
         manager = RequestManager()
         response = _ResponseStub(payload={'ok': True})
 
@@ -490,7 +503,7 @@ class TestRequestManagerInternalPaths:
     def test_resolve_session_prefers_explicit_then_attached_session(
         self,
     ) -> None:
-        """Session resolution honors explicit and configured sessions."""
+        """Test session resolution honors explicit and configured sessions."""
         manager = RequestManager(
             session=cast(requests.Session, DummySession()),
         )
@@ -504,21 +517,26 @@ class TestRequestManagerInternalPaths:
         assert owns2 is False
 
     def test_resolve_timeout_uses_explicit_value(self) -> None:
-        """Explicit timeout bypasses default timeout fallback."""
+        """Test explicit timeout bypasses default timeout fallback."""
         manager = RequestManager(default_timeout=10.0)
         assert manager._resolve_timeout(1.25) == 1.25
 
     def test_resolve_request_callable_defaults_to_requests_request(
         self,
     ) -> None:
-        """If session is None, default to module-level requests.request."""
+        """
+        Test that, if session is ``None``, default to module-level
+        :func:`requests.request`.
+        """
         manager = RequestManager()
         assert manager._resolve_request_callable(None) is requests.request
 
     def test_send_http_request_normalizes_method_and_passes_timeout(
         self,
     ) -> None:
-        """Low-level send helper uppercases method and forwards timeout."""
+        """
+        Test low-level send helper uppercases method and forwards timeout.
+        """
         manager = RequestManager()
         seen: dict[str, Any] = {}
 

@@ -36,7 +36,7 @@ class TestPaginationConfig:
     """
 
     def test_defaults_apply_response_fallback_path(self) -> None:
-        """Defaults mapping should surface response fallback_path."""
+        """Test that defaults mapping surfaces response ``fallback_path.``"""
         cfg = PaginationConfig.from_defaults(
             {
                 'type': 'page',
@@ -53,7 +53,8 @@ class TestPaginationConfig:
 
     def test_defaults_preserve_top_level_fallback_path(self) -> None:
         """
-        Nested fallback_path should not override explicit top-level value.
+        Test that nested ``fallback_path`` does not override explicit top-level
+        value.
         """
         cfg = PaginationConfig.from_defaults(
             {
@@ -71,7 +72,7 @@ class TestPaginationConfig:
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:
         """
-        Test that from_obj coerces numeric fields correctly.
+        Test that :meth:`from_obj` coerces numeric fields correctly.
 
         Parameters
         ----------
@@ -101,7 +102,7 @@ class TestPaginationConfig:
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:
         """
-        Test that from_obj ignores bad numeric values.
+        Test that :meth:`from_obj` ignores bad numeric values.
 
         Parameters
         ----------

@@ -144,7 +144,7 @@ class TestPaginator:
 
     def test_defaults_when_missing_keys(self) -> None:
         """
-        Confirm that default parameter names and limits are preserved.
+        Test that default parameter names and limits are preserved.
 
         Notes
         -----
@@ -233,7 +233,10 @@ class TestPaginator:
         assert paginator.page_size == expected_page_size
 
     def test_paginate_accepts_request_options(self) -> None:
-        """Paginator.paginate accepts RequestOptions overrides for params."""
+        """
+        Test that :meth:`Paginator.paginate` accepts :class:`RequestOptions`
+        overrides for params.
+        """
         seen: list[RequestOptions] = []
 
         def fetch(
@@ -374,7 +377,9 @@ class TestPaginatorInternalBranches:
     """Additional branch coverage for paginator internals."""
 
     def test_coalesce_records_fallback_missing_and_none_payload(self) -> None:
-        """Missing fallback keeps None and triggers default payload path."""
+        """
+        Test missing fallback keeps ``None`` and triggers default payload path.
+        """
         records = Paginator.coalesce_records(
             None,
             None,
@@ -383,7 +388,10 @@ class TestPaginatorInternalBranches:
         assert records == [{'value': None}]
 
     def test_coalesce_records_missing_fallback_and_dict_paths(self) -> None:
-        """coalesce_records covers missing/fallback/list/dict branches."""
+        """
+        Test that :meth:`coalesce_records` covers missing/fallback/list/dict
+        branches.
+        """
         missing = Paginator.coalesce_records({'a': 1}, 'missing.path')
         assert missing == [{'value': None}]
 
@@ -404,7 +412,9 @@ class TestPaginatorInternalBranches:
         assert dict_plain == [{'id': 4}]
 
     def test_cursor_iteration_stops_on_stop_limits_branch(self) -> None:
-        """Cursor iterator should break when stop limits are reached."""
+        """
+        Test that cursor iterator should break when stop limits are reached.
+        """
         payloads = [
             {
                 'records': [{'id': 1}],
@@ -430,7 +440,7 @@ class TestPaginatorInternalBranches:
         assert rows == [{'id': 1}]
 
     def test_fetch_page_raises_when_fetch_missing(self) -> None:
-        """_fetch_page should raise when callback is absent."""
+        """Test that :meth:`_fetch_page` raises when callback is absent."""
         paginator = Paginator(fetch=None)
         with pytest.raises(ValueError, match='fetch must be provided'):
             paginator._fetch_page(
@@ -439,7 +449,10 @@ class TestPaginatorInternalBranches:
             )
 
     def test_fetch_page_wraps_api_request_error(self) -> None:
-        """ApiRequestError should be wrapped as PaginationError."""
+        """
+        Test that :class:`ApiRequestError` is wrapped as
+        :class:`PaginationError`.
+        """
 
         def failing_fetch(
             _url: str,
@@ -457,7 +470,10 @@ class TestPaginatorInternalBranches:
             )
 
     def test_from_config_accepts_pagination_config_instance(self) -> None:
-        """from_config should handle PaginationConfig objects directly."""
+        """
+        Test that :meth:`from_config` handles :class:`PaginationConfig` objects
+        directly.
+        """
         cfg = PaginationConfig(
             type=PaginationType.PAGE,
             page_size=3,
@@ -470,33 +486,46 @@ class TestPaginatorInternalBranches:
         assert paginator.records_path == 'items'
 
     def test_limit_batch_exhausted_branch(self) -> None:
-        """When emitted reaches max_records, remaining<=0 should exhaust."""
+        """
+        Test that :meth:`_limit_batch` exhausts when emitted reaches
+        ``max_records``.
+        """
         paginator = Paginator(fetch=_dummy_fetch, max_records=2)
         trimmed, exhausted = paginator._limit_batch([{'id': 1}], emitted=2)
         assert trimmed == []
         assert exhausted is True
 
     def test_next_cursor_from_invalid_paths(self) -> None:
-        """next_cursor_from should return None for invalid traversal inputs."""
+        """
+        Test that :meth:`next_cursor_from` returns ``None`` for invalid
+        traversal inputs.
+        """
         assert Paginator.next_cursor_from([], 'meta.next') is None
         assert (
             Paginator.next_cursor_from({'meta': 'oops'}, 'meta.next') is None
         )
 
     def test_paginate_iter_exits_when_type_is_unrecognized(self) -> None:
-        """Unknown runtime type should fall through match and yield nothing."""
+        """
+        Test that an unknown runtime type falls through match and yields
+        nothing.
+        """
         paginator = Paginator(fetch=_dummy_fetch)
         paginator.type = cast(Any, 'unknown')
         assert not list(paginator.paginate_iter('https://example.test/items'))
 
     def test_paginate_iter_raises_when_fetch_missing(self) -> None:
-        """paginate_iter should reject missing fetch callback."""
+        """
+        Test that :meth:`paginate_iter` raises when fetch callback is missing.
+        """
         paginator = Paginator(fetch=None)
         with pytest.raises(ValueError, match='fetch must be provided'):
             list(paginator.paginate_iter('https://example.test/items'))
 
     def test_post_init_normalizes_invalid_values(self) -> None:
-        """Direct construction should normalize type/start/page_size/params."""
+        """
+        Test that direct construction normalizes type/start/page_size/params.
+        """
         paginator = Paginator(
             type=cast(Any, 'invalid'),
             start_page=-5,
@@ -518,7 +547,10 @@ class TestPaginatorInternalBranches:
     def test_post_init_normalizes_zero_start_page_and_keeps_limit_param(
         self,
     ) -> None:
-        """Page start_page=0 normalizes to 1; non-empty limit_param is kept."""
+        """
+        Test that page ``start_page=0`` normalizes to 1 and non-empty
+        ``limit_param`` is kept.
+        """
         paginator = Paginator(
             type=PaginationType.PAGE,
             start_page=0,
@@ -529,7 +561,9 @@ class TestPaginatorInternalBranches:
         assert paginator.limit_param == 'lim'
 
     def test_resolve_start_page_invalid_and_negative_offset(self) -> None:
-        """Start-page resolver handles invalid and negative overrides."""
+        """
+        Test start-page resolver handles invalid and negative overrides.
+        """
         page = Paginator(fetch=_dummy_fetch, type=PaginationType.PAGE)
         out_page = page._resolve_start_page(
             RequestOptions(params={page.page_param: 'bad'}),
@@ -543,6 +577,8 @@ class TestPaginatorInternalBranches:
         assert out_offset == offset.START_PAGES[offset.type]
 
     def test_stop_limits_max_records_branch(self) -> None:
-        """_stop_limits should return true when record cap is reached."""
+        """
+        Test :meth:`_stop_limits` returns true when record cap is reached.
+        """
         paginator = Paginator(fetch=_dummy_fetch, max_records=2)
         assert paginator._stop_limits(pages=1, recs=2) is True

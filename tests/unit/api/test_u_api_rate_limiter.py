@@ -142,7 +142,9 @@ class TestResolveSleepSeconds:
         )
 
     def test_sleep_seconds_precedence(self) -> None:
-        """Sleep seconds take precedence over max_per_sec when both set."""
+        """
+        Test sleep seconds takes precedence over max_per_sec when both set.
+        """
         assert RateLimiter.resolve_sleep_seconds(
             rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
             overrides=None,
@@ -225,7 +227,7 @@ class TestRateLimiterBasics:
     def test_post_init_prefers_positive_rate_when_sleep_not_positive(
         self,
     ) -> None:
-        """Positive max_per_sec should derive sleep when sleep_seconds <= 0."""
+        """Test positive max_per_sec derives sleep when sleep_seconds <= 0."""
         limiter = RateLimiter(sleep_seconds=0.0, max_per_sec=4.0)
         assert limiter.max_per_sec == pytest.approx(4.0)
         assert limiter.sleep_seconds == pytest.approx(0.25)
@@ -291,7 +293,7 @@ class TestRateLimiterFromConfig:
         expected_sleep: float,
     ) -> None:
         """
-        Test that f``from_config`` prefers ``sleep_seconds`` over
+        Test that :meth:`from_config` prefers ``sleep_seconds`` over
         ``max_per_sec`` and normalizes invalid values to 0.0.
 
         Parameters

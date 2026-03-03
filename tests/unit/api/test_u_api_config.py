@@ -684,17 +684,24 @@ class TestConfigInternalBranches:
     """Targeted branch tests for internal config helpers."""
 
     def test_api_profile_config_from_obj_requires_mapping(self) -> None:
-        """ApiProfileConfig.from_obj should fail for non-mapping inputs."""
+        """
+        Test that :meth:`ApiProfileConfig.from_obj` fails for non-mapping
+        inputs.
+        """
         with pytest.raises(TypeError, match='must be a mapping'):
             ApiProfileConfig.from_obj(cast(Any, 1))
 
     def test_api_config_from_obj_requires_mapping(self) -> None:
-        """ApiConfig.from_obj should fail on non-mapping values."""
+        """
+        Test that :meth:`ApiConfig.from_obj` fails on non-mapping values.
+        """
         with pytest.raises(TypeError, match='must be a mapping'):
             ApiConfig.from_obj(cast(Any, 1))
 
     def test_effective_defaults_requires_string_base_url(self) -> None:
-        """Fallback base URL must be a string when profiles are absent."""
+        """
+        Test that fallback base URL is a string when profiles are absent.
+        """
         with pytest.raises(TypeError, match='base_url'):
             config_module._effective_service_defaults(
                 profiles={},
@@ -703,7 +710,10 @@ class TestConfigInternalBranches:
             )
 
     def test_endpoint_config_from_obj_rejects_invalid_shape(self) -> None:
-        """EndpointConfig.from_obj accepts only string or mapping inputs."""
+        """
+        Test that :meth:`EndpointConfig.from_obj` accepts only string or
+        mapping inputs.
+        """
         with pytest.raises(TypeError, match='expected str or mapping'):
             EndpointConfig.from_obj(cast(Any, [1, 2, 3]))
 
@@ -712,7 +722,7 @@ class TestConfigInternalBranches:
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
-        """Rate-limit defaults should come from selected profile."""
+        """Test that rate-limit defaults come from selected profile."""
         cfg = api_config_factory(
             {
                 'profiles': {
@@ -731,7 +741,9 @@ class TestConfigInternalBranches:
         assert rate_limit.sleep_seconds == 0.25
 
     def test_normalize_method_branches(self) -> None:
-        """Method normalizer handles enum, blank, and invalid values."""
+        """
+        Test that method normalizer handles enum, blank, and invalid values.
+        """
         assert config_module._normalize_method(HttpMethod.GET) == 'GET'
         assert config_module._normalize_method('   ') is None
         with pytest.raises(ValueError, match='Unsupported HTTP method'):
@@ -741,7 +753,10 @@ class TestConfigInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Skip profile entries that are not mappings."""
+        """
+        Test that :meth:`_parse_profiles` skips profile entries that are not
+        mappings.
+        """
         raw = {
             'good': {'base_url': base_url},
             'bad': ['not', 'mapping'],

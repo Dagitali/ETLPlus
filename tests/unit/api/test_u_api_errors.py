@@ -18,7 +18,7 @@ class TestApiErrors:
     """Unit tests for API error payload helpers."""
 
     def test_api_request_error_as_dict_includes_cause_repr(self) -> None:
-        """Structured payload should include serialized cause context."""
+        """Test that structured payload includes serialized cause context."""
         err = ApiRequestError(
             url='https://example.test/u',
             status=500,
@@ -36,7 +36,10 @@ class TestApiErrors:
         assert 'ValueError' in str(payload['cause'])
 
     def test_pagination_error_as_dict_adds_page(self) -> None:
-        """PaginationError should extend base payload with page metadata."""
+        """
+        Test that :class:`PaginationError` extends base payload with page
+        metadata.
+        """
         err = PaginationError(
             url='https://example.test/u',
             status=429,

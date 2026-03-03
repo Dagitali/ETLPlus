@@ -118,7 +118,7 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Invalid adapter builds should be skipped by session builder."""
+        """Test invalid adapter builds are skipped by session builder."""
         real_builder = transport_module.build_http_adapter
         calls: list[str] = []
 
@@ -227,7 +227,7 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Retry mappings fall back to ``total`` when builder fails."""
+        """Test retry mappings fall back to ``total`` when builder fails."""
 
         def _boom(_cfg: dict[str, object]) -> int:
             raise ValueError('bad retry config')

@@ -161,7 +161,7 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Non-mapping token payloads should raise ValueError."""
+        """Test that non-mapping token payloads raise :class:`ValueError`."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
             text='[]',
@@ -174,7 +174,7 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Invalid expires_in values should coerce to default TTL."""
+        """Test invalid expires_in values should coerce to default TTL."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
             text='{"access_token":"abc","expires_in":"bad"}',
@@ -272,7 +272,9 @@ class TestEndpointCredentialsBearer:
             type[Exception],
         ],
     ) -> None:
-        """Token request exceptions should propagate with branch coverage."""
+        """
+        Test that token request exceptions propagate with branch coverage.
+        """
         exc, expected = auth_request_exception_case
 
         class _Client:
@@ -286,7 +288,7 @@ class TestEndpointCredentialsBearer:
             auth._request_token()
 
     def test_truncate_empty_text_returns_empty_string(self) -> None:
-        """Empty/None input should truncate to an empty string."""
+        """Test that empty/``None`` input truncates to an empty string."""
         assert _truncate('') == ''
         assert _truncate(None) == ''
 
@@ -294,6 +296,6 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Whitespace-only scope should not be included in token payload."""
+        """Test that whitespace-only scope is not included in token payload."""
         auth = bearer_factory(scope='   ')
         assert auth._token_payload() == {'grant_type': 'client_credentials'}

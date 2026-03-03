@@ -37,7 +37,7 @@ class TestRateLimitConfig:
     """
 
     def test_config_honors_overrides(self) -> None:
-        """Overrides replace base config values."""
+        """Test overrides replace base config values."""
         config = RateLimitConfig.from_inputs(
             rate_limit={'max_per_sec': 2},
             overrides={'sleep_seconds': 0.1},
@@ -46,7 +46,7 @@ class TestRateLimitConfig:
         assert config.max_per_sec == pytest.approx(10.0)
 
     def test_config_prefers_sleep_seconds(self) -> None:
-        """Sleep seconds take precedence over max_per_sec."""
+        """Test sleep seconds take precedence over max_per_sec."""
         config = RateLimitConfig.from_inputs(
             rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
         )
@@ -73,17 +73,19 @@ class TestRateLimitConfig:
         assert a != c
 
     def test_from_defaults_returns_none_when_no_supported_keys(self) -> None:
-        """from_defaults should return None when keys are absent."""
+        """Test :meth:`from_defaults` returns None when keys are absent."""
         assert RateLimitConfig.from_defaults({'other': 1}) is None
 
     def test_from_inputs_handles_empty_config_instance(self) -> None:
-        """Empty RateLimitConfig inputs should normalize to disabled config."""
+        """Test :meth:`from_inputs` handles empty RateLimitConfig inputs."""
         cfg = RateLimitConfig.from_inputs(rate_limit=RateLimitConfig())
         assert cfg.sleep_seconds is None
         assert cfg.max_per_sec is None
 
     def test_from_inputs_non_mapping_rate_limit_is_ignored(self) -> None:
-        """Unsupported rate_limit input types should be ignored."""
+        """
+        Test :meth:`from_inputs` ignores unsupported rate_limit input types.
+        """
         cfg = RateLimitConfig.from_inputs(rate_limit=cast(Any, 'bad'))
         assert cfg.sleep_seconds is None
         assert cfg.max_per_sec is None
@@ -110,12 +112,13 @@ class TestRateLimitConfig:
         expect: tuple,
     ) -> None:
         """
-        Test that RateLimitConfig correctly coerces types from input objects.
+        Test that :class:`RateLimitConfig` correctly coerces types from input
+        objects.
 
         Parameters
         ----------
         rate_limit_from_obj_factory : Callable[[dict], RateLimitConfig]
-            Factory for creating RateLimitConfig from dicts.
+            Factory for creating :class:`RateLimitConfig` from dicts.
         obj : dict
             Input dictionary for rate limit configuration.
         expect : tuple
@@ -129,12 +132,14 @@ class TestRateLimitConfig:
         rate_limit_from_obj_factory: Callable[[object], object],
     ) -> None:
         """
-        Test that from_obj returns None for non-mapping iterable inputs.
+        Test that :meth:`from_obj` returns ``None`` for non-mapping iterable
+        inputs.
 
         Parameters
         ----------
         rate_limit_from_obj_factory : Callable[[object], object]
-            Factory for creating RateLimitConfig from mapping or iterable.
+            Factory for creating :class:`RateLimitConfig` from mapping or
+            iterable.
         """
 
         class Weird(Iterable):
@@ -149,7 +154,10 @@ class TestRateLimitConfig:
         assert res is None
 
     def test_from_obj_returns_same_instance(self) -> None:
-        """from_obj should return existing RateLimitConfig instances as-is."""
+        """
+        Test that :meth:`from_obj` returns existing :class:`RateLimitConfig`
+        instances as-is.
+        """
         obj = RateLimitConfig(sleep_seconds=0.5)
         assert RateLimitConfig.from_obj(obj) is obj
 
@@ -158,12 +166,13 @@ class TestRateLimitConfig:
         rate_limit_from_obj_factory: Callable[[dict[str, str]], object],
     ) -> None:
         """
-        Test that input mapping is not mutated by from_obj (defensive copy).
+        Test that input mapping is not mutated by :meth:`from_obj` (defensive
+        copy).
 
         Parameters
         ----------
         rate_limit_from_obj_factory : Callable[[dict[str, str]], object]
-            Factory for creating RateLimitConfig from dict.
+            Factory for creating :class:`RateLimitConfig` from dict.
         """
         obj = {'sleep_seconds': '1', 'max_per_sec': '3'}
         _ = rate_limit_from_obj_factory(obj)
@@ -175,7 +184,7 @@ class TestRateLimitConfig:
         rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         """
-        Test that repr output includes field names and values.
+        Test that ``repr`` output includes field names and values.
 
         Parameters
         ----------
@@ -193,12 +202,12 @@ class TestRateLimitConfig:
         rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         """
-        Test that RateLimitConfig dataclass is unhashable.
+        Test that :class:`RateLimitConfig` dataclass is unhashable.
 
         Parameters
         ----------
         rate_limit_config_factory : Callable[..., RateLimitConfig]
-            Factory for creating RateLimitConfig instances.
+            Factory for creating :class:`RateLimitConfig` instances.
         """
         rl = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         # dataclass(slots=True) without frozen=True should be unhashable.
@@ -210,12 +219,12 @@ class TestRateLimitConfig:
         rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
         """
-        Test that validate_bounds only returns known warning messages.
+        Test that :meth:`validate_bounds` only returns known warning messages.
 
         Parameters
         ----------
         rate_limit_config_factory : Callable[..., RateLimitConfig]
-            Factory for creating RateLimitConfig instances.
+            Factory for creating :class:`RateLimitConfig` instances.
         """
         rl = rate_limit_config_factory(sleep_seconds=-5, max_per_sec=-1)
         allowed = {
@@ -249,14 +258,15 @@ class TestRateLimitConfig:
         expected_warnings: list[str],
     ) -> None:
         """
-        Test that validate_bounds returns expected warnings for given params.
+        Test that :meth:`validate_bounds` returns expected warnings for given
+        parameters.
 
         Parameters
         ----------
         rate_limit_config_factory : Callable[..., RateLimitConfig]
-            Factory for creating RateLimitConfig instances.
+            Factory for creating :class:`RateLimitConfig` instances.
         kwargs : dict[str, float]
-            Keyword arguments for RateLimitConfig.
+            Keyword arguments for :class:`RateLimitConfig`.
         expected_warnings : list[str]
             Expected warning messages.
         """

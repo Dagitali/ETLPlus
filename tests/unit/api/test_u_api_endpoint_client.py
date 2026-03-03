@@ -415,7 +415,10 @@ class TestRequestOptionIntegration:
         monkeypatch: pytest.MonkeyPatch,
         client_factory: Callable[..., EndpointClient],
     ) -> None:
-        """Non-paginated calls honor explicitly supplied RequestOptions."""
+        """
+        Test non-paginated calls honor explicitly supplied
+        :class:`RequestOptions`.
+        """
 
         client = client_factory(endpoints={})
 
@@ -454,7 +457,9 @@ class TestRequestOptionIntegration:
         monkeypatch: pytest.MonkeyPatch,
         client_factory: Callable[..., EndpointClient],
     ) -> None:
-        """Paginated iterations override RequestOptions params per call."""
+        """
+        Test that paginated iterations override RequestOptions params per call.
+        """
 
         client = client_factory(base_url=EXAMPLE_BASE_URL, endpoints={})
         observed: list[RequestOptions] = []
@@ -1548,7 +1553,10 @@ class TestEndpointClientInternalBranches:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """apply_sleep should call either time.sleep or provided sleeper."""
+        """
+        Test :meth:`apply_sleep` calls either :func:`time.sleep` or provided
+        sleeper.
+        """
         recorded: list[float] = []
         monkeypatch.setattr(ec_module.time, 'sleep', recorded.append)
 
@@ -1566,7 +1574,10 @@ class TestEndpointClientInternalBranches:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Object pagination configs should use their .type attribute."""
+        """
+        Test that object pagination configs should use their ``.type``
+        attribute.
+        """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'items': '/items'},
@@ -1609,7 +1620,10 @@ class TestEndpointClientInternalBranches:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Thin wrappers should delegate to the embedded request manager."""
+        """
+        Test that thin wrappers should delegate to the embedded request
+        manager.
+        """
         client = EndpointClient(base_url=EXAMPLE_BASE_URL, endpoints={})
         seen: dict[str, Any] = {}
 
@@ -1645,7 +1659,9 @@ class TestEndpointClientInternalBranches:
         self,
         mock_session: MockSession,
     ) -> None:
-        """Explicit session disables factory; adapters are tuple-normalized."""
+        """
+        Test explicit session disables factory; adapters are tuple-normalized.
+        """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'list': '/items'},
@@ -1658,7 +1674,7 @@ class TestEndpointClientInternalBranches:
         assert isinstance(client.session_adapters, tuple)
 
     def test_post_init_requires_absolute_base_url(self) -> None:
-        """Relative base_url values should be rejected."""
+        """Test relative base_url values should be rejected."""
         with pytest.raises(ValueError, match='base_url must be absolute'):
             EndpointClient(base_url='/relative', endpoints={})
 
@@ -1673,7 +1689,9 @@ class TestEndpointClientInternalBranches:
         self,
         endpoints: dict[Any, Any],
     ) -> None:
-        """Endpoint mapping must be string keys and non-empty string values."""
+        """
+        Test endpoint mapping must be string keys and non-empty string values.
+        """
         with pytest.raises(ValueError, match='endpoints must map str'):
             EndpointClient(
                 base_url=EXAMPLE_BASE_URL,
@@ -1681,7 +1699,7 @@ class TestEndpointClientInternalBranches:
             )
 
     def test_url_raises_for_unknown_endpoint(self) -> None:
-        """Unknown endpoint keys should raise KeyError."""
+        """Test unknown endpoint keys should raise KeyError."""
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'known': '/k'},
@@ -1690,7 +1708,9 @@ class TestEndpointClientInternalBranches:
             client.url('missing')
 
     def test_url_raises_for_missing_path_placeholder(self) -> None:
-        """Missing path placeholders should raise KeyError with context."""
+        """
+        Test missing path placeholders should raise KeyError with context.
+        """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'item': '/items/{id}'},
@@ -1699,7 +1719,7 @@ class TestEndpointClientInternalBranches:
             client.url('item', path_parameters={})
 
     def test_url_raises_for_invalid_path_template(self) -> None:
-        """Malformed path format strings should raise ValueError."""
+        """Test malformed path format strings should raise ValueError."""
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'bad': '/items/{id'},

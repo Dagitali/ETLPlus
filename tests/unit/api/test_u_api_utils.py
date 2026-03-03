@@ -397,7 +397,10 @@ class TestUtilsInternalBranches:
     """Branch-focused tests for internal API utility helpers."""
 
     def test_build_endpoint_client_helper(self) -> None:
-        """build_endpoint_client wires env options into EndpointClient."""
+        """
+        Test :func:`build_endpoint_client` wires env options into
+        :class:`EndpointClient`.
+        """
         client = utils.build_endpoint_client(
             base_url='https://example.test',
             base_path='/v1',
@@ -412,7 +415,10 @@ class TestUtilsInternalBranches:
     def test_build_pagination_cfg_page_cursor_and_unknown_variants(
         self,
     ) -> None:
-        """build_pagination_cfg covers page/cursor/unknown type branches."""
+        """
+        Test :func:`build_pagination_cfg` covers page/cursor/unknown type
+        branches.
+        """
         raw_page_cfg = utils.build_pagination_cfg(None, {'type': 'page'})
         assert raw_page_cfg is not None
         page_cfg = cast(PagePaginationConfigDict, raw_page_cfg)
@@ -447,7 +453,7 @@ class TestUtilsInternalBranches:
     def test_build_session_catches_params_and_cookie_update_exceptions(
         self,
     ) -> None:
-        """Param/cookie update exceptions should be swallowed."""
+        """Test param/cookie update exceptions are swallowed."""
 
         class _BrokenMapping(Mapping[str, Any]):
             def __getitem__(self, key: str) -> Any:
@@ -484,7 +490,7 @@ class TestUtilsInternalBranches:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Session builder should tolerate assignment/update failures."""
+        """Test session builder tolerates assignment/update failures."""
 
         class _BadMap(dict[str, Any]):
             def __iter__(self):  # type: ignore[override]
@@ -527,7 +533,10 @@ class TestUtilsInternalBranches:
         assert isinstance(default_session, _TinySession)
 
     def test_compose_api_request_env_without_api_reference(self) -> None:
-        """compose_api_request_env should work without api/endpoint linkage."""
+        """
+        Test :func:`compose_api_request_env` works without API/endpoint
+        linkage.
+        """
         cfg = SimpleNamespace(apis={})
         source = SimpleNamespace(
             url='https://example.test/items',
@@ -561,7 +570,7 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Absent retry override keys should preserve source retry settings."""
+        """Test absent retry override keys preserves source retry settings."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         source = SimpleNamespace(
             api='core',
@@ -582,7 +591,7 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Explicit target URL should bypass API endpoint inheritance."""
+        """Test explicit target URL bypasses API endpoint inheritance."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         target = SimpleNamespace(
             api='core',
@@ -601,7 +610,7 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Internal helper branches should gracefully handle invalid inputs."""
+        """Test internal helper branches gracefully handles invalid inputs."""
         assert utils._build_session_optional(cast(Any, 'bad')) is None
         assert utils._coalesce(None, None) is None
 
@@ -628,7 +637,9 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Session merge returns None when all three values are invalid."""
+        """
+        Test session merge returns ``None`` when all three values are invalid.
+        """
         api_cfg = _ApiCfg(base_url)
         api_cfg.session = cast(Any, 'bad')
         ep = _Endpoint()
@@ -641,7 +652,7 @@ class TestUtilsInternalBranches:
         assert merged is None
 
     def test_compute_rl_sleep_seconds_variants(self) -> None:
-        """Rate-limit sleep helper should filter overrides correctly."""
+        """Test rate-limit sleep helper filters overrides correctly."""
         rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
         assert (
             utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
@@ -653,7 +664,7 @@ class TestUtilsInternalBranches:
         )
 
     def test_resolve_request_raises_when_method_missing(self) -> None:
-        """resolve_request should fail when session lacks method callable."""
+        """Test resolve_request fails when session lacks method callable."""
         with pytest.raises(TypeError, match='must supply a callable'):
             utils.resolve_request(
                 'get',
@@ -662,7 +673,7 @@ class TestUtilsInternalBranches:
             )
 
     def test_resolve_request_success_path(self) -> None:
-        """resolve_request should return callable, timeout, and method enum."""
+        """Test resolve_request returns callable, timeout, and method enum."""
 
         class _Session:
             @staticmethod
