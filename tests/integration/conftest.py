@@ -33,6 +33,10 @@ from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 
@@ -91,6 +95,7 @@ def capture_load_to_api_fixture(
         data: Any,
         env: dict[str, Any],
     ) -> dict[str, Any]:
+        """Capture API load details from the runner."""
         seen['url'] = env.get('url')
         seen['method'] = env.get('method')
         seen['headers'] = env.get('headers')
@@ -134,9 +139,11 @@ def fake_endpoint_client_fixture() -> tuple[
         Fake :class:`EndpointClient` capturing :meth:`paginate` arguments.
         """
 
-        # pylint: disable=unused-argument
+        # -- Class Attributes -- #
 
         seen: dict[str, Any]
+
+        # -- Instance Methods -- #
 
         def __init__(
             self,
@@ -186,6 +193,7 @@ def file_to_api_pipeline_factory_fixture(
         job_name: str = 'send',
         target_name: str = 'ingest_out',
     ) -> Config:
+        """Build a :class:`Config` for a file-to-API pipeline."""
         source_path = tmp_path / f'{job_name}_input.json'
         effective_payload = payload if payload is not None else {'ok': True}
         text = (
@@ -344,7 +352,7 @@ def run_patched_fixture(
         *,
         sleep_seconds: float | None = None,
     ) -> dict[str, Any]:
-        # pylint: disable=unused-argument
+        """Run the pipeline with patched dependencies."""
 
         # Patch config loader and EndpointClient.
         monkeypatch.setattr(
