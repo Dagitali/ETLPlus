@@ -21,6 +21,10 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.unit.meta.pytest_meta_support import REPO_ROOT
 from tests.unit.meta.pytest_meta_support import sorted_glob
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -56,9 +60,11 @@ def _class_assigned_names(class_node: ast.ClassDef) -> set[str]:
             for target in node.targets:
                 if isinstance(target, ast.Name):
                     assigned.add(target.id)
-        elif isinstance(node, ast.AnnAssign):
-            if isinstance(node.target, ast.Name):
-                assigned.add(node.target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(
+            node.target,
+            ast.Name,
+        ):
+            assigned.add(node.target.id)
     return assigned
 
 
