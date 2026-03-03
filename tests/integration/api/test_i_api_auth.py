@@ -16,10 +16,14 @@ from etlplus.api import EndpointClient
 from etlplus.api.auth import EndpointCredentialsBearer
 from etlplus.api.errors import ApiAuthError
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
-# pylint: disable=protected-access,unused-argument
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 
 def _json_response(

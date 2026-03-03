@@ -18,6 +18,10 @@ from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
