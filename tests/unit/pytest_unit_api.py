@@ -22,6 +22,10 @@ from etlplus.api import PagePaginationConfigDict
 
 from .api.test_u_api_mocks import MockSession
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TYPED DICTS ====================================================== #
 
 
@@ -181,8 +185,6 @@ def request_once_stub(
             urls: list[str]
             kwargs: list[dict[str, Any]]
     """
-    # pylint: disable=unused-argument
-
     # Locally import to avoid cycles.
     import etlplus.api.request_manager as rm_module
 
@@ -234,14 +236,11 @@ def extract_stub_factory() -> Callable[..., Any]:
     ...     client.paginate(...)
     ...     assert calls['urls'] == [...]
     """
-    # pylint: disable=unused-argument
 
     def _make(
         *,
         return_value: Any | None = None,
     ) -> Any:
-        # pylint: disable=protected-access
-
         import contextlib
 
         import etlplus.api.request_manager as rm_module
@@ -359,8 +358,6 @@ def token_sequence(
     dict[str, int]
         Mapping with key ``'n'`` incremented for each token call.
     """
-    # pylint: disable=unused-argument
-
     calls = {'n': 0}
 
     def fake_post(
