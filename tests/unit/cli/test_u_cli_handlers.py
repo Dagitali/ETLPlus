@@ -338,7 +338,8 @@ class TestExtractHandler:
         capture_io: CaptureIo,
     ) -> None:
         """
-        ``target`` should take precedence over ``output`` when both are set.
+        Test that ``target`` takes precedence over ``output`` when both are
+        set.
         """
         monkeypatch.setattr(
             handlers,
@@ -862,7 +863,9 @@ class TestTransformHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Non-mapping operations payloads should raise :class:`ValueError`."""
+        """
+        Test that non-mapping operations payloads raise :class:`ValueError`.
+        """
 
         def _resolve_cli_payload(
             source: object,
@@ -1016,7 +1019,9 @@ class TestValidateHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Non-mapping rules payloads should raise :class:`ValueError`."""
+        """
+        Test that non-mapping rules payloads raise :class:`ValueError`.
+        """
 
         def _resolve_cli_payload(
             source: object,
@@ -1046,7 +1051,7 @@ class TestValidateHandler:
         capture_io: CaptureIo,
     ) -> None:
         """
-        ``target='-'`` should emit full validation output to STDOUT.
+        Test that ``target='-'`` emits full validation output to STDOUT.
         """
         monkeypatch.setattr(
             handlers.cli_io,

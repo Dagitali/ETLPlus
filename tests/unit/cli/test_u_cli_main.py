@@ -62,7 +62,9 @@ class TestMain:
         assert captured['standalone_mode'] is False
 
     def test_emit_context_help_none_returns_false(self) -> None:
-        """Helper should return ``False`` when no context is provided."""
+        """
+        Test that the helper returns ``False`` when no context is provided.
+        """
         assert main_module._emit_context_help(None) is False
 
     def test_handles_os_error(
@@ -111,7 +113,8 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Illegal options without context should fall back to root help."""
+        """Test that illegal options without context fall back to root help.
+        """
 
         class _StubCommand:
             """Stub command that raises a usage error for any option."""
@@ -193,7 +196,9 @@ class TestMain:
         self,
         stub_command: StubCommand,
     ) -> None:
-        """Direct :class:`typer.Exit` from command.main should be mapped."""
+        """
+        Test that direct :class:`typer.Exit` from command.main are mapped.
+        """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise typer.Exit(9)
@@ -273,7 +278,7 @@ class TestMain:
         self,
         stub_command: StubCommand,
     ) -> None:
-        """Unhandled :class:`UsageError` cases should be re-raised."""
+        """Test unhandled :class:`UsageError` cases should be re-raised."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise click.exceptions.UsageError('boom')

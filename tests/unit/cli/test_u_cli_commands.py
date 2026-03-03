@@ -32,7 +32,7 @@ class TestCommandsInternalHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Invalid JSON payloads should raise :class:`typer.BadParameter`."""
+        """Test invalid JSON payloads raise :class:`typer.BadParameter`."""
 
         def _parse_json_payload(_value: str) -> Any:
             raise ValueError('bad json')
@@ -55,7 +55,7 @@ class TestCheckCommand:
         typer_ctx_factory: TyperContextFactory,
         stub_handler: StubHandler,
     ) -> None:
-        """Valid inputs should dispatch to ``check_handler``."""
+        """Test valid inputs dispatch to ``check_handler``."""
         monkeypatch.setattr(
             commands_mod,
             'ensure_state',
@@ -131,8 +131,8 @@ class TestCommandsMissingInputs:
         expected_message: str,
     ) -> None:
         """
-        Commands should emit friendly usage errors when required inputs
-        are missing.
+        Test commands emit friendly usage errors when required inputs are
+        missing.
         """
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
@@ -173,9 +173,7 @@ class TestCommandsMissingInputs:
         argument_value: str,
         expected_message: str,
     ) -> None:
-        """
-        Positional arguments should reject option-like values.
-        """
+        """Test positional arguments reject option-like values."""
         kwargs = {argument_name: argument_value}
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
@@ -194,7 +192,7 @@ class TestTransformCommand:
         stub_handler: StubHandler,
     ) -> None:
         """
-        When source type is ``None``, source validation should be skipped.
+        Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
             commands_mod,

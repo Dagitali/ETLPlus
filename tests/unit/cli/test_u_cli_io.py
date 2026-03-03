@@ -55,7 +55,7 @@ class TestEmitOrWrite:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """When writes are skipped, payload should emit to STDOUT."""
+        """Test that, when writes are skipped, payload emits to STDOUT."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
             _io,
@@ -81,7 +81,7 @@ class TestEmitOrWrite:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Successful writes should skip STDOUT emission."""
+        """Test that successful writes skip STDOUT emission."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
             _io,
@@ -120,7 +120,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """Explicit mode without hint should not infer from suffix."""
+        """Test that explicit mode without hint does not infer from suffix."""
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"ok": true}', encoding='utf-8')
 
@@ -238,7 +238,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """Invalid explicit hints should not force parsing."""
+        """Test that invalid explicit hints do not force parsing."""
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"ok": true}', encoding='utf-8')
 
@@ -267,7 +267,7 @@ class TestMaterializeFilePayload:
 
     def test_missing_path_with_inline_json_is_parsed(self) -> None:
         """
-        Inline JSON should parse even when treated as a missing file path.
+        Test inline JSON should parse even when treated as a missing file path.
         """
         payload = _io.materialize_file_payload(
             '{"inline": true}',
@@ -280,7 +280,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """PathLike sources should still raise when files are missing."""
+        """Test path-like sources should still raise when files are missing."""
         missing = tmp_path / 'missing.json'
         with pytest.raises(FileNotFoundError, match='File not found'):
             _io.materialize_file_payload(
@@ -293,7 +293,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """Sources without suffix should not infer a file format."""
+        """Test that sources without suffix do not infer a file format."""
         file_path = tmp_path / 'payload'
         file_path.write_text('opaque', encoding='utf-8')
 
@@ -305,7 +305,7 @@ class TestMaterializeFilePayload:
         assert payload == str(file_path)
 
     def test_non_path_payload_returns_unchanged(self) -> None:
-        """Non-pathlike payloads should bypass file materialization."""
+        """Test non-pathlike payloads should bypass file materialization."""
         payload: object = 123
         assert (
             _io.materialize_file_payload(
@@ -345,7 +345,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """Unknown file extensions should keep raw source value."""
+        """Test that unknown file extensions keep raw source value."""
         file_path = tmp_path / 'payload.unknown'
         file_path.write_text('opaque', encoding='utf-8')
 
@@ -406,7 +406,7 @@ class TestParseTextPayload:
         ]
 
     def test_parse_json_payload_reports_decode_errors(self) -> None:
-        """Invalid JSON should raise a normalized :class:`ValueError`."""
+        """Test that invalid JSON raises a normalized :class:`ValueError`."""
         with pytest.raises(ValueError, match='Invalid JSON payload'):
             _io.parse_json_payload('{broken')
 
@@ -454,7 +454,9 @@ class TestResolveCliPayload:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Default behavior should delegate to ``materialize_file_payload``."""
+        """
+        Test that default behavior delegates to ``materialize_file_payload``.
+        """
         captured: list[tuple[object, str | None, bool]] = []
 
         def _materialize(

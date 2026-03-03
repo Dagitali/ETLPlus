@@ -290,7 +290,8 @@ class TestInferResourceType:
 
     def test_invalid_raises(self) -> None:
         """
-        Unknown resources raise ``ValueError`` to surface helpful guidance.
+        Test that unknown resources raise ``ValueError`` to surface helpful
+        guidance.
         """
         with pytest.raises(ValueError, match='Could not infer resource type'):
             cli_state_module.infer_resource_type('unknown-resource')
@@ -320,7 +321,8 @@ class TestCliStateHelpers:
 
     def test_ensure_state_initializes_missing_context_state(self) -> None:
         """
-        Non-state ``ctx.obj`` values should be replaced with ``CliState``.
+        Test that non-state ``ctx.obj`` values are replaced with
+        :class:`CliState`.
         """
         command = typer.main.get_command(commands.app)
         ctx = typer.Context(command)
@@ -332,14 +334,14 @@ class TestCliStateHelpers:
         assert ctx.obj is state
 
     def test_infer_resource_type_soft_none_returns_none(self) -> None:
-        """Soft inference should return ``None`` for missing values."""
+        """Test that soft inference returns ``None`` for missing values."""
         assert cli_state_module.infer_resource_type_soft(None) is None
 
     def test_infer_resource_type_soft_swallows_inference_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Soft inference should return ``None`` for invalid resources."""
+        """Test that soft inference returns ``None`` for invalid resources."""
         monkeypatch.setattr(
             cli_state_module,
             'infer_resource_type',
@@ -351,7 +353,7 @@ class TestCliStateHelpers:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Verbose mode should emit inferred-resource diagnostics."""
+        """Test that verbose mode emits inferred-resource diagnostics."""
         cli_state_module.log_inferred_resource(
             cli_state_module.CliState(pretty=True, quiet=False, verbose=True),
             role='source',
@@ -361,7 +363,7 @@ class TestCliStateHelpers:
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
     def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
-        """Conflicting explicit/override values should raise errors."""
+        """Test that conflicting explicit/override values raise errors."""
         with pytest.raises(typer.BadParameter, match='conflict'):
             cli_state_module.resolve_resource_type(
                 explicit_type='api',
@@ -374,7 +376,9 @@ class TestCliStateHelpers:
     def test_resolve_resource_type_legacy_file_raises_bad_parameter(
         self,
     ) -> None:
-        """Legacy file-specific explicit type should raise when disallowed."""
+        """
+        Test that legacy file-specific explicit type raises when disallowed.
+        """
         with pytest.raises(typer.BadParameter, match='legacy'):
             cli_state_module.resolve_resource_type(
                 explicit_type='file',
@@ -387,7 +391,7 @@ class TestCliStateHelpers:
     def test_resolve_resource_type_accepts_explicit_non_file_value(
         self,
     ) -> None:
-        """Explicit non-file values should pass through validation."""
+        """Test explicit non-file values should pass through validation."""
         resolved = cli_state_module.resolve_resource_type(
             explicit_type='api',
             override_type=None,
