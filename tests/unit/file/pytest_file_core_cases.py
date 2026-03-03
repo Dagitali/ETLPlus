@@ -11,6 +11,10 @@ from copy import deepcopy
 from etlplus.file import FileFormat
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TYPES ============================================================ #
 
 

@@ -12,6 +12,10 @@ from .pytest_file_roundtrip_spec import RoundtripShape
 from .pytest_file_roundtrip_spec import RoundtripSpec
 from .pytest_file_roundtrip_spec import RoundtripValueKind
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: CONSTANTS ===================================================== #
 
 

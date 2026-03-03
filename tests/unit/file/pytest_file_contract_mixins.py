@@ -37,6 +37,10 @@ from .pytest_file_support import SpreadsheetSheetFrameStub
 from .pytest_file_support import SpreadsheetSheetPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -93,9 +97,10 @@ class PathMixin:
             getattr(handler, 'engine_name', None),
         )
         for engine in engines:
-            if isinstance(engine, str):
-                if spec := resolve_spreadsheet_dependency_spec(engine):
-                    return spec
+            if isinstance(engine, str) and (
+                spec := resolve_spreadsheet_dependency_spec(engine)
+            ):
+                return spec
         raise AssertionError(
             'No spreadsheet dependency mapping found for '
             f'{self.module.__name__}',
@@ -110,9 +115,11 @@ class RoundtripUnitModuleContract(PathMixin):
     Reusable unit-level write/read roundtrip contract.
     """
 
-    # pylint: disable=unused-argument
+    # -- Class Attributes -- #
 
     roundtrip_spec: RoundtripSpec
+
+    # -- Instance Methods -- #
 
     def setup_roundtrip_dependencies(
         self,
@@ -383,9 +390,11 @@ class SemiStructuredReadMixin(PathMixin):
     Parametrized read contract mixin for semi-structured modules.
     """
 
-    # pylint: disable=unused-argument
+    # -- Class Attributes -- #
 
     sample_read_text: str
+
+    # -- Instance Methods -- #
 
     def assert_read_contract_result(
         self,
@@ -492,10 +501,12 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
     Parametrized mixin for writable spreadsheet module contracts.
     """
 
+    # -- Class Attributes -- #
+
     read_engine: str | None
     write_engine: str | None
 
-    # pylint: disable=unused-argument
+    # -- Instance Methods -- #
 
     def test_read_returns_records(
         self,

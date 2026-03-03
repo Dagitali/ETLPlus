@@ -30,6 +30,10 @@ from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -56,8 +60,6 @@ class DelimitedModuleContract(
 
 class EmbeddedDatabaseModuleContract(EmptyWriteReturnsZeroMixin):
     """Reusable contract suite for embedded database wrapper modules."""
-
-    # pylint: disable=unused-argument
 
     multi_table_error_pattern: str
 

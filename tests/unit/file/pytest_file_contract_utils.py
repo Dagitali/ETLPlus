@@ -19,6 +19,10 @@ from etlplus.utils.types import JSONData
 from ...pytest_file_common import Operation
 from ...pytest_file_common import call_handler_operation
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -142,7 +146,6 @@ def patch_dependency_resolver_value(
     value: object,
 ) -> None:
     """Patch one dependency resolver to return a deterministic value."""
-    # pylint: disable=unused-argument
 
     def _return_value(
         *args: object,

@@ -14,6 +14,10 @@ from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -49,8 +53,6 @@ class SemiStructuredCategoryContractBase(PathMixin):
     """
     Shared base contract for semi-structured text modules.
     """
-
-    # pylint: disable=unused-argument
 
     sample_read_text: str = ''
     expected_read_payload: JSONData = make_payload('dict')
