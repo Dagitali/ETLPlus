@@ -37,6 +37,10 @@ from etlplus.cli import main
 
 from .conftest import FakeEndpointClientProtocol
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
@@ -294,7 +298,6 @@ def pipeline_cli_runner_fixture(
         Runner that writes the pipeline YAML, patches HTTP helpers, and
         returns the resulting config path.
     """
-    # pylint: disable=unused-argument
 
     def _run(
         *,
@@ -303,6 +306,7 @@ def pipeline_cli_runner_fixture(
         extract_func: Callable[..., Any],
         request_func: Callable[..., Any] | None = None,
     ) -> str:
+        """Run the CLI with the given pipeline YAML and patched extractors."""
         cfg_path = _write_pipeline(tmp_path, yaml_text)
         monkeypatch.setattr(cli_handlers, 'extract', extract_func)
         monkeypatch.setattr(extract_module, 'extract', extract_func)
