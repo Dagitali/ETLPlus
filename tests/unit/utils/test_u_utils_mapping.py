@@ -16,6 +16,10 @@ from etlplus.utils import cast_str_dict
 from etlplus.utils import coerce_dict
 from etlplus.utils import maybe_mapping
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

@@ -14,6 +14,10 @@ from etlplus.utils import count_records
 from etlplus.utils import print_json
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

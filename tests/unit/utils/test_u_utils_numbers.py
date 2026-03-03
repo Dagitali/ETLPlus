@@ -20,6 +20,10 @@ from etlplus.utils import to_number
 from etlplus.utils import to_positive_float
 from etlplus.utils import to_positive_int
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

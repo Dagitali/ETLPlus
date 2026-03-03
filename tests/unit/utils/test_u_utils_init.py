@@ -25,6 +25,10 @@ from etlplus.utils.substitution import deep_substitute
 from etlplus.utils.text import normalize_choice
 from etlplus.utils.text import normalize_str
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

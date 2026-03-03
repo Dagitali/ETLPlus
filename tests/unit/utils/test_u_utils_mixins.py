@@ -8,13 +8,15 @@ from __future__ import annotations
 
 from etlplus.utils.mixins import BoundsWarningsMixin
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestBoundsWarningsMixin:
     """Unit tests for :class:`BoundsWarningsMixin`."""
-
-    # pylint: disable=protected-access
 
     def test_warn_if_appends_message(self) -> None:
         """Test that warnings are appended when the condition is ``True``."""

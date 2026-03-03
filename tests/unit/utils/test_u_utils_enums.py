@@ -10,6 +10,10 @@ import pytest
 
 from etlplus.utils.enums import CoercibleStrEnum
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
