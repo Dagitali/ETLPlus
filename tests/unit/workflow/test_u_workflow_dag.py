@@ -13,6 +13,10 @@ from etlplus.workflow.dag import _ready
 from etlplus.workflow.dag import topological_sort_jobs
 from etlplus.workflow.jobs import JobConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

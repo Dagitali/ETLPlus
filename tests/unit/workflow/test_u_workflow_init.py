@@ -15,6 +15,10 @@ from etlplus.workflow.jobs import TransformRef
 from etlplus.workflow.jobs import ValidationRef
 from etlplus.workflow.profile import ProfileConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

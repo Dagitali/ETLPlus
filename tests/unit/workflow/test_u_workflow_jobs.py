@@ -14,6 +14,10 @@ from typing import TypeVar
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 
@@ -41,7 +45,7 @@ class SupportsFromObj(Protocol[T_co]):
 
 
 @pytest.mark.parametrize(
-    'ref_cls, obj, expected',
+    ('ref_cls', 'obj', 'expected'),
     [
         pytest.param(
             jobs.ExtractRef,
@@ -82,7 +86,7 @@ def test_ref_from_obj_valid(
 
 
 @pytest.mark.parametrize(
-    'ref_cls, obj',
+    ('ref_cls', 'obj'),
     [
         pytest.param(jobs.ExtractRef, None, id='extract-none'),
         pytest.param(jobs.ExtractRef, {'source': 123}, id='extract-bad'),
