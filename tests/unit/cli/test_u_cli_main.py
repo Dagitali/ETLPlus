@@ -21,6 +21,10 @@ from etlplus.cli.main import main as cli_main
 from .conftest import StubCommand
 from .conftest import StubCommandMain
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -33,8 +37,6 @@ main_module = importlib.import_module('etlplus.cli.main')
 
 class TestMain:
     """Unit tests for :func:`etlplus.cli.main`."""
-
-    # pylint: disable=protected-access,unused-argument
 
     def test_command_return_value_is_passthrough(
         self,
@@ -140,7 +142,7 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('exception', 'expected_code', 'expected_err'),
-        (
+        [
             pytest.param(
                 KeyboardInterrupt,
                 130,
@@ -148,7 +150,7 @@ class TestMain:
                 id='keyboard-interrupt',
             ),
             pytest.param(ValueError('fail'), 1, 'Error:', id='value-error'),
-        ),
+        ],
     )
     def test_maps_common_exceptions(
         self,
@@ -174,11 +176,9 @@ class TestMain:
         expected_err : str | None
             Expected STDERR substring when provided.
         """
-        side_effect: BaseException
-        if isinstance(exception, type):
-            side_effect = exception()
-        else:
-            side_effect = exception
+        side_effect: BaseException = (
+            exception() if isinstance(exception, type) else exception
+        )
         monkeypatch.setattr(
             cli_handlers_module,
             'extract_handler',
@@ -203,7 +203,7 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('setup', 'expected'),
-        (
+        [
             (
                 lambda mp: mp.setattr(
                     cli_handlers_module,
@@ -220,7 +220,7 @@ class TestMain:
                 ),
                 17,
             ),
-        ),
+        ],
     )
     def test_maps_typer_exits(
         self,
@@ -238,11 +238,11 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('cli_args', 'expected_message'),
-        (
+        [
             (['definitely-not-real'], 'No such command'),
             (['--definitely-not-real-option'], 'No such option'),
             (['extract', '--definitely-not-real-option'], 'No such option'),
-        ),
+        ],
     )
     def test_unknown_arguments_emit_usage(
         self,

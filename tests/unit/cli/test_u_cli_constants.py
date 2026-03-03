@@ -8,6 +8,10 @@ from __future__ import annotations
 
 import etlplus.cli.constants as constants_mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

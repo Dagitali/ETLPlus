@@ -18,13 +18,15 @@ from .conftest import AssertCapturedText
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
-
-    # pylint: disable=protected-access
 
     def test_parse_json_option_wraps_value_errors(
         self,
@@ -184,8 +186,6 @@ class TestCommandsMissingInputs:
 
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli.commands.transform_cmd`."""
-
-    # pylint: disable=unused-argument
 
     def test_skips_source_validation_when_source_type_cannot_be_inferred(
         self,

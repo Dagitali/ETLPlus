@@ -16,6 +16,10 @@ import pytest
 import etlplus.cli.io as _io
 from etlplus.file import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -370,11 +374,11 @@ class TestParseTextPayload:
 
     @pytest.mark.parametrize(
         ('payload', 'fmt', 'expected'),
-        (
+        [
             ('{"a": 1}', None, {'a': 1}),
             ('a,b\n1,2\n', 'csv', [{'a': '1', 'b': '2'}]),
             ('payload', 'yaml', 'payload'),
-        ),
+        ],
     )
     def test_parsing_text_payload_variants(
         self,

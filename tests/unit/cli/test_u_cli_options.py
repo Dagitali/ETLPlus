@@ -10,6 +10,10 @@ import pytest
 
 from etlplus.cli.options import typer_format_option_kwargs
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

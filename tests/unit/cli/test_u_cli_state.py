@@ -20,6 +20,10 @@ from ...conftest import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import assert_mapping_contains
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -28,7 +32,7 @@ class TestCliExtractState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 ('extract', '/path/to/file.csv', '--source-format', 'csv'),
                 {
@@ -54,7 +58,7 @@ class TestCliExtractState:
                 },
                 id='extract-api-quiet',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -77,7 +81,7 @@ class TestCliLoadState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 ('load', '--target-type', 'file', '/path/to/out.json'),
                 {
@@ -102,7 +106,7 @@ class TestCliLoadState:
                 {'source': '-', 'target': 'postgres://db.example.org/app'},
                 id='load-default-source',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -173,7 +177,7 @@ class TestCliTransformState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 (
                     'transform',
@@ -192,7 +196,7 @@ class TestCliTransformState:
                 {'source_format': 'csv'},
                 id='transform-source-format',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -215,7 +219,7 @@ class TestCliValidateState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 (
                     'validate',
@@ -234,7 +238,7 @@ class TestCliValidateState:
                 {'source_format': 'csv'},
                 id='validate-source-format',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -288,16 +292,16 @@ class TestInferResourceType:
         """
         Unknown resources raise ``ValueError`` to surface helpful guidance.
         """
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Could not infer resource type'):
             cli_state_module.infer_resource_type('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
-        (
+        [
             ('-', 'file'),
             ('https://example.com/data.json', 'api'),
             ('postgres://user@host/db', 'database'),
-        ),
+        ],
     )
     def test_variants(
         self,
@@ -399,7 +403,7 @@ class TestOptionalChoice:
 
     @pytest.mark.parametrize(
         ('choice', 'expected'),
-        ((None, None), ('json', 'json')),
+        [(None, None), ('json', 'json')],
     )
     def test_passthrough_and_validation(
         self,
@@ -419,7 +423,7 @@ class TestOptionalChoice:
             == expected
         )
 
-    @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
+    @pytest.mark.parametrize('invalid', ['yaml', 'parquet'])
     def test_rejects_invalid(self, invalid: str) -> None:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):

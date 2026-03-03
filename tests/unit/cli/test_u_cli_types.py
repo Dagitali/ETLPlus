@@ -10,6 +10,10 @@ from typing import get_args
 
 from etlplus.cli.types import DataConnectorContext
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
