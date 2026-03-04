@@ -17,7 +17,7 @@ class TestDatabasePackageExports:
     """Unit tests for top-level package exports."""
 
     def test_expected_symbols_are_exported(self) -> None:
-        """Top-level package should expose documented API surface."""
+        """Test that top-level package exposes documented API surface."""
         expected = {
             'Base',
             'build_models',
@@ -35,6 +35,6 @@ class TestDatabasePackageExports:
         assert expected.issubset(set(database_pkg.__all__))
 
     def test_exported_symbols_are_present(self) -> None:
-        """Every exported name should resolve on the package module."""
+        """Test that every exported name resolves on the package module."""
         for name in database_pkg.__all__:
             assert hasattr(database_pkg, name)

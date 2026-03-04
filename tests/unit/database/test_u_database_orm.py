@@ -142,7 +142,10 @@ class TestHelpers:
         expected_type: type,
         expected_attr: dict[str, object],
     ) -> None:
-        """resolve_type returns expected SQLAlchemy types and params."""
+        """
+        Test that :func:`resolve_type` returns expected SQLAlchemy types and
+        params.
+        """
 
         resolved = resolve_type(type_decl)
 
@@ -167,7 +170,8 @@ class TestHelpers:
         params: list[int],
     ) -> None:
         """
-        Type parsing returns expected names/params and class names PascalCase.
+        Test type parsing returns expected names/params and class names
+        in PascalCase.
         """
         parsed_name, parsed_params = orm_mod._parse_type_decl(type_str)
         assert parsed_name == name
@@ -193,8 +197,10 @@ class TestBuildModels:
         self,
         rich_spec: TableSpec,
     ) -> None:
-        """Composite keys, constraints, enums, defaults, and FKs are mapped."""
-
+        """
+        Test that composite keys, constraints, enums, defaults, and FKs are
+        mapped correctly.
+        """
         registry = build_models([rich_spec])
         model = registry['analytics.orders']
         table = cast(Table, model.__table__)
@@ -252,7 +258,10 @@ class TestBuildModels:
         self,
         simple_spec: TableSpec,
     ) -> None:
-        """Single-column PK marks the column as primary_key and in registry."""
+        """
+        Test that single-column PK marks the column as primary_key and in
+        registry.
+        """
 
         registry = build_models([simple_spec])
         model = registry['widgets']
@@ -273,7 +282,8 @@ class TestLoadAndBuildModels:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        load_and_build_models delegates to load_table_specs and honors base.
+        Test that :func:`load_and_build_models` delegates to
+        :func:`load_table_specs` and honors the :class:`Base`.
         """
 
         captured_paths: list[Path] = []
