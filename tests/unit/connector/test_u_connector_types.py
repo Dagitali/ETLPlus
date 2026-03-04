@@ -20,7 +20,10 @@ class TestConnectorTypes:
     """Unit tests for connector type alias module."""
 
     def test_alias_accepts_enum_and_literal_values(self) -> None:
-        """ConnectorType alias should support enum members and literals."""
+        """
+        Test that :class:`ConnectorType` alias supports enum members and
+        literals.
+        """
 
         def identity(value: connector_types.ConnectorType) -> str:
             return str(value)
@@ -30,5 +33,5 @@ class TestConnectorTypes:
         assert identity('file') == 'file'
 
     def test_exports_include_connector_type(self) -> None:
-        """Module should export ConnectorType alias."""
+        """Test that the module exports the :class:`ConnectorType` alias."""
         assert connector_types.__all__ == ['ConnectorType']

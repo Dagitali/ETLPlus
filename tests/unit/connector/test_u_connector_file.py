@@ -22,7 +22,7 @@ class TestConnectorFile:
     """Unit tests for :class:`ConnectorFile`."""
 
     def test_from_obj_accepts_mapping_options(self) -> None:
-        """Mapping options should be copied into plain dict form."""
+        """Test that mapping options are copied into plain dict form."""
         connector = ConnectorFile.from_obj(
             {
                 'name': 'input_json',
@@ -33,7 +33,10 @@ class TestConnectorFile:
         assert connector.options == {'encoding': 'utf-8'}
 
     def test_from_obj_parses_file_fields_and_coerces_options(self) -> None:
-        """from_obj should parse fields and coerce non-mapping options."""
+        """
+        Test that :meth:`from_obj` parses fields and coerces non-mapping
+        options.
+        """
         connector = ConnectorFile.from_obj(
             {
                 'name': 'input_csv',
@@ -51,6 +54,6 @@ class TestConnectorFile:
         assert not connector.options
 
     def test_from_obj_requires_name(self) -> None:
-        """from_obj should reject mappings without a valid name."""
+        """Test that :meth:`from_obj` rejects mappings without a valid name."""
         with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
             ConnectorFile.from_obj({'type': 'file'})

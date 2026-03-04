@@ -34,12 +34,14 @@ class TestConnectorCore:
         self,
         payload: dict[str, object],
     ) -> None:
-        """Missing or non-string name values should raise ``TypeError``."""
+        """
+        Test that missing or non-string name values raise :class:`TypeError`.
+        """
         with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
             ConnectorBase._require_name(payload, kind='File')
 
     def test_require_name_returns_name_when_valid(self) -> None:
-        """Valid connector name should be returned unchanged."""
+        """Test that a valid connector name is returned unchanged."""
         resolved = ConnectorBase._require_name(
             {'name': 'src_file'},
             kind='File',
@@ -47,7 +49,9 @@ class TestConnectorCore:
         assert resolved == 'src_file'
 
     def test_runtime_protocol_check(self) -> None:
-        """Concrete connector dataclasses satisfy the runtime protocol."""
+        """
+        Test that concrete connector dataclasses satisfy the runtime protocol.
+        """
         connector = ConnectorFile.from_obj(
             {
                 'name': 'payload_file',

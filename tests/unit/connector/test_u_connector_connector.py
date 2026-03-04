@@ -22,7 +22,10 @@ class TestConnectorAlias:
     """Unit tests for connector union alias module."""
 
     def test_connector_alias_supports_all_variants(self) -> None:
-        """Connector alias should accept API, DB, and file connector types."""
+        """
+        Test that :class:`Connector` alias supports API, DB, and file connector
+        types.
+        """
         connectors: list[Connector] = [
             ConnectorApi(name='a'),
             ConnectorDb(name='b'),
@@ -34,7 +37,7 @@ class TestConnectorAlias:
         assert isinstance(connectors[2], ConnectorFile)
 
     def test_module_exports_connector_alias(self) -> None:
-        """Connector module should only export the Connector alias."""
+        """Test connector module should only export the Connector alias."""
         from etlplus.connector import connector as connector_mod
 
         assert connector_mod.__all__ == ['Connector']

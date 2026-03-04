@@ -38,7 +38,9 @@ class TestParseConnector:
     """
 
     def test_missing_type_raises(self) -> None:
-        """Connector payload without ``type`` should raise ``TypeError``."""
+        """
+        Test that connector payloads without ``type`` raise :class:`TypeError`.
+        """
         with pytest.raises(TypeError, match='requires a "type"'):
             parse_connector({'name': 'missing_type'})
 
@@ -50,7 +52,7 @@ class TestParseConnector:
         self,
         payload: object,
     ) -> None:
-        """Non-mapping payloads should raise ``TypeError``."""
+        """Test that non-mapping payloads raise :class:`TypeError`."""
         with pytest.raises(TypeError, match='must be a mapping'):
             parse_connector(payload)  # type: ignore[arg-type]
 
@@ -154,11 +156,11 @@ class TestInternalLoadConnector:
         kind: DataConnectorType,
         expected: type[object],
     ) -> None:
-        """Known connector kinds should resolve to concrete classes."""
+        """Test that known connector kinds resolve to concrete classes."""
         assert connector_utils._load_connector(kind) is expected
 
     def test_load_connector_rejects_unknown_kind(self) -> None:
-        """Unknown enum-like values should raise ``TypeError``."""
+        """Test that unknown enum-like values raise :class:`TypeError`."""
         with pytest.raises(TypeError, match='Unsupported connector type'):
             connector_utils._load_connector(
                 cast(DataConnectorType, 'unknown'),

@@ -22,7 +22,9 @@ class TestConnectorDb:
     """Unit tests for :class:`ConnectorDb`."""
 
     def test_from_obj_parses_database_fields(self) -> None:
-        """from_obj should parse standard database connector fields."""
+        """
+        Test that :meth:`from_obj` parses standard database connector fields.
+        """
         connector = ConnectorDb.from_obj(
             {
                 'name': 'warehouse',
@@ -42,6 +44,8 @@ class TestConnectorDb:
         assert connector.mode == 'append'
 
     def test_from_obj_requires_name(self) -> None:
-        """from_obj should reject mappings without a valid name."""
+        """
+        Test that :meth:`from_obj` should reject mappings without a valid name.
+        """
         with pytest.raises(TypeError, match='ConnectorDb requires a "name"'):
             ConnectorDb.from_obj({'type': 'database'})
