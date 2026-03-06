@@ -337,7 +337,9 @@ class TestLoadData:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Existing-path read failures should fall back to raw JSON parsing."""
+        """
+        Test that existing-path read failures falls back to raw JSON parsing.
+        """
 
         class _FailingFile:
             def __init__(self, *_args: object, **_kwargs: object) -> None:
@@ -438,7 +440,7 @@ class TestLoadData:
         assert load_data(input_data) == expected_output
 
     def test_load_data_rejects_unsupported_source_type(self) -> None:
-        """Unsupported source types should raise :class:`TypeError`."""
+        """Test that unsupported source types raises :class:`TypeError`. """
         with pytest.raises(TypeError, match='source must be'):
             load_data(cast(Any, 123))
 
@@ -548,7 +550,7 @@ class TestLoadToFile:
         tmp_path: Path,
     ) -> None:
         """
-        Omitting file_format should infer from the output extension.
+        Test that omitting file_format infers from the output extension.
         """
         output_path = tmp_path / 'auto.json'
         payload = {'status': 'ok'}
@@ -628,7 +630,9 @@ class TestLoadToApi:
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
     def test_load_to_api_env_requires_url(self) -> None:
-        """Missing URL in normalized API env should raise ValueError."""
+        """
+        Test that missing URL in normalized API env raises :class:`ValueError`.
+        """
         with pytest.raises(ValueError, match='API target missing "url"'):
             load_mod._load_to_api_env({'method': 'post'}, {})
 
@@ -636,7 +640,9 @@ class TestLoadToApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Normalized API env should forward headers and request kwargs."""
+        """
+        Test that normalized API env forwards headers and request kwargs.
+        """
 
         class _Response:
             status_code = 201
@@ -685,7 +691,7 @@ class TestLoadToApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """JSON decoding errors should fall back to response text."""
+        """Test that JSON decoding errors fall back to response text."""
 
         class _Response:
             status_code = 200
@@ -720,7 +726,10 @@ class TestLoadToDatabase:
     """Unit tests for :func:`etlplus.ops.load.load_to_database`."""
 
     def test_load_to_api_requires_callable(self) -> None:
-        """Missing HTTP method on custom session should raise TypeError."""
+        """
+        Test that missing HTTP method on custom session raises
+        :class:`TypeError`.
+        """
 
         class _BrokenSession:
             pass
@@ -734,7 +743,9 @@ class TestLoadToDatabase:
             )
 
     def test_load_to_database_returns_note(self) -> None:
-        """Placeholder implementation should echo the connection string."""
+        """
+        Test that placeholder implementation echoes the connection string.
+        """
 
         data = [{'name': 'Ada'}]
         result = load_to_database(data, 'sqlite:///tmp.db')
@@ -748,7 +759,7 @@ class TestParseJsonString:
     """Unit tests for :func:`etlplus.ops.load._parse_json_string`."""
 
     def test_parse_invalid_root_raises(self) -> None:
-        """Only dicts or lists of dicts are accepted."""
+        """Test that only dicts or lists of dicts are accepted."""
 
         with pytest.raises(
             ValueError,
@@ -757,7 +768,7 @@ class TestParseJsonString:
             _parse_json_string('"plain"')
 
     def test_parse_list_with_non_dicts_raises(self) -> None:
-        """Mixed arrays should raise ValueError."""
+        """Test that mixed arrays raise :class:`ValueError`."""
 
         with pytest.raises(
             ValueError,
@@ -811,7 +822,10 @@ class TestLoadApiOrchestrator:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected connector coercion should trigger ValueError branch."""
+        """
+        Test that unexpected connector coercion triggers :class:`ValueError`
+        branch.
+        """
         monkeypatch.setattr(
             load_mod.DataConnectorType,
             'coerce',

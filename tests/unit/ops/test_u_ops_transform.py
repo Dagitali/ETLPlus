@@ -350,7 +350,7 @@ class TestApplySort:
         reverse: bool,
         expected_sorted_ages: list[int],
     ) -> None:
-        """Sorting should support ascending and descending order."""
+        """Test that sorting supports ascending and descending order."""
 
         data = [
             {'name': 'John', 'age': 30},
@@ -393,7 +393,7 @@ class TestTransform:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Aggregate outputs that are empty should not mutate records."""
+        """Test that empty aggregate outputs do not mutate records."""
         monkeypatch.setattr(
             transform_mod,
             '_apply_aggregate_step',
@@ -409,7 +409,7 @@ class TestTransform:
         )
 
     def test_aggregate_with_invalid_spec_is_ignored(self) -> None:
-        """Aggregate step should be skipped when spec is not a mapping."""
+        """Test that aggregate step is skipped when spec is not a mapping."""
 
         data = [{'value': 1}, {'value': 2}]
         result = transform(data, {'aggregate': ['not-a-mapping']})
@@ -449,7 +449,7 @@ class TestTransform:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Non-list payloads should bypass record-wise operations."""
+        """Test that non-list payloads bypass record-wise operations."""
         monkeypatch.setattr(transform_mod, 'load_data', lambda _source: 7)
         assert transform('ignored', {'filter': {'field': 'a'}}) == 7
 
@@ -469,7 +469,7 @@ class TestTransform:
 
     def test_single_dict_returns_single_dict(self) -> None:
         """
-        Single-dict inputs should remain dicts after list-based processing.
+        Test that single-dict inputs remain dicts after list-based processing.
         """
         result = transform(
             {'name': 'Ada', 'age': 31},
@@ -478,7 +478,7 @@ class TestTransform:
         assert result == {'name': 'Ada'}
 
     def test_skips_empty_normalized_specs(self) -> None:
-        """Empty step spec lists should be ignored."""
+        """Test that empty step spec lists are ignored."""
         data = [{'a': 1}]
         assert transform(data, {'filter': []}) == data
 
@@ -486,7 +486,7 @@ class TestTransform:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Missing appliers should skip step execution safely."""
+        """Test that missing appliers skip step execution safely."""
         monkeypatch.delitem(transform_mod._STEP_APPLIERS, 'filter')
         data = [{'a': 1}]
         assert (
@@ -571,7 +571,7 @@ class TestTransform:
         assert result == [{'name': 'John', 'age': 30}]
 
     def test_with_sort(self) -> None:
-        """Transforming with a sort operation should sort records."""
+        """Test that transforming with a sort operation sorts records."""
 
         data = [{'name': 'John', 'age': 30}, {'name': 'Jane', 'age': 25}]
         result = transform(data, {'sort': {'field': 'age'}})
@@ -628,7 +628,9 @@ class TestTransformInternalHelpers:
             assert result == expected
 
     def test_apply_aggregate_invalid_operation_returns_error(self) -> None:
-        """Aggregates missing field/func should return structured errors."""
+        """
+        Test that aggregates missing field/func returns structured errors.
+        """
         assert apply_aggregate([{'a': 1}], {'field': 'a'}) == {
             'error': 'Invalid aggregation operation',
         }
@@ -644,7 +646,7 @@ class TestTransformInternalHelpers:
         assert result == [{'total': 3}]
 
     def test_apply_aggregate_unknown_function_returns_error(self) -> None:
-        """Unknown aggregate functions should return structured errors."""
+        """Test unknown aggregate functions should return structured errors."""
         result = apply_aggregate(
             [{'a': 1}],
             {'field': 'a', 'func': cast(Any, object())},
@@ -652,7 +654,10 @@ class TestTransformInternalHelpers:
         assert result['error'].startswith('Unknown aggregation function:')
 
     def test_apply_filter_returns_input_when_value_is_none(self) -> None:
-        """Filters with ``None`` values should be treated as invalid specs."""
+        """
+        Test that that filters with ``None`` values are treated as invalid
+        specs.
+        """
         rows = [{'a': 1}]
         assert (
             apply_filter(
@@ -665,7 +670,9 @@ class TestTransformInternalHelpers:
     def test_apply_filter_skips_records_when_operator_raises_type_error(
         self,
     ) -> None:
-        """Type errors during comparison should skip only offending records."""
+        """
+        Test that type errors during comparison skip only offending records.
+        """
 
         def _explode(_a: Any, _b: Any) -> bool:
             raise TypeError('unsupported compare')
@@ -687,7 +694,9 @@ class TestTransformInternalHelpers:
         assert result == [{'a': 2}]
 
     def test_apply_filter_step_returns_input_when_field_missing(self) -> None:
-        """Filter step should return input unchanged when field is absent."""
+        """
+        Test that filter step returns input unchanged when field is absent.
+        """
         rows = [{'a': 1}]
         assert _apply_filter_step(rows, {'op': 'eq', 'value': 1}) == rows
 
@@ -702,7 +711,7 @@ class TestTransformInternalHelpers:
         assert result == [{'x': 1, 'y': 2}]
 
     def test_apply_map_step_non_mapping_is_noop(self) -> None:
-        """Map step should be a no-op for non-mapping specs."""
+        """Test that map step is a no-op for non-mapping specs."""
         rows = [{'a': 1}]
         assert _apply_map_step(rows, 123) == rows
 
@@ -729,7 +738,9 @@ class TestTransformInternalHelpers:
         assert result == expected
 
     def test_apply_select_step_invalid_mapping_fields_is_noop(self) -> None:
-        """Select step should no-op when mapping fields value is invalid."""
+        """
+        Test that select step is a no-op when mapping fields value is invalid.
+        """
         rows = [{'a': 1, 'b': 2}]
         assert _apply_select_step(rows, {'fields': {'not': 'list'}}) == rows
 
@@ -772,7 +783,9 @@ class TestTransformInternalHelpers:
     def test_collect_numeric_and_presence_ignores_non_numeric_values(
         self,
     ) -> None:
-        """Presence should increment even when values are non-numeric."""
+        """
+        Test that presence increments even when values are non-numeric.
+        """
         rows: list[dict[str, Any]] = [{'a': 'x'}, {'a': 2}]
         nums, present = _collect_numeric_and_presence(rows, 'a')
         assert nums == [2.0]
@@ -831,7 +844,7 @@ class TestTransformInternalHelpers:
         assert _derive_agg_key(agg, 'foo', None).startswith('agg_')
 
     def test_derive_agg_key_other(self) -> None:
-        """`
+        """
         Test that :func:`etlplus.ops.transform._derive_agg_key` handles unknown
         object inputs consistently.
         """
@@ -922,7 +935,7 @@ class TestTransformInternalHelpers:
 
     def test_normalize_operation_keys_fallback_paths(self) -> None:
         """
-        Fallback key normalization should handle `.value` and skip non-str.
+        Test that fallback key normalization handles `.value` and skip non-str.
         """
 
         class _WithValue:
@@ -943,7 +956,7 @@ class TestTransformInternalHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Pipeline-step instance branch should use `.value` as key."""
+        """Test that pipeline-step instance branch uses `.value` as key."""
 
         @dataclass(slots=True, frozen=True)
         class _Step:
@@ -1010,7 +1023,9 @@ class TestTransformInternalHelpers:
     def test_resolve_operator_falls_back_to_raw_values_when_non_numeric(
         self,
     ) -> None:
-        """Numeric wrappers should fall back to base operators for strings."""
+        """
+        Test that numeric wrappers fall back to base operators for strings.
+        """
         fn = _resolve_operator('gt')
         assert fn('b', 'a') is True
 

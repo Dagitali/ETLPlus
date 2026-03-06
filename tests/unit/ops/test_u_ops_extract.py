@@ -232,7 +232,7 @@ class TestExtractFromApi:
         base_url: str,
     ) -> None:
         """
-        Custom HTTP methods and kwargs should pass through to the session.
+        Test that custom HTTP methods and kwargs pass through to the session.
         """
 
         response = _StubResponse(
@@ -252,7 +252,7 @@ class TestExtractFromApi:
         assert session.calls[0]['kwargs']['headers'] == {'X-Test': '1'}
 
     def test_extract_from_api_env_requires_url(self) -> None:
-        """Missing URL in normalized API env should raise ValueError."""
+        """Test missing URL in normalized API env should raise ValueError."""
         with pytest.raises(ValueError, match='API source missing URL'):
             extract_mod._extract_from_api_env({}, use_client=False)
 
@@ -260,7 +260,7 @@ class TestExtractFromApi:
         self,
         base_url: str,
     ) -> None:
-        """Malformed JSON should fall back to raw content payloads."""
+        """Test that malformed JSON falls back to raw content payloads."""
 
         response = _StubResponse(
             headers={'content-type': 'application/json'},
@@ -292,7 +292,7 @@ class TestExtractFromApi:
         payload: Any,
         expected: Any,
     ) -> None:
-        """Verify supported JSON payload shapes are normalized correctly."""
+        """Test that supported JSON payload shapes are normalized correctly."""
 
         response = _StubResponse(
             headers={'content-type': 'application/json'},
@@ -313,7 +313,8 @@ class TestExtractFromApi:
         base_url: str,
     ) -> None:
         """
-        Missing HTTP methods on the provided session should raise TypeError.
+        Test that missing HTTP methods on the provided session raise
+        :class:`TypeError`.
         """
 
         class NoGet:  # noqa: D401
@@ -328,7 +329,7 @@ class TestExtractFromApi:
         self,
         base_url: str,
     ) -> None:
-        """Non-JSON content should be returned as raw text payloads."""
+        """Test that non-JSON content is returned as raw text payloads."""
 
         response = _StubResponse(
             headers={'content-type': 'text/plain'},
@@ -346,7 +347,7 @@ class TestExtractFromApi:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Client mode with only a URL should use paginate_url path.
+        Test that client mode with only a URL uses the paginate_url path.
         """
         init_calls: list[dict[str, Any]] = []
         paginate_calls: list[dict[str, Any]] = []
@@ -449,7 +450,8 @@ class TestExtractFromFile:
         tmp_path: Path,
     ) -> None:
         """
-        Passing ``None`` for file_format should defer to extension inference.
+        Test that passing ``None`` for file_format defers to extension
+        inference.
         """
         path = tmp_path / 'data.json'
         path.write_text('{"ok": true}', encoding='utf-8')
@@ -581,8 +583,10 @@ class TestExtractDefensiveDispatch:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected connector coercion should trigger ValueError branch."""
-
+        """
+        Test that unexpected connector coercion triggers the
+        :class:`ValueError` branch.
+        """
         def _coerce(_value: object) -> object:
             return object()
 
@@ -598,7 +602,7 @@ class TestExtractDefensiveDispatch:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Database connector types should dispatch to DB extraction."""
+        """Test that database connector types dispatch to DB extraction."""
         calls: list[str] = []
 
         def _extract_from_database(source: str) -> list[dict[str, str]]:
@@ -620,7 +624,7 @@ class TestExtractDefensiveDispatch:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """API connector types should dispatch to API extraction."""
+        """Test that API connector types dispatch to API extraction."""
         calls: list[tuple[str, dict[str, Any]]] = []
 
         def _extract_from_api(

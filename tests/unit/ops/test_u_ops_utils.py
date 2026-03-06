@@ -94,7 +94,7 @@ def test_error_severity_raises_value_error() -> None:
 
 
 def test_rule_name_returns_none_without_get_method() -> None:
-    """Ruleset objects without ``get`` should return ``None`` name."""
+    """Test that ruleset objects without ``get`` return ``None`` name."""
     assert utils_mod._rule_name(cast(Any, object())) is None
 
 

@@ -43,7 +43,7 @@ class TestLoadData:
     """
 
     def test_invalid_source(self) -> None:
-        """Invalid input string should raise ValueError during loading."""
+        """Test that invalid input string raises ValueError during loading."""
         with pytest.raises(ValueError, match='Invalid data source'):
             load_data('not a valid json string')
 
@@ -87,7 +87,7 @@ class TestValidateField:
         assert any('pattern' in err for err in result['errors'])
 
     def test_required_error_message(self) -> None:
-        """Validate error message for required field."""
+        """Test error message for required field."""
         result = validate_field(None, {'required': True})
         assert 'required' in result['errors'][0].lower()
 
@@ -116,18 +116,7 @@ class TestValidateField:
         rule: dict[str, Any],
         expected_valid: bool,
     ) -> None:
-        """
-        Validate field rules using parameterized cases.
-
-        Parameters
-        ----------
-        value : Any
-            Value to validate.
-        rule : dict[str, Any]
-            ValidationDict rule.
-        expected_valid : bool
-            Expected validity result.
-        """
+        """Test field rules using parameterized cases."""
         result = validate_field(value, rule)
         assert result['valid'] is expected_valid
 
@@ -258,7 +247,7 @@ class TestValidate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected scalar payloads should return invalid=False result."""
+        """Test that unexpected scalar payloads return invalid=False result."""
         monkeypatch.setattr(validate_mod, 'load_data', lambda _source: 42)
         result = validate('ignored', {'name': {'required': True}})
         assert result['valid'] is True
@@ -271,7 +260,7 @@ class TestValidateInternalHelpers:
     """Unit tests for internal validation helper branches."""
 
     def test_coerce_rule_invalid_value_appends_error(self) -> None:
-        """Rule coercion should append errors on bad casts."""
+        """Test that rule coercion appends errors on bad casts."""
         errors: list[str] = []
         assert (
             validate_mod._coerce_rule(
@@ -286,7 +275,7 @@ class TestValidateInternalHelpers:
         assert errors == ["Rule 'min' must be numeric"]
 
     def test_coerce_rule_none_value_returns_none_without_errors(self) -> None:
-        """Rule coercion should ignore explicit None values."""
+        """Test that rule coercion ignores explicit None values."""
         errors: list[str] = []
         assert (
             validate_mod._coerce_rule(

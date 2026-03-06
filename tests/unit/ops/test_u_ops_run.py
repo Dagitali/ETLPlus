@@ -536,7 +536,9 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected source coercion should trigger defensive ValueError."""
+        """
+        Test that unexpected source coercion triggers :class:`ValueError`.
+        """
         job = _make_job(name='job', source='src', target='tgt')
         src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
         tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
@@ -559,7 +561,9 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected target coercion should trigger defensive ValueError."""
+        """
+        Test that unexpected target coercion triggers :class:`ValueError`.
+        """
         job = _make_job(name='job', source='src', target='tgt')
         src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
         tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
@@ -598,7 +602,7 @@ class TestRun:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Jobs without transform config should bypass transform step.
+        Test that jobs without transform config bypass transform step.
         """
         job = _make_job(name='job', source='src', target='tgt')
         job.transform = None
@@ -650,7 +654,7 @@ class TestRun:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test transform and validation branches are called."""
+        """Test that transform and validation branches are called."""
         job = _make_job(name='job', source='src', target='tgt')
         job.transform = SimpleNamespace(pipeline='noop')
         job.validate = SimpleNamespace(
@@ -834,7 +838,9 @@ class TestRunInternals:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """run_pipeline should forward to load() for terminal write steps."""
+        """
+        Test that run_pipeline forwards to load() for terminal write steps.
+        """
         load_calls: list[tuple[Any, Any, Any]] = []
 
         def _load(
@@ -866,7 +872,7 @@ class TestRunInternals:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """run_pipeline should extract, transform, and return data."""
+        """Test run_pipeline should extract, transform, and return data."""
         extract_calls: list[tuple[Any, Any, dict[str, Any]]] = []
         transform_calls: list[tuple[Any, Any]] = []
 
@@ -911,7 +917,7 @@ class TestRunInternals:
         assert transform_calls == [({'value': 1}, ops)]
 
     def test_index_connectors_rejects_duplicates(self) -> None:
-        """Connector indexing should reject duplicate names."""
+        """Test that connector indexing rejects duplicate names."""
         connectors = [
             SimpleNamespace(name='dup'),
             SimpleNamespace(name='dup'),
@@ -923,7 +929,7 @@ class TestRunInternals:
             run_mod._index_connectors(connectors, label='source')
 
     def test_index_connectors_skips_missing_or_blank_names(self) -> None:
-        """Connector indexing should skip unnamed entries."""
+        """Test that connector indexing skips unnamed entries."""
         connectors = [
             SimpleNamespace(name='valid'),
             SimpleNamespace(name=''),
@@ -939,7 +945,10 @@ class TestRunPipeline:
     """Unit tests for :func:`etlplus.ops.run.run_pipeline`."""
 
     def test_requires_record_payload_when_no_target(self) -> None:
-        """run_pipeline should enforce dict/list payloads when not loading."""
+        """
+        Test :func:`run_pipeline` enforcing dict/list payloads when not
+        loading.
+        """
         with pytest.raises(
             TypeError,
             match='Expected data to be dict or list',
@@ -947,7 +956,10 @@ class TestRunPipeline:
             run_mod.run_pipeline(source_type=None, source=cast(Any, 123))
 
     def test_requires_source_when_source_type_is_none(self) -> None:
-        """run_pipeline should require a source payload when no source_type."""
+        """
+        Test :func:`run_pipeline` requiring a source payload when no
+        source_type.
+        """
         with pytest.raises(
             ValueError,
             match='source or source_type is required',
@@ -955,12 +967,18 @@ class TestRunPipeline:
             run_mod.run_pipeline(source_type=None, source=None)
 
     def test_requires_source_when_source_type_is_set(self) -> None:
-        """run_pipeline should require source when source_type is provided."""
+        """
+        Test :func:`run_pipeline` requiring a source payload when source_type
+        is provided.
+        """
         with pytest.raises(ValueError, match='source is required'):
             run_mod.run_pipeline(source_type='file', source=None)
 
     def test_requires_target_when_target_type_is_set(self) -> None:
-        """run_pipeline should require target when target_type is provided."""
+        """
+        Test :func:`run_pipeline` requiring a target when target_type is
+        provided.
+        """
         with pytest.raises(ValueError, match='target is required'):
             run_mod.run_pipeline(
                 source_type=None,
