@@ -22,7 +22,7 @@ profile = importlib.import_module('etlplus.workflow.profile')
 
 
 def test_from_obj_coerces_env_values_to_strings() -> None:
-    """Environment values should normalize to strings."""
+    """Test that environment values normalize to strings."""
     cfg = profile.ProfileConfig.from_obj(
         {
             'default_target': 'warehouse',
@@ -34,7 +34,7 @@ def test_from_obj_coerces_env_values_to_strings() -> None:
 
 
 def test_from_obj_ignores_non_mapping_env_values() -> None:
-    """Non-mapping env payloads should normalize to an empty mapping."""
+    """Test that non-mapping env payloads normalize to an empty mapping."""
     cfg = profile.ProfileConfig.from_obj(
         {'default_target': 'warehouse', 'env': ['bad']},
     )
@@ -43,13 +43,13 @@ def test_from_obj_ignores_non_mapping_env_values() -> None:
 
 
 def test_from_obj_returns_defaults_for_non_mappings() -> None:
-    """Non-mapping payloads should produce default profile config."""
+    """Test that non-mapping payloads produce default profile config."""
     cfg = profile.ProfileConfig.from_obj('not-a-mapping')
     assert cfg.default_target is None
     assert cfg.env == {}
 
 
 def test_from_obj_returns_defaults_for_none() -> None:
-    """None payload should produce default profile config."""
+    """Test that none payload produces default profile config."""
     cfg = profile.ProfileConfig.from_obj(None)
     assert cfg == profile.ProfileConfig()

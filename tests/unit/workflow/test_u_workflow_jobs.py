@@ -153,7 +153,7 @@ def test_jobconfig_description_coercion() -> None:
 
 
 def test_jobconfig_depends_on_filters_non_strings() -> None:
-    """Sequence dependencies should keep only string entries."""
+    """Test that sequence dependencies keep only string entries."""
     cfg = jobs.JobConfig.from_obj(
         {
             'name': 'x',
@@ -165,7 +165,7 @@ def test_jobconfig_depends_on_filters_non_strings() -> None:
 
 
 def test_jobconfig_depends_on_string_is_wrapped() -> None:
-    """Single-string dependencies should normalize to a one-item list."""
+    """Test that single-string dependencies normalize to a one-item list."""
     cfg = jobs.JobConfig.from_obj({'name': 'x', 'depends_on': 'prepare'})
     assert cfg is not None
     assert cfg.depends_on == ['prepare']

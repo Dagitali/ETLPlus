@@ -23,7 +23,7 @@ from etlplus.workflow.profile import ProfileConfig
 
 
 def test_workflow_package_exports_expected_symbols() -> None:
-    """Package re-exports should match documented ``__all__``."""
+    """Test package re-exports should match documented ``__all__``."""
     assert workflow_pkg.ExtractRef is ExtractRef
     assert workflow_pkg.JobConfig is JobConfig
     assert workflow_pkg.LoadRef is LoadRef
