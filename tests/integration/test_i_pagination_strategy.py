@@ -367,7 +367,7 @@ class TestPaginationStrategies:
         parse_json_file: JsonFileParser,
     ) -> None:
         """
-        Test cursor-based pagination scenarios end-to-end via the CLI.
+        Test that cursor-based pagination scenarios end-to-end via the CLI.
 
         Parameters
         ----------
@@ -455,7 +455,7 @@ class TestPaginationStrategies:
         parse_json_output: JsonOutputParser,
         parse_json_file: JsonFileParser,
     ) -> None:
-        """Test page/offset pagination end-to-end via CLI."""
+        """Test that page/offset pagination end-to-end via CLI."""
         out_path = tmp_path / f'{scenario.name}.json'
         job_name = f'job_{scenario.name}'
 
@@ -560,7 +560,7 @@ class TestPaginationStrategies:
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:  # noqa: D401
         """
-        Test edge cases for pagination coalescing using shared fixtures.
+        Test that edge cases for pagination coalescing using shared fixtures.
 
         This drives the runner wiring directly (not CLI) to assert the exact
         pagination mapping seen by the client after defaults/overrides.

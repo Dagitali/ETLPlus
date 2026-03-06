@@ -35,8 +35,8 @@ class TestConfigLoad:
         substitute: bool,
     ) -> None:
         """
-        Test loading the configuration file with optional environment variable
-        substitution.
+        Test that loading the configuration file with optional environment
+        variable substitution.
         """
 
         # Ensure the configuration file parses under current models.

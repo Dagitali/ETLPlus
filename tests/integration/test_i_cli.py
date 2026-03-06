@@ -148,7 +148,7 @@ class TestCliEndToEnd:
         should_pass,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        """Test CLI required arguments and option order edge cases."""
+        """Test that CLI required arguments and option order edge cases."""
         if should_pass and args and args[0] == 'load':
             monkeypatch.setattr(
                 sys,
