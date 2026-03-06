@@ -45,7 +45,7 @@ class TestRun:
         pipeline_config_factory: PipelineConfigFactory,
         sample_records: list[dict[str, object]],
     ) -> None:
-        """Test file→file jobs via CLI for multiple input datasets."""
+        """Test that file→file jobs run via CLI for multiple input datasets."""
         cfg = pipeline_config_factory(sample_records)
 
         code, out, err = cli_invoke(

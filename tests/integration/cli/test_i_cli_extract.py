@@ -38,7 +38,7 @@ class TestCliExtract:
         json_payload_file: Path,
         sample_records: list[dict[str, Any]],
     ) -> None:
-        """Test extracting JSON from a file and emit matching payload."""
+        """Test that extracting JSON from a file and emit matching payload."""
         code, out, err = cli_invoke(('extract', str(json_payload_file)))
         assert code == 0
         assert err.strip() == ''
