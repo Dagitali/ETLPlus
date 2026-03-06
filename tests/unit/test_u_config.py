@@ -218,7 +218,7 @@ class TestConfig:
         self,
     ) -> None:
         """
-        Test parsing non-empty APIs and tolerant table_schemas filtering.
+        Test that parsing non-empty APIs and tolerant table_schemas filtering.
         """
         raw = {
             'name': 'Test',
@@ -251,13 +251,8 @@ class TestConfig:
         pipeline_builder: Callable[..., Config],
     ) -> None:  # noqa: D401
         """
-        Test that :class:`Config` includes profile environment
-        variables in substitution when loaded from YAML.
-
-        Parameters
-        ----------
-        pipeline_builder : Callable[..., Config]
-            Fixture that renders YAML text into parsed configs.
+        Test that :class:`Config` includes profile environment variables in
+        substitution when loaded from YAML.
         """
         yml = (
             """
@@ -338,19 +333,8 @@ jobs: []
         connector_path_lookup: Callable[[str, str], str | None],
     ) -> None:
         """
-        Test that :class:`Config` correctly handles multiple sources,
-        targets, and missing variables during substitution.
-
-        Parameters
-        ----------
-        collection : str
-            Either ``'sources'`` or ``'targets'``.
-        name : str
-            Connector name to inspect.
-        expected_path : str
-            Expected path after substitution.
-        connector_path_lookup : Callable[[str, str], str | None]
-            Helper that fetches connector paths from the parsed config.
+        Test that :class:`Config` correctly handles multiple sources, targets,
+        and missing variables during substitution.
         """
         path = connector_path_lookup(collection, name)
         assert path == expected_path
