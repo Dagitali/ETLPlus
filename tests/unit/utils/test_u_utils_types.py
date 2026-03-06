@@ -20,7 +20,7 @@ class TestTypesModule:
     """Unit tests for exported aliases in :mod:`etlplus.utils.types`."""
 
     def test_aliases_are_usable_in_annotations(self) -> None:
-        """Aliases should be importable and usable in typed values."""
+        """Test that aliases are importable and usable in typed values."""
         record: core_types.Record = {'id': 1}
         records: core_types.Records = [record]
         path: core_types.StrPath = Path('in/data.json')
@@ -31,7 +31,7 @@ class TestTypesModule:
         assert template == 'ddl'
 
     def test_exports_include_expected_aliases(self) -> None:
-        """__all__ should include the documented public aliases."""
+        """Test ``__all__``  includes the documented public aliases."""
         expected = {
             'JSONData',
             'JSONDict',
@@ -53,7 +53,9 @@ class TestTypesModule:
         assert expected.issubset(set(core_types.__all__))
 
     def test_json_value_supports_nested_structures(self) -> None:
-        """JSONValue alias should support recursive list/object values."""
+        """
+        Test that ``JSONValue`` alias supports recursive list/object values.
+        """
         value: core_types.JSONValue = {
             'a': [1, 'x', {'b': True}],
             'c': None,

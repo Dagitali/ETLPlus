@@ -102,7 +102,7 @@ def test_float_helper_variants(
     value: tuple[object, ...],
     expected: float | None,
 ) -> None:
-    """Cover helper wrappers around float coercion."""
+    """Test cover helper wrappers around float coercion."""
     assert func(*value) == expected
 
 
