@@ -52,7 +52,7 @@ def test_target_service_endpoint_uses_base_path(
     endpoint_path: str,
     expected_suffix: str,
 ):
-    """Test composed API URLs across optional base_path configurations."""
+    """Test that composed API URLs across optional base_path configurations."""
 
     cfg = file_to_api_pipeline_factory(
         base_path=base_path,

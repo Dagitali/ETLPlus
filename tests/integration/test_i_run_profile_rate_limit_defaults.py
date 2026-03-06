@@ -67,7 +67,9 @@ class TestRunProfileRateLimitDefaults:
         forced_sleep: float | None,
         expected_sleep: float,
     ) -> None:
-        """Test propagation of profile-level rate limit sleep configuration."""
+        """
+        Test that propagation of profile-level rate limit sleep configuration.
+        """
         cfg = pipeline_cfg_factory(rate_limit_defaults=rate_cfg)
 
         fake_client, created = fake_endpoint_client
