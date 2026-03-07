@@ -170,7 +170,7 @@ class TestHelpers:
         params: list[int],
     ) -> None:
         """
-        Test type parsing returns expected names/params and class names
+        Test that type parsing returns expected names/params and class names
         in PascalCase.
         """
         parsed_name, parsed_params = orm_mod._parse_type_decl(type_str)

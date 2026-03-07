@@ -89,16 +89,6 @@ class TestLoadTableSpecs:
         """
         Return helper that patches the :meth:`read` instance method to return a
         payload.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-
-        Returns
-        -------
-        Callable[[Any], None]
-            Function that applies the patch when invoked with a payload.
         """
 
         def _apply(payload: Any) -> None:

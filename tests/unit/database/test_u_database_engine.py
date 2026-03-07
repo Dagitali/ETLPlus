@@ -46,16 +46,6 @@ class TestLoadDatabaseUrlFromConfig:
     ) -> Callable[[Any], None]:
         """
         Return a helper that patches :meth:`read` to return a payload.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for applying patches.
-
-        Returns
-        -------
-        Callable[[Any], None]
-            Function that patches ``File.read`` to return the payload.
         """
 
         def _apply(payload: Any) -> None:
@@ -72,8 +62,8 @@ class TestLoadDatabaseUrlFromConfig:
         patch_read_file: Callable[[Any], None],
     ) -> None:
         """
-        Test extracting URLs from default and named entries including nested
-        defaults.
+        Test that extracting URLs from default and named entries including
+        nested defaults.
         """
         config = {
             'databases': {
@@ -130,16 +120,6 @@ class TestMakeEngine:
     ) -> Callable[..., dict[str, Any]]:
         """
         Patch ``create_engine`` to capture calls.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for applying patches.
-
-        Returns
-        -------
-        Callable[..., dict[str, Any]]
-            Fake ``create_engine`` that records arguments.
         """
         captured: list[tuple[str, dict[str, Any]]] = []
 
