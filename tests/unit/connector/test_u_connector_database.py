@@ -45,7 +45,7 @@ class TestConnectorDb:
 
     def test_from_obj_requires_name(self) -> None:
         """
-        Test that :meth:`from_obj` should reject mappings without a valid name.
+        Test that :meth:`from_obj` reject mappings without a valid name.
         """
         with pytest.raises(TypeError, match='ConnectorDb requires a "name"'):
             ConnectorDb.from_obj({'type': 'database'})

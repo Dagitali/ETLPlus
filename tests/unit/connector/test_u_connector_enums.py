@@ -36,7 +36,7 @@ class TestDataConnectorType:
         value: str,
         expected: DataConnectorType,
     ) -> None:
-        """Test alias coercions."""
+        """Test that alias values are coerced correctly."""
         assert DataConnectorType.coerce(value) is expected
 
     def test_invalid_value(self) -> None:
