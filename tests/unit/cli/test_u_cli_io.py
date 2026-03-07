@@ -108,7 +108,7 @@ class TestInferPayloadFormat:
     """Unit tests for :func:`infer_payload_format`."""
 
     def test_inferring_payload_format(self) -> None:
-        """Test inferring JSON vs CSV using the first significant byte."""
+        """Test that inferring JSON vs CSV using the first significant byte."""
         assert _io.infer_payload_format(' {"a":1}') == 'json'
         assert _io.infer_payload_format('  col1,col2') == 'csv'
 
@@ -267,7 +267,7 @@ class TestMaterializeFilePayload:
 
     def test_missing_path_with_inline_json_is_parsed(self) -> None:
         """
-        Test inline JSON should parse even when treated as a missing file path.
+        Test that inline JSON parse even when treated as a missing file path.
         """
         payload = _io.materialize_file_payload(
             '{"inline": true}',
@@ -280,7 +280,7 @@ class TestMaterializeFilePayload:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test path-like sources should still raise when files are missing."""
+        """Test that path-like sources still raise when files are missing."""
         missing = tmp_path / 'missing.json'
         with pytest.raises(FileNotFoundError, match='File not found'):
             _io.materialize_file_payload(
@@ -305,7 +305,7 @@ class TestMaterializeFilePayload:
         assert payload == str(file_path)
 
     def test_non_path_payload_returns_unchanged(self) -> None:
-        """Test non-pathlike payloads should bypass file materialization."""
+        """Test that non-pathlike payloads bypass file materialization."""
         payload: object = 123
         assert (
             _io.materialize_file_payload(
@@ -387,8 +387,8 @@ class TestParseTextPayload:
         expected: object,
     ) -> None:
         """
-        Test that :func:`parse_text_payload` handles JSON, CSV, and
-        passthrough cases.
+        Test that :func:`parse_text_payload` handles JSON, CSV, and passthrough
+        cases.
         """
         assert _io.parse_text_payload(payload, fmt=fmt) == expected
 

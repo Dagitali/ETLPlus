@@ -44,11 +44,6 @@ class TestMain:
     ) -> None:
         """
         Test that the command return values flow through unchanged.
-
-        Parameters
-        ----------
-        stub_command_main : StubCommandMain
-            Fixture that wires Typer's command execution to ``action``.
         """
 
         def _action(**kwargs: object) -> object:
@@ -74,13 +69,6 @@ class TestMain:
     ) -> None:
         """
         Test that any :class:`OSError` surfaces to STDERR and return 1.
-
-        Parameters
-        ----------
-        stub_command : StubCommand
-            Fixture that wires Typer's command execution to ``action``.
-        capsys : pytest.CaptureFixture[str]
-            Capture fixture for STDOUT/STDERR.
         """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
@@ -165,19 +153,6 @@ class TestMain:
     ) -> None:
         """
         Test that common exceptions map to expected exit codes.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        capsys : pytest.CaptureFixture[str]
-            Capture fixture for STDOUT/STDERR.
-        exception : BaseException | type[BaseException]
-            Exception instance or type to trigger.
-        expected_code : int
-            Expected exit code emitted by :func:`cli_main`.
-        expected_err : str | None
-            Expected STDERR substring when provided.
         """
         side_effect: BaseException = (
             exception() if isinstance(exception, type) else exception
@@ -257,15 +232,6 @@ class TestMain:
     ) -> None:
         """
         Test that unknown CLI arguments echo usage help.
-
-        Parameters
-        ----------
-        cli_args : list[str]
-            Command-line invocation passed to :func:`cli_main`.
-        expected_message : str
-            Substring expected in STDERR describing the error.
-        capsys : pytest.CaptureFixture[str]
-            Pytest capture fixture used to inspect STDERR output.
         """
         exit_code = cli_main(cli_args)
         captured = capsys.readouterr()
@@ -278,7 +244,7 @@ class TestMain:
         self,
         stub_command: StubCommand,
     ) -> None:
-        """Test unhandled :class:`UsageError` cases should be re-raised."""
+        """Test that unhandled :class:`UsageError` cases be re-raised."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise click.exceptions.UsageError('boom')

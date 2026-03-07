@@ -64,7 +64,7 @@ class TestCliHandlersInternalHelpers:
         self,
         dummy_cfg: Config,
     ) -> None:
-        """Test jobs flag plus mapping-style transforms extraction."""
+        """Test that jobs flag plus mapping-style transforms extraction."""
         cfg = SimpleNamespace(
             name=dummy_cfg.name,
             version=dummy_cfg.version,
@@ -626,7 +626,9 @@ class TestRenderHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test output-file rendering without status log when quiet is set."""
+        """
+        Test that output-file rendering without status log when quiet is set.
+        """
         output_path = tmp_path / 'rendered.sql'
         monkeypatch.setattr(
             handlers,
@@ -661,7 +663,9 @@ class TestRenderHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test template-path auto-detection from the ``template`` argument."""
+        """
+        Test that template-path auto-detection from the ``template`` argument.
+        """
         template_path = tmp_path / 'ddl.sql.j2'
         template_path.write_text('CREATE TABLE {{ table }}', encoding='utf-8')
         monkeypatch.setattr(

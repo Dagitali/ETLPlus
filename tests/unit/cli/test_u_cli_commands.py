@@ -32,7 +32,9 @@ class TestCommandsInternalHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test invalid JSON payloads raise :class:`typer.BadParameter`."""
+        """
+        Test that invalid JSON payloads raise :class:`typer.BadParameter`.
+        """
 
         def _parse_json_payload(_value: str) -> Any:
             raise ValueError('bad json')
@@ -55,7 +57,7 @@ class TestCheckCommand:
         typer_ctx_factory: TyperContextFactory,
         stub_handler: StubHandler,
     ) -> None:
-        """Test valid inputs dispatch to ``check_handler``."""
+        """Test that valid inputs dispatch to ``check_handler``."""
         monkeypatch.setattr(
             commands_mod,
             'ensure_state',
@@ -131,7 +133,7 @@ class TestCommandsMissingInputs:
         expected_message: str,
     ) -> None:
         """
-        Test commands emit friendly usage errors when required inputs are
+        Test that commands emit friendly usage errors when required inputs are
         missing.
         """
         command = getattr(commands_mod, command_name)
@@ -173,7 +175,7 @@ class TestCommandsMissingInputs:
         argument_value: str,
         expected_message: str,
     ) -> None:
-        """Test positional arguments reject option-like values."""
+        """Test that positional arguments reject option-like values."""
         kwargs = {argument_name: argument_value}
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:

@@ -281,8 +281,8 @@ class TestInferResourceType:
 
     def test_file_path(self, tmp_path: Path) -> None:
         """
-        Test that :func:`infer_resource_type` detects local files via
-        extension parsing.
+        Test that :func:`infer_resource_type` detects local files via extension
+        parsing.
         """
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
@@ -391,7 +391,7 @@ class TestCliStateHelpers:
     def test_resolve_resource_type_accepts_explicit_non_file_value(
         self,
     ) -> None:
-        """Test explicit non-file values should pass through validation."""
+        """Test that explicit non-file values pass through validation."""
         resolved = cli_state_module.resolve_resource_type(
             explicit_type='api',
             override_type=None,
