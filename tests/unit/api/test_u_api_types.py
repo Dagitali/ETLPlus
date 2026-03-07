@@ -91,7 +91,9 @@ def test_request_options_evolve_variants(
     expected_headers: dict[str, str] | None,
     expected_timeout: float | None,
 ) -> None:
-    """Test :meth:`RequestOptions.evolve` variants for preserving/clearing."""
+    """
+    Test that :meth:`RequestOptions.evolve` variants for preserving/clearing.
+    """
     opts = RequestOptions(params={'a': 1}, headers={'X': 'y'}, timeout=5.0)
     evolved = opts.evolve(**kwargs)
     assert evolved.params == expected_params
@@ -137,7 +139,7 @@ def test_type_aliases():
 
 
 def test_type_aliases_edge_cases():
-    """Test type aliases with edge case values."""
+    """Test that type aliases with edge case values."""
     # Url must be str.
     url: Url = 'http://test/'
     assert isinstance(url, str)

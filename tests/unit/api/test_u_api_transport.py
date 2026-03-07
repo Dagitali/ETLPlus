@@ -87,7 +87,7 @@ class TestBuildHttpAdapter:
         assert isinstance(adapter, requests.adapters.HTTPAdapter)
 
     def test_build_http_adapter_retry_dict_edge(self):
-        """Test retry dict with unknown keys is ignored."""
+        """Test that retry dict with unknown keys is ignored."""
         cfg = {
             'max_retries': {'total': 2, 'unknown_key': 123},
         }
@@ -118,7 +118,7 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test invalid adapter builds are skipped by session builder."""
+        """Test that invalid adapter builds are skipped by session builder."""
         real_builder = transport_module.build_http_adapter
         calls: list[str] = []
 
@@ -140,7 +140,7 @@ class TestBuildHttpAdapter:
         assert calls == ['bad://', 'https://']
 
     def test_integer_retries_fallback(self) -> None:
-        """Test handling integer max_retries fallback."""
+        """Test that handling integer max_retries fallback."""
         cfg = {
             'pool_connections': 2,
             'pool_maxsize': 2,
@@ -161,7 +161,8 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_lists(self) -> None:
         """
-        Test handling list inputs for allowed_methods and status_forcelist.
+        Test that handling list inputs for ``allowed_methods`` and
+        ``status_forcelist``.
         """
         cfg = {
             'pool_connections': 2,
@@ -195,8 +196,8 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_sets(self) -> None:
         """
-        Test handling set and frozenset inputs for allowed_methods and
-        status_forcelist.
+        Test that handling set and frozenset inputs for ``allowed_methods`` and
+        ``status_forcelist``.
         """
         # Provide sets to exercise set and frozenset handling in mapping.
         cfg = {
@@ -227,7 +228,9 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test retry mappings fall back to ``total`` when builder fails."""
+        """
+        Test that retry mappings fall back to ``total`` when builder fails.
+        """
 
         def _boom(_cfg: dict[str, object]) -> int:
             raise ValueError('bad retry config')

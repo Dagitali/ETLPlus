@@ -171,7 +171,7 @@ class TestPaginator:
 
     def test_page_integration(self) -> None:
         """
-        Test pagination over a multi-record iterator.
+        Test that pagination over a multi-record iterator.
 
         Uses a lightweight EndpointClient subclass that overrides
         ``paginate_url_iter`` to simulate multiple pages of results and
@@ -217,13 +217,6 @@ class TestPaginator:
     ) -> None:
         """
         Test that ``page_size`` values are coerced to a positive integer.
-
-        Parameters
-        ----------
-        actual : int | None
-            Raw configured page size.
-        expected_page_size : int
-            Expected normalized page size.
         """
         cfg: PagePaginationConfigDict = {'type': PaginationType.PAGE}
         if actual is not None:
@@ -351,12 +344,6 @@ class TestPaginator:
     ) -> None:
         """
         Test that ``start_page`` values are normalized by paginator type.
-
-        Parameters
-        ----------
-        paginator_mode_case : tuple[str, int | None, int]
-            Tuple of pagination type, raw start page, expected normalized start
-            page.
         """
         ptype, actual, expected = paginator_mode_case
         cfg: dict[str, Any] = {'type': ptype}
@@ -378,7 +365,8 @@ class TestPaginatorInternalBranches:
 
     def test_coalesce_records_fallback_missing_and_none_payload(self) -> None:
         """
-        Test missing fallback keeps ``None`` and triggers default payload path.
+        Test that missing fallback keeps ``None`` and triggers default payload
+        path.
         """
         records = Paginator.coalesce_records(
             None,
@@ -413,7 +401,7 @@ class TestPaginatorInternalBranches:
 
     def test_cursor_iteration_stops_on_stop_limits_branch(self) -> None:
         """
-        Test that cursor iterator should break when stop limits are reached.
+        Test that cursor iterator break when stop limits are reached.
         """
         payloads = [
             {
@@ -488,7 +476,7 @@ class TestPaginatorInternalBranches:
     def test_limit_batch_exhausted_branch(self) -> None:
         """
         Test that :meth:`_limit_batch` exhausts when emitted reaches
-        ``max_records``.
+        *max_records*.
         """
         paginator = Paginator(fetch=_dummy_fetch, max_records=2)
         trimmed, exhausted = paginator._limit_batch([{'id': 1}], emitted=2)
@@ -549,7 +537,7 @@ class TestPaginatorInternalBranches:
     ) -> None:
         """
         Test that page ``start_page=0`` normalizes to 1 and non-empty
-        ``limit_param`` is kept.
+        *limit_param* is kept.
         """
         paginator = Paginator(
             type=PaginationType.PAGE,
@@ -562,7 +550,7 @@ class TestPaginatorInternalBranches:
 
     def test_resolve_start_page_invalid_and_negative_offset(self) -> None:
         """
-        Test start-page resolver handles invalid and negative overrides.
+        Test that start-page resolver handles invalid and negative overrides.
         """
         page = Paginator(fetch=_dummy_fetch, type=PaginationType.PAGE)
         out_page = page._resolve_start_page(
@@ -578,7 +566,8 @@ class TestPaginatorInternalBranches:
 
     def test_stop_limits_max_records_branch(self) -> None:
         """
-        Test :meth:`_stop_limits` returns true when record cap is reached.
+        Test that :meth:`_stop_limits` returns ``True`` when record cap is
+        reached.
         """
         paginator = Paginator(fetch=_dummy_fetch, max_records=2)
         assert paginator._stop_limits(pages=1, recs=2) is True

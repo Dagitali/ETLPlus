@@ -19,12 +19,14 @@ class TestHttpMethod:
     """Unit tests for :class:`HttpMethod`."""
 
     def test_allows_body(self) -> None:
-        """Test the `allows_body` property."""
+        """
+        Test that the :meth:`allows_body` property reflects method semantics.
+        """
         assert HttpMethod.POST.allows_body is True
         assert HttpMethod.PUT.allows_body is True
         assert HttpMethod.PATCH.allows_body is True
         assert HttpMethod.GET.allows_body is False
 
     def test_coerce(self) -> None:
-        """Test :meth:`coerce`."""
+        """Test that :meth:`coerce` resolves supported inputs."""
         assert HttpMethod.coerce('delete') is HttpMethod.DELETE

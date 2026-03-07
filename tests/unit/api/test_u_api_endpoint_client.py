@@ -254,17 +254,6 @@ class TestContextManager:
         """
         Test that :class:`EndpointClient` closes a session created by a
         factory.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        mock_session : MockSession
-            Mocked session object.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        request_once_stub : dict[str, Any]
-            Captures calls to the patched HTTP helper.
         """
         sess = mock_session
         client = client_factory(
@@ -286,17 +275,6 @@ class TestContextManager:
     ) -> None:
         """
         Test that :class:`EndpointClient` creates and closes a default session.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        request_once_stub : dict[str, Any]
-            Captures calls to the patched HTTP helper.
         """
 
         # Substitute Session with MockSession to observe close()
@@ -329,17 +307,6 @@ class TestContextManager:
         """
         Test that :class:`EndpointClient` does not close an externally provided
         session.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        mock_session : MockSession
-            Mocked session object.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        request_once_stub : dict[str, Any]
-            Captures calls to the patched HTTP helper.
         """
         sess = mock_session
         client = client_factory(
@@ -370,19 +337,6 @@ class TestCursorPagination:
     ) -> None:
         """
         Test that page_size is normalized to a valid integer.
-
-        Parameters
-        ----------
-        cursor_cfg : CursorConfigFactory
-            Factory for cursor pagination config.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        stub_request_manager : StubRequestManager
-            Fixture that patches the underlying :class:`RequestManager`.
-        raw_page_size : Any
-            Raw page size input.
-        expected_limit : int
-            Expected normalized limit.
         """
         calls = stub_request_manager(
             [{'items': [{'i': 1}], 'next': None}],
@@ -416,7 +370,7 @@ class TestRequestOptionIntegration:
         client_factory: Callable[..., EndpointClient],
     ) -> None:
         """
-        Test non-paginated calls honor explicitly supplied
+        Test that non-paginated calls honor explicitly supplied
         :class:`RequestOptions`.
         """
 
@@ -505,15 +459,6 @@ class TestRequestOptionIntegration:
     ) -> None:
         """
         Test that limit is added and cursor advances correctly.
-
-        Parameters
-        ----------
-        cursor_cfg : CursorConfigFactory
-            Factory for cursor pagination config.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        stub_request_manager : StubRequestManager
-            Fixture that patches :class:`RequestManager` responses.
         """
         calls = stub_request_manager(
             [
@@ -549,24 +494,10 @@ class TestRequestOptionIntegration:
         fake_http_error_factory: Callable[[int, str], requests.HTTPError],
     ) -> None:
         """
-        Test that :class:`PaginationError` includes the page number on
-        failure.
+        Test that :class:`PaginationError` includes the page number on failure.
 
         When a cursor-paginated request fails, :class:`PaginationError`
         includes page.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper for deterministic failures.
-        cursor_cfg : CursorConfigFactory
-            Factory for cursor pagination config.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
-            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=f'{base_url}/v1',
@@ -619,13 +550,6 @@ class TestRequestOptionIntegration:
 
         When ``rate_limit_overrides`` are provided to ``paginate_url_iter``,
         the computed ``sleep_seconds`` reflects the overrides.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
         """
         captured: dict[str, Any] = {}
 
@@ -693,19 +617,6 @@ class TestRequestOptionIntegration:
         Test that cursor pagination applies retry backoff sleep on failure.
 
         Cursor pagination applies retry backoff sleep on failure.
-
-        Parameters
-        ----------
-        cursor_cfg : CursorConfigFactory
-            Factory for cursor pagination config.
-        capture_sleeps : list[float]
-            List to capture sleep durations.
-        jitter : Callable[[list[float]], list[float]]
-            Jitter function for sleep values.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper for deterministic retries.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         jitter([0.05])
 
@@ -763,17 +674,6 @@ class TestErrors:
         """
         Test that :class:`ApiAuthError` is raised and wrapped on a single
         attempt.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper used to patch the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
-            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=base_url,
@@ -817,13 +717,6 @@ class TestOffsetPagination:
     ) -> None:
         """
         Test that offset pagination behaves as expected.
-
-        Parameters
-        ----------
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches request execution for deterministic pages.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         calls: list[dict[str, Any]] = []
 
@@ -886,15 +779,6 @@ class TestPagePagination:
     ) -> None:
         """
         Test that pagination stops on a short final batch.
-
-        Parameters
-        ----------
-        page_cfg : Callable[..., PagePaginationConfigDict]
-            Factory for page pagination config.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         patch_request_once(
             _page_responder(
@@ -927,15 +811,6 @@ class TestPagePagination:
     ) -> None:
         """
         Test that max_records parameter truncates results as expected.
-
-        Parameters
-        ----------
-        page_cfg : Callable[..., PagePaginationConfigDict]
-            Factory for page pagination config.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper for fixed responses.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         patch_request_once(
             _page_responder(
@@ -969,15 +844,6 @@ class TestPagePagination:
     ) -> None:
         """
         Test that page_size is normalized to 1 if set to 0.
-
-        Parameters
-        ----------
-        page_cfg : Callable[..., PagePaginationConfigDict]
-            Factory for page pagination config.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches request execution.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         patch_request_once(
             _page_responder(
@@ -1015,19 +881,6 @@ class TestPagePagination:
     ) -> None:
         """
         Test that :class:`PaginationError` includes the page number on failure.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        page_cfg : Callable[..., PagePaginationConfigDict]
-            Factory for page pagination config.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
-            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=base_url,
@@ -1076,13 +929,6 @@ class TestPagePagination:
     ) -> None:
         """
         Test that unknown pagination type returns raw output.
-
-        Parameters
-        ----------
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches request execution.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
 
         def _raw_response(
@@ -1126,17 +972,6 @@ class TestRateLimitPrecedence:
     ) -> None:
         """
         Test that explicit sleep_seconds overrides rate_limit config.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        capture_sleeps : list[float]
-            List to capture sleep durations.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper that patches the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         # :func:`capture_sleeps` fixture already records rate-limiter pacing.
         client = client_factory(
@@ -1213,19 +1048,6 @@ class TestRetryLogic:
         """
         Test that :class:`ApiRequestError` is raised after retries are
         exhausted.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        retry_cfg : Callable[..., dict[str, Any]]
-            Factory for retry configuration.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper used to patch the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
-        fake_http_error_factory : Callable[[int, str], requests.HTTPError]
-            Factory to create deterministic HTTP errors for testing.
         """
         client = client_factory(
             base_url=base_url,
@@ -1271,21 +1093,6 @@ class TestRetryLogic:
     ) -> None:
         """
         Test that full jitter backoff is applied on retries.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        capture_sleeps : list[float]
-            List to capture sleep durations.
-        retry_cfg : Callable[..., dict[str, Any]]
-            Factory for retry configuration.
-        jitter : Callable[[list[float]], list[float]]
-            Jitter function for sleep values.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper used to patch the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         jitter([0.1, 0.2])
 
@@ -1339,21 +1146,6 @@ class TestRetryLogic:
     ) -> None:
         """
         Test that network errors are retried and sleep durations are captured.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        capture_sleeps : list[float]
-            List to capture sleep durations.
-        retry_cfg : Callable[..., dict[str, Any]]
-            Factory for retry configuration.
-        jitter : Callable[[list[float]], list[float]]
-            Jitter function for sleep values.
-        patch_request_once : Callable[[Callable[..., Any]], Callable[..., Any]]
-            Helper used to patch the request helper.
-        client_factory : Callable[..., EndpointClient]
-            Factory fixture used to construct :class:`EndpointClient`.
         """
         jitter([0.12, 0.18])
         attempts = {'n': 0}
@@ -1433,21 +1225,6 @@ class TestUrlComposition:
     ) -> None:
         """
         Test that base_path variants are composed correctly in URLs.
-
-        Parameters
-        ----------
-        request_once_stub : dict[str, Any]
-            Stub for capturing extracted URLs.
-        base_url : str
-            Base URL for the API.
-        base_url_suffix : str
-            Suffix to append to the base URL.
-        base_path : str
-            Base path for the API.
-        endpoint : str
-            Endpoint path.
-        expected_suffix : str
-            Expected suffix in the composed URL.
         """
         client = EndpointClient(
             base_url=f'{base_url}{base_url_suffix}',
@@ -1465,13 +1242,6 @@ class TestUrlComposition:
     ) -> None:
         """
         Test that query parameters are merged and path parameters are encoded.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        request_once_stub : dict[str, Any]
-            Stub for capturing extracted URLs.
         """
         client = EndpointClient(
             base_url=f'{base_url}?existing=a&dup=1',
@@ -1496,13 +1266,6 @@ class TestUrlComposition:
     ) -> None:
         """
         Test that duplicate base query parameters are merged correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        request_once_stub : dict[str, Any]
-            Stub for capturing extracted URLs.
         """
         client = EndpointClient(
             base_url=f'{base_url}?dup=1&dup=2&z=9',
@@ -1524,13 +1287,6 @@ class TestUrlComposition:
     ) -> None:
         """
         Test that query parameter ordering is preserved in composed URLs.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        request_once_stub : dict[str, Any]
-            Stub for capturing extracted URLs.
         """
         client = EndpointClient(
             base_url=f'{base_url}?z=9&dup=1',
@@ -1554,8 +1310,8 @@ class TestEndpointClientInternalBranches:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test :meth:`apply_sleep` calls either :func:`time.sleep` or provided
-        sleeper.
+        Test that :meth:`apply_sleep` calls either :func:`time.sleep` or
+        provided sleeper.
         """
         recorded: list[float] = []
         monkeypatch.setattr(ec_module.time, 'sleep', recorded.append)
@@ -1575,8 +1331,7 @@ class TestEndpointClientInternalBranches:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that object pagination configs should use their ``.type``
-        attribute.
+        Test that object pagination configs use their ``.type`` attribute.
         """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
@@ -1621,8 +1376,7 @@ class TestEndpointClientInternalBranches:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that thin wrappers should delegate to the embedded request
-        manager.
+        Test that thin wrappers delegate to the embedded request manager.
         """
         client = EndpointClient(base_url=EXAMPLE_BASE_URL, endpoints={})
         seen: dict[str, Any] = {}
@@ -1660,7 +1414,8 @@ class TestEndpointClientInternalBranches:
         mock_session: MockSession,
     ) -> None:
         """
-        Test explicit session disables factory; adapters are tuple-normalized.
+        Test that explicit session disables factory; adapters are tuple-
+        normalized.
         """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
@@ -1674,7 +1429,7 @@ class TestEndpointClientInternalBranches:
         assert isinstance(client.session_adapters, tuple)
 
     def test_post_init_requires_absolute_base_url(self) -> None:
-        """Test relative base_url values should be rejected."""
+        """Test that relative base_url values be rejected."""
         with pytest.raises(ValueError, match='base_url must be absolute'):
             EndpointClient(base_url='/relative', endpoints={})
 
@@ -1690,7 +1445,8 @@ class TestEndpointClientInternalBranches:
         endpoints: dict[Any, Any],
     ) -> None:
         """
-        Test endpoint mapping must be string keys and non-empty string values.
+        Test that endpoint mapping must be string keys and non-empty string
+        values.
         """
         with pytest.raises(ValueError, match='endpoints must map str'):
             EndpointClient(
@@ -1699,7 +1455,7 @@ class TestEndpointClientInternalBranches:
             )
 
     def test_url_raises_for_unknown_endpoint(self) -> None:
-        """Test unknown endpoint keys should raise KeyError."""
+        """Test that unknown endpoint keys raise KeyError."""
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'known': '/k'},
@@ -1709,7 +1465,7 @@ class TestEndpointClientInternalBranches:
 
     def test_url_raises_for_missing_path_placeholder(self) -> None:
         """
-        Test missing path placeholders should raise KeyError with context.
+        Test that missing path placeholders raise KeyError with context.
         """
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
@@ -1719,7 +1475,7 @@ class TestEndpointClientInternalBranches:
             client.url('item', path_parameters={})
 
     def test_url_raises_for_invalid_path_template(self) -> None:
-        """Test malformed path format strings should raise ValueError."""
+        """Test that malformed path format strings raise ValueError."""
         client = EndpointClient(
             base_url=EXAMPLE_BASE_URL,
             endpoints={'bad': '/items/{id'},
@@ -1755,14 +1511,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Test path parameter encoding in URLs.
-
-        Parameters
-        ----------
-        id_value : str
-            Path parameter value to encode.
-        extract_stub_factory : Callable[..., Any]
-            Factory for extract stub (Hypothesis-safe).
+        Test that path parameter encoding in URLs.
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
@@ -1794,14 +1543,7 @@ class TestUrlCompositionProperty:
         extract_stub_factory: Callable[..., Any],
     ) -> None:
         """
-        Test query parameter encoding in URLs.
-
-        Parameters
-        ----------
-        params : dict[str, str]
-            Query parameters to encode.
-        extract_stub_factory : Callable[..., Any]
-            Factory for extract stub (Hypothesis-safe).
+        Test that query parameter encoding in URLs.
         """
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(

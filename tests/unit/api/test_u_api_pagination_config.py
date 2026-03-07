@@ -36,7 +36,7 @@ class TestPaginationConfig:
     """
 
     def test_defaults_apply_response_fallback_path(self) -> None:
-        """Test that defaults mapping surfaces response ``fallback_path.``"""
+        """Test that defaults mapping surfaces response ``fallback_path.``."""
         cfg = PaginationConfig.from_defaults(
             {
                 'type': 'page',
@@ -73,11 +73,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that :meth:`from_obj` coerces numeric fields correctly.
-
-        Parameters
-        ----------
-        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
-            Factory for PaginationConfig.
         """
         obj = {
             'type': 'page',
@@ -103,11 +98,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that :meth:`from_obj` ignores bad numeric values.
-
-        Parameters
-        ----------
-        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
-            Factory for PaginationConfig.
         """
         obj: dict[str, Any] = {
             'type': 'page',
@@ -129,11 +119,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that offset mode warnings are produced correctly.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type='offset',
@@ -156,13 +141,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that unknown pagination types only yield general warnings.
-
-        Parameters
-        ----------
-        tval : str | None
-            Pagination type value to test.
-        pagination_config_factory : Callable[..., Any]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type=tval,
@@ -207,13 +185,6 @@ class TestPaginationConfig:
         """
         Test that validate_bounds produces correct warnings for different
         pagination types.
-
-        Parameters
-        ----------
-        ptype : Literal['page', 'offset', 'cursor']
-            Pagination type to test.
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type=ptype,
@@ -248,11 +219,6 @@ class TestPaginationConfig:
     ) -> None:  # noqa: D401
         """
         Test that valid pagination values produce no warnings.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type='page',

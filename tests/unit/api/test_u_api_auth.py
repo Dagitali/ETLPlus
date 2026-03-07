@@ -131,17 +131,6 @@ class TestEndpointCredentialsBearer:
         """
         Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
         correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        token_sequence : dict[str, int]
-            Fixture tracking token fetch count.
-        bearer_factory : Callable[..., EndpointCredentialsBearer]
-            Factory that builds :class:`EndpointCredentialsBearer` objects.
-        request_factory : RequestFactory
-            Factory that builds prepared requests.
         """
         auth = bearer_factory()
         s = requests.Session()
@@ -174,7 +163,7 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Test invalid expires_in values should coerce to default TTL."""
+        """Test that invalid expires_in values coerce to default TTL."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
             text='{"access_token":"abc","expires_in":"bad"}',
@@ -211,17 +200,6 @@ class TestEndpointCredentialsBearer:
         """
         Test that :class:`EndpointCredentialsBearer` refreshes token when
         expiring.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        bearer_factory : Callable[..., EndpointCredentialsBearer]
-            Factory that builds :class:`EndpointCredentialsBearer` objects.
-        request_factory : RequestFactory
-            Factory that builds prepared requests.
         """
         calls: dict[str, int] = {'n': 0}
 

@@ -85,7 +85,9 @@ class TestBuildPaginationCfg:
     """Unit tests for :func:`build_pagination_cfg`."""
 
     def test_cursor_config_without_base(self) -> None:
-        """Test building cursor-based pagination config without base config."""
+        """
+        Test that building cursor-based pagination config without base config.
+        """
         overrides = {
             'type': 'cursor',
             'cursor_param': 'token',
@@ -111,7 +113,7 @@ class TestBuildPaginationCfg:
         assert utils.build_pagination_cfg(None, None) is None
 
     def test_page_config_with_overrides(self) -> None:
-        """Test building page-based pagination config with overrides."""
+        """Test that building page-based pagination config with overrides."""
         pagination = PaginationConfig(
             type=PaginationType.PAGE,
             records_path='records',
@@ -170,7 +172,7 @@ class TestComposeApiRequestEnv:
         self,
         base_url: str,
     ) -> None:
-        """Test merging endpoint defaults with overrides."""
+        """Test that merging endpoint defaults with overrides."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         source = SimpleNamespace(
             api='core',
@@ -282,7 +284,7 @@ class TestPaginateWithClient:
     """Unit tests for :func:`paginate_with_client`."""
 
     def test_standard_signature(self) -> None:
-        """Test pagination with standard client method signature."""
+        """Test that pagination with standard client method signature."""
 
         class Client:
             """Dummy client with standard paginate method."""
@@ -338,7 +340,9 @@ class TestPaginateWithClient:
         assert client.calls[0]['sleep_seconds'] == 0.3
 
     def test_underscore_signature(self) -> None:
-        """Test pagination with underscore-prefixed client method signature."""
+        """
+        Test that pagination with underscore-prefixed client method signature.
+        """
 
         class Client:
             """Dummy client with underscore-prefixed paginate method."""
@@ -398,7 +402,7 @@ class TestUtilsInternalBranches:
 
     def test_build_endpoint_client_helper(self) -> None:
         """
-        Test :func:`build_endpoint_client` wires env options into
+        Test that :func:`build_endpoint_client` wires env options into
         :class:`EndpointClient`.
         """
         client = utils.build_endpoint_client(
@@ -416,7 +420,7 @@ class TestUtilsInternalBranches:
         self,
     ) -> None:
         """
-        Test :func:`build_pagination_cfg` covers page/cursor/unknown type
+        Test that :func:`build_pagination_cfg` covers page/cursor/unknown type
         branches.
         """
         raw_page_cfg = utils.build_pagination_cfg(None, {'type': 'page'})
@@ -453,7 +457,7 @@ class TestUtilsInternalBranches:
     def test_build_session_catches_params_and_cookie_update_exceptions(
         self,
     ) -> None:
-        """Test param/cookie update exceptions are swallowed."""
+        """Test that param/cookie update exceptions are swallowed."""
 
         class _BrokenMapping(Mapping[str, Any]):
             def __getitem__(self, key: str) -> Any:
@@ -490,7 +494,7 @@ class TestUtilsInternalBranches:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test session builder tolerates assignment/update failures."""
+        """Test that session builder tolerates assignment/update failures."""
 
         class _BadMap(dict[str, Any]):
             def __iter__(self):  # type: ignore[override]
@@ -534,7 +538,7 @@ class TestUtilsInternalBranches:
 
     def test_compose_api_request_env_without_api_reference(self) -> None:
         """
-        Test :func:`compose_api_request_env` works without API/endpoint
+        Test that :func:`compose_api_request_env` works without API/endpoint
         linkage.
         """
         cfg = SimpleNamespace(apis={})
@@ -570,7 +574,9 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Test absent retry override keys preserves source retry settings."""
+        """
+        Test that absent retry override keys preserves source retry settings.
+        """
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         source = SimpleNamespace(
             api='core',
@@ -591,7 +597,7 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Test explicit target URL bypasses API endpoint inheritance."""
+        """Test that explicit target URL bypasses API endpoint inheritance."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
         target = SimpleNamespace(
             api='core',
@@ -610,7 +616,9 @@ class TestUtilsInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Test internal helper branches gracefully handles invalid inputs."""
+        """
+        Test that internal helper branches gracefully handles invalid inputs.
+        """
         assert utils._build_session_optional(cast(Any, 'bad')) is None
         assert utils._coalesce(None, None) is None
 
@@ -638,7 +646,8 @@ class TestUtilsInternalBranches:
         base_url: str,
     ) -> None:
         """
-        Test session merge returns ``None`` when all three values are invalid.
+        Test that session merge returns ``None`` when all three values are
+        invalid.
         """
         api_cfg = _ApiCfg(base_url)
         api_cfg.session = cast(Any, 'bad')
@@ -652,7 +661,7 @@ class TestUtilsInternalBranches:
         assert merged is None
 
     def test_compute_rl_sleep_seconds_variants(self) -> None:
-        """Test rate-limit sleep helper filters overrides correctly."""
+        """Test that rate-limit sleep helper filters overrides correctly."""
         rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
         assert (
             utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
@@ -664,7 +673,9 @@ class TestUtilsInternalBranches:
         )
 
     def test_resolve_request_raises_when_method_missing(self) -> None:
-        """Test resolve_request fails when session lacks method callable."""
+        """
+        Test that resolve_request fails when session lacks method callable.
+        """
         with pytest.raises(TypeError, match='must supply a callable'):
             utils.resolve_request(
                 'get',
@@ -673,7 +684,9 @@ class TestUtilsInternalBranches:
             )
 
     def test_resolve_request_success_path(self) -> None:
-        """Test resolve_request returns callable, timeout, and method enum."""
+        """
+        Test that resolve_request returns callable, timeout, and method enum.
+        """
 
         class _Session:
             @staticmethod

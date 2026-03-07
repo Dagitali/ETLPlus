@@ -92,15 +92,6 @@ class TestResolveSleepSeconds:
         """
         Test that non-positive and non-numeric values are ignored and return
         0.0.
-
-        Parameters
-        ----------
-        rate_limit : RateLimitConfigDict | None
-            The rate limit configuration.
-        config : RateLimitConfigDict | dict[str, Any] | None
-            The override configuration.
-        expected_sleep : float
-            The expected sleep seconds value.
         """
         overrides = cast(RateLimitConfigDict | None, config)
         assert (
@@ -132,7 +123,7 @@ class TestResolveSleepSeconds:
         )
 
     def test_rate_limit_fallback(self) -> None:
-        """Test fallback to rate limit config when override is None."""
+        """Test that fallback to rate limit config when override is None."""
         assert (
             RateLimiter.resolve_sleep_seconds(
                 rate_limit={'max_per_sec': 2},
@@ -143,7 +134,8 @@ class TestResolveSleepSeconds:
 
     def test_sleep_seconds_precedence(self) -> None:
         """
-        Test sleep seconds takes precedence over max_per_sec when both set.
+        Test that sleep seconds takes precedence over max_per_sec when both
+        set.
         """
         assert RateLimiter.resolve_sleep_seconds(
             rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
@@ -169,11 +161,6 @@ class TestRateLimiterBasics:
     def test_disabled_constructor(self, disabled_limiter: RateLimiter) -> None:
         """
         Test that disabled() returns a limiter that never sleeps.
-
-        Parameters
-        ----------
-        disabled_limiter : RateLimiter
-            The disabled limiter fixture.
         """
         assert disabled_limiter.sleep_seconds == 0.0
         assert disabled_limiter.enabled is False
@@ -186,11 +173,6 @@ class TestRateLimiterBasics:
     ) -> None:
         """
         Test that fixed() returns a limiter with the specified positive delay.
-
-        Parameters
-        ----------
-        fixed_limiter : RateLimiter
-            The fixed limiter fixture.
         """
         assert fixed_limiter.sleep_seconds == pytest.approx(0.25)
         assert fixed_limiter.enabled is True
@@ -211,15 +193,8 @@ class TestRateLimiterBasics:
         expected_sleep: float,
     ) -> None:
         """
-        Test that ``fixed()`` converts inputs to non-negative floats,
-        defaulting to 0.0.
-
-        Parameters
-        ----------
-        seconds : Any
-            Input value for sleep seconds.
-        expected_sleep : float
-            Expected normalized sleep seconds.
+        Test that ``fixed()`` converts inputs to non-negative floats with a
+        default of 0.0.
         """
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
@@ -227,7 +202,9 @@ class TestRateLimiterBasics:
     def test_post_init_prefers_positive_rate_when_sleep_not_positive(
         self,
     ) -> None:
-        """Test positive max_per_sec derives sleep when sleep_seconds <= 0."""
+        """
+        Test that positive max_per_sec derives sleep when sleep_seconds <= 0.
+        """
         limiter = RateLimiter(sleep_seconds=0.0, max_per_sec=4.0)
         assert limiter.max_per_sec == pytest.approx(4.0)
         assert limiter.sleep_seconds == pytest.approx(0.25)
@@ -246,15 +223,8 @@ class TestRateLimiterBasics:
         expected_enabled: bool,
     ) -> None:
         """
-        Test :class:`RateLimiter` truthiness and ``enabled`` follow
+        Test that :class:`RateLimiter` truthiness and ``enabled`` follow
         ``sleep_seconds > 0``.
-
-        Parameters
-        ----------
-        seconds : float
-            Input sleep seconds.
-        expected_enabled : bool
-            Expected enabled flag.
         """
         limiter = RateLimiter(sleep_seconds=seconds)
         assert limiter.enabled is expected_enabled
@@ -295,13 +265,6 @@ class TestRateLimiterFromConfig:
         """
         Test that :meth:`from_config` prefers ``sleep_seconds`` over
         ``max_per_sec`` and normalizes invalid values to 0.0.
-
-        Parameters
-        ----------
-        cfg : dict[str, Any] | None
-            Configuration dictionary.
-        expected_sleep : float
-            Expected normalized sleep seconds.
         """
         limiter = RateLimiter.from_config(cfg)
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
@@ -318,13 +281,8 @@ class TestRateLimiterEnforce:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that ``enforce`` should call :func:`time.sleep` with
-        ``sleep_seconds`` when the limiter is enabled.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for patching time.sleep.
+        Test that ``enforce`` call :func:`time.sleep` with ``sleep_seconds``
+        when the limiter is enabled.
         """
         calls: list[float] = []
 
@@ -349,15 +307,8 @@ class TestRateLimiterEnforce:
         disabled_limiter: RateLimiter,
     ) -> None:
         """
-        Test that ``enforce`` does not call :func:`time.sleep` when the
-        limiter is disabled.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for patching time.sleep.
-        disabled_limiter : RateLimiter
-            Fixture for a disabled RateLimiter instance.
+        Test that ``enforce`` does not call :func:`time.sleep` when the limiter
+        is disabled.
         """
         calls: list[float] = []
 
