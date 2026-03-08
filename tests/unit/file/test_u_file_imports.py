@@ -89,9 +89,7 @@ class TestImportsHelpers:
         pip_name: str | None,
         dependency_name: str,
     ) -> None:
-        """
-        Test that import error messages rendering dependency and ``pip`` hints.
-        """
+        """Test import-error messages with dependency and ``pip`` hints."""
         message = mod._error_message(
             module_name,
             format_name=format_name,

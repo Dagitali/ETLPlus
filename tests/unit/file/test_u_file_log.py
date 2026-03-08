@@ -33,19 +33,19 @@ class TestLog(RoundtripUnitModuleContract):
     roundtrip_spec = build_roundtrip_spec(record_count=2)
 
     def test_parse_line_falls_back_for_non_object_json(self) -> None:
-        """Test that line parser falls back for non-object JSON values."""
+        """Test that the line parser falls back for non-object JSON values."""
         assert self.module_handler.parse_line('["a", "b"]') == {
             'message': '["a", "b"]',
         }
 
     def test_parse_line_falls_back_to_message_for_plain_text(self) -> None:
-        """Test that line parser falls back for non-JSON log lines."""
+        """Test that the line parser falls back for non-JSON log lines."""
         assert self.module_handler.parse_line('plain message') == {
             'message': 'plain message',
         }
 
     def test_parse_line_parses_json_object(self) -> None:
-        """Test that line parser returns JSON objects as events."""
+        """Test that the line parser returns JSON objects as events."""
         assert self.module_handler.parse_line('{"id": 1}') == {'id': 1}
 
     def test_read_skips_blank_lines_and_parses_entries(

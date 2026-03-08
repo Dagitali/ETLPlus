@@ -30,7 +30,7 @@ class TestTemplateHandlers:
     """Unit tests for shared template-handler mixins."""
 
     def test_brace_token_pattern_extracts_context_key(self) -> None:
-        """Test that brace token regex extracting the ``key`` group."""
+        """Test brace-token regex extraction of the ``key`` group."""
         match = _TemplateHandler.token_pattern.search('{{ user_name }}')
         assert match is not None
         assert match.group('key') == 'user_name'

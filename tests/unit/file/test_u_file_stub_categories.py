@@ -295,9 +295,7 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that template stub rendering delegating to stub read behavior.
-        """
+        """Test template-stub rendering delegation to stub read behavior."""
         _patch_stub_read(
             monkeypatch,
             result='rendered',

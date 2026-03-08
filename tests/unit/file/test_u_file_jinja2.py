@@ -139,8 +139,7 @@ class TestJinja2(RoundtripUnitModuleContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that strict mode rendering through
-        :meth:`Environment.from_string`.
+        Test strict-mode rendering through :meth:`Environment.from_string`.
         """
         jinja2_stub = _Jinja2StrictStub()
         monkeypatch.setattr(
