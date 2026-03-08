@@ -26,7 +26,7 @@ class TestArchiveHelpers:
         self,
     ) -> None:
         """
-        Test that optional payload format returning ``None`` when unresolved.
+        Test that an optional payload format returns ``None`` when unresolved.
         """
         assert (
             mod.infer_archive_payload_format(
@@ -50,7 +50,7 @@ class TestArchiveHelpers:
     def test_infer_archive_payload_format_rejects_disallowed_compression(
         self,
     ) -> None:
-        """Test that disallowed compression raising the provided error."""
+        """Test that disallowed compression raises the provided error."""
         with pytest.raises(ValueError, match='compression not allowed'):
             mod.infer_archive_payload_format(
                 'data.csv.gz',
@@ -62,7 +62,8 @@ class TestArchiveHelpers:
         self,
     ) -> None:
         """
-        Test that required payload format failure for unknown compressed files.
+        Test that unknown compressed files fail when payload format is
+        required.
         """
         with pytest.raises(ValueError, match='Cannot infer file format'):
             mod.infer_archive_payload_format(

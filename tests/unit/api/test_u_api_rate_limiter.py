@@ -134,8 +134,8 @@ class TestResolveSleepSeconds:
 
     def test_sleep_seconds_precedence(self) -> None:
         """
-        Test that sleep seconds takes precedence over max_per_sec when both
-        set.
+        Test that ``sleep_seconds`` takes precedence over ``max_per_sec`` when
+        both are set.
         """
         assert RateLimiter.resolve_sleep_seconds(
             rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},

@@ -179,7 +179,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :meth:`read_table` routing through pyarrow map/IPC APIs.
+        Test that :meth:`read_table` routes through pyarrow map/IPC APIs.
         """
         pyarrow_stub = _PyarrowStub()
         expected_table: Any = object()
@@ -201,7 +201,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :meth:`records_to_table` converting records via pyarrow.
+        Test that :meth:`records_to_table` converts records via :mod:`pyarrow`.
         """
         pyarrow_stub = _PyarrowStub()
 
@@ -217,7 +217,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
 
     def test_table_to_records_returns_pylist_rows(self) -> None:
         """
-        Test that :meth:`table_to_records` delegating to
+        Test that :meth:`table_to_records` delegates to
         :meth:`table.to_pylist()`.
         """
         table = _TableStub([{'id': 1}, {'id': 2}])
@@ -241,7 +241,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :meth:`write_table` routing through pyarrow sink/writer APIs.
+        Test that :meth:`write_table` routes through pyarrow sink/writer APIs.
         """
         pyarrow_stub = _PyarrowStub()
 

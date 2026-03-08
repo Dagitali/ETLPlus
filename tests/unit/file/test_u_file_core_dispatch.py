@@ -29,11 +29,13 @@ class TestCoreDispatchHelpers:
         self,
         monkeypatch,
     ) -> None:
-        """Test that read payload routing through core File wrapper."""
+        """
+        Test that payload reads route through the core :class:`File` wrapper.
+        """
         seen: dict[str, Any] = {}
 
         class FileStub:
-            """Stub core File wrapper for read dispatch tests."""
+            """Stub core :class:`File` wrapper for read dispatch tests."""
 
             def __init__(self, path: Path, fmt: FileFormat) -> None:
                 seen['path'] = path

@@ -37,7 +37,10 @@ class TestConnectorAlias:
         assert isinstance(connectors[2], ConnectorFile)
 
     def test_module_exports_connector_alias(self) -> None:
-        """Test that connector module only export the Connector alias."""
+        """
+        Test that the connector module only exports the :class:`Connector`
+        alias.
+        """
         from etlplus.connector import connector as connector_mod
 
         assert connector_mod.__all__ == ['Connector']

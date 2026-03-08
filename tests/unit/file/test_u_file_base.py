@@ -364,7 +364,7 @@ class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
     def test_at_returns_path_bound_facade(self) -> None:
-        """Test that ``at(path)`` returning a callable bound handler facade."""
+        """Test that ``at(path)`` returns a bound callable handler facade."""
         handler = _DelimitedStub()
 
         bound = handler.at('ignored.csv')
@@ -605,7 +605,9 @@ class TestOptionsContracts:
             )
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
-        """Test that each ReadOptions instance getting its own extras dict."""
+        """
+        Test that each :class:`ReadOptions` instance gets its own extras dict.
+        """
         first = ReadOptions()
         second = ReadOptions()
 
@@ -615,7 +617,7 @@ class TestOptionsContracts:
 
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
         """
-        Test that :class:`XlsFile` root-tag helper using explicit values then
+        Test that :class:`XlsFile` root-tag helper uses explicit values, then
         defaults.
         """
         handler = XlsFile()
@@ -648,7 +650,7 @@ class TestScientificDatasetContracts:
         self,
         handler_cls: type[ScientificDatasetFileHandlerABC],
     ) -> None:
-        """Test that scientific handlers inheriting ScientificDataset ABC."""
+        """Test that scientific handlers inherit ScientificDataset ABC."""
         assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
         assert handler_cls.dataset_key == 'data'
 
@@ -661,7 +663,7 @@ class TestScientificDatasetContracts:
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
         """
-        Test that single-dataset scientific handlers rejecting unknown keys.
+        Test that single-dataset scientific handlers reject unknown keys.
         """
         assert issubclass(
             handler_cls,
